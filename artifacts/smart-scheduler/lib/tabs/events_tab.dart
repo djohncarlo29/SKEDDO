@@ -10804,6 +10804,7 @@ Widget _renderCatIcon(
         child: Text(
           iconOrSvg as String,
           style: TextStyle(fontSize: iconSz, height: 1.0),
+          textScaler: TextScaler.noScaling,
         ),
       ),
     );
@@ -10864,6 +10865,7 @@ Widget _buildDcvCatIcon(Object iconOrSvg, Color color, {BuildContext? ctx}) {
     return Text(
       iconOrSvg as String,
       style: TextStyle(fontSize: iconSz, height: 1.0),
+      textScaler: TextScaler.noScaling,
     );
   }
   if (iconOrSvg is String) {
@@ -10937,6 +10939,7 @@ Widget _buildPickerIconRaw(Object iconOrSvg, Color color, {BuildContext? ctx}) {
     return Text(
       iconOrSvg as String,
       style: const TextStyle(fontSize: 24, height: 1.0),
+      textScaler: TextScaler.noScaling,
     );
   }
   if (iconOrSvg is String) {

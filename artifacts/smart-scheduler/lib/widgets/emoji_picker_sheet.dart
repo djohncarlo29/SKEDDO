@@ -958,6 +958,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
             child: Text(
               emojis[i],
               style: const TextStyle(fontSize: 26, height: 1.0),
+              textScaler: TextScaler.noScaling,
             ),
           );
         }
@@ -970,6 +971,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
           child: Text(
             emojis[i],
             style: const TextStyle(fontSize: 26, height: 1.0),
+            textScaler: TextScaler.noScaling,
           ),
         );
       },
@@ -1029,6 +1031,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                       ], context),
                     ),
                   ),
+                  textScaler: TextScaler.noScaling,
                 ),
               ),
             ),
@@ -1168,6 +1171,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                 ? null
                                                 : const Color(0x66000000),
                                           ),
+                                          textScaler: TextScaler.noScaling,
                                         ),
                                       ),
                                     );
