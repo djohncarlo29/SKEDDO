@@ -3817,7 +3817,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     //   • Day number overlaid at top:14 via a Positioned, same scale+scaleY
     //
     // Icon tiles with special offsets:
-    //   • tray_fill (All Events): translate (0, -2) — matches _buildIconContent
+    //   • tray_fill (All Events): translate (0, -1) — matches _buildIconContent
     //   • clock (Unscheduled):    translate (0, -1)
     //   • Others: plain Icon
     final Widget circleContent;
@@ -3841,7 +3841,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           ),
           if (tile.day != null)
             Positioned(
-              top: 14.8,
+              top: 14.6,
               left: 0,
               right: 0,
               child: Center(
@@ -3872,7 +3872,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       final Widget inner;
       if (icon == CupertinoIcons.tray_fill) {
         inner = Transform.translate(
-          offset: const Offset(0, -2),
+          offset: const Offset(0, -1),
           child: Icon(icon, color: CupertinoColors.white, size: tile.iconSize),
         );
       } else if (icon == CupertinoIcons.clock) {
@@ -5954,7 +5954,7 @@ class _CategoryTile extends StatelessWidget {
                   Center(child: _buildIconContent()),
                   if (data.day != null)
                     Positioned(
-                      top: 14.8,
+                      top: 14.6,
                       left: 0,
                       right: 0,
                       child: Center(
@@ -6044,7 +6044,7 @@ class _CategoryTile extends StatelessWidget {
     }
     if (icon == CupertinoIcons.tray_fill) {
       return Transform.translate(
-        offset: const Offset(0, -2),
+        offset: const Offset(0, -1),
         child: Icon(icon, color: white, size: data.iconSize),
       );
     }
