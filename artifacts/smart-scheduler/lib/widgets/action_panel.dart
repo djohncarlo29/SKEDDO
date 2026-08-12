@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import '../app_theme.dart';
+import 'fixed_size_icon.dart';
 
 // SF Symbols are variable-font glyphs, so their weight is rendered by the
 // symbol font itself instead of by a blurred shadow.  Keeping this wrapper
@@ -31,7 +32,12 @@ class _ActionPanelSFIcon extends StatelessWidget {
       width: boxSize,
       height: boxSize,
       child: Center(
-        child: SFIcon(icon, fontSize: size, fontWeight: weight, color: color),
+        child: FixedSFIcon(
+          icon,
+          fontSize: size,
+          fontWeight: weight,
+          color: color,
+        ),
       ),
     );
   }

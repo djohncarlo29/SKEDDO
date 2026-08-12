@@ -13,6 +13,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:pdfx/pdfx.dart';
 import '../widgets/squircle_glow.dart';
 import '../app_theme.dart';
+import '../widgets/fixed_size_icon.dart';
 import '../services/event_extractor.dart';
 import '../services/event_store.dart';
 import '../services/speech_service.dart';
@@ -1363,7 +1364,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                   animation: _pulseCtrl,
                                   builder: (_, __) => Opacity(
                                     opacity: _pulseCtrl.value,
-                                    child: SFIcon(
+                                    child: FixedSFIcon(
                                       SFIcons.sf_microphone_fill,
                                       fontSize: 17,
                                       color: resolveAccentColor(context),
@@ -1385,7 +1386,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                               onTap: _onMicTap,
                               onPressedChanged: (pressed) =>
                                   setState(() => _micPressed = pressed),
-                              child: SFIcon(
+                              child: FixedSFIcon(
                                 SFIcons.sf_microphone_fill,
                                 fontSize: 17,
                                 color: _micPressed

@@ -5,6 +5,7 @@ import 'ai/parsed_date.dart';
 import 'app_settings.dart';
 import 'app_theme.dart';
 import 'widgets/app_switch.dart';
+import 'widgets/fixed_size_icon.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SettingsPanel — full-screen slide-in settings surface with sub-screen nav.
@@ -1040,7 +1041,7 @@ class _OptionRowState extends State<_OptionRow> {
             // Checkmark — only visible for the selected option.
             // 18 pt / w600 matches the action-panel checkmark size exactly.
             if (widget.selected)
-              SFIcon(
+              FixedSFIcon(
                 SFIcons.sf_checkmark,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -1183,7 +1184,7 @@ class _AccentSwatchRowState extends State<_AccentSwatchRow> {
             // 18 pt / w600 matches the action-panel checkmark size exactly.
             // Reserve width for unselected rows so the text column is stable.
             if (widget.selected)
-              SFIcon(
+              FixedSFIcon(
                 SFIcons.sf_checkmark,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -1204,7 +1205,7 @@ class _ChevronTrailing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SFIcon(
+    return FixedSFIcon(
       SFIcons.sf_chevron_right,
       fontSize: 14,
       fontWeight: FontWeight.w600,
@@ -1232,7 +1233,7 @@ class _ValueTrailing extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 4),
-        SFIcon(
+        FixedSFIcon(
           SFIcons.sf_chevron_right,
           fontSize: 14,
           fontWeight: FontWeight.w600,
@@ -1273,7 +1274,7 @@ class _ColorTrailing extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 4),
-        SFIcon(
+        FixedSFIcon(
           SFIcons.sf_chevron_right,
           fontSize: 14,
           fontWeight: FontWeight.w600,

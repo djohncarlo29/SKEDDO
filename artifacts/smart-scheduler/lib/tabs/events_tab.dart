@@ -28,6 +28,7 @@ import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/app_switch.dart';
+import '../widgets/fixed_size_icon.dart';
 import '../ai/search/search_service.dart';
 import '../services/category_registry.dart';
 import '../widgets/smart_search_results.dart';
@@ -3608,7 +3609,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               child: Center(
                 child: Transform.translate(
                   offset: const Offset(0, -1),
-                  child: SFIcon(
+                  child: FixedSFIcon(
                     SFIcons.sf_rectangle_stack,
                     fontSize: 24,
                     color: resolveThemeColor(kSecondaryLabel, context),
@@ -3652,7 +3653,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                   ),
                 ),
                 const SizedBox(width: 4),
-                SFIcon(
+                FixedSFIcon(
                   SFIcons.sf_chevron_right,
                   fontSize: 13,
                   color: resolveAccentColor(context),
@@ -5971,6 +5972,7 @@ class _CategoryTile extends StatelessWidget {
                               height: 1.0,
                               letterSpacing: 0,
                             ),
+                            textScaler: TextScaler.noScaling,
                           ),
                         ),
                       ),
@@ -7282,7 +7284,7 @@ class _GroupRow extends StatelessWidget {
                       child: Center(
                         child: Transform.translate(
                           offset: const Offset(0, -1),
-                          child: SFIcon(
+                          child: FixedSFIcon(
                             SFIcons.sf_rectangle_stack,
                             fontSize: 24,
                             color: secondaryLabel,
@@ -7337,7 +7339,7 @@ class _GroupRow extends StatelessWidget {
                               turns: isExpanded ? 0.25 : 0.0,
                               duration: const Duration(milliseconds: 260),
                               curve: Curves.easeInOutCubic,
-                              child: SFIcon(
+                              child: FixedSFIcon(
                                 SFIcons.sf_chevron_right,
                                 fontSize: 13,
                                 color: resolveAccentColor(context),
@@ -9091,7 +9093,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         borderRadius: BorderRadius.circular(6),
       ),
       child: Center(
-        child: SFIcon(
+        child: FixedSFIcon(
           _typeIcon,
           fontSize: _categoryType == 'Smart Category' ? 19 : 16,
           color: CupertinoColors.white,
@@ -9245,7 +9247,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                           ], context),
                         ),
                         child: const Center(
-                          child: SFIcon(
+                          child: FixedSFIcon(
                             SFIcons.sf_checkmark,
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -10823,7 +10825,7 @@ Widget _renderCatIcon(
     if (icon == SFIcons.sf_music_note) {
       inner = _BeamedNoteIcon(size: iconSz, color: color);
     } else if (icon.fontPackage == 'flutter_sficon') {
-      inner = SFIcon(
+      inner = FixedSFIcon(
         icon,
         fontSize: iconSz,
         color: color,
@@ -10881,7 +10883,7 @@ Widget _buildDcvCatIcon(Object iconOrSvg, Color color, {BuildContext? ctx}) {
     if (icon == SFIcons.sf_music_note) {
       return _BeamedNoteIcon(size: iconSz, color: color);
     } else if (icon.fontPackage == 'flutter_sficon') {
-      inner = SFIcon(
+      inner = FixedSFIcon(
         icon,
         fontSize: iconSz,
         color: color,
@@ -10993,7 +10995,7 @@ Widget _buildPickerIconRaw(Object iconOrSvg, Color color, {BuildContext? ctx}) {
         : _kPickerSF22.contains(icon)
         ? 22
         : 20;
-    return SFIcon(
+    return FixedSFIcon(
       icon,
       fontSize: sz,
       color: color,
@@ -11342,7 +11344,7 @@ class _DcvSectionLabel extends StatelessWidget {
               turns: isCollapsed ? -0.25 : 0.0,
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeInOut,
-              child: SFIcon(
+              child: FixedSFIcon(
                 SFIcons.sf_chevron_down,
                 fontSize: 13,
                 color: accentColor,
@@ -12077,7 +12079,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   Widget _buildIcon() {
     // Groceries category type — fixed carrot icon regardless of user's icon.
     if (widget.categoryType == 'Groceries') {
-      return SFIcon(
+      return FixedSFIcon(
         SFIcons.sf_carrot_fill,
         fontSize: 64,
         color: kEmptyStateIcon,
@@ -13630,7 +13632,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
             Text(day, style: _kRowLabelStyle),
             const Spacer(),
             if (selected)
-              SFIcon(
+              FixedSFIcon(
                 SFIcons.sf_checkmark,
                 fontSize: 17,
                 color: widget.accentColor,
@@ -13759,7 +13761,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
             Text(label, style: _kRowLabelStyle),
             const Spacer(),
             if (selected)
-              SFIcon(
+              FixedSFIcon(
                 SFIcons.sf_checkmark,
                 fontSize: 17,
                 color: widget.accentColor,

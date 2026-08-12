@@ -6,6 +6,7 @@ import 'package:flutter_sficon/flutter_sficon.dart';
 import '../app_theme.dart';
 import '../services/speech_service.dart';
 import 'native_text_input.dart';
+import 'fixed_size_icon.dart';
 
 // ── Shared constants ──────────────────────────────────────────────────────────
 // kSbCornerRadius is the shared 24 px card/section radius. The search bar's
@@ -141,6 +142,7 @@ class SearchWeightedIcon extends StatelessWidget {
               ], context),
             ),
           ),
+          textScaler: TextScaler.noScaling,
         ),
       ),
     );
@@ -560,7 +562,7 @@ class AppSearchBarState extends State<AppSearchBar>
                                     animation: _pulseCtrl,
                                     builder: (_, __) => Opacity(
                                       opacity: _pulseCtrl.value,
-                                      child: SFIcon(
+                                      child: FixedSFIcon(
                                         SFIcons.sf_microphone_fill,
                                         fontSize: 15,
                                         color: resolveAccentColor(context),
@@ -596,7 +598,7 @@ class AppSearchBarState extends State<AppSearchBar>
                                 onTap: _onMicTap,
                                 onPressedChanged: (pressed) =>
                                     setState(() => _micPressed = pressed),
-                                child: SFIcon(
+                                child: FixedSFIcon(
                                   SFIcons.sf_microphone_fill,
                                   fontSize: 15,
                                   color: _micPressed

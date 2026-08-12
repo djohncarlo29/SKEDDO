@@ -459,6 +459,16 @@ class _SKEDDOAppState extends State<SKEDDOApp> {
                   child: child ?? const SizedBox.shrink(),
                 ),
               );
+              // Icons are visual controls, not text. Keep every Flutter icon
+              // at its authored size even when the app's text scaler changes.
+              // SF Symbols and other font-backed icons get the same treatment
+              // through FixedSFIcon and SearchWeightedIcon.
+              result = IconTheme(
+                data: IconTheme.of(context).copyWith(
+                  applyTextScaling: false,
+                ),
+                child: result,
+              );
               // Text-size override via MediaQuery clamping.
               // 'Default' passes through the OS Dynamic Type / font-size setting.
               // 'Compact' pins to 0.95×; 'Large' pins to 1.05×.

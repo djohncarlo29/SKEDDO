@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../app_theme.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
+import '../widgets/fixed_size_icon.dart';
 import '../widgets/native_text_input.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/search_bar_widget.dart';
@@ -4062,7 +4063,7 @@ class _DayListPlaceholder extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SFIcon(
+                FixedSFIcon(
                   SFIcons.sf_list_bullet,
                   fontSize: 65,
                   color: emptyIcon,
@@ -7697,7 +7698,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                       shape: BoxShape.circle,
                     ),
                     child: Center(
-                      child: SFIcon(
+                      child: FixedSFIcon(
                         SFIcons.sf_mappin,
                         fontSize: 17,
                         color: CupertinoColors.white,
@@ -10908,7 +10909,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
             Text(day, style: _kRowLabelStyle),
             const Spacer(),
             if (selected)
-              SFIcon(
+              FixedSFIcon(
                 SFIcons.sf_checkmark,
                 fontSize: 17,
                 color: widget.accentColor,
@@ -11037,7 +11038,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
             Text(label, style: _kRowLabelStyle),
             const Spacer(),
             if (selected)
-              SFIcon(
+              FixedSFIcon(
                 SFIcons.sf_checkmark,
                 fontSize: 17,
                 color: widget.accentColor,
