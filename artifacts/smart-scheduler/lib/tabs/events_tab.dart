@@ -659,7 +659,7 @@ class _ContextMenuOverlay extends StatelessWidget {
           label: 'Edit Event',
           icon: SFIcons.sf_pencil,
           iconSize: 22,
-          iconWeight: FontWeight.w500,
+          iconWeight: FontWeight.w400,
           onTap: onEdit,
         ),
         ActionItem(
@@ -683,7 +683,7 @@ class _ContextMenuOverlay extends StatelessWidget {
           label: 'Edit Group',
           icon: SFIcons.sf_pencil,
           iconSize: 22,
-          iconWeight: FontWeight.w500,
+          iconWeight: FontWeight.w400,
           onTap: onEditGroup,
         ),
         ActionItem(
@@ -707,7 +707,7 @@ class _ContextMenuOverlay extends StatelessWidget {
         label: 'Edit Category Info',
         icon: SFIcons.sf_pencil,
         iconSize: 22,
-        iconWeight: FontWeight.w500,
+        iconWeight: FontWeight.w400,
         onTap: onEdit,
       ),
       ActionItem(

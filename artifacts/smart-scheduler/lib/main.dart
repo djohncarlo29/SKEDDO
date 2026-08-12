@@ -170,7 +170,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       label: 'Edit Category Info',
       icon: SFIcons.sf_pencil,
       iconSize: 22,
-      iconWeight: FontWeight.w500,
+      iconWeight: FontWeight.w400,
       groupBreakAbove: true,
       onTap: _onEditCategoryTap,
     ),
@@ -742,7 +742,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         label: 'Edit Category Info',
         icon: SFIcons.sf_pencil,
         iconSize: 22,
-        iconWeight: FontWeight.w500,
+        iconWeight: FontWeight.w400,
         groupBreakAbove: true,
       ),
       const ActionItem(
