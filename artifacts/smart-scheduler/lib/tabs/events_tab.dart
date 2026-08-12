@@ -10756,6 +10756,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
 
 // Canonical picker circle diameter — used by all top-level icon helpers.
 const double _kIconCircle = 40.0;
+// Unicode emoji have fuller visual bounds than SF Symbols, so they use a
+// smaller reference glyph while keeping the picker circle itself unchanged.
+const double _kEmojiGlyphSize = 20.0;
 
 // SVG asset paths for the light/dark emoji icon pair.
 const _kEmojiLightSvg = 'assets/custom_icons/emoji.svg';
@@ -10778,7 +10781,7 @@ bool _isEmojiIcon(Object o) =>
 // Visual size of an icon at the picker reference scale (_kIconCircle = 40 px).
 double _pickerIconBaseSize(Object iconOrSvg) {
   if (iconOrSvg is String) {
-    if (_isEmojiIcon(iconOrSvg)) return 24;
+    if (_isEmojiIcon(iconOrSvg)) return _kEmojiGlyphSize;
     if (iconOrSvg.contains('Banknote')) return 18;
     if (iconOrSvg.contains('ShoppingBag')) return 21;
     if (iconOrSvg.contains('Bag') && !iconOrSvg.contains('Shopping')) return 21;
@@ -10976,10 +10979,10 @@ Widget _buildPickerIcon(Object iconOrSvg, Color color, {BuildContext? ctx}) {
 // Raw icon widget — no positional offset applied.
 Widget _buildPickerIconRaw(Object iconOrSvg, Color color, {BuildContext? ctx}) {
   if (_isEmojiIcon(iconOrSvg)) {
-    // Emoji: render as native Unicode text at picker reference size (24 px).
+    // Emoji: render as native Unicode text at the shared reference size.
     return Text(
       iconOrSvg as String,
-      style: const TextStyle(fontSize: 24, height: 1.0),
+      style: const TextStyle(fontSize: _kEmojiGlyphSize, height: 1.0),
       textScaler: TextScaler.noScaling,
     );
   }
