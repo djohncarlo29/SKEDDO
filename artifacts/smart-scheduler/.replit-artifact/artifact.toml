@@ -1,0 +1,27 @@
+kind = "mobile"
+    previewPath = "/"
+    title = "Smart Scheduler"
+    version = "1.0.0"
+    id = "artifacts/smart-scheduler"
+    router = "expo-domain"
+
+    [[integratedSkills]]
+    name = "expo"
+    version = "1.0.0"
+
+    [[services]]
+    name = "expo"
+    paths = [ "/" ]
+    localPort = 24355
+
+    [services.development]
+    run = "sh /home/runner/workspace/artifacts/smart-scheduler/start.sh"
+
+    [services.production]
+    build = [ "sh", "-c", "cd /home/runner/workspace/artifacts/smart-scheduler && /home/runner/workspace/.cache/flutter-3.35.7/bin/flutter build web --release" ]
+    run = [ "sh", "-c", "cd /home/runner/workspace/artifacts/smart-scheduler && python3 -m http.server 24355 --directory build/web" ]
+
+    [services.env]
+    PORT = "24355"
+    BASE_PATH = "/"
+  
