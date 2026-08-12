@@ -9283,7 +9283,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                         child: const Center(
                           child: FixedSFIcon(
                             SFIcons.sf_checkmark,
-                            fontSize: 15,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w700,
                             color: CupertinoColors.white,
                           ),
