@@ -3917,17 +3917,22 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             ),
           ),
           Positioned(
-            top: 0,
+            top: -2,
             right: 0,
-            child: Text(
-              '${tile.count}',
-              style: TextStyle(
-                inherit: false,
-                color: resolveThemeColor(kPrimaryLabel, context),
-                fontSize: 32,
-                fontFamily: kSFProDisplay,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.3,
+            child: SizedBox(
+              height: 35.5,
+              child: Center(
+                child: Text(
+                  '${tile.count}',
+                  style: TextStyle(
+                    inherit: false,
+                    color: resolveThemeColor(kPrimaryLabel, context),
+                    fontSize: 32,
+                    fontFamily: kSFProDisplay,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                  ),
+                ),
               ),
             ),
           ),
@@ -5989,18 +5994,23 @@ class _CategoryTile extends StatelessWidget {
             ),
           ),
           Positioned(
-            top: 0,
+            top: -2,
             right: 0,
-            child: Text(
-              '${data.count}',
-              style: TextStyle(
-                inherit: false,
-                color: resolveThemeColor(kPrimaryLabel, context),
-                fontSize: 32,
-                fontFamily: kSFProDisplay,
-                fontWeight: FontWeight.w700,
-                fontStyle: FontStyle.normal,
-                letterSpacing: -0.3,
+            child: SizedBox(
+              height: 35.5,
+              child: Center(
+                child: Text(
+                  '${data.count}',
+                  style: TextStyle(
+                    inherit: false,
+                    color: resolveThemeColor(kPrimaryLabel, context),
+                    fontSize: 32,
+                    fontFamily: kSFProDisplay,
+                    fontWeight: FontWeight.w700,
+                    fontStyle: FontStyle.normal,
+                    letterSpacing: -0.3,
+                  ),
+                ),
               ),
             ),
           ),
