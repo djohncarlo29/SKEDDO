@@ -1,0 +1,9 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "vQAcvchR-Y7Tm3uw5Dm6C"
+uri = "file://SKEDDO.apk"
+type = "unspecified"
+title = "SKEDDO release APK"
+description = "Signed Android release APK with the missing bracket errors fixed. Build verified successfully."

@@ -1,0 +1,53 @@
+- [AnimatedBuilder child caching](animated-builder-child-caching.md) — never pass setState-driven widgets as AnimatedBuilder.child; move them inline into the builder callback instead.
+- [Native STT channels](native-stt-channels.md) — speech_to_text replaced by native MethodChannel+EventChannel; iOS uses SFSpeechRecognizer, Android uses SpeechRecognizer.
+- [Events Tab keyboard dismissal root cause](events-tab-keyboard-root-cause.md) — keyboard dismissed by off-screen DCV CustomScrollView winning gesture arena; fix is SizedBox.expand when label.isEmpty.
+- [Overlay scroll view primary controller reset](overlay-scroll-primary.md) — any CustomScrollView added as a Stack overlay inside CupertinoTabScaffold must set primary:false or it adopts the tab's scroll controller and resets the offset to 0.
+- [Calendar Day View dual-axis swipe isolation](calendar-swipe-isolation.md) — week-strip drags and timeline drags must use separate slideX variables; header sync via ValueNotifier + onStripSlide callback.
+- [Calendar year↔month single-Transform zoom](calendar-year-zoom-transform.md) — the only working approach: one Matrix4 on the entire _YearView; no per-cell morph widgets.
+- [Calendar 3-panel swipe ±2 bug](calendar-3panel-plusminus2-bug.md) — early doThen remaps panel slots mid-animation, carrying header one extra step; fix is doThen at 100% only.
+- [ScrollController remount resync](calendar-scrollctrl-remount-resync.md) — a key-forced Scrollable remount resets to the controller's stale original initialScrollOffset, not the last jumpTo() value; recreate before remounting.
+- [Smart Scheduler theme constants](smart-scheduler-theme-constants.md) — sheet-stack background and search-bar clear icon each have their own dedicated constant; don't reuse kBackgroundColor for the former.
+- [Dark-mode surface coverage](dark-mode-surface-coverage.md) — shared glass, attachment previews, import overlays, and action menus must resolve surfaces at build time.
+- [Custom-radius Cupertino sheet transition](rounded-cupertino-sheet.md) — showCupertinoSheet hardcodes a 12px radius with no public override; copy the private implementation to change it.
+- [Cupertino sheet gesture lifecycle](cupertino-sheet-gesture-lifecycle.md) — match Flutter's route recognizer and navigator user-gesture lifecycle; do not pre-filter pointer hits with a render-tree Listener.
+- [Modal sheet drag scope](modal-sheet-header-drag-scope.md) — allow native-style down-drag across sheets while excluding editable controls from the route recognizer.
+- [Live-synced adjacent swipe panels](calendar-adjacent-panel-live-sync.md) — prev/next preview panels need a scroll listener on the current panel's controller, not just an offset read at panel-creation time.
+- [Context menu overlay covers animation](context-menu-overlay-covers-animation.md) — the 420ms closing overlay paints over the real row; defer all action callbacks via _hide(then:) so they fire after overlay removal.
+- [TweenAnimationBuilder key type mismatch](tween-animation-builder-key-type-mismatch.md) — switching between TweenAnimationBuilder and any Animated* widget at the same key tears down the element; keep flag set for full animation duration.
+- [Drag-reorder long-press disambiguation](drag-reorder-long-press-disambiguation.md) — use onLongPressStart+MoveUpdate+End/Cancel with a 150ms grace timer to separate "hold still→menu" from "hold+move→reorder".
+- [Stack AnimatedPositioned drag-reorder](stack-animated-positioned-drag-reorder.md) — dragging tile uses Duration.zero in AnimatedPositioned; siblings use normal duration and animate as the data list is mutated live.
+- [Flutter drag element teardown](flutter-drag-element-teardown.md) — changing child widget structure on drag-start tears down GestureDetector state; keep tree structurally identical, mutate properties only.
+- [Grid reorder drag offset accumulation](grid-reorder-drag-offset-bug.md) — drag start must index from _gridCombinedOrder, not section-local lists; only _gridCombinedOrder is updated per drag frame.
+- [Pin-category scroll-jump compensation anchor](pin-scroll-jump-compensation.md) — save scroll offset BEFORE phase-1 collapse; use base+totalGrowth (not currentOffset+delta) in per-frame compensation.
+- [Action-panel SF Symbols](action-panel-sf-symbols.md) — use variable-weight SF Symbols in action panels; avoid blurred Cupertino glyph faux-weight rendering.
+- [Framework7 header icons](framework7-header-icons.md) — Iconify’s Framework7 endpoint can fail with placeholder SVGs; use canonical repository geometry in local custom painters for reliable header rendering.
+- [Smart category circle numbers](smart-category-circle-numbers.md) — the 0.5px downward number adjustment applies only to the four Events smart-category circle icons, not larger previews.
+- [Smart Category rule persistence](smart-category-rule-persistence.md) — keep the matching rule separate from the category subtitle and persist it through category JSON.
+- [Location field fade-through](location-field-fade-through.md) — Starting Location and Destination swap the 30px map-pin circle and clear button with overlapping cross-dissolve.
+- [Calendar list icon weights](calendar-list-icon-weights.md) — Month List and Day View List use SF Symbol weight 500; Day List is isolated from Multi-Day painter clipping.
+- [Category Groups Architecture](category-groups-architecture.md) — _FlatItem pipeline, _listTopOrder token format, group lifecycle helpers, _NewGroupSheet constraints, and persistence/migration notes.
+- [Drag-reorder + dwell-to-group architecture](drag-reorder-dwell-architecture.md) — live reorder always runs; dwell uses _dwellStartPhysicalY to survive reorder swaps; group member drag via _handleGroupMemberDrag/_handleSoloDragIntoGroup.
+- [_FlatItem ValueKey ghost-freeze bug](flat-item-value-key.md) — never use ValueKey(_FlatItem) in a Stack; kind is part of hashCode so solo↔member transitions create new keys, disposing GestureDetector state mid-drag.
+- [Flutter web icon tree-shaking](flutter-web-icon-tree-shaking.md) — preview builds must disable icon tree-shaking because persisted category icons use runtime IconData.
+- [Bounded squircle geometry](bounded-squircle-geometry.md) — constrain shared-radius paths to each card’s actual rect; Flutter’s individual clamp leaves seams on short cards.
+- [Split Cupertino picker chevrons](split-chevron-clipping.md) — clip upper/lower halves separately; translate the lower source by -half + offset to move only the lower chevron.
+- [Fixed Squircle Stadium radius](fixed-stadium-radius.md) — shared stadium controls use 24px corners; the 40px search bar explicitly remains 20px.
+- [Dark-mode ghost and sheet outlines](dark-mode-ghost-and-sheet-outlines.md) — overlay/lifted-card hairlines are Dark Mode-only; grouping snap glow bypasses shadow suppression.
+- [Flutter APK Gradle stability](flutter-apk-gradle-stability.md) — SIGBUS fix requires DEFAULT_JVM_OPTS in gradlew (not just gradle.properties); daemon=false runs in wrapper JVM which ignores org.gradle.jvmargs.
+- [Shorebird patch environment](shorebird-patch-env.md) — set TMPDIR to workspace before every patch push; /tmp overlayfs fails on large writes. shorebird-push.sh now auto-restores symlinks and sets TMPDIR.
+- [Dart 3.9 collection nesting](dart39-collection-nesting.md) — if→for→if collection elements crash Dart 3.9 parser; fold outer if into for-loop condition instead.
+- [Shorebird SDK constraint](shorebird-sdk-constraint.md) — app sdk must be >=3.8.0 <4.0.0; also patch cupertino_native cached pubspec which ships ^3.9.0.
+- [liquid_glass_widgets Android crash](liquid-glass-android-crash.md) — liquid_glass shaders are SkSL-incompatible; app crashes on Android when any GlassSwitch is rendered. Use _SlidingSwitch (pure Flutter) on non-iOS.
+- [Replit home partition quota](replit-home-quota.md) — /home/runner has a per-user quota well below its 32GB size; move caches to /home/runner/workspace/.cache and symlink back.
+- [Cupertino native switch package](cupertino-native-switch-package.md) — native iOS CNSwitch uses cupertino_native with an iOS 14+ Podfile; web/Android use a fallback.
+- [Liquid Glass Widgets compatibility](liquid-glass-widgets-compatibility.md) — current Flutter 3.35.7 toolchain supports liquid_glass_widgets 0.5.0; 0.29.x requires Flutter 3.41+.
+- [flutter_onnxruntime Android crash](onnxruntime-android-crash.md) — ONNX session.run() causes an unrecoverable JNI SIGSEGV on Android; also covers the earlier UnsatisfiedLinkError fix and plugin registration patch.
+- [TFLite Android embedding](tflite-android-embedding.md) — all-MiniLM-L6-v2 TFLite model tensor layout, source URL, and KGP 2.1 Gradle fix (kotlin.jvm.target.validation.mode=WARNING).
+- [Event creation save architecture](event-creation-save-architecture.md) — all ScheduledEvent fields, picker constraints, recurrence storage rule, alert timing logic, and normalisation decisions.
+- [EventStore date-parse concatenation bug](event-store-date-parse-bug.md) — parse date-only in create(); appending normTime breaks _tryMonthDay regex → absoluteDate null → Unscheduled.
+- [AnimatedPositioned per-frame lag](animated-positioned-per-frame-lag.md) — never animate position on a per-frame drag variable; use Positioned+AnimatedContainer to separate finger-tracking (no anim) from width grow/shrink (animated).
+- [HNSW vector index Dart](hnsw-dart-notes.md) — brute-force path < 500 entries; SplayTreeMap from dart:collection causes "not defined" errors in test runner; use sorted List<_Candidate> instead.
+- [Categories accordion outer clip](categories-accordion-outer-clip.md) — keep the outer unpinned CATEGORIES surface on one fixed bounded squircle; only rows and height should animate.
+- [Events search overlay rendering](events-search-overlay-rendering.md) — search overlays must render the shared result widgets; DCV scopes ranking only, never visibility.
+- [Temporal composition API compatibility](temporal-composition-api.md) — shared event temporal composition must use the canonical model copy API and keep date/time precision enums distinct.
+- [Search fuzzy equal-length guard](search-fuzzy-equal-length.md) — equal-length typo comparisons must not select the target token as both sides of prefix logic.

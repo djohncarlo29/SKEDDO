@@ -1,0 +1,57 @@
+modules = ["nodejs-24", "dart-3.10", "python-3.11"]
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Build Smart Scheduler APK"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "bash -lc 'export JAVA_HOME=/nix/store/xad649j61kwkh0id5wvyiab5rliprp4d-openjdk-17.0.15+6/lib/openjdk; export PATH=$JAVA_HOME/bin:$PATH; export ANDROID_HOME=/home/runner/workspace/.cache/android-sdk; export ANDROID_SDK_ROOT=/home/runner/workspace/.cache/android-sdk; ./build-apk.sh; code=$?; echo APK_BUILD_EXIT:$code; sleep 3600'"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "artifacts/smart-scheduler: expo"
+author = "agent"
+mode = "sequential"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+artifactId = "artifacts/smart-scheduler"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "sh /home/runner/workspace/artifacts/smart-scheduler/start.sh"
+cwd = "./artifacts/smart-scheduler"
+waitForPort = 24355
+router = "expo-domain"
+
+[workflows.workflow.tasks.env]
+PORT = "24355"
+BASE_PATH = "/"
+
+[agent]
+stack = "PNPM_WORKSPACE"
+expertMode = true
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
+
+[nix]
+channel = "stable-25_05"
+
+[[ports]]
+localPort = 17813
