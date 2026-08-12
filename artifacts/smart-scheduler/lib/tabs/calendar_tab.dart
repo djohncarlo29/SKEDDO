@@ -21,6 +21,7 @@ import '../widgets/view_mode_icons.dart';
 import '../widgets/app_switch.dart';
 import '../services/event_store.dart';
 import '../ai/search/search_service.dart';
+import 'events_tab.dart' show wrapSearchEventTileWithActions;
 import '../widgets/smart_search_results.dart';
 
 // ── Name tables ───────────────────────────────────────────────────────────────
@@ -147,6 +148,7 @@ class CalendarTab extends StatefulWidget {
     this.onStripSlide,
     this.onSearchCancel,
     this.searchModeAnimation,
+    this.onEditEvent,
     this.daySubMode = DayViewSubMode.singleDay,
   });
 
@@ -166,6 +168,9 @@ class CalendarTab extends StatefulWidget {
   final VoidCallback? onSearchCancel;
   // Shared animation from AppShell — 0=header visible, 1=search mode active.
   final Animation<double>? searchModeAnimation;
+
+  /// Opens the shared event editor for a search result long-press action.
+  final void Function(ScheduledEvent event)? onEditEvent;
   // Active Day View sub-mode — drives the timeline layout and week-strip
   // multi-day indicator.  Owned by AppShell; passed in on every rebuild.
   final DayViewSubMode daySubMode;
@@ -1522,6 +1527,17 @@ class CalendarTabState extends State<CalendarTab>
                   suggestedQuery: _searchSuggestion,
                   onSuggestionTap: _applySearchSuggestion,
                   eventTopPadding: 18,
+                  eventTileWrapper: (hit, child, previewBuilder) =>
+                      wrapSearchEventTileWithActions(
+                        hit: hit,
+                        child: child,
+                        previewBuilder: previewBuilder,
+                        onEdit: widget.onEditEvent == null
+                            ? null
+                            : () => widget.onEditEvent!(hit.event),
+                      ),
+                  eventTilePressWrapper: (child) =>
+                      _TilePressScale(child: child),
                 )
               else
                 const SliverFillRemaining(
@@ -5570,10 +5586,7 @@ class _NewEventSheet extends StatefulWidget {
   final ScheduledEvent? initial;
   final String? initialCategoryId;
 
-  const _NewEventSheet({
-    this.initial,
-    this.initialCategoryId,
-  });
+  const _NewEventSheet({this.initial, this.initialCategoryId});
 
   bool get isEditing => initial != null;
 
@@ -7174,8 +7187,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           _categoryName = match.name;
           _categoryColor = match.color;
         }
-      } else if (widget.initial == null &&
-          widget.initialCategoryId != null) {
+      } else if (widget.initial == null && widget.initialCategoryId != null) {
         final match = parsed.cast<_NewEventCategory?>().firstWhere(
           (c) => c?.id == _categoryId,
           orElse: () => null,

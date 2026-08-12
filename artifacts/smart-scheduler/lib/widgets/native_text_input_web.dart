@@ -13,6 +13,7 @@ class NativeTextInput extends StatefulWidget {
   final TextStyle placeholderStyle;
   final EdgeInsets padding;
   final Color cursorColor;
+  final Color? selectionColor;
 
   final ValueChanged<bool>? onFocusChanged;
 
@@ -23,6 +24,7 @@ class NativeTextInput extends StatefulWidget {
     required this.style,
     required this.placeholderStyle,
     required this.cursorColor,
+    this.selectionColor,
     this.multiline = false,
     this.padding = EdgeInsets.zero,
     this.onFocusChanged,
@@ -117,6 +119,10 @@ class _NativeTextInputState extends State<NativeTextInput> {
   void _configureElement() {
     final color = _cssColor(widget.style.color ?? kPrimaryLabel);
     final caret = _cssColor(widget.cursorColor);
+    final selection = _cssColor(
+      widget.selectionColor ?? widget.cursorColor,
+      alpha: 0.28,
+    );
     final fontSize = widget.style.fontSize ?? 17;
     final lineHeight = widget.style.height ?? 1.3;
 
@@ -141,6 +147,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
       ..style.letterSpacing = '${widget.style.letterSpacing ?? 0}px'
       ..style.resize = 'none'
       ..style.setProperty('caret-color', caret)
+      ..style.setProperty('--smart-scheduler-selection-color', selection)
       ..style.setProperty('-webkit-appearance', 'none')
       ..style.setProperty('appearance', 'none');
 
@@ -187,11 +194,12 @@ class _NativeTextInputState extends State<NativeTextInput> {
     }
   }
 
-  String _cssColor(Color color) {
+  String _cssColor(Color color, {double? alpha}) {
     final r = (color.r * 255).round();
     final g = (color.g * 255).round();
     final b = (color.b * 255).round();
-    return 'rgb($r, $g, $b)';
+    if (alpha == null || alpha >= 0.999) return 'rgb($r, $g, $b)';
+    return 'rgba($r, $g, $b, ${alpha.toStringAsFixed(3)})';
   }
 
   void _installPlaceholderStyle() {
@@ -207,11 +215,11 @@ class _NativeTextInputState extends State<NativeTextInput> {
   opacity: 1;
 }
 .smart-scheduler-native-text-input::selection {
-  background: rgba(0, 122, 255, 0.28);
+  background: var(--smart-scheduler-selection-color, rgba(0, 122, 255, 0.28));
   color: inherit;
 }
 .smart-scheduler-native-text-input::-moz-selection {
-  background: rgba(0, 122, 255, 0.28);
+  background: var(--smart-scheduler-selection-color, rgba(0, 122, 255, 0.28));
   color: inherit;
 }
 .smart-scheduler-native-text-input::-webkit-scrollbar {

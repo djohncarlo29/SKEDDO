@@ -1588,6 +1588,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             key: _notesTabKey,
             onSearchFocusChanged: _setSearchFocused,
             searchModeAnimation: _searchModeAnim,
+            onEditEvent: (event) => _calendarTabKey.currentState
+                ?.showEditEventSheet(context, event),
           ),
         ),
         RepaintBoundary(
@@ -1607,6 +1609,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             onStripSlide: (x) => _calendarStripSlide.value = x,
             onSearchCancel: () => _setSearchFocused(false),
             searchModeAnimation: _searchModeAnim,
+            onEditEvent: (event) => _calendarTabKey.currentState
+                ?.showEditEventSheet(context, event),
           ),
         ),
         RepaintBoundary(
@@ -2152,20 +2156,19 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                   0,
                                                                   0,
                                                                 ),
-                                                            onTap: () =>
-                                                                 _calendarTabKey
-                                                                     .currentState
-                                                                     ?.showNewEventSheet(
-                                                                       context,
-                                                                       initialCategoryId:
-                                                                           isDCVVisual &&
-                                                                               _selectedIndex ==
-                                                                                   2
-                                                                           ? _eventsTabKey
-                                                                               .currentState
-                                                                               ?.activeStandardDcvCategoryId
-                                                                           : null,
-                                                                     ),
+                                                            onTap: () => _calendarTabKey
+                                                                .currentState
+                                                                ?.showNewEventSheet(
+                                                                  context,
+                                                                  initialCategoryId:
+                                                                      isDCVVisual &&
+                                                                          _selectedIndex ==
+                                                                              2
+                                                                      ? _eventsTabKey
+                                                                            .currentState
+                                                                            ?.activeStandardDcvCategoryId
+                                                                      : null,
+                                                                ),
                                                             child: SvgPicture.asset(
                                                               'assets/icons/plus.svg',
                                                               width: 26,

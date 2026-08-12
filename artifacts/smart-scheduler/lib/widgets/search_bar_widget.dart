@@ -110,11 +110,17 @@ class AppSearchBar extends StatefulWidget {
   final ValueChanged<bool>? onFocusChanged;
   final String placeholder;
 
+  /// Optional tint for caret, selection highlight, and selection handles.
+  /// DCV search bars use the active category colour; regular search bars
+  /// continue to use the app accent.
+  final Color? selectionTint;
+
   const AppSearchBar({
     super.key,
     required this.controller,
     this.onFocusChanged,
     this.placeholder = 'Search',
+    this.selectionTint,
   });
 
   @override
@@ -370,6 +376,7 @@ class AppSearchBarState extends State<AppSearchBar>
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final emptyStateIcon = resolveThemeColor(kEmptyStateIcon, context);
+    final selectionTint = widget.selectionTint ?? resolveAccentColor(context);
     return SizedBox(
       height: 40,
       child: Stack(
@@ -399,31 +406,40 @@ class AppSearchBarState extends State<AppSearchBar>
                   child: ClipRect(
                     child: TapRegion(
                       groupId: kSbGroupId,
-                      child: NativeTextInput(
-                        controller: widget.controller,
-                        onFocusChanged: widget.onFocusChanged,
-                        placeholder: widget.placeholder,
-                        placeholderStyle: TextStyle(
-                          inherit: false,
-                          color: secondaryLabel,
-                          fontSize: 17,
-                          fontFamily: kSFProText,
-                          fontWeight: FontWeight.w400,
-                          fontStyle: FontStyle.normal,
-                          letterSpacing: kTracking16,
+                      child: CupertinoTheme(
+                        data: CupertinoTheme.of(
+                          context,
+                        ).copyWith(primaryColor: selectionTint),
+                        child: DefaultSelectionStyle(
+                          selectionColor: selectionTint.withOpacity(0.20),
+                          child: NativeTextInput(
+                            controller: widget.controller,
+                            onFocusChanged: widget.onFocusChanged,
+                            placeholder: widget.placeholder,
+                            placeholderStyle: TextStyle(
+                              inherit: false,
+                              color: secondaryLabel,
+                              fontSize: 17,
+                              fontFamily: kSFProText,
+                              fontWeight: FontWeight.w400,
+                              fontStyle: FontStyle.normal,
+                              letterSpacing: kTracking16,
+                            ),
+                            style: TextStyle(
+                              inherit: false,
+                              fontSize: 17,
+                              color: primaryLabel,
+                              fontFamily: kSFProText,
+                              fontWeight: FontWeight.w400,
+                              fontStyle: FontStyle.normal,
+                              letterSpacing: kTracking16,
+                              height: kLineHeight,
+                            ),
+                            padding: const EdgeInsets.only(top: 0),
+                            cursorColor: selectionTint,
+                            selectionColor: selectionTint.withOpacity(0.20),
+                          ),
                         ),
-                        style: TextStyle(
-                          inherit: false,
-                          fontSize: 17,
-                          color: primaryLabel,
-                          fontFamily: kSFProText,
-                          fontWeight: FontWeight.w400,
-                          fontStyle: FontStyle.normal,
-                          letterSpacing: kTracking16,
-                          height: kLineHeight,
-                        ),
-                        padding: const EdgeInsets.only(top: 0),
-                        cursorColor: resolveAccentColor(context),
                       ),
                     ),
                   ),

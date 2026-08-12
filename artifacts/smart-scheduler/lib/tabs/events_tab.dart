@@ -4828,15 +4828,27 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   String? get activeStandardDcvCategoryId {
     final name = widget.activeDCV;
     if (name == null || name.isEmpty) return null;
-    for (final category in [
-      ..._userCategories,
-      ..._pinnedUserCategories,
-    ]) {
+    for (final category in [..._userCategories, ..._pinnedUserCategories]) {
       if (category.name == name && category.categoryType == 'Standard') {
         return category.id;
       }
     }
     return null;
+  }
+
+  /// Resolves the active DCV's colour for every category-backed surface,
+  /// including the search field's selection affordances.
+  Color _activeDcvColor(BuildContext context) {
+    final label = widget.activeDCV;
+    if (label == null || label.isEmpty) return resolveAccentColor(context);
+
+    final category = [..._userCategories, ..._pinnedUserCategories]
+        .cast<_UserCategory?>()
+        .firstWhere((c) => c?.name == label, orElse: () => null);
+    if (category != null) {
+      return renderCategoryColor(category.color, context);
+    }
+    return _smartCategoryColors[label] ?? resolveAccentColor(context);
   }
 
   /// Resolve the active DCV's membership over the exact corpus used by search.
@@ -4959,13 +4971,13 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     Widget child,
     WidgetBuilder previewBuilder,
   ) {
-    return _EventContextMenu(
+    return wrapSearchEventTileWithActions(
       child: child,
       previewBuilder: previewBuilder,
+      hit: hit,
       onEdit: widget.onEditEvent == null
           ? null
           : () => widget.onEditEvent!(hit.event),
-      onDelete: () => EventStore.instance.remove(hit.event.id),
     );
   }
 
@@ -5513,10 +5525,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                   // User categories use renderCategoryColor (handles the
                   // kCatBlue sentinel → live accent fallback); built-in smart
                   // tiles fall back to _smartCategoryColors, then accent.
-                  final dcvColor = cat != null
-                      ? renderCategoryColor(cat.color, context)
-                      : (_smartCategoryColors[dcvLabel ?? ''] ??
-                            resolveAccentColor(context));
+                  final dcvColor = _activeDcvColor(context);
                   return _CategoryDetailView(
                     key: ValueKey(widget.activeDCV ?? '_none'),
                     label: widget.activeDCV ?? '',
@@ -5584,7 +5593,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                   onSuggestionTap: _applySearchSuggestion,
                   eventTopPadding: 18,
                   eventTileWrapper: _wrapSearchEventTile,
-                  eventTilePressWrapper: (child) => _TilePressScale(child: child),
+                  eventTilePressWrapper: (child) =>
+                      _TilePressScale(child: child),
                 )
               else
                 const SliverFillRemaining(
@@ -5628,6 +5638,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                         controller: _searchController,
                         onFocusChanged: _onSearchFocusChanged,
                         placeholder: 'Search ${widget.activeDCV ?? ''}',
+                        selectionTint: _activeDcvColor(context),
                       ),
                     ),
                     SearchCancelButton(
@@ -5665,6 +5676,25 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       ),
     );
   }
+}
+
+/// Adds the standard event long-press action panel to a search result tile.
+///
+/// Search results are rendered by a shared widget used by all three tabs.  The
+/// menu itself lives here alongside the regular Events-tab event card so both
+/// paths keep the same Edit Event / Delete Event actions and overlay behavior.
+Widget wrapSearchEventTileWithActions({
+  required SearchHit hit,
+  required Widget child,
+  required WidgetBuilder previewBuilder,
+  VoidCallback? onEdit,
+}) {
+  return _EventContextMenu(
+    child: child,
+    previewBuilder: previewBuilder,
+    onEdit: onEdit,
+    onDelete: () => EventStore.instance.remove(hit.event.id),
+  );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

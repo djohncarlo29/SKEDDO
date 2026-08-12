@@ -21,6 +21,7 @@ import '../widgets/native_text_input.dart';
 import '../widgets/search_bar_widget.dart';
 import '../ai/search/search_service.dart';
 import '../services/event_store.dart' show EventStore;
+import 'events_tab.dart' show wrapSearchEventTileWithActions;
 import '../widgets/smart_search_results.dart';
 
 // True while the user is in "search mode" — i.e. the search bar is focused
@@ -142,11 +143,13 @@ class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
 class NotesTab extends StatefulWidget {
   final ValueChanged<bool>? onSearchFocusChanged;
   final Animation<double>? searchModeAnimation;
+  final void Function(ScheduledEvent event)? onEditEvent;
 
   const NotesTab({
     super.key,
     this.onSearchFocusChanged,
     this.searchModeAnimation,
+    this.onEditEvent,
   });
 
   @override
@@ -534,6 +537,16 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                 suggestedQuery: _searchSuggestion,
                 onSuggestionTap: _applySearchSuggestion,
                 eventTopPadding: 18,
+                eventTileWrapper: (hit, child, previewBuilder) =>
+                    wrapSearchEventTileWithActions(
+                      hit: hit,
+                      child: child,
+                      previewBuilder: previewBuilder,
+                      onEdit: widget.onEditEvent == null
+                          ? null
+                          : () => widget.onEditEvent!(hit.event),
+                    ),
+                eventTilePressWrapper: (child) => _TilePressScale(child: child),
               ),
             ] else ...[
               // Normal content — also kept in the tree when off-screen search
@@ -607,6 +620,17 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                       suggestedQuery: _searchSuggestion,
                       onSuggestionTap: _applySearchSuggestion,
                       eventTopPadding: 18,
+                      eventTileWrapper: (hit, child, previewBuilder) =>
+                          wrapSearchEventTileWithActions(
+                            hit: hit,
+                            child: child,
+                            previewBuilder: previewBuilder,
+                            onEdit: widget.onEditEvent == null
+                                ? null
+                                : () => widget.onEditEvent!(hit.event),
+                          ),
+                      eventTilePressWrapper: (child) =>
+                          _TilePressScale(child: child),
                     )
                   else
                     const SliverFillRemaining(
