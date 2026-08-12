@@ -533,6 +533,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                 hits: _searchHits,
                 suggestedQuery: _searchSuggestion,
                 onSuggestionTap: _applySearchSuggestion,
+                eventTopPadding: 18,
               ),
             ] else ...[
               // Normal content — also kept in the tree when off-screen search
@@ -605,6 +606,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                       hits: _searchHits,
                       suggestedQuery: _searchSuggestion,
                       onSuggestionTap: _applySearchSuggestion,
+                      eventTopPadding: 18,
                     )
                   else
                     const SliverFillRemaining(

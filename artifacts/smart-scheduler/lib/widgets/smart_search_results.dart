@@ -5,6 +5,9 @@ import '../ai/search/search_service.dart';
 import '../services/category_registry.dart';
 import 'search_bar_widget.dart';
 
+const double _kDirectSearchResultTopPadding = 18;
+const double _kSuggestionSearchResultTopPadding = 8;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SmartSearchResultsSliver
 //
@@ -31,7 +34,7 @@ class SmartSearchResultsSliver extends StatelessWidget {
     required this.hits,
     this.suggestedQuery,
     this.onSuggestionTap,
-    this.eventTopPadding = 8,
+    this.eventTopPadding = _kDirectSearchResultTopPadding,
     this.eventTileWrapper,
     this.eventTilePressWrapper,
   });
@@ -63,12 +66,13 @@ class SmartSearchResultsSliver extends StatelessWidget {
     return SliverPadding(
       // The banner has 8 px of its own top/bottom padding. Keep the outer
       // inset at 8 px too, so the visual gap above the suggestion matches the
-      // gap from the suggestion to the first event tile. When there is no
-      // banner, callers can use the larger post-header inset of their host
-      // surface instead.
+      // gap from the suggestion to the first event tile. Direct result states
+      // use the larger post-header inset.
       padding: EdgeInsets.fromLTRB(
         16,
-        hasSuggestion ? 8 : eventTopPadding,
+        hasSuggestion
+            ? _kSuggestionSearchResultTopPadding
+            : eventTopPadding,
         16,
         32,
       ),
@@ -124,7 +128,7 @@ class SmartDcvSearchResults extends StatelessWidget {
     this.suggestedQuery,
     this.onSuggestionTap,
     this.hidePrimaryCategoryName = false,
-    this.eventTopPadding = 8,
+    this.eventTopPadding = _kDirectSearchResultTopPadding,
     this.eventTileWrapper,
     this.eventTilePressWrapper,
   });
@@ -170,7 +174,9 @@ class SmartDcvSearchResults extends StatelessWidget {
           SliverPadding(
             padding: EdgeInsets.fromLTRB(
               16,
-              suggestedQuery?.trim().isNotEmpty == true ? 8 : eventTopPadding,
+              suggestedQuery?.trim().isNotEmpty == true
+                  ? _kSuggestionSearchResultTopPadding
+                  : eventTopPadding,
               16,
               0,
             ),
@@ -509,4 +515,3 @@ class _SearchEventTile extends StatelessWidget {
         pressAwareCard;
   }
 }
-

@@ -1521,6 +1521,7 @@ class CalendarTabState extends State<CalendarTab>
                   hits: _searchHits,
                   suggestedQuery: _searchSuggestion,
                   onSuggestionTap: _applySearchSuggestion,
+                  eventTopPadding: 18,
                 )
               else
                 const SliverFillRemaining(
