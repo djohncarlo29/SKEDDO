@@ -3997,17 +3997,22 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             ),
           ),
           Positioned(
-            top: 0,
+            top: -2,
             right: 0,
-            child: Text(
-              '${_liveEventCounts[cat.id] ?? 0}',
-              style: TextStyle(
-                inherit: false,
-                color: resolveThemeColor(kPrimaryLabel, context),
-                fontSize: 32,
-                fontFamily: kSFProDisplay,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.3,
+            child: SizedBox(
+              height: 35.5,
+              child: Center(
+                child: Text(
+                  '${_liveEventCounts[cat.id] ?? 0}',
+                  style: TextStyle(
+                    inherit: false,
+                    color: resolveThemeColor(kPrimaryLabel, context),
+                    fontSize: 32,
+                    fontFamily: kSFProDisplay,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                  ),
+                ),
               ),
             ),
           ),
@@ -5782,7 +5787,7 @@ class _AnimatedCategoryGrid extends StatelessWidget {
     this.dragFullWidth = false,
   });
 
-  static const _rowHeight = 87.5;
+  static const _rowHeight = 89.0;
   static const _rowGap = 18.0;
   static const _colGap = 16.0;
   static const _duration = Duration(milliseconds: 280);
@@ -6495,18 +6500,23 @@ class _PinnedUserTile extends StatelessWidget {
             ),
           ),
           Positioned(
-            top: 0,
+            top: -2,
             right: 0,
-            child: Text(
-              '$liveCount',
-              style: TextStyle(
-                inherit: false,
-                color: resolveThemeColor(kPrimaryLabel, context),
-                fontSize: 32,
-                fontFamily: kSFProDisplay,
-                fontWeight: FontWeight.w700,
-                fontStyle: FontStyle.normal,
-                letterSpacing: -0.3,
+            child: SizedBox(
+              height: 35.5,
+              child: Center(
+                child: Text(
+                  '$liveCount',
+                  style: TextStyle(
+                    inherit: false,
+                    color: resolveThemeColor(kPrimaryLabel, context),
+                    fontSize: 32,
+                    fontFamily: kSFProDisplay,
+                    fontWeight: FontWeight.w700,
+                    fontStyle: FontStyle.normal,
+                    letterSpacing: -0.3,
+                  ),
+                ),
               ),
             ),
           ),
