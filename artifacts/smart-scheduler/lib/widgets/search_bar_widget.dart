@@ -108,6 +108,7 @@ class SearchWeightedIcon extends StatelessWidget {
   /// Keeps [fontSize] at [size] while giving glyphs that draw near or
   /// beyond the em-square edge room to render without being clipped.
   final double boxPadding;
+  final bool shadowsEnabled;
 
   const SearchWeightedIcon(
     this.icon, {
@@ -116,6 +117,7 @@ class SearchWeightedIcon extends StatelessWidget {
     required this.color,
     this.weight = 0.4,
     this.boxPadding = 0,
+    this.shadowsEnabled = true,
   });
 
   @override
@@ -137,9 +139,11 @@ class SearchWeightedIcon extends StatelessWidget {
               fontSize: size,
               fontFamily: fontFamily,
               fontStyle: FontStyle.normal,
-              shadows: resolveThemeTextShadows([
-                Shadow(color: color, blurRadius: weight),
-              ], context),
+              shadows: shadowsEnabled
+                  ? resolveThemeTextShadows([
+                      Shadow(color: color, blurRadius: weight),
+                    ], context)
+                  : null,
             ),
           ),
           textScaler: TextScaler.noScaling,

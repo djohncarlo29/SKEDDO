@@ -21,7 +21,7 @@ class _ActionPanelSFIcon extends StatelessWidget {
     this.icon, {
     required this.size,
     required this.color,
-    this.weight = FontWeight.w400,
+    this.weight = FontWeight.w500,
     this.boxPadding = 0,
   });
 
@@ -142,7 +142,7 @@ class ActionItem {
     required this.label,
     required this.icon,
     this.iconSize = 20.0,
-    this.iconWeight = FontWeight.w400,
+    this.iconWeight = FontWeight.w500,
     this.isDestructive = false,
     this.groupBreakAbove = false,
     this.hasChevron = false,
@@ -767,7 +767,7 @@ class _ActionRowState extends State<_ActionRow> {
                   SFIcons.sf_checkmark,
                   size: _chevW,
                   color: checkColor,
-                  weight: FontWeight.w400,
+                  weight: FontWeight.w500,
                   boxPadding: 3,
                 )
               : item.hasChevron
@@ -777,7 +777,7 @@ class _ActionRowState extends State<_ActionRow> {
                       : SFIcons.sf_chevron_right,
                   size: _chevW,
                   color: textColor,
-                  weight: FontWeight.w400,
+                  weight: FontWeight.w500,
                   boxPadding: 0,
                 )
               : null),
@@ -1201,7 +1201,7 @@ class _ExpandableRowSharedContentState
                       SFIcons.sf_chevron_right,
                       size: _chevW,
                       color: textColor,
-                      weight: FontWeight.w400,
+                      weight: FontWeight.w500,
                       boxPadding: 0,
                     ),
                   ),
@@ -1225,7 +1225,7 @@ class _ExpandableRowSharedContentState
                 widget.icon,
                 size: 20,
                 color: textColor,
-                weight: FontWeight.w400,
+                weight: FontWeight.w500,
                 boxPadding: 4,
               ),
             ],
