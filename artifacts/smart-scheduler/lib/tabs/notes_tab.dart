@@ -2553,7 +2553,12 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
             Positioned.fill(
               child: Opacity(
                 opacity: t,
-                child: ColoredBox(color: const Color(0xFF000000)),
+                child: ColoredBox(
+                  color: resolveThemeColor(
+                    kAttachmentPreviewBackground,
+                    context,
+                  ),
+                ),
               ),
             ),
 

@@ -3839,7 +3839,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           ),
           if (tile.day != null)
             Positioned(
-              top: 16,
+              top: 14.8,
               left: 0,
               right: 0,
               child: Center(
@@ -5952,7 +5952,7 @@ class _CategoryTile extends StatelessWidget {
                   Center(child: _buildIconContent()),
                   if (data.day != null)
                     Positioned(
-                      top: 16,
+                      top: 14.8,
                       left: 0,
                       right: 0,
                       child: Center(
@@ -10913,10 +10913,10 @@ Widget _buildDcvCatIcon(Object iconOrSvg, Color color, {BuildContext? ctx}) {
 // size — no constraining box is needed.
 //
 // Icon target sizes (base = _kIconGlyph = 20 px):
-//   SF thin/small (mappin, snowflake)       → 26 px
-//   SF undersized group                     → 24 px
-//   SF medium group                         → 22 px
-//   SF default                              → 20 px
+//   SF thin/small (mappin, snowflake)       → 23 px
+//   SF undersized group                     → 21 px
+//   SF medium group                         → 19 px
+//   SF default                              → 17 px
 //   CupertinoIcons.headphones               → 23 px
 //   Banknote.svg  (landscape 1.57:1)        → 30 px square → 30×19 visual
 //   Tent.svg      (landscape 1.24:1)        → 24 px
@@ -10982,22 +10982,22 @@ Widget _buildPickerIconRaw(Object iconOrSvg, Color color, {BuildContext? ctx}) {
   if (icon.fontPackage == 'flutter_sficon') {
     // Rendered without FittedBox so the fontSize is the actual visual budget.
     // SF glyph visuals are ~80 % of fontSize; picker cells are ~50 px so
-    // even 26 px here (→ ~21 px visual) stays comfortably inside the circle.
+    // even 23 px here (→ ~18 px visual) stays comfortably inside the circle.
     final double sz = icon == SFIcons.sf_snowflake
-        ? 25
-        : icon == SFIcons.sf_mappin
-        ? 24
-        : icon == SFIcons.sf_tennis_racket
-        ? 23
-        : icon == SFIcons.sf_stethoscope
-        ? 21
-        : icon == SFIcons.sf_fish_fill
-        ? 19
-        : _kPickerSF24.contains(icon)
-        ? 24
-        : _kPickerSF22.contains(icon)
         ? 22
-        : 20;
+        : icon == SFIcons.sf_mappin
+        ? 21
+        : icon == SFIcons.sf_tennis_racket
+        ? 20
+        : icon == SFIcons.sf_stethoscope
+        ? 18
+        : icon == SFIcons.sf_fish_fill
+        ? 16
+        : _kPickerSF24.contains(icon)
+        ? 21
+        : _kPickerSF22.contains(icon)
+        ? 19
+        : 17;
     return FixedSFIcon(
       icon,
       fontSize: sz,

@@ -78,6 +78,10 @@ const kAttachmentMenuOverlay = CupertinoDynamicColor.withBrightness(
   color: Color(0xC7FFFFFF),
   darkColor: Color(0xC71C1C1E),
 );
+const kAttachmentPreviewBackground = CupertinoDynamicColor.withBrightness(
+  color: Color(0xFFF2F2F7),
+  darkColor: Color(0xFF000000),
+);
 const kIconPickerBackground = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFEEEEF0),
   darkColor: Color(0xFF3A3A3C),
