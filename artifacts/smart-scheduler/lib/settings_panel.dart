@@ -1039,12 +1039,12 @@ class _OptionRowState extends State<_OptionRow> {
               ),
             ),
             // Checkmark — only visible for the selected option.
-            // 18 pt / w600 matches the action-panel checkmark size exactly.
+            // Match the action-panel checkmark size and weight.
             if (widget.selected)
               FixedSFIcon(
                 SFIcons.sf_checkmark,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
                 color: widget.accentColor,
               ),
             // Reserve checkmark width when unselected so the text column is stable.
@@ -1181,13 +1181,13 @@ class _AccentSwatchRowState extends State<_AccentSwatchRow> {
               ),
             ),
             // Checkmark — only for the selected swatch.
-            // 18 pt / w600 matches the action-panel checkmark size exactly.
+            // Match the action-panel checkmark size and weight.
             // Reserve width for unselected rows so the text column is stable.
             if (widget.selected)
               FixedSFIcon(
                 SFIcons.sf_checkmark,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
                 color: widget.accentColor,
               )
             else
