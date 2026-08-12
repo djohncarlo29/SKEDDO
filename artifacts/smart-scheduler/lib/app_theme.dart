@@ -776,7 +776,9 @@ class SplitChevronUpDown extends StatelessWidget {
   const SplitChevronUpDown({
     super.key,
     required this.color,
-    this.size = 13.0,
+    // Picker-row chevrons are intentionally two pixels smaller than the
+    // original shared glyph size; their surrounding row layout is unchanged.
+    this.size = 11.0,
     this.scaleX = 0.90,
     this.lowerOffset = 1.0,
   });

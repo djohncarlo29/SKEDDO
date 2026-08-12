@@ -34,7 +34,9 @@ class _ActionPanelSFIcon extends StatelessWidget {
       child: Center(
         child: FixedSFIcon(
           icon,
-          fontSize: size,
+          // Keep the layout box unchanged while making every action-panel
+          // SF Symbol two pixels smaller.
+          fontSize: size - 2,
           fontWeight: weight,
           color: color,
         ),

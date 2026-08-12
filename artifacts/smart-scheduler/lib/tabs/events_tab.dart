@@ -1178,7 +1178,7 @@ class _ActionRowState extends State<_ActionRow> {
             // stroke to ≈ 2 px visually, matching iOS SF Symbol "Regular" weight.
             SearchWeightedIcon(
               widget.action.icon,
-              size: 20,
+              size: 18,
               color: textColor,
               weight: 1.5,
             ),
