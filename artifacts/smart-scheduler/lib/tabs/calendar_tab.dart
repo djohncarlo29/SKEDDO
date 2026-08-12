@@ -1536,8 +1536,6 @@ class CalendarTabState extends State<CalendarTab>
                             ? null
                             : () => widget.onEditEvent!(hit.event),
                       ),
-                  eventTilePressWrapper: (child) =>
-                      _TilePressScale(child: child),
                 )
               else
                 const SliverFillRemaining(

@@ -51,3 +51,4 @@
 - [Events search overlay rendering](events-search-overlay-rendering.md) — search overlays must render the shared result widgets; DCV scopes ranking only, never visibility.
 - [Temporal composition API compatibility](temporal-composition-api.md) — shared event temporal composition must use the canonical model copy API and keep date/time precision enums distinct.
 - [Search fuzzy equal-length guard](search-fuzzy-equal-length.md) — equal-length typo comparisons must not select the target token as both sides of prefix logic.
+- [Cupertino selection styling across Shorebird versions](cupertino-selection-style-shorebird.md) — use DefaultSelectionStyle plus CupertinoTheme; Shorebird's CupertinoTextField has no selectionColor parameter.

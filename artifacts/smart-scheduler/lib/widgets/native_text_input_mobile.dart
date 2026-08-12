@@ -223,7 +223,6 @@ class _NativeTextInputState extends State<NativeTextInput> {
           textAlignVertical: widget.multiline ? TextAlignVertical.top : null,
           padding: widget.padding,
           cursorColor: widget.cursorColor,
-          selectionColor: widget.selectionColor,
           cursorOpacityAnimates: true,
           enableInteractiveSelection: true,
         ),

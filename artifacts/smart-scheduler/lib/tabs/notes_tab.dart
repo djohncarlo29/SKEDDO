@@ -546,7 +546,6 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                           ? null
                           : () => widget.onEditEvent!(hit.event),
                     ),
-                eventTilePressWrapper: (child) => _TilePressScale(child: child),
               ),
             ] else ...[
               // Normal content — also kept in the tree when off-screen search
@@ -629,8 +628,6 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                                 ? null
                                 : () => widget.onEditEvent!(hit.event),
                           ),
-                      eventTilePressWrapper: (child) =>
-                          _TilePressScale(child: child),
                     )
                   else
                     const SliverFillRemaining(
