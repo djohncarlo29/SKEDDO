@@ -1,3 +1,5 @@
 SKEDDO.apk filter=lfs diff=lfs merge=lfs -text
 project.zip filter=lfs diff=lfs merge=lfs -text
 artifacts/smart-scheduler/android/java_pid18219.hprof filter=lfs diff=lfs merge=lfs -text
+artifacts/smart-scheduler/build/app/outputs/bundles/*.aab filter=lfs diff=lfs merge=lfs -text
+artifacts/smart-scheduler/build/app/outputs/bundle/*.aab filter=lfs diff=lfs merge=lfs -text
