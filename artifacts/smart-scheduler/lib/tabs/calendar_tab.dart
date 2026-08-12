@@ -1535,7 +1535,16 @@ class CalendarTabState extends State<CalendarTab>
                         previewBuilder: previewBuilder,
                         onEdit: widget.onEditEvent == null
                             ? null
-                            : () => widget.onEditEvent!(hit.event),
+                            : () {
+                                // Exit Calendar's overlay search session
+                                // before presenting the edit sheet.  The
+                                // search field is focus-locked while search
+                                // mode is active; leaving it mounted makes
+                                // it reclaim focus when a sheet text field is
+                                // tapped.
+                                cancelSearch();
+                                widget.onEditEvent!(hit.event);
+                              },
                       ),
                       eventTilePressWrapper:
                           wrapSearchEventTileWithPressScale,
