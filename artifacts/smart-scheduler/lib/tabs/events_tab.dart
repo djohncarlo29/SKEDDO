@@ -3613,7 +3613,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                   offset: const Offset(0, -1),
                   child: FixedSFIcon(
                     SFIcons.sf_rectangle_stack,
-                    fontSize: 24,
+                    fontSize: 22,
                     color: resolveThemeColor(kSecondaryLabel, context),
                     fontWeight: FontWeight.w600,
                   ),
@@ -7308,7 +7308,7 @@ class _GroupRow extends StatelessWidget {
                           offset: const Offset(0, -1),
                           child: FixedSFIcon(
                             SFIcons.sf_rectangle_stack,
-                            fontSize: 24,
+                            fontSize: 22,
                             color: secondaryLabel,
                             fontWeight: FontWeight.w600,
                           ),
