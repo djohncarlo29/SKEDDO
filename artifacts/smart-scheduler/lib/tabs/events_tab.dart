@@ -9129,7 +9129,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       child: Center(
         child: FixedSFIcon(
           _typeIcon,
-          fontSize: _categoryType == 'Smart Category' ? 19 : 16,
+          fontSize: _categoryType == 'Smart Category' ? 17.5 : 14.5,
           color: CupertinoColors.white,
         ),
       ),
