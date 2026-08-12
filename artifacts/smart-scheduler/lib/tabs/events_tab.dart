@@ -3939,16 +3939,19 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           Positioned(
             bottom: 0,
             left: 0,
-            child: Text(
-              tile.label,
-              style: TextStyle(
-                inherit: false,
-                color: resolveThemeColor(kSecondaryLabel, context),
-                fontSize: 17,
-                fontFamily: kSFProText,
-                fontWeight: FontWeight.w600,
-                letterSpacing: kTracking17,
-                height: kLineHeight,
+            child: Transform.translate(
+              offset: const Offset(0, 1.5),
+              child: Text(
+                tile.label,
+                style: TextStyle(
+                  inherit: false,
+                  color: resolveThemeColor(kSecondaryLabel, context),
+                  fontSize: 17,
+                  fontFamily: kSFProText,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: kTracking17,
+                  height: kLineHeight,
+                ),
               ),
             ),
           ),
@@ -6020,17 +6023,20 @@ class _CategoryTile extends StatelessWidget {
           Positioned(
             bottom: 0,
             left: 0,
-            child: Text(
-              data.label,
-              style: TextStyle(
-                inherit: false,
-                color: resolveThemeColor(kSecondaryLabel, context),
-                fontSize: 17,
-                fontFamily: kSFProText,
-                fontWeight: FontWeight.w600,
-                fontStyle: FontStyle.normal,
-                letterSpacing: kTracking17,
-                height: kLineHeight,
+            child: Transform.translate(
+              offset: const Offset(0, 1.5),
+              child: Text(
+                data.label,
+                style: TextStyle(
+                  inherit: false,
+                  color: resolveThemeColor(kSecondaryLabel, context),
+                  fontSize: 17,
+                  fontFamily: kSFProText,
+                  fontWeight: FontWeight.w600,
+                  fontStyle: FontStyle.normal,
+                  letterSpacing: kTracking17,
+                  height: kLineHeight,
+                ),
               ),
             ),
           ),
