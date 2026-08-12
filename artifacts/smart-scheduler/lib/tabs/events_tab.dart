@@ -10854,10 +10854,13 @@ Widget _renderCatIcon(
       width: containerSize,
       height: containerSize,
       child: Center(
-        child: Text(
-          iconOrSvg as String,
-          style: TextStyle(fontSize: iconSz, height: 1.0),
-          textScaler: TextScaler.noScaling,
+        child: Transform.translate(
+          offset: offset,
+          child: Text(
+            iconOrSvg as String,
+            style: TextStyle(fontSize: iconSz, height: 1.0),
+            textScaler: TextScaler.noScaling,
+          ),
         ),
       ),
     );
