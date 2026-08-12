@@ -21,7 +21,8 @@ import '../widgets/native_text_input.dart';
 import '../widgets/search_bar_widget.dart';
 import '../ai/search/search_service.dart';
 import '../services/event_store.dart' show EventStore;
-import 'events_tab.dart' show wrapSearchEventTileWithActions;
+import 'events_tab.dart'
+    show wrapSearchEventTileWithActions, wrapSearchEventTileWithPressScale;
 import '../widgets/smart_search_results.dart';
 
 // True while the user is in "search mode" — i.e. the search bar is focused
@@ -521,7 +522,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                   searchBarRow: searchBarRow,
                   extent: 76.5,
                   showSeparator: true,
-                ),
+                           ),
               )
             else
               SliverToBoxAdapter(child: searchBarRow),
@@ -546,6 +547,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                           ? null
                           : () => widget.onEditEvent!(hit.event),
                     ),
+                eventTilePressWrapper: wrapSearchEventTileWithPressScale,
               ),
             ] else ...[
               // Normal content — also kept in the tree when off-screen search
@@ -628,6 +630,8 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                                 ? null
                                 : () => widget.onEditEvent!(hit.event),
                           ),
+                      eventTilePressWrapper:
+                          wrapSearchEventTileWithPressScale,
                     )
                   else
                     const SliverFillRemaining(

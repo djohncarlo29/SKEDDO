@@ -14,6 +14,7 @@ class NativeTextInput extends StatefulWidget {
   final EdgeInsets padding;
   final Color cursorColor;
   final Color? selectionColor;
+  final TextSelectionControls? selectionControls;
 
   final ValueChanged<bool>? onFocusChanged;
 
@@ -25,6 +26,7 @@ class NativeTextInput extends StatefulWidget {
     required this.placeholderStyle,
     required this.cursorColor,
     this.selectionColor,
+    this.selectionControls,
     this.multiline = false,
     this.padding = EdgeInsets.zero,
     this.onFocusChanged,

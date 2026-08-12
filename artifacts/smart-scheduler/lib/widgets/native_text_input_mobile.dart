@@ -23,6 +23,7 @@ class NativeTextInput extends StatefulWidget {
   final EdgeInsets padding;
   final Color cursorColor;
   final Color? selectionColor;
+  final TextSelectionControls? selectionControls;
   // Fired when the field gains or loses focus. Used by the Notes tab to
   // collapse the header / show the Cancel button when the user taps into
   // the search bar.
@@ -36,6 +37,7 @@ class NativeTextInput extends StatefulWidget {
     required this.placeholderStyle,
     required this.cursorColor,
     this.selectionColor,
+    this.selectionControls,
     this.multiline = false,
     this.padding = EdgeInsets.zero,
     this.onFocusChanged,
@@ -223,6 +225,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
           textAlignVertical: widget.multiline ? TextAlignVertical.top : null,
           padding: widget.padding,
           cursorColor: widget.cursorColor,
+          selectionControls: widget.selectionControls,
           cursorOpacityAnimates: true,
           enableInteractiveSelection: true,
         ),

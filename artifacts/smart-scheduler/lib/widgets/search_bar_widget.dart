@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart' show DeviceGestureSettings, kTouchSlop;
 import 'squircle_glow.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import '../app_theme.dart';
@@ -15,6 +16,49 @@ const kSbCursorColor = kAccentColor;
 /// The TapRegion group that covers every text input in the app.  A tap on any
 /// widget in the group does NOT fire onTapOutside on other group members.
 const String kSbGroupId = 'smart-scheduler-text-fields';
+
+/// Stable Cupertino selection controls whose handles follow a live colour
+/// notifier.  Keeping the controls instance stable is important: changing its
+/// identity makes EditableText recreate the selection overlay and can disrupt
+/// cursor/selection gestures mid-interaction.
+class TintedCupertinoTextSelectionControls
+    extends CupertinoTextSelectionControls
+    with TextSelectionHandleControls {
+  TintedCupertinoTextSelectionControls(this.colorNotifier);
+
+  final ValueNotifier<Color> colorNotifier;
+
+  @override
+  Widget buildHandle(
+    BuildContext context,
+    TextSelectionHandleType type,
+    double textLineHeight, [
+    VoidCallback? onTap,
+  ]) {
+    return ValueListenableBuilder<Color>(
+      valueListenable: colorNotifier,
+      builder: (_, color, __) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          gestureSettings: const DeviceGestureSettings(touchSlop: kTouchSlop),
+        ),
+        child: CupertinoTheme(
+          data: CupertinoThemeData(primaryColor: color),
+          child: Builder(
+            builder: (ctx) => ColorFiltered(
+              // CupertinoTextSelectionControls does not consistently use
+              // CupertinoTheme.primaryColor for the handle asset on every
+              // platform.  The category sheets explicitly tint the rendered
+              // handle, so keep the shared search control visually identical
+              // when a DCV supplies its category colour.
+              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+              child: super.buildHandle(ctx, type, textLineHeight, onTap),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 // ── Search-mode state (module-level so it survives widget rebuilds) ────────────
 /// True while any search bar in the app is focused.  Used by
@@ -147,10 +191,18 @@ class AppSearchBarState extends State<AppSearchBar>
   int _bgLock = 0;
 
   late final AnimationController _pulseCtrl;
+  late final ValueNotifier<Color> _selectionColorNotifier;
+  late final TintedCupertinoTextSelectionControls _selectionControls;
 
   @override
   void initState() {
     super.initState();
+    _selectionColorNotifier = ValueNotifier<Color>(
+      widget.selectionTint ?? kAccentColor,
+    );
+    _selectionControls = TintedCupertinoTextSelectionControls(
+      _selectionColorNotifier,
+    );
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -163,7 +215,29 @@ class AppSearchBarState extends State<AppSearchBar>
   void dispose() {
     _sttBoundaryTimer?.cancel();
     _pulseCtrl.dispose();
+    _selectionColorNotifier.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncSelectionColor();
+  }
+
+  @override
+  void didUpdateWidget(covariant AppSearchBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectionTint != widget.selectionTint) {
+      _syncSelectionColor();
+    }
+  }
+
+  void _syncSelectionColor() {
+    final color = widget.selectionTint ?? resolveAccentColor(context);
+    if (_selectionColorNotifier.value != color) {
+      _selectionColorNotifier.value = color;
+    }
   }
 
   // ── Cancel mic from outside (called by parent's _cancelSearch) ────────────
@@ -438,6 +512,7 @@ class AppSearchBarState extends State<AppSearchBar>
                             padding: const EdgeInsets.only(top: 0),
                             cursorColor: selectionTint,
                             selectionColor: selectionTint.withOpacity(0.20),
+                            selectionControls: _selectionControls,
                           ),
                         ),
                       ),

@@ -21,7 +21,8 @@ import '../widgets/view_mode_icons.dart';
 import '../widgets/app_switch.dart';
 import '../services/event_store.dart';
 import '../ai/search/search_service.dart';
-import 'events_tab.dart' show wrapSearchEventTileWithActions;
+import 'events_tab.dart'
+    show wrapSearchEventTileWithActions, wrapSearchEventTileWithPressScale;
 import '../widgets/smart_search_results.dart';
 
 // ── Name tables ───────────────────────────────────────────────────────────────
@@ -1536,6 +1537,8 @@ class CalendarTabState extends State<CalendarTab>
                             ? null
                             : () => widget.onEditEvent!(hit.event),
                       ),
+                      eventTilePressWrapper:
+                          wrapSearchEventTileWithPressScale,
                 )
               else
                 const SliverFillRemaining(

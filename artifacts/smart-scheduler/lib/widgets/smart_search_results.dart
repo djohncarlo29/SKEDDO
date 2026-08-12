@@ -70,9 +70,7 @@ class SmartSearchResultsSliver extends StatelessWidget {
       // use the larger post-header inset.
       padding: EdgeInsets.fromLTRB(
         16,
-        hasSuggestion
-            ? _kSuggestionSearchResultTopPadding
-            : eventTopPadding,
+        hasSuggestion ? _kSuggestionSearchResultTopPadding : eventTopPadding,
         16,
         32,
       ),
@@ -398,6 +396,101 @@ class _SearchEventTile extends StatelessWidget {
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     final sub = _subtitle();
 
+    final content = Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // ── Category colour dot ──────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.only(right: 10),
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: catColor, shape: BoxShape.circle),
+          ),
+        ),
+        // ── Text content ─────────────────────────────────────────────────
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                event.title,
+                style: TextStyle(
+                  inherit: false,
+                  color: resolveThemeColor(kPrimaryLabel, context),
+                  fontSize: 17,
+                  fontFamily: kSFProText,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: kTracking16,
+                ),
+              ),
+              const SizedBox(height: 3),
+              // Date / time subtitle
+              Text(
+                sub.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  inherit: false,
+                  color: secondaryLabel,
+                  fontSize: 13,
+                  fontFamily: kSFProText,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: kTracking16,
+                ),
+              ),
+              // Location
+              if (event.location != null) ...[
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Icon(
+                      CupertinoIcons.location_fill,
+                      size: 11,
+                      color: secondaryLabel,
+                    ),
+                    const SizedBox(width: 3),
+                    Expanded(
+                      child: Text(
+                        event.location!.toUpperCase(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          inherit: false,
+                          color: secondaryLabel,
+                          fontSize: 13,
+                          fontFamily: kSFProText,
+                          fontWeight: FontWeight.w400,
+                          letterSpacing: kTracking16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              // Category name
+              if (showCategoryName && meta != null) ...[
+                const SizedBox(height: 3),
+                Text(
+                  meta.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    inherit: false,
+                    color: catColor,
+                    fontSize: 12,
+                    fontFamily: kSFProText,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: ShapeDecoration(
@@ -407,111 +500,13 @@ class _SearchEventTile extends StatelessWidget {
         ),
         shadows: resolveThemeShadows(kCardShadow, context),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // ── Category colour dot ──────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.only(right: 10),
-            child: Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: catColor,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          // ── Text content ─────────────────────────────────────────────────
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  event.title,
-                  style: TextStyle(
-                    inherit: false,
-                    color: resolveThemeColor(kPrimaryLabel, context),
-                    fontSize: 17,
-                    fontFamily: kSFProText,
-                    fontWeight: FontWeight.w400,
-                    letterSpacing: kTracking16,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                // Date / time subtitle
-                Text(
-                  sub.toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    inherit: false,
-                    color: secondaryLabel,
-                    fontSize: 13,
-                    fontFamily: kSFProText,
-                    fontWeight: FontWeight.w400,
-                    letterSpacing: kTracking16,
-                  ),
-                ),
-                // Location
-                if (event.location != null) ...[
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Icon(
-                        CupertinoIcons.location_fill,
-                        size: 11,
-                        color: secondaryLabel,
-                      ),
-                      const SizedBox(width: 3),
-                      Expanded(
-                        child: Text(
-                          event.location!.toUpperCase(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            inherit: false,
-                            color: secondaryLabel,
-                            fontSize: 13,
-                            fontFamily: kSFProText,
-                            fontWeight: FontWeight.w400,
-                            letterSpacing: kTracking16,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                // Category name
-                if (showCategoryName && meta != null) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    meta.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      inherit: false,
-                      color: catColor,
-                      fontSize: 12,
-                      fontFamily: kSFProText,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.1,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
+      child: eventTilePressWrapper?.call(content) ?? content,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final card = _buildCard(context);
-    final pressAwareCard = eventTilePressWrapper?.call(card) ?? card;
-    return eventTileWrapper?.call(hit, pressAwareCard, _buildCard) ??
-        pressAwareCard;
+    return eventTileWrapper?.call(hit, card, _buildCard) ?? card;
   }
 }

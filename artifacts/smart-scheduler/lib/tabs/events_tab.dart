@@ -5697,6 +5697,14 @@ Widget wrapSearchEventTileWithActions({
   );
 }
 
+/// Adds the same inner-content press scale used by DCV event tiles.
+///
+/// Kept next to [_TilePressScale] so search results in the other tabs can use
+/// the exact same inherited press animation without duplicating its private
+/// implementation.
+Widget wrapSearchEventTileWithPressScale(Widget child) =>
+    _TilePressScale(child: child);
+
 // ══════════════════════════════════════════════════════════════════════════════
 // SMART CATEGORY TILES
 // ══════════════════════════════════════════════════════════════════════════════
@@ -7995,7 +8003,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   // overlay is never disposed and gesture behaviour (tap-to-move-cursor,
   // double-tap word-select, triple-tap all-select) is preserved correctly.
   late final ValueNotifier<Color> _handleColorNotifier;
-  late final _TintedCupertinoTextSelectionControls _selectionControls;
+  late final TintedCupertinoTextSelectionControls _selectionControls;
 
   // ── Location field focus nodes (drive placeholder slide animation) ────────
   final _startLocFocus = FocusNode();
@@ -8244,7 +8252,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     // Initialise with the raw colour; didChangeDependencies updates it to the
     // fully resolved value (accent sentinel → actual accent) once context is live.
     _handleColorNotifier = ValueNotifier<Color>(_selectedColor);
-    _selectionControls = _TintedCupertinoTextSelectionControls(
+    _selectionControls = TintedCupertinoTextSelectionControls(
       _handleColorNotifier,
     );
   }
@@ -14190,70 +14198,6 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Tinted selection-handle controls ─────────────────────────────────────────
-//
-// A thin [CupertinoTextSelectionControls] subclass that overrides [buildHandle]
-// so draggable selection handles track the live category colour via a
-// [ValueNotifier<Color>].
-//
-// WHY ValueNotifier instead of a plain Color field + ==:
-//
-//   If selectionControls changes identity between builds, Flutter's
-//   EditableText.didUpdateWidget disposes and recreates the selection overlay.
-//   This is good for colour updates but it also resets the overlay's gesture
-//   state — causing a single tap to be interpreted as "extend selection" rather
-//   than "move cursor" because the overlay re-activates mid-gesture.
-//
-//   The solution: pass a SINGLE stable instance (created once in initState,
-//   no == override → identity equality → never seen as changed).  The handle
-//   colour is updated by writing to the notifier; the ValueListenableBuilder
-//   inside buildHandle rebuilds only the handle widget, leaving the overlay's
-//   gesture state completely untouched.
-class _TintedCupertinoTextSelectionControls
-    extends CupertinoTextSelectionControls
-    with TextSelectionHandleControls {
-  _TintedCupertinoTextSelectionControls(this.colorNotifier);
-
-  /// Shared with the owning State; write a new colour to update handles live.
-  final ValueNotifier<Color> colorNotifier;
-
-  @override
-  Widget buildHandle(
-    BuildContext context,
-    TextSelectionHandleType type,
-    double textLineHeight, [
-    VoidCallback? onTap,
-  ]) {
-    // ValueListenableBuilder rebuilds only the handle widget when the category
-    // colour changes — the selection overlay itself (and therefore all gesture
-    // recognisers) is never disturbed.
-    //
-    // The handle lives in the Navigator's Overlay, which sits ABOVE the
-    // MediaQuery(gestureSettings: kTouchSlop) we inject in the sheet.  Without
-    // an explicit override here, the handle's PanGestureRecognizer inherits
-    // Android's low system slop (≈4–8 dp) and can win the arena on a near-
-    // stationary tap near the handle position, causing spurious selection drags.
-    // Wrapping with MediaQuery(gestureSettings: kTouchSlop) gives the handle
-    // the same 18 dp threshold as the text field, so only deliberate drags move
-    // the selection endpoint.
-    return ValueListenableBuilder<Color>(
-      valueListenable: colorNotifier,
-      builder: (_, color, __) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(
-          gestureSettings: const DeviceGestureSettings(touchSlop: kTouchSlop),
-        ),
-        child: CupertinoTheme(
-          data: CupertinoThemeData(primaryColor: color),
-          child: Builder(
-            builder: (ctx) =>
-                super.buildHandle(ctx, type, textLineHeight, onTap),
-          ),
         ),
       ),
     );
