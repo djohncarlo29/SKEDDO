@@ -3506,6 +3506,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                           cat.iconOrSvg,
                           34,
                           CupertinoColors.white,
+                          emojiOffsetY: 1,
                         ),
                 ),
               ),
@@ -3999,6 +4000,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                         cat.iconOrSvg,
                         35.5,
                         CupertinoColors.white,
+                        emojiOffsetY: 1,
                         ctx: context,
                       ),
               ),
@@ -6514,6 +6516,7 @@ class _PinnedUserTile extends StatelessWidget {
                   category.iconOrSvg,
                   35.5,
                   CupertinoColors.white,
+                  emojiOffsetY: 1,
                 ),
               ),
             ),
@@ -7114,6 +7117,7 @@ class _CategoryRow extends StatelessWidget {
                           category.iconOrSvg,
                           34,
                           CupertinoColors.white,
+                          emojiOffsetY: 1,
                         ),
                       ),
                     ),
@@ -8938,6 +8942,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                           _effectiveIcon,
                           64,
                           CupertinoColors.white,
+                          emojiOffsetY: 2,
                           ctx: context,
                         ),
                 ),
@@ -10833,10 +10838,14 @@ Widget _renderCatIcon(
   double containerSize,
   Color color, {
   BuildContext? ctx,
+  double emojiOffsetY = 0,
 }) {
   final double scale = containerSize / _kIconCircle;
   final double iconSz = _pickerIconBaseSize(iconOrSvg) * scale;
-  final Offset offset = _pickerIconOffset(iconOrSvg) * scale;
+  var offset = _pickerIconOffset(iconOrSvg) * scale;
+  if (_isEmojiIcon(iconOrSvg)) {
+    offset += Offset(0, emojiOffsetY);
+  }
 
   Widget inner;
   if (_isEmojiIcon(iconOrSvg)) {
