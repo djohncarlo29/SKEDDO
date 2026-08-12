@@ -1043,7 +1043,7 @@ class _OptionRowState extends State<_OptionRow> {
             if (widget.selected)
               FixedSFIcon(
                 SFIcons.sf_checkmark,
-                fontSize: 16,
+                fontSize: 17,
                 fontWeight: FontWeight.w500,
                 color: widget.accentColor,
               ),
@@ -1186,7 +1186,7 @@ class _AccentSwatchRowState extends State<_AccentSwatchRow> {
             if (widget.selected)
               FixedSFIcon(
                 SFIcons.sf_checkmark,
-                fontSize: 16,
+                fontSize: 17,
                 fontWeight: FontWeight.w500,
                 color: widget.accentColor,
               )
