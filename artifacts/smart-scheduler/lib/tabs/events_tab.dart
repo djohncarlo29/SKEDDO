@@ -4954,6 +4954,21 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     NativeTextInput.focus(_searchController);
   }
 
+  Widget _wrapSearchEventTile(
+    SearchHit hit,
+    Widget child,
+    WidgetBuilder previewBuilder,
+  ) {
+    return _EventContextMenu(
+      child: child,
+      previewBuilder: previewBuilder,
+      onEdit: widget.onEditEvent == null
+          ? null
+          : () => widget.onEditEvent!(hit.event),
+      onDelete: () => EventStore.instance.remove(hit.event.id),
+    );
+  }
+
   void _onSearchFocusChanged(bool focused) {
     if (_searchFocused == focused) return;
 
@@ -5287,6 +5302,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             hits: _searchAll,
             suggestedQuery: _searchSuggestion,
             onSuggestionTap: _applySearchSuggestion,
+            eventTopPadding: 18,
+            eventTileWrapper: _wrapSearchEventTile,
+            eventTilePressWrapper: (child) => _TilePressScale(child: child),
           ),
         ]
         // ── Normal grid (also shown behind the overlay when off-screen) ───
@@ -5564,6 +5582,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                   hits: _searchAll,
                   suggestedQuery: _searchSuggestion,
                   onSuggestionTap: _applySearchSuggestion,
+                  eventTopPadding: 18,
+                  eventTileWrapper: _wrapSearchEventTile,
+                  eventTilePressWrapper: (child) => _TilePressScale(child: child),
                 )
               else
                 const SliverFillRemaining(
@@ -5632,6 +5653,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     onSuggestionTap: _applySearchSuggestion,
                     hidePrimaryCategoryName:
                         activeStandardDcvCategoryId != null,
+                    eventTopPadding: 18,
+                    eventTileWrapper: _wrapSearchEventTile,
+                    eventTilePressWrapper: (child) =>
+                        _TilePressScale(child: child),
                   ),
                 ),
             ],

@@ -17,12 +17,23 @@ class SmartSearchResultsSliver extends StatelessWidget {
   final List<SearchHit> hits;
   final String? suggestedQuery;
   final ValueChanged<String>? onSuggestionTap;
+  final double eventTopPadding;
+  final Widget Function(
+    SearchHit hit,
+    Widget child,
+    WidgetBuilder previewBuilder,
+  )?
+  eventTileWrapper;
+  final Widget Function(Widget child)? eventTilePressWrapper;
 
   const SmartSearchResultsSliver({
     super.key,
     required this.hits,
     this.suggestedQuery,
     this.onSuggestionTap,
+    this.eventTopPadding = 8,
+    this.eventTileWrapper,
+    this.eventTilePressWrapper,
   });
 
   @override
@@ -52,8 +63,15 @@ class SmartSearchResultsSliver extends StatelessWidget {
     return SliverPadding(
       // The banner has 8 px of its own top/bottom padding. Keep the outer
       // inset at 8 px too, so the visual gap above the suggestion matches the
-      // gap from the suggestion to the first event tile.
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      // gap from the suggestion to the first event tile. When there is no
+      // banner, callers can use the larger post-header inset of their host
+      // surface instead.
+      padding: EdgeInsets.fromLTRB(
+        16,
+        hasSuggestion ? 8 : eventTopPadding,
+        16,
+        32,
+      ),
       sliver: SliverList.separated(
         itemCount: hits.length + (hasSuggestion ? 1 : 0),
         separatorBuilder: (_, __) => const SizedBox(height: 8),
@@ -65,7 +83,11 @@ class SmartSearchResultsSliver extends StatelessWidget {
             );
           }
           final hitIndex = hasSuggestion ? i - 1 : i;
-          return _SearchEventTile(hit: hits[hitIndex]);
+          return _SearchEventTile(
+            hit: hits[hitIndex],
+            eventTileWrapper: eventTileWrapper,
+            eventTilePressWrapper: eventTilePressWrapper,
+          );
         },
       ),
     );
@@ -86,6 +108,14 @@ class SmartDcvSearchResults extends StatelessWidget {
   final String? suggestedQuery;
   final ValueChanged<String>? onSuggestionTap;
   final bool hidePrimaryCategoryName;
+  final double eventTopPadding;
+  final Widget Function(
+    SearchHit hit,
+    Widget child,
+    WidgetBuilder previewBuilder,
+  )?
+  eventTileWrapper;
+  final Widget Function(Widget child)? eventTilePressWrapper;
 
   const SmartDcvSearchResults({
     super.key,
@@ -94,6 +124,9 @@ class SmartDcvSearchResults extends StatelessWidget {
     this.suggestedQuery,
     this.onSuggestionTap,
     this.hidePrimaryCategoryName = false,
+    this.eventTopPadding = 8,
+    this.eventTileWrapper,
+    this.eventTilePressWrapper,
   });
 
   @override
@@ -135,13 +168,20 @@ class SmartDcvSearchResults extends StatelessWidget {
           ),
         if (primary.isNotEmpty) ...[
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              suggestedQuery?.trim().isNotEmpty == true ? 8 : eventTopPadding,
+              16,
+              0,
+            ),
             sliver: SliverList.separated(
               itemCount: primary.length,
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (ctx, i) => _SearchEventTile(
                 hit: primary[i],
                 showCategoryName: !hidePrimaryCategoryName,
+                eventTileWrapper: eventTileWrapper,
+                eventTilePressWrapper: eventTilePressWrapper,
               ),
             ),
           ),
@@ -174,7 +214,11 @@ class SmartDcvSearchResults extends StatelessWidget {
             sliver: SliverList.separated(
               itemCount: overflow.length,
               separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (ctx, i) => _SearchEventTile(hit: overflow[i]),
+              itemBuilder: (ctx, i) => _SearchEventTile(
+                hit: overflow[i],
+                eventTileWrapper: eventTileWrapper,
+                eventTilePressWrapper: eventTilePressWrapper,
+              ),
             ),
           ),
         ],
@@ -262,10 +306,19 @@ class _SearchSuggestionBanner extends StatelessWidget {
 class _SearchEventTile extends StatelessWidget {
   final SearchHit hit;
   final bool showCategoryName;
+  final Widget Function(
+    SearchHit hit,
+    Widget child,
+    WidgetBuilder previewBuilder,
+  )?
+  eventTileWrapper;
+  final Widget Function(Widget child)? eventTilePressWrapper;
 
   const _SearchEventTile({
     required this.hit,
     this.showCategoryName = true,
+    this.eventTileWrapper,
+    this.eventTilePressWrapper,
   });
 
   static String _formatDate(String raw) {
@@ -330,8 +383,7 @@ class _SearchEventTile extends StatelessWidget {
     return parts.isEmpty ? 'UNSCHEDULED' : parts.join('  ·  ');
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildCard(BuildContext context) {
     final event = hit.event;
     final meta = CategoryRegistry.get(event.categoryId);
     final catColor = meta != null
@@ -447,6 +499,14 @@ class _SearchEventTile extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final card = _buildCard(context);
+    final pressAwareCard = eventTilePressWrapper?.call(card) ?? card;
+    return eventTileWrapper?.call(hit, pressAwareCard, _buildCard) ??
+        pressAwareCard;
   }
 }
 
