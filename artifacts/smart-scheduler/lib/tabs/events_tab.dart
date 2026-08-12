@@ -3504,7 +3504,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                       ? _ThickFolderIcon()
                       : _renderCatIcon(
                           cat.iconOrSvg,
-                          39.1,
+                          34,
                           CupertinoColors.white,
                         ),
                 ),
@@ -3997,7 +3997,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     ? _ThickFolderIcon()
                     : _renderCatIcon(
                         cat.iconOrSvg,
-                        40.8,
+                        35.5,
                         CupertinoColors.white,
                         ctx: context,
                       ),
@@ -6512,7 +6512,7 @@ class _PinnedUserTile extends StatelessWidget {
               child: Center(
                 child: _renderCatIcon(
                   category.iconOrSvg,
-                  40.8,
+                  35.5,
                   CupertinoColors.white,
                 ),
               ),
@@ -7112,7 +7112,7 @@ class _CategoryRow extends StatelessWidget {
                       child: Center(
                         child: _renderCatIcon(
                           category.iconOrSvg,
-                          39.1,
+                          34,
                           CupertinoColors.white,
                         ),
                       ),
@@ -10791,16 +10791,23 @@ double _pickerIconBaseSize(Object iconOrSvg) {
   final icon = iconOrSvg as IconData;
   if (icon == CupertinoIcons.headphones) return 23;
   if (icon.fontPackage == 'flutter_sficon') {
-    if (icon == SFIcons.sf_snowflake) return 25;
-    if (icon == SFIcons.sf_mappin) return 24;
-    if (icon == SFIcons.sf_tennis_racket) return 23;
-    if (icon == SFIcons.sf_stethoscope) return 21;
-    if (icon == SFIcons.sf_fish_fill) return 19;
-    if (_kPickerSF24.contains(icon)) return 24;
-    if (_kPickerSF22.contains(icon)) return 22;
-    return 20;
+    return _pickerSfGlyphSize(icon);
   }
   return 20;
+}
+
+// The actual SF Symbol font sizes used by the icon picker. Keeping this in a
+// shared helper makes the Card 1 preview scale from the picker's real glyph
+// proportions instead of an older, larger reference table.
+double _pickerSfGlyphSize(IconData icon) {
+  if (icon == SFIcons.sf_snowflake) return 22;
+  if (icon == SFIcons.sf_mappin) return 21;
+  if (icon == SFIcons.sf_tennis_racket) return 20;
+  if (icon == SFIcons.sf_stethoscope) return 18;
+  if (icon == SFIcons.sf_fish_fill) return 16;
+  if (_kPickerSF24.contains(icon)) return 21;
+  if (_kPickerSF22.contains(icon)) return 19;
+  return 17;
 }
 
 // Font weight for SF icons — shared by both picker and all render sites.
@@ -11017,21 +11024,7 @@ Widget _buildPickerIconRaw(Object iconOrSvg, Color color, {BuildContext? ctx}) {
     // Rendered without FittedBox so the fontSize is the actual visual budget.
     // SF glyph visuals are ~80 % of fontSize; picker cells are ~50 px so
     // even 23 px here (→ ~18 px visual) stays comfortably inside the circle.
-    final double sz = icon == SFIcons.sf_snowflake
-        ? 22
-        : icon == SFIcons.sf_mappin
-        ? 21
-        : icon == SFIcons.sf_tennis_racket
-        ? 20
-        : icon == SFIcons.sf_stethoscope
-        ? 18
-        : icon == SFIcons.sf_fish_fill
-        ? 16
-        : _kPickerSF24.contains(icon)
-        ? 21
-        : _kPickerSF22.contains(icon)
-        ? 19
-        : 17;
+    final double sz = _pickerSfGlyphSize(icon);
     return FixedSFIcon(
       icon,
       fontSize: sz,
