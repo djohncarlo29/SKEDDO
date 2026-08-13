@@ -20,6 +20,7 @@ import 'tabs/events_tab.dart';
 import 'tabs/notes_tab.dart';
 import 'widgets/action_panel.dart';
 import 'widgets/events_header_icon.dart';
+import 'widgets/fixed_size_icon.dart';
 import 'widgets/native_text_input.dart';
 import 'widgets/search_bar_widget.dart';
 import 'widgets/view_mode_icons.dart';
@@ -2309,21 +2310,21 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                       child: Row(
                         children: [
                           _TabItem(
-                            icon: 'assets/icons/doc_text.svg',
+                            icon: SFIcons.sf_text_document,
                             label: 'Notes',
                             active: _selectedIndex == 0,
                             onTap: () => _switchTab(0),
                             accentColor: resolveAccentColor(context),
                           ),
                           _TabItem(
-                            icon: 'assets/icons/calendar.svg',
+                            icon: SFIcons.sf_calendar,
                             label: 'Calendar',
                             active: _selectedIndex == 1,
                             onTap: () => _switchTab(1),
                             accentColor: resolveAccentColor(context),
                           ),
                           _TabItem(
-                            icon: 'assets/icons/list_bullet.svg',
+                            icon: SFIcons.sf_list_bullet,
                             label: 'Events',
                             active: _selectedIndex == 2,
                             onTap: () => _switchTab(2),
@@ -2713,7 +2714,7 @@ class _MenuStroke extends StatelessWidget {
 }
 
 class _TabItem extends StatelessWidget {
-  final String icon;
+  final IconData icon;
   final String label;
   final bool active;
   final VoidCallback onTap;
@@ -2745,17 +2746,11 @@ class _TabItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-             ImageFiltered(
-               imageFilter: ui.ImageFilter.erode(
-                 radiusX: 0.15,
-                 radiusY: 0.15,
-               ),
-               child: SvgPicture.asset(
-                 icon,
-                 width: 24,
-                 height: 24,
-                 colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-               ),
+             FixedSFIcon(
+               icon,
+               fontSize: 24,
+               fontWeight: FontWeight.normal,
+               color: color,
              ),
             SizedBox(height: 3),
             Text(
