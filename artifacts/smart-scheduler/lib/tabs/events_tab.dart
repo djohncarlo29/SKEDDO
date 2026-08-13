@@ -7326,7 +7326,7 @@ class _GroupRow extends StatelessWidget {
                             SFIcons.sf_rectangle_stack,
                             fontSize: 22,
                             color: secondaryLabel,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
