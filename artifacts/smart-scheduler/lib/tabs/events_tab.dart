@@ -11360,50 +11360,56 @@ class _DcvSectionLabel extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    behavior: HitTestBehavior.opaque,
-    child: Padding(
-      // Settings geometry: 15 px between section cards, 10 px from the label
-      // to the card it introduces, and 16 px of label inset inside the 16 px
-      // card/list inset (32 px from the viewport edge).
-      padding: EdgeInsets.only(left: 16, top: isFirst ? 0 : 15, bottom: 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                inherit: false,
-                fontFamily: kSFProText,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                fontStyle: FontStyle.normal,
-                color: resolveThemeColor(kSecondaryLabel, context),
-                letterSpacing: 0.0,
+  Widget build(BuildContext context) {
+    final chevronFontSize = MediaQuery.textScalerOf(context).scale(13);
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        // Settings geometry: 15 px between section cards, 10 px from the label
+        // to the card it introduces, and 16 px of label inset inside the 16 px
+        // card/list inset (32 px from the viewport edge).
+        padding: EdgeInsets.only(left: 16, top: isFirst ? 0 : 15, bottom: 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  inherit: false,
+                  fontFamily: kSFProText,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  fontStyle: FontStyle.normal,
+                  color: resolveThemeColor(kSecondaryLabel, context),
+                  letterSpacing: 0.0,
+                ),
               ),
             ),
-          ),
-          // Chevron: points down (∨, expanded) or right (>, collapsed).
-          // -0.25 turns = 90° counter-clockwise: ∨ → >
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: AnimatedRotation(
-              turns: isCollapsed ? -0.25 : 0.0,
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeInOut,
-              child: FixedSFIcon(
-                SFIcons.sf_chevron_down,
-                fontSize: 13,
-                color: accentColor,
-                fontWeight: FontWeight.w800,
+            // Chevron: points down (∨, expanded) or right (>, collapsed).
+            // -0.25 turns = 90° counter-clockwise: ∨ → >
+            // FixedSFIcon disables inherited scaling, so apply the system
+            // text scaler explicitly to keep it aligned with the label.
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: AnimatedRotation(
+                turns: isCollapsed ? -0.25 : 0.0,
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeInOut,
+                child: FixedSFIcon(
+                  SFIcons.sf_chevron_down,
+                  fontSize: chevronFontSize,
+                  color: accentColor,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _CategoryDetailView extends StatefulWidget {
