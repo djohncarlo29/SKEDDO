@@ -39,7 +39,7 @@ class _ColumnsPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size s) {
-    const sw = 1.3;
+    const sw = 1.4;
     const r = 2.5; // outer corner radius
     const inset = 2.8; // gap between outer border and cell grid
     const gap = 1.0; // gap between cells
