@@ -320,7 +320,7 @@ class _ListPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size s) {
-    const sw = 1.6;
+    const sw = 1.55;
     final st = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
