@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -1949,19 +1950,25 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                             11.0,
                                                                             1,
                                                                           ),
-                                                                          child: SizedBox(
-                                                                            width:
-                                                                                25,
-                                                                            height:
-                                                                                25,
-                                                                            child: SvgPicture.asset(
-                                                                              'assets/icons/add_category.svg',
-                                                                              colorFilter: ColorFilter.mode(
-                                                                                accent,
-                                                                                BlendMode.srcIn,
+                                                                            child: ImageFiltered(
+                                                                              imageFilter: ui.ImageFilter.erode(
+                                                                                 radiusX: 0.20,
+                                                                                 radiusY: 0.20,
+                                                                              ),
+                                                                              child: SizedBox(
+                                                                                width:
+                                                                                    25,
+                                                                                height:
+                                                                                    25,
+                                                                                child: SvgPicture.asset(
+                                                                                  'assets/icons/add_category.svg',
+                                                                                  colorFilter: ColorFilter.mode(
+                                                                                    accent,
+                                                                                    BlendMode.srcIn,
+                                                                                  ),
+                                                                                ),
                                                                               ),
                                                                             ),
-                                                                          ),
                                                                         ),
                                                                       ),
                                                                     ),
