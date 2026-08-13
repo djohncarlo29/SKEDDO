@@ -1889,7 +1889,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                 false,
                                                                             // Keep layout padding unchanged so the icon is
                                                                             // never clipped by the 36 px slot SizedBox.
-                                                                            // Visual alignment (centre-X +11, centre-Y +1)
+                                                                            // Visual alignment (centre-X +11, centre-Y +3)
                                                                             // is applied via Transform, which is paint-only.
                                                                             padding: const EdgeInsets.fromLTRB(
                                                                               0,
@@ -1902,7 +1902,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                             child: Transform.translate(
                                                                               offset: const Offset(
                                                                                 9,
-                                                                                -1,
+                                                                                 -3,
                                                                               ),
                                                                                 child: SearchWeightedIcon(
                                                                                   CupertinoIcons.ellipsis_circle,
