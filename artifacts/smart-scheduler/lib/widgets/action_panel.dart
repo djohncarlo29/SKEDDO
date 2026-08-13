@@ -45,6 +45,89 @@ class _ActionPanelSFIcon extends StatelessWidget {
   }
 }
 
+// The "New Section" action icon: a solid heading bar with a plus badge above
+// two bulleted list rows.  It is drawn as vectors rather than using the
+// reference raster so it stays crisp at the action-panel's native scale.
+class NewSectionIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const NewSectionIcon({super.key, this.size = 24, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: _NewSectionIconPainter(color)),
+    );
+  }
+}
+
+class _NewSectionIconPainter extends CustomPainter {
+  final Color color;
+
+  const _NewSectionIconPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.shortestSide / 24.0;
+    canvas.save();
+    canvas.scale(scale, scale);
+
+    final fill = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6
+      ..strokeCap = StrokeCap.round
+      ..isAntiAlias = true;
+
+    // Section heading bar.
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(1.5, 3.5, 13.5, 3.0),
+        const Radius.circular(1.5),
+      ),
+      fill,
+    );
+
+    // Circular plus badge.
+    canvas.drawCircle(const Offset(19, 5), 4.4, stroke);
+    canvas.drawLine(const Offset(16.8, 5), const Offset(21.2, 5), stroke);
+    canvas.drawLine(const Offset(19, 2.8), const Offset(19, 7.2), stroke);
+
+    // First row: filled bullet and solid list line.
+    canvas.drawCircle(const Offset(3.5, 12.5), 1.7, fill);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(8, 11, 13.5, 3.0),
+        const Radius.circular(1.5),
+      ),
+      fill,
+    );
+
+    // Second row: outlined bullet and solid list line.
+    canvas.drawCircle(const Offset(3.5, 19.5), 2.1, stroke);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(8, 18, 13.5, 3.0),
+        const Radius.circular(1.5),
+      ),
+      fill,
+    );
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _NewSectionIconPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // ActionPanel — reusable frosted-glass context-menu options card
 // ══════════════════════════════════════════════════════════════════════════════

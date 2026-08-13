@@ -98,8 +98,9 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
   };
 
   // Sort By row offset within the main panel (px from panel top).
-  // Layout: row0(52) + groupBreak(8) + row1(52) + sep(0.5) + row2(52) + sep(0.5)
-  static const _kSortByTop = 165.0;
+  // Layout: row0(52) + groupBreak(8) + row1(52) + sep(0.5) +
+  // row2(52) + sep(0.5) + new-section(52) + sep(0.5).
+  static const _kSortByTop = 217.5;
 
   @override
   void initState() {
@@ -180,6 +181,12 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
     ActionItem(
       label: 'Select Events',
       icon: SFIcons.sf_checkmark_circle,
+      onTap: () {},
+    ),
+    ActionItem(
+      label: 'New Section',
+      icon: SFIcons.sf_list_bullet,
+      iconBuilder: (color) => NewSectionIcon(size: 24, color: color),
       onTap: () {},
     ),
     // Sort By — ExpandableActionMenu hides content (contentOpacity:0) and
@@ -752,6 +759,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       const ActionItem(
         label: 'Select Events',
         icon: SFIcons.sf_checkmark_circle,
+      ),
+      ActionItem(
+        label: 'New Section',
+        icon: SFIcons.sf_list_bullet,
+        iconBuilder: (color) => NewSectionIcon(size: 24, color: color),
       ),
       const ActionItem(
         label: 'Sort By',
