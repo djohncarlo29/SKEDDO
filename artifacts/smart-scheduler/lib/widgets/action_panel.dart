@@ -549,7 +549,9 @@ class _ActionPanelState extends State<ActionPanel>
                           : _pillFadeDuration,
                       curve: _pillVisible ? Curves.easeOut : Curves.easeIn,
                       child: AnimatedOpacity(
-                        opacity: _pillVisible ? 1.0 : 0.0,
+                        // Keep the picker scroll indicator subtly lighter
+                        // while visible without changing its fade timing.
+                        opacity: _pillVisible ? 0.80 : 0.0,
                         duration: _isClosingNow
                             ? Duration.zero
                             : _pillFadeDuration,
