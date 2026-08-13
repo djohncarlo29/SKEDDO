@@ -2748,7 +2748,7 @@ class _TabItem extends StatelessWidget {
           children: [
              FixedSFIcon(
                icon,
-               fontSize: 24,
+               fontSize: 21,
                fontWeight: FontWeight.normal,
                color: color,
              ),
