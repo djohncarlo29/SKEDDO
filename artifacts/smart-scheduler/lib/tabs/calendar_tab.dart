@@ -5466,7 +5466,10 @@ class _CalModalCircleButton extends StatelessWidget {
                       fontFamily: fontFamily,
                       fontStyle: FontStyle.normal,
                       shadows: resolveThemeTextShadows([
-                        Shadow(color: resolvedIconColor, blurRadius: 1.0),
+                        Shadow(
+                          color: resolvedIconColor,
+                          blurRadius: kGelBloomIconWeight,
+                        ),
                       ], context),
                     ),
                   ),

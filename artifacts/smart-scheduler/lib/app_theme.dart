@@ -58,6 +58,11 @@ const kModalHandleColor = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFD1D1D6),
   darkColor: Color(0xFF636366),
 );
+
+// Shared halo weight for every gel-bloom Xmark, checkmark, and right-chevron.
+// This is the established weight used by the search cancel button.
+const double kGelBloomIconWeight = 0.4;
+
 const kPreviewCardBackground = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFF9F9FB),
   darkColor: Color(0xFF2C2C2E),

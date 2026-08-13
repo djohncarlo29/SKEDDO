@@ -1027,7 +1027,10 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                       fontFamily: _xFamily,
                       fontStyle: FontStyle.normal,
                       shadows: resolveThemeTextShadows([
-                        Shadow(color: labelColor, blurRadius: 1.0),
+                        Shadow(
+                          color: labelColor,
+                          blurRadius: kGelBloomIconWeight,
+                        ),
                       ], context),
                     ),
                   ),

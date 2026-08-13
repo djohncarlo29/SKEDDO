@@ -7295,6 +7295,7 @@ class _GroupRow extends StatelessWidget {
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
+    final textScaler = MediaQuery.textScalerOf(context);
 
     return Column(
       children: [
@@ -7371,7 +7372,7 @@ class _GroupRow extends StatelessWidget {
                         // width as the category row's Icon(size:14) so the
                         // member-count text aligns with solo category rows.
                         SizedBox(
-                          width: 14,
+                          width: textScaler.scale(14),
                           child: Center(
                             child: AnimatedRotation(
                               turns: isExpanded ? 0.25 : 0.0,
@@ -7379,7 +7380,7 @@ class _GroupRow extends StatelessWidget {
                               curve: Curves.easeInOutCubic,
                               child: FixedSFIcon(
                                 SFIcons.sf_chevron_right,
-                                fontSize: 13,
+                                fontSize: textScaler.scale(13),
                                 color: resolveAccentColor(context),
                                 fontWeight: FontWeight.w700,
                               ),
@@ -9286,11 +9287,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                           ], context),
                         ),
                         child: const Center(
-                          child: FixedSFIcon(
+                          child: SearchWeightedIcon(
                             SFIcons.sf_checkmark,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
+                            size: 13,
                             color: CupertinoColors.white,
+                            weight: kGelBloomIconWeight,
                           ),
                         ),
                       ),
@@ -11298,7 +11299,10 @@ class _ModalCircleButton extends StatelessWidget {
                       fontFamily: fontFamily,
                       fontStyle: FontStyle.normal,
                       shadows: resolveThemeTextShadows([
-                        Shadow(color: resolvedIconColor, blurRadius: 1.0),
+                        Shadow(
+                          color: resolvedIconColor,
+                          blurRadius: kGelBloomIconWeight,
+                        ),
                       ], context),
                     ),
                   ),

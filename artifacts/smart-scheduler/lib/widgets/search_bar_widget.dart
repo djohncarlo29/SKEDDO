@@ -725,7 +725,7 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
                 CupertinoIcons.xmark,
                 size: 20,
                 color: primaryLabel,
-                weight: 0.4,
+                weight: kGelBloomIconWeight,
               ),
             ),
           ),
