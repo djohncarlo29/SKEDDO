@@ -2068,7 +2068,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         HapticFeedback.selectionClick();
         final listBox =
             _listStackKey.currentContext?.findRenderObject() as RenderBox?;
-        final rowHeight = _eventsCategoryListRowHeight(context);
+        final rowHeight = _eventsCategoryListRowHeight(
+          context,
+          items: _buildFlatDisplayList(),
+        );
         final slotPitch = rowHeight + _CategoryCard._kRowGap;
         if (listBox != null) {
           final listLocal = listBox.globalToLocal(globalPos);
@@ -2151,7 +2154,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         // logic to the same handler used by a native list drag.  It reads
         // _dragListGrabOffsetY and computes list-local coordinates itself.
         final rowGrabY =
-            _dragListGrabOffsetY ?? (_eventsCategoryListRowHeight(context) / 2);
+            _dragListGrabOffsetY ??
+            (_eventsCategoryListRowHeight(
+                  context,
+                  items: _buildFlatDisplayList(),
+                ) /
+                2);
         final ghostGlobalY = globalPos.dy - rowGrabY;
         _onListReorderUpdate(key as _UserCategory, globalPos);
         // Additionally update the grid-overlay position variables that the
@@ -2359,7 +2367,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final memberGroupId = draggingItem.isGroupMember
         ? draggingItem.groupId
         : null;
-    final rowHeight = _eventsCategoryListRowHeight(context);
+    final rowHeight = _eventsCategoryListRowHeight(context, items: flatList);
     final slotPitch = rowHeight + _CategoryCard._kRowGap;
     final slotTopY = idx * slotPitch;
     final localPos = box.globalToLocal(globalPos);
@@ -2395,7 +2403,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     if (box == null || !box.attached || _draggingListCat != cat) return;
     final localPos = box.globalToLocal(globalPos);
     final rawTopY = localPos.dy - (_dragListGrabOffsetY ?? 0);
-    final rowHeight = _eventsCategoryListRowHeight(context);
+    final rowHeight = _eventsCategoryListRowHeight(
+      context,
+      items: _buildFlatDisplayList(),
+    );
 
     // ── Cross-section (pin) detection ─────────────────────────────────────────
     // Only solo categories (not group members, not while in group-creation
@@ -2682,10 +2693,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           );
           if (cIdx == -1) return;
           final sp =
-              _eventsCategoryListRowHeight(context) + _CategoryCard._kRowGap;
+              _eventsCategoryListRowHeight(context, items: fl) +
+              _CategoryCard._kRowGap;
           final cy =
               (_dragListTopY ?? 0.0) +
-              _eventsCategoryListRowHeight(context) / 2;
+              _eventsCategoryListRowHeight(context, items: fl) / 2;
           final ti = (cy / sp).floor().clamp(0, fl.length - 1);
           final tItem = fl[ti];
           if (tItem.isGroupMember && tItem.groupId == joinGroupId) {
@@ -3243,7 +3255,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       (item) => item.isGroupHeader && item.group?.id == group.id,
     );
     if (idx == -1) return;
-    final rowHeight = _eventsCategoryListRowHeight(context);
+    final rowHeight = _eventsCategoryListRowHeight(context, items: flatList);
     final slotPitch = rowHeight + _CategoryCard._kRowGap;
     final localPos = box.globalToLocal(globalPos);
     setState(() {
@@ -3263,7 +3275,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     }
     final localPos = box.globalToLocal(globalPos);
     final rawTopY = localPos.dy - (_dragListGrabOffsetY ?? 0);
-    final rowHeight = _eventsCategoryListRowHeight(context);
+    final rowHeight = _eventsCategoryListRowHeight(
+      context,
+      items: _buildFlatDisplayList(),
+    );
     final slotPitch = rowHeight + _CategoryCard._kRowGap;
     final centerY = rawTopY + rowHeight / 2;
 
@@ -3430,7 +3445,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             left: stackGlobal.dx,
             top: globalTopY,
             width: tileWidth,
-            height: _eventsCategoryListRowHeight(context),
+            height: _eventsCategoryListRowHeight(
+              context,
+              items: _buildFlatDisplayList(),
+            ),
             child: Transform.scale(
               scale: inGroupMode ? 1.02 : 1.05,
               child: Container(
@@ -3699,7 +3717,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       final listBox =
           _listStackKey.currentContext?.findRenderObject() as RenderBox?;
       final listGlobal = listBox?.localToGlobal(Offset.zero);
-      final rowH = _eventsCategoryListRowHeight(context);
+      final rowH = _eventsCategoryListRowHeight(
+        context,
+        items: _buildFlatDisplayList(),
+      );
       final rowW = listBox?.size.width ?? box.size.width;
       final rowLeft = listGlobal?.dx ?? stackGlobal.dx;
       // Use pre-computed global ghost Y — valid even when the list RenderBox
@@ -6580,22 +6601,94 @@ class _PinnedUserTile extends StatelessWidget {
 // USER CATEGORY LIST
 // ══════════════════════════════════════════════════════════════════════════════
 
+TextStyle _eventsCategoryListTextStyle(double fontSize) => TextStyle(
+  inherit: false,
+  fontFamily: kSFProText,
+  fontSize: fontSize,
+  fontWeight: FontWeight.w400,
+  height: kLineHeight,
+);
+
+double _eventsMeasuredTextHeight(
+  String text,
+  TextStyle style,
+  TextScaler scaler,
+  double maxWidth,
+) {
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: TextDirection.ltr,
+    textScaler: scaler,
+  )..layout(maxWidth: maxWidth);
+  return painter.height;
+}
+
+double _eventsMeasuredTextWidth(
+  String text,
+  TextStyle style,
+  TextScaler scaler,
+) {
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: TextDirection.ltr,
+    textScaler: scaler,
+  )..layout();
+  return painter.width;
+}
+
 /// Shared row height for the main Events tab category list.
 ///
 /// The list is positioned with a Stack, so every slot must use the same height
-/// during a given build. Keep the authored 64 px row at normal and compact
-/// text sizes, then grow the slot for the worst-case two-line category row
-/// when Dynamic Type becomes large. This lets text remain readable without
-/// allowing it to overflow the fixed-positioned slot.
-double _eventsCategoryListRowHeight(BuildContext context) {
+/// during a given build. Measure the actual visible labels and grow all slots
+/// to the tallest required row. This preserves the existing compact 64 px
+/// geometry while allowing long names and subtitles to wrap naturally.
+double _eventsCategoryListRowHeight(
+  BuildContext context, {
+  Iterable<_FlatItem>? items,
+}) {
   final scaler = MediaQuery.textScalerOf(context);
-  final titleLine = scaler.scale(16) * kLineHeight;
-  final subtitleLine = scaler.scale(13) * kLineHeight;
+  final viewportWidth = MediaQuery.sizeOf(context).width;
+  final cardWidth = max(0.0, viewportWidth - 32.0);
+  final titleStyle = _eventsCategoryListTextStyle(16);
+  final subtitleStyle = _eventsCategoryListTextStyle(13);
+  final countStyle = _eventsCategoryListTextStyle(16);
+  final countWidth = _eventsMeasuredTextWidth('999', countStyle, scaler);
+  final trailingWidth = countWidth + 8 + 6 + scaler.scale(14) + 16;
   const verticalPadding = 26.0; // 13 px top + 13 px bottom
   const subtitleGap = 2.0;
   const iconHeight = 34.0;
-  final textHeight = titleLine + subtitleGap + subtitleLine + verticalPadding;
-  return max(64.0, max(iconHeight + verticalPadding, textHeight));
+  var tallest = 64.0;
+
+  for (final item in items ?? const <_FlatItem>[]) {
+    final label = item.category?.name ?? item.group?.name;
+    if (label == null) continue;
+
+    final leftPad = item.isGroupMember ? 36.0 : 16.0;
+    final textWidth = max(
+      80.0,
+      cardWidth - leftPad - iconHeight - 13 - trailingWidth,
+    );
+    var textHeight = _eventsMeasuredTextHeight(
+      label,
+      titleStyle,
+      scaler,
+      textWidth,
+    );
+    final description = item.category?.description;
+    if (description != null && description.isNotEmpty) {
+      textHeight +=
+          subtitleGap +
+          _eventsMeasuredTextHeight(
+            description,
+            subtitleStyle,
+            scaler,
+            textWidth,
+          );
+    }
+    tallest = max(tallest, max(iconHeight, textHeight) + verticalPadding);
+  }
+
+  return tallest;
 }
 
 // ── Category list card (clips all rows to the squircle shape) ─────────────────
@@ -6605,12 +6698,12 @@ double _eventsCategoryListRowHeight(BuildContext context) {
 // and during drag-to-reorder — the same AnimatedPositioned infrastructure
 // that drives the pinned-category grid.
 //
-// Row slot height is fixed at _kListRowH (both text widgets use maxLines:1 to
-// guarantee the content always fits).  Collapsed rows animate their height to
-// 0 via AnimatedPositioned; all subsequent rows animate their top-Y upward in
-// lock-step, giving a smooth height-collapse + reflow effect.  The dragging
-// row uses Duration.zero so it follows the finger with zero lag while siblings
-// animate to their new positions around it.
+// Row slots share the tallest measured wrapped-content height for the current
+// text scale. Collapsed rows animate their height to 0 via AnimatedPositioned;
+// all subsequent rows animate their top-Y upward in lock-step, giving a smooth
+// height-collapse + reflow effect. The dragging row uses Duration.zero so it
+// follows the finger with zero lag while siblings animate to their new
+// positions around it.
 class _CategoryCard extends StatelessWidget {
   /// Baseline slot height retained for the drag overlay's authored geometry.
   /// Runtime layout uses [_eventsCategoryListRowHeight] so accessibility text
@@ -6729,7 +6822,7 @@ class _CategoryCard extends StatelessWidget {
       return 0.0;
     }
 
-    return _eventsCategoryListRowHeight(context);
+    return _eventsCategoryListRowHeight(context, items: items);
   }
 
   /// Height used by AnimatedPositioned for the current slot.
@@ -6747,7 +6840,7 @@ class _CategoryCard extends StatelessWidget {
         expandingGroupIds.contains(item.groupId)) {
       return 0.0;
     }
-    return _eventsCategoryListRowHeight(context);
+    return _eventsCategoryListRowHeight(context, items: items);
   }
 
   /// Whether the isFirst/isLast corner flags should treat this slot as hidden
@@ -6766,7 +6859,7 @@ class _CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rowHeight = _eventsCategoryListRowHeight(context);
+    final rowHeight = _eventsCategoryListRowHeight(context, items: items);
     // Target height: every slot that will be at full height after the current
     // animation finishes.  Lifecycle-collapsed and collapsing-accordion rows
     // are excluded; expanding-accordion rows are included because they animate
@@ -7169,8 +7262,6 @@ class _CategoryRow extends StatelessWidget {
                         children: [
                           Text(
                             category.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               inherit: false,
                               color: primaryLabel,
@@ -7186,8 +7277,6 @@ class _CategoryRow extends StatelessWidget {
                             SizedBox(height: 2),
                             Text(
                               category.description,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 inherit: false,
                                 color: secondaryLabel,
@@ -7374,8 +7463,6 @@ class _GroupRow extends StatelessWidget {
                     Expanded(
                       child: Text(
                         group.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           inherit: false,
                           color: primaryLabel,
@@ -9204,11 +9291,20 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   }
 
   Widget _buildSmartDescriptionRow() {
-    // Keep the authored 48 px row at normal/compact sizes, but let the rule
-    // field grow with Dynamic Type instead of clipping its line box inside a
-    // fixed-height row.
+    // Keep the authored 48 px row at normal/compact sizes, but let both
+    // Dynamic Type and the entered rule text grow the row naturally.
     final scaler = MediaQuery.textScalerOf(context);
-    final rowHeight = max(48.0, scaler.scale(17) * kLineHeight + 20.0);
+    final inputWidth = max(80.0, MediaQuery.sizeOf(context).width - 66.0);
+    final ruleText = _smartDescriptionCtrl.text.isEmpty
+        ? 'Describe what belongs here…'
+        : _smartDescriptionCtrl.text;
+    final contentHeight = _eventsMeasuredTextHeight(
+      ruleText,
+      _kFieldStyle,
+      scaler,
+      inputWidth,
+    );
+    final rowHeight = max(48.0, contentHeight + 20.0);
     return SizedBox(
       height: rowHeight,
       child: Padding(
@@ -9244,8 +9340,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                               child: Text(
                                 'Describe what belongs here…',
                                 style: _kPlaceholderStyle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ),
@@ -9267,6 +9361,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                         style: _kFieldStyle,
                         cursorColor: _resolvedSelectedColor,
                         selectionControls: _selectionControls,
+                        minLines: 1,
+                        maxLines: null,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: null,
                         textCapitalization: TextCapitalization.sentences,
