@@ -1219,7 +1219,7 @@ class _ChevronTrailing extends StatelessWidget {
       SFIcons.sf_chevron_right,
       fontSize: _settingsChevronFontSize(context),
       fontWeight: FontWeight.w500,
-      color: resolveThemeColor(kTertiaryLabel, context),
+      color: resolveThemeColor(kSecondaryLabel, context),
     );
   }
 }
