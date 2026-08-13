@@ -11372,7 +11372,7 @@ class _DcvSectionLabel extends StatelessWidget {
               style: TextStyle(
                 inherit: false,
                 fontFamily: kSFProText,
-                fontSize: 17,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 fontStyle: FontStyle.normal,
                 color: resolveThemeColor(kSecondaryLabel, context),

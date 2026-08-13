@@ -1337,9 +1337,10 @@ class _NoteInputCardState extends State<_NoteInputCard>
                           animation: _plusScaleCtrl,
                           builder: (context, _) => Opacity(
                             opacity: _plusOpacity.value,
-                            child: SearchWeightedIcon(
+                            child: Icon(
                               CupertinoIcons.add,
                               size: 24,
+                              weight: 300.0,
                               color: secondaryLabel,
                             ),
                           ),
