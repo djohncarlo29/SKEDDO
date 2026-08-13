@@ -8934,7 +8934,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     final cardColor = resolveThemeColor(kModalCard, context);
     final shadows = resolveThemeShadows(kCardShadow, context);
     final ShapeBorder shape = stadium
-        ? const SquircleStadiumBorder()
+        ? const AdaptiveStadiumBorder()
         : BoundedContinuousRectangleBorder(
             borderRadius: BorderRadius.circular(kCardCornerRadius),
           );
@@ -9015,7 +9015,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (leading != null) ...[leading, SizedBox(width: 12)],
-              Text(label, style: _kRowLabelStyle),
+              if (leading != null)
+                Flexible(
+                  child: Text(label, style: _kRowLabelStyle, softWrap: true),
+                )
+              else
+                Text(label, style: _kRowLabelStyle),
               const SizedBox(width: 25),
               Expanded(child: dimmedValue),
             ],
@@ -9290,159 +9295,170 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     );
   }
 
-  Widget _buildSmartDescriptionRow() {
-    // Keep the authored 48 px row at normal/compact sizes, but let both
-    // Dynamic Type and the entered rule text grow the row naturally.
-    final scaler = MediaQuery.textScalerOf(context);
-    final inputWidth = max(80.0, MediaQuery.sizeOf(context).width - 66.0);
-    final ruleText = _smartDescriptionCtrl.text.isEmpty
-        ? 'Describe what belongs here…'
-        : _smartDescriptionCtrl.text;
-    final contentHeight = _eventsMeasuredTextHeight(
-      ruleText,
-      _kFieldStyle,
-      scaler,
-      inputWidth,
-    );
-    final rowHeight = max(48.0, contentHeight + 20.0);
-    return SizedBox(
-      height: rowHeight,
-      child: Padding(
-        padding: const EdgeInsets.only(left: 16, right: 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Stack(
-                alignment: Alignment.centerLeft,
-                children: [
-                  AnimatedBuilder(
-                    animation: Listenable.merge([
-                      _smartDescriptionCtrl,
-                      _smartDescriptionFocus,
-                    ]),
-                    builder: (_, __) {
-                      if (_smartDescriptionCtrl.text.isNotEmpty) {
-                        return const SizedBox.shrink();
-                      }
-                      return Positioned.fill(
-                        child: IgnorePointer(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              curve: Curves.easeOut,
-                              transform: Matrix4.translationValues(
-                                _smartDescriptionFocus.hasFocus ? 4.0 : 0.0,
-                                0,
-                                0,
-                              ),
-                              child: Text(
-                                'Describe what belongs here…',
-                                style: _kPlaceholderStyle,
+  Widget _buildSmartDescriptionRow() => LayoutBuilder(
+    builder: (context, constraints) {
+      // Measure against the actual field width inside the row.  The previous
+      // screen-width estimate omitted the 16/12 row insets, the 10 px gap,
+      // and the 28 px action button, so wrapped text was under-measured at
+      // larger Dynamic Type sizes and could run into the card's end curves.
+      final scaler = MediaQuery.textScalerOf(context);
+      final inputWidth = max(
+        80.0,
+        constraints.maxWidth - 16.0 - 12.0 - 10.0 - 28.0,
+      );
+      final ruleText = _smartDescriptionCtrl.text.isEmpty
+          ? 'Describe what belongs here…'
+          : _smartDescriptionCtrl.text;
+      final contentHeight = _eventsMeasuredTextHeight(
+        ruleText,
+        _kFieldStyle,
+        scaler,
+        inputWidth,
+      );
+      // Keep the authored 48 px row at normal/compact sizes, but let both
+      // Dynamic Type and the entered rule text grow the row naturally.
+      final rowHeight = max(48.0, contentHeight + 20.0);
+      return SizedBox(
+        height: rowHeight,
+        child: Padding(
+          padding: const EdgeInsets.only(left: 16, right: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Stack(
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    AnimatedBuilder(
+                      animation: Listenable.merge([
+                        _smartDescriptionCtrl,
+                        _smartDescriptionFocus,
+                      ]),
+                      builder: (_, __) {
+                        if (_smartDescriptionCtrl.text.isNotEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        return Positioned.fill(
+                          child: IgnorePointer(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                curve: Curves.easeOut,
+                                transform: Matrix4.translationValues(
+                                  _smartDescriptionFocus.hasFocus ? 4.0 : 0.0,
+                                  0,
+                                  0,
+                                ),
+                                child: Text(
+                                  'Describe what belongs here…',
+                                  style: _kPlaceholderStyle,
+                                ),
                               ),
                             ),
                           ),
+                        );
+                      },
+                    ),
+                    CupertinoTheme(
+                      data: CupertinoTheme.of(
+                        context,
+                      ).copyWith(primaryColor: _resolvedSelectedColor),
+                      child: DefaultSelectionStyle(
+                        selectionColor: _resolvedSelectedColor.withOpacity(
+                          0.20,
                         ),
-                      );
-                    },
-                  ),
-                  CupertinoTheme(
-                    data: CupertinoTheme.of(
-                      context,
-                    ).copyWith(primaryColor: _resolvedSelectedColor),
-                    child: DefaultSelectionStyle(
-                      selectionColor: _resolvedSelectedColor.withOpacity(0.20),
-                      child: CupertinoTextField(
-                        controller: _smartDescriptionCtrl,
-                        focusNode: _smartDescriptionFocus,
-                        placeholder: '',
-                        placeholderStyle: _kPlaceholderStyle,
-                        style: _kFieldStyle,
-                        cursorColor: _resolvedSelectedColor,
-                        selectionControls: _selectionControls,
-                        minLines: 1,
-                        maxLines: null,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: null,
-                        textCapitalization: TextCapitalization.sentences,
-                        textInputAction: TextInputAction.done,
-                        onChanged: (_) =>
-                            setState(() => _smartDescriptionSaved = false),
+                        child: CupertinoTextField(
+                          controller: _smartDescriptionCtrl,
+                          focusNode: _smartDescriptionFocus,
+                          placeholder: '',
+                          placeholderStyle: _kPlaceholderStyle,
+                          style: _kFieldStyle,
+                          cursorColor: _resolvedSelectedColor,
+                          selectionControls: _selectionControls,
+                          minLines: 1,
+                          maxLines: null,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: null,
+                          textCapitalization: TextCapitalization.sentences,
+                          textInputAction: TextInputAction.done,
+                          onChanged: (_) =>
+                              setState(() => _smartDescriptionSaved = false),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            // Crossfades between the save-checkmark (typing / unsaved) and the
-            // clear-circle (rule saved), giving clear visual differentiation
-            // between the two states.
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              transitionBuilder: (child, animation) =>
-                  FadeTransition(opacity: animation, child: child),
-              child: _smartDescriptionSaved
-                  ? GestureDetector(
-                      key: const ValueKey('smartdesc-clear'),
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        _smartDescriptionCtrl.clear();
-                        _smartDescriptionFocus.requestFocus();
-                        setState(() => _smartDescriptionSaved = false);
-                      },
-                      child: const SizedBox(
-                        width: 28,
-                        height: 28,
-                        child: Center(
-                          child: Icon(
-                            kSearchClearCircleIcon,
-                            color: kEmptyStateIcon,
-                            size: 17,
-                          ),
-                        ),
-                      ),
-                    )
-                  : GelBloomButton(
-                      key: const ValueKey('smartdesc-checkmark'),
-                      peakScale: 1.14,
-                      onTap: () {
-                        FocusManager.instance.primaryFocus?.unfocus();
-                        setState(() => _smartDescriptionSaved = true);
-                      },
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: _smartDescriptionCtrl.text.trim().isEmpty
-                              ? kTertiaryLabel
-                              : _resolvedSelectedColor,
-                          shape: BoxShape.circle,
-                          boxShadow: resolveThemeShadows(const [
-                            BoxShadow(
-                              color: Color(0x1F000000),
-                              blurRadius: 6,
-                              offset: Offset(0, 2),
+              const SizedBox(width: 10),
+              // Crossfades between the save-checkmark (typing / unsaved) and the
+              // clear-circle (rule saved), giving clear visual differentiation
+              // between the two states.
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                transitionBuilder: (child, animation) =>
+                    FadeTransition(opacity: animation, child: child),
+                child: _smartDescriptionSaved
+                    ? GestureDetector(
+                        key: const ValueKey('smartdesc-clear'),
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          _smartDescriptionCtrl.clear();
+                          _smartDescriptionFocus.requestFocus();
+                          setState(() => _smartDescriptionSaved = false);
+                        },
+                        child: const SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: Center(
+                            child: Icon(
+                              kSearchClearCircleIcon,
+                              color: kEmptyStateIcon,
+                              size: 17,
                             ),
-                          ], context),
+                          ),
                         ),
-                        child: const Center(
-                          child: SearchWeightedIcon(
-                            SFIcons.sf_checkmark,
-                            size: 13,
-                            color: CupertinoColors.white,
-                            weight: kGelBloomIconWeight,
+                      )
+                    : GelBloomButton(
+                        key: const ValueKey('smartdesc-checkmark'),
+                        peakScale: 1.14,
+                        onTap: () {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          setState(() => _smartDescriptionSaved = true);
+                        },
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: _smartDescriptionCtrl.text.trim().isEmpty
+                                ? kTertiaryLabel
+                                : _resolvedSelectedColor,
+                            shape: BoxShape.circle,
+                            boxShadow: resolveThemeShadows(const [
+                              BoxShadow(
+                                color: Color(0x1F000000),
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                              ),
+                            ], context),
+                          ),
+                          child: const Center(
+                            child: SearchWeightedIcon(
+                              SFIcons.sf_checkmark,
+                              size: 13,
+                              color: CupertinoColors.white,
+                              weight: kGelBloomIconWeight,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
-      ),
-    );
-  }
+      );
+    },
+  );
 
   // ── Card 3: Location / Travel ─────────────────────────────────────────────
 

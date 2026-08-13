@@ -815,6 +815,60 @@ class SplitChevronUpDown extends StatelessWidget {
   }
 }
 
+// AdaptiveStadiumBorder — keeps shallow cards on the shared capsule geometry,
+// but switches to bounded continuous corners once Dynamic Type makes the card
+// tall enough to be a content card.  A fixed stadium is still mathematically
+// valid at any height, but it makes large-text rows look stretched and can
+// visually crowd wrapped text against the end curves.
+//
+// The decision is made from the actual painted rect, rather than from the
+// number of children in the card.  This is important for a one-row picker:
+// its row can become multi-line without changing its widget structure.
+class AdaptiveStadiumBorder extends ShapeBorder {
+  final double radius;
+  final double maxStadiumHeight;
+
+  const AdaptiveStadiumBorder({
+    this.radius = kSquircleStadiumRadius,
+    this.maxStadiumHeight = 56.0,
+  });
+
+  ShapeBorder _borderFor(Rect rect) {
+    if (rect.height <= maxStadiumHeight) {
+      return SquircleStadiumBorder(radius: radius);
+    }
+    return BoundedContinuousRectangleBorder(
+      borderRadius: BorderRadius.circular(radius),
+    );
+  }
+
+  @override
+  EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) =>
+      _borderFor(rect).getOuterPath(rect, textDirection: textDirection);
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
+      _borderFor(rect).getInnerPath(rect, textDirection: textDirection);
+
+  @override
+  void paint(
+    Canvas canvas,
+    Rect rect, {
+    TextDirection? textDirection,
+    BoxShape shape = BoxShape.rectangle,
+    BorderRadius? borderRadius,
+  }) {}
+
+  @override
+  ShapeBorder scale(double t) => AdaptiveStadiumBorder(
+    radius: radius * t,
+    maxStadiumHeight: maxStadiumHeight,
+  );
+}
+
 class _SplitChevronPainter extends CustomPainter {
   const _SplitChevronPainter({
     required this.color,
@@ -840,8 +894,10 @@ class _SplitChevronPainter extends CustomPainter {
     // Keep the separation symmetric around the icon midpoint: increasing the
     // gap moves the upper chevron up and the lower chevron down together.
     final safeGap = gap.clamp(0.0, size * 0.40);
-    final margin = ((size - (chevronHeight * 2) - safeGap) / 2)
-        .clamp(0.0, size);
+    final margin = ((size - (chevronHeight * 2) - safeGap) / 2).clamp(
+      0.0,
+      size,
+    );
     final topBaseY = margin + chevronHeight;
     final bottomBaseY = topBaseY + safeGap;
     final centerX = size / 2;
