@@ -668,6 +668,8 @@ class _NoteInputCardState extends State<_NoteInputCard>
   // Dims to 0.45 on tap-down / while attach menu is open; restores on dismiss.
   late final AnimationController _plusScaleCtrl;
   late final Animation<double> _plusOpacity;
+  late final AnimationController _clearScaleCtrl;
+  late final Animation<double> _clearOpacity;
 
   // ── Attach-menu (plus button) overlay ──────────────────────────────────────
   final GlobalKey _plusKey = GlobalKey();
@@ -1181,6 +1183,15 @@ class _NoteInputCardState extends State<_NoteInputCard>
       begin: 1.0,
       end: 0.45,
     ).animate(CurvedAnimation(parent: _plusScaleCtrl, curve: Curves.easeOut));
+    _clearScaleCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+      reverseDuration: const Duration(milliseconds: 180),
+    );
+    _clearOpacity = Tween<double>(
+      begin: 1.0,
+      end: 0.45,
+    ).animate(CurvedAnimation(parent: _clearScaleCtrl, curve: Curves.easeOut));
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -1195,6 +1206,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
     widget.controller.removeListener(_onControllerChanged);
     _sttBoundaryTimer?.cancel();
     _plusScaleCtrl.dispose();
+    _clearScaleCtrl.dispose();
     _pulseCtrl.dispose();
     _attachOverlay?.remove();
     _attachClosing.dispose();
@@ -1296,15 +1308,28 @@ class _NoteInputCardState extends State<_NoteInputCard>
                       valueListenable: widget.controller,
                       builder: (context, value, child) {
                         final bool hasText = value.text.isNotEmpty;
-                        return AnimatedTapIcon(
-                          padding: const EdgeInsets.fromLTRB(10, 0, 5, 8),
-                          onTap: hasText
-                              ? () => widget.controller.clear()
-                              : () {},
-                          child: SearchWeightedIcon(
-                            CupertinoIcons.clear,
-                            size: 18,
-                            color: hasText ? secondaryLabel : tertiaryLabel,
+                        return GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTapDown: (_) => _clearScaleCtrl.forward(),
+                          onTapCancel: () => _clearScaleCtrl.reverse(),
+                          onTap: () {
+                            _clearScaleCtrl.reverse();
+                            if (hasText) widget.controller.clear();
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(10, 0, 5, 8),
+                            child: AnimatedBuilder(
+                              animation: _clearScaleCtrl,
+                              builder: (context, _) => Opacity(
+                                opacity: _clearOpacity.value,
+                                child: Icon(
+                                  CupertinoIcons.clear,
+                                  size: 24,
+                                  weight: 300.0,
+                                  color: secondaryLabel,
+                                ),
+                              ),
+                            ),
                           ),
                         );
                       },

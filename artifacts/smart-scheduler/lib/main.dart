@@ -2740,12 +2740,12 @@ class _TabItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-             FixedSFIcon(
-               icon,
-               fontSize: 21,
-               fontWeight: FontWeight.normal,
-               color: color,
-             ),
+            FixedSFIcon(
+              icon,
+              fontSize: 21,
+              fontWeight: active ? FontWeight.w500 : FontWeight.normal,
+              color: color,
+            ),
             SizedBox(height: 3),
             Text(
               label,
