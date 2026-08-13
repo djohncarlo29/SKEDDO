@@ -11403,7 +11403,7 @@ class _DcvSectionLabel extends StatelessWidget {
                   SFIcons.sf_chevron_down,
                   fontSize: chevronFontSize,
                   color: accentColor,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
