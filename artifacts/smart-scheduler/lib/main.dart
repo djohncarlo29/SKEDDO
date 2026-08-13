@@ -1910,7 +1910,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                  ),
                                                                                  child: SearchWeightedIcon(
                                                                                    CupertinoIcons.ellipsis_circle,
-                                                                                   size: 24,
+                                                                                   size: 23,
                                                                                    color: accent,
                                                                                    weight: 0.0,
                                                                                  ),
