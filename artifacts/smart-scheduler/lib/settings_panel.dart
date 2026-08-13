@@ -1246,7 +1246,7 @@ class _ValueTrailing extends StatelessWidget {
         FixedSFIcon(
           SFIcons.sf_chevron_right,
           fontSize: _settingsChevronFontSize(context),
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w500,
           color: resolveThemeColor(kTertiaryLabel, context),
         ),
       ],
@@ -1287,7 +1287,7 @@ class _ColorTrailing extends StatelessWidget {
         FixedSFIcon(
           SFIcons.sf_chevron_right,
           fontSize: _settingsChevronFontSize(context),
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w500,
           color: resolveThemeColor(kTertiaryLabel, context),
         ),
       ],
