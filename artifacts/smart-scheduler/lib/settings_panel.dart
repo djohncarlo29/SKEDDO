@@ -862,6 +862,7 @@ class _SettingsCard extends StatelessWidget {
 
 // ── Tappable settings row ─────────────────────────────────────────────────────
 const double _kSettingsRowHeight = 52.0;
+const double _kSettingsRowVerticalPadding = 10.0;
 
 class _SettingsRow extends StatefulWidget {
   final String title;
@@ -890,10 +891,14 @@ class _SettingsRowState extends State<_SettingsRow> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 80),
         color: _pressed ? kActionPanelGroupBreak : const Color(0x00000000),
-        height: _kSettingsRowHeight,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        constraints: const BoxConstraints(minHeight: _kSettingsRowHeight),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: _kSettingsRowVerticalPadding,
+        ),
         alignment: Alignment.centerLeft,
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
               child: Text(
@@ -941,11 +946,15 @@ class _SettingsToggleRowState extends State<_SettingsToggleRow> {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: _kSettingsRowHeight,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: _kSettingsRowHeight),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: _kSettingsRowVerticalPadding,
+        ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
               child: Text(
@@ -1022,10 +1031,14 @@ class _OptionRowState extends State<_OptionRow> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 80),
         color: _pressed ? kActionPanelGroupBreak : const Color(0x00000000),
-        height: _kSettingsRowHeight,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        constraints: const BoxConstraints(minHeight: _kSettingsRowHeight),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: _kSettingsRowVerticalPadding,
+        ),
         alignment: Alignment.centerLeft,
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
               child: Text(
