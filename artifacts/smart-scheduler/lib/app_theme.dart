@@ -769,17 +769,17 @@ class SquircleStadiumBorder extends ContinuousRectangleBorder {
       _pathForRect(rect.deflate(side.width));
 }
 
-// SplitChevronUpDown — the standard Cupertino up/down picker glyph with the
-// lower half separated by a single logical pixel.  Keeping both halves from
-// the original glyph preserves its weight and layout footprint.
+// SplitChevronUpDown — a clean custom up/down picker glyph.  This is painted
+// directly instead of clipping CupertinoIcons.chevron_up_chevron_down, because
+// midpoint clipping leaves anti-aliased fragments from the other chevron.
 class SplitChevronUpDown extends StatelessWidget {
   const SplitChevronUpDown({
     super.key,
     required this.color,
-    // Picker-row chevrons are one pixel larger than the previous shared glyph
-    // size, growing evenly around their center.
+    // Authored size at the default OS text scale.
     this.size = 12.0,
     this.scaleX = 0.90,
+    // Authored gap between the two chevrons at the default OS text scale.
     this.lowerOffset = 1.0,
   });
 
@@ -788,60 +788,82 @@ class SplitChevronUpDown extends StatelessWidget {
   final double scaleX;
   final double lowerOffset;
 
-  Widget _glyph() =>
-      Icon(CupertinoIcons.chevron_up_chevron_down, size: size, color: color);
-
   @override
   Widget build(BuildContext context) {
-    final half = size / 2;
-    return Transform.scale(
-      scaleX: scaleX,
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            Positioned(
-              left: 0,
-              top: 0,
-              width: size,
-              height: half,
-              child: ClipRect(
-                child: OverflowBox(
-                  alignment: Alignment.topCenter,
-                  minWidth: size,
-                  maxWidth: size,
-                  minHeight: size,
-                  maxHeight: size,
-                  child: _glyph(),
-                ),
-              ),
-            ),
-            Positioned(
-              left: 0,
-              top: half,
-              width: size,
-              height: half,
-              child: ClipRect(
-                child: OverflowBox(
-                  alignment: Alignment.topCenter,
-                  minWidth: size,
-                  maxWidth: size,
-                  minHeight: size,
-                  maxHeight: size,
-                  child: Transform.translate(
-                    offset: Offset(0, -half + lowerOffset),
-                    child: _glyph(),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+    final textScaler = MediaQuery.textScalerOf(context);
+    final scaledSize = textScaler.scale(size);
+    final scaledGap = textScaler.scale(lowerOffset);
+    final scaledStrokeWidth = textScaler.scale(1.5);
+
+    return CustomPaint(
+      size: Size(scaledSize, scaledSize),
+      painter: _SplitChevronPainter(
+        color: color,
+        size: scaledSize,
+        gap: scaledGap,
+        scaleX: scaleX,
+        strokeWidth: scaledStrokeWidth,
       ),
     );
   }
+}
+
+class _SplitChevronPainter extends CustomPainter {
+  const _SplitChevronPainter({
+    required this.color,
+    required this.size,
+    required this.gap,
+    required this.scaleX,
+    required this.strokeWidth,
+  });
+
+  final Color color;
+  final double size;
+  final double gap;
+  final double scaleX;
+  final double strokeWidth;
+
+  @override
+  void paint(Canvas canvas, Size canvasSize) {
+    final inset = size * 0.14;
+    final margin = size * 0.14;
+    final safeGap = gap.clamp(0.0, size * 0.30);
+    final chevronHeight = (size - (margin * 2) - safeGap) / 2;
+    final topBaseY = margin + chevronHeight;
+    final bottomBaseY = topBaseY + safeGap;
+    final centerX = size / 2;
+
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = Path()
+      // Up chevron.
+      ..moveTo(inset, topBaseY)
+      ..lineTo(centerX, margin)
+      ..lineTo(size - inset, topBaseY)
+      // Down chevron.
+      ..moveTo(inset, bottomBaseY)
+      ..lineTo(centerX, size - margin)
+      ..lineTo(size - inset, bottomBaseY);
+
+    canvas.save();
+    canvas.translate((size - (size * scaleX)) / 2, 0);
+    canvas.scale(scaleX, 1);
+    canvas.drawPath(path, paint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_SplitChevronPainter oldDelegate) =>
+      oldDelegate.color != color ||
+      oldDelegate.size != size ||
+      oldDelegate.gap != gap ||
+      oldDelegate.scaleX != scaleX ||
+      oldDelegate.strokeWidth != strokeWidth;
 }
 
 // SquircleClipper — public squircle (ContinuousRectangleBorder) clip path.
