@@ -159,6 +159,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       labelWhenFalse: 'View as Columns',
       iconWhenTrue: SFIcons.sf_list_bullet,
       iconWhenFalse: SFIcons.sf_list_bullet,
+      iconSize: 21,
       iconBuilderWhenFalse: (c) => Transform.translate(
         offset: const Offset(-2.0, 0),
         child: ColumnsViewIcon(color: c, size: 24),

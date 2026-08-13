@@ -194,6 +194,7 @@ class ActionItem {
     required String labelWhenFalse,
     required IconData iconWhenTrue,
     required IconData iconWhenFalse,
+    double iconSize = 20.0,
     Widget Function(Color)? iconBuilderWhenTrue,
     Widget Function(Color)? iconBuilderWhenFalse,
     required void Function(bool) onChanged,
@@ -203,6 +204,7 @@ class ActionItem {
     return ActionItem(
       label: value ? labelWhenTrue : labelWhenFalse,
       icon: value ? iconWhenTrue : iconWhenFalse,
+      iconSize: iconSize,
       iconBuilder: value ? iconBuilderWhenTrue : iconBuilderWhenFalse,
       groupBreakAbove: groupBreakAbove,
       onTap: () {
