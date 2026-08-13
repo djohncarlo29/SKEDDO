@@ -2071,6 +2071,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         final rowHeight = _eventsCategoryListRowHeight(
           context,
           item: _FlatItem.solo(key),
+          liveEventCounts: _liveEventCounts,
         );
         if (listBox != null) {
           final listLocal = listBox.globalToLocal(globalPos);
@@ -2079,6 +2080,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             context,
             listItems,
             listLocal.dy,
+            _liveEventCounts,
           ).clamp(0, _listTopOrder.length);
           // Map the tile grab-Y to an equivalent list-row grab-Y so the row
           // ghost stays under the finger after the shape transition.
@@ -2158,6 +2160,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             (_eventsCategoryListRowHeight(
                   context,
                   item: _FlatItem.solo(key as _UserCategory),
+                  liveEventCounts: _liveEventCounts,
                 ) /
                 2);
         final ghostGlobalY = globalPos.dy - rowGrabY;
@@ -2367,7 +2370,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final memberGroupId = draggingItem.isGroupMember
         ? draggingItem.groupId
         : null;
-    final slotTopY = _eventsCategoryListTopY(context, flatList, idx);
+    final slotTopY = _eventsCategoryListTopY(
+      context,
+      flatList,
+      idx,
+      _liveEventCounts,
+    );
     final localPos = box.globalToLocal(globalPos);
     _joinGroupDwellTimer?.cancel();
     _joinGroupDwellTimer = null;
@@ -2408,7 +2416,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final draggingItem = draggingIndex == -1
         ? _FlatItem.solo(cat)
         : flatListForGeometry[draggingIndex];
-    final rowHeight = _eventsCategoryListRowHeight(context, item: draggingItem);
+    final rowHeight = _eventsCategoryListRowHeight(
+      context,
+      item: draggingItem,
+      liveEventCounts: _liveEventCounts,
+    );
 
     // ── Cross-section (pin) detection ─────────────────────────────────────────
     // Only solo categories (not group members, not while in group-creation
@@ -2537,6 +2549,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         context,
         flatList,
         centerY,
+        _liveEventCounts,
       ).clamp(0, flatList.length - 1);
       final targetItem = flatList[targetIdx];
       final draggedItem = flatList.firstWhere(
@@ -2603,6 +2616,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       context,
       flatList,
       centerY,
+      _liveEventCounts,
     ).clamp(0, flatList.length - 1);
     final targetItem = flatList[targetIdx];
     final draggedItem = flatList[currentIdx];
@@ -2698,11 +2712,17 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           if (cIdx == -1) return;
           final cy =
               (_dragListTopY ?? 0.0) +
-              _eventsCategoryListRowHeight(context, item: draggingItem) / 2;
+              _eventsCategoryListRowHeight(
+                    context,
+                    item: draggingItem,
+                    liveEventCounts: _liveEventCounts,
+                  ) /
+                  2;
           final ti = _eventsCategoryListIndexAtY(
             context,
             fl,
             cy,
+            _liveEventCounts,
           ).clamp(0, fl.length - 1);
           final tItem = fl[ti];
           if (tItem.isGroupMember && tItem.groupId == joinGroupId) {
@@ -2865,6 +2885,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       context,
       flatList,
       centerY,
+      _liveEventCounts,
     );
 
     // Allow exit when dragged above the list top or below the list bottom.
@@ -3264,7 +3285,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final localPos = box.globalToLocal(globalPos);
     setState(() {
       _draggingGroupHeader = group;
-      final slotTopY = _eventsCategoryListTopY(context, flatList, idx);
+      final slotTopY = _eventsCategoryListTopY(
+        context,
+        flatList,
+        idx,
+        _liveEventCounts,
+      );
       _dragListTopY = slotTopY;
       _dragListGrabOffsetY = localPos.dy - slotTopY;
     });
@@ -3287,7 +3313,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final draggingItem = currentIdx == -1
         ? _FlatItem.groupHeader(group)
         : flatList[currentIdx];
-    final rowHeight = _eventsCategoryListRowHeight(context, item: draggingItem);
+    final rowHeight = _eventsCategoryListRowHeight(
+      context,
+      item: draggingItem,
+      liveEventCounts: _liveEventCounts,
+    );
     final centerY = rawTopY + rowHeight / 2;
 
     if (currentIdx == -1) {
@@ -3299,6 +3329,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       context,
       flatList,
       centerY,
+      _liveEventCounts,
     ).clamp(0, flatList.length - 1);
     final targetItem = flatList[targetIdx];
 
@@ -3387,7 +3418,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             (item) => item.isGroupHeader && item.group?.id == grp!.id,
             orElse: () => _FlatItem.groupHeader(grp!),
           );
-    final ghostHeight = _eventsCategoryListRowHeight(context, item: ghostItem);
+    final ghostHeight = _eventsCategoryListRowHeight(
+      context,
+      item: ghostItem,
+      liveEventCounts: _liveEventCounts,
+    );
 
     // ── Crossing up into pinned grid: tile ghost snapped to the live slot ─────
     if (_listDragCrossingToGrid && cat != null) {
@@ -3733,6 +3768,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       final rowH = _eventsCategoryListRowHeight(
         context,
         item: _FlatItem.solo(key),
+        liveEventCounts: _liveEventCounts,
       );
       final rowW = listBox?.size.width ?? box.size.width;
       final rowLeft = listGlobal?.dx ?? stackGlobal.dx;
@@ -6614,11 +6650,16 @@ class _PinnedUserTile extends StatelessWidget {
 // USER CATEGORY LIST
 // ══════════════════════════════════════════════════════════════════════════════
 
-TextStyle _eventsCategoryListTextStyle(double fontSize) => TextStyle(
+TextStyle _eventsCategoryListTextStyle(
+  double fontSize, {
+  FontWeight fontWeight = FontWeight.w400,
+  double letterSpacing = 0,
+}) => TextStyle(
   inherit: false,
   fontFamily: kSFProText,
   fontSize: fontSize,
-  fontWeight: FontWeight.w400,
+  fontWeight: fontWeight,
+  letterSpacing: letterSpacing,
   height: kLineHeight,
 );
 
@@ -6658,15 +6699,28 @@ double _eventsCategoryListRowHeight(
   BuildContext context, {
   Iterable<_FlatItem>? items,
   _FlatItem? item,
+  Map<String, int>? liveEventCounts,
 }) {
   final scaler = MediaQuery.textScalerOf(context);
   final viewportWidth = MediaQuery.sizeOf(context).width;
   final cardWidth = max(0.0, viewportWidth - 32.0);
-  final titleStyle = _eventsCategoryListTextStyle(16);
-  final subtitleStyle = _eventsCategoryListTextStyle(13);
-  final countStyle = _eventsCategoryListTextStyle(16);
-  final countWidth = _eventsMeasuredTextWidth('999', countStyle, scaler);
-  final trailingWidth = countWidth + 8 + 6 + scaler.scale(14) + 16;
+  final categoryTitleStyle = _eventsCategoryListTextStyle(
+    16,
+    letterSpacing: kTracking16,
+  );
+  final groupTitleStyle = _eventsCategoryListTextStyle(
+    16,
+    fontWeight: FontWeight.w600,
+    letterSpacing: kTracking16,
+  );
+  final subtitleStyle = _eventsCategoryListTextStyle(
+    13,
+    letterSpacing: -0.08,
+  );
+  final countStyle = _eventsCategoryListTextStyle(
+    16,
+    letterSpacing: kTracking16,
+  );
   const verticalPadding = 26.0; // 13 px top + 13 px bottom
   const subtitleGap = 2.0;
   const iconHeight = 34.0;
@@ -6674,6 +6728,18 @@ double _eventsCategoryListRowHeight(
     final label = current.category?.name ?? current.group?.name;
     if (label == null) return 64.0;
 
+    // Measure the same trailing label that the row actually renders. Using a
+    // fixed "999" width here makes rows with counts such as 0 or 7 reserve
+    // extra width, causing their subtitles to wrap earlier than the widget.
+    final trailingLabel = current.isGroupHeader
+        ? '${current.group?.memberIds.length ?? 0}'
+        : '${liveEventCounts?[current.category!.id] ?? 0}';
+    final trailingWidth =
+        _eventsMeasuredTextWidth(trailingLabel, countStyle, scaler) +
+        8 +
+        6 +
+        scaler.scale(14) +
+        16;
     final leftPad = current.isGroupMember ? 36.0 : 16.0;
     final textWidth = max(
       80.0,
@@ -6681,7 +6747,7 @@ double _eventsCategoryListRowHeight(
     );
     var textHeight = _eventsMeasuredTextHeight(
       label,
-      titleStyle,
+      current.isGroupHeader ? groupTitleStyle : categoryTitleStyle,
       scaler,
       textWidth,
     );
@@ -6714,10 +6780,15 @@ double _eventsCategoryListTopY(
   BuildContext context,
   List<_FlatItem> items,
   int index,
+  Map<String, int>? liveEventCounts,
 ) {
   var top = 0.0;
   for (var i = 0; i < index && i < items.length; i++) {
-    top += _eventsCategoryListRowHeight(context, item: items[i]);
+    top += _eventsCategoryListRowHeight(
+      context,
+      item: items[i],
+      liveEventCounts: liveEventCounts,
+    );
   }
   return top;
 }
@@ -6729,11 +6800,16 @@ int _eventsCategoryListIndexAtY(
   BuildContext context,
   List<_FlatItem> items,
   double y,
+  Map<String, int>? liveEventCounts,
 ) {
   if (y < 0) return -1;
   var top = 0.0;
   for (var i = 0; i < items.length; i++) {
-    top += _eventsCategoryListRowHeight(context, item: items[i]);
+    top += _eventsCategoryListRowHeight(
+      context,
+      item: items[i],
+      liveEventCounts: liveEventCounts,
+    );
     if (y < top) return i;
   }
   return items.length;
@@ -6870,7 +6946,11 @@ class _CategoryCard extends StatelessWidget {
       return 0.0;
     }
 
-    return _eventsCategoryListRowHeight(context, item: item);
+    return _eventsCategoryListRowHeight(
+      context,
+      item: item,
+      liveEventCounts: liveEventCounts,
+    );
   }
 
   /// Height used by AnimatedPositioned for the current slot.
@@ -6888,7 +6968,11 @@ class _CategoryCard extends StatelessWidget {
         expandingGroupIds.contains(item.groupId)) {
       return 0.0;
     }
-    return _eventsCategoryListRowHeight(context, item: item);
+    return _eventsCategoryListRowHeight(
+      context,
+      item: item,
+      liveEventCounts: liveEventCounts,
+    );
   }
 
   /// Whether the isFirst/isLast corner flags should treat this slot as hidden
@@ -6977,7 +7061,11 @@ class _CategoryCard extends StatelessWidget {
         ? dragLocalTopY!
         : _slotTopY(idx, context);
 
-    final itemHeight = _eventsCategoryListRowHeight(context, item: item);
+    final itemHeight = _eventsCategoryListRowHeight(
+      context,
+      item: item,
+      liveEventCounts: liveEventCounts,
+    );
     // Dragging row always occupies its own full slot so the gap stays visible.
     final slotH = isDragging ? itemHeight : _slotCurrentH(item, context);
 
