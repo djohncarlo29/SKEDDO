@@ -1906,7 +1906,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                 CupertinoIcons.ellipsis_circle,
                                                                                 size: 24,
                                                                                 color: accent,
-                                                                                weight: 0.4,
+                                                                                weight: 0.0,
                                                                               ),
                                                                             ),
                                                                           ),
@@ -2676,14 +2676,13 @@ class _MorphingMenuIcon extends StatelessWidget {
 class _MenuStroke extends StatelessWidget {
   final double width;
 
-  /// Stroke thickness in logical pixels.  Defaults to 1.86 px, which matches
-  /// search.svg / plus.svg (stroke-width 4 in a 56-unit viewBox at 26 px).
-  /// In chevron mode the caller passes a larger value to maintain visual mass.
+  /// Stroke thickness in logical pixels. Matches the thinner header icon
+  /// treatment used by the Day View and View Mode controls.
   final double height;
   final Color color;
   const _MenuStroke({
     this.width = 22,
-    this.height = 1.86,
+    this.height = 1.6,
     this.color = kAccentColor,
   });
 
