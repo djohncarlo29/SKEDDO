@@ -6,7 +6,7 @@
     <circle cx="161.46028" cy="366.0821"  r="2.4" fill="#000000"/>
     <circle cx="161.46028" cy="360"       r="2.4" fill="#000000"/>
     <path d="M161.0654,360h38.87723"
-          fill="none" stroke="#000000" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>
+          fill="none" stroke="#000000" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M169.03377,355.42319l-0.06393,-5.66092c0,-2 2,-4 4,-4h6.53144c2,0 4,2 4,4l-0.02715,5.44756"
           fill="none" stroke="#000000" stroke-width="2.7" stroke-linecap="butt" stroke-linejoin="miter"/>
     <path d="M183.51853,365.02399l-0.00609,5.37986c0,2 -2,4 -4,4h-6.53144c-2,0 -4,-2 -4,-4l-0.05711,-5.14019"
