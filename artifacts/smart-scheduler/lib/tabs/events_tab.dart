@@ -11393,7 +11393,7 @@ class _DcvSectionLabel extends StatelessWidget {
                 SFIcons.sf_chevron_down,
                 fontSize: 13,
                 color: accentColor,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
