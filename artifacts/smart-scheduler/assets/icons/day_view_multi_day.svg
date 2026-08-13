@@ -6,14 +6,14 @@
     <circle cx="161.46028" cy="366.0821"  r="2.4" fill="#000000"/>
     <circle cx="161.46028" cy="360"       r="2.4" fill="#000000"/>
     <path d="M161.0654,360h38.87723"
-          fill="none" stroke="#000000" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+          fill="none" stroke="#000000" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M169.03377,355.42319l-0.06393,-5.66092c0,-2 2,-4 4,-4h6.53144c2,0 4,2 4,4l-0.02715,5.44756"
-          fill="none" stroke="#000000" stroke-width="2.8" stroke-linecap="butt" stroke-linejoin="miter"/>
+          fill="none" stroke="#000000" stroke-width="2.7" stroke-linecap="butt" stroke-linejoin="miter"/>
     <path d="M183.51853,365.02399l-0.00609,5.37986c0,2 -2,4 -4,4h-6.53144c-2,0 -4,-2 -4,-4l-0.05711,-5.14019"
-          fill="none" stroke="#000000" stroke-width="2.8" stroke-linecap="butt" stroke-linejoin="round"/>
+          fill="none" stroke="#000000" stroke-width="2.7" stroke-linecap="butt" stroke-linejoin="round"/>
     <path d="M189.89074,355.22601l0.03658,-4.4445c0,-2.5 2.5,-5 5,-5l6.37771,0.03936"
-          fill="none" stroke="#000000" stroke-width="2.8" stroke-linecap="butt" stroke-linejoin="round"/>
+          fill="none" stroke="#000000" stroke-width="2.7" stroke-linecap="butt" stroke-linejoin="round"/>
     <path d="M201.32617,374.2185h-6.42589c-0.95944,0 -1.91887,-0.36821 -2.737,-0.96331c-1.31367,-0.95556 -2.263,-2.49612 -2.263,-4.03669l-0.00921,-4.27783"
-          fill="none" stroke="#000000" stroke-width="2.8" stroke-linecap="butt" stroke-linejoin="miter"/>
+          fill="none" stroke="#000000" stroke-width="2.7" stroke-linecap="butt" stroke-linejoin="miter"/>
   </g>
 </svg>
