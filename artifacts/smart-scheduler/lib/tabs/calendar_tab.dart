@@ -26,6 +26,11 @@ import 'events_tab.dart'
     show wrapSearchEventTileWithActions, wrapSearchEventTileWithPressScale;
 import '../widgets/smart_search_results.dart';
 
+void _dismissModalSheetFocus() {
+  NativeTextInput.unfocusAll();
+  FocusManager.instance.primaryFocus?.unfocus();
+}
+
 // ── Name tables ───────────────────────────────────────────────────────────────
 const _kMonthNames = [
   'January',
@@ -9921,161 +9926,165 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 const SizedBox(height: 12),
                 // ── Scrollable cards ──────────────────────────────────────────
                 Expanded(
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics(),
-                    ),
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-                    child: Column(
-                      children: [
-                        // Card 1 — Title + Subtitle
-                        _card([
-                          _textField(
-                            ctrl: _titleCtrl,
-                            focus: _titleFocus,
-                            placeholder: 'Title',
-                          ),
-                          _sep(),
-                          _textField(
-                            ctrl: _subtitleCtrl,
-                            focus: _subtitleFocus,
-                            placeholder: 'Subtitle',
-                            multiline: true,
-                            maxLinesOverride: 10,
-                          ),
-                        ]),
-                        const SizedBox(height: 16),
-                        // Card 2 — All-day / Starts / Ends / Unscheduled.
-                        // Unscheduled is always at the bottom.  When toggled ON,
-                        // the All-day + Starts + Ends block collapses above it via
-                        // SizeTransition; the separator between that block and
-                        // Unscheduled lives inside the transition so it disappears
-                        // with the rows, leaving only Unscheduled in the card.
-                        _card([
-                          // Scheduled rows collapse when Unscheduled is on.
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _dismissModalSheetFocus,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      ),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                      child: Column(
+                        children: [
+                          // Card 1 — Title + Subtitle
+                          _card([
+                            _textField(
+                              ctrl: _titleCtrl,
+                              focus: _titleFocus,
+                              placeholder: 'Title',
+                            ),
+                            _sep(),
+                            _textField(
+                              ctrl: _subtitleCtrl,
+                              focus: _subtitleFocus,
+                              placeholder: 'Subtitle',
+                              multiline: true,
+                              maxLinesOverride: 10,
+                            ),
+                          ]),
+                          const SizedBox(height: 16),
+                          // Card 2 — All-day / Starts / Ends / Unscheduled.
+                          // Unscheduled is always at the bottom.  When toggled ON,
+                          // the All-day + Starts + Ends block collapses above it via
+                          // SizeTransition; the separator between that block and
+                          // Unscheduled lives inside the transition so it disappears
+                          // with the rows, leaving only Unscheduled in the card.
+                          _card([
+                            // Scheduled rows collapse when Unscheduled is on.
+                            SizeTransition(
+                              sizeFactor: _schedRowsCtrl,
+                              axisAlignment: -1.0,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _switchRow('All-day', _allDay, _toggleAllDay),
+                                  _sep(),
+                                  _buildDateRow('Starts', _starts, 'starts'),
+                                  // Starts picker — slides in below the Starts row.
+                                  SizeTransition(
+                                    sizeFactor: _startsPickerCtrl,
+                                    axisAlignment: 1.0,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        _sep(),
+                                        _buildInlineDatePicker(),
+                                      ],
+                                    ),
+                                  ),
+                                  _sep(),
+                                  _buildDateRow('Ends', _ends, 'ends'),
+                                  // Ends picker — slides in below the Ends row.
+                                  SizeTransition(
+                                    sizeFactor: _endsPickerCtrl,
+                                    axisAlignment: 1.0,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        _sep(),
+                                        _buildInlineDatePicker(),
+                                      ],
+                                    ),
+                                  ),
+                                  // Separator between Ends and Unscheduled — collapses
+                                  // with the block so no orphan line remains.
+                                  _sep(),
+                                ],
+                              ),
+                            ),
+                            _switchRow(
+                              'Unscheduled',
+                              _unscheduled,
+                              _toggleUnscheduled,
+                            ),
+                          ]),
+                          const SizedBox(height: 16),
+                          // Card 3 — Starting Location + Destination + Travel Time
+                          // + conditional Travel Mode subcard.
+                          _buildLocationSection(),
+                          // Card 4 — Repeat + conditional End Repeat + End Date
+                          // + inline calendar picker + Custom subsheet.
+                          // Wrapped in SizeTransition so it animates away (rather
+                          // than snapping) when Unscheduled is toggled on.
                           SizeTransition(
-                            sizeFactor: _schedRowsCtrl,
-                            axisAlignment: -1.0,
+                            sizeFactor: _repeatCardCtrl,
+                            axisAlignment: 1.0,
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                _switchRow('All-day', _allDay, _toggleAllDay),
-                                _sep(),
-                                _buildDateRow('Starts', _starts, 'starts'),
-                                // Starts picker — slides in below the Starts row.
-                                SizeTransition(
-                                  sizeFactor: _startsPickerCtrl,
-                                  axisAlignment: 1.0,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      _sep(),
-                                      _buildInlineDatePicker(),
-                                    ],
-                                  ),
-                                ),
-                                _sep(),
-                                _buildDateRow('Ends', _ends, 'ends'),
-                                // Ends picker — slides in below the Ends row.
-                                SizeTransition(
-                                  sizeFactor: _endsPickerCtrl,
-                                  axisAlignment: 1.0,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      _sep(),
-                                      _buildInlineDatePicker(),
-                                    ],
-                                  ),
-                                ),
-                                // Separator between Ends and Unscheduled — collapses
-                                // with the block so no orphan line remains.
-                                _sep(),
+                                const SizedBox(height: 16),
+                                _buildRepeatSection(),
                               ],
                             ),
                           ),
-                          _switchRow(
-                            'Unscheduled',
-                            _unscheduled,
-                            _toggleUnscheduled,
+                          const SizedBox(height: 16),
+                          // Card 5 — Category (opens ActionMenuOverlay).
+                          _card([_buildCategoryRow()], stadium: true),
+                          // Card 6 — Alert (normal events) / Reminder (Unscheduled).
+                          // The two sections cross-fade via _alertCardCtrl and
+                          // _reminderCardCtrl; each carries its own top SizedBox
+                          // so the gap disappears when the card collapses.
+                          SizeTransition(
+                            sizeFactor: _alertCardCtrl,
+                            axisAlignment: 1.0,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(height: 16),
+                                _buildAlertsSection(),
+                              ],
+                            ),
                           ),
-                        ]),
-                        const SizedBox(height: 16),
-                        // Card 3 — Starting Location + Destination + Travel Time
-                        // + conditional Travel Mode subcard.
-                        _buildLocationSection(),
-                        // Card 4 — Repeat + conditional End Repeat + End Date
-                        // + inline calendar picker + Custom subsheet.
-                        // Wrapped in SizeTransition so it animates away (rather
-                        // than snapping) when Unscheduled is toggled on.
-                        SizeTransition(
-                          sizeFactor: _repeatCardCtrl,
-                          axisAlignment: 1.0,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(height: 16),
-                              _buildRepeatSection(),
+                          SizeTransition(
+                            sizeFactor: _reminderCardCtrl,
+                            axisAlignment: 1.0,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(height: 16),
+                                _buildReminderSection(),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // Card 7 — attached files + "Add attachment…"
+                          _card([
+                            for (int i = 0; i < _attachments.length; i++) ...[
+                              _buildAttachmentFileRow(i),
+                              _sep(),
                             ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        // Card 5 — Category (opens ActionMenuOverlay).
-                        _card([_buildCategoryRow()], stadium: true),
-                        // Card 6 — Alert (normal events) / Reminder (Unscheduled).
-                        // The two sections cross-fade via _alertCardCtrl and
-                        // _reminderCardCtrl; each carries its own top SizedBox
-                        // so the gap disappears when the card collapses.
-                        SizeTransition(
-                          sizeFactor: _alertCardCtrl,
-                          axisAlignment: 1.0,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(height: 16),
-                              _buildAlertsSection(),
-                            ],
-                          ),
-                        ),
-                        SizeTransition(
-                          sizeFactor: _reminderCardCtrl,
-                          axisAlignment: 1.0,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(height: 16),
-                              _buildReminderSection(),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        // Card 7 — attached files + "Add attachment…"
-                        _card([
-                          for (int i = 0; i < _attachments.length; i++) ...[
-                            _buildAttachmentFileRow(i),
+                            _buildAttachmentRow(),
+                          ], stadium: _attachments.isEmpty),
+                          const SizedBox(height: 16),
+                          // Card 8 — URL + Notes
+                          _card([
+                            _textField(
+                              ctrl: _urlCtrl,
+                              focus: _urlFocus,
+                              placeholder: 'URL',
+                            ),
                             _sep(),
-                          ],
-                          _buildAttachmentRow(),
-                        ], stadium: _attachments.isEmpty),
-                        const SizedBox(height: 16),
-                        // Card 8 — URL + Notes
-                        _card([
-                          _textField(
-                            ctrl: _urlCtrl,
-                            focus: _urlFocus,
-                            placeholder: 'URL',
-                          ),
-                          _sep(),
-                          _textField(
-                            ctrl: _notesCtrl,
-                            focus: _notesFocus,
-                            placeholder: 'Notes',
-                            multiline: true,
-                            maxLinesOverride: 10,
-                            minLinesOverride: 5,
-                          ),
-                        ]),
-                      ],
+                            _textField(
+                              ctrl: _notesCtrl,
+                              focus: _notesFocus,
+                              placeholder: 'Notes',
+                              multiline: true,
+                              maxLinesOverride: 10,
+                              minLinesOverride: 5,
+                            ),
+                          ]),
+                        ],
+                      ),
                     ),
                   ),
                 ),

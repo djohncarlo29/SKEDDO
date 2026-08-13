@@ -48,6 +48,11 @@ int _isoWeekNumber(DateTime date) {
 // ── shared card constants ─────────────────────────────────────────────────────
 const _kCornerRadius = kSbCornerRadius;
 
+void _dismissModalSheetFocus() {
+  NativeTextInput.unfocusAll();
+  FocusManager.instance.primaryFocus?.unfocus();
+}
+
 BorderSide _darkModeGhostBorder(
   BuildContext context, {
   bool suppress = false,
@@ -8008,221 +8013,225 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
               const SizedBox(height: 12),
               // ── Card ─────────────────────────────────────────────────────
               Expanded(
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-                  child: Container(
-                    decoration: ShapeDecoration(
-                      color: resolveThemeColor(kModalCard, context),
-                      shape: BoundedContinuousRectangleBorder(
-                        borderRadius: BorderRadius.circular(kCardCornerRadius),
-                      ),
-                      shadows: resolveThemeShadows(kCardShadow, context),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _dismissModalSheetFocus,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
                     ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // ── Row 1: Name field ─────────────────────────────
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                          child: Stack(
-                            alignment: Alignment.centerLeft,
-                            children: [
-                              // Animated placeholder: slides 4 px right on
-                              // focus, matching the Location field behaviour.
-                              AnimatedBuilder(
-                                animation: Listenable.merge([
-                                  _nameCtrl,
-                                  _nameFocus,
-                                ]),
-                                builder: (_, __) {
-                                  if (_nameCtrl.text.isNotEmpty)
-                                    return const SizedBox.shrink();
-                                  return Positioned.fill(
-                                    child: IgnorePointer(
-                                      child: Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: AnimatedContainer(
-                                          duration: const Duration(
-                                            milliseconds: 180,
-                                          ),
-                                          curve: Curves.easeOut,
-                                          transform: Matrix4.translationValues(
-                                            _nameFocus.hasFocus ? 4.0 : 0.0,
-                                            0,
-                                            0,
-                                          ),
-                                          child: Text(
-                                            'Group Name',
-                                            style: TextStyle(
-                                              inherit: false,
-                                              color: resolveThemeColor(
-                                                kTertiaryLabel,
-                                                context,
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                    child: Container(
+                      decoration: ShapeDecoration(
+                        color: resolveThemeColor(kModalCard, context),
+                        shape: BoundedContinuousRectangleBorder(
+                          borderRadius: BorderRadius.circular(kCardCornerRadius),
+                        ),
+                        shadows: resolveThemeShadows(kCardShadow, context),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // ── Row 1: Name field ─────────────────────────────
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            child: Stack(
+                              alignment: Alignment.centerLeft,
+                              children: [
+                                // Animated placeholder: slides 4 px right on
+                                // focus, matching the Location field behaviour.
+                                AnimatedBuilder(
+                                  animation: Listenable.merge([
+                                    _nameCtrl,
+                                    _nameFocus,
+                                  ]),
+                                  builder: (_, __) {
+                                    if (_nameCtrl.text.isNotEmpty)
+                                      return const SizedBox.shrink();
+                                    return Positioned.fill(
+                                      child: IgnorePointer(
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: AnimatedContainer(
+                                            duration: const Duration(
+                                              milliseconds: 180,
+                                            ),
+                                            curve: Curves.easeOut,
+                                            transform: Matrix4.translationValues(
+                                              _nameFocus.hasFocus ? 4.0 : 0.0,
+                                              0,
+                                              0,
+                                            ),
+                                            child: Text(
+                                              'Group Name',
+                                              style: TextStyle(
+                                                inherit: false,
+                                                color: resolveThemeColor(
+                                                  kTertiaryLabel,
+                                                  context,
+                                                ),
+                                                fontSize: 17,
+                                                fontFamily: kSFProText,
+                                                fontWeight: FontWeight.w400,
+                                                letterSpacing: kTracking17,
+                                                height: kLineHeight,
                                               ),
-                                              fontSize: 17,
-                                              fontFamily: kSFProText,
-                                              fontWeight: FontWeight.w400,
-                                              letterSpacing: kTracking17,
-                                              height: kLineHeight,
                                             ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              ),
-                              // CupertinoTheme ensures selection handles
-                              // use the current accent, matching the cursor.
-                              CupertinoTheme(
-                                data: CupertinoTheme.of(context).copyWith(
-                                  primaryColor: resolveAccentColor(context),
+                                    );
+                                  },
                                 ),
-                                child: DefaultSelectionStyle(
-                                  selectionColor: resolveAccentColor(
-                                    context,
-                                  ).withOpacity(0.20),
-                                  child: CupertinoTextField(
-                                    controller: _nameCtrl,
-                                    focusNode: _nameFocus,
-                                    placeholder: '',
-                                    style: TextStyle(
-                                      inherit: false,
-                                      color: resolveThemeColor(
-                                        kPrimaryLabel,
-                                        context,
+                                // CupertinoTheme ensures selection handles
+                                // use the current accent, matching the cursor.
+                                CupertinoTheme(
+                                  data: CupertinoTheme.of(context).copyWith(
+                                    primaryColor: resolveAccentColor(context),
+                                  ),
+                                  child: DefaultSelectionStyle(
+                                    selectionColor: resolveAccentColor(
+                                      context,
+                                    ).withOpacity(0.20),
+                                    child: CupertinoTextField(
+                                      controller: _nameCtrl,
+                                      focusNode: _nameFocus,
+                                      placeholder: '',
+                                      style: TextStyle(
+                                        inherit: false,
+                                        color: resolveThemeColor(
+                                          kPrimaryLabel,
+                                          context,
+                                        ),
+                                        fontSize: 17,
+                                        fontFamily: kSFProText,
+                                        fontWeight: FontWeight.w400,
+                                        letterSpacing: kTracking17,
+                                        height: kLineHeight,
                                       ),
-                                      fontSize: 17,
-                                      fontFamily: kSFProText,
-                                      fontWeight: FontWeight.w400,
-                                      letterSpacing: kTracking17,
-                                      height: kLineHeight,
+                                      cursorColor: resolveAccentColor(context),
+                                      // Right padding leaves room for the clear button.
+                                      padding: const EdgeInsets.only(right: 30),
+                                      decoration: null,
+                                      textCapitalization:
+                                          TextCapitalization.sentences,
+                                      textInputAction: TextInputAction.done,
+                                      onChanged: (_) => setState(() {}),
                                     ),
-                                    cursorColor: resolveAccentColor(context),
-                                    // Right padding leaves room for the clear button.
-                                    padding: const EdgeInsets.only(right: 30),
-                                    decoration: null,
-                                    textCapitalization:
-                                        TextCapitalization.sentences,
-                                    textInputAction: TextInputAction.done,
-                                    onChanged: (_) => setState(() {}),
                                   ),
                                 ),
-                              ),
-                              // Clear button — visible only when text is present.
-                              AnimatedBuilder(
-                                animation: _nameCtrl,
-                                builder: (_, __) {
-                                  if (_nameCtrl.text.isEmpty)
-                                    return const SizedBox.shrink();
-                                  return Positioned(
-                                    right: 0,
-                                    top: 0,
-                                    bottom: 0,
-                                    child: GestureDetector(
-                                      behavior: HitTestBehavior.opaque,
-                                      onTap: () {
-                                        _nameCtrl.clear();
-                                        setState(() {});
-                                      },
-                                      child: const Padding(
-                                        padding: EdgeInsets.only(left: 8),
-                                        child: Icon(
-                                          kSearchClearCircleIcon,
-                                          color: kEmptyStateIcon,
-                                          size: 18,
+                                // Clear button — visible only when text is present.
+                                AnimatedBuilder(
+                                  animation: _nameCtrl,
+                                  builder: (_, __) {
+                                    if (_nameCtrl.text.isEmpty)
+                                      return const SizedBox.shrink();
+                                    return Positioned(
+                                      right: 0,
+                                      top: 0,
+                                      bottom: 0,
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: () {
+                                          _nameCtrl.clear();
+                                          setState(() {});
+                                        },
+                                        child: const Padding(
+                                          padding: EdgeInsets.only(left: 8),
+                                          child: Icon(
+                                            kSearchClearCircleIcon,
+                                            color: kEmptyStateIcon,
+                                            size: 18,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        // Hairline separator
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Container(
-                            height: 0.5,
-                            color: resolveThemeColor(kSeparatorColor, context),
+                          // Hairline separator
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Container(
+                              height: 0.5,
+                              color: resolveThemeColor(kSeparatorColor, context),
+                            ),
                           ),
-                        ),
-                        // ── Row 2: Include picker ─────────────────────────
-                        Builder(
-                          builder: (rowCtx) => GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => _showIncludePicker(rowCtx),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 14,
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    'Include',
-                                    style: TextStyle(
-                                      inherit: false,
-                                      color: resolveThemeColor(
-                                        kPrimaryLabel,
-                                        rowCtx,
+                          // ── Row 2: Include picker ─────────────────────────
+                          Builder(
+                            builder: (rowCtx) => GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _showIncludePicker(rowCtx),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Include',
+                                      style: TextStyle(
+                                        inherit: false,
+                                        color: resolveThemeColor(
+                                          kPrimaryLabel,
+                                          rowCtx,
+                                        ),
+                                        fontSize: 17,
+                                        fontFamily: kSFProText,
+                                        fontWeight: FontWeight.w400,
+                                        letterSpacing: kTracking17,
+                                        height: kLineHeight,
                                       ),
-                                      fontSize: 17,
-                                      fontFamily: kSFProText,
-                                      fontWeight: FontWeight.w400,
-                                      letterSpacing: kTracking17,
-                                      height: kLineHeight,
                                     ),
-                                  ),
-                                  SizedBox(width: 25),
-                                  Expanded(
-                                    child: AnimatedBuilder(
-                                      animation: _nameCtrl,
-                                      builder: (_, __) => Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.end,
-                                        children: [
-                                          Text(
-                                            includeValue,
-                                            style: TextStyle(
-                                              inherit: false,
+                                    SizedBox(width: 25),
+                                    Expanded(
+                                      child: AnimatedBuilder(
+                                        animation: _nameCtrl,
+                                        builder: (_, __) => Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                              includeValue,
+                                              style: TextStyle(
+                                                inherit: false,
+                                                color: resolveThemeColor(
+                                                  kSecondaryLabel,
+                                                  rowCtx,
+                                                ),
+                                                fontSize: 15,
+                                                fontFamily: kSFProText,
+                                                fontWeight: FontWeight.w400,
+                                                letterSpacing: kTracking17,
+                                                height: kLineHeight,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            SplitChevronUpDown(
                                               color: resolveThemeColor(
                                                 kSecondaryLabel,
                                                 rowCtx,
                                               ),
-                                              fontSize: 15,
-                                              fontFamily: kSFProText,
-                                              fontWeight: FontWeight.w400,
-                                              letterSpacing: kTracking17,
-                                              height: kLineHeight,
                                             ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          SplitChevronUpDown(
-                                            color: resolveThemeColor(
-                                              kSecondaryLabel,
-                                              rowCtx,
-                                            ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -9450,163 +9459,177 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       // Keep the authored 48 px row at normal/compact sizes, but let both
       // Dynamic Type and the entered rule text grow the row naturally.
       final rowHeight = max(48.0, contentHeight + 20.0);
-      return SizedBox(
-        height: rowHeight,
-        child: Padding(
-          padding: const EdgeInsets.only(left: 16, right: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: rowHeight,
-                  child: Stack(
-                    alignment: Alignment.topLeft,
-                    children: [
-                      // Keep the placeholder in the same top-aligned position
-                      // as entered rule text. CupertinoTextField's built-in
-                      // placeholder is vertically centred when expands is true,
-                      // which pushes wrapped Dynamic Type text down and clips
-                      // its second line.
-                      AnimatedBuilder(
-                        animation: Listenable.merge([
-                          _smartDescriptionCtrl,
-                          _smartDescriptionFocus,
-                        ]),
-                        builder: (_, __) {
-                          if (_smartDescriptionCtrl.text.isNotEmpty) {
-                            return const SizedBox.shrink();
-                          }
-                          return Positioned.fill(
-                            child: IgnorePointer(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                ),
-                                child: Align(
-                                  alignment: Alignment.topLeft,
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 180),
-                                    curve: Curves.easeOut,
-                                    transform: Matrix4.translationValues(
-                                      _smartDescriptionFocus.hasFocus
-                                          ? 4.0
-                                          : 0.0,
-                                      0,
-                                      0,
-                                    ),
-                                    child: Text(
-                                      'Describe what belongs here…',
-                                      style: _kPlaceholderStyle,
-                                      softWrap: true,
+      // Dynamic Type can make the empty placeholder two lines while the first
+      // entered character measures as one. Animate that height change so the
+      // rule row and its trailing action settle instead of snapping.
+      return AnimatedSize(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.topCenter,
+        child: SizedBox(
+          height: rowHeight,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 16, right: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: rowHeight,
+                    child: Stack(
+                      alignment: Alignment.topLeft,
+                      children: [
+                        // Keep the placeholder in the same top-aligned position
+                        // as entered rule text. CupertinoTextField's built-in
+                        // placeholder is vertically centred when expands is true,
+                        // which pushes wrapped Dynamic Type text down and clips
+                        // its second line.
+                        AnimatedBuilder(
+                          animation: Listenable.merge([
+                            _smartDescriptionCtrl,
+                            _smartDescriptionFocus,
+                          ]),
+                          builder: (_, __) {
+                            if (_smartDescriptionCtrl.text.isNotEmpty) {
+                              return const SizedBox.shrink();
+                            }
+                            return Positioned.fill(
+                              child: IgnorePointer(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                  ),
+                                  child: Align(
+                                    alignment: Alignment.topLeft,
+                                    child: AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
+                                      curve: Curves.easeOut,
+                                      transform: Matrix4.translationValues(
+                                        _smartDescriptionFocus.hasFocus
+                                            ? 4.0
+                                            : 0.0,
+                                        0,
+                                        0,
+                                      ),
+                                      child: Text(
+                                        'Describe what belongs here…',
+                                        style: _kPlaceholderStyle,
+                                        softWrap: true,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
+                            );
+                          },
+                        ),
+                        CupertinoTheme(
+                          data: CupertinoTheme.of(
+                            context,
+                          ).copyWith(primaryColor: _resolvedSelectedColor),
+                          child: DefaultSelectionStyle(
+                            selectionColor: _resolvedSelectedColor.withOpacity(
+                              0.20,
                             ),
-                          );
-                        },
-                      ),
-                      CupertinoTheme(
-                        data: CupertinoTheme.of(
-                          context,
-                        ).copyWith(primaryColor: _resolvedSelectedColor),
-                        child: DefaultSelectionStyle(
-                          selectionColor: _resolvedSelectedColor.withOpacity(
-                            0.20,
-                          ),
-                          child: CupertinoTextField(
-                            controller: _smartDescriptionCtrl,
-                            focusNode: _smartDescriptionFocus,
-                            // The animated overlay above is the only
-                            // placeholder, so it can stay top-aligned and
-                            // animate with focus.
-                            placeholder: '',
-                            placeholderStyle: _kPlaceholderStyle,
-                            style: _kFieldStyle,
-                            cursorColor: _resolvedSelectedColor,
-                            selectionControls: _selectionControls,
-                            expands: true,
-                            maxLines: null,
-                            minLines: null,
-                            textAlignVertical: TextAlignVertical.top,
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: null,
-                            textCapitalization: TextCapitalization.sentences,
-                            textInputAction: TextInputAction.done,
-                            onChanged: (_) =>
-                                setState(() => _smartDescriptionSaved = false),
+                            child: CupertinoTextField(
+                              controller: _smartDescriptionCtrl,
+                              focusNode: _smartDescriptionFocus,
+                              // The animated overlay above is the only
+                              // placeholder, so it can stay top-aligned and
+                              // animate with focus.
+                              placeholder: '',
+                              placeholderStyle: _kPlaceholderStyle,
+                              style: _kFieldStyle,
+                              cursorColor: _resolvedSelectedColor,
+                              selectionControls: _selectionControls,
+                              expands: true,
+                              maxLines: null,
+                              minLines: null,
+                              textAlignVertical: TextAlignVertical.top,
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: null,
+                              textCapitalization: TextCapitalization.sentences,
+                              textInputAction: TextInputAction.done,
+                              onChanged: (_) => setState(
+                                () => _smartDescriptionSaved = false,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              // Crossfades between the save-checkmark (typing / unsaved) and the
-              // clear-circle (rule saved), giving clear visual differentiation
-              // between the two states.
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                transitionBuilder: (child, animation) =>
-                    FadeTransition(opacity: animation, child: child),
-                child: _smartDescriptionSaved
-                    ? GestureDetector(
-                        key: const ValueKey('smartdesc-clear'),
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          _smartDescriptionCtrl.clear();
-                          _smartDescriptionFocus.requestFocus();
-                          setState(() => _smartDescriptionSaved = false);
-                        },
-                        child: const SizedBox(
-                          width: 28,
-                          height: 28,
-                          child: Center(
-                            child: Icon(
-                              kSearchClearCircleIcon,
-                              color: kEmptyStateIcon,
-                              size: 17,
-                            ),
-                          ),
-                        ),
-                      )
-                    : GelBloomButton(
-                        key: const ValueKey('smartdesc-checkmark'),
-                        peakScale: 1.14,
-                        onTap: () {
-                          FocusManager.instance.primaryFocus?.unfocus();
-                          setState(() => _smartDescriptionSaved = true);
-                        },
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: _smartDescriptionCtrl.text.trim().isEmpty
-                                ? kTertiaryLabel
-                                : _resolvedSelectedColor,
-                            shape: BoxShape.circle,
-                            boxShadow: resolveThemeShadows(const [
-                              BoxShadow(
-                                color: Color(0x1F000000),
-                                blurRadius: 6,
-                                offset: Offset(0, 2),
+                const SizedBox(width: 10),
+                // Crossfades between the save-checkmark (typing / unsaved) and the
+                // clear-circle (rule saved), giving clear visual differentiation
+                // between the two states.
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  transitionBuilder: (child, animation) =>
+                      FadeTransition(opacity: animation, child: child),
+                  child: _smartDescriptionSaved
+                      ? GestureDetector(
+                          key: const ValueKey('smartdesc-clear'),
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            _smartDescriptionCtrl.clear();
+                            _smartDescriptionFocus.requestFocus();
+                            setState(() => _smartDescriptionSaved = false);
+                          },
+                          child: const SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: Center(
+                              child: Icon(
+                                kSearchClearCircleIcon,
+                                color: kEmptyStateIcon,
+                                size: 17,
                               ),
-                            ], context),
+                            ),
                           ),
-                          child: const Center(
-                            child: SearchWeightedIcon(
-                              SFIcons.sf_checkmark,
-                              size: 13,
-                              color: CupertinoColors.white,
-                              weight: kGelBloomIconWeight,
+                        )
+                      : GelBloomButton(
+                          key: const ValueKey('smartdesc-checkmark'),
+                          peakScale: 1.14,
+                          onTap: () {
+                            FocusManager.instance.primaryFocus?.unfocus();
+                            setState(() => _smartDescriptionSaved = true);
+                          },
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: _smartDescriptionCtrl.text.trim().isEmpty
+                                  ? kTertiaryLabel
+                                  : _resolvedSelectedColor,
+                              shape: BoxShape.circle,
+                              boxShadow: resolveThemeShadows(const [
+                                BoxShadow(
+                                  color: Color(0x1F000000),
+                                  blurRadius: 6,
+                                  offset: Offset(0, 2),
+                                ),
+                              ], context),
+                            ),
+                            child: const Center(
+                              child: Transform.translate(
+                                offset: const Offset(-0.5, -0.5),
+                                child: SearchWeightedIcon(
+                                  SFIcons.sf_checkmark,
+                                  size: 13,
+                                  color: CupertinoColors.white,
+                                  weight: kGelBloomIconWeight,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -10973,71 +10996,75 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               const SizedBox(height: 12),
               // ── Scrollable cards ──────────────────────────────────────────
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-                  child: Column(
-                    children: [
-                      _buildIdentityCard(),
-                      if (!_isSmart) ...[
-                        const SizedBox(height: 18),
-                        _buildCategoryTypeCard(),
-                        // Dynamic context footer — AnimatedSize clips from the
-                        // top so it follows the Category Type card naturally.
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 180),
-                          curve: Curves.easeOutCubic,
-                          alignment: Alignment.topCenter,
-                          child:
-                              (_categoryType == 'Shopping List' ||
-                                  _categoryType == 'Smart Category')
-                              ? SizedBox(
-                                  width: double.infinity,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(
-                                      top: 8,
-                                      left: 16,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _dismissModalSheetFocus,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                    child: Column(
+                      children: [
+                        _buildIdentityCard(),
+                        if (!_isSmart) ...[
+                          const SizedBox(height: 18),
+                          _buildCategoryTypeCard(),
+                          // Dynamic context footer — AnimatedSize clips from the
+                          // top so it follows the Category Type card naturally.
+                          AnimatedSize(
+                            duration: const Duration(milliseconds: 180),
+                            curve: Curves.easeOutCubic,
+                            alignment: Alignment.topCenter,
+                            child:
+                                (_categoryType == 'Shopping List' ||
+                                    _categoryType == 'Smart Category')
+                                ? SizedBox(
+                                    width: double.infinity,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: 8,
+                                        left: 16,
+                                      ),
+                                      child: Text(
+                                        _categoryType == 'Shopping List'
+                                            ? _kFooterGroceries
+                                            : _kFooterSmartCategory,
+                                        style: _kContextFooterStyle(context),
+                                        textAlign: TextAlign.left,
+                                      ),
                                     ),
-                                    child: Text(
-                                      _categoryType == 'Shopping List'
-                                          ? _kFooterGroceries
-                                          : _kFooterSmartCategory,
-                                      style: _kContextFooterStyle(context),
-                                      textAlign: TextAlign.left,
-                                    ),
+                                  )
+                                : const SizedBox(
+                                    width: double.infinity,
+                                    height: 0,
                                   ),
-                                )
-                              : const SizedBox(
-                                  width: double.infinity,
-                                  height: 0,
-                                ),
-                        ),
-                        SizeTransition(
-                          sizeFactor: ReverseAnimation(_smartCategoryCtrl),
-                          axisAlignment: -1.0,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(height: 18),
-                              _buildLocationSection(),
-                              const SizedBox(height: 18),
-                              _buildRepeatSection(),
-                              const SizedBox(height: 18),
-                              _buildAlertsSection(),
-                            ],
                           ),
-                        ),
-                      ],
-                      // The built-in fixed smart tiles intentionally stop
-                      // after Identity and Color. User-created Smart
-                      // Categories still show Category Type and their rule
-                      // row, but omit Location, Repeat, and Alerts.
-                      const SizedBox(height: 18),
-                      _buildColorCard(),
-                      if (!_isSmart) ...[
+                          SizeTransition(
+                            sizeFactor: ReverseAnimation(_smartCategoryCtrl),
+                            axisAlignment: -1.0,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(height: 18),
+                                _buildLocationSection(),
+                                const SizedBox(height: 18),
+                                _buildRepeatSection(),
+                                const SizedBox(height: 18),
+                                _buildAlertsSection(),
+                              ],
+                            ),
+                          ),
+                        ],
+                        // The built-in fixed smart tiles intentionally stop
+                        // after Identity and Color. User-created Smart
+                        // Categories still show Category Type and their rule
+                        // row, but omit Location, Repeat, and Alerts.
                         const SizedBox(height: 18),
-                        _buildIconCard(),
+                        _buildColorCard(),
+                        if (!_isSmart) ...[
+                          const SizedBox(height: 18),
+                          _buildIconCard(),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
