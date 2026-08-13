@@ -1324,7 +1324,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                 opacity: _clearOpacity.value,
                                 child: Icon(
                                   CupertinoIcons.clear,
-                                  size: 21,
+                                  size: 20,
                                   weight: 300.0,
                                   color: secondaryLabel,
                                 ),
