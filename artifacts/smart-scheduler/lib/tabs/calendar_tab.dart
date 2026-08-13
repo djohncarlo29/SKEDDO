@@ -8316,7 +8316,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                               dateTimePickerTextStyle: TextStyle(
                                 inherit: false,
                                 fontFamily: kSFProText,
-                                fontSize: 14,
+                                fontSize: 16,
                                 color: resolveThemeColor(
                                   kPrimaryLabel,
                                   context,
@@ -9730,7 +9730,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                               dateTimePickerTextStyle: TextStyle(
                                 inherit: false,
                                 fontFamily: kSFProText,
-                                fontSize: 14,
+                                fontSize: 16,
                                 color: resolveThemeColor(
                                   kPrimaryLabel,
                                   context,

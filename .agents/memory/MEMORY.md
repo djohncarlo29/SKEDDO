@@ -52,3 +52,4 @@
 - [Temporal composition API compatibility](temporal-composition-api.md) — shared event temporal composition must use the canonical model copy API and keep date/time precision enums distinct.
 - [Search fuzzy equal-length guard](search-fuzzy-equal-length.md) — equal-length typo comparisons must not select the target token as both sides of prefix logic.
 - [Cupertino selection styling across Shorebird versions](cupertino-selection-style-shorebird.md) — use DefaultSelectionStyle plus CupertinoTheme; Shorebird's CupertinoTextField has no selectionColor parameter.
+- [Targeted style patch context](targeted-style-patch-context.md) — repeated font-size edits need unique surrounding labels plus a diff check to prevent adjacent UI styles changing.

@@ -9993,7 +9993,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                               dateTimePickerTextStyle: TextStyle(
                                 inherit: false,
                                 fontFamily: kSFProText,
-                                fontSize: 14,
+                                fontSize: 16,
                                 color: resolveThemeColor(
                                   kPrimaryLabel,
                                   context,
