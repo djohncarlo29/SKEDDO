@@ -1200,6 +1200,12 @@ class _AccentSwatchRowState extends State<_AccentSwatchRow> {
 }
 
 // ── Trailing widgets ──────────────────────────────────────────────────────────
+double _settingsChevronFontSize(BuildContext context) {
+  // FixedSFIcon intentionally disables inherited scaling, so apply the
+  // system text scaler explicitly to match the adjacent setting value.
+  return MediaQuery.textScalerOf(context).scale(14);
+}
+
 class _ChevronTrailing extends StatelessWidget {
   const _ChevronTrailing();
 
@@ -1207,7 +1213,7 @@ class _ChevronTrailing extends StatelessWidget {
   Widget build(BuildContext context) {
     return FixedSFIcon(
       SFIcons.sf_chevron_right,
-      fontSize: 14,
+      fontSize: _settingsChevronFontSize(context),
       fontWeight: FontWeight.w500,
       color: resolveThemeColor(kTertiaryLabel, context),
     );
@@ -1235,7 +1241,7 @@ class _ValueTrailing extends StatelessWidget {
         const SizedBox(width: 4),
         FixedSFIcon(
           SFIcons.sf_chevron_right,
-          fontSize: 14,
+          fontSize: _settingsChevronFontSize(context),
           fontWeight: FontWeight.w600,
           color: resolveThemeColor(kTertiaryLabel, context),
         ),
@@ -1276,7 +1282,7 @@ class _ColorTrailing extends StatelessWidget {
         const SizedBox(width: 4),
         FixedSFIcon(
           SFIcons.sf_chevron_right,
-          fontSize: 14,
+          fontSize: _settingsChevronFontSize(context),
           fontWeight: FontWeight.w600,
           color: resolveThemeColor(kTertiaryLabel, context),
         ),
