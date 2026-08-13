@@ -2745,12 +2745,18 @@ class _TabItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SvgPicture.asset(
-              icon,
-              width: 24,
-              height: 24,
-              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-            ),
+             ImageFiltered(
+               imageFilter: ui.ImageFilter.erode(
+                 radiusX: 0.15,
+                 radiusY: 0.15,
+               ),
+               child: SvgPicture.asset(
+                 icon,
+                 width: 24,
+                 height: 24,
+                 colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+               ),
+             ),
             SizedBox(height: 3),
             Text(
               label,
