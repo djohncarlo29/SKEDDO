@@ -39,7 +39,7 @@ class _ColumnsPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size s) {
-    const sw = 1.5;
+    const sw = 1.4;
     const r = 2.5; // outer corner radius
     const inset = 2.8; // gap between outer border and cell grid
     const gap = 1.0; // gap between cells
@@ -320,7 +320,7 @@ class _ListPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size s) {
-    const sw = 1.4;
+    const sw = 1.6;
     final st = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
@@ -350,7 +350,7 @@ class _ListPainter extends CustomPainter {
     // ── Two bullet rows — slightly narrower than screen, centred ────────────
     const vGap = 1.6;
     final rowH = (s.height - screenH - vGap * 3) / 2;
-    final thinRowH = rowH * 0.88; // slightly thinner than full height
+    final thinRowH = rowH * 0.72; // slimmer bullet dots and bars
     final dotR =
         thinRowH *
         0.64; // bullet circle radius — slightly larger than bar height
