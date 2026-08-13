@@ -1043,7 +1043,7 @@ class _OptionRowState extends State<_OptionRow> {
             if (widget.selected)
               FixedSFIcon(
                 SFIcons.sf_checkmark,
-                fontSize: 17,
+                fontSize: _settingsScaledFontSize(context, 17),
                 fontWeight: FontWeight.w500,
                 color: widget.accentColor,
               ),
@@ -1186,7 +1186,7 @@ class _AccentSwatchRowState extends State<_AccentSwatchRow> {
             if (widget.selected)
               FixedSFIcon(
                 SFIcons.sf_checkmark,
-                fontSize: 17,
+                fontSize: _settingsScaledFontSize(context, 17),
                 fontWeight: FontWeight.w500,
                 color: widget.accentColor,
               )
@@ -1200,10 +1200,14 @@ class _AccentSwatchRowState extends State<_AccentSwatchRow> {
 }
 
 // ── Trailing widgets ──────────────────────────────────────────────────────────
+double _settingsScaledFontSize(BuildContext context, double baseSize) {
+  return MediaQuery.textScalerOf(context).scale(baseSize);
+}
+
 double _settingsChevronFontSize(BuildContext context) {
   // FixedSFIcon intentionally disables inherited scaling, so apply the
   // system text scaler explicitly to match the adjacent setting value.
-  return MediaQuery.textScalerOf(context).scale(14);
+  return _settingsScaledFontSize(context, 14);
 }
 
 class _ChevronTrailing extends StatelessWidget {

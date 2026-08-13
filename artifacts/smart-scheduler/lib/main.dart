@@ -1460,7 +1460,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     Widget buildPanel(String title, {required bool isActive}) {
       final isToday = _isTodayTitle(title, _calendarDisplayYear);
       return Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Title
           Text(
@@ -2541,8 +2541,6 @@ class _CalendarNavChevron extends StatelessWidget {
     // The hit area extends 26 px into the tap-dead title region (left)
     // and 40 px beyond the icon (right), covering ≈±35 px of chevron
     // drift as the title length changes between views.
-    // The whole widget is also shifted 4 px DOWN so the chevrons sit
-    // slightly below the title baseline.
     const double shift = 26.0;
     const double hitW = 86.0; // 34 left-of-icon + 12 icon + 40 right ext
     const double iconLeft = 34.0; // shift + 8 px visual gap
@@ -2576,7 +2574,7 @@ class _CalendarNavChevron extends StatelessWidget {
     }
 
     return Transform.translate(
-      offset: const Offset(-shift, 4),
+      offset: const Offset(-shift, 0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -3572,10 +3572,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                   ),
                 ),
                 const SizedBox(width: 4),
-                const Icon(
+                Icon(
                   CupertinoIcons.chevron_right,
                   color: kSecondaryLabel,
-                  size: 14,
+                  size: MediaQuery.textScalerOf(context).scale(14),
                 ),
               ],
             ),
@@ -3658,7 +3658,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 const SizedBox(width: 4),
                 FixedSFIcon(
                   SFIcons.sf_chevron_right,
-                  fontSize: 13,
+                  fontSize: MediaQuery.textScalerOf(context).scale(13),
                   color: resolveAccentColor(context),
                   fontWeight: FontWeight.w700,
                 ),
@@ -7185,7 +7185,7 @@ class _CategoryRow extends StatelessWidget {
                         Icon(
                           CupertinoIcons.chevron_right,
                           color: secondaryLabel,
-                          size: 14,
+                          size: MediaQuery.textScalerOf(context).scale(14),
                         ),
                       ],
                     ),
