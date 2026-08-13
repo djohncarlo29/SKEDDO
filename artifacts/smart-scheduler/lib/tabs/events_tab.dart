@@ -11361,7 +11361,9 @@ class _DcvSectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chevronFontSize = MediaQuery.textScalerOf(context).scale(13);
+    const baseFontSize = 15.0;
+    final chevronFontSize =
+        MediaQuery.textScalerOf(context).scale(baseFontSize);
 
     return GestureDetector(
       onTap: onTap,
@@ -11379,7 +11381,7 @@ class _DcvSectionLabel extends StatelessWidget {
                 style: TextStyle(
                   inherit: false,
                   fontFamily: kSFProText,
-                  fontSize: 13,
+                  fontSize: baseFontSize,
                   fontWeight: FontWeight.w600,
                   fontStyle: FontStyle.normal,
                   color: resolveThemeColor(kSecondaryLabel, context),
