@@ -1904,18 +1904,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                 9,
                                                                                 -1,
                                                                               ),
-                                                                               child: ImageFiltered(
-                                                                                 imageFilter: ui.ImageFilter.erode(
-                                                                                   radiusX: 0.15,
-                                                                                   radiusY: 0.15,
-                                                                                 ),
-                                                                                 child: SearchWeightedIcon(
-                                                                                   CupertinoIcons.ellipsis_circle,
-                                                                                   size: 23,
-                                                                                   color: accent,
-                                                                                   weight: 0.0,
-                                                                                 ),
-                                                                               ),
+                                                                                child: SearchWeightedIcon(
+                                                                                  CupertinoIcons.ellipsis_circle,
+                                                                                  size: 21,
+                                                                                  color: accent,
+                                                                                  weight: 0.0,
+                                                                                ),
                                                                             ),
                                                                           ),
                                                                         ),
