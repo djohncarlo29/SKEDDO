@@ -263,11 +263,16 @@ class _NativeTextInputState extends State<NativeTextInput> {
     final text = widget.controller.text;
     return Align(
       alignment: Alignment.centerLeft,
-      child: Text(
-        text.isEmpty ? widget.placeholder : text,
-        style: text.isEmpty ? widget.placeholderStyle : widget.style,
-        maxLines: widget.multiline ? null : 1,
-        overflow: TextOverflow.ellipsis,
+      child: SizedBox(
+        width: double.infinity,
+        child: Text(
+          text.isEmpty ? widget.placeholder : text,
+          style: text.isEmpty ? widget.placeholderStyle : widget.style,
+          maxLines: widget.multiline ? null : 1,
+          overflow: widget.multiline
+              ? TextOverflow.clip
+              : TextOverflow.ellipsis,
+        ),
       ),
     );
   }

@@ -1213,6 +1213,31 @@ class _NoteInputCardState extends State<_NoteInputCard>
     super.dispose();
   }
 
+  double _noteInputHeight(BuildContext context, Color placeholderColor) {
+    final placeholderStyle = TextStyle(
+      inherit: false,
+      color: placeholderColor,
+      fontSize: 17,
+      fontFamily: 'SFProText',
+      fontWeight: FontWeight.w400,
+      fontStyle: FontStyle.normal,
+      letterSpacing: kTracking16,
+      height: kLineHeight,
+    );
+    // Card width minus the outer row insets and the clear-button column.
+    final inputWidth = MediaQuery.sizeOf(context).width - 91.0;
+    final painter = TextPainter(
+      text: TextSpan(
+        text: 'Type your schedule here...',
+        style: placeholderStyle,
+      ),
+      textDirection: TextDirection.ltr,
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout(maxWidth: inputWidth < 80.0 ? 80.0 : inputWidth);
+    final requiredHeight = painter.height + 24.0;
+    return requiredHeight > 155.0 ? requiredHeight : 155.0;
+  }
+
   @override
   Widget build(BuildContext context) {
     final surfaceColor = resolveThemeColor(kSbSurface, context);
@@ -1241,7 +1266,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                   children: [
                     Expanded(
                       child: SizedBox(
-                        height: 155,
+                        height: _noteInputHeight(context, secondaryLabel),
                         child: ClipRect(
                           child: TapRegion(
                             groupId: kSbGroupId,
@@ -1320,13 +1345,22 @@ class _NoteInputCardState extends State<_NoteInputCard>
                             padding: const EdgeInsets.fromLTRB(10, 0, 5, 8),
                             child: AnimatedBuilder(
                               animation: _clearScaleCtrl,
-                              builder: (context, _) => Opacity(
-                                opacity: _clearOpacity.value,
-                                child: Icon(
-                                  CupertinoIcons.clear,
-                                  size: 20,
-                                  weight: 300.0,
-                                  color: secondaryLabel,
+                              builder: (context, _) => Transform.scale(
+                                scale: 1.0 - (_clearScaleCtrl.value * 0.22),
+                                child: Opacity(
+                                  // Empty fields keep the same assigned
+                                  // colour, but at a deliberately quieter
+                                  // base opacity. A press still animates
+                                  // even though it has no clear action.
+                                  opacity:
+                                      (hasText ? 1.0 : 0.45) *
+                                      _clearOpacity.value,
+                                  child: Icon(
+                                    CupertinoIcons.clear,
+                                    size: 20,
+                                    weight: 300.0,
+                                    color: secondaryLabel,
+                                  ),
                                 ),
                               ),
                             ),

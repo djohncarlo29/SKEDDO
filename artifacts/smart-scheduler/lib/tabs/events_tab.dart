@@ -9350,9 +9350,13 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                                   0,
                                   0,
                                 ),
-                                child: Text(
-                                  'Describe what belongs here…',
-                                  style: _kPlaceholderStyle,
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: Text(
+                                    'Describe what belongs here…',
+                                    style: _kPlaceholderStyle,
+                                    softWrap: true,
+                                  ),
                                 ),
                               ),
                             ),
