@@ -782,7 +782,7 @@ class SplitChevronUpDown extends StatelessWidget {
     // Authored endpoint gap at the default OS text scale. The two paths move
     // equally away from the icon midpoint, so the whole affordance stays
     // vertically aligned with the value text.
-    this.lowerOffset = 2.25,
+    this.lowerOffset = 3.0,
   });
 
   final Color color;
@@ -795,7 +795,7 @@ class SplitChevronUpDown extends StatelessWidget {
     final textScaler = MediaQuery.textScalerOf(context);
     final scaledSize = textScaler.scale(size);
     final scaledGap = textScaler.scale(lowerOffset);
-    final scaledStrokeWidth = textScaler.scale(1.5);
+    final scaledStrokeWidth = textScaler.scale(1.0);
 
     return CustomPaint(
       size: Size(scaledSize, scaledSize),
@@ -828,11 +828,15 @@ class _SplitChevronPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size canvasSize) {
     final inset = size * 0.14;
-    final margin = size * 0.14;
+    // Keep each chevron's authored height stable while the pair separates.
+    // This makes the extra space come from moving the paths outward rather
+    // than compressing them toward the midpoint.
+    final chevronHeight = size * 0.27;
     // Keep the separation symmetric around the icon midpoint: increasing the
     // gap moves the upper chevron up and the lower chevron down together.
-    final safeGap = gap.clamp(0.0, size * 0.38);
-    final chevronHeight = (size - (margin * 2) - safeGap) / 2;
+    final safeGap = gap.clamp(0.0, size * 0.40);
+    final margin = ((size - (chevronHeight * 2) - safeGap) / 2)
+        .clamp(0.0, size);
     final topBaseY = margin + chevronHeight;
     final bottomBaseY = topBaseY + safeGap;
     final centerX = size / 2;
