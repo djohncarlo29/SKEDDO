@@ -2070,20 +2070,20 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             _listStackKey.currentContext?.findRenderObject() as RenderBox?;
         final rowHeight = _eventsCategoryListRowHeight(
           context,
-          items: _buildFlatDisplayList(),
+          item: _FlatItem.solo(key),
         );
-        final slotPitch = rowHeight + _CategoryCard._kRowGap;
         if (listBox != null) {
           final listLocal = listBox.globalToLocal(globalPos);
-          final slot = (listLocal.dy / slotPitch).floor().clamp(
-            0,
-            _listTopOrder.length,
-          );
+          final listItems = _buildFlatDisplayList();
+          final slot = _eventsCategoryListIndexAtY(
+            context,
+            listItems,
+            listLocal.dy,
+          ).clamp(0, _listTopOrder.length);
           // Map the tile grab-Y to an equivalent list-row grab-Y so the row
           // ghost stays under the finger after the shape transition.
           final grabY = grab.dy.clamp(0.0, _AnimatedCategoryGrid._rowHeight);
-          final rowGrabY =
-              grabY * (rowHeight / _AnimatedCategoryGrid._rowHeight);
+          final rowGrabY = grabY.clamp(0.0, rowHeight).toDouble();
           setState(() {
             _gridDragCrossingToList = true;
             _crossListTargetIdx = slot;
@@ -2157,7 +2157,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             _dragListGrabOffsetY ??
             (_eventsCategoryListRowHeight(
                   context,
-                  items: _buildFlatDisplayList(),
+                  item: _FlatItem.solo(key as _UserCategory),
                 ) /
                 2);
         final ghostGlobalY = globalPos.dy - rowGrabY;
@@ -2367,9 +2367,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final memberGroupId = draggingItem.isGroupMember
         ? draggingItem.groupId
         : null;
-    final rowHeight = _eventsCategoryListRowHeight(context, items: flatList);
-    final slotPitch = rowHeight + _CategoryCard._kRowGap;
-    final slotTopY = idx * slotPitch;
+    final slotTopY = _eventsCategoryListTopY(context, flatList, idx);
     final localPos = box.globalToLocal(globalPos);
     _joinGroupDwellTimer?.cancel();
     _joinGroupDwellTimer = null;
@@ -2403,10 +2401,14 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     if (box == null || !box.attached || _draggingListCat != cat) return;
     final localPos = box.globalToLocal(globalPos);
     final rawTopY = localPos.dy - (_dragListGrabOffsetY ?? 0);
-    final rowHeight = _eventsCategoryListRowHeight(
-      context,
-      items: _buildFlatDisplayList(),
+    final flatListForGeometry = _buildFlatDisplayList();
+    final draggingIndex = flatListForGeometry.indexWhere(
+      (item) => item.isCategory && item.category == cat,
     );
+    final draggingItem = draggingIndex == -1
+        ? _FlatItem.solo(cat)
+        : flatListForGeometry[draggingIndex];
+    final rowHeight = _eventsCategoryListRowHeight(context, item: draggingItem);
 
     // ── Cross-section (pin) detection ─────────────────────────────────────────
     // Only solo categories (not group members, not while in group-creation
@@ -2531,10 +2533,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     // Dwell timer has fired; list is frozen — only ghost position + target switch.
     if (_dragGroupTargetCat != null) {
       final flatList = _buildFlatDisplayList();
-      final targetIdx = (centerY / slotPitch).floor().clamp(
-        0,
-        flatList.length - 1,
-      );
+      final targetIdx = _eventsCategoryListIndexAtY(
+        context,
+        flatList,
+        centerY,
+      ).clamp(0, flatList.length - 1);
       final targetItem = flatList[targetIdx];
       final draggedItem = flatList.firstWhere(
         (it) => it.isCategory && it.category == cat,
@@ -2585,7 +2588,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
     // ── Group member drag ─────────────────────────────────────────────────────
     if (_draggingListGroupId != null) {
-      _handleGroupMemberDrag(cat, rawTopY, centerY, slotPitch);
+      _handleGroupMemberDrag(cat, rawTopY, centerY);
       return;
     }
 
@@ -2596,10 +2599,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     );
     if (currentIdx == -1) return;
 
-    final targetIdx = (centerY / slotPitch).floor().clamp(
-      0,
-      flatList.length - 1,
-    );
+    final targetIdx = _eventsCategoryListIndexAtY(
+      context,
+      flatList,
+      centerY,
+    ).clamp(0, flatList.length - 1);
     final targetItem = flatList[targetIdx];
     final draggedItem = flatList[currentIdx];
 
@@ -2692,19 +2696,19 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             (it) => it.isCategory && it.category == cat,
           );
           if (cIdx == -1) return;
-          final sp =
-              _eventsCategoryListRowHeight(context, items: fl) +
-              _CategoryCard._kRowGap;
           final cy =
               (_dragListTopY ?? 0.0) +
-              _eventsCategoryListRowHeight(context, items: fl) / 2;
-          final ti = (cy / sp).floor().clamp(0, fl.length - 1);
+              _eventsCategoryListRowHeight(context, item: draggingItem) / 2;
+          final ti = _eventsCategoryListIndexAtY(
+            context,
+            fl,
+            cy,
+          ).clamp(0, fl.length - 1);
           final tItem = fl[ti];
           if (tItem.isGroupMember && tItem.groupId == joinGroupId) {
             _handleSoloDragIntoGroup(
               cat,
               _dragListTopY ?? 0.0,
-              sp,
               fl,
               cIdx,
               ti,
@@ -2836,7 +2840,6 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     _UserCategory cat,
     double rawTopY,
     double centerY,
-    double slotPitch,
   ) {
     final groupId = _draggingListGroupId!;
     final flatList = _buildFlatDisplayList();
@@ -2858,7 +2861,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     }
     final group = _categoryGroups[groupIdx];
 
-    final rawTargetIdx = (centerY / slotPitch).floor();
+    final rawTargetIdx = _eventsCategoryListIndexAtY(
+      context,
+      flatList,
+      centerY,
+    );
 
     // Allow exit when dragged above the list top or below the list bottom.
     // This is the only escape route when all categories are inside one group.
@@ -3043,7 +3050,6 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   void _handleSoloDragIntoGroup(
     _UserCategory cat,
     double rawTopY,
-    double slotPitch,
     List<_FlatItem> flatList,
     int currentIdx,
     int targetIdx,
@@ -3255,13 +3261,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       (item) => item.isGroupHeader && item.group?.id == group.id,
     );
     if (idx == -1) return;
-    final rowHeight = _eventsCategoryListRowHeight(context, items: flatList);
-    final slotPitch = rowHeight + _CategoryCard._kRowGap;
     final localPos = box.globalToLocal(globalPos);
     setState(() {
       _draggingGroupHeader = group;
-      _dragListTopY = idx * slotPitch;
-      _dragListGrabOffsetY = localPos.dy - idx * slotPitch;
+      final slotTopY = _eventsCategoryListTopY(context, flatList, idx);
+      _dragListTopY = slotTopY;
+      _dragListGrabOffsetY = localPos.dy - slotTopY;
     });
     _listDragOverlayEntry?.remove();
     _listDragOverlayEntry = OverlayEntry(builder: _buildListDragOverlay);
@@ -3275,26 +3280,26 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     }
     final localPos = box.globalToLocal(globalPos);
     final rawTopY = localPos.dy - (_dragListGrabOffsetY ?? 0);
-    final rowHeight = _eventsCategoryListRowHeight(
-      context,
-      items: _buildFlatDisplayList(),
-    );
-    final slotPitch = rowHeight + _CategoryCard._kRowGap;
-    final centerY = rawTopY + rowHeight / 2;
-
     final flatList = _buildFlatDisplayList();
     final currentIdx = flatList.indexWhere(
       (item) => item.isGroupHeader && item.group?.id == group.id,
     );
+    final draggingItem = currentIdx == -1
+        ? _FlatItem.groupHeader(group)
+        : flatList[currentIdx];
+    final rowHeight = _eventsCategoryListRowHeight(context, item: draggingItem);
+    final centerY = rawTopY + rowHeight / 2;
+
     if (currentIdx == -1) {
       setState(() => _dragListTopY = rawTopY);
       _listDragOverlayEntry?.markNeedsBuild();
       return;
     }
-    final targetIdx = (centerY / slotPitch).floor().clamp(
-      0,
-      flatList.length - 1,
-    );
+    final targetIdx = _eventsCategoryListIndexAtY(
+      context,
+      flatList,
+      centerY,
+    ).clamp(0, flatList.length - 1);
     final targetItem = flatList[targetIdx];
 
     // Don't reorder while hovering over own member slots.
@@ -3372,6 +3377,17 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final stackGlobal = box.localToGlobal(Offset.zero);
     final tileWidth = box.size.width;
     final globalTopY = stackGlobal.dy + (_dragListTopY ?? 0.0);
+    final flatItems = _buildFlatDisplayList();
+    final ghostItem = cat != null
+        ? flatItems.firstWhere(
+            (item) => item.isCategory && item.category == cat,
+            orElse: () => _FlatItem.solo(cat),
+          )
+        : flatItems.firstWhere(
+            (item) => item.isGroupHeader && item.group?.id == grp!.id,
+            orElse: () => _FlatItem.groupHeader(grp!),
+          );
+    final ghostHeight = _eventsCategoryListRowHeight(context, item: ghostItem);
 
     // ── Crossing up into pinned grid: tile ghost snapped to the live slot ─────
     if (_listDragCrossingToGrid && cat != null) {
@@ -3445,10 +3461,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             left: stackGlobal.dx,
             top: globalTopY,
             width: tileWidth,
-            height: _eventsCategoryListRowHeight(
-              context,
-              items: _buildFlatDisplayList(),
-            ),
+            height: ghostHeight,
             child: Transform.scale(
               scale: inGroupMode ? 1.02 : 1.05,
               child: Container(
@@ -3719,7 +3732,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       final listGlobal = listBox?.localToGlobal(Offset.zero);
       final rowH = _eventsCategoryListRowHeight(
         context,
-        items: _buildFlatDisplayList(),
+        item: _FlatItem.solo(key),
       );
       final rowW = listBox?.size.width ?? box.size.width;
       final rowLeft = listGlobal?.dx ?? stackGlobal.dx;
@@ -6636,15 +6649,15 @@ double _eventsMeasuredTextWidth(
   return painter.width;
 }
 
-/// Shared row height for the main Events tab category list.
+/// Row height for the main Events tab category list.
 ///
-/// The list is positioned with a Stack, so every slot must use the same height
-/// during a given build. Measure the actual visible labels and grow all slots
-/// to the tallest required row. This preserves the existing compact 64 px
-/// geometry while allowing long names and subtitles to wrap naturally.
+/// Measure the actual visible labels. The Stack can use a different height for
+/// each slot; title-only rows stay compact while wrapped titles/subtitles grow
+/// only their own row.
 double _eventsCategoryListRowHeight(
   BuildContext context, {
   Iterable<_FlatItem>? items,
+  _FlatItem? item,
 }) {
   final scaler = MediaQuery.textScalerOf(context);
   final viewportWidth = MediaQuery.sizeOf(context).width;
@@ -6657,13 +6670,11 @@ double _eventsCategoryListRowHeight(
   const verticalPadding = 26.0; // 13 px top + 13 px bottom
   const subtitleGap = 2.0;
   const iconHeight = 34.0;
-  var tallest = 64.0;
+  double measure(_FlatItem current) {
+    final label = current.category?.name ?? current.group?.name;
+    if (label == null) return 64.0;
 
-  for (final item in items ?? const <_FlatItem>[]) {
-    final label = item.category?.name ?? item.group?.name;
-    if (label == null) continue;
-
-    final leftPad = item.isGroupMember ? 36.0 : 16.0;
+    final leftPad = current.isGroupMember ? 36.0 : 16.0;
     final textWidth = max(
       80.0,
       cardWidth - leftPad - iconHeight - 13 - trailingWidth,
@@ -6674,7 +6685,7 @@ double _eventsCategoryListRowHeight(
       scaler,
       textWidth,
     );
-    final description = item.category?.description;
+    final description = current.category?.description;
     if (description != null && description.isNotEmpty) {
       textHeight +=
           subtitleGap +
@@ -6685,10 +6696,47 @@ double _eventsCategoryListRowHeight(
             textWidth,
           );
     }
-    tallest = max(tallest, max(iconHeight, textHeight) + verticalPadding);
+    return max(64.0, max(iconHeight, textHeight) + verticalPadding);
+  }
+
+  if (item != null) {
+    return measure(item);
+  }
+  var tallest = 64.0;
+  for (final current in items ?? const <_FlatItem>[]) {
+    tallest = max(tallest, measure(current));
   }
 
   return tallest;
+}
+
+double _eventsCategoryListTopY(
+  BuildContext context,
+  List<_FlatItem> items,
+  int index,
+) {
+  var top = 0.0;
+  for (var i = 0; i < index && i < items.length; i++) {
+    top += _eventsCategoryListRowHeight(context, item: items[i]);
+  }
+  return top;
+}
+
+/// Returns the slot containing [y], or [items.length] when it is below the
+/// final slot. The list has no inter-row gap, so each row's measured bounds are
+/// the hit regions used by drag-reorder.
+int _eventsCategoryListIndexAtY(
+  BuildContext context,
+  List<_FlatItem> items,
+  double y,
+) {
+  if (y < 0) return -1;
+  var top = 0.0;
+  for (var i = 0; i < items.length; i++) {
+    top += _eventsCategoryListRowHeight(context, item: items[i]);
+    if (y < top) return i;
+  }
+  return items.length;
 }
 
 // ── Category list card (clips all rows to the squircle shape) ─────────────────
@@ -6698,16 +6746,16 @@ double _eventsCategoryListRowHeight(
 // and during drag-to-reorder — the same AnimatedPositioned infrastructure
 // that drives the pinned-category grid.
 //
-// Row slots share the tallest measured wrapped-content height for the current
+// Each row slot uses its own measured wrapped-content height for the current
 // text scale. Collapsed rows animate their height to 0 via AnimatedPositioned;
 // all subsequent rows animate their top-Y upward in lock-step, giving a smooth
 // height-collapse + reflow effect. The dragging row uses Duration.zero so it
 // follows the finger with zero lag while siblings animate to their new
 // positions around it.
 class _CategoryCard extends StatelessWidget {
-  /// Baseline slot height retained for the drag overlay's authored geometry.
-  /// Runtime layout uses [_eventsCategoryListRowHeight] so accessibility text
-  /// sizes can expand the list without clipping.
+  /// Compact baseline row height. Runtime layout uses
+  /// [_eventsCategoryListRowHeight] so accessibility text sizes can expand
+  /// only the rows that need it.
   static const _kListRowH = 64.0;
 
   // Gap between row slots. Zero = grouped card look; rows butt flush and the
@@ -6804,9 +6852,9 @@ class _CategoryCard extends StatelessWidget {
 
   /// Height the AnimatedPositioned slot will occupy.
   ///
-  /// The outer AnimatedContainer target height is the sum of these values
-  /// *excluding* collapsing members (they are going to zero) but *including*
-  /// expanding members (they are going to full height).  That makes the outer
+  /// The outer AnimatedContainer target height is the sum of each row's own
+  /// measured height, *excluding* collapsing members (they are going to zero)
+  /// but *including* expanding members (they are going to full height). That makes the outer
   /// card grow/shrink in sync with the inner row animations.
   ///
   /// Group headers are never affected by accordion lifecycle sets.
@@ -6822,13 +6870,13 @@ class _CategoryCard extends StatelessWidget {
       return 0.0;
     }
 
-    return _eventsCategoryListRowHeight(context, items: items);
+    return _eventsCategoryListRowHeight(context, item: item);
   }
 
   /// Height used by AnimatedPositioned for the current slot.
   ///
   /// Identical to [_slotTargetH] except that expanding members start at 0 and
-  /// grow to _kListRowH when [expandingGroupIds] is cleared — the outer card
+  /// grow to their own measured height when [expandingGroupIds] is cleared — the outer card
   /// already has the full expanded height as its target so the clip reveals
   /// the member rows as they animate upward.
   double _slotCurrentH(_FlatItem item, BuildContext context) {
@@ -6840,7 +6888,7 @@ class _CategoryCard extends StatelessWidget {
         expandingGroupIds.contains(item.groupId)) {
       return 0.0;
     }
-    return _eventsCategoryListRowHeight(context, items: items);
+    return _eventsCategoryListRowHeight(context, item: item);
   }
 
   /// Whether the isFirst/isLast corner flags should treat this slot as hidden
@@ -6859,11 +6907,11 @@ class _CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rowHeight = _eventsCategoryListRowHeight(context, items: items);
     // Target height: every slot that will be at full height after the current
-    // animation finishes.  Lifecycle-collapsed and collapsing-accordion rows
-    // are excluded; expanding-accordion rows are included because they animate
-    // *into* the space the outer container is already opening.
+    // animation finishes. Each slot contributes its own measured height.
+    // Lifecycle-collapsed and collapsing-accordion rows are excluded;
+    // expanding-accordion rows are included because they animate *into* the
+    // space the outer container is already opening.
     final totalH = items.fold<double>(
       0.0,
       (h, item) => h + _slotTargetH(item, context),
@@ -6898,28 +6946,23 @@ class _CategoryCard extends StatelessWidget {
             if (!(items[i].isCategory && items[i].category == draggingCat) &&
                 !(items[i].isGroupHeader &&
                     items[i].group?.id == draggingGroup?.id))
-              _buildSlot(items[i], i, context, rowHeight),
+              _buildSlot(items[i], i, context),
           // ── Dragging slots — invisible placeholders rendered last ────────
           // Move the null-guard into the for-loop condition to avoid
           // 3-level if->for->if collection nesting (Dart 3.9 compat).
           for (int i = 0; draggingCat != null && i < items.length; i++)
             if (items[i].isCategory && items[i].category == draggingCat)
-              _buildSlot(items[i], i, context, rowHeight),
+              _buildSlot(items[i], i, context),
           for (int i = 0; draggingGroup != null && i < items.length; i++)
             if (items[i].isGroupHeader &&
                 items[i].group?.id == draggingGroup!.id)
-              _buildSlot(items[i], i, context, rowHeight),
+              _buildSlot(items[i], i, context),
         ],
       ),
     );
   }
 
-  Widget _buildSlot(
-    _FlatItem item,
-    int idx,
-    BuildContext context,
-    double rowHeight,
-  ) {
+  Widget _buildSlot(_FlatItem item, int idx, BuildContext context) {
     final cat = item.category;
     final group = item.group;
     final isDragging =
@@ -6934,8 +6977,9 @@ class _CategoryCard extends StatelessWidget {
         ? dragLocalTopY!
         : _slotTopY(idx, context);
 
-    // Dragging row always occupies a full slot so the gap stays visible.
-    final slotH = isDragging ? rowHeight : _slotCurrentH(item, context);
+    final itemHeight = _eventsCategoryListRowHeight(context, item: item);
+    // Dragging row always occupies its own full slot so the gap stays visible.
+    final slotH = isDragging ? itemHeight : _slotCurrentH(item, context);
 
     // Determine position within the shared card for corner radii / divider.
     // Accordion-transitioning members and lifecycle-collapsed rows are hidden;

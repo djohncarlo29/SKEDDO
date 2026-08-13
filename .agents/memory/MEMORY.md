@@ -53,3 +53,4 @@
 - [Search fuzzy equal-length guard](search-fuzzy-equal-length.md) — equal-length typo comparisons must not select the target token as both sides of prefix logic.
 - [Cupertino selection styling across Shorebird versions](cupertino-selection-style-shorebird.md) — use DefaultSelectionStyle plus CupertinoTheme; Shorebird's CupertinoTextField has no selectionColor parameter.
 - [Targeted style patch context](targeted-style-patch-context.md) — repeated font-size edits need unique surrounding labels plus a diff check to prevent adjacent UI styles changing.
+- [Variable category row heights](variable-category-row-heights.md) — category slots and drag geometry must use each item’s measured height, not the tallest row globally.
