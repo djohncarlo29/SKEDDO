@@ -109,7 +109,7 @@ class _CompactPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size s) {
-    const sw = 1.8;
+    const sw = 1.4;
     final st = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
@@ -178,7 +178,7 @@ class _StackedPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size s) {
-    const sw = 1.8;
+    const sw = 1.4;
     final st = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
@@ -237,7 +237,7 @@ class _DetailsPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size s) {
-    const sw = 1.8;
+    const sw = 1.4;
     const gap = 1.5;
     const r = 2.2; // more rectangular — less round than Stacked
 
@@ -320,7 +320,7 @@ class _ListPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size s) {
-    const sw = 2.0; // slightly thicker for the "thick border" look
+    const sw = 1.4;
     final st = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
