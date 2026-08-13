@@ -9443,7 +9443,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
           : _smartDescriptionCtrl.text;
       final contentHeight = _eventsMeasuredTextHeight(
         ruleText,
-        _kFieldStyle,
+        _kPlaceholderStyle,
         scaler,
         inputWidth,
       );
@@ -9458,72 +9458,89 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: Stack(
-                  alignment: Alignment.centerLeft,
-                  children: [
-                    AnimatedBuilder(
-                      animation: Listenable.merge([
-                        _smartDescriptionCtrl,
-                        _smartDescriptionFocus,
-                      ]),
-                      builder: (_, __) {
-                        if (_smartDescriptionCtrl.text.isNotEmpty) {
-                          return const SizedBox.shrink();
-                        }
-                        return Positioned.fill(
-                          child: IgnorePointer(
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 180),
-                                curve: Curves.easeOut,
-                                transform: Matrix4.translationValues(
-                                  _smartDescriptionFocus.hasFocus ? 4.0 : 0.0,
-                                  0,
-                                  0,
+                child: SizedBox(
+                  height: rowHeight,
+                  child: Stack(
+                    alignment: Alignment.topLeft,
+                    children: [
+                      // Keep the placeholder in the same top-aligned position
+                      // as entered rule text. CupertinoTextField's built-in
+                      // placeholder is vertically centred when expands is true,
+                      // which pushes wrapped Dynamic Type text down and clips
+                      // its second line.
+                      AnimatedBuilder(
+                        animation: Listenable.merge([
+                          _smartDescriptionCtrl,
+                          _smartDescriptionFocus,
+                        ]),
+                        builder: (_, __) {
+                          if (_smartDescriptionCtrl.text.isNotEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          return Positioned.fill(
+                            child: IgnorePointer(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
                                 ),
-                                child: SizedBox(
-                                  width: double.infinity,
-                                  child: Text(
-                                    'Describe what belongs here…',
-                                    style: _kPlaceholderStyle,
-                                    softWrap: true,
+                                child: Align(
+                                  alignment: Alignment.topLeft,
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 180),
+                                    curve: Curves.easeOut,
+                                    transform: Matrix4.translationValues(
+                                      _smartDescriptionFocus.hasFocus
+                                          ? 4.0
+                                          : 0.0,
+                                      0,
+                                      0,
+                                    ),
+                                    child: Text(
+                                      'Describe what belongs here…',
+                                      style: _kPlaceholderStyle,
+                                      softWrap: true,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
+                          );
+                        },
+                      ),
+                      CupertinoTheme(
+                        data: CupertinoTheme.of(
+                          context,
+                        ).copyWith(primaryColor: _resolvedSelectedColor),
+                        child: DefaultSelectionStyle(
+                          selectionColor: _resolvedSelectedColor.withOpacity(
+                            0.20,
                           ),
-                        );
-                      },
-                    ),
-                    CupertinoTheme(
-                      data: CupertinoTheme.of(
-                        context,
-                      ).copyWith(primaryColor: _resolvedSelectedColor),
-                      child: DefaultSelectionStyle(
-                        selectionColor: _resolvedSelectedColor.withOpacity(
-                          0.20,
-                        ),
-                        child: CupertinoTextField(
-                          controller: _smartDescriptionCtrl,
-                          focusNode: _smartDescriptionFocus,
-                          placeholder: '',
-                          placeholderStyle: _kPlaceholderStyle,
-                          style: _kFieldStyle,
-                          cursorColor: _resolvedSelectedColor,
-                          selectionControls: _selectionControls,
-                          minLines: 1,
-                          maxLines: null,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: null,
-                          textCapitalization: TextCapitalization.sentences,
-                          textInputAction: TextInputAction.done,
-                          onChanged: (_) =>
-                              setState(() => _smartDescriptionSaved = false),
+                          child: CupertinoTextField(
+                            controller: _smartDescriptionCtrl,
+                            focusNode: _smartDescriptionFocus,
+                            // The animated overlay above is the only
+                            // placeholder, so it can stay top-aligned and
+                            // animate with focus.
+                            placeholder: '',
+                            placeholderStyle: _kPlaceholderStyle,
+                            style: _kFieldStyle,
+                            cursorColor: _resolvedSelectedColor,
+                            selectionControls: _selectionControls,
+                            expands: true,
+                            maxLines: null,
+                            minLines: null,
+                            textAlignVertical: TextAlignVertical.top,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: null,
+                            textCapitalization: TextCapitalization.sentences,
+                            textInputAction: TextInputAction.done,
+                            onChanged: (_) =>
+                                setState(() => _smartDescriptionSaved = false),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
