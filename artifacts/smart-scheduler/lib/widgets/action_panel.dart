@@ -62,22 +62,33 @@ class NewSectionIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final paintWidth = size + (showPlusBadge ? 8.0 : 5.0);
+    const topInset = 4.0;
+    final paintWidth = size + (showPlusBadge ? 10.0 : 5.0);
+    final paintHeight = size + topInset + 1.0;
     return SizedBox(
       // Keep the layout width at the original icon width so the -7 px action
       // panel offset remains unchanged. The wider paint viewport is allowed
-      // to extend to the right without moving the icon's anchor point.
+      // to extend to the right without moving the icon's anchor point. The
+      // extra height gives the top of the icon room to render before the
+      // complete icon is shifted down by one pixel.
       width: size,
       height: size,
       child: OverflowBox(
-        alignment: Alignment.centerLeft,
+        alignment: Alignment.topLeft,
         minWidth: paintWidth,
         maxWidth: paintWidth,
-        minHeight: size,
-        maxHeight: size,
-        child: CustomPaint(
-          size: Size(paintWidth, size),
-          painter: _NewSectionIconPainter(color, showPlusBadge: showPlusBadge),
+        minHeight: paintHeight,
+        maxHeight: paintHeight,
+        child: Transform.translate(
+          offset: const Offset(0, -topInset),
+          child: CustomPaint(
+            size: Size(paintWidth, paintHeight),
+            painter: _NewSectionIconPainter(
+              color,
+              showPlusBadge: showPlusBadge,
+              topInset: topInset,
+            ),
+          ),
         ),
       ),
     );
@@ -87,18 +98,28 @@ class NewSectionIcon extends StatelessWidget {
 class _NewSectionIconPainter extends CustomPainter {
   final Color color;
   final bool showPlusBadge;
+  final double topInset;
 
-  const _NewSectionIconPainter(this.color, {this.showPlusBadge = false});
+  const _NewSectionIconPainter(
+    this.color, {
+    this.showPlusBadge = false,
+    this.topInset = 0,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final scale = size.shortestSide / 24.0;
+    // The source geometry remains a 24 px viewBox scaled to the original
+    // icon height. The larger canvas is only extra breathing room around it.
+    final scale = (size.height - topInset - 1.0) / 24.0;
     canvas.save();
     if (showPlusBadge) {
       // The badge and its surrounding separation are transparent punches
       // through the icon layer, revealing the glass surface beneath it.
       canvas.saveLayer(Offset.zero & size, Paint());
     }
+    // Leave the added top inset available for the geometry, then move both
+    // icon states down by exactly one logical pixel.
+    canvas.translate(0, topInset + 1.0);
     canvas.scale(scale, scale);
 
     final fill = Paint()
@@ -171,9 +192,10 @@ class _NewSectionIconPainter extends CustomPainter {
     );
 
     if (showPlusBadge) {
-      const badgeCenter = Offset(29.0, 3.2);
-      const badgeRadius = 6.4;
-      const badgeGapRadius = 8.0;
+      // Grow toward the upper-right while keeping the lower-left edge fixed.
+      const badgeCenter = Offset(30.0, 2.2);
+      const badgeRadius = 7.4;
+      const badgeGapRadius = 9.0;
       final clear = Paint()
         ..blendMode = BlendMode.clear
         ..style = PaintingStyle.fill
@@ -187,9 +209,9 @@ class _NewSectionIconPainter extends CustomPainter {
       // The plus is a true negative-space knockout, not a second coloured
       // glyph.
       final plus = Path()
-        ..addRect(Rect.fromCenter(center: badgeCenter, width: 2.2, height: 8.0))
+        ..addRect(Rect.fromCenter(center: badgeCenter, width: 2.4, height: 9.0))
         ..addRect(
-          Rect.fromCenter(center: badgeCenter, width: 8.0, height: 2.2),
+          Rect.fromCenter(center: badgeCenter, width: 9.0, height: 2.4),
         );
       canvas.drawPath(plus, clear);
       canvas.restore();
