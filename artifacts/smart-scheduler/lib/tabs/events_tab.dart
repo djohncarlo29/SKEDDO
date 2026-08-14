@@ -1476,6 +1476,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   /// represents a newly-created section whose visible placeholder is
   /// "New Section".
   final Map<String, List<String>> _dcvCustomSectionNames = {};
+  final Map<String, List<List<String>>> _dcvCustomSectionEventIds = {};
 
   // ── Group state ───────────────────────────────────────────────────────────
   // All groups in the CATEGORIES list section.
@@ -4428,15 +4429,25 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   }
 
   /// Adds an editable section to the currently open DCV.
-  ///
-  /// The first section owns the existing Manual-view events. Additional
-  /// sections start empty until event-to-section assignment is introduced.
-  /// This lets the new header behave like the existing grouped headers without
-  /// duplicating events across sections.
   void addDcvSection(String label) {
     if (label.trim().isEmpty) return;
     setState(() {
-      (_dcvCustomSectionNames[label] ??= <String>[]).add('');
+      final names = _dcvCustomSectionNames[label] ??= <String>[];
+      names.add('');
+      final eventSections = _dcvCustomSectionEventIds[label] ??=
+          <List<String>>[];
+      while (eventSections.length < names.length) {
+        eventSections.add(<String>[]);
+      }
+    });
+    _saveCategories();
+  }
+
+  void _reorderDcvSections(String label, List<List<String>> sectionEventIds) {
+    setState(() {
+      _dcvCustomSectionEventIds[label] = sectionEventIds
+          .map(List<String>.of)
+          .toList();
     });
     _saveCategories();
   }
@@ -4637,6 +4648,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   static const _kPrefsCategoryGroups = 'events_category_groups';
   static const _kPrefsListTopOrder = 'events_list_top_order';
   static const _kPrefsDcvCustomSections = 'events_dcv_custom_sections';
+  static const _kPrefsDcvCustomSectionEventIds =
+      'events_dcv_custom_section_event_ids';
 
   // True while the "couldn't save" banner is visible — prevents duplicate
   // overlays if _saveCategories() is called several times in quick succession
@@ -4689,6 +4702,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 _kPrefsDcvCustomSections,
                 jsonEncode(_dcvCustomSectionNames),
               ),
+              prefs.setString(
+                _kPrefsDcvCustomSectionEventIds,
+                jsonEncode(_dcvCustomSectionEventIds),
+              ),
             ]);
             if (results.any((ok) => !ok) && mounted) {
               _showCategorySaveError();
@@ -4733,12 +4750,16 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       final rawGroups = prefs.getStringList(_kPrefsCategoryGroups);
       final rawListOrder = prefs.getStringList(_kPrefsListTopOrder);
       final rawDcvSections = prefs.getString(_kPrefsDcvCustomSections);
+      final rawDcvSectionEventIds = prefs.getString(
+        _kPrefsDcvCustomSectionEventIds,
+      );
       if (rawUser == null &&
           rawPinned == null &&
           rawSmartColors == null &&
           rawArchivedSmart == null &&
           rawSmartOrder == null &&
-          rawDcvSections == null) {
+          rawDcvSections == null &&
+          rawDcvSectionEventIds == null) {
         return; // first launch — keep defaults
       }
       setState(() {
@@ -4754,6 +4775,28 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     value is List
                         ? value.map((name) => name.toString()).toList()
                         : <String>[],
+                  ),
+                ),
+              );
+          }
+        }
+        if (rawDcvSectionEventIds != null) {
+          final decoded = jsonDecode(rawDcvSectionEventIds);
+          if (decoded is Map) {
+            _dcvCustomSectionEventIds
+              ..clear()
+              ..addAll(
+                decoded.map(
+                  (key, value) => MapEntry(
+                    key.toString(),
+                    value is List
+                        ? [
+                            for (final section in value)
+                              section is List
+                                  ? section.map((id) => id.toString()).toList()
+                                  : <String>[],
+                          ]
+                        : <List<String>>[],
                   ),
                 ),
               );
@@ -5686,9 +5729,17 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     customSectionNames: List<String>.of(
                       _dcvCustomSectionNames[dcvLabel] ?? const <String>[],
                     ),
+                    customSectionEventIds: _dcvCustomSectionEventIds[dcvLabel]
+                        ?.map(List<String>.of)
+                        .toList(),
                     onCustomSectionRenamed: (index, title) {
                       if (dcvLabel != null) {
                         _renameDcvSection(dcvLabel, index, title);
+                      }
+                    },
+                    onCustomSectionReordered: (sectionEventIds) {
+                      if (dcvLabel != null) {
+                        _reorderDcvSections(dcvLabel, sectionEventIds);
                       }
                     },
                     onEditEvent: widget.onEditEvent,
@@ -11747,6 +11798,22 @@ class _DcvSection {
   });
 }
 
+class _DcvDragRowTarget {
+  final int sectionIndex;
+  final int eventIndex;
+  final double top;
+  final double bottom;
+
+  const _DcvDragRowTarget({
+    required this.sectionIndex,
+    required this.eventIndex,
+    required this.top,
+    required this.bottom,
+  });
+
+  double get midpoint => top + (bottom - top) / 2;
+}
+
 // ── DCV section label (matches Settings Panel header geometry) ────────────────
 class _DcvSectionLabel extends StatelessWidget {
   final String text;
@@ -11997,8 +12064,15 @@ class _CategoryDetailView extends StatefulWidget {
   /// editable "New Section" placeholder.
   final List<String> customSectionNames;
 
+  /// Event IDs grouped by custom section. A null value means the first
+  /// section owns the current events by default.
+  final List<List<String>>? customSectionEventIds;
+
   /// Saves a submitted custom section title.
   final void Function(int index, String title)? onCustomSectionRenamed;
+
+  /// Saves event ordering and section membership after a drag completes.
+  final ValueChanged<List<List<String>>>? onCustomSectionReordered;
 
   /// Optional callback to open the event-edit sheet for a given event.
   /// Passed from [EventsTab.onEditEvent] so DCV event cards show a pencil icon.
@@ -12018,7 +12092,9 @@ class _CategoryDetailView extends StatefulWidget {
     this.sortDir = '',
     this.showManualDateSections = true,
     this.customSectionNames = const [],
+    this.customSectionEventIds,
     this.onCustomSectionRenamed,
+    this.onCustomSectionReordered,
     this.onEditEvent,
     this.color = kAccentColor,
   });
@@ -12038,10 +12114,17 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   OverlayEntry? _dragOverlay;
   double _dragGlobalY = 0;
 
+  // The persisted membership/order of custom sections.  [_items] remains the
+  // flattened display order so the existing FLIP animation can be reused,
+  // while this list is the source of truth for section membership during a
+  // cross-section drag.
+  late List<List<String>> _sectionEventIds;
+
   // One GlobalKey per event ID — lets us read screen rects during drag without
   // needing to know the scroll offset.  Keys survive list reorders because they
   // are looked up by event ID, not by list position.
   final Map<String, GlobalKey> _itemKeys = {};
+  final Map<int, GlobalKey> _sectionKeys = {};
 
   // ── Collapse state ────────────────────────────────────────────────────────
   /// Section keys (header text) that are currently collapsed.  Empty by
@@ -12081,6 +12164,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         });
     _items = List.of(widget.events);
     _sortItems();
+    _sectionEventIds = _normaliseSectionEventIds(widget.customSectionEventIds);
+    _syncItemsToSections();
   }
 
   @override
@@ -12108,7 +12193,18 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     // changes. This ensures sorting always operates on the latest event objects
     // (e.g. freshly AI-assigned priorities), not stale copies from a prior
     // rebuild where only IDs were compared.
-    if (eventsChanged || sortChanged) {
+    final sectionNamesChanged =
+        old.customSectionNames.length != widget.customSectionNames.length ||
+        !_sameStrings(old.customSectionNames, widget.customSectionNames);
+    final sectionIdsChanged = !_sameNestedStrings(
+      old.customSectionEventIds,
+      widget.customSectionEventIds,
+    );
+
+    if (eventsChanged ||
+        sortChanged ||
+        sectionNamesChanged ||
+        sectionIdsChanged) {
       _items = List.of(widget.events);
       _itemKeys.removeWhere((id, _) => !_items.any((e) => e.id == id));
     }
@@ -12119,8 +12215,15 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       _collapsedSections.clear();
       // Animate each card to its new position.
       _animateSortChange();
-    } else if (eventsChanged) {
-      _sortItems();
+    } else if (eventsChanged || sectionNamesChanged || sectionIdsChanged) {
+      _sectionEventIds = _normaliseSectionEventIds(
+        widget.customSectionEventIds,
+      );
+      if (widget.customSectionNames.isNotEmpty) {
+        _syncItemsToSections();
+      } else {
+        _sortItems();
+      }
     }
   }
 
@@ -12133,6 +12236,76 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   }
 
   // ── Sort helpers ──────────────────────────────────────────────────────────
+
+  static bool _sameStrings(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  static bool _sameNestedStrings(List<List<String>>? a, List<List<String>>? b) {
+    if (a == null || b == null) return a == null && b == null;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (!_sameStrings(a[i], b[i])) return false;
+    }
+    return true;
+  }
+
+  /// Normalises persisted section membership against the events currently
+  /// visible in this DCV.  Old saves did not have membership data, so those
+  /// events are migrated into the first section in their current order.
+  List<List<String>> _normaliseSectionEventIds(List<List<String>>? persisted) {
+    final sectionCount = widget.customSectionNames.length;
+    if (sectionCount == 0) return <List<String>>[];
+
+    final knownIds = _items.map((event) => event.id).toSet();
+    final result = List<List<String>>.generate(sectionCount, (_) => <String>[]);
+    final assigned = <String>{};
+
+    if (persisted != null) {
+      for (
+        var sectionIndex = 0;
+        sectionIndex < persisted.length && sectionIndex < sectionCount;
+        sectionIndex++
+      ) {
+        for (final id in persisted[sectionIndex]) {
+          if (knownIds.contains(id) && assigned.add(id)) {
+            result[sectionIndex].add(id);
+          }
+        }
+      }
+    }
+
+    // Preserve legacy/unassigned events in the first section rather than
+    // dropping them when a category's event set changes.
+    for (final event in _items) {
+      if (assigned.add(event.id)) result.first.add(event.id);
+    }
+    return result;
+  }
+
+  /// Rebuilds the flattened list in the same order as the custom sections.
+  void _syncItemsToSections() {
+    if (_sectionEventIds.isEmpty) return;
+    final eventsById = {for (final event in _items) event.id: event};
+    final ordered = <ScheduledEvent>[];
+    final added = <String>{};
+    for (final section in _sectionEventIds) {
+      for (final id in section) {
+        final event = eventsById[id];
+        if (event != null && added.add(id)) ordered.add(event);
+      }
+    }
+    // This is defensive for a just-added event arriving in the same frame as
+    // the persisted section map.
+    for (final event in _items) {
+      if (added.add(event.id)) ordered.add(event);
+    }
+    _items = ordered;
+  }
 
   /// Sorts [_items] in-place according to [widget.sortBy] / [widget.sortDir].
   /// Called from [initState] and [didUpdateWidget] (when not mid-drag).
@@ -12316,10 +12489,124 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     _dragGlobalY = globalPos.dy;
     _dragOverlay?.markNeedsBuild();
 
-    final currentIdx = _draggingIndex;
-    if (currentIdx == null) return;
+    final dragId = _dragEvent?.id;
+    if (_draggingIndex == null || dragId == null) return;
 
-    // ── Swap UP: drag Y moved above the midpoint of the item just above ──────
+    // A DCV with custom sections needs insertion semantics rather than a
+    // simple swap: the dragged event moves into the destination section while
+    // the destination event stays there.  This also gives empty sections a
+    // real drop target via their header/section bounds.
+    if (_sectionEventIds.isNotEmpty) {
+      final rowTargets = <_DcvDragRowTarget>[];
+      for (
+        var sectionIndex = 0;
+        sectionIndex < _sectionEventIds.length;
+        sectionIndex++
+      ) {
+        for (
+          var eventIndex = 0;
+          eventIndex < _sectionEventIds[sectionIndex].length;
+          eventIndex++
+        ) {
+          final id = _sectionEventIds[sectionIndex][eventIndex];
+          if (id == dragId) continue;
+          final box =
+              _itemKeys[id]?.currentContext?.findRenderObject() as RenderBox?;
+          if (box == null || !box.attached) continue;
+          final top = box.localToGlobal(Offset.zero).dy;
+          rowTargets.add(
+            _DcvDragRowTarget(
+              sectionIndex: sectionIndex,
+              eventIndex: eventIndex,
+              top: top,
+              bottom: top + box.size.height,
+            ),
+          );
+        }
+      }
+      rowTargets.sort((a, b) => a.top.compareTo(b.top));
+
+      int? targetSection;
+      int? targetIndex;
+      _DcvDragRowTarget? rowUnderFinger;
+      for (final row in rowTargets) {
+        if (globalPos.dy >= row.top && globalPos.dy <= row.bottom) {
+          rowUnderFinger = row;
+          break;
+        }
+      }
+      if (rowUnderFinger != null) {
+        targetSection = rowUnderFinger.sectionIndex;
+        targetIndex =
+            rowUnderFinger.eventIndex +
+            (globalPos.dy > rowUnderFinger.midpoint ? 1 : 0);
+      } else {
+        // Headers, empty sections, and the gaps between cards are all valid
+        // destinations.  Prefer the section whose complete rendered bounds
+        // contain the finger.
+        for (var i = 0; i < _sectionEventIds.length; i++) {
+          final key = _sectionKeys[i];
+          final box = key?.currentContext?.findRenderObject() as RenderBox?;
+          if (box == null || !box.attached) continue;
+          final top = box.localToGlobal(Offset.zero).dy;
+          final bottom = top + box.size.height;
+          if (globalPos.dy >= top && globalPos.dy <= bottom) {
+            targetSection = i;
+            final sectionRows = rowTargets
+                .where((row) => row.sectionIndex == i)
+                .toList();
+            if (sectionRows.isEmpty || globalPos.dy < sectionRows.first.top) {
+              targetIndex = 0;
+            } else {
+              targetIndex = _sectionEventIds[i].length;
+              for (final row in sectionRows) {
+                if (globalPos.dy < row.top) {
+                  targetIndex = row.eventIndex;
+                  break;
+                }
+              }
+            }
+            break;
+          }
+        }
+      }
+
+      final destinationSection = targetSection;
+      final destinationIndex = targetIndex;
+      if (destinationSection != null && destinationIndex != null) {
+        final sourceSection = _sectionEventIds.indexWhere(
+          (section) => section.contains(dragId),
+        );
+        if (sourceSection < 0) return;
+        final sourceIndex = _sectionEventIds[sourceSection].indexOf(dragId);
+        var insertionIndex =
+            destinationIndex.clamp(
+                  0,
+                  _sectionEventIds[destinationSection].length,
+                )
+                as int;
+        if (sourceSection == destinationSection &&
+            sourceIndex < insertionIndex) {
+          insertionIndex--;
+        }
+        if (sourceSection != destinationSection ||
+            sourceIndex != insertionIndex) {
+          _animateDragSwap(() {
+            final source = _sectionEventIds[sourceSection];
+            final target = _sectionEventIds[destinationSection];
+            source.removeAt(sourceIndex);
+            target.insert(insertionIndex.clamp(0, target.length), dragId);
+            _syncItemsToSections();
+            _draggingIndex = _items.indexWhere((event) => event.id == dragId);
+          });
+        }
+      }
+      return;
+    }
+
+    // Section-less Manual DCVs retain the original fast adjacent-swap
+    // behaviour.
+    final currentIdx = _draggingIndex!;
     if (currentIdx > 0) {
       final key = _itemKeys[_items[currentIdx - 1].id];
       final box = key?.currentContext?.findRenderObject() as RenderBox?;
@@ -12336,7 +12623,6 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       }
     }
 
-    // ── Swap DOWN: drag Y moved below the midpoint of the item just below ────
     if (currentIdx < _items.length - 1) {
       final key = _itemKeys[_items[currentIdx + 1].id];
       final box = key?.currentContext?.findRenderObject() as RenderBox?;
@@ -12423,6 +12709,11 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     _dragOverlay = null;
     _dragEvent = null;
     setState(() => _draggingIndex = null);
+    if (_sectionEventIds.isNotEmpty) {
+      widget.onCustomSectionReordered?.call(
+        _sectionEventIds.map(List<String>.of).toList(),
+      );
+    }
   }
 
   // ── Display-item grouping helpers ────────────────────────────────────────────
@@ -12512,6 +12803,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   ///     per calendar day (chronological, all-day events first in day).
   List<_DcvSection> _buildCustomManualSections() {
     final names = widget.customSectionNames;
+    final eventsById = {for (final event in _items) event.id: event};
     return [
       for (var i = 0; i < names.length; i++)
         _DcvSection(
@@ -12519,9 +12811,13 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
           collapseKey: 'custom-$i',
           isEditable: true,
           customSectionIndex: i,
-          // Existing events remain in the first section. New sections start
-          // empty, matching the way a newly-added manual section is created.
-          events: i == 0 ? List.of(_items) : const [],
+          events: [
+            for (final id
+                in _sectionEventIds.length > i
+                    ? _sectionEventIds[i]
+                    : const <String>[])
+              if (eventsById[id] != null) eventsById[id]!,
+          ],
         ),
     ];
   }
@@ -12961,98 +13257,105 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                   final isCollapsed =
                       section.headerText != null &&
                       _collapsedSections.contains(sectionKey);
+                  final sectionKeyWidget = _sectionKeys.putIfAbsent(
+                    sectionIdx,
+                    () => GlobalKey(),
+                  );
 
-                  return Padding(
-                    // 16 px gap between consecutive sections (last section
-                    // gets the same padding; SliverPadding.bottom adds another
-                    // 16 so the final gap is 32 px, matching the old layout).
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // ── Section header ─────────────────────────────────
-                        if (section.headerText != null)
-                          section.isEditable
-                              ? _DcvEditableSectionLabel(
-                                  initialText: section.headerText!,
-                                  // isFirst controls top padding: 0 for first
-                                  // section (SliverPadding provides gap from
-                                  // the DCV header).
-                                  isFirst: true,
-                                  isCollapsed: isCollapsed,
-                                  accentColor: widget.color,
-                                  onToggle: () => _toggleSection(sectionKey!),
-                                  onSubmitted: (title) {
-                                    final index = section.customSectionIndex;
-                                    if (index != null) {
-                                      widget.onCustomSectionRenamed?.call(
-                                        index,
-                                        title,
-                                      );
-                                    }
-                                  },
-                                )
-                              : _DcvSectionLabel(
-                                  text: section.headerText!,
-                                  // isFirst controls top padding: 0 for first
-                                  // section (SliverPadding provides gap from
-                                  // DCV header), also 0 for others (section
-                                  // bottom padding provides inter-section gap).
-                                  isFirst: true,
-                                  isCollapsed: isCollapsed,
-                                  accentColor: widget.color,
-                                  onTap: () => _toggleSection(sectionKey!),
-                                ),
+                  return KeyedSubtree(
+                    key: sectionKeyWidget,
+                    child: Padding(
+                      // 16 px gap between consecutive sections (last section
+                      // gets the same padding; SliverPadding.bottom adds another
+                      // 16 so the final gap is 32 px, matching the old layout).
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // ── Section header ─────────────────────────────────
+                          if (section.headerText != null)
+                            section.isEditable
+                                ? _DcvEditableSectionLabel(
+                                    initialText: section.headerText!,
+                                    // isFirst controls top padding: 0 for first
+                                    // section (SliverPadding provides gap from
+                                    // the DCV header).
+                                    isFirst: true,
+                                    isCollapsed: isCollapsed,
+                                    accentColor: widget.color,
+                                    onToggle: () => _toggleSection(sectionKey!),
+                                    onSubmitted: (title) {
+                                      final index = section.customSectionIndex;
+                                      if (index != null) {
+                                        widget.onCustomSectionRenamed?.call(
+                                          index,
+                                          title,
+                                        );
+                                      }
+                                    },
+                                  )
+                                : _DcvSectionLabel(
+                                    text: section.headerText!,
+                                    // isFirst controls top padding: 0 for first
+                                    // section (SliverPadding provides gap from
+                                    // DCV header), also 0 for others (section
+                                    // bottom padding provides inter-section gap).
+                                    isFirst: true,
+                                    isCollapsed: isCollapsed,
+                                    accentColor: widget.color,
+                                    onTap: () => _toggleSection(sectionKey!),
+                                  ),
 
-                        // ── Grouped event card (collapses as one unit) ─────
-                        // AnimatedSize smoothly animates the group to zero
-                        // height when the section header is tapped.
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 280),
-                          curve: Curves.easeInOut,
-                          child: isCollapsed
-                              ? const SizedBox.shrink()
-                              : Container(
-                                  // clipBehavior clips children to the squircle
-                                  // shape so press highlights stay within bounds.
-                                  clipBehavior: Clip.antiAlias,
-                                  decoration: ShapeDecoration(
-                                    color: resolveThemeColor(
-                                      kSbSurface,
-                                      context,
-                                    ),
-                                    shape: BoundedContinuousRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        _kCornerRadius,
+                          // ── Grouped event card (collapses as one unit) ─────
+                          // AnimatedSize smoothly animates the group to zero
+                          // height when the section header is tapped.
+                          AnimatedSize(
+                            duration: const Duration(milliseconds: 280),
+                            curve: Curves.easeInOut,
+                            child: isCollapsed
+                                ? const SizedBox.shrink()
+                                : Container(
+                                    // clipBehavior clips children to the squircle
+                                    // shape so press highlights stay within bounds.
+                                    clipBehavior: Clip.antiAlias,
+                                    decoration: ShapeDecoration(
+                                      color: resolveThemeColor(
+                                        kSbSurface,
+                                        context,
+                                      ),
+                                      shape: BoundedContinuousRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          _kCornerRadius,
+                                        ),
+                                      ),
+                                      shadows: resolveThemeShadows(
+                                        kCardShadow,
+                                        context,
                                       ),
                                     ),
-                                    shadows: resolveThemeShadows(
-                                      kCardShadow,
-                                      context,
+                                    child: Column(
+                                      children: [
+                                        for (
+                                          int ei = 0;
+                                          ei < section.events.length;
+                                          ei++
+                                        )
+                                          _buildEventRow(
+                                            context,
+                                            section.events[ei],
+                                            ei,
+                                            section.events.length,
+                                            isReorderable,
+                                            previousEventById[section
+                                                .events[ei]
+                                                .id],
+                                          ),
+                                      ],
                                     ),
                                   ),
-                                  child: Column(
-                                    children: [
-                                      for (
-                                        int ei = 0;
-                                        ei < section.events.length;
-                                        ei++
-                                      )
-                                        _buildEventRow(
-                                          context,
-                                          section.events[ei],
-                                          ei,
-                                          section.events.length,
-                                          isReorderable,
-                                          previousEventById[section
-                                              .events[ei]
-                                              .id],
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },
