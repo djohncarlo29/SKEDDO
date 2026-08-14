@@ -206,7 +206,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
     ActionItem(
       label: 'New Section',
       icon: SFIcons.sf_list_bullet,
-      iconOffset: const Offset(-4.0, 0),
+      iconOffset: const Offset(-6.0, 0),
       iconBuilder: (color) => NewSectionIcon(size: 16, color: color),
       onTap: () {},
     ),
@@ -782,7 +782,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       ActionItem(
         label: 'New Section',
         icon: SFIcons.sf_list_bullet,
-        iconOffset: const Offset(-4.0, 0),
+        iconOffset: const Offset(-6.0, 0),
         iconBuilder: (color) => NewSectionIcon(size: 16, color: color),
       ),
       const ActionItem(
