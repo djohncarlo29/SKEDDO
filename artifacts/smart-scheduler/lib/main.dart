@@ -243,11 +243,8 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
             label: 'New Section',
             icon: SFIcons.sf_list_bullet,
             iconOffset: const Offset(-7.0, 0),
-            iconBuilder: (color) => NewSectionIcon(
-              size: 16,
-              color: color,
-              showPlusBadge: true,
-            ),
+            iconBuilder: (color) =>
+                NewSectionIcon(size: 16, color: color, showPlusBadge: true),
             onTap: _onInitialNewSectionTap,
           ),
     // Sort By — ExpandableActionMenu hides content (contentOpacity:0) and

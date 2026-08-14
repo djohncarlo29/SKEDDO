@@ -63,26 +63,13 @@ class NewSectionIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: size,
+      // Use the row's real icon width instead of painting beyond a 16 px
+      // child. The badge variant needs a little more room, while the original
+      // variant preserves its existing 5 px visual extension.
+      width: showPlusBadge ? size + 8.0 : size + 5.0,
       height: size,
-      // Keep the compact icon slot intact, but let the heading bar extend
-      // into the surrounding trailing padding.
-      child: OverflowBox(
-        alignment: Alignment.centerLeft,
-        minWidth: size,
-          maxWidth: showPlusBadge ? size + 10.0 : size + 5.0,
-        child: SizedBox(
-          // The default New Section mark needs a little extra room for the
-          // punched-out badge. Manage Sections keeps the original footprint.
-          width: showPlusBadge ? size + 10.0 : size + 5.0,
-          height: size,
-          child: CustomPaint(
-            painter: _NewSectionIconPainter(
-              color,
-              showPlusBadge: showPlusBadge,
-            ),
-          ),
-        ),
+      child: CustomPaint(
+        painter: _NewSectionIconPainter(color, showPlusBadge: showPlusBadge),
       ),
     );
   }
@@ -92,21 +79,18 @@ class _NewSectionIconPainter extends CustomPainter {
   final Color color;
   final bool showPlusBadge;
 
-  const _NewSectionIconPainter(
-    this.color, {
-    this.showPlusBadge = false,
-  });
+  const _NewSectionIconPainter(this.color, {this.showPlusBadge = false});
 
   @override
   void paint(Canvas canvas, Size size) {
     final scale = size.shortestSide / 24.0;
     canvas.save();
-    canvas.scale(scale, scale);
     if (showPlusBadge) {
       // The badge and its surrounding separation are transparent punches
       // through the icon layer, revealing the glass surface beneath it.
       canvas.saveLayer(Offset.zero & size, Paint());
     }
+    canvas.scale(scale, scale);
 
     final fill = Paint()
       ..color = color
@@ -142,7 +126,10 @@ class _NewSectionIconPainter extends CustomPainter {
 
     // Preserve the existing first-to-second row gap as the dots grow.
     const firstRowY = 11.6;
-    const secondRowY = 20.65;
+    // The New Section variant uses a slightly higher lower bullet so its
+    // outline and anti-aliased edge stay inside the 16 px icon canvas. Keep
+    // Manage Sections on its established geometry.
+    final secondRowY = showPlusBadge ? 19.75 : 20.65;
     const listLineLeft = 10.0;
     const listLineRight = 24.0;
     const listLineWidth = listLineRight - listLineLeft;
@@ -163,9 +150,9 @@ class _NewSectionIconPainter extends CustomPainter {
     );
 
     // Second row: outlined bullet and solid list line.
-    canvas.drawCircle(const Offset(3.5, secondRowY), bulletPathRadius, stroke);
+    canvas.drawCircle(Offset(3.5, secondRowY), bulletPathRadius, stroke);
     canvas.drawRect(
-      const Rect.fromLTWH(
+      Rect.fromLTWH(
         listLineLeft,
         secondRowY - lineHeight / 2,
         listLineWidth + 1.5,
@@ -191,19 +178,9 @@ class _NewSectionIconPainter extends CustomPainter {
       // The plus is a true negative-space knockout, not a second coloured
       // glyph.
       final plus = Path()
+        ..addRect(Rect.fromCenter(center: badgeCenter, width: 2.2, height: 8.0))
         ..addRect(
-          Rect.fromCenter(
-            center: badgeCenter,
-            width: 2.2,
-            height: 8.0,
-          ),
-        )
-        ..addRect(
-          Rect.fromCenter(
-            center: badgeCenter,
-            width: 8.0,
-            height: 2.2,
-          ),
+          Rect.fromCenter(center: badgeCenter, width: 8.0, height: 2.2),
         );
       canvas.drawPath(plus, clear);
       canvas.restore();
@@ -552,8 +529,7 @@ class _ActionPanelState extends State<ActionPanel>
     milliseconds: (((600 - (count - 2) * 50).clamp(500, 700)) * 0.65).round(),
   );
 
-  Duration get _effectiveCloseDuration =>
-      widget.closeDurationOverrideMs != null
+  Duration get _effectiveCloseDuration => widget.closeDurationOverrideMs != null
       ? Duration(milliseconds: widget.closeDurationOverrideMs!)
       : _closeDuration(widget.items.length);
 
@@ -561,9 +537,10 @@ class _ActionPanelState extends State<ActionPanel>
   // Keep this proportional to the actual close duration so mini panels with
   // different row counts all get the same early-dismiss feel.
   Duration get _pillFadeDuration => Duration(
-    milliseconds: (_effectiveCloseDuration.inMilliseconds * 0.18)
-        .round()
-        .clamp(1, 100),
+    milliseconds: (_effectiveCloseDuration.inMilliseconds * 0.18).round().clamp(
+      1,
+      100,
+    ),
   );
 
   @override
@@ -1421,7 +1398,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
               ],
               isClosing: _expandedClosing,
               chevronColumn: widget.chevronColumn,
-               closeDurationOverrideMs: widget.closeDurationOverrideMs,
+              closeDurationOverrideMs: widget.closeDurationOverrideMs,
               openDurationOverrideMs: 280,
             ),
           ),
