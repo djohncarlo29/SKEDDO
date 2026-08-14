@@ -42,6 +42,7 @@ class _DcvMenuContent extends StatefulWidget {
   final ValueNotifier<bool> isClosing;
   final VoidCallback onDismiss;
   final bool isSmartCategory;
+  final bool sectionsEnabled;
   final bool initialManageSections;
   final String initialSortBy;
   final void Function(String) onSortChanged;
@@ -62,6 +63,7 @@ class _DcvMenuContent extends StatefulWidget {
     required this.isClosing,
     required this.onDismiss,
     required this.isSmartCategory,
+    required this.sectionsEnabled,
     required this.initialManageSections,
     required this.initialSortBy,
     required this.onSortChanged,
@@ -229,24 +231,27 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       icon: SFIcons.sf_checkmark_circle,
       onTap: () {},
     ),
-    _manageSections
-        ? ActionItem(
-            label: 'Manage Sections',
-            icon: SFIcons.sf_list_bullet,
-            hasChevron: true,
-            iconOffset: const Offset(-7.0, 0),
-            iconBuilder: (color) => NewSectionIcon(size: 16, color: color),
-            contentOpacity: expandedTriggerId == 'manageSections' ? 0.0 : 1.0,
-            onTap: () => onTriggerTap('manageSections'),
-          )
-        : ActionItem(
-            label: 'New Section',
-            icon: SFIcons.sf_list_bullet,
-            iconOffset: const Offset(-7.0, 0),
-            iconBuilder: (color) =>
-                NewSectionIcon(size: 16, color: color, showPlusBadge: true),
-            onTap: _onInitialNewSectionTap,
-          ),
+    if (widget.sectionsEnabled)
+      _manageSections
+          ? ActionItem(
+              label: 'Manage Sections',
+              icon: SFIcons.sf_list_bullet,
+              hasChevron: true,
+              iconOffset: const Offset(-7.0, 0),
+              iconBuilder: (color) => NewSectionIcon(size: 16, color: color),
+              contentOpacity: expandedTriggerId == 'manageSections'
+                  ? 0.0
+                  : 1.0,
+              onTap: () => onTriggerTap('manageSections'),
+            )
+          : ActionItem(
+              label: 'New Section',
+              icon: SFIcons.sf_list_bullet,
+              iconOffset: const Offset(-7.0, 0),
+              iconBuilder: (color) =>
+                  NewSectionIcon(size: 16, color: color, showPlusBadge: true),
+              onTap: _onInitialNewSectionTap,
+            ),
     // Sort By — ExpandableActionMenu hides content (contentOpacity:0) and
     // renders the floating shared element in its place while expanded.
     ActionItem(
@@ -330,7 +335,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
   @override
   Widget build(BuildContext context) {
     final expandableActions = <ExpandableActionSpec>[
-      if (_manageSections)
+      if (widget.sectionsEnabled && _manageSections)
         ExpandableActionSpec(
           id: 'manageSections',
           rowTop: _manageSectionsTop(context),
@@ -378,6 +383,16 @@ const _kSmartCategoryLabels = {
   'All Events',
   'Completed',
 };
+
+/// Whether the currently open DCV supports the manual Sections action.
+///
+/// The fixed smart categories are intentionally not section-enabled.  The
+/// built-in Unscheduled DCV is the one exception; Unnamed, Uncategorized, and
+/// every user-created category are section-enabled because they are not in the
+/// fixed smart-category set.
+bool _dcvSectionsEnabled(String? label) =>
+    label == 'Unscheduled' ||
+    (label != null && !_kSmartCategoryLabels.contains(label));
 
 const _overlayStyle = SystemUiOverlayStyle(
   statusBarColor: Color(0x00000000),
@@ -825,6 +840,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     setState(() {});
 
     final isSmartCategory = _kSmartCategoryLabels.contains(_dcvCategory);
+    final sectionsEnabled = _dcvSectionsEnabled(_dcvCategory);
     final manageSections = _dcvManageSectionsMap[_dcvCategory] ?? false;
 
     // Pre-compute panel origin based on the FULL item set so the position
@@ -848,13 +864,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         label: 'Select Events',
         icon: SFIcons.sf_checkmark_circle,
       ),
-      ActionItem(
-        label: manageSections ? 'Manage Sections' : 'New Section',
-        icon: SFIcons.sf_list_bullet,
-        hasChevron: manageSections,
-        iconOffset: const Offset(-7.0, 0),
-        iconBuilder: (color) => NewSectionIcon(size: 16, color: color),
-      ),
+      if (sectionsEnabled)
+        ActionItem(
+          label: manageSections ? 'Manage Sections' : 'New Section',
+          icon: SFIcons.sf_list_bullet,
+          hasChevron: manageSections,
+          iconOffset: const Offset(-7.0, 0),
+          iconBuilder: (color) => NewSectionIcon(size: 16, color: color),
+        ),
       const ActionItem(
         label: 'Sort By',
         icon: SFIcons.sf_arrow_up_arrow_down,
@@ -896,6 +913,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           closeDuration: const Duration(milliseconds: 260),
         ),
         isSmartCategory: isSmartCategory,
+        sectionsEnabled: sectionsEnabled,
         initialManageSections: manageSections,
         initialSortBy: _dcvSortByMap[_dcvCategory] ?? 'Manual',
         onSortChanged: (s) {
@@ -1764,6 +1782,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             activeDCV: _dcvCategory,
             dcvSortBy: _dcvSortByMap[_dcvCategory] ?? 'Manual',
             dcvSortDir: _dcvSortDirMap[_dcvCategory] ?? '',
+            // Section-enabled categories open in their initial flat manual
+            // view.  Built-in date Smart Categories retain their date
+            // grouping.  This is intentionally independent from the menu's
+            // "New Section" → "Manage Sections" transition state.
+            dcvShowManualDateSections: !_dcvSectionsEnabled(_dcvCategory),
             onTileTapped: (label, color) => _enterDCV(label, color),
             onActiveDCVCategoryChanged: (label, color) {
               // The category currently shown in the DCV had its color edited

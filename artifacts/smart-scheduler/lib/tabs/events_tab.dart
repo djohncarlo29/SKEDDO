@@ -1401,6 +1401,13 @@ class EventsTab extends StatefulWidget {
   /// Active sort direction for the DCV ('Soonest First', 'A → Z', …).
   final String? dcvSortDir;
 
+  /// Whether the DCV's initial Manual view should show date headers.
+  ///
+  /// This is separate from the category's Sections capability. Section-
+  /// enabled categories start flat with no date headers; fixed date-based
+  /// Smart Categories keep their existing manual date grouping.
+  final bool dcvShowManualDateSections;
+
   const EventsTab({
     super.key,
     this.onSearchFocusChanged,
@@ -1411,6 +1418,7 @@ class EventsTab extends StatefulWidget {
     this.onEditEvent,
     this.dcvSortBy,
     this.dcvSortDir,
+    this.dcvShowManualDateSections = true,
     required this.dcvSlideController,
   });
 
@@ -5622,6 +5630,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     events: dcvEvents,
                     sortBy: widget.dcvSortBy ?? 'Manual',
                     sortDir: widget.dcvSortDir ?? '',
+                    showManualDateSections: widget.dcvShowManualDateSections,
                     onEditEvent: widget.onEditEvent,
                     color: dcvColor,
                   );
@@ -11772,6 +11781,11 @@ class _CategoryDetailView extends StatefulWidget {
   /// Direction string for the active sort, e.g. 'Soonest First', 'A → Z'.
   final String sortDir;
 
+  /// Whether Manual mode should group events under date-based headers.
+  /// Built-in date Smart Categories keep their existing grouping; the
+  /// section-enabled category views open as one flat list.
+  final bool showManualDateSections;
+
   /// Optional callback to open the event-edit sheet for a given event.
   /// Passed from [EventsTab.onEditEvent] so DCV event cards show a pencil icon.
   final void Function(ScheduledEvent event)? onEditEvent;
@@ -11788,6 +11802,7 @@ class _CategoryDetailView extends StatefulWidget {
     this.events = const [],
     this.sortBy = 'Manual',
     this.sortDir = '',
+    this.showManualDateSections = true,
     this.onEditEvent,
     this.color = kAccentColor,
   });
@@ -12286,6 +12301,10 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     if (widget.sortBy != 'Manual') return _buildSortedDisplaySections();
 
     // ── Unscheduled: flat single section, no header ───────────────────────────
+    if (!widget.showManualDateSections) {
+      return [_DcvSection(events: List.of(_items))];
+    }
+
     if (label == 'Unscheduled') {
       return [_DcvSection(events: List.of(_items))];
     }
