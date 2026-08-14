@@ -339,6 +339,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
           subtitle: null,
           icon: SFIcons.sf_list_bullet,
           iconBuilder: (color) => NewSectionIcon(size: 16, color: color),
+          iconOffset: const Offset(-7.0, 0),
           subItems: _sectionOptionItems(),
         ),
       ExpandableActionSpec(

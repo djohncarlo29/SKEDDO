@@ -1112,6 +1112,7 @@ class ExpandableActionSpec {
   final String? subtitle;
   final IconData icon;
   final Widget Function(Color color)? iconBuilder;
+  final Offset iconOffset;
   final List<ActionItem> subItems;
 
   const ExpandableActionSpec({
@@ -1123,6 +1124,7 @@ class ExpandableActionSpec {
     required this.icon,
     required this.subItems,
     this.iconBuilder,
+    this.iconOffset = Offset.zero,
   });
 }
 
@@ -1342,6 +1344,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
                   hasChevron: true,
                   subtitle: activeSpec.subtitle,
                   iconBuilder: activeSpec.iconBuilder,
+                  iconOffset: activeSpec.iconOffset,
                   instantOnOpen: true,
                   contentOpacity: 0.0,
                 ),
@@ -1376,6 +1379,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
                 subtitle: sharedSpec.subtitle,
                 icon: sharedSpec.icon,
                 iconBuilder: sharedSpec.iconBuilder,
+                iconOffset: sharedSpec.iconOffset,
                 rowHeight: sharedSpec.rowHeight,
                 chevronCtrl: _chevronCtrl,
                 onTap: _scalingBack
@@ -1398,6 +1402,7 @@ class _ExpandableRowSharedContent extends StatefulWidget {
   final String? subtitle;
   final IconData icon;
   final Widget Function(Color color)? iconBuilder;
+  final Offset iconOffset;
   final double rowHeight;
   final AnimationController chevronCtrl;
   final VoidCallback onTap;
@@ -1406,6 +1411,7 @@ class _ExpandableRowSharedContent extends StatefulWidget {
     required this.subtitle,
     required this.icon,
     required this.iconBuilder,
+    required this.iconOffset,
     required this.rowHeight,
     required this.chevronCtrl,
     required this.onTap,
@@ -1499,14 +1505,18 @@ class _ExpandableRowSharedContentState
                     ),
                   ),
                   // Right icon
-                  widget.iconBuilder?.call(textColor) ??
-                      _ActionPanelSFIcon(
-                        widget.icon,
-                        size: 20,
-                        color: textColor,
-                        weight: FontWeight.w500,
-                        boxPadding: 4,
-                      ),
+                  Transform.translate(
+                    offset: widget.iconOffset,
+                    child:
+                        widget.iconBuilder?.call(textColor) ??
+                        _ActionPanelSFIcon(
+                          widget.icon,
+                          size: 20,
+                          color: textColor,
+                          weight: FontWeight.w500,
+                          boxPadding: 4,
+                        ),
+                  ),
                 ],
               ),
             ),
