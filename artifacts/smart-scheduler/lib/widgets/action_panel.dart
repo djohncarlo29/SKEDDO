@@ -133,11 +133,10 @@ class _NewSectionIconPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..isAntiAlias = true;
 
-    // Section heading bar — the default Manage Sections geometry stays
-    // unchanged. The New Section variant ends earlier to leave a visible
-    // punched-out gap before its badge.
+    // Section heading bar — this base geometry is shared by both states.
+    // New Section only adds the badge and its transparent punch below.
     canvas.drawRect(
-      Rect.fromLTRB(-1.0, 0.6, showPlusBadge ? 19.0 : 28.0, 5.1),
+      const Rect.fromLTRB(-1.0, 0.6, 28.0, 5.1),
       fill,
     );
 
@@ -156,10 +155,8 @@ class _NewSectionIconPainter extends CustomPainter {
 
     // Preserve the existing first-to-second row gap as the dots grow.
     const firstRowY = 11.6;
-    // The New Section variant uses a slightly higher lower bullet so its
-    // outline and anti-aliased edge stay inside the 16 px icon canvas. Keep
-    // Manage Sections on its established geometry.
-    final secondRowY = showPlusBadge ? 19.75 : 20.65;
+    // Both states use the exact same row geometry.
+    const secondRowY = 20.65;
     const listLineLeft = 10.0;
     const listLineRight = 24.0;
     const listLineWidth = listLineRight - listLineLeft;
