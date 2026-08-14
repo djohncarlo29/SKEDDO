@@ -52,21 +52,21 @@ class NewSectionIcon extends StatelessWidget {
   final double size;
   final Color color;
 
-  const NewSectionIcon({super.key, this.size = 24, required this.color});
+  const NewSectionIcon({super.key, this.size = 22, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: size,
       height: size,
-      // Keep the row's 24 px layout slot unchanged, but let the heading bar
-      // extend into the surrounding trailing padding.
+      // Keep the compact icon slot intact, but let the heading bar extend
+      // into the surrounding trailing padding.
       child: OverflowBox(
         alignment: Alignment.centerLeft,
         minWidth: size,
-        maxWidth: size + 4.0,
+        maxWidth: size + 5.0,
         child: SizedBox(
-          width: size + 4.0,
+          width: size + 5.0,
           height: size,
           child: CustomPaint(painter: _NewSectionIconPainter(color)),
         ),
@@ -105,7 +105,7 @@ class _NewSectionIconPainter extends CustomPainter {
     // Extend the heading bar slightly past the bullets on the left, and
     // farther past the list-line endpoints on the right.  Keep that
     // relationship while adding a little more length on the right.
-    canvas.drawRect(const Rect.fromLTRB(-1.0, 0.6, 27.5, 5.1), fill);
+    canvas.drawRect(const Rect.fromLTRB(-1.0, 0.6, 28.0, 5.1), fill);
 
     // List rows: both bullets share the same outer diameter.  The adjacent
     // bars are two-thirds of that diameter, matching the updated icon
@@ -136,7 +136,7 @@ class _NewSectionIconPainter extends CustomPainter {
       const Rect.fromLTWH(
         listLineLeft,
         firstRowY - lineHeight / 2,
-        listLineWidth + 1.0,
+        listLineWidth + 1.5,
         lineHeight,
       ),
       fill,
@@ -148,7 +148,7 @@ class _NewSectionIconPainter extends CustomPainter {
       const Rect.fromLTWH(
         listLineLeft,
         secondRowY - lineHeight / 2,
-        listLineWidth + 1.0,
+        listLineWidth + 1.5,
         lineHeight,
       ),
       fill,

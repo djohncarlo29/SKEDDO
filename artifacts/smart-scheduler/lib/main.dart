@@ -206,7 +206,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
     ActionItem(
       label: 'New Section',
       icon: SFIcons.sf_list_bullet,
-      iconBuilder: (color) => NewSectionIcon(size: 24, color: color),
+      iconBuilder: (color) => NewSectionIcon(size: 22, color: color),
       onTap: () {},
     ),
     // Sort By — ExpandableActionMenu hides content (contentOpacity:0) and
@@ -781,7 +781,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       ActionItem(
         label: 'New Section',
         icon: SFIcons.sf_list_bullet,
-        iconBuilder: (color) => NewSectionIcon(size: 24, color: color),
+        iconBuilder: (color) => NewSectionIcon(size: 22, color: color),
       ),
       const ActionItem(
         label: 'Sort By',
