@@ -51,8 +51,14 @@ class _ActionPanelSFIcon extends StatelessWidget {
 class NewSectionIcon extends StatelessWidget {
   final double size;
   final Color color;
+  final bool showPlusBadge;
 
-  const NewSectionIcon({super.key, this.size = 16, required this.color});
+  const NewSectionIcon({
+    super.key,
+    this.size = 16,
+    required this.color,
+    this.showPlusBadge = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -64,11 +70,18 @@ class NewSectionIcon extends StatelessWidget {
       child: OverflowBox(
         alignment: Alignment.centerLeft,
         minWidth: size,
-        maxWidth: size + 5.0,
+          maxWidth: showPlusBadge ? size + 10.0 : size + 5.0,
         child: SizedBox(
-          width: size + 5.0,
+          // The default New Section mark needs a little extra room for the
+          // punched-out badge. Manage Sections keeps the original footprint.
+          width: showPlusBadge ? size + 10.0 : size + 5.0,
           height: size,
-          child: CustomPaint(painter: _NewSectionIconPainter(color)),
+          child: CustomPaint(
+            painter: _NewSectionIconPainter(
+              color,
+              showPlusBadge: showPlusBadge,
+            ),
+          ),
         ),
       ),
     );
@@ -77,14 +90,23 @@ class NewSectionIcon extends StatelessWidget {
 
 class _NewSectionIconPainter extends CustomPainter {
   final Color color;
+  final bool showPlusBadge;
 
-  const _NewSectionIconPainter(this.color);
+  const _NewSectionIconPainter(
+    this.color, {
+    this.showPlusBadge = false,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     final scale = size.shortestSide / 24.0;
     canvas.save();
     canvas.scale(scale, scale);
+    if (showPlusBadge) {
+      // The badge and its surrounding separation are transparent punches
+      // through the icon layer, revealing the glass surface beneath it.
+      canvas.saveLayer(Offset.zero & size, Paint());
+    }
 
     final fill = Paint()
       ..color = color
@@ -97,15 +119,13 @@ class _NewSectionIconPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..isAntiAlias = true;
 
-    // Section heading bar — square corners and the same right endpoint as the
-    // list lines below.  Extend both horizontal shapes slightly past the
-    // original width so the icon reads more confidently at action-panel scale.
-    // Keep the established vertical rhythm while making room for the larger
-    // dots below.
-    // Extend the heading bar slightly past the bullets on the left, and
-    // farther past the list-line endpoints on the right.  Keep that
-    // relationship while adding a little more length on the right.
-    canvas.drawRect(const Rect.fromLTRB(-1.0, 0.6, 28.0, 5.1), fill);
+    // Section heading bar — the default Manage Sections geometry stays
+    // unchanged. The New Section variant ends earlier to leave a visible
+    // punched-out gap before its badge.
+    canvas.drawRect(
+      Rect.fromLTRB(-1.0, 0.6, showPlusBadge ? 19.0 : 28.0, 5.1),
+      fill,
+    );
 
     // List rows: both bullets share the same outer diameter.  The adjacent
     // bars are two-thirds of that diameter, matching the updated icon
@@ -154,12 +174,47 @@ class _NewSectionIconPainter extends CustomPainter {
       fill,
     );
 
+    if (showPlusBadge) {
+      const badgeCenter = Offset(29.0, 3.2);
+      const badgeRadius = 6.4;
+      const badgeGapRadius = 8.0;
+      final clear = Paint()
+        ..blendMode = BlendMode.clear
+        ..style = PaintingStyle.fill
+        ..isAntiAlias = true;
+
+      // Clear a slightly larger circle first so the badge is detached from
+      // the bar by a deliberate ring of transparent space.
+      canvas.drawCircle(badgeCenter, badgeGapRadius, clear);
+      canvas.drawCircle(badgeCenter, badgeRadius, fill);
+
+      // The plus is a true negative-space knockout, not a second coloured
+      // glyph.
+      final plus = Path()
+        ..addRect(
+          Rect.fromCenter(
+            center: badgeCenter,
+            width: 2.2,
+            height: 8.0,
+          ),
+        )
+        ..addRect(
+          Rect.fromCenter(
+            center: badgeCenter,
+            width: 8.0,
+            height: 2.2,
+          ),
+        );
+      canvas.drawPath(plus, clear);
+      canvas.restore();
+    }
+
     canvas.restore();
   }
 
   @override
   bool shouldRepaint(covariant _NewSectionIconPainter oldDelegate) =>
-      oldDelegate.color != color;
+      oldDelegate.color != color || oldDelegate.showPlusBadge != showPlusBadge;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
