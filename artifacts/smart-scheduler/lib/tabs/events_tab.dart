@@ -4447,18 +4447,27 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       pageBuilder: (_) => _EditDcvSectionsSheet(
         sectionNames: List<String>.of(names),
         accentColor: accentColor,
-        onSave: (order) => reorderDcvSections(label, order),
+        onSave: (order, editedNames) =>
+            reorderDcvSections(label, order, editedNames: editedNames),
       ),
     );
   }
 
-  /// Applies a section order to both the visible headers and their event
-  /// membership.  The editor returns original indexes rather than names so
+  /// Applies section names/order to both the visible headers and their event
+  /// membership. The editor returns original indexes rather than names so
   /// duplicate section titles remain unambiguous. Missing indexes represent
   /// sections deleted in the editor.
-  void reorderDcvSections(String label, List<int> order) {
+  void reorderDcvSections(
+    String label,
+    List<int> order, {
+    List<String>? editedNames,
+  }) {
     final names = _dcvCustomSectionNames[label];
     if (names == null) return;
+    final sourceNames =
+        editedNames != null && editedNames.length == names.length
+        ? <String>[for (final name in editedNames) name.trim()]
+        : List<String>.of(names);
 
     final eventIds = _dcvCustomSectionEventIds[label] ?? const <List<String>>[];
     final normalizedEventIds = List<List<String>>.generate(
@@ -4476,7 +4485,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       for (var index = 0; index < names.length; index++)
         if (!order.contains(index)) ...normalizedEventIds[index],
     ];
-    final reorderedNames = <String>[for (final index in order) names[index]];
+    final reorderedNames = <String>[
+      for (final index in order) sourceNames[index],
+    ];
     final reorderedEventIds = <List<String>>[
       for (final index in order) List<String>.of(normalizedEventIds[index]),
     ];
@@ -11845,7 +11856,7 @@ class _ModalCircleButton extends StatelessWidget {
 class _EditDcvSectionsSheet extends StatefulWidget {
   final List<String> sectionNames;
   final Color accentColor;
-  final ValueChanged<List<int>> onSave;
+  final void Function(List<int> order, List<String> editedNames) onSave;
 
   const _EditDcvSectionsSheet({
     required this.sectionNames,
@@ -11859,6 +11870,9 @@ class _EditDcvSectionsSheet extends StatefulWidget {
 
 class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
   late List<int> _sectionOrder;
+  late final List<TextEditingController> _sectionControllers;
+  late final ValueNotifier<Color> _handleColorNotifier;
+  late final TintedCupertinoTextSelectionControls _selectionControls;
   final Set<int> _deletingSections = <int>{};
 
   static const double _kHeaderEdge = 16.0;
@@ -11869,6 +11883,30 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
   void initState() {
     super.initState();
     _sectionOrder = List<int>.generate(widget.sectionNames.length, (i) => i);
+    _sectionControllers = [
+      for (final name in widget.sectionNames) TextEditingController(text: name),
+    ];
+    _handleColorNotifier = ValueNotifier<Color>(widget.accentColor);
+    _selectionControls = TintedCupertinoTextSelectionControls(
+      _handleColorNotifier,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _EditDcvSectionsSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.accentColor != widget.accentColor) {
+      _handleColorNotifier.value = widget.accentColor;
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _sectionControllers) {
+      controller.dispose();
+    }
+    _handleColorNotifier.dispose();
+    super.dispose();
   }
 
   void _reorder(int oldIndex, int newIndex) {
@@ -11880,10 +11918,13 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
   }
 
   void _save() {
-    widget.onSave([
-      for (final originalIndex in _sectionOrder)
-        if (!_deletingSections.contains(originalIndex)) originalIndex,
-    ]);
+    widget.onSave(
+      [
+        for (final originalIndex in _sectionOrder)
+          if (!_deletingSections.contains(originalIndex)) originalIndex,
+      ],
+      [for (final controller in _sectionControllers) controller.text.trim()],
+    );
     Navigator.of(context).pop();
   }
 
@@ -11904,19 +11945,14 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
     });
   }
 
-  String _displayName(int originalIndex) {
-    final name = widget.sectionNames[originalIndex].trim();
-    return name.isEmpty ? 'New Section' : name;
-  }
-
   Widget _sectionReorderProxy(
     Widget child,
     int index,
     Animation<double> animation,
   ) {
-    // Match the event drag ghost: the row scales slightly above the list,
-    // gains the same elevated drop shadow, and receives the same Dark Mode-only
-    // hairline outline.
+    // The Edit Sections row lives on the modal-card surface. Keep the lifted
+    // proxy on that same surface instead of using the generic section ghost
+    // color used by event/list drag proxies elsewhere.
     final shadows = resolveThemeShadows(const [
       BoxShadow(color: Color(0x3A000000), blurRadius: 18, offset: Offset(0, 6)),
     ], context);
@@ -11925,7 +11961,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
       child: _DarkModeGhostOutline(
         child: Container(
           decoration: ShapeDecoration(
-            color: resolveThemeColor(kSbSurface, context),
+            color: resolveThemeColor(kModalCard, context),
             shape: BoundedContinuousRectangleBorder(
               borderRadius: BorderRadius.circular(kSbCornerRadius),
               side: BorderSide.none,
@@ -11942,7 +11978,18 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
   Widget build(BuildContext context) {
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
-    final handleColor = resolveThemeColor(kTertiaryLabel, context);
+    final handleColor = widget.accentColor;
+    final sectionTextStyle = TextStyle(
+      inherit: false,
+      color: primaryLabel,
+      fontFamily: kSFProText,
+      fontSize: 17,
+      fontWeight: FontWeight.w400,
+      height: 1.2,
+    );
+    final sectionPlaceholderStyle = sectionTextStyle.copyWith(
+      color: resolveThemeColor(kSecondaryLabel, context),
+    );
 
     return CupertinoPageScaffold(
       backgroundColor: kModalBackground,
@@ -12048,17 +12095,47 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                                                         8,
                                                         16,
                                                       ),
-                                                  child: Text(
-                                                    _displayName(originalIndex),
-                                                    softWrap: true,
-                                                    style: TextStyle(
-                                                      inherit: false,
-                                                      color: primaryLabel,
-                                                      fontFamily: kSFProText,
-                                                      fontSize: 17,
-                                                      fontWeight:
-                                                          FontWeight.w400,
-                                                      height: 1.2,
+                                                  child: CupertinoTheme(
+                                                    data:
+                                                        CupertinoTheme.of(
+                                                          context,
+                                                        ).copyWith(
+                                                          primaryColor: widget
+                                                              .accentColor,
+                                                        ),
+                                                    child: DefaultSelectionStyle(
+                                                      selectionColor: widget
+                                                          .accentColor
+                                                          .withOpacity(0.20),
+                                                      child: CupertinoTextField(
+                                                        controller:
+                                                            _sectionControllers[originalIndex],
+                                                        selectionControls:
+                                                            _selectionControls,
+                                                        decoration: null,
+                                                        padding:
+                                                            EdgeInsets.zero,
+                                                        minLines: 1,
+                                                        maxLines: null,
+                                                        textAlignVertical:
+                                                            TextAlignVertical
+                                                                .top,
+                                                        textInputAction:
+                                                            TextInputAction
+                                                                .done,
+                                                        placeholder:
+                                                            'New Section',
+                                                        placeholderStyle:
+                                                            sectionPlaceholderStyle,
+                                                        style: sectionTextStyle,
+                                                        cursorColor:
+                                                            widget.accentColor,
+                                                        onSubmitted: (_) =>
+                                                            FocusManager
+                                                                .instance
+                                                                .primaryFocus
+                                                                ?.unfocus(),
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
