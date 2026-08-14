@@ -470,9 +470,12 @@ String smartWrapChevronValue(String value) {
 
 /// Lays out a label and its chevron value with a minimum, not fixed, gap.
 ///
-/// When both values fit on one line, each side keeps its natural width and the
-/// remaining space becomes additional separation. Only when the pair cannot
-/// fit does the row switch to flexible children that can wrap independently.
+/// The default layout is content-sized: when the pair fits, the two rendered
+/// groups sit next to one another with exactly the minimum gap. A caller can
+/// opt into a right-aligned trailing group for rows where that alignment is
+/// part of the design. When the pair cannot fit, the value keeps its natural
+/// width first and the label receives the remaining room before both sides are
+/// allowed to wrap.
 class MinGapLabelValueRow extends StatelessWidget {
   const MinGapLabelValueRow({
     super.key,
@@ -485,6 +488,7 @@ class MinGapLabelValueRow extends StatelessWidget {
     this.leading,
     this.leadingWidth = 0.0,
     this.leadingGap = 12.0,
+    this.alignTrailing = false,
   });
 
   final String label;
@@ -496,6 +500,7 @@ class MinGapLabelValueRow extends StatelessWidget {
   final Widget? leading;
   final double leadingWidth;
   final double leadingGap;
+  final bool alignTrailing;
 
   double _singleLineWidth(BuildContext context, String text, TextStyle style) {
     final painter = TextPainter(
@@ -526,9 +531,8 @@ class MinGapLabelValueRow extends StatelessWidget {
                 constraints.maxWidth;
 
         if (fitsOnOneLine) {
-          final freeGap =
-              constraints.maxWidth - leadingTotal - labelWidth - valueWidth;
-          return Row(
+          final row = Row(
+            mainAxisSize: alignTrailing ? MainAxisSize.max : MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (leading != null) ...[
@@ -539,23 +543,65 @@ class MinGapLabelValueRow extends StatelessWidget {
                 width: labelWidth,
                 child: Text(label, style: labelStyle, softWrap: false),
               ),
-              SizedBox(width: math.max(kLabelValueGap, freeGap)),
+              const SizedBox(width: kLabelValueGap),
               SizedBox(width: valueWidth, child: trailing),
             ],
           );
+          return alignTrailing
+              ? Align(alignment: Alignment.centerRight, child: row)
+              : row;
         }
 
-        return Row(
+        // Do not give both sides an arbitrary half of the row. First preserve
+        // the value's single-line width whenever that is possible; otherwise
+        // preserve the label's width. Only when neither side can remain on one
+        // line do we divide the available text room proportionally.
+        final availableAfterGap = math.max(
+          0.0,
+          constraints.maxWidth - leadingTotal - kLabelValueGap,
+        );
+        final valueCanStaySingleLine = valueWidth <= availableAfterGap;
+        final labelCanStaySingleLine = labelWidth <= availableAfterGap;
+
+        late final double labelSlot;
+        late final double valueSlot;
+        if (valueCanStaySingleLine) {
+          valueSlot = valueWidth;
+          labelSlot = math.max(0.0, availableAfterGap - valueSlot);
+        } else if (labelCanStaySingleLine) {
+          labelSlot = labelWidth;
+          valueSlot = math.max(0.0, availableAfterGap - labelSlot);
+        } else {
+          final naturalTotal = labelWidth + valueWidth;
+          final labelShare = naturalTotal == 0
+              ? 0.5
+              : labelWidth / naturalTotal;
+          labelSlot = availableAfterGap * labelShare;
+          valueSlot = availableAfterGap - labelSlot;
+        }
+
+        final row = Row(
+          mainAxisSize: MainAxisSize.max,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             if (leading != null) ...[
               SizedBox(width: leadingWidth, child: leading),
               SizedBox(width: leadingGap),
             ],
-            Flexible(child: Text(label, style: labelStyle, softWrap: true)),
+            SizedBox(
+              width: labelSlot,
+              child: Text(label, style: labelStyle, softWrap: true),
+            ),
             const SizedBox(width: kLabelValueGap),
-            Flexible(child: trailing),
+            SizedBox(width: valueSlot, child: trailing),
           ],
+        );
+        if (!alignTrailing) return row;
+
+        return Row(
+          mainAxisSize: MainAxisSize.max,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [Expanded(child: row)],
         );
       },
     );
