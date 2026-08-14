@@ -470,12 +470,11 @@ String smartWrapChevronValue(String value) {
 
 /// Lays out a label and its chevron value with a minimum, not fixed, gap.
 ///
-/// The default layout is content-sized: when the pair fits, the two rendered
-/// groups sit next to one another with exactly the minimum gap. A caller can
-/// opt into a right-aligned trailing group for rows where that alignment is
-/// part of the design. When the pair cannot fit, the value keeps its natural
-/// width first and the label receives the remaining room before both sides are
-/// allowed to wrap.
+/// The row remains full-width by default: the label starts at the leading edge
+/// and the value group stays pinned to the trailing edge. The gap between them
+/// is at least the minimum, and expands naturally when the row has room. When
+/// the pair cannot fit, the value keeps its natural width first and the label
+/// receives the remaining room before either side is allowed to wrap.
 class MinGapLabelValueRow extends StatelessWidget {
   const MinGapLabelValueRow({
     super.key,
@@ -488,7 +487,7 @@ class MinGapLabelValueRow extends StatelessWidget {
     this.leading,
     this.leadingWidth = 0.0,
     this.leadingGap = 12.0,
-    this.alignTrailing = false,
+    this.alignTrailing = true,
   });
 
   final String label;
@@ -543,13 +542,14 @@ class MinGapLabelValueRow extends StatelessWidget {
                 width: labelWidth,
                 child: Text(label, style: labelStyle, softWrap: false),
               ),
-              const SizedBox(width: kLabelValueGap),
+              if (alignTrailing)
+                const Spacer()
+              else
+                const SizedBox(width: kLabelValueGap),
               SizedBox(width: valueWidth, child: trailing),
             ],
           );
-          return alignTrailing
-              ? Align(alignment: Alignment.centerRight, child: row)
-              : row;
+          return row;
         }
 
         // Do not give both sides an arbitrary half of the row. First preserve
