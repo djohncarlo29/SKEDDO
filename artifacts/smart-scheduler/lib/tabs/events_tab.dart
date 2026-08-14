@@ -12154,6 +12154,9 @@ class _SwipeToRevealDeleteState extends State<_SwipeToRevealDelete>
     with SingleTickerProviderStateMixin {
   static const _kActionWidth = 52.0;
   static const _kAnimationDuration = Duration(milliseconds: 220);
+  static const _kRubberBandResistance = 0.15;
+  static const _kReverseCloseDistance = 8.0;
+  static _SwipeToRevealDeleteState? _openState;
 
   late final AnimationController _settleController;
   double _offset = 0.0;
@@ -12171,20 +12174,31 @@ class _SwipeToRevealDeleteState extends State<_SwipeToRevealDelete>
   @override
   void initState() {
     super.initState();
-    _settleController = AnimationController(
-      vsync: this,
-      duration: _kAnimationDuration,
-    )..addListener(() => setState(() {}));
+    _settleController =
+        AnimationController(vsync: this, duration: _kAnimationDuration)
+          ..addListener(() => setState(() {}))
+          ..addStatusListener((status) {
+            if (status == AnimationStatus.completed &&
+                _animationEnd == 0 &&
+                identical(_openState, this)) {
+              _openState = null;
+            }
+          });
   }
 
   @override
   void dispose() {
+    if (identical(_openState, this)) _openState = null;
     _settleController.dispose();
     super.dispose();
   }
 
   void _onDragStart(DragStartDetails _) {
     final current = _renderOffset;
+    final previousOpen = _openState;
+    if (previousOpen != null && !identical(previousOpen, this)) {
+      previousOpen._closeFromPeer();
+    }
     _settleController.stop();
     _offset = current;
     _dragStartOffset = current;
@@ -12201,10 +12215,12 @@ class _SwipeToRevealDeleteState extends State<_SwipeToRevealDelete>
 
   double _rubberBand(double rawOffset) {
     if (rawOffset > _kActionWidth) {
-      return _kActionWidth + (rawOffset - _kActionWidth) * 0.25;
+      return _kActionWidth +
+          (rawOffset - _kActionWidth) * _kRubberBandResistance;
     }
     if (rawOffset < -_kActionWidth) {
-      return -_kActionWidth + (rawOffset + _kActionWidth) * 0.25;
+      return -_kActionWidth +
+          (rawOffset + _kActionWidth) * _kRubberBandResistance;
     }
     return rawOffset;
   }
@@ -12212,27 +12228,49 @@ class _SwipeToRevealDeleteState extends State<_SwipeToRevealDelete>
   void _onDragEnd(DragEndDetails details) {
     final velocity = details.primaryVelocity ?? 0.0;
     final current = _offset;
+    final startedRevealed = _dragStartOffset.abs() >= _kActionWidth * 0.5;
+    final reversedByDistance =
+        startedRevealed &&
+        _dragDistance.abs() >= _kReverseCloseDistance &&
+        _dragDistance.sign != _dragStartOffset.sign;
+    final reversedByVelocity =
+        startedRevealed &&
+        velocity.abs() >= 150 &&
+        velocity.sign != _dragStartOffset.sign;
     final velocityDirection = velocity == 0 ? 0 : velocity.sign;
     final currentDirection = current == 0 ? 0 : current.sign;
     final direction = currentDirection != 0
         ? currentDirection
         : velocityDirection;
+    final shouldClose = reversedByDistance || reversedByVelocity;
     final shouldReveal =
-        current.abs() >= _kActionWidth * 0.5 || velocity.abs() >= 300;
+        !shouldClose &&
+        (current.abs() >= _kActionWidth * 0.5 || velocity.abs() >= 300);
     _animateTo(shouldReveal && direction != 0 ? direction * _kActionWidth : 0);
+    if (shouldReveal && direction != 0) {
+      _openState = this;
+    }
   }
 
   void _animateTo(double target) {
+    final current = _renderOffset;
     _settleController.stop();
-    _animationStart = _offset;
+    _animationStart = current;
     _animationEnd = target;
     _offset = target;
     if ((_animationStart - _animationEnd).abs() < 0.5) {
+      if (target == 0 && identical(_openState, this)) {
+        _openState = null;
+      }
       setState(() {});
       return;
     }
     setState(() {});
     _settleController.forward(from: 0);
+  }
+
+  void _closeFromPeer() {
+    if (mounted) _animateTo(0);
   }
 
   void _onTap() {
