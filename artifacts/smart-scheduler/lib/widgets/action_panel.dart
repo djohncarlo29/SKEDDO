@@ -89,16 +89,16 @@ class _NewSectionIconPainter extends CustomPainter {
     // Section heading bar — square corners and the same right endpoint as the
     // list lines below.  Extend both horizontal shapes slightly past the
     // original width so the icon reads more confidently at action-panel scale.
-    // Move only the heading upward so its gap to the first bullet catches up
-    // with the already-balanced gap between the two bullet rows.
-    canvas.drawRect(const Rect.fromLTWH(0.0, 1.1, 24.0, 4.5), fill);
+    // Keep the established vertical rhythm while making room for the larger
+    // dots below.
+    canvas.drawRect(const Rect.fromLTWH(0.0, 0.6, 24.0, 4.5), fill);
 
     // List rows: both bullets share the same outer diameter.  The adjacent
     // bars are two-thirds of that diameter, matching the updated icon
     // proportions.
-    // Increase the dots by 1 px while keeping the list lines at their original
-    // thickness.
-    const bulletRadius = 3.1;
+    // Increase each dot by 0.5 px overall while keeping the list lines at
+    // their original thickness.
+    const bulletRadius = 3.35;
     const lineHeight = 2.6 * 2 * 2 / 3;
     // Use one shared outer radius for both bullets.  An outlined circle's
     // stroke extends beyond its path, so inset the path radius by half the
@@ -106,11 +106,12 @@ class _NewSectionIconPainter extends CustomPainter {
     // filled one.
     final bulletPathRadius = bulletRadius - stroke.strokeWidth / 2;
 
-    // The heading-to-first-row gap is intentionally a little tighter than the
-    // gap between the two rows, reversing the original visual rhythm while
-    // keeping both gaps comfortably open.
-    const firstRowY = 11.85;
-    const secondRowY = 20.9;
+    // Preserve the existing first-to-second row gap as the dots grow.
+    const firstRowY = 11.6;
+    const secondRowY = 20.65;
+    const listLineLeft = 10.0;
+    const listLineRight = 24.0;
+    const listLineWidth = listLineRight - listLineLeft;
 
     // First row: filled bullet with an outline.
     canvas.drawCircle(const Offset(3.5, firstRowY), bulletPathRadius, fill);
@@ -118,14 +119,24 @@ class _NewSectionIconPainter extends CustomPainter {
     canvas.drawRect(
       // Keep the right endpoint fixed while leaving a small gap after the
       // bullet instead of letting the line overlap its outer edge.
-      const Rect.fromLTWH(8.0, firstRowY - lineHeight / 2, 16.0, lineHeight),
+      const Rect.fromLTWH(
+        listLineLeft,
+        firstRowY - lineHeight / 2,
+        listLineWidth,
+        lineHeight,
+      ),
       fill,
     );
 
     // Second row: outlined bullet and solid list line.
     canvas.drawCircle(const Offset(3.5, secondRowY), bulletPathRadius, stroke);
     canvas.drawRect(
-      const Rect.fromLTWH(8.0, secondRowY - lineHeight / 2, 16.0, lineHeight),
+      const Rect.fromLTWH(
+        listLineLeft,
+        secondRowY - lineHeight / 2,
+        listLineWidth,
+        lineHeight,
+      ),
       fill,
     );
 
