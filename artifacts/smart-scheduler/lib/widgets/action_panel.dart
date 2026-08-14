@@ -91,7 +91,7 @@ class _NewSectionIconPainter extends CustomPainter {
     // original width so the icon reads more confidently at action-panel scale.
     // Move only the heading upward so its gap to the first bullet catches up
     // with the already-balanced gap between the two bullet rows.
-    canvas.drawRect(const Rect.fromLTWH(0.0, 1.4, 24.0, 4.5), fill);
+    canvas.drawRect(const Rect.fromLTWH(0.0, 1.1, 24.0, 4.5), fill);
 
     // List rows: both bullets share the same outer diameter.  The adjacent
     // bars are two-thirds of that diameter, matching the updated icon
@@ -118,14 +118,14 @@ class _NewSectionIconPainter extends CustomPainter {
     canvas.drawRect(
       // Keep the right endpoint fixed while leaving a small gap after the
       // bullet instead of letting the line overlap its outer edge.
-      const Rect.fromLTWH(7.0, firstRowY - lineHeight / 2, 17.0, lineHeight),
+      const Rect.fromLTWH(8.0, firstRowY - lineHeight / 2, 16.0, lineHeight),
       fill,
     );
 
     // Second row: outlined bullet and solid list line.
     canvas.drawCircle(const Offset(3.5, secondRowY), bulletPathRadius, stroke);
     canvas.drawRect(
-      const Rect.fromLTWH(7.0, secondRowY - lineHeight / 2, 17.0, lineHeight),
+      const Rect.fromLTWH(8.0, secondRowY - lineHeight / 2, 16.0, lineHeight),
       fill,
     );
 
