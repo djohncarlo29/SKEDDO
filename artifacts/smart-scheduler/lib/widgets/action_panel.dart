@@ -86,48 +86,42 @@ class _NewSectionIconPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..isAntiAlias = true;
 
-    // Section heading bar — thicker now that the plus badge no longer shares
-    // the top row.
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        const Rect.fromLTWH(1.5, 2.75, 13.5, 4.5),
-        const Radius.circular(2.25),
-      ),
-      fill,
-    );
+    // Section heading bar — square corners and the same right endpoint as the
+    // list lines below.  Extend both horizontal shapes slightly past the
+    // original width so the icon reads more confidently at action-panel scale.
+    canvas.drawRect(const Rect.fromLTWH(1.0, 2.75, 22.0, 4.5), fill);
 
     // List rows: both bullets share the same outer diameter.  The adjacent
     // bars are two-thirds of that diameter, matching the updated icon
     // proportions.
-    // Increase both bullet diameters by 1.5 px while keeping the list lines at
-    // their existing size.
-    const bulletRadius = 3.35;
-    const lineHeight = bulletRadius * 2 * 2 / 3;
-    const lineRadius = lineHeight / 2;
+    // Increase the dots by 1 px while keeping the list lines at their original
+    // thickness.
+    const bulletRadius = 3.1;
+    const lineHeight = 2.6 * 2 * 2 / 3;
     // Use one shared outer radius for both bullets.  An outlined circle's
     // stroke extends beyond its path, so inset the path radius by half the
     // stroke width; otherwise the outlined bullet appears larger than the
     // filled one.
     final bulletPathRadius = bulletRadius - stroke.strokeWidth / 2;
 
+    // The heading-to-first-row gap is intentionally a little tighter than the
+    // gap between the two rows, reversing the original visual rhythm while
+    // keeping both gaps comfortably open.
+    const firstRowY = 11.6;
+    const secondRowY = 19.5;
+
     // First row: filled bullet with an outline.
-    canvas.drawCircle(const Offset(3.5, 12.5), bulletPathRadius, fill);
-    canvas.drawCircle(const Offset(3.5, 12.5), bulletPathRadius, stroke);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        const Rect.fromLTWH(8, 12.5 - lineHeight / 2, 13.5, lineHeight),
-        const Radius.circular(lineRadius),
-      ),
+    canvas.drawCircle(const Offset(3.5, firstRowY), bulletPathRadius, fill);
+    canvas.drawCircle(const Offset(3.5, firstRowY), bulletPathRadius, stroke);
+    canvas.drawRect(
+      const Rect.fromLTWH(7.5, firstRowY - lineHeight / 2, 15.5, lineHeight),
       fill,
     );
 
     // Second row: outlined bullet and solid list line.
-    canvas.drawCircle(const Offset(3.5, 19.5), bulletPathRadius, stroke);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        const Rect.fromLTWH(8, 19.5 - lineHeight / 2, 13.5, lineHeight),
-        const Radius.circular(lineRadius),
-      ),
+    canvas.drawCircle(const Offset(3.5, secondRowY), bulletPathRadius, stroke);
+    canvas.drawRect(
+      const Rect.fromLTWH(7.5, secondRowY - lineHeight / 2, 15.5, lineHeight),
       fill,
     );
 
