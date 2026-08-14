@@ -12610,25 +12610,34 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
             children: [
               SizedBox(
                 width: editableWidth,
-                child: CupertinoTextField(
-                  controller: _controller,
-                  focusNode: _focusNode,
-                  autofocus: false,
-                  decoration: null,
-                  padding: EdgeInsets.zero,
-                  minLines: 1,
-                  maxLines: null,
-                  textAlignVertical: TextAlignVertical.top,
-                  textInputAction: TextInputAction.done,
-                  placeholder: 'New Section',
-                  placeholderStyle: placeholderStyle,
-                  style: labelStyle,
-                  onTap: _scheduleEnsureVisible,
-                  onChanged: (_) {
-                    setState(() {});
-                    _scheduleEnsureVisible();
-                  },
-                  onSubmitted: (_) => _submit(),
+                child: CupertinoTheme(
+                  data: CupertinoTheme.of(
+                    context,
+                  ).copyWith(primaryColor: widget.accentColor),
+                  child: DefaultSelectionStyle(
+                    selectionColor: widget.accentColor.withOpacity(0.20),
+                    child: CupertinoTextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      autofocus: false,
+                      decoration: null,
+                      padding: EdgeInsets.zero,
+                      minLines: 1,
+                      maxLines: null,
+                      textAlignVertical: TextAlignVertical.top,
+                      textInputAction: TextInputAction.done,
+                      placeholder: 'New Section',
+                      placeholderStyle: placeholderStyle,
+                      style: labelStyle,
+                      cursorColor: widget.accentColor,
+                      onTap: _scheduleEnsureVisible,
+                      onChanged: (_) {
+                        setState(() {});
+                        _scheduleEnsureVisible();
+                      },
+                      onSubmitted: (_) => _submit(),
+                    ),
+                  ),
                 ),
               ),
               Expanded(
