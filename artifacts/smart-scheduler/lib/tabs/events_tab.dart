@@ -4460,10 +4460,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
   /// Applies a section order to both the visible headers and their event
   /// membership.  The editor returns original indexes rather than names so
-  /// duplicate section titles remain unambiguous.
+  /// duplicate section titles remain unambiguous. Missing indexes represent
+  /// sections deleted in the editor.
   void reorderDcvSections(String label, List<int> order) {
     final names = _dcvCustomSectionNames[label];
-    if (names == null || names.length != order.length) return;
+    if (names == null) return;
 
     final eventIds = _dcvCustomSectionEventIds[label] ?? const <List<String>>[];
     final normalizedEventIds = List<List<String>>.generate(
@@ -4473,18 +4474,53 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           : <String>[],
     );
     final validOrder =
-        order.length == names.length &&
-        order.toSet().length == names.length &&
+        order.toSet().length == order.length &&
         order.every((index) => index >= 0 && index < names.length);
     if (!validOrder) return;
 
+    final removedEventIds = <String>[
+      for (var index = 0; index < names.length; index++)
+        if (!order.contains(index)) ...normalizedEventIds[index],
+    ];
+    final reorderedNames = <String>[for (final index in order) names[index]];
+    final reorderedEventIds = <List<String>>[
+      for (final index in order) List<String>.of(normalizedEventIds[index]),
+    ];
+
+    // Events from a deleted section must remain grouped rather than silently
+    // joining an unrelated section.  Keep a single generated "Others" bucket
+    // at the end whenever deletion leaves events without a home.  If an
+    // Others bucket already exists, move it to the end and append the newly
+    // orphaned events to it.
+    if (removedEventIds.isNotEmpty) {
+      final existingOthersIndex = reorderedNames.indexWhere(
+        (name) => name.trim() == 'Others',
+      );
+      final othersEventIds = <String>[];
+      if (existingOthersIndex != -1) {
+        othersEventIds.addAll(reorderedEventIds.removeAt(existingOthersIndex));
+        reorderedNames.removeAt(existingOthersIndex);
+      }
+      othersEventIds.addAll(removedEventIds);
+      reorderedNames.add('Others');
+      reorderedEventIds.add(othersEventIds);
+    }
+
     setState(() {
-      _dcvCustomSectionNames[label] = [for (final index in order) names[index]];
-      _dcvCustomSectionEventIds[label] = [
-        for (final index in order) normalizedEventIds[index],
-      ];
+      _dcvCustomSectionNames[label] = reorderedNames;
+      _dcvCustomSectionEventIds[label] = reorderedEventIds;
     });
     _saveCategories();
+  }
+
+  /// Deletes a section immediately from the DCV header's swipe action.
+  void deleteDcvSection(String label, int index) {
+    final names = _dcvCustomSectionNames[label];
+    if (names == null || index < 0 || index >= names.length) return;
+    reorderDcvSections(label, [
+      for (var i = 0; i < names.length; i++)
+        if (i != index) i,
+    ]);
   }
 
   void _reorderDcvSections(String label, List<List<String>> sectionEventIds) {
@@ -5779,6 +5815,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     onCustomSectionRenamed: (index, title) {
                       if (dcvLabel != null) {
                         _renameDcvSection(dcvLabel, index, title);
+                      }
+                    },
+                    onCustomSectionDeleted: (index) {
+                      if (dcvLabel != null) {
+                        deleteDcvSection(dcvLabel, index);
                       }
                     },
                     onCustomSectionReordered: (sectionEventIds) {
@@ -11840,6 +11881,7 @@ class _EditDcvSectionsSheet extends StatefulWidget {
 
 class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
   late List<int> _sectionOrder;
+  final Set<int> _deletingSections = <int>{};
 
   static const double _kHeaderEdge = 16.0;
   static const double _kHeaderTopShift = 12.5;
@@ -11860,8 +11902,28 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
   }
 
   void _save() {
-    widget.onSave(List<int>.of(_sectionOrder));
+    widget.onSave([
+      for (final originalIndex in _sectionOrder)
+        if (!_deletingSections.contains(originalIndex)) originalIndex,
+    ]);
     Navigator.of(context).pop();
+  }
+
+  void _deleteSection(int originalIndex) {
+    if (!_sectionOrder.contains(originalIndex) ||
+        _deletingSections.contains(originalIndex)) {
+      return;
+    }
+    setState(() => _deletingSections.add(originalIndex));
+    // Keep the keyed row in the ReorderableListView while its AnimatedSize
+    // collapses.  Removing it immediately would make the card snap closed.
+    Future.delayed(const Duration(milliseconds: 280), () {
+      if (!mounted) return;
+      setState(() {
+        _deletingSections.remove(originalIndex);
+        _sectionOrder.remove(originalIndex);
+      });
+    });
   }
 
   String _displayName(int originalIndex) {
@@ -11978,52 +12040,80 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                         final originalIndex = _sectionOrder[rowIndex];
                         return Container(
                           key: ValueKey(originalIndex),
-                          height: 52,
-                          decoration: BoxDecoration(
-                            border: rowIndex < _sectionOrder.length - 1
-                                ? Border(
-                                    bottom: BorderSide(
-                                      color: separatorColor,
-                                      width: 0.5,
-                                    ),
+                          child: AnimatedSize(
+                            duration: const Duration(milliseconds: 280),
+                            curve: Curves.easeInOut,
+                            child: _deletingSections.contains(originalIndex)
+                                ? const SizedBox(
+                                    width: double.infinity,
+                                    height: 0,
                                   )
-                                : null,
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(left: 16),
-                                  child: Text(
-                                    _displayName(originalIndex),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      inherit: false,
-                                      color: primaryLabel,
-                                      fontFamily: kSFProText,
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w400,
-                                      height: 1.2,
+                                : _SwipeToRevealDelete(
+                                    iconSize: MediaQuery.textScalerOf(
+                                      context,
+                                    ).scale(17),
+                                    onDelete: () =>
+                                        _deleteSection(originalIndex),
+                                    child: Column(
+                                      children: [
+                                        SizedBox(
+                                          height: 52,
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        left: 16,
+                                                      ),
+                                                  child: Text(
+                                                    _displayName(originalIndex),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      inherit: false,
+                                                      color: primaryLabel,
+                                                      fontFamily: kSFProText,
+                                                      fontSize: 17,
+                                                      fontWeight:
+                                                          FontWeight.w400,
+                                                      height: 1.2,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              ReorderableDragStartListener(
+                                                index: rowIndex,
+                                                child: SizedBox(
+                                                  width: 52,
+                                                  height: 52,
+                                                  child: Center(
+                                                    child: Icon(
+                                                      CupertinoIcons
+                                                          .line_horizontal_3,
+                                                      size: 21,
+                                                      color: handleColor,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        if (rowIndex < _sectionOrder.length - 1)
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                            ),
+                                            child: Container(
+                                              height: 0.5,
+                                              color: separatorColor,
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
-                                ),
-                              ),
-                              ReorderableDragStartListener(
-                                index: rowIndex,
-                                child: SizedBox(
-                                  width: 52,
-                                  height: 52,
-                                  child: Center(
-                                    child: Icon(
-                                      CupertinoIcons.line_horizontal_3,
-                                      size: 21,
-                                      color: handleColor,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
                           ),
                         );
                       },
@@ -12034,6 +12124,171 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Reveals a raw destructive trash SF Symbol when the row is swiped from
+/// either direction. The child remains the reorderable/tappable surface; the
+/// action is only committed when its revealed icon is tapped.
+class _SwipeToRevealDelete extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onDelete;
+  final double iconSize;
+  final double deleteIconVerticalOffset;
+
+  const _SwipeToRevealDelete({
+    super.key,
+    required this.child,
+    required this.onDelete,
+    required this.iconSize,
+    this.deleteIconVerticalOffset = 0,
+  });
+
+  @override
+  State<_SwipeToRevealDelete> createState() => _SwipeToRevealDeleteState();
+}
+
+class _SwipeToRevealDeleteState extends State<_SwipeToRevealDelete>
+    with SingleTickerProviderStateMixin {
+  static const _kActionWidth = 52.0;
+  static const _kAnimationDuration = Duration(milliseconds: 220);
+
+  late final AnimationController _settleController;
+  double _offset = 0.0;
+  double _animationStart = 0.0;
+  double _animationEnd = 0.0;
+  double _dragStartOffset = 0.0;
+  double _dragDistance = 0.0;
+
+  double get _renderOffset {
+    if (!_settleController.isAnimating) return _offset;
+    final t = Curves.easeOutCubic.transform(_settleController.value);
+    return _animationStart + (_animationEnd - _animationStart) * t;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _settleController = AnimationController(
+      vsync: this,
+      duration: _kAnimationDuration,
+    )..addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _settleController.dispose();
+    super.dispose();
+  }
+
+  void _onDragStart(DragStartDetails _) {
+    final current = _renderOffset;
+    _settleController.stop();
+    _offset = current;
+    _dragStartOffset = current;
+    _dragDistance = 0.0;
+  }
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    _dragDistance += details.delta.dx;
+    setState(() {
+      _offset = (_dragStartOffset + _dragDistance).clamp(
+        -_kActionWidth,
+        _kActionWidth,
+      );
+    });
+  }
+
+  void _onDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0.0;
+    final current = _offset;
+    final velocityDirection = velocity == 0 ? 0 : velocity.sign;
+    final currentDirection = current == 0 ? 0 : current.sign;
+    final direction = currentDirection != 0
+        ? currentDirection
+        : velocityDirection;
+    final shouldReveal =
+        current.abs() >= _kActionWidth * 0.5 || velocity.abs() >= 300;
+    _animateTo(shouldReveal && direction != 0 ? direction * _kActionWidth : 0);
+  }
+
+  void _animateTo(double target) {
+    _settleController.stop();
+    _animationStart = _offset;
+    _animationEnd = target;
+    _offset = target;
+    if ((_animationStart - _animationEnd).abs() < 0.5) {
+      setState(() {});
+      return;
+    }
+    setState(() {});
+    _settleController.forward(from: 0);
+  }
+
+  void _onTap() {
+    if (_offset.abs() > 0.5) {
+      _animateTo(0);
+    }
+  }
+
+  Widget _deleteAction({required bool left, required double rowOffset}) {
+    // Start the icon outside the viewport and translate it by the same amount
+    // as the header.  The old implementation left it fixed in the reveal slot,
+    // so it popped directly into place instead of following the swipe.
+    final iconTravel = rowOffset - (left ? _kActionWidth : -_kActionWidth);
+    return Align(
+      alignment: left ? Alignment.centerLeft : Alignment.centerRight,
+      child: SizedBox(
+        width: _kActionWidth,
+        height: double.infinity,
+        child: Semantics(
+          button: true,
+          label: 'Delete section',
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onDelete,
+            child: Center(
+              child: Transform.translate(
+                offset: Offset(iconTravel, widget.deleteIconVerticalOffset),
+                child: FixedSFIcon(
+                  SFIcons.sf_trash,
+                  fontSize: widget.iconSize,
+                  color: CupertinoColors.destructiveRed,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final offset = _renderOffset;
+    final revealLeft = offset > 0;
+    final revealRight = offset < 0;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _onTap,
+      onHorizontalDragStart: _onDragStart,
+      onHorizontalDragUpdate: _onDragUpdate,
+      onHorizontalDragEnd: _onDragEnd,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: Stack(
+              children: [
+                if (revealLeft) _deleteAction(left: true, rowOffset: offset),
+                if (revealRight) _deleteAction(left: false, rowOffset: offset),
+              ],
+            ),
+          ),
+          Transform.translate(offset: Offset(offset, 0), child: widget.child),
+        ],
       ),
     );
   }
@@ -12382,6 +12637,9 @@ class _CategoryDetailView extends StatefulWidget {
   /// Saves a submitted custom section title.
   final void Function(int index, String title)? onCustomSectionRenamed;
 
+  /// Deletes a user-created section from the DCV.
+  final ValueChanged<int>? onCustomSectionDeleted;
+
   /// Saves event ordering and section membership after a drag completes.
   final ValueChanged<List<List<String>>>? onCustomSectionReordered;
 
@@ -12405,6 +12663,7 @@ class _CategoryDetailView extends StatefulWidget {
     this.customSectionNames = const [],
     this.customSectionEventIds,
     this.onCustomSectionRenamed,
+    this.onCustomSectionDeleted,
     this.onCustomSectionReordered,
     this.onEditEvent,
     this.color = kAccentColor,
@@ -13512,7 +13771,6 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       }
       // Drag-to-reorder is only available in Manual sort mode.
       final isReorderable = widget.sortBy == 'Manual';
-      final separatorColor = resolveThemeColor(kSeparatorColor, context);
       // During the one invisible layout frame of the FLIP animation, render
       // the list at opacity 0 so the user doesn't see items snap to their new
       // positions before the animation has started. Never apply that
@@ -13558,24 +13816,40 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                           // ── Section header ─────────────────────────────────
                           if (section.headerText != null)
                             section.isEditable
-                                ? _DcvEditableSectionLabel(
-                                    initialText: section.headerText!,
-                                    // isFirst controls top padding: 0 for first
-                                    // section (SliverPadding provides gap from
-                                    // the DCV header).
-                                    isFirst: true,
-                                    isCollapsed: isCollapsed,
-                                    accentColor: widget.color,
-                                    onToggle: () => _toggleSection(sectionKey!),
-                                    onSubmitted: (title) {
+                                ? _SwipeToRevealDelete(
+                                    iconSize: MediaQuery.textScalerOf(
+                                      context,
+                                    ).scale(15),
+                                    deleteIconVerticalOffset: -3,
+                                    onDelete: () {
                                       final index = section.customSectionIndex;
                                       if (index != null) {
-                                        widget.onCustomSectionRenamed?.call(
+                                        widget.onCustomSectionDeleted?.call(
                                           index,
-                                          title,
                                         );
                                       }
                                     },
+                                    child: _DcvEditableSectionLabel(
+                                      initialText: section.headerText!,
+                                      // isFirst controls top padding: 0 for
+                                      // the first section (SliverPadding
+                                      // provides the DCV header gap).
+                                      isFirst: true,
+                                      isCollapsed: isCollapsed,
+                                      accentColor: widget.color,
+                                      onToggle: () =>
+                                          _toggleSection(sectionKey!),
+                                      onSubmitted: (title) {
+                                        final index =
+                                            section.customSectionIndex;
+                                        if (index != null) {
+                                          widget.onCustomSectionRenamed?.call(
+                                            index,
+                                            title,
+                                          );
+                                        }
+                                      },
+                                    ),
                                   )
                                 : _DcvSectionLabel(
                                     text: section.headerText!,
