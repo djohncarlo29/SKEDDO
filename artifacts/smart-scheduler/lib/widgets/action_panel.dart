@@ -91,7 +91,9 @@ class _NewSectionIconPainter extends CustomPainter {
     // original width so the icon reads more confidently at action-panel scale.
     // Keep the established vertical rhythm while making room for the larger
     // dots below.
-    canvas.drawRect(const Rect.fromLTWH(0.0, 0.6, 24.0, 4.5), fill);
+    // Extend the heading bar slightly past the bullets on the left, and
+    // farther past the list-line endpoints on the right.
+    canvas.drawRect(const Rect.fromLTRB(-0.8, 0.6, 25.5, 5.1), fill);
 
     // List rows: both bullets share the same outer diameter.  The adjacent
     // bars are two-thirds of that diameter, matching the updated icon
