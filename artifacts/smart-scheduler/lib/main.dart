@@ -87,6 +87,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
   late String _sortDir;
   late bool _viewAsList;
   late bool _manageSections;
+  bool _fastClosing = false;
 
   static const _kSortOptions = [
     'Manual',
@@ -142,9 +143,10 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
   }
 
   void _onEditCategoryTap() {
-    // The editor must not be pushed while the ellipsis panel is still
-    // dissolving.  Let the parent remove the overlay first, then present the
-    // sheet from the dismissal completion callback.
+    // This transition is intentionally faster than a normal menu dismissal:
+    // the editor should feel like the next surface, not wait through the full
+    // gel close. The modal still opens only after the overlay is removed.
+    setState(() => _fastClosing = true);
     widget.onDismissThen(() => widget.onEditCategory?.call());
   }
 
@@ -366,6 +368,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       chevronColumn: true,
       itemsBuilder: _origItems,
       expandableActions: expandableActions,
+      closeDurationOverrideMs: _fastClosing ? 240 : null,
     );
   }
 }
@@ -895,7 +898,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         panelLeft: panelLeft,
         isClosing: _dcvMenuClosing,
         onDismiss: () => _hideDcvMenu(),
-        onDismissThen: (afterClosed) => _hideDcvMenu(afterClosed: afterClosed),
+        onDismissThen: (afterClosed) => _hideDcvMenu(
+          afterClosed: afterClosed,
+          closeDuration: const Duration(milliseconds: 260),
+        ),
         isSmartCategory: isSmartCategory,
         initialManageSections: manageSections,
         initialSortBy: _dcvSortByMap[_dcvCategory] ?? 'Manual',
@@ -949,7 +955,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     Overlay.of(context).insert(_dcvMenuOverlay!);
   }
 
-  void _hideDcvMenu({VoidCallback? afterClosed}) {
+  void _hideDcvMenu({
+    VoidCallback? afterClosed,
+    Duration closeDuration = const Duration(milliseconds: 400),
+  }) {
     if (!_dcvMenuOpen) {
       afterClosed?.call();
       return;
@@ -958,7 +967,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     setState(() {}); // snap ellipsis back to full opacity immediately
     _dcvMenuClosing.value = true;
     // Close animation ≤ 325 ms + 75 ms buffer (covers both main + sort panels).
-    Future.delayed(const Duration(milliseconds: 400), () {
+    Future.delayed(closeDuration, () {
       _dcvMenuOverlay?.remove();
       _dcvMenuOverlay = null;
       if (mounted) {

@@ -441,6 +441,9 @@ class ActionPanel extends StatefulWidget {
   // When non-null, overrides the auto-computed open duration so callers can
   // speed up the bloom for sub-panels that need to feel more responsive.
   final int? openDurationOverrideMs;
+  // When non-null, overrides the auto-computed close duration.  This is useful
+  // when another surface needs to present immediately after this panel exits.
+  final int? closeDurationOverrideMs;
   // When non-null the content is clipped to this height and becomes scrollable.
   // Scroll-edge fade gradients (kPickerPanelFadeColor) indicate hidden content.
   final double? maxHeight;
@@ -460,6 +463,7 @@ class ActionPanel extends StatefulWidget {
     this.rowOpacity = 1.0,
     this.borderRadius,
     this.openDurationOverrideMs,
+    this.closeDurationOverrideMs,
     this.maxHeight,
     this.labelFontSize = 16,
     this.bouncingScroll = false,
@@ -493,11 +497,16 @@ class _ActionPanelState extends State<ActionPanel>
     milliseconds: (((600 - (count - 2) * 50).clamp(500, 700)) * 0.65).round(),
   );
 
+  Duration get _effectiveCloseDuration =>
+      widget.closeDurationOverrideMs != null
+      ? Duration(milliseconds: widget.closeDurationOverrideMs!)
+      : _closeDuration(widget.items.length);
+
   // The pill is deliberately gone in the first ~18% of the panel close.
   // Keep this proportional to the actual close duration so mini panels with
   // different row counts all get the same early-dismiss feel.
   Duration get _pillFadeDuration => Duration(
-    milliseconds: (_closeDuration(widget.items.length).inMilliseconds * 0.18)
+    milliseconds: (_effectiveCloseDuration.inMilliseconds * 0.18)
         .round()
         .clamp(1, 100),
   );
@@ -539,7 +548,7 @@ class _ActionPanelState extends State<ActionPanel>
       _pillHideTimer?.cancel();
       _ctrl.animateTo(
         0.0,
-        duration: _closeDuration(widget.items.length),
+        duration: _effectiveCloseDuration,
         curve: Curves.easeIn,
       );
     }
@@ -586,7 +595,7 @@ class _ActionPanelState extends State<ActionPanel>
   // close by 50 ms so the blur/fill dissolve finishes before the card shrinks away.
   double get _glassT {
     if (!_isClosingNow) return _ctrl.value;
-    final closeDurMs = _closeDuration(widget.items.length).inMilliseconds;
+    final closeDurMs = _effectiveCloseDuration.inMilliseconds;
     final lead = 50.0 / closeDurMs; // fraction that equals 50 ms
     return ((_ctrl.value - lead) / (1.0 - lead)).clamp(0.0, 1.0);
   }
@@ -597,7 +606,7 @@ class _ActionPanelState extends State<ActionPanel>
   // dissolves first.
   double get _outlineT {
     if (!_isClosingNow) return _ctrl.value;
-    final closeDurMs = _closeDuration(widget.items.length).inMilliseconds;
+    final closeDurMs = _effectiveCloseDuration.inMilliseconds;
     final lead = 100.0 / closeDurMs;
     return ((_ctrl.value - lead) / (1.0 - lead)).clamp(0.0, 1.0);
   }
@@ -1148,6 +1157,9 @@ class ExpandableActionMenu extends StatefulWidget {
   itemsBuilder;
   // ── Trigger row configs ──────────────────────────────────────────────────────
   final List<ExpandableActionSpec> expandableActions;
+  // Optional fast close for transitions into another surface, such as a
+  // modal sheet opened from one of the main-panel rows.
+  final int? closeDurationOverrideMs;
 
   /// Standard panel width used throughout the app.
   static const double panelW = 240.0;
@@ -1160,6 +1172,7 @@ class ExpandableActionMenu extends StatefulWidget {
     required this.onDismiss,
     required this.itemsBuilder,
     required this.expandableActions,
+    this.closeDurationOverrideMs,
     this.chevronColumn = false,
   });
 
@@ -1321,6 +1334,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
                   items: items,
                   isClosing: _origClosing,
                   chevronColumn: widget.chevronColumn,
+                  closeDurationOverrideMs: widget.closeDurationOverrideMs,
                   rowOpacity: rowOp,
                 ),
               ),
@@ -1352,6 +1366,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
               ],
               isClosing: _expandedClosing,
               chevronColumn: widget.chevronColumn,
+               closeDurationOverrideMs: widget.closeDurationOverrideMs,
               openDurationOverrideMs: 280,
             ),
           ),
