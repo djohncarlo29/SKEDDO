@@ -192,7 +192,9 @@ class _NewSectionIconPainter extends CustomPainter {
       // Grow toward the upper-right while keeping the lower-left edge fixed.
       const badgeCenter = Offset(30.0, 2.2);
       const badgeRadius = 7.4;
-      const badgeGapRadius = 9.0;
+      // Double the transparent separation around the badge without changing
+      // the badge or the shared list-icon geometry.
+      const badgeGapRadius = 10.6;
       final clear = Paint()
         ..blendMode = BlendMode.clear
         ..style = PaintingStyle.fill
