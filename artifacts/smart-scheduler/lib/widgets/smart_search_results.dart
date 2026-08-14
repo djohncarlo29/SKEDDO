@@ -428,8 +428,7 @@ class _SearchEventTile extends StatelessWidget {
               // Date / time subtitle
               Text(
                 sub.toUpperCase(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                softWrap: true,
                 style: TextStyle(
                   inherit: false,
                   color: secondaryLabel,
@@ -453,8 +452,7 @@ class _SearchEventTile extends StatelessWidget {
                     Expanded(
                       child: Text(
                         event.location!.toUpperCase(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        softWrap: true,
                         style: TextStyle(
                           inherit: false,
                           color: secondaryLabel,
@@ -473,8 +471,7 @@ class _SearchEventTile extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   meta.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  softWrap: true,
                   style: TextStyle(
                     inherit: false,
                     color: catColor,

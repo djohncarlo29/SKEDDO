@@ -3599,8 +3599,6 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 children: [
                   Text(
                     cat.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       inherit: false,
                       color: resolveThemeColor(kPrimaryLabel, context),
@@ -3616,8 +3614,6 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     SizedBox(height: 2),
                     Text(
                       cat.description,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         inherit: false,
                         color: resolveThemeColor(kSecondaryLabel, context),
@@ -3703,8 +3699,6 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             Expanded(
               child: Text(
                 group.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   inherit: false,
                   color: resolveThemeColor(kPrimaryLabel, context),
@@ -8384,7 +8378,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    Flexible(
+                                    Expanded(
                                       child: Text(
                                         'Include',
                                         softWrap: true,
@@ -8403,44 +8397,29 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                       ),
                                     ),
                                     const SizedBox(width: kLabelValueGap),
-                                    Expanded(
+                                    Flexible(
                                       child: AnimatedBuilder(
                                         animation: _nameCtrl,
-                                        builder: (_, __) => Row(
-                                          mainAxisSize: MainAxisSize.max,
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.end,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                includeValue,
-                                                textAlign: TextAlign.right,
-                                                softWrap: true,
-                                                style: TextStyle(
-                                                  inherit: false,
-                                                  color: resolveThemeColor(
-                                                    kSecondaryLabel,
-                                                    rowCtx,
-                                                  ),
-                                                  fontSize: 15,
-                                                  fontFamily: kSFProText,
-                                                  fontWeight: FontWeight.w400,
-                                                  letterSpacing: kTracking17,
-                                                  height: kLineHeight,
+                                        builder: (_, __) =>
+                                            ModalSheetPickerTrailing(
+                                              value: includeValue,
+                                              style: TextStyle(
+                                                inherit: false,
+                                                color: resolveThemeColor(
+                                                  kSecondaryLabel,
+                                                  rowCtx,
                                                 ),
+                                                fontSize: 15,
+                                                fontFamily: kSFProText,
+                                                fontWeight: FontWeight.w400,
+                                                letterSpacing: kTracking17,
+                                                height: kLineHeight,
                                               ),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            SplitChevronUpDown(
-                                              color: resolveThemeColor(
+                                              chevronColor: resolveThemeColor(
                                                 kSecondaryLabel,
                                                 rowCtx,
                                               ),
                                             ),
-                                          ],
-                                        ),
                                       ),
                                     ),
                                   ],
@@ -9336,27 +9315,15 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   }) {
     // Whether THIS row's panel is currently open (or closing).
     final isOpen = items != null && _openPickerLabel == label;
-    // Value + chevron: always right-aligned, wraps to multiple lines when long.
-    // The label and chevron icon remain vertically centred relative to the value.
+    // Keep the value/chevron in a fixed trailing slot so every modal-sheet
+    // picker row shares the same right edge.
     final dimmedValue = AnimatedOpacity(
       opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
       duration: const Duration(milliseconds: 150),
-      child: Row(
-        mainAxisSize: MainAxisSize.max,
-        mainAxisAlignment: MainAxisAlignment.end,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Text(
-              value,
-              style: _kRowValueStyle,
-              textAlign: TextAlign.right,
-              softWrap: true,
-            ),
-          ),
-          SizedBox(width: 4),
-          _chevronUpDown(),
-        ],
+      child: ModalSheetPickerTrailing(
+        value: value,
+        style: _kRowValueStyle,
+        chevronColor: resolveThemeColor(kSecondaryLabel, context),
       ),
     );
     return Builder(
@@ -9374,22 +9341,17 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (leading != null) ...[leading, SizedBox(width: 12)],
-              Flexible(
+              Expanded(
                 child: Text(label, style: _kRowLabelStyle, softWrap: true),
               ),
               const SizedBox(width: kLabelValueGap),
-              Expanded(child: dimmedValue),
+              Flexible(child: dimmedValue),
             ],
           ),
         ),
       ),
     );
   }
-
-  // Standard chevron_up_chevron_down glyph, squeezed slightly on the x-axis
-  // so it reads as a compact affordance without looking too wide.
-  Widget _chevronUpDown() =>
-      SplitChevronUpDown(color: resolveThemeColor(kSecondaryLabel, context));
 
   // ── Card 1: Identity ──────────────────────────────────────────────────────
 
@@ -10542,7 +10504,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                               dateTimePickerTextStyle: TextStyle(
                                 inherit: false,
                                 fontFamily: kSFProText,
-                                fontSize: 16,
+                                fontSize: cupertinoDatePickerFontSize(context),
                                 color: resolveThemeColor(
                                   kPrimaryLabel,
                                   context,
@@ -12070,21 +12032,23 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                                         _deleteSection(originalIndex),
                                     child: Column(
                                       children: [
-                                        SizedBox(
-                                          height: 52,
+                                        IntrinsicHeight(
                                           child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
                                             children: [
                                               Expanded(
                                                 child: Padding(
                                                   padding:
-                                                      const EdgeInsets.only(
-                                                        left: 16,
+                                                      const EdgeInsets.fromLTRB(
+                                                        16,
+                                                        16,
+                                                        8,
+                                                        16,
                                                       ),
                                                   child: Text(
                                                     _displayName(originalIndex),
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
+                                                    softWrap: true,
                                                     style: TextStyle(
                                                       inherit: false,
                                                       color: primaryLabel,
@@ -12101,7 +12065,6 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                                                 index: rowIndex,
                                                 child: SizedBox(
                                                   width: 52,
-                                                  height: 52,
                                                   child: Center(
                                                     child: Icon(
                                                       CupertinoIcons
@@ -12452,6 +12415,7 @@ class _DcvSectionLabel extends StatelessWidget {
                   color: resolveThemeColor(kSecondaryLabel, context),
                   letterSpacing: 0.0,
                 ),
+                softWrap: true,
               ),
             ),
             // Chevron: points down (∨, expanded) or right (>, collapsed).
@@ -12506,21 +12470,55 @@ class _DcvEditableSectionLabel extends StatefulWidget {
       _DcvEditableSectionLabelState();
 }
 
-class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel> {
+class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
+    with WidgetsBindingObserver {
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
+  bool _ensureVisibleScheduled = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _controller = TextEditingController(
       text: widget.initialText == 'New Section' ? '' : widget.initialText,
     );
     _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.initialText == 'New Section') {
         _focusNode.requestFocus();
       }
+    });
+  }
+
+  @override
+  void didChangeMetrics() {
+    // The first focus callback often runs before the keyboard has resized the
+    // viewport.  Run the reveal again after the insets change so a newly
+    // created section near the bottom of the DCV is not covered by the IME.
+    if (_focusNode.hasFocus) _scheduleEnsureVisible();
+  }
+
+  void _onFocusChanged() {
+    if (_focusNode.hasFocus) _scheduleEnsureVisible();
+  }
+
+  void _scheduleEnsureVisible() {
+    if (_ensureVisibleScheduled) return;
+    _ensureVisibleScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureVisibleScheduled = false;
+      if (!mounted || !_focusNode.hasFocus) return;
+      final renderObject = context.findRenderObject();
+      if (renderObject == null || !renderObject.attached) return;
+      Scrollable.ensureVisible(
+        context,
+        alignment: 0.28,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+      );
     });
   }
 
@@ -12536,6 +12534,8 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _focusNode.removeListener(_onFocusChanged);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -12616,12 +12616,17 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel> {
                   autofocus: false,
                   decoration: null,
                   padding: EdgeInsets.zero,
-                  maxLines: 1,
+                  minLines: 1,
+                  maxLines: null,
+                  textAlignVertical: TextAlignVertical.top,
                   textInputAction: TextInputAction.done,
                   placeholder: 'New Section',
                   placeholderStyle: placeholderStyle,
                   style: labelStyle,
-                  onChanged: (_) => setState(() {}),
+                  onChanged: (_) {
+                    setState(() {});
+                    _scheduleEnsureVisible();
+                  },
                   onSubmitted: (_) => _submit(),
                 ),
               ),
@@ -15050,9 +15055,6 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     ),
   );
 
-  Widget _chevronUpDown() =>
-      SplitChevronUpDown(color: resolveThemeColor(kSecondaryLabel, context));
-
   Widget _pickerRow(
     String label,
     String value, {
@@ -15068,8 +15070,8 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
             fontWeight: FontWeight.w600,
           )
         : _kRowValueStyle;
-    // Value side: right-aligned, wraps to multiple lines when long.
-    // Label and chevron icon remain vertically centred relative to the value.
+    // Keep the value/chevron in the same fixed trailing slot as the parent
+    // event sheet and every other modal-sheet picker row.
     return Builder(
       builder: (ctx) => GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -15081,32 +15083,19 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Flexible(
+              Expanded(
                 child: Text(label, style: _kRowLabelStyle, softWrap: true),
               ),
               const SizedBox(width: kLabelValueGap),
-              Expanded(
+              Flexible(
                 child: AnimatedOpacity(
                   opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
                   duration: const Duration(milliseconds: 150),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.max,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          value,
-                          style: valueStyle,
-                          textAlign: TextAlign.right,
-                          softWrap: true,
-                        ),
-                      ),
-                      if (showChevron) ...[
-                        const SizedBox(width: 4),
-                        _chevronUpDown(),
-                      ],
-                    ],
+                  child: ModalSheetPickerTrailing(
+                    value: value,
+                    style: valueStyle,
+                    chevronColor: resolveThemeColor(kSecondaryLabel, context),
+                    showChevron: showChevron,
                   ),
                 ),
               ),

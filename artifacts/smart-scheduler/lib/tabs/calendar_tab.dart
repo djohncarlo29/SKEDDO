@@ -7305,30 +7305,17 @@ class _NewEventSheetState extends State<_NewEventSheet>
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Flexible(child: Text(label, style: _kLabelStyle, softWrap: true)),
+              Expanded(child: Text(label, style: _kLabelStyle, softWrap: true)),
               const SizedBox(width: kLabelValueGap),
-              Expanded(
+              Flexible(
                 child: AnimatedOpacity(
                   opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
                   duration: const Duration(milliseconds: 150),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.max,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          value,
-                          style: valueStyle,
-                          textAlign: TextAlign.right,
-                          softWrap: true,
-                        ),
-                      ),
-                      if (showChevron) ...[
-                        const SizedBox(width: 4),
-                        _chevronUpDown(),
-                      ],
-                    ],
+                  child: ModalSheetPickerTrailing(
+                    value: value,
+                    style: valueStyle,
+                    chevronColor: resolveThemeColor(kSecondaryLabel, context),
+                    showChevron: showChevron,
                   ),
                 ),
               ),
@@ -7339,9 +7326,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
     );
   }
 
-  Widget _chevronUpDown() =>
-      SplitChevronUpDown(color: resolveThemeColor(kSecondaryLabel, context));
-
   // ── Category picker row ───────────────────────────────────────────────────
   // Colored dot for the selected category; always shows Uncategorized or a
   // user category — "None" is not a valid selection.
@@ -7351,30 +7335,18 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final valueWidget = AnimatedOpacity(
       opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
       duration: const Duration(milliseconds: 150),
-      child: Row(
-        mainAxisSize: MainAxisSize.max,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              color: renderCategoryColor(_categoryColor, context),
-              shape: BoxShape.circle,
-            ),
+      child: ModalSheetPickerTrailing(
+        value: _categoryName,
+        style: _kRowValueStyle,
+        chevronColor: resolveThemeColor(kSecondaryLabel, context),
+        valuePrefix: Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: renderCategoryColor(_categoryColor, context),
+            shape: BoxShape.circle,
           ),
-          SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              _categoryName,
-              style: _kRowValueStyle,
-              textAlign: TextAlign.right,
-              softWrap: true,
-            ),
-          ),
-          const SizedBox(width: 4),
-          _chevronUpDown(),
-        ],
+        ),
       ),
     );
     return Builder(
@@ -7389,7 +7361,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 child: Text('Category', style: _kLabelStyle, softWrap: true),
               ),
               const SizedBox(width: kLabelValueGap),
-              Expanded(child: valueWidget),
+              Flexible(child: valueWidget),
             ],
           ),
         ),
@@ -8191,7 +8163,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     color: isCurrent
                         ? _resolvedCategoryColor
                         : resolveThemeColor(kPrimaryLabel, context),
-                    fontSize: 16,
+                    fontSize: 17,
                     fontFamily: kSFProText,
                     fontWeight: FontWeight.w600,
                     letterSpacing: kTracking17,
@@ -8332,7 +8304,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                               dateTimePickerTextStyle: TextStyle(
                                 inherit: false,
                                 fontFamily: kSFProText,
-                                fontSize: 16,
+                                fontSize: cupertinoDatePickerFontSize(context),
                                 color: resolveThemeColor(
                                   kPrimaryLabel,
                                   context,
@@ -9747,7 +9719,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                               dateTimePickerTextStyle: TextStyle(
                                 inherit: false,
                                 fontFamily: kSFProText,
-                                fontSize: 16,
+                                fontSize: cupertinoDatePickerFontSize(context),
                                 color: resolveThemeColor(
                                   kPrimaryLabel,
                                   context,
@@ -10773,9 +10745,6 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     ),
   );
 
-  Widget _chevronUpDown() =>
-      SplitChevronUpDown(color: resolveThemeColor(kSecondaryLabel, context));
-
   Widget _pickerRow(
     String label,
     String value, {
@@ -10802,32 +10771,19 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Flexible(
+              Expanded(
                 child: Text(label, style: _kRowLabelStyle, softWrap: true),
               ),
               const SizedBox(width: kLabelValueGap),
-              Expanded(
+              Flexible(
                 child: AnimatedOpacity(
                   opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
                   duration: const Duration(milliseconds: 150),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.max,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          value,
-                          style: valueStyle,
-                          textAlign: TextAlign.right,
-                          softWrap: true,
-                        ),
-                      ),
-                      if (showChevron) ...[
-                        const SizedBox(width: 4),
-                        _chevronUpDown(),
-                      ],
-                    ],
+                  child: ModalSheetPickerTrailing(
+                    value: value,
+                    style: valueStyle,
+                    chevronColor: resolveThemeColor(kSecondaryLabel, context),
+                    showChevron: showChevron,
                   ),
                 ),
               ),

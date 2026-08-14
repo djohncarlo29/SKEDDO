@@ -436,15 +436,18 @@ const kTracking17 = -0.43;
 // inside a fixed-height modal sheet.
 const double kCupertinoDatePickerItemExtent = 32.0;
 const double kCupertinoDatePickerHeight = 216.0;
+const double kCupertinoDatePickerFontSize = 16.0;
 
 double cupertinoDatePickerItemExtent(BuildContext context) {
-  return MediaQuery.textScalerOf(context).scale(
-    kCupertinoDatePickerItemExtent,
-  );
+  return MediaQuery.textScalerOf(context).scale(kCupertinoDatePickerItemExtent);
 }
 
 double cupertinoDatePickerHeight(BuildContext context) {
   return MediaQuery.textScalerOf(context).scale(kCupertinoDatePickerHeight);
+}
+
+double cupertinoDatePickerFontSize(BuildContext context) {
+  return MediaQuery.textScalerOf(context).scale(kCupertinoDatePickerFontSize);
 }
 
 // Shared label-to-value separation for picker rows in modal sheets and
@@ -834,6 +837,54 @@ class SplitChevronUpDown extends StatelessWidget {
         scaleX: scaleX,
         strokeWidth: scaledStrokeWidth,
       ),
+    );
+  }
+}
+
+/// Keeps a modal-sheet picker value and its chevron in the same right-anchored
+/// trailing group used by the Settings Panel.
+///
+/// The parent row gives this widget the remaining trailing space, while this
+/// row lays out the value and chevron from the right edge. Keeping the value
+/// as a loose flexible child is important: it lets short values stay beside
+/// the chevron instead of stretching through the middle of the sheet.
+class ModalSheetPickerTrailing extends StatelessWidget {
+  const ModalSheetPickerTrailing({
+    super.key,
+    required this.value,
+    required this.style,
+    required this.chevronColor,
+    this.showChevron = true,
+    this.valuePrefix,
+  });
+
+  final String value;
+  final TextStyle style;
+  final Color chevronColor;
+  final bool showChevron;
+  final Widget? valuePrefix;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.max,
+      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        if (valuePrefix != null) ...[valuePrefix!, const SizedBox(width: 6)],
+        Flexible(
+          child: Text(
+            value,
+            style: style,
+            textAlign: TextAlign.right,
+            softWrap: true,
+          ),
+        ),
+        if (showChevron) ...[
+          const SizedBox(width: 4),
+          SizedBox(width: 12, child: SplitChevronUpDown(color: chevronColor)),
+        ],
+      ],
     );
   }
 }
