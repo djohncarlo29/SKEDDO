@@ -11970,6 +11970,22 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel> {
     final chevronFontSize = MediaQuery.textScalerOf(
       context,
     ).scale(baseFontSize);
+    final labelStyle = TextStyle(
+      inherit: false,
+      fontFamily: kSFProText,
+      fontSize: baseFontSize,
+      fontWeight: FontWeight.w600,
+      color: labelColor,
+      letterSpacing: 0.0,
+    );
+    final placeholderStyle = TextStyle(
+      inherit: false,
+      fontFamily: kSFProText,
+      fontSize: baseFontSize,
+      fontWeight: FontWeight.w600,
+      color: placeholderColor,
+      letterSpacing: 0.0,
+    );
 
     return Padding(
       padding: EdgeInsets.only(
@@ -11977,56 +11993,82 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel> {
         top: widget.isFirst ? 0 : 15,
         bottom: 10,
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: CupertinoTextField(
-              controller: _controller,
-              focusNode: _focusNode,
-              autofocus: false,
-              decoration: null,
-              padding: EdgeInsets.zero,
-              maxLines: 1,
-              textInputAction: TextInputAction.done,
-              placeholder: 'New Section',
-              placeholderStyle: TextStyle(
-                inherit: false,
-                fontFamily: kSFProText,
-                fontSize: baseFontSize,
-                fontWeight: FontWeight.w600,
-                color: placeholderColor,
-                letterSpacing: 0.0,
-              ),
-              style: TextStyle(
-                inherit: false,
-                fontFamily: kSFProText,
-                fontSize: baseFontSize,
-                fontWeight: FontWeight.w600,
-                color: labelColor,
-                letterSpacing: 0.0,
-              ),
-              onSubmitted: (_) => _submit(),
-            ),
-          ),
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: widget.onToggle,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 12, right: 16),
-              child: AnimatedRotation(
-                turns: widget.isCollapsed ? -0.25 : 0.0,
-                duration: const Duration(milliseconds: 280),
-                curve: Curves.easeInOut,
-                child: FixedSFIcon(
-                  SFIcons.sf_chevron_down,
-                  fontSize: chevronFontSize,
-                  color: widget.accentColor,
-                  fontWeight: FontWeight.w500,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final text = _controller.text.isEmpty
+              ? 'New Section'
+              : _controller.text;
+          final measureStyle = _controller.text.isEmpty
+              ? placeholderStyle
+              : labelStyle;
+          final painter = TextPainter(
+            text: TextSpan(text: text, style: measureStyle),
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context),
+            maxLines: 1,
+          )..layout();
+
+          // The editable hit target follows the rendered title instead of
+          // expanding across the whole header.  The small buffer keeps the
+          // final glyph comfortable to tap without claiming the empty space.
+          const editableTrailingBuffer = 8.0;
+          const chevronZoneWidth = 12.0 + 16.0 + 18.0;
+          final maxEditableWidth = max(
+            1.0,
+            constraints.maxWidth - chevronZoneWidth,
+          );
+          final editableWidth = min(
+            maxEditableWidth,
+            max(1.0, painter.width + editableTrailingBuffer),
+          );
+
+          return Row(
+            children: [
+              SizedBox(
+                width: editableWidth,
+                child: CupertinoTextField(
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  autofocus: false,
+                  decoration: null,
+                  padding: EdgeInsets.zero,
+                  maxLines: 1,
+                  textInputAction: TextInputAction.done,
+                  placeholder: 'New Section',
+                  placeholderStyle: placeholderStyle,
+                  style: labelStyle,
+                  onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) => _submit(),
                 ),
               ),
-            ),
-          ),
-        ],
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: widget.onToggle,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 12, right: 16),
+                        child: AnimatedRotation(
+                          turns: widget.isCollapsed ? -0.25 : 0.0,
+                          duration: const Duration(milliseconds: 280),
+                          curve: Curves.easeInOut,
+                          child: FixedSFIcon(
+                            SFIcons.sf_chevron_down,
+                            fontSize: chevronFontSize,
+                            color: widget.accentColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
