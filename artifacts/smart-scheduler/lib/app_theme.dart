@@ -456,6 +456,18 @@ double cupertinoDatePickerFontSize(BuildContext context) {
 // allowing the two columns to touch.
 const double kLabelValueGap = 25.0;
 
+// Flutter's line breaker can treat punctuation such as "/" as a valid break
+// point. Chevron values should instead break only between words, so protect
+// each whitespace-delimited token with invisible word joiners. The joiners do
+// not change the rendered value, but keep strings such as "M/D/Y" together.
+String smartWrapChevronValue(String value) {
+  return value.splitMapJoin(
+    RegExp(r'\s+'),
+    onMatch: (match) => match.group(0)!,
+    onNonMatch: (word) => word.runes.map(String.fromCharCode).join('\u2060'),
+  );
+}
+
 // ── SF Pro Line Spacing ───────────────────────────────────────────────────────
 const kLineHeight = 1.3;
 
@@ -874,7 +886,7 @@ class ModalSheetPickerTrailing extends StatelessWidget {
         if (valuePrefix != null) ...[valuePrefix!, const SizedBox(width: 6)],
         Flexible(
           child: Text(
-            value,
+            smartWrapChevronValue(value),
             style: style,
             textAlign: TextAlign.right,
             softWrap: true,

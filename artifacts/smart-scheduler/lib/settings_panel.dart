@@ -1284,7 +1284,12 @@ class _WrappingValueText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(text, textAlign: TextAlign.right, softWrap: true, style: style);
+    return Text(
+      smartWrapChevronValue(text),
+      textAlign: TextAlign.right,
+      softWrap: true,
+      style: style,
+    );
   }
 }
 
