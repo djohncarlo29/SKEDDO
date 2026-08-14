@@ -95,8 +95,9 @@ class LocalStorage {
   // Each category stores its own Sort By mode and direction independently.
   // Format: two JSON-encoded Map<String,String> blobs keyed by category label.
 
-  static const _kCategorySortByKey  = 'skeddo_category_sort_by_v1';
+  static const _kCategorySortByKey = 'skeddo_category_sort_by_v1';
   static const _kCategorySortDirKey = 'skeddo_category_sort_dir_v1';
+  static const _kDcvManageSectionsKey = 'skeddo_dcv_manage_sections_v1';
 
   /// Persist the full per-category sort maps in one atomic write pair.
   Future<void> saveCategorySortMaps(
@@ -105,7 +106,7 @@ class LocalStorage {
   ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_kCategorySortByKey,  jsonEncode(sortByMap));
+      await prefs.setString(_kCategorySortByKey, jsonEncode(sortByMap));
       await prefs.setString(_kCategorySortDirKey, jsonEncode(sortDirMap));
     } catch (_) {}
   }
@@ -113,7 +114,8 @@ class LocalStorage {
   /// Load both per-category sort maps.  Returns empty maps when nothing has
   /// been saved yet; individual missing entries default to 'Manual' / '' at
   /// the call site.
-  Future<(Map<String, String>, Map<String, String>)> loadCategorySortMaps() async {
+  Future<(Map<String, String>, Map<String, String>)>
+  loadCategorySortMaps() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       Map<String, String> decode(String key) {
@@ -125,9 +127,35 @@ class LocalStorage {
           decoded.map((k, v) => MapEntry(k.toString(), v.toString())),
         );
       }
+
       return (decode(_kCategorySortByKey), decode(_kCategorySortDirKey));
     } catch (_) {
       return (<String, String>{}, <String, String>{});
+    }
+  }
+
+  /// Persist which DCVs have moved from their first-use "New Section" row to
+  /// the expandable "Manage Sections" row.
+  Future<void> saveDcvManageSections(Map<String, bool> values) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kDcvManageSectionsKey, jsonEncode(values));
+    } catch (_) {}
+  }
+
+  /// Load the per-DCV Manage Sections transition map.
+  Future<Map<String, bool>> loadDcvManageSections() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kDcvManageSectionsKey);
+      if (raw == null) return {};
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return {};
+      return Map<String, bool>.from(
+        decoded.map((k, v) => MapEntry(k.toString(), v == true)),
+      );
+    } catch (_) {
+      return {};
     }
   }
 

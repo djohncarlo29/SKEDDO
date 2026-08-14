@@ -42,6 +42,7 @@ class _DcvMenuContent extends StatefulWidget {
   final ValueNotifier<bool> isClosing;
   final VoidCallback onDismiss;
   final bool isSmartCategory;
+  final bool initialManageSections;
   final String initialSortBy;
   final void Function(String) onSortChanged;
   final String initialSortDir;
@@ -52,6 +53,7 @@ class _DcvMenuContent extends StatefulWidget {
   final void Function(bool) onViewAsListChanged;
   final VoidCallback? onDeleteCategory;
   final VoidCallback? onEditCategory;
+  final VoidCallback onManageSectionsTriggered;
 
   const _DcvMenuContent({
     required this.panelTop,
@@ -59,6 +61,7 @@ class _DcvMenuContent extends StatefulWidget {
     required this.isClosing,
     required this.onDismiss,
     required this.isSmartCategory,
+    required this.initialManageSections,
     required this.initialSortBy,
     required this.onSortChanged,
     required this.initialSortDir,
@@ -69,6 +72,7 @@ class _DcvMenuContent extends StatefulWidget {
     required this.onViewAsListChanged,
     this.onDeleteCategory,
     this.onEditCategory,
+    required this.onManageSectionsTriggered,
   });
 
   @override
@@ -80,6 +84,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
   late String _sortBy;
   late String _sortDir;
   late bool _viewAsList;
+  late bool _manageSections;
 
   static const _kSortOptions = [
     'Manual',
@@ -108,6 +113,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
         : (_kSortDirections[_sortBy]?.first ?? '');
     _showCompleted = widget.initialShowCompleted;
     _viewAsList = widget.initialViewAsList;
+    _manageSections = widget.initialManageSections;
   }
 
   // ── Sort selection ──────────────────────────────────────────────────────────
@@ -138,16 +144,25 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
     Future.delayed(const Duration(milliseconds: 80), widget.onDismiss);
   }
 
+  void _onInitialNewSectionTap() {
+    widget.onManageSectionsTriggered();
+    Future.delayed(const Duration(milliseconds: 80), widget.onDismiss);
+  }
+
+  void _onSectionOptionTap() {
+    Future.delayed(const Duration(milliseconds: 80), widget.onDismiss);
+  }
+
   // Sort By's position must be measured from the same scaled rows that the
   // main ActionPanel renders.  The old fixed 217.5 px value only matched the
   // default text size; at an accessibility text size, any wrapped row above
   // Sort By moved the real trigger while the nested panel stayed put.
-  double _sortByTop(BuildContext context) {
-    final items = _origItems(false, false, () {});
+  double _rowTop(BuildContext context, String targetLabel) {
+    final items = _origItems(null, false, (_) {});
     var top = 0.0;
     for (var i = 0; i < items.length; i++) {
       final item = items[i];
-      if (item.label == 'Sort By') return top;
+      if (item.label == targetLabel) return top;
       if (i > 0) {
         top += item.groupBreakAbove
             ? ActionItem.groupBreakH
@@ -163,6 +178,11 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
     return top;
   }
 
+  double _sortByTop(BuildContext context) => _rowTop(context, 'Sort By');
+
+  double _manageSectionsTop(BuildContext context) =>
+      _rowTop(context, 'Manage Sections');
+
   // ── Item lists ──────────────────────────────────────────────────────────────
 
   // Main panel items.  ExpandableActionMenu passes (isExpanded, isScalingBack,
@@ -171,9 +191,9 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
   //
   // Two-state rows use ActionItem.toggle() — add future toggles the same way.
   List<ActionItem> _origItems(
-    bool isExpanded,
+    String? expandedTriggerId,
     bool isScalingBack,
-    VoidCallback onTriggerTap,
+    void Function(String triggerId) onTriggerTap,
   ) => [
     // ── View as Columns / List toggle ────────────────────────────────────────
     ActionItem.toggle(
@@ -203,13 +223,26 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       icon: SFIcons.sf_checkmark_circle,
       onTap: () {},
     ),
-    ActionItem(
-      label: 'New Section',
-      icon: SFIcons.sf_list_bullet,
-      iconOffset: const Offset(-7.0, 0),
-      iconBuilder: (color) => NewSectionIcon(size: 16, color: color),
-      onTap: () {},
-    ),
+    _manageSections
+        ? ActionItem(
+            label: 'Manage Sections',
+            icon: SFIcons.sf_list_bullet,
+            hasChevron: true,
+            iconOffset: const Offset(-7.0, 0),
+            iconBuilder: (color) => NewSectionIcon(size: 16, color: color),
+            contentOpacity:
+                expandedTriggerId == 'manageSections' || isScalingBack
+                ? 0.0
+                : 1.0,
+            onTap: () => onTriggerTap('manageSections'),
+          )
+        : ActionItem(
+            label: 'New Section',
+            icon: SFIcons.sf_list_bullet,
+            iconOffset: const Offset(-7.0, 0),
+            iconBuilder: (color) => NewSectionIcon(size: 16, color: color),
+            onTap: _onInitialNewSectionTap,
+          ),
     // Sort By — ExpandableActionMenu hides content (contentOpacity:0) and
     // renders the floating shared element in its place while expanded.
     ActionItem(
@@ -217,8 +250,10 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       icon: SFIcons.sf_arrow_up_arrow_down,
       hasChevron: true,
       subtitle: _sortBy,
-      contentOpacity: isExpanded || isScalingBack ? 0.0 : 1.0,
-      onTap: onTriggerTap,
+      contentOpacity: expandedTriggerId == 'sortBy' || isScalingBack
+          ? 0.0
+          : 1.0,
+      onTap: () => onTriggerTap('sortBy'),
     ),
     // ── Show / Hide Completed toggle ─────────────────────────────────────────
     ActionItem.toggle(
@@ -278,10 +313,50 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
     ];
   }
 
+  List<ActionItem> _sectionOptionItems() => [
+    ActionItem(
+      label: 'New Section',
+      icon: SFIcons.sf_list_bullet,
+      iconOffset: const Offset(-7.0, 0),
+      iconBuilder: (color) => NewSectionIcon(size: 16, color: color),
+      groupBreakAbove: true,
+      onTap: _onSectionOptionTap,
+    ),
+    ActionItem(
+      label: 'Edit Sections',
+      icon: SFIcons.sf_pencil,
+      groupBreakAbove: false,
+      onTap: _onSectionOptionTap,
+    ),
+  ];
+
   // ── Build ───────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
+    final expandableActions = <ExpandableActionSpec>[
+      if (_manageSections)
+        ExpandableActionSpec(
+          id: 'manageSections',
+          rowTop: _manageSectionsTop(context),
+          rowHeight: ActionItem.rowHeight,
+          label: 'Manage Sections',
+          subtitle: null,
+          icon: SFIcons.sf_list_bullet,
+          iconBuilder: (color) => NewSectionIcon(size: 16, color: color),
+          subItems: _sectionOptionItems(),
+        ),
+      ExpandableActionSpec(
+        id: 'sortBy',
+        rowTop: _sortByTop(context),
+        rowHeight: ActionItem.rowHeightWithSubtitle,
+        label: 'Sort By',
+        subtitle: _sortBy,
+        icon: SFIcons.sf_arrow_up_arrow_down,
+        subItems: _sortOptionItems(),
+      ),
+    ];
+
     return ExpandableActionMenu(
       panelTop: widget.panelTop,
       panelLeft: widget.panelLeft,
@@ -289,12 +364,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       onDismiss: widget.onDismiss,
       chevronColumn: true,
       itemsBuilder: _origItems,
-      triggerRowTop: _sortByTop(context),
-      triggerRowHeight: ActionItem.rowHeightWithSubtitle,
-      triggerLabel: 'Sort By',
-      triggerSubtitle: _sortBy,
-      triggerIcon: SFIcons.sf_arrow_up_arrow_down,
-      subItems: _sortOptionItems(),
+      expandableActions: expandableActions,
     );
   }
 }
@@ -725,6 +795,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // 'Manual' / '' when absent.  Each DCV maintains its own independent sort.
   final Map<String, String> _dcvSortByMap = {};
   final Map<String, String> _dcvSortDirMap = {};
+  final Map<String, bool> _dcvManageSectionsMap = {};
   bool _dcvShowCompleted = true;
   bool _dcvViewAsList = false;
 
@@ -757,6 +828,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     setState(() {});
 
     final isSmartCategory = _kSmartCategoryLabels.contains(_dcvCategory);
+    final manageSections = _dcvManageSectionsMap[_dcvCategory] ?? false;
 
     // Pre-compute panel origin based on the FULL item set so the position
     // stays stable even when Sort By expands (removing rows below it).
@@ -780,8 +852,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         icon: SFIcons.sf_checkmark_circle,
       ),
       ActionItem(
-        label: 'New Section',
+        label: manageSections ? 'Manage Sections' : 'New Section',
         icon: SFIcons.sf_list_bullet,
+        hasChevron: manageSections,
         iconOffset: const Offset(-7.0, 0),
         iconBuilder: (color) => NewSectionIcon(size: 16, color: color),
       ),
@@ -822,6 +895,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         isClosing: _dcvMenuClosing,
         onDismiss: _hideDcvMenu,
         isSmartCategory: isSmartCategory,
+        initialManageSections: manageSections,
         initialSortBy: _dcvSortByMap[_dcvCategory] ?? 'Manual',
         onSortChanged: (s) {
           final cat = _dcvCategory;
@@ -860,6 +934,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         onEditCategory: () {
           final cat = _dcvCategory;
           if (cat != null) _eventsTabKey.currentState?.editCategory(cat);
+        },
+        onManageSectionsTriggered: () {
+          final cat = _dcvCategory;
+          if (cat != null && mounted) {
+            setState(() => _dcvManageSectionsMap[cat] = true);
+            LocalStorage.instance.saveDcvManageSections(_dcvManageSectionsMap);
+          }
         },
       ),
     );
@@ -1188,6 +1269,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           _dcvSortByMap.addAll(maps.$1);
           _dcvSortDirMap.addAll(maps.$2);
         });
+    });
+    LocalStorage.instance.loadDcvManageSections().then((values) {
+      if (mounted) setState(() => _dcvManageSectionsMap.addAll(values));
     });
 
     // Show any crash report captured from the previous session.

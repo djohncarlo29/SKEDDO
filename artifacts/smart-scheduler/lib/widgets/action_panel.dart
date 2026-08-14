@@ -1083,25 +1083,49 @@ class _ActionRowState extends State<_ActionRow> {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// ExpandableActionMenu — full-screen overlay with a two-panel "drill-down" row.
+// ExpandableActionMenu — full-screen overlay with two-panel "drill-down" rows.
 //
-// When the designated trigger row is tapped:
+// When an expandable trigger row is tapped:
 //   1. The main panel scales to 0.96 and dims its row content.
 //   2. A sub-panel blooms below the trigger row with additional options.
 //   3. A floating shared-element renders the trigger row at 100 % scale above
 //      both panels so neither transform distorts it.
 //
-// To add a future expandable sub-panel to any action menu, construct this
-// widget instead of reimplementing the scale/dim/bloom/shared-element pattern.
+// Only one trigger can be expanded at a time, but a menu can expose multiple
+// expandable rows. This keeps the interaction reusable for menus such as the
+// DCV menu, which has both Manage Sections and Sort By drill-downs.
 //
 // Usage:
-//   Pass [itemsBuilder] which receives (isExpanded, isScalingBack, onTriggerTap)
-//   and returns the main-panel item list.  The trigger row must:
-//     • use  contentOpacity: isExpanded || isScalingBack ? 0.0 : 1.0
-//     • pass onTriggerTap as its onTap
+//   Pass [itemsBuilder] which receives (expandedTriggerId, isScalingBack,
+//   onTriggerTap) and returns the main-panel item list. Each trigger row must:
+//     • use contentOpacity: expandedTriggerId == its id || isScalingBack
+//       ? 0.0 : 1.0
+//     • pass onTriggerTap(its id) as its onTap
 //   Sub-panel item onTap callbacks are the caller's responsibility (they should
 //   call onDismiss — with an 80 ms delay — after applying any state change).
 // ══════════════════════════════════════════════════════════════════════════════
+class ExpandableActionSpec {
+  final String id;
+  final double rowTop;
+  final double rowHeight;
+  final String label;
+  final String? subtitle;
+  final IconData icon;
+  final Widget Function(Color color)? iconBuilder;
+  final List<ActionItem> subItems;
+
+  const ExpandableActionSpec({
+    required this.id,
+    required this.rowTop,
+    required this.rowHeight,
+    required this.label,
+    required this.subtitle,
+    required this.icon,
+    required this.subItems,
+    this.iconBuilder,
+  });
+}
+
 class ExpandableActionMenu extends StatefulWidget {
   // ── Outer positioning ────────────────────────────────────────────────────────
   final double panelTop;
@@ -1112,23 +1136,16 @@ class ExpandableActionMenu extends StatefulWidget {
   final VoidCallback onDismiss; // barrier-tap dismiss handler
   final bool chevronColumn;
   // ── Main panel ───────────────────────────────────────────────────────────────
-  /// Called on every build; receives expansion state and the trigger-tap handler
-  /// so the caller can set contentOpacity and wire onTap on the trigger row.
+  /// Called on every build; receives the expanded trigger id, the close-phase
+  /// flag, and a trigger-tap handler so callers can wire multiple rows.
   final List<ActionItem> Function(
-    bool isExpanded,
+    String? expandedTriggerId,
     bool isScalingBack,
-    VoidCallback onTriggerTap,
+    void Function(String triggerId) onTriggerTap,
   )
   itemsBuilder;
-  // ── Trigger row config ───────────────────────────────────────────────────────
-  final double triggerRowTop; // px offset from panel top to the trigger row
-  final double
-  triggerRowHeight; // ActionItem.rowHeight or rowHeightWithSubtitle
-  final String triggerLabel;
-  final String triggerSubtitle; // current selection shown below triggerLabel
-  final IconData triggerIcon;
-  // ── Sub-panel ────────────────────────────────────────────────────────────────
-  final List<ActionItem> subItems;
+  // ── Trigger row configs ──────────────────────────────────────────────────────
+  final List<ExpandableActionSpec> expandableActions;
 
   /// Standard panel width used throughout the app.
   static const double panelW = 240.0;
@@ -1140,12 +1157,7 @@ class ExpandableActionMenu extends StatefulWidget {
     required this.isClosing,
     required this.onDismiss,
     required this.itemsBuilder,
-    required this.triggerRowTop,
-    required this.triggerRowHeight,
-    required this.triggerLabel,
-    required this.triggerSubtitle,
-    required this.triggerIcon,
-    required this.subItems,
+    required this.expandableActions,
     this.chevronColumn = false,
   });
 
@@ -1155,7 +1167,7 @@ class ExpandableActionMenu extends StatefulWidget {
 
 class _ExpandableActionMenuState extends State<ExpandableActionMenu>
     with SingleTickerProviderStateMixin {
-  bool _expanded = false;
+  String? _expandedTriggerId;
   bool _scalingBack = false;
 
   // Two independent closing notifiers so each panel can animate out on its own.
@@ -1164,6 +1176,8 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
 
   // Drives the trigger-row chevron: 0 = pointing right (›), 1 = pointing down (∨).
   late final AnimationController _chevronCtrl;
+
+  bool get _expanded => _expandedTriggerId != null;
 
   @override
   void initState() {
@@ -1195,8 +1209,8 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
 
   // Toggle the sub-panel open/closed.  Second tap starts the close animation
   // and, after a short delay, removes the sub-panel from the tree.
-  void _onTriggerTap() {
-    if (_expanded) {
+  void _onTriggerTap(String triggerId) {
+    if (_expandedTriggerId == triggerId) {
       _expandedClosing.value = true;
       _chevronCtrl.reverse();
       // _scalingBack keeps the floating shared element alive while the main panel
@@ -1206,7 +1220,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
       Future.delayed(const Duration(milliseconds: 200), () {
         if (mounted) {
           setState(() {
-            _expanded = false;
+            _expandedTriggerId = null;
             _expandedClosing.value = false;
           });
           Future.delayed(const Duration(milliseconds: 160), () {
@@ -1217,7 +1231,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
       return;
     }
     setState(() {
-      _expanded = true;
+      _expandedTriggerId = triggerId;
       _expandedClosing.value = false;
     });
     _chevronCtrl.forward();
@@ -1225,21 +1239,32 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
 
   @override
   Widget build(BuildContext context) {
+    final activeSpec = _expandedTriggerId == null
+        ? null
+        : widget.expandableActions.firstWhere(
+            (spec) => spec.id == _expandedTriggerId,
+          );
     final triggerHeight = math.max(
-      widget.triggerRowHeight,
-      ActionItem.rowHeightForItem(
-        context,
-        ActionItem(
-          label: widget.triggerLabel,
-          icon: widget.triggerIcon,
-          hasChevron: true,
-          subtitle: widget.triggerSubtitle,
-        ),
-        panelWidth: ExpandableActionMenu.panelW,
-        chevronColumn: widget.chevronColumn,
-      ),
+      activeSpec?.rowHeight ?? 0.0,
+      activeSpec == null
+          ? 0.0
+          : ActionItem.rowHeightForItem(
+              context,
+              ActionItem(
+                label: activeSpec.label,
+                icon: activeSpec.icon,
+                hasChevron: true,
+                subtitle: activeSpec.subtitle,
+              ),
+              panelWidth: ExpandableActionMenu.panelW,
+              chevronColumn: widget.chevronColumn,
+            ),
     );
-    final items = widget.itemsBuilder(_expanded, _scalingBack, _onTriggerTap);
+    final items = widget.itemsBuilder(
+      _expandedTriggerId,
+      _scalingBack,
+      _onTriggerTap,
+    );
     return Stack(
       alignment: Alignment.bottomLeft,
       children: [
@@ -1277,25 +1302,26 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
           ),
         ),
 
-        // Sub-panel — blooms below the trigger row.
+        // Sub-panel — blooms below the active trigger row.
         // The trigger-row slot (index 0) uses contentOpacity:0 so the floating
         // shared element is the sole visual for that row while both are live.
-        if (_expanded)
+        if (activeSpec != null)
           Positioned(
             left: widget.panelLeft,
-            top: widget.panelTop + widget.triggerRowTop,
+            top: widget.panelTop + activeSpec.rowTop,
             width: ExpandableActionMenu.panelW,
             child: ActionPanel(
               items: [
                 ActionItem(
-                  label: widget.triggerLabel,
-                  icon: widget.triggerIcon,
+                  label: activeSpec.label,
+                  icon: activeSpec.icon,
                   hasChevron: true,
-                  subtitle: widget.triggerSubtitle,
+                  subtitle: activeSpec.subtitle,
+                  iconBuilder: activeSpec.iconBuilder,
                   instantOnOpen: true,
                   contentOpacity: 0.0,
                 ),
-                ...widget.subItems,
+                ...activeSpec.subItems,
               ],
               isClosing: _expandedClosing,
               chevronColumn: widget.chevronColumn,
@@ -1307,10 +1333,10 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
         // and stays at 100 % scale while the sub-panel blooms.
         // Fades out via AnimatedOpacity when the outer overlay closes so it
         // dissolves together with the panels' bloom-back animation.
-        if (_expanded || _scalingBack)
+        if (activeSpec != null || _scalingBack)
           Positioned(
             left: widget.panelLeft + 16,
-            top: widget.panelTop + widget.triggerRowTop,
+            top: widget.panelTop + (activeSpec?.rowTop ?? 0.0),
             width: ExpandableActionMenu.panelW - 32,
             height: triggerHeight,
             child: ValueListenableBuilder<bool>(
@@ -1322,11 +1348,15 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
                 child: child,
               ),
               child: _ExpandableRowSharedContent(
-                label: widget.triggerLabel,
-                subtitle: widget.triggerSubtitle,
-                icon: widget.triggerIcon,
+                label: activeSpec?.label ?? '',
+                subtitle: activeSpec?.subtitle,
+                icon: activeSpec?.icon ?? CupertinoIcons.circle,
+                iconBuilder: activeSpec?.iconBuilder,
+                rowHeight: activeSpec?.rowHeight ?? ActionItem.rowHeight,
                 chevronCtrl: _chevronCtrl,
-                onTap: _onTriggerTap,
+                onTap: activeSpec == null
+                    ? () {}
+                    : () => _onTriggerTap(activeSpec.id),
               ),
             ),
           ),
@@ -1341,14 +1371,18 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
 // label / subtitle / icon so the same widget drives any expandable row.
 class _ExpandableRowSharedContent extends StatefulWidget {
   final String label;
-  final String subtitle;
+  final String? subtitle;
   final IconData icon;
+  final Widget Function(Color color)? iconBuilder;
+  final double rowHeight;
   final AnimationController chevronCtrl;
   final VoidCallback onTap;
   const _ExpandableRowSharedContent({
     required this.label,
     required this.subtitle,
     required this.icon,
+    required this.iconBuilder,
+    required this.rowHeight,
     required this.chevronCtrl,
     required this.onTap,
   });
@@ -1402,9 +1436,7 @@ class _ExpandableRowSharedContentState
           opacity: _pressed ? 0.60 : 1.0,
           duration: const Duration(milliseconds: 100),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              minHeight: ActionItem.rowHeightWithSubtitle,
-            ),
+            constraints: BoxConstraints(minHeight: widget.rowHeight),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Row(
@@ -1435,19 +1467,22 @@ class _ExpandableRowSharedContentState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(widget.label, style: labelStyle),
-                        const SizedBox(height: 2),
-                        Text(widget.subtitle, style: subtitleStyle),
+                        if (widget.subtitle != null) ...[
+                          const SizedBox(height: 2),
+                          Text(widget.subtitle!, style: subtitleStyle),
+                        ],
                       ],
                     ),
                   ),
                   // Right icon
-                  _ActionPanelSFIcon(
-                    widget.icon,
-                    size: 20,
-                    color: textColor,
-                    weight: FontWeight.w500,
-                    boxPadding: 4,
-                  ),
+                  widget.iconBuilder?.call(textColor) ??
+                      _ActionPanelSFIcon(
+                        widget.icon,
+                        size: 20,
+                        color: textColor,
+                        weight: FontWeight.w500,
+                        boxPadding: 4,
+                      ),
                 ],
               ),
             ),
