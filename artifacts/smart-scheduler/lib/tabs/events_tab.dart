@@ -10325,7 +10325,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             child: _calendarBarrelMode
                 // ── CupertinoDatePicker barrel ────────────────────────────
                 ? SizedBox(
-                    height: 216,
+                    height: cupertinoDatePickerHeight(context),
                     child: CupertinoTheme(
                       data: CupertinoTheme.of(context).copyWith(
                         primaryColor: _resolvedSelectedColor,
@@ -10344,6 +10344,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                             ),
                       ),
                       child: CupertinoDatePicker(
+                        itemExtent: cupertinoDatePickerItemExtent(context),
                         mode: CupertinoDatePickerMode.date,
                         initialDateTime: _endDate,
                         minimumDate: DateTime(

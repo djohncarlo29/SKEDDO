@@ -914,9 +914,10 @@ class _SettingsRowState extends State<_SettingsRow> {
             ),
             if (widget.trailing != null) ...[
               const SizedBox(width: kLabelValueGap),
-              Flexible(
-                child: widget.trailing!,
-              ),
+              if (widget.trailing is _ChevronTrailing)
+                widget.trailing!
+              else
+                Flexible(child: widget.trailing!),
             ],
           ],
         ),
@@ -1249,23 +1250,17 @@ class _ValueTrailing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final style = TextStyle(
+      fontFamily: kSFProText,
+      fontSize: 15,
+      fontWeight: FontWeight.w400,
+      color: resolveThemeColor(kSecondaryLabel, context),
+    );
     return Row(
       mainAxisSize: MainAxisSize.max,
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        Flexible(
-          child: Text(
-            text,
-            textAlign: TextAlign.right,
-            softWrap: true,
-            style: TextStyle(
-              fontFamily: kSFProText,
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
-              color: resolveThemeColor(kSecondaryLabel, context),
-            ),
-          ),
-        ),
+        Flexible(child: _WordBoundaryText(text, style: style)),
         const SizedBox(width: 4),
         FixedSFIcon(
           SFIcons.sf_chevron_right,
@@ -1274,6 +1269,68 @@ class _ValueTrailing extends StatelessWidget {
           color: resolveThemeColor(kSecondaryLabel, context),
         ),
       ],
+    );
+  }
+}
+
+/// Displays a trailing setting value without splitting a word at the edge.
+///
+/// Flutter's single-line ellipsis can cut through a word depending on the
+/// paragraph layout. Settings values are short phrases, so choose the longest
+/// complete word sequence that fits before adding the ellipsis ourselves.
+class _WordBoundaryText extends StatelessWidget {
+  final String text;
+  final TextStyle style;
+
+  const _WordBoundaryText(this.text, {required this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final scaler = MediaQuery.textScalerOf(context);
+        final direction = Directionality.maybeOf(context) ?? TextDirection.ltr;
+
+        double textWidth(String value) {
+          final painter = TextPainter(
+            text: TextSpan(text: value, style: style),
+            textDirection: direction,
+            textScaler: scaler,
+            maxLines: 1,
+          )..layout(maxWidth: maxWidth);
+          return painter.didExceedMaxLines ? double.infinity : painter.width;
+        }
+
+        if (textWidth(text) <= maxWidth) {
+          return Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.clip,
+            textAlign: TextAlign.right,
+            style: style,
+          );
+        }
+
+        final words = text.trim().split(RegExp(r'\s+'));
+        var visible = '…';
+        for (var count = 1; count <= words.length; count++) {
+          final candidate = '${words.take(count).join(' ')}…';
+          if (textWidth(candidate) <= maxWidth) {
+            visible = candidate;
+          } else {
+            break;
+          }
+        }
+
+        return Text(
+          visible,
+          maxLines: 1,
+          overflow: TextOverflow.clip,
+          textAlign: TextAlign.right,
+          style: style,
+        );
+      },
     );
   }
 }

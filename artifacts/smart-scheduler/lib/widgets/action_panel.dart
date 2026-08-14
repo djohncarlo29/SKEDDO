@@ -103,7 +103,9 @@ class _NewSectionIconPainter extends CustomPainter {
     // List rows: both bullets share the same outer diameter.  The adjacent
     // bars are two-thirds of that diameter, matching the updated icon
     // proportions.
-    const bulletRadius = 2.1;
+    // Increase both bullet diameters by 1 px while keeping the list lines at
+    // their existing size.
+    const bulletRadius = 2.6;
     const lineHeight = bulletRadius * 2 * 2 / 3;
     const lineRadius = lineHeight / 2;
     // Use one shared outer radius for both bullets.  An outlined circle's

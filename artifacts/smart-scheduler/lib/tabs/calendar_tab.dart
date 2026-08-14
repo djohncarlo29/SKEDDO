@@ -8330,7 +8330,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             curve: Curves.easeInOut,
             child: _calendarBarrelMode
                 ? SizedBox(
-                    height: 216,
+                    height: cupertinoDatePickerHeight(context),
                     child: CupertinoTheme(
                       data: CupertinoTheme.of(context).copyWith(
                         primaryColor: _resolvedCategoryColor,
@@ -8349,6 +8349,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                             ),
                       ),
                       child: CupertinoDatePicker(
+                        itemExtent: cupertinoDatePickerItemExtent(context),
                         mode: CupertinoDatePickerMode.date,
                         initialDateTime: _endDate,
                         minimumDate: DateTime(
@@ -9744,7 +9745,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             curve: Curves.easeInOut,
             child: _pickerBarrelMode
                 ? SizedBox(
-                    height: 216,
+                    height: cupertinoDatePickerHeight(context),
                     child: CupertinoTheme(
                       data: CupertinoTheme.of(context).copyWith(
                         primaryColor: _resolvedCategoryColor,
@@ -9763,6 +9764,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                             ),
                       ),
                       child: CupertinoDatePicker(
+                        itemExtent: cupertinoDatePickerItemExtent(context),
                         key: ValueKey('barrel_$_activePicker'),
                         mode: CupertinoDatePickerMode.date,
                         initialDateTime: _pickerDate,
