@@ -12193,12 +12193,20 @@ class _SwipeToRevealDeleteState extends State<_SwipeToRevealDelete>
 
   void _onDragUpdate(DragUpdateDetails details) {
     _dragDistance += details.delta.dx;
+    final rawOffset = _dragStartOffset + _dragDistance;
     setState(() {
-      _offset = (_dragStartOffset + _dragDistance).clamp(
-        -_kActionWidth,
-        _kActionWidth,
-      );
+      _offset = _rubberBand(rawOffset);
     });
+  }
+
+  double _rubberBand(double rawOffset) {
+    if (rawOffset > _kActionWidth) {
+      return _kActionWidth + (rawOffset - _kActionWidth) * 0.25;
+    }
+    if (rawOffset < -_kActionWidth) {
+      return -_kActionWidth + (rawOffset + _kActionWidth) * 0.25;
+    }
+    return rawOffset;
   }
 
   void _onDragEnd(DragEndDetails details) {
@@ -13820,7 +13828,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                                     iconSize: MediaQuery.textScalerOf(
                                       context,
                                     ).scale(15),
-                                    deleteIconVerticalOffset: -3,
+                                    deleteIconVerticalOffset: -4,
                                     onDelete: () {
                                       final index = section.customSectionIndex;
                                       if (index != null) {
