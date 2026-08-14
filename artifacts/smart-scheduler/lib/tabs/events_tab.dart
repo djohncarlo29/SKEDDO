@@ -9621,7 +9621,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                                 ),
                               ], context),
                             ),
-                            child: const Center(
+                            child: Center(
                               child: Transform.translate(
                                 offset: const Offset(-0.5, -0.5),
                                 child: SearchWeightedIcon(
