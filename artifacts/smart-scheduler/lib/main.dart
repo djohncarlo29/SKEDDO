@@ -779,7 +779,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           isDestructive: true,
         ),
     ];
-    final fullH = ActionItem.panelHeightForItems(fullItems);
+    final fullH = ActionItem.panelHeightForItems(
+      fullItems,
+      context: context,
+      panelWidth: panelW,
+      chevronColumn: true,
+    );
     final btnRect = Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height);
     final spaceAbove = btnRect.top - safeTop;
     final spaceBelow = screenH - safeBtm - btnRect.bottom;

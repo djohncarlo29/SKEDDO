@@ -100,22 +100,35 @@ class _NewSectionIconPainter extends CustomPainter {
     canvas.drawLine(const Offset(16.8, 5), const Offset(21.2, 5), stroke);
     canvas.drawLine(const Offset(19, 2.8), const Offset(19, 7.2), stroke);
 
-    // First row: filled bullet and solid list line.
-    canvas.drawCircle(const Offset(3.5, 12.5), 1.7, fill);
+    // List rows: both bullets share the same outer diameter.  The adjacent
+    // bars are two-thirds of that diameter, matching the updated icon
+    // proportions.
+    const bulletRadius = 2.1;
+    const lineHeight = bulletRadius * 2 * 2 / 3;
+    const lineRadius = lineHeight / 2;
+    // Use one shared outer radius for both bullets.  An outlined circle's
+    // stroke extends beyond its path, so inset the path radius by half the
+    // stroke width; otherwise the outlined bullet appears larger than the
+    // filled one.
+    final bulletPathRadius = bulletRadius - stroke.strokeWidth / 2;
+
+    // First row: filled bullet with an outline.
+    canvas.drawCircle(const Offset(3.5, 12.5), bulletPathRadius, fill);
+    canvas.drawCircle(const Offset(3.5, 12.5), bulletPathRadius, stroke);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        const Rect.fromLTWH(8, 11, 13.5, 3.0),
-        const Radius.circular(1.5),
+        const Rect.fromLTWH(8, 12.5 - lineHeight / 2, 13.5, lineHeight),
+        const Radius.circular(lineRadius),
       ),
       fill,
     );
 
     // Second row: outlined bullet and solid list line.
-    canvas.drawCircle(const Offset(3.5, 19.5), 2.1, stroke);
+    canvas.drawCircle(const Offset(3.5, 19.5), bulletPathRadius, stroke);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        const Rect.fromLTWH(8, 18, 13.5, 3.0),
-        const Radius.circular(1.5),
+        const Rect.fromLTWH(8, 19.5 - lineHeight / 2, 13.5, lineHeight),
+        const Radius.circular(lineRadius),
       ),
       fill,
     );
@@ -146,7 +159,9 @@ class _NewSectionIconPainter extends CustomPainter {
 //
 // Layout policy:
 //   • Panel width is set by the caller via a Positioned/SizedBox.
-//   • Each row is 52 px tall; separators add 0.5 px between rows.
+//   • Each row has a 52 px minimum height (62 px with a subtitle); rows grow
+//     when Dynamic Type makes their text wrap. Separators add 0.5 px between
+//     rows.
 //   • Glass appearance: BackdropFilter blur + semi-transparent white fill.
 //     Rows cascade top→bottom on open, bottom→top on close (natural reverse).
 
@@ -301,13 +316,88 @@ class ActionItem {
   static double panelHeight(int count) =>
       count * rowHeight + (count - 1) * separatorH;
 
-  /// Height accounting for groupBreakAbove and per-item subtitle height.
-  static double panelHeightForItems(List<ActionItem> items) {
+  /// Measures a row using the same text metrics as [_ActionRow].
+  ///
+  /// The baseline row heights remain the minimums, so normal-size layouts do
+  /// not move. Larger system text can increase the measured text block and
+  /// therefore the row height without clipping.
+  static double rowHeightForItem(
+    BuildContext context,
+    ActionItem item, {
+    required double panelWidth,
+    bool chevronColumn = false,
+    double labelFontSize = 16,
+  }) {
+    final textScaler = MediaQuery.textScalerOf(context);
+    final textDirection = Directionality.maybeOf(context) ?? TextDirection.ltr;
+    final leftWidth = (chevronColumn || item.hasChevron || item.checkmark
+        ? 18.0 + 7.0
+        : 0);
+    final rightWidth = item.iconBuilder != null ? 24.0 : item.iconSize + 8.0;
+    final textWidth = math.max(1.0, panelWidth - 32.0 - leftWidth - rightWidth);
+
+    double measure(String text, TextStyle style) {
+      final painter = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textDirection: textDirection,
+        textScaler: textScaler,
+      )..layout(maxWidth: textWidth);
+      return painter.height;
+    }
+
+    final labelHeight = measure(
+      item.label,
+      TextStyle(
+        inherit: false,
+        fontSize: labelFontSize,
+        fontFamily: kSFProText,
+        fontWeight: FontWeight.w400,
+        letterSpacing: kTracking16,
+      ),
+    );
+    final contentHeight = item.subtitle == null
+        ? labelHeight
+        : labelHeight +
+              2.0 +
+              measure(
+                item.subtitle!,
+                TextStyle(
+                  inherit: false,
+                  fontSize: 13,
+                  fontFamily: kSFProText,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: -0.08,
+                ),
+              );
+    final minimumHeight = item.subtitle != null
+        ? rowHeightWithSubtitle
+        : rowHeight;
+    // _ActionRow uses 10 px of vertical breathing room on each side.
+    return math.max(minimumHeight, contentHeight + 20.0);
+  }
+
+  /// Height accounting for group breaks, separators, subtitles, and wrapped
+  /// text when [context] is supplied.
+  static double panelHeightForItems(
+    List<ActionItem> items, {
+    BuildContext? context,
+    double panelWidth = 240.0,
+    bool chevronColumn = false,
+    double labelFontSize = 16,
+  }) {
     if (items.isEmpty) return 0;
     double h = 0;
     for (int i = 0; i < items.length; i++) {
       if (i > 0) h += items[i].groupBreakAbove ? groupBreakH : separatorH;
-      h += items[i].subtitle != null ? rowHeightWithSubtitle : rowHeight;
+      h += context == null
+          ? (items[i].subtitle != null ? rowHeightWithSubtitle : rowHeight)
+          : rowHeightForItem(
+              context,
+              items[i],
+              panelWidth: panelWidth,
+              chevronColumn: chevronColumn,
+              labelFontSize: labelFontSize,
+            );
     }
     return h;
   }
@@ -952,10 +1042,10 @@ class _ActionRowState extends State<_ActionRow> {
         child: AnimatedOpacity(
           opacity: _pressed ? 0.60 : 1.0,
           duration: const Duration(milliseconds: 100),
-          child: SizedBox(
-            height: rowH,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: rowH),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Opacity(
                 opacity: item.contentOpacity,
                 child: Row(
@@ -1114,6 +1204,20 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
 
   @override
   Widget build(BuildContext context) {
+    final triggerHeight = math.max(
+      widget.triggerRowHeight,
+      ActionItem.rowHeightForItem(
+        context,
+        ActionItem(
+          label: widget.triggerLabel,
+          icon: widget.triggerIcon,
+          hasChevron: true,
+          subtitle: widget.triggerSubtitle,
+        ),
+        panelWidth: ExpandableActionMenu.panelW,
+        chevronColumn: widget.chevronColumn,
+      ),
+    );
     final items = widget.itemsBuilder(_expanded, _scalingBack, _onTriggerTap);
     return Stack(
       alignment: Alignment.bottomLeft,
@@ -1187,7 +1291,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
             left: widget.panelLeft + 16,
             top: widget.panelTop + widget.triggerRowTop,
             width: ExpandableActionMenu.panelW - 32,
-            height: widget.triggerRowHeight,
+            height: triggerHeight,
             child: ValueListenableBuilder<bool>(
               valueListenable: _origClosing,
               builder: (ctx, origClosing, child) => AnimatedOpacity(
@@ -1276,48 +1380,56 @@ class _ExpandableRowSharedContentState
         child: AnimatedOpacity(
           opacity: _pressed ? 0.60 : 1.0,
           duration: const Duration(milliseconds: 100),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Animated chevron: › rotates to ∨ as the sub-panel opens.
-              SizedBox(
-                width: _chevW,
-                child: AnimatedBuilder(
-                  animation: widget.chevronCtrl,
-                  builder: (ctx, _) => Transform.rotate(
-                    angle: widget.chevronCtrl.value * (math.pi / 2),
-                    child: _ActionPanelSFIcon(
-                      SFIcons.sf_chevron_right,
-                      size: _chevW,
-                      color: textColor,
-                      weight: FontWeight.w500,
-                      boxPadding: 0,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minHeight: ActionItem.rowHeightWithSubtitle,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Animated chevron: › rotates to ∨ as the sub-panel opens.
+                  SizedBox(
+                    width: _chevW,
+                    child: AnimatedBuilder(
+                      animation: widget.chevronCtrl,
+                      builder: (ctx, _) => Transform.rotate(
+                        angle: widget.chevronCtrl.value * (math.pi / 2),
+                        child: _ActionPanelSFIcon(
+                          SFIcons.sf_chevron_right,
+                          size: _chevW,
+                          color: textColor,
+                          weight: FontWeight.w500,
+                          boxPadding: 0,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: _chevGap),
+                  // Label + subtitle
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.label, style: labelStyle),
+                        const SizedBox(height: 2),
+                        Text(widget.subtitle, style: subtitleStyle),
+                      ],
+                    ),
+                  ),
+                  // Right icon
+                  _ActionPanelSFIcon(
+                    widget.icon,
+                    size: 20,
+                    color: textColor,
+                    weight: FontWeight.w500,
+                    boxPadding: 4,
+                  ),
+                ],
               ),
-              const SizedBox(width: _chevGap),
-              // Label + subtitle
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(widget.label, style: labelStyle),
-                    const SizedBox(height: 2),
-                    Text(widget.subtitle, style: subtitleStyle),
-                  ],
-                ),
-              ),
-              // Right icon
-              _ActionPanelSFIcon(
-                widget.icon,
-                size: 20,
-                color: textColor,
-                weight: FontWeight.w500,
-                boxPadding: 4,
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -1372,7 +1484,13 @@ class ActionMenuOverlay extends StatelessWidget {
     final safeBtm = mq.padding.bottom + 16.0;
 
     final panelW = panelWidth;
-    final panelH = ActionItem.panelHeightForItems(actions);
+    final panelH = ActionItem.panelHeightForItems(
+      actions,
+      context: context,
+      panelWidth: panelW,
+      chevronColumn: chevronColumn,
+      labelFontSize: labelFontSize,
+    );
 
     // Decide which side has more usable room.
     final goAbove =
