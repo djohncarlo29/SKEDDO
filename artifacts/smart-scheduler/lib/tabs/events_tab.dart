@@ -11871,6 +11871,7 @@ class _EditDcvSectionsSheet extends StatefulWidget {
 class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
   late List<int> _sectionOrder;
   late final List<TextEditingController> _sectionControllers;
+  late final List<FocusNode> _sectionFocusNodes;
   late final ValueNotifier<Color> _handleColorNotifier;
   late final TintedCupertinoTextSelectionControls _selectionControls;
   final Set<int> _deletingSections = <int>{};
@@ -11886,6 +11887,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
     _sectionControllers = [
       for (final name in widget.sectionNames) TextEditingController(text: name),
     ];
+    _sectionFocusNodes = [for (final _ in widget.sectionNames) FocusNode()];
     _handleColorNotifier = ValueNotifier<Color>(widget.accentColor);
     _selectionControls = TintedCupertinoTextSelectionControls(
       _handleColorNotifier,
@@ -11904,6 +11906,9 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
   void dispose() {
     for (final controller in _sectionControllers) {
       controller.dispose();
+    }
+    for (final focusNode in _sectionFocusNodes) {
+      focusNode.dispose();
     }
     _handleColorNotifier.dispose();
     super.dispose();
@@ -12110,8 +12115,12 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                                                       child: CupertinoTextField(
                                                         controller:
                                                             _sectionControllers[originalIndex],
+                                                        focusNode:
+                                                            _sectionFocusNodes[originalIndex],
                                                         selectionControls:
                                                             _selectionControls,
+                                                        readOnly: false,
+                                                        autofocus: false,
                                                         decoration: null,
                                                         padding:
                                                             EdgeInsets.zero,
@@ -12533,6 +12542,7 @@ class _DcvEditableSectionLabel extends StatefulWidget {
   final bool isCollapsed;
   final Color accentColor;
   final VoidCallback onToggle;
+  final ValueChanged<String>? onChanged;
   final ValueChanged<String> onSubmitted;
 
   const _DcvEditableSectionLabel({
@@ -12541,6 +12551,7 @@ class _DcvEditableSectionLabel extends StatefulWidget {
     required this.isCollapsed,
     required this.accentColor,
     required this.onToggle,
+    this.onChanged,
     required this.onSubmitted,
   });
 
@@ -12725,6 +12736,7 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
                       onTap: _scheduleEnsureVisible,
                       onChanged: (_) {
                         setState(() {});
+                        widget.onChanged?.call(_controller.text.trim());
                         _scheduleEnsureVisible();
                       },
                       onSubmitted: (_) => _submit(),
@@ -14006,6 +14018,16 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                                       accentColor: widget.color,
                                       onToggle: () =>
                                           _toggleSection(sectionKey!),
+                                      onChanged: (title) {
+                                        final index =
+                                            section.customSectionIndex;
+                                        if (index != null) {
+                                          widget.onCustomSectionRenamed?.call(
+                                            index,
+                                            title,
+                                          );
+                                        }
+                                      },
                                       onSubmitted: (title) {
                                         final index =
                                             section.customSectionIndex;
