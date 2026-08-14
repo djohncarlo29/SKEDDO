@@ -909,9 +909,15 @@ class _SettingsRowState extends State<_SettingsRow> {
                   fontWeight: FontWeight.w400,
                   color: resolveThemeColor(kPrimaryLabel, context),
                 ),
+                softWrap: true,
               ),
             ),
-            if (widget.trailing != null) widget.trailing!,
+            if (widget.trailing != null) ...[
+              const SizedBox(width: kLabelValueGap),
+              Flexible(
+                child: widget.trailing!,
+              ),
+            ],
           ],
         ),
       ),
@@ -1244,15 +1250,20 @@ class _ValueTrailing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisSize: MainAxisSize.max,
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        Text(
-          text,
-          style: TextStyle(
-            fontFamily: kSFProText,
-            fontSize: 15,
-            fontWeight: FontWeight.w400,
-            color: resolveThemeColor(kSecondaryLabel, context),
+        Flexible(
+          child: Text(
+            text,
+            textAlign: TextAlign.right,
+            softWrap: true,
+            style: TextStyle(
+              fontFamily: kSFProText,
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              color: resolveThemeColor(kSecondaryLabel, context),
+            ),
           ),
         ),
         const SizedBox(width: 4),
@@ -1277,7 +1288,8 @@ class _ColorTrailing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisSize: MainAxisSize.max,
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
         // 12 px filled circle in the current accent color.
         Container(
@@ -1287,13 +1299,17 @@ class _ColorTrailing extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         // Color name label in secondary gray.
-        Text(
-          name,
-          style: TextStyle(
-            fontFamily: kSFProText,
-            fontSize: 15,
-            fontWeight: FontWeight.w400,
-            color: resolveThemeColor(kSecondaryLabel, context),
+        Flexible(
+          child: Text(
+            name,
+            textAlign: TextAlign.right,
+            softWrap: true,
+            style: TextStyle(
+              fontFamily: kSFProText,
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              color: resolveThemeColor(kSecondaryLabel, context),
+            ),
           ),
         ),
         const SizedBox(width: 4),

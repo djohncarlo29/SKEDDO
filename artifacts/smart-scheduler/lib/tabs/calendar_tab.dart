@@ -7306,8 +7306,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(label, style: _kLabelStyle),
-              const SizedBox(width: 25),
+              Flexible(
+                child: Text(label, style: _kLabelStyle, softWrap: true),
+              ),
+              const SizedBox(width: kLabelValueGap),
               Expanded(
                 child: AnimatedOpacity(
                   opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
@@ -7365,7 +7367,14 @@ class _NewEventSheetState extends State<_NewEventSheet>
             ),
           ),
           SizedBox(width: 6),
-          Text(_categoryName, style: _kRowValueStyle),
+          Flexible(
+            child: Text(
+              _categoryName,
+              style: _kRowValueStyle,
+              textAlign: TextAlign.right,
+              softWrap: true,
+            ),
+          ),
           const SizedBox(width: 4),
           _chevronUpDown(),
         ],
@@ -7379,9 +7388,15 @@ class _NewEventSheetState extends State<_NewEventSheet>
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Text('Category', style: _kLabelStyle),
-              const Spacer(),
-              valueWidget,
+              Flexible(
+                child: Text(
+                  'Category',
+                  style: _kLabelStyle,
+                  softWrap: true,
+                ),
+              ),
+              const SizedBox(width: kLabelValueGap),
+              Expanded(child: valueWidget),
             ],
           ),
         ),
@@ -10792,8 +10807,10 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(label, style: _kRowLabelStyle),
-              const SizedBox(width: 25),
+              Flexible(
+                child: Text(label, style: _kRowLabelStyle, softWrap: true),
+              ),
+              const SizedBox(width: kLabelValueGap),
               Expanded(
                 child: AnimatedOpacity(
                   opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,

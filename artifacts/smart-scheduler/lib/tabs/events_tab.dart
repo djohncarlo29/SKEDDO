@@ -8176,42 +8176,52 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    Text(
-                                      'Include',
-                                      style: TextStyle(
-                                        inherit: false,
-                                        color: resolveThemeColor(
-                                          kPrimaryLabel,
-                                          rowCtx,
+                                    Flexible(
+                                      child: Text(
+                                        'Include',
+                                        softWrap: true,
+                                        style: TextStyle(
+                                          inherit: false,
+                                          color: resolveThemeColor(
+                                            kPrimaryLabel,
+                                            rowCtx,
+                                          ),
+                                          fontSize: 17,
+                                          fontFamily: kSFProText,
+                                          fontWeight: FontWeight.w400,
+                                          letterSpacing: kTracking17,
+                                          height: kLineHeight,
                                         ),
-                                        fontSize: 17,
-                                        fontFamily: kSFProText,
-                                        fontWeight: FontWeight.w400,
-                                        letterSpacing: kTracking17,
-                                        height: kLineHeight,
                                       ),
                                     ),
-                                    SizedBox(width: 25),
+                                    const SizedBox(width: kLabelValueGap),
                                     Expanded(
                                       child: AnimatedBuilder(
                                         animation: _nameCtrl,
                                         builder: (_, __) => Row(
+                                          mainAxisSize: MainAxisSize.max,
                                           mainAxisAlignment:
                                               MainAxisAlignment.end,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
                                           children: [
-                                            Text(
-                                              includeValue,
-                                              style: TextStyle(
-                                                inherit: false,
-                                                color: resolveThemeColor(
-                                                  kSecondaryLabel,
-                                                  rowCtx,
+                                            Flexible(
+                                              child: Text(
+                                                includeValue,
+                                                textAlign: TextAlign.right,
+                                                softWrap: true,
+                                                style: TextStyle(
+                                                  inherit: false,
+                                                  color: resolveThemeColor(
+                                                    kSecondaryLabel,
+                                                    rowCtx,
+                                                  ),
+                                                  fontSize: 15,
+                                                  fontFamily: kSFProText,
+                                                  fontWeight: FontWeight.w400,
+                                                  letterSpacing: kTracking17,
+                                                  height: kLineHeight,
                                                 ),
-                                                fontSize: 15,
-                                                fontFamily: kSFProText,
-                                                fontWeight: FontWeight.w400,
-                                                letterSpacing: kTracking17,
-                                                height: kLineHeight,
                                               ),
                                             ),
                                             const SizedBox(width: 4),
@@ -9156,13 +9166,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (leading != null) ...[leading, SizedBox(width: 12)],
-              if (leading != null)
-                Flexible(
-                  child: Text(label, style: _kRowLabelStyle, softWrap: true),
-                )
-              else
-                Text(label, style: _kRowLabelStyle),
-              const SizedBox(width: 25),
+              Flexible(
+                child: Text(label, style: _kRowLabelStyle, softWrap: true),
+              ),
+              const SizedBox(width: kLabelValueGap),
               Expanded(child: dimmedValue),
             ],
           ),
@@ -13889,8 +13896,10 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(label, style: _kRowLabelStyle),
-              const SizedBox(width: 25),
+              Flexible(
+                child: Text(label, style: _kRowLabelStyle, softWrap: true),
+              ),
+              const SizedBox(width: kLabelValueGap),
               Expanded(
                 child: AnimatedOpacity(
                   opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,

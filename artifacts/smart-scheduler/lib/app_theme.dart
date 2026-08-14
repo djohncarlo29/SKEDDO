@@ -430,6 +430,12 @@ const kTracking10 = 0.12;
 const kTracking16 = -0.32;
 const kTracking17 = -0.43;
 
+// Shared label-to-value separation for picker rows in modal sheets and
+// value-bearing rows in Settings. Keep this spacer explicit so larger OS text
+// scaling makes labels/value text wrap within their own areas instead of
+// allowing the two columns to touch.
+const double kLabelValueGap = 25.0;
+
 // ── SF Pro Line Spacing ───────────────────────────────────────────────────────
 const kLineHeight = 1.3;
 
