@@ -230,10 +230,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
             hasChevron: true,
             iconOffset: const Offset(-7.0, 0),
             iconBuilder: (color) => NewSectionIcon(size: 16, color: color),
-            contentOpacity:
-                expandedTriggerId == 'manageSections' || isScalingBack
-                ? 0.0
-                : 1.0,
+            contentOpacity: expandedTriggerId == 'manageSections' ? 0.0 : 1.0,
             onTap: () => onTriggerTap('manageSections'),
           )
         : ActionItem(
@@ -250,9 +247,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       icon: SFIcons.sf_arrow_up_arrow_down,
       hasChevron: true,
       subtitle: _sortBy,
-      contentOpacity: expandedTriggerId == 'sortBy' || isScalingBack
-          ? 0.0
-          : 1.0,
+      contentOpacity: expandedTriggerId == 'sortBy' ? 0.0 : 1.0,
       onTap: () => onTriggerTap('sortBy'),
     ),
     // ── Show / Hide Completed toggle ─────────────────────────────────────────

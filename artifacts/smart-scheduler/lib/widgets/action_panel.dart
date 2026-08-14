@@ -1168,6 +1168,10 @@ class ExpandableActionMenu extends StatefulWidget {
 class _ExpandableActionMenuState extends State<ExpandableActionMenu>
     with SingleTickerProviderStateMixin {
   String? _expandedTriggerId;
+  // Keeps the closing row identified while the main panel scales back.  This
+  // is deliberately separate from _expandedTriggerId: the expanded sub-panel
+  // can be removed before the shared trigger row finishes its close transition.
+  String? _closingTriggerId;
   bool _scalingBack = false;
 
   // Two independent closing notifiers so each panel can animate out on its own.
@@ -1178,6 +1182,14 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
   late final AnimationController _chevronCtrl;
 
   bool get _expanded => _expandedTriggerId != null;
+
+  ExpandableActionSpec? _specForId(String? id) {
+    if (id == null) return null;
+    for (final spec in widget.expandableActions) {
+      if (spec.id == id) return spec;
+    }
+    return null;
+  }
 
   @override
   void initState() {
@@ -1216,7 +1228,10 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
       // _scalingBack keeps the floating shared element alive while the main panel
       // scales back from 0.96 → 1.0 after the sub-panel closes, so the trigger
       // row's built-in content does not pop in before the scale is complete.
-      setState(() => _scalingBack = true);
+      setState(() {
+        _closingTriggerId = triggerId;
+        _scalingBack = true;
+      });
       Future.delayed(const Duration(milliseconds: 200), () {
         if (mounted) {
           setState(() {
@@ -1224,7 +1239,12 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
             _expandedClosing.value = false;
           });
           Future.delayed(const Duration(milliseconds: 160), () {
-            if (mounted) setState(() => _scalingBack = false);
+            if (mounted) {
+              setState(() {
+                _scalingBack = false;
+                _closingTriggerId = null;
+              });
+            }
           });
         }
       });
@@ -1232,6 +1252,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
     }
     setState(() {
       _expandedTriggerId = triggerId;
+      _closingTriggerId = null;
       _expandedClosing.value = false;
     });
     _chevronCtrl.forward();
@@ -1239,29 +1260,32 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
 
   @override
   Widget build(BuildContext context) {
-    final activeSpec = _expandedTriggerId == null
-        ? null
-        : widget.expandableActions.firstWhere(
-            (spec) => spec.id == _expandedTriggerId,
-          );
+    final activeSpec = _specForId(_expandedTriggerId);
+    // During close, expose the closing row id to the main-panel builder rather
+    // than a global "scaling back" state.  That lets callers hide only the row
+    // whose shared element is currently on top; sibling expandable rows remain
+    // visible instead of blinking out.
+    final visibleTriggerId =
+        _expandedTriggerId ?? (_scalingBack ? _closingTriggerId : null);
+    final sharedSpec = _specForId(visibleTriggerId);
     final triggerHeight = math.max(
-      activeSpec?.rowHeight ?? 0.0,
-      activeSpec == null
+      sharedSpec?.rowHeight ?? 0.0,
+      sharedSpec == null
           ? 0.0
           : ActionItem.rowHeightForItem(
               context,
               ActionItem(
-                label: activeSpec.label,
-                icon: activeSpec.icon,
+                label: sharedSpec.label,
+                icon: sharedSpec.icon,
                 hasChevron: true,
-                subtitle: activeSpec.subtitle,
+                subtitle: sharedSpec.subtitle,
               ),
               panelWidth: ExpandableActionMenu.panelW,
               chevronColumn: widget.chevronColumn,
             ),
     );
     final items = widget.itemsBuilder(
-      _expandedTriggerId,
+      visibleTriggerId,
       _scalingBack,
       _onTriggerTap,
     );
@@ -1333,10 +1357,10 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
         // and stays at 100 % scale while the sub-panel blooms.
         // Fades out via AnimatedOpacity when the outer overlay closes so it
         // dissolves together with the panels' bloom-back animation.
-        if (activeSpec != null || _scalingBack)
+        if (sharedSpec != null)
           Positioned(
             left: widget.panelLeft + 16,
-            top: widget.panelTop + (activeSpec?.rowTop ?? 0.0),
+            top: widget.panelTop + sharedSpec.rowTop,
             width: ExpandableActionMenu.panelW - 32,
             height: triggerHeight,
             child: ValueListenableBuilder<bool>(
@@ -1348,15 +1372,15 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
                 child: child,
               ),
               child: _ExpandableRowSharedContent(
-                label: activeSpec?.label ?? '',
-                subtitle: activeSpec?.subtitle,
-                icon: activeSpec?.icon ?? CupertinoIcons.circle,
-                iconBuilder: activeSpec?.iconBuilder,
-                rowHeight: activeSpec?.rowHeight ?? ActionItem.rowHeight,
+                label: sharedSpec.label,
+                subtitle: sharedSpec.subtitle,
+                icon: sharedSpec.icon,
+                iconBuilder: sharedSpec.iconBuilder,
+                rowHeight: sharedSpec.rowHeight,
                 chevronCtrl: _chevronCtrl,
-                onTap: activeSpec == null
+                onTap: _scalingBack
                     ? () {}
-                    : () => _onTriggerTap(activeSpec.id),
+                    : () => _onTriggerTap(sharedSpec.id),
               ),
             ),
           ),
