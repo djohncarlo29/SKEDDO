@@ -59,7 +59,18 @@ class NewSectionIcon extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
-      child: CustomPaint(painter: _NewSectionIconPainter(color)),
+      // Keep the row's 24 px layout slot unchanged, but let the heading bar
+      // extend into the surrounding trailing padding.
+      child: OverflowBox(
+        alignment: Alignment.centerLeft,
+        minWidth: size,
+        maxWidth: size + 3.0,
+        child: SizedBox(
+          width: size + 3.0,
+          height: size,
+          child: CustomPaint(painter: _NewSectionIconPainter(color)),
+        ),
+      ),
     );
   }
 }
@@ -93,7 +104,7 @@ class _NewSectionIconPainter extends CustomPainter {
     // dots below.
     // Extend the heading bar slightly past the bullets on the left, and
     // farther past the list-line endpoints on the right.
-    canvas.drawRect(const Rect.fromLTRB(-0.8, 0.6, 25.5, 5.1), fill);
+    canvas.drawRect(const Rect.fromLTRB(-1.0, 0.6, 26.5, 5.1), fill);
 
     // List rows: both bullets share the same outer diameter.  The adjacent
     // bars are two-thirds of that diameter, matching the updated icon
