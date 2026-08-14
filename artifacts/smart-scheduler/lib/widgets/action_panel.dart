@@ -209,11 +209,6 @@ class _NewSectionIconPainter extends CustomPainter {
       // the bar by a deliberate ring of transparent space.
       canvas.drawCircle(badgeCenter, badgeGapRadius, clear);
 
-      // The heading bar is shared by both section states. Restore it after
-      // the badge separation punch so New Section does not shorten or notch
-      // the same top bar used by Manage Sections.
-      canvas.drawRect(const Rect.fromLTRB(-1.0, 0.6, 28.0, 5.1), fill);
-
       canvas.drawCircle(badgeCenter, badgeRadius, fill);
 
       // The plus is a true negative-space knockout, not a second coloured

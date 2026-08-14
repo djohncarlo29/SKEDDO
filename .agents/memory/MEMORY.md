@@ -54,3 +54,4 @@
 - [Cupertino selection styling across Shorebird versions](cupertino-selection-style-shorebird.md) — use DefaultSelectionStyle plus CupertinoTheme; Shorebird's CupertinoTextField has no selectionColor parameter.
 - [Targeted style patch context](targeted-style-patch-context.md) — repeated font-size edits need unique surrounding labels plus a diff check to prevent adjacent UI styles changing.
 - [Variable category row heights](variable-category-row-heights.md) — category slots and drag geometry must use each item’s measured height, not the tallest row globally.
+- [Flutter web preview rebuilds](flutter-web-preview-rebuild.md) — compiled Flutter web previews need a workflow restart for Dart changes to appear; file touches do not provide hot reload.
