@@ -117,8 +117,13 @@ class _NewSectionIconPainter extends CustomPainter {
     canvas.save();
     if (showPlusBadge) {
       // The badge and its surrounding separation are transparent punches
-      // through the icon layer, revealing the glass surface beneath it.
-      canvas.saveLayer(Offset.zero & size, Paint());
+      // through the icon layer, revealing the glass surface beneath it. Keep
+      // the layer one pixel wider on the left so the shared base bar's
+      // negative-x overhang is not clipped only in the New Section state.
+      canvas.saveLayer(
+        Rect.fromLTRB(-1.0, 0, size.width, size.height),
+        Paint(),
+      );
     }
     // Leave the added top inset available for the geometry, then center the
     // one-pixel-smaller base inside its original 16 px painted height.
