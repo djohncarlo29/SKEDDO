@@ -53,6 +53,7 @@ class _DcvMenuContent extends StatefulWidget {
   final void Function(bool) onViewAsListChanged;
   final VoidCallback? onDeleteCategory;
   final VoidCallback? onEditCategory;
+  final void Function(VoidCallback afterClosed) onDismissThen;
   final VoidCallback onManageSectionsTriggered;
 
   const _DcvMenuContent({
@@ -72,6 +73,7 @@ class _DcvMenuContent extends StatefulWidget {
     required this.onViewAsListChanged,
     this.onDeleteCategory,
     this.onEditCategory,
+    required this.onDismissThen,
     required this.onManageSectionsTriggered,
   });
 
@@ -140,8 +142,10 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
   }
 
   void _onEditCategoryTap() {
-    widget.onEditCategory?.call();
-    Future.delayed(const Duration(milliseconds: 80), widget.onDismiss);
+    // The editor must not be pushed while the ellipsis panel is still
+    // dissolving.  Let the parent remove the overlay first, then present the
+    // sheet from the dismissal completion callback.
+    widget.onDismissThen(() => widget.onEditCategory?.call());
   }
 
   void _onInitialNewSectionTap() {
@@ -890,7 +894,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         panelTop: panelTop,
         panelLeft: panelLeft,
         isClosing: _dcvMenuClosing,
-        onDismiss: _hideDcvMenu,
+        onDismiss: () => _hideDcvMenu(),
+        onDismissThen: (afterClosed) => _hideDcvMenu(afterClosed: afterClosed),
         isSmartCategory: isSmartCategory,
         initialManageSections: manageSections,
         initialSortBy: _dcvSortByMap[_dcvCategory] ?? 'Manual',
@@ -944,8 +949,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     Overlay.of(context).insert(_dcvMenuOverlay!);
   }
 
-  void _hideDcvMenu() {
-    if (!_dcvMenuOpen) return;
+  void _hideDcvMenu({VoidCallback? afterClosed}) {
+    if (!_dcvMenuOpen) {
+      afterClosed?.call();
+      return;
+    }
     _dcvMenuOpen = false;
     setState(() {}); // snap ellipsis back to full opacity immediately
     _dcvMenuClosing.value = true;
@@ -957,6 +965,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _dcvMenuClosing.value = false;
         setState(() {});
       }
+      afterClosed?.call();
     });
   }
 
