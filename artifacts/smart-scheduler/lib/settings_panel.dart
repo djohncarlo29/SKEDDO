@@ -897,31 +897,48 @@ class _SettingsRowState extends State<_SettingsRow> {
           vertical: _kSettingsRowVerticalPadding,
         ),
         alignment: Alignment.centerLeft,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Text(
-                widget.title,
-                style: TextStyle(
-                  fontFamily: kSFProText,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w400,
-                  color: resolveThemeColor(kPrimaryLabel, context),
-                ),
-                softWrap: true,
-              ),
-            ),
-            if (widget.trailing != null) ...[
-              const SizedBox(width: kLabelValueGap),
-              if (widget.trailing is _ChevronTrailing)
-                widget.trailing!
-              else
-                Flexible(child: widget.trailing!),
-            ],
-          ],
-        ),
+        child: _buildSettingsRowContent(context),
       ),
+    );
+  }
+
+  Widget _buildSettingsRowContent(BuildContext context) {
+    final labelStyle = TextStyle(
+      fontFamily: kSFProText,
+      fontSize: 17,
+      fontWeight: FontWeight.w400,
+      color: resolveThemeColor(kPrimaryLabel, context),
+    );
+
+    if (widget.trailing is _ValueTrailing) {
+      final trailing = widget.trailing! as _ValueTrailing;
+      return MinGapLabelValueRow(
+        label: widget.title,
+        labelStyle: labelStyle,
+        value: trailing.text,
+        valueStyle: TextStyle(
+          fontFamily: kSFProText,
+          fontSize: 15,
+          fontWeight: FontWeight.w400,
+          color: resolveThemeColor(kSecondaryLabel, context),
+        ),
+        trailing: trailing,
+        trailingExtraWidth: 22,
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(child: Text(widget.title, style: labelStyle, softWrap: true)),
+        if (widget.trailing != null) ...[
+          const SizedBox(width: kLabelValueGap),
+          if (widget.trailing is _ChevronTrailing)
+            widget.trailing!
+          else
+            Flexible(child: widget.trailing!),
+        ],
+      ],
     );
   }
 }

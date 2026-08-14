@@ -8375,54 +8375,57 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                   horizontal: 16,
                                   vertical: 14,
                                 ),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        'Include',
-                                        softWrap: true,
-                                        style: TextStyle(
-                                          inherit: false,
-                                          color: resolveThemeColor(
-                                            kPrimaryLabel,
+                                child: MinGapLabelValueRow(
+                                  label: 'Include',
+                                  labelStyle: TextStyle(
+                                    inherit: false,
+                                    color: resolveThemeColor(
+                                      kPrimaryLabel,
+                                      rowCtx,
+                                    ),
+                                    fontSize: 17,
+                                    fontFamily: kSFProText,
+                                    fontWeight: FontWeight.w400,
+                                    letterSpacing: kTracking17,
+                                    height: kLineHeight,
+                                  ),
+                                  value: includeValue,
+                                  valueStyle: TextStyle(
+                                    inherit: false,
+                                    color: resolveThemeColor(
+                                      kSecondaryLabel,
+                                      rowCtx,
+                                    ),
+                                    fontSize: 15,
+                                    fontFamily: kSFProText,
+                                    fontWeight: FontWeight.w400,
+                                    letterSpacing: kTracking17,
+                                    height: kLineHeight,
+                                  ),
+                                  trailing: AnimatedBuilder(
+                                    animation: _nameCtrl,
+                                    builder: (_, __) =>
+                                        ModalSheetPickerTrailing(
+                                          value: includeValue,
+                                          style: TextStyle(
+                                            inherit: false,
+                                            color: resolveThemeColor(
+                                              kSecondaryLabel,
+                                              rowCtx,
+                                            ),
+                                            fontSize: 15,
+                                            fontFamily: kSFProText,
+                                            fontWeight: FontWeight.w400,
+                                            letterSpacing: kTracking17,
+                                            height: kLineHeight,
+                                          ),
+                                          chevronColor: resolveThemeColor(
+                                            kSecondaryLabel,
                                             rowCtx,
                                           ),
-                                          fontSize: 17,
-                                          fontFamily: kSFProText,
-                                          fontWeight: FontWeight.w400,
-                                          letterSpacing: kTracking17,
-                                          height: kLineHeight,
                                         ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: kLabelValueGap),
-                                    Flexible(
-                                      child: AnimatedBuilder(
-                                        animation: _nameCtrl,
-                                        builder: (_, __) =>
-                                            ModalSheetPickerTrailing(
-                                              value: includeValue,
-                                              style: TextStyle(
-                                                inherit: false,
-                                                color: resolveThemeColor(
-                                                  kSecondaryLabel,
-                                                  rowCtx,
-                                                ),
-                                                fontSize: 15,
-                                                fontFamily: kSFProText,
-                                                fontWeight: FontWeight.w400,
-                                                letterSpacing: kTracking17,
-                                                height: kLineHeight,
-                                              ),
-                                              chevronColor: resolveThemeColor(
-                                                kSecondaryLabel,
-                                                rowCtx,
-                                              ),
-                                            ),
-                                      ),
-                                    ),
-                                  ],
+                                  ),
+                                  trailingExtraWidth: 16,
                                 ),
                               ),
                             ),
@@ -9337,16 +9340,15 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             horizontal: 16,
             vertical: verticalPadding,
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (leading != null) ...[leading, SizedBox(width: 12)],
-              Expanded(
-                child: Text(label, style: _kRowLabelStyle, softWrap: true),
-              ),
-              const SizedBox(width: kLabelValueGap),
-              Flexible(child: dimmedValue),
-            ],
+          child: MinGapLabelValueRow(
+            label: label,
+            labelStyle: _kRowLabelStyle,
+            value: value,
+            valueStyle: _kRowValueStyle,
+            trailing: dimmedValue,
+            leading: leading,
+            leadingWidth: leading == null ? 0 : 28,
+            trailingExtraWidth: 16,
           ),
         ),
       ),
@@ -15090,26 +15092,22 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
             : onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Text(label, style: _kRowLabelStyle, softWrap: true),
+          child: MinGapLabelValueRow(
+            label: label,
+            labelStyle: _kRowLabelStyle,
+            value: value,
+            valueStyle: valueStyle,
+            trailing: AnimatedOpacity(
+              opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
+              duration: const Duration(milliseconds: 150),
+              child: ModalSheetPickerTrailing(
+                value: value,
+                style: valueStyle,
+                chevronColor: resolveThemeColor(kSecondaryLabel, context),
+                showChevron: showChevron,
               ),
-              const SizedBox(width: kLabelValueGap),
-              Flexible(
-                child: AnimatedOpacity(
-                  opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: ModalSheetPickerTrailing(
-                    value: value,
-                    style: valueStyle,
-                    chevronColor: resolveThemeColor(kSecondaryLabel, context),
-                    showChevron: showChevron,
-                  ),
-                ),
-              ),
-            ],
+            ),
+            trailingExtraWidth: showChevron ? 16 : 0,
           ),
         ),
       ),

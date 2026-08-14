@@ -468,6 +468,100 @@ String smartWrapChevronValue(String value) {
   );
 }
 
+/// Lays out a label and its chevron value with a minimum, not fixed, gap.
+///
+/// When both values fit on one line, each side keeps its natural width and the
+/// remaining space becomes additional separation. Only when the pair cannot
+/// fit does the row switch to flexible children that can wrap independently.
+class MinGapLabelValueRow extends StatelessWidget {
+  const MinGapLabelValueRow({
+    super.key,
+    required this.label,
+    required this.labelStyle,
+    required this.value,
+    required this.valueStyle,
+    required this.trailing,
+    this.trailingExtraWidth = 16.0,
+    this.leading,
+    this.leadingWidth = 0.0,
+    this.leadingGap = 12.0,
+  });
+
+  final String label;
+  final TextStyle labelStyle;
+  final String value;
+  final TextStyle valueStyle;
+  final Widget trailing;
+  final double trailingExtraWidth;
+  final Widget? leading;
+  final double leadingWidth;
+  final double leadingGap;
+
+  double _singleLineWidth(BuildContext context, String text, TextStyle style) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    return painter.width;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final labelWidth = _singleLineWidth(context, label, labelStyle);
+        final valueWidth =
+            _singleLineWidth(
+              context,
+              smartWrapChevronValue(value),
+              valueStyle,
+            ) +
+            trailingExtraWidth;
+        final leadingTotal = leading == null ? 0.0 : leadingWidth + leadingGap;
+        final fitsOnOneLine =
+            constraints.maxWidth.isFinite &&
+            leadingTotal + labelWidth + kLabelValueGap + valueWidth <=
+                constraints.maxWidth;
+
+        if (fitsOnOneLine) {
+          final freeGap =
+              constraints.maxWidth - leadingTotal - labelWidth - valueWidth;
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (leading != null) ...[
+                SizedBox(width: leadingWidth, child: leading),
+                SizedBox(width: leadingGap),
+              ],
+              SizedBox(
+                width: labelWidth,
+                child: Text(label, style: labelStyle, softWrap: false),
+              ),
+              SizedBox(width: math.max(kLabelValueGap, freeGap)),
+              SizedBox(width: valueWidth, child: trailing),
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (leading != null) ...[
+              SizedBox(width: leadingWidth, child: leading),
+              SizedBox(width: leadingGap),
+            ],
+            Flexible(child: Text(label, style: labelStyle, softWrap: true)),
+            const SizedBox(width: kLabelValueGap),
+            Flexible(child: trailing),
+          ],
+        );
+      },
+    );
+  }
+}
+
 // ── SF Pro Line Spacing ───────────────────────────────────────────────────────
 const kLineHeight = 1.3;
 

@@ -7302,24 +7302,22 @@ class _NewEventSheetState extends State<_NewEventSheet>
             : onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(child: Text(label, style: _kLabelStyle, softWrap: true)),
-              const SizedBox(width: kLabelValueGap),
-              Flexible(
-                child: AnimatedOpacity(
-                  opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: ModalSheetPickerTrailing(
-                    value: value,
-                    style: valueStyle,
-                    chevronColor: resolveThemeColor(kSecondaryLabel, context),
-                    showChevron: showChevron,
-                  ),
-                ),
+          child: MinGapLabelValueRow(
+            label: label,
+            labelStyle: _kLabelStyle,
+            value: value,
+            valueStyle: valueStyle,
+            trailing: AnimatedOpacity(
+              opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
+              duration: const Duration(milliseconds: 150),
+              child: ModalSheetPickerTrailing(
+                value: value,
+                style: valueStyle,
+                chevronColor: resolveThemeColor(kSecondaryLabel, context),
+                showChevron: showChevron,
               ),
-            ],
+            ),
+            trailingExtraWidth: showChevron ? 16 : 0,
           ),
         ),
       ),
@@ -7355,14 +7353,13 @@ class _NewEventSheetState extends State<_NewEventSheet>
         onTap: () => _showPickerOverlay(ctx, 'Category', _categoryItems()),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text('Category', style: _kLabelStyle, softWrap: true),
-              ),
-              const SizedBox(width: kLabelValueGap),
-              Flexible(child: valueWidget),
-            ],
+          child: MinGapLabelValueRow(
+            label: 'Category',
+            labelStyle: _kLabelStyle,
+            value: _categoryName,
+            valueStyle: _kRowValueStyle,
+            trailing: valueWidget,
+            trailingExtraWidth: 32,
           ),
         ),
       ),
@@ -10768,26 +10765,22 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
             : onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Text(label, style: _kRowLabelStyle, softWrap: true),
+          child: MinGapLabelValueRow(
+            label: label,
+            labelStyle: _kRowLabelStyle,
+            value: value,
+            valueStyle: valueStyle,
+            trailing: AnimatedOpacity(
+              opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
+              duration: const Duration(milliseconds: 150),
+              child: ModalSheetPickerTrailing(
+                value: value,
+                style: valueStyle,
+                chevronColor: resolveThemeColor(kSecondaryLabel, context),
+                showChevron: showChevron,
               ),
-              const SizedBox(width: kLabelValueGap),
-              Flexible(
-                child: AnimatedOpacity(
-                  opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: ModalSheetPickerTrailing(
-                    value: value,
-                    style: valueStyle,
-                    chevronColor: resolveThemeColor(kSecondaryLabel, context),
-                    showChevron: showChevron,
-                  ),
-                ),
-              ),
-            ],
+            ),
+            trailingExtraWidth: showChevron ? 16 : 0,
           ),
         ),
       ),
