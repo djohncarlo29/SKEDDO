@@ -1472,6 +1472,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   final List<_UserCategory> _userCategories = List.from(_kUserCategories);
   final List<_UserCategory> _pinnedUserCategories = [];
 
+  /// User-created DCV sections, keyed by the category label. An empty name
+  /// represents a newly-created section whose visible placeholder is
+  /// "New Section".
+  final Map<String, List<String>> _dcvCustomSectionNames = {};
+
   // ── Group state ───────────────────────────────────────────────────────────
   // All groups in the CATEGORIES list section.
   final List<_CategoryGroup> _categoryGroups = [];
@@ -4422,6 +4427,29 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     if (cat != null) _editCategory(cat);
   }
 
+  /// Adds an editable section to the currently open DCV.
+  ///
+  /// The first section owns the existing Manual-view events. Additional
+  /// sections start empty until event-to-section assignment is introduced.
+  /// This lets the new header behave like the existing grouped headers without
+  /// duplicating events across sections.
+  void addDcvSection(String label) {
+    if (label.trim().isEmpty) return;
+    setState(() {
+      (_dcvCustomSectionNames[label] ??= <String>[]).add('');
+    });
+    _saveCategories();
+  }
+
+  void _renameDcvSection(String label, int index, String title) {
+    final sections = _dcvCustomSectionNames[label];
+    if (sections == null || index < 0 || index >= sections.length) return;
+    final normalized = title.trim();
+    if (sections[index] == normalized) return;
+    setState(() => sections[index] = normalized);
+    _saveCategories();
+  }
+
   /// Opens the same Add Category sheet used by the inline button so the
   /// Events header can provide a quick-create shortcut.
   void addCategory() {
@@ -4608,6 +4636,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   static const _kPrefsGridCombinedOrder = 'events_grid_combined_order';
   static const _kPrefsCategoryGroups = 'events_category_groups';
   static const _kPrefsListTopOrder = 'events_list_top_order';
+  static const _kPrefsDcvCustomSections = 'events_dcv_custom_sections';
 
   // True while the "couldn't save" banner is visible — prevents duplicate
   // overlays if _saveCategories() is called several times in quick succession
@@ -4656,6 +4685,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 _categoryGroups.map((g) => jsonEncode(g.toJson())).toList(),
               ),
               prefs.setStringList(_kPrefsListTopOrder, _listTopOrder),
+              prefs.setString(
+                _kPrefsDcvCustomSections,
+                jsonEncode(_dcvCustomSectionNames),
+              ),
             ]);
             if (results.any((ok) => !ok) && mounted) {
               _showCategorySaveError();
@@ -4699,14 +4732,33 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       final rawGridCombined = prefs.getStringList(_kPrefsGridCombinedOrder);
       final rawGroups = prefs.getStringList(_kPrefsCategoryGroups);
       final rawListOrder = prefs.getStringList(_kPrefsListTopOrder);
+      final rawDcvSections = prefs.getString(_kPrefsDcvCustomSections);
       if (rawUser == null &&
           rawPinned == null &&
           rawSmartColors == null &&
           rawArchivedSmart == null &&
-          rawSmartOrder == null) {
+          rawSmartOrder == null &&
+          rawDcvSections == null) {
         return; // first launch — keep defaults
       }
       setState(() {
+        if (rawDcvSections != null) {
+          final decoded = jsonDecode(rawDcvSections);
+          if (decoded is Map) {
+            _dcvCustomSectionNames
+              ..clear()
+              ..addAll(
+                decoded.map(
+                  (key, value) => MapEntry(
+                    key.toString(),
+                    value is List
+                        ? value.map((name) => name.toString()).toList()
+                        : <String>[],
+                  ),
+                ),
+              );
+          }
+        }
         if (rawUser != null) {
           _userCategories
             ..clear()
@@ -5631,6 +5683,14 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     sortBy: widget.dcvSortBy ?? 'Manual',
                     sortDir: widget.dcvSortDir ?? '',
                     showManualDateSections: widget.dcvShowManualDateSections,
+                    customSectionNames: List<String>.of(
+                      _dcvCustomSectionNames[dcvLabel] ?? const <String>[],
+                    ),
+                    onCustomSectionRenamed: (index, title) {
+                      if (dcvLabel != null) {
+                        _renameDcvSection(dcvLabel, index, title);
+                      }
+                    },
                     onEditEvent: widget.onEditEvent,
                     color: dcvColor,
                   );
@@ -11672,9 +11732,19 @@ class _ModalCircleButton extends StatelessWidget {
 /// grouped card (shared surface + shadow + hairline separators), matching the
 /// Categories list card on the main Events tab.
 class _DcvSection {
-  final String? headerText; // null → no header (Manual / Unscheduled)
+  final String? headerText; // null → no header (flat Manual / Unscheduled)
   final List<ScheduledEvent> events;
-  const _DcvSection({this.headerText, required this.events});
+  final String? collapseKey;
+  final bool isEditable;
+  final int? customSectionIndex;
+
+  const _DcvSection({
+    this.headerText,
+    required this.events,
+    this.collapseKey,
+    this.isEditable = false,
+    this.customSectionIndex,
+  });
 }
 
 // ── DCV section label (matches Settings Panel header geometry) ────────────────
@@ -11758,6 +11828,143 @@ class _DcvSectionLabel extends StatelessWidget {
   }
 }
 
+/// Editable header used for user-created Manual-view sections.
+///
+/// The field uses the platform "Done" action, which becomes the return/check
+/// key on the phone keyboard.  Submitting from that key commits the title and
+/// dismisses the keyboard.
+class _DcvEditableSectionLabel extends StatefulWidget {
+  final String initialText;
+  final bool isFirst;
+  final bool isCollapsed;
+  final Color accentColor;
+  final VoidCallback onToggle;
+  final ValueChanged<String> onSubmitted;
+
+  const _DcvEditableSectionLabel({
+    required this.initialText,
+    required this.isFirst,
+    required this.isCollapsed,
+    required this.accentColor,
+    required this.onToggle,
+    required this.onSubmitted,
+  });
+
+  @override
+  State<_DcvEditableSectionLabel> createState() =>
+      _DcvEditableSectionLabelState();
+}
+
+class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: widget.initialText == 'New Section' ? '' : widget.initialText,
+    );
+    _focusNode = FocusNode();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.initialText == 'New Section') {
+        _focusNode.requestFocus();
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _DcvEditableSectionLabel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_focusNode.hasFocus && oldWidget.initialText != widget.initialText) {
+      _controller.text = widget.initialText == 'New Section'
+          ? ''
+          : widget.initialText;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    widget.onSubmitted(_controller.text.trim());
+    _focusNode.unfocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const baseFontSize = 15.0;
+    final labelColor = resolveThemeColor(kSecondaryLabel, context);
+    final placeholderColor = resolveThemeColor(kTertiaryLabel, context);
+    final chevronFontSize = MediaQuery.textScalerOf(
+      context,
+    ).scale(baseFontSize);
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 16,
+        top: widget.isFirst ? 0 : 15,
+        bottom: 10,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: CupertinoTextField(
+              controller: _controller,
+              focusNode: _focusNode,
+              autofocus: false,
+              decoration: null,
+              padding: EdgeInsets.zero,
+              maxLines: 1,
+              textInputAction: TextInputAction.done,
+              placeholder: 'New Section',
+              placeholderStyle: TextStyle(
+                inherit: false,
+                fontFamily: kSFProText,
+                fontSize: baseFontSize,
+                fontWeight: FontWeight.w600,
+                color: placeholderColor,
+                letterSpacing: 0.0,
+              ),
+              style: TextStyle(
+                inherit: false,
+                fontFamily: kSFProText,
+                fontSize: baseFontSize,
+                fontWeight: FontWeight.w600,
+                color: labelColor,
+                letterSpacing: 0.0,
+              ),
+              onSubmitted: (_) => _submit(),
+            ),
+          ),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onToggle,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 12, right: 16),
+              child: AnimatedRotation(
+                turns: widget.isCollapsed ? -0.25 : 0.0,
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeInOut,
+                child: FixedSFIcon(
+                  SFIcons.sf_chevron_down,
+                  fontSize: chevronFontSize,
+                  color: widget.accentColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CategoryDetailView extends StatefulWidget {
   final String label;
 
@@ -11786,6 +11993,13 @@ class _CategoryDetailView extends StatefulWidget {
   /// section-enabled category views open as one flat list.
   final bool showManualDateSections;
 
+  /// Names for user-created Manual-view sections. An empty name renders the
+  /// editable "New Section" placeholder.
+  final List<String> customSectionNames;
+
+  /// Saves a submitted custom section title.
+  final void Function(int index, String title)? onCustomSectionRenamed;
+
   /// Optional callback to open the event-edit sheet for a given event.
   /// Passed from [EventsTab.onEditEvent] so DCV event cards show a pencil icon.
   final void Function(ScheduledEvent event)? onEditEvent;
@@ -11803,6 +12017,8 @@ class _CategoryDetailView extends StatefulWidget {
     this.sortBy = 'Manual',
     this.sortDir = '',
     this.showManualDateSections = true,
+    this.customSectionNames = const [],
+    this.onCustomSectionRenamed,
     this.onEditEvent,
     this.color = kAccentColor,
   });
@@ -12294,6 +12510,22 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   ///   • Today / Tomorrow → "All-day" section first, then one per time string.
   ///   • All others (Manual) → optional "Unscheduled" section first, then one
   ///     per calendar day (chronological, all-day events first in day).
+  List<_DcvSection> _buildCustomManualSections() {
+    final names = widget.customSectionNames;
+    return [
+      for (var i = 0; i < names.length; i++)
+        _DcvSection(
+          headerText: names[i].trim().isEmpty ? 'New Section' : names[i],
+          collapseKey: 'custom-$i',
+          isEditable: true,
+          customSectionIndex: i,
+          // Existing events remain in the first section. New sections start
+          // empty, matching the way a newly-added manual section is created.
+          events: i == 0 ? List.of(_items) : const [],
+        ),
+    ];
+  }
+
   List<_DcvSection> _buildDisplaySections() {
     final label = widget.label;
 
@@ -12302,6 +12534,9 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
 
     // ── Unscheduled: flat single section, no header ───────────────────────────
     if (!widget.showManualDateSections) {
+      if (widget.customSectionNames.isNotEmpty) {
+        return _buildCustomManualSections();
+      }
       return [_DcvSection(events: List.of(_items))];
     }
 
@@ -12683,8 +12918,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   Widget build(BuildContext context) {
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
-    // ── Events present — render section headers + grouped event cards ───────
-    if (_items.isNotEmpty) {
+    // ── Events/sections present — render section headers + grouped cards ────
+    if (_items.isNotEmpty || widget.customSectionNames.isNotEmpty) {
       final displaySections = _buildDisplaySections();
       // Keep the previous visible event within each section.  The drag-gap
       // separator belongs to an in-section gap; carrying the previous event
@@ -12722,9 +12957,10 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                 itemCount: displaySections.length,
                 itemBuilder: (context, sectionIdx) {
                   final section = displaySections[sectionIdx];
+                  final sectionKey = section.collapseKey ?? section.headerText;
                   final isCollapsed =
                       section.headerText != null &&
-                      _collapsedSections.contains(section.headerText);
+                      _collapsedSections.contains(sectionKey);
 
                   return Padding(
                     // 16 px gap between consecutive sections (last section
@@ -12736,17 +12972,37 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                       children: [
                         // ── Section header ─────────────────────────────────
                         if (section.headerText != null)
-                          _DcvSectionLabel(
-                            text: section.headerText!,
-                            // isFirst controls top padding: 0 for first
-                            // section (SliverPadding provides gap from DCV
-                            // header), also 0 for others (section bottom
-                            // padding provides inter-section gap).
-                            isFirst: true,
-                            isCollapsed: isCollapsed,
-                            accentColor: widget.color,
-                            onTap: () => _toggleSection(section.headerText!),
-                          ),
+                          section.isEditable
+                              ? _DcvEditableSectionLabel(
+                                  initialText: section.headerText!,
+                                  // isFirst controls top padding: 0 for first
+                                  // section (SliverPadding provides gap from
+                                  // the DCV header).
+                                  isFirst: true,
+                                  isCollapsed: isCollapsed,
+                                  accentColor: widget.color,
+                                  onToggle: () => _toggleSection(sectionKey!),
+                                  onSubmitted: (title) {
+                                    final index = section.customSectionIndex;
+                                    if (index != null) {
+                                      widget.onCustomSectionRenamed?.call(
+                                        index,
+                                        title,
+                                      );
+                                    }
+                                  },
+                                )
+                              : _DcvSectionLabel(
+                                  text: section.headerText!,
+                                  // isFirst controls top padding: 0 for first
+                                  // section (SliverPadding provides gap from
+                                  // DCV header), also 0 for others (section
+                                  // bottom padding provides inter-section gap).
+                                  isFirst: true,
+                                  isCollapsed: isCollapsed,
+                                  accentColor: widget.color,
+                                  onTap: () => _toggleSection(sectionKey!),
+                                ),
 
                         // ── Grouped event card (collapses as one unit) ─────
                         // AnimatedSize smoothly animates the group to zero

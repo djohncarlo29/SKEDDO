@@ -158,6 +158,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
   }
 
   void _onSectionOptionTap() {
+    widget.onManageSectionsTriggered();
     Future.delayed(const Duration(milliseconds: 80), widget.onDismiss);
   }
 
@@ -239,9 +240,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
               hasChevron: true,
               iconOffset: const Offset(-7.0, 0),
               iconBuilder: (color) => NewSectionIcon(size: 16, color: color),
-              contentOpacity: expandedTriggerId == 'manageSections'
-                  ? 0.0
-                  : 1.0,
+              contentOpacity: expandedTriggerId == 'manageSections' ? 0.0 : 1.0,
               onTap: () => onTriggerTap('manageSections'),
             )
           : ActionItem(
@@ -957,6 +956,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         onManageSectionsTriggered: () {
           final cat = _dcvCategory;
           if (cat != null && mounted) {
+            _eventsTabKey.currentState?.addDcvSection(cat);
             setState(() => _dcvManageSectionsMap[cat] = true);
             LocalStorage.instance.saveDcvManageSections(_dcvManageSectionsMap);
           }
