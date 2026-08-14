@@ -5,10 +5,9 @@ publish_to: 'none'
 version: 1.0.0+6
 
 environment:
-  # SKEDDO is built with the workspace Flutter 3.35.7 toolchain, which ships
-  # Dart 3.9.2. Keep the upper bound below 3.10 so another installed Dart
-  # version cannot silently rewrite the dependency lockfile.
-  sdk: '>=3.9.0 <3.10.0'
+  # Support both the workspace Flutter toolchain and Shorebird's newer Dart
+  # releases without blocking dependency resolution.
+  sdk: '>=3.9.0 <4.0.0'
   flutter: '>=3.35.0'
 
 dependencies:
