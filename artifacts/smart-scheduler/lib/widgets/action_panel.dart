@@ -52,7 +52,7 @@ class NewSectionIcon extends StatelessWidget {
   final double size;
   final Color color;
 
-  const NewSectionIcon({super.key, this.size = 19, required this.color});
+  const NewSectionIcon({super.key, this.size = 16, required this.color});
 
   @override
   Widget build(BuildContext context) {
