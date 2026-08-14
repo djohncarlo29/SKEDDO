@@ -39,12 +39,9 @@ sleep 1
 cd /home/runner/workspace/artifacts/smart-scheduler
 FLUTTER_BIN="/home/runner/workspace/.cache/flutter-3.35.7/bin/flutter"
 if [ ! -x "$FLUTTER_BIN" ]; then
-  if command -v flutter >/dev/null 2>&1; then
-    FLUTTER_BIN="$(command -v flutter)"
-  else
-    echo "Flutter SDK not found. Set FLUTTER_BIN or install Flutter." >&2
-    exit 1
-  fi
+  echo "Flutter 3.35.7 SDK not found at $FLUTTER_BIN." >&2
+  echo "The app requires Dart 3.9.x; install the pinned workspace toolchain." >&2
+  exit 1
 fi
 export PATH="$(dirname "$FLUTTER_BIN"):$PATH"
 echo "→ Using Flutter: $("$FLUTTER_BIN" --version | sed -n '1p')"

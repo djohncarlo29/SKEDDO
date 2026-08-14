@@ -30,6 +30,12 @@ STORE_PASSWORD="${SMART_SCHEDULER_KEYSTORE_PASSWORD:-smart-scheduler-local-relea
 KEY_PASSWORD="${SMART_SCHEDULER_KEY_PASSWORD:-smart-scheduler-local-release}"
 KEY_ALIAS="${SMART_SCHEDULER_KEY_ALIAS:-smart-scheduler}"
 
+if [[ ! -x "$FLUTTER_BIN" ]]; then
+  echo "ERROR: Flutter 3.35.7 SDK not found at $FLUTTER_BIN." >&2
+  echo "SKEDDO requires Dart 3.9.x; refusing to fall back to another Flutter installation." >&2
+  exit 1
+fi
+
 # ── Restore cache symlinks (Replit wipes HOME on container restart) ───────────
 for _pair in \
   "shorebird:$ROOT_DIR/.cache/shorebird" \

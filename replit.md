@@ -7,7 +7,7 @@ A Flutter/Dart mobile app called SKEDDO.
 ## Stack
 
 - **Language**: Dart
-- **Framework**: Flutter 3.32.0
+- **Framework**: Flutter 3.35.7 (Dart 3.9.2)
 - **UI style**: CupertinoApp (iOS-native widgets)
 
 ## App location
@@ -27,9 +27,9 @@ A Flutter/Dart mobile app called SKEDDO.
 
 ## Key commands
 
-- `cd artifacts/smart-scheduler && flutter pub get` — install/update Dart dependencies
-- `cd artifacts/smart-scheduler && flutter run -d web-server --web-port 24355 --web-hostname 0.0.0.0` — run dev server
-- `cd artifacts/smart-scheduler && flutter build web` — production build
+- `FLUTTER=/home/runner/workspace/.cache/flutter-3.35.7/bin/flutter; cd artifacts/smart-scheduler && "$FLUTTER" pub get` — install/update Dart dependencies using the pinned Flutter 3.35.7 toolchain
+- `FLUTTER=/home/runner/workspace/.cache/flutter-3.35.7/bin/flutter; cd artifacts/smart-scheduler && "$FLUTTER" run -d web-server --web-port 24355 --web-hostname 0.0.0.0` — run dev server
+- `FLUTTER=/home/runner/workspace/.cache/flutter-3.35.7/bin/flutter; cd artifacts/smart-scheduler && "$FLUTTER" build web` — production build
 - `./build-apk.sh` — builds a signed Android release APK and copies it to `SKEDDO.apk` at the project root
 
 ## User preferences

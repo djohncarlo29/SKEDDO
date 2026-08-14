@@ -12426,6 +12426,11 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   ///      deltas, and start a single AnimationController that drives all cards
   ///      from their old visual positions to their new ones simultaneously.
   void _animateSortChange() {
+    // A live manual drag owns the layout.  Sort changes are discrete parent
+    // updates, but a stale didUpdateWidget/post-frame callback must never
+    // replace a drag swap with a hidden measurement pass.
+    if (_draggingIndex != null) return;
+
     // 1. Snapshot current (pre-sort) Y positions of every rendered card.
     final preY = <String, double>{};
     for (final e in _itemKeys.entries) {
@@ -12446,6 +12451,14 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     // 4. After the invisible layout pass, measure new positions and animate.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // The user may have started dragging during the measurement frame.
+      // Abort the sort FLIP rather than hiding or translating live drag rows.
+      if (_draggingIndex != null) {
+        if (_sortMeasuring) {
+          setState(() => _sortMeasuring = false);
+        }
+        return;
+      }
       final offsets = <String, double>{};
       for (final e in _itemKeys.entries) {
         final box = e.value.currentContext?.findRenderObject() as RenderBox?;
@@ -12483,7 +12496,15 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     if (idx < 0) return;
     _dragEvent = _items[idx];
     _dragGlobalY = globalPos.dy;
-    setState(() => _draggingIndex = idx);
+    // A drag should never inherit a partially completed sort animation.  The
+    // sort FLIP is for discrete sort-mode changes, while drag updates are
+    // applied directly so the list never enters its hidden measuring frame.
+    _sortAnimCtrl.stop();
+    setState(() {
+      _sortAnimFromY.clear();
+      _sortMeasuring = false;
+      _draggingIndex = idx;
+    });
 
     final ghostEvent = _dragEvent!;
     _dragOverlay = OverlayEntry(
@@ -12633,7 +12654,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         }
         if (sourceSection != destinationSection ||
             sourceIndex != insertionIndex) {
-          _animateDragSwap(() {
+          _applyDragSwap(() {
             final source = _sectionEventIds[sourceSection];
             final target = _sectionEventIds[destinationSection];
             source.removeAt(sourceIndex);
@@ -12655,7 +12676,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       if (box != null) {
         final top = box.localToGlobal(Offset.zero).dy;
         if (globalPos.dy < top + box.size.height / 2) {
-          _animateDragSwap(() {
+          _applyDragSwap(() {
             final item = _items.removeAt(currentIdx);
             _items.insert(currentIdx - 1, item);
             _draggingIndex = currentIdx - 1;
@@ -12671,7 +12692,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       if (box != null) {
         final top = box.localToGlobal(Offset.zero).dy;
         if (globalPos.dy > top + box.size.height / 2) {
-          _animateDragSwap(() {
+          _applyDragSwap(() {
             final item = _items.removeAt(currentIdx);
             _items.insert(currentIdx + 1, item);
             _draggingIndex = currentIdx + 1;
@@ -12681,69 +12702,18 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     }
   }
 
-  /// Performs a single drag-reorder swap with the same FLIP slide animation
-  /// used by sort-mode changes, so neighbouring tiles glide to their new
-  /// positions instead of jumping.
+  /// Applies one live drag reorder update.
   ///
   /// [doSwap] mutates [_items] and [_draggingIndex] in place; it is called
   /// inside [setState] so the framework rebuilds after the mutation.
   ///
-  /// The list is hidden for exactly one layout frame (via [_sortMeasuring])
-  /// while positions are measured — the ghost overlay in the global [Overlay]
-  /// remains fully visible throughout, so there is no perceivable flicker.
-  void _animateDragSwap(VoidCallback doSwap) {
-    // 1. Capture pre-swap visual Y of every rendered row (includes any
-    //    in-flight FLIP translation from a rapid previous swap).
-    final preY = <String, double>{};
-    for (final e in _itemKeys.entries) {
-      final box = e.value.currentContext?.findRenderObject() as RenderBox?;
-      if (box != null && box.attached) {
-        preY[e.key] = box.localToGlobal(Offset.zero).dy;
-      }
-    }
-
-    // Stop any in-flight animation so the new delta is measured from the
-    // current visual positions (captured above), not the animation target.
+  void _applyDragSwap(VoidCallback doSwap) {
+    // Keep every live swap independent from the sort FLIP controller.  This
+    // also handles a swap that happens immediately after a sort-mode change,
+    // before its post-frame measurement callback has completed.
     _sortAnimCtrl.stop();
-
-    // 2. Apply the swap and hide the list for one invisible layout frame.
-    setState(() {
-      doSwap();
-      _sortMeasuring = true;
-    });
-
-    // 3. After the new layout has been committed, measure post-swap positions
-    //    and kick off the FLIP animation.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final offsets = <String, double>{};
-      for (final e in _itemKeys.entries) {
-        final box = e.value.currentContext?.findRenderObject() as RenderBox?;
-        if (box == null || !box.attached) continue;
-        final oldY = preY[e.key];
-        if (oldY == null) continue;
-        final newY = box.localToGlobal(Offset.zero).dy;
-        final delta = oldY - newY;
-        if (delta.abs() > 0.5) offsets[e.key] = delta;
-      }
-
-      setState(() {
-        _sortMeasuring = false;
-        _sortAnimFromY
-          ..clear()
-          ..addAll(offsets);
-      });
-
-      if (offsets.isEmpty) return;
-      // Shorter duration than a full sort change — single-slot slides feel
-      // snappier at 220 ms.
-      _sortAnimCtrl.value = 0.0;
-      _sortAnimCtrl.animateTo(
-        1.0,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeInOut,
-      );
-    });
+    _sortAnimFromY.clear();
+    setState(doSwap);
   }
 
   void _endReorder() {
@@ -13276,9 +13246,11 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       final separatorColor = resolveThemeColor(kSeparatorColor, context);
       // During the one invisible layout frame of the FLIP animation, render
       // the list at opacity 0 so the user doesn't see items snap to their new
-      // positions before the animation has started.
+      // positions before the animation has started. Never apply that
+      // measurement frame to a live drag: drag swaps update the list directly.
+      final hideForSortMeasurement = _sortMeasuring && _draggingIndex == null;
       return Opacity(
-        opacity: _sortMeasuring ? 0.0 : 1.0,
+        opacity: hideForSortMeasurement ? 0.0 : 1.0,
         child: CustomScrollView(
           primary: false,
           physics: const AlwaysScrollableScrollPhysics(
