@@ -11885,7 +11885,13 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
     super.initState();
     _sectionOrder = List<int>.generate(widget.sectionNames.length, (i) => i);
     _sectionControllers = [
-      for (final name in widget.sectionNames) TextEditingController(text: name),
+      for (final name in widget.sectionNames)
+        TextEditingController(
+          // An empty persisted name is rendered in the DCV as "New Section".
+          // Seed the editor with that same visible header instead of leaving
+          // the editable row blank.
+          text: name.trim().isEmpty ? 'New Section' : name,
+        ),
     ];
     _sectionFocusNodes = [for (final _ in widget.sectionNames) FocusNode()];
     _handleColorNotifier = ValueNotifier<Color>(widget.accentColor);
@@ -11961,12 +11967,13 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
     final shadows = resolveThemeShadows(const [
       BoxShadow(color: Color(0x3A000000), blurRadius: 18, offset: Offset(0, 6)),
     ], context);
+    final rowCardColor = resolveThemeColor(kModalCard, context);
     return Transform.scale(
       scale: 1.05,
       child: _DarkModeGhostOutline(
         child: Container(
           decoration: ShapeDecoration(
-            color: resolveThemeColor(kModalCard, context),
+            color: rowCardColor,
             shape: BoundedContinuousRectangleBorder(
               borderRadius: BorderRadius.circular(kSbCornerRadius),
               side: BorderSide.none,
@@ -12082,6 +12089,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                                     iconSize: MediaQuery.textScalerOf(
                                       context,
                                     ).scale(17),
+                                    dismissOnTap: false,
                                     onDelete: () =>
                                         _deleteSection(originalIndex),
                                     child: Column(
@@ -12202,6 +12210,7 @@ class _SwipeToRevealDelete extends StatefulWidget {
   final VoidCallback onDelete;
   final double iconSize;
   final double deleteIconVerticalOffset;
+  final bool dismissOnTap;
 
   const _SwipeToRevealDelete({
     super.key,
@@ -12209,6 +12218,7 @@ class _SwipeToRevealDelete extends StatefulWidget {
     required this.onDelete,
     required this.iconSize,
     this.deleteIconVerticalOffset = 0,
+    this.dismissOnTap = true,
   });
 
   @override
@@ -12383,7 +12393,7 @@ class _SwipeToRevealDeleteState extends State<_SwipeToRevealDelete>
     final revealRight = offset < 0;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: _onTap,
+      onTap: widget.dismissOnTap ? _onTap : null,
       onHorizontalDragStart: _onDragStart,
       onHorizontalDragUpdate: _onDragUpdate,
       onHorizontalDragEnd: _onDragEnd,
@@ -12739,6 +12749,11 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
                         widget.onChanged?.call(_controller.text.trim());
                         _scheduleEnsureVisible();
                       },
+                      // Some phone keyboards deliver their check/Done key
+                      // through editingComplete rather than submitted.
+                      // Commit through the same path in either case so the
+                      // saved name is ready when Edit Sections is opened.
+                      onEditingComplete: _submit,
                       onSubmitted: (_) => _submit(),
                     ),
                   ),
