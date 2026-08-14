@@ -12,7 +12,8 @@ import 'package:flutter/gestures.dart'
         GestureRecognizerFactoryWithHandlers,
         kTouchSlop,
         ScaleGestureRecognizer;
-import 'package:flutter/material.dart' show Icons;
+import 'package:flutter/material.dart'
+    show Icons, ReorderableDragStartListener, ReorderableListView;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/physics.dart';
@@ -4439,6 +4440,49 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       while (eventSections.length < names.length) {
         eventSections.add(<String>[]);
       }
+    });
+    _saveCategories();
+  }
+
+  /// Opens the section-order editor for the currently visible DCV.
+  void editDcvSections(String label, Color accentColor) {
+    final names = _dcvCustomSectionNames[label];
+    if (names == null || names.isEmpty) return;
+    showRoundedCupertinoSheet<void>(
+      context: context,
+      pageBuilder: (_) => _EditDcvSectionsSheet(
+        sectionNames: List<String>.of(names),
+        accentColor: accentColor,
+        onSave: (order) => reorderDcvSections(label, order),
+      ),
+    );
+  }
+
+  /// Applies a section order to both the visible headers and their event
+  /// membership.  The editor returns original indexes rather than names so
+  /// duplicate section titles remain unambiguous.
+  void reorderDcvSections(String label, List<int> order) {
+    final names = _dcvCustomSectionNames[label];
+    if (names == null || names.length != order.length) return;
+
+    final eventIds = _dcvCustomSectionEventIds[label] ?? const <List<String>>[];
+    final normalizedEventIds = List<List<String>>.generate(
+      names.length,
+      (index) => index < eventIds.length
+          ? List<String>.of(eventIds[index])
+          : <String>[],
+    );
+    final validOrder =
+        order.length == names.length &&
+        order.toSet().length == names.length &&
+        order.every((index) => index >= 0 && index < names.length);
+    if (!validOrder) return;
+
+    setState(() {
+      _dcvCustomSectionNames[label] = [for (final index in order) names[index]];
+      _dcvCustomSectionEventIds[label] = [
+        for (final index in order) normalizedEventIds[index],
+      ];
     });
     _saveCategories();
   }
@@ -11764,6 +11808,201 @@ class _ModalCircleButton extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// EDIT DCV SECTIONS SHEET
+// ══════════════════════════════════════════════════════════════════════════════
+
+/// Modal editor for the user-created sections in a DCV.
+///
+/// The state is intentionally local to the sheet.  Reordering only changes the
+/// preview order; the DCV and persistence are updated once the always-enabled
+/// checkmark is tapped.
+class _EditDcvSectionsSheet extends StatefulWidget {
+  final List<String> sectionNames;
+  final Color accentColor;
+  final ValueChanged<List<int>> onSave;
+
+  const _EditDcvSectionsSheet({
+    required this.sectionNames,
+    required this.accentColor,
+    required this.onSave,
+  });
+
+  @override
+  State<_EditDcvSectionsSheet> createState() => _EditDcvSectionsSheetState();
+}
+
+class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
+  late List<int> _sectionOrder;
+
+  static const double _kHeaderEdge = 16.0;
+  static const double _kHeaderTopShift = 12.5;
+  static const double _kHeaderButtonSize = 40.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _sectionOrder = List<int>.generate(widget.sectionNames.length, (i) => i);
+  }
+
+  void _reorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) newIndex -= 1;
+      final moved = _sectionOrder.removeAt(oldIndex);
+      _sectionOrder.insert(newIndex, moved);
+    });
+  }
+
+  void _save() {
+    widget.onSave(List<int>.of(_sectionOrder));
+    Navigator.of(context).pop();
+  }
+
+  String _displayName(int originalIndex) {
+    final name = widget.sectionNames[originalIndex].trim();
+    return name.isEmpty ? 'New Section' : name;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
+    final separatorColor = resolveThemeColor(kSeparatorColor, context);
+    final handleColor = resolveThemeColor(kTertiaryLabel, context);
+
+    return CupertinoPageScaffold(
+      backgroundColor: kModalBackground,
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            SizedBox(height: _kHeaderTopShift),
+            RoundedCupertinoSheetHeader(
+              child: SizedBox(
+                height: _kHeaderButtonSize,
+                width: double.infinity,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Text(
+                      'Edit Sections',
+                      style: TextStyle(
+                        inherit: false,
+                        color: primaryLabel,
+                        fontSize: 17,
+                        fontFamily: kSFProText,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: kTracking17,
+                        height: kLineHeight,
+                      ),
+                    ),
+                    Positioned(
+                      left: _kHeaderEdge,
+                      child: _ModalCircleButton(
+                        icon: CupertinoIcons.xmark,
+                        iconColor: primaryLabel,
+                        tapDelay: const Duration(milliseconds: 130),
+                        onTap: () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                    Positioned(
+                      right: _kHeaderEdge,
+                      child: _ModalCircleButton(
+                        icon: CupertinoIcons.checkmark,
+                        containerColor: widget.accentColor,
+                        iconColor: CupertinoColors.white,
+                        tapDelay: const Duration(milliseconds: 130),
+                        onTap: _save,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                children: [
+                  Container(
+                    clipBehavior: Clip.antiAlias,
+                    decoration: ShapeDecoration(
+                      color: resolveThemeColor(kModalCard, context),
+                      shape: BoundedContinuousRectangleBorder(
+                        borderRadius: BorderRadius.circular(kSbCornerRadius),
+                      ),
+                      shadows: resolveThemeShadows(kCardShadow, context),
+                    ),
+                    child: ReorderableListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      buildDefaultDragHandles: false,
+                      itemCount: _sectionOrder.length,
+                      onReorder: _reorder,
+                      itemBuilder: (context, rowIndex) {
+                        final originalIndex = _sectionOrder[rowIndex];
+                        return Container(
+                          key: ValueKey(originalIndex),
+                          height: 52,
+                          decoration: BoxDecoration(
+                            border: rowIndex < _sectionOrder.length - 1
+                                ? Border(
+                                    bottom: BorderSide(
+                                      color: separatorColor,
+                                      width: 0.5,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 16),
+                                  child: Text(
+                                    _displayName(originalIndex),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      inherit: false,
+                                      color: primaryLabel,
+                                      fontFamily: kSFProText,
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w400,
+                                      height: 1.2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              ReorderableDragStartListener(
+                                index: rowIndex,
+                                child: SizedBox(
+                                  width: 52,
+                                  height: 52,
+                                  child: Center(
+                                    child: Icon(
+                                      CupertinoIcons.line_horizontal_3,
+                                      size: 21,
+                                      color: handleColor,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -22,6 +22,7 @@ import 'widgets/action_panel.dart';
 import 'widgets/events_header_icon.dart';
 import 'widgets/fixed_size_icon.dart';
 import 'widgets/native_text_input.dart';
+import 'widgets/rounded_cupertino_sheet.dart';
 import 'widgets/search_bar_widget.dart';
 import 'widgets/view_mode_icons.dart';
 import 'app_settings.dart';
@@ -56,6 +57,7 @@ class _DcvMenuContent extends StatefulWidget {
   final VoidCallback? onEditCategory;
   final void Function(VoidCallback afterClosed) onDismissThen;
   final VoidCallback onManageSectionsTriggered;
+  final VoidCallback onEditSectionsTriggered;
 
   const _DcvMenuContent({
     required this.panelTop,
@@ -77,6 +79,7 @@ class _DcvMenuContent extends StatefulWidget {
     this.onEditCategory,
     required this.onDismissThen,
     required this.onManageSectionsTriggered,
+    required this.onEditSectionsTriggered,
   });
 
   @override
@@ -160,6 +163,11 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
   void _onSectionOptionTap() {
     widget.onManageSectionsTriggered();
     Future.delayed(const Duration(milliseconds: 80), widget.onDismiss);
+  }
+
+  void _onEditSectionsTap() {
+    setState(() => _fastClosing = true);
+    widget.onDismissThen(widget.onEditSectionsTriggered);
   }
 
   // Sort By's position must be measured from the same scaled rows that the
@@ -325,7 +333,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       icon: SFIcons.sf_pencil,
       iconBuilder: (_) => const SizedBox.shrink(),
       groupBreakAbove: false,
-      onTap: _onSectionOptionTap,
+      onTap: _onEditSectionsTap,
     ),
   ];
 
@@ -959,6 +967,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             _eventsTabKey.currentState?.addDcvSection(cat);
             setState(() => _dcvManageSectionsMap[cat] = true);
             LocalStorage.instance.saveDcvManageSections(_dcvManageSectionsMap);
+          }
+        },
+        onEditSectionsTriggered: () {
+          final cat = _dcvCategory;
+          if (cat != null) {
+            _eventsTabKey.currentState?.editDcvSections(
+              cat,
+              _dcvColor ?? resolveAccentColor(context),
+            );
           }
         },
       ),
