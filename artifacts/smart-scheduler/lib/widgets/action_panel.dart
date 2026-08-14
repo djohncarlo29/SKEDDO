@@ -62,14 +62,23 @@ class NewSectionIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final paintWidth = size + (showPlusBadge ? 8.0 : 5.0);
     return SizedBox(
-      // Use the row's real icon width instead of painting beyond a 16 px
-      // child. The badge variant needs a little more room, while the original
-      // variant preserves its existing 5 px visual extension.
-      width: showPlusBadge ? size + 8.0 : size + 5.0,
+      // Keep the layout width at the original icon width so the -7 px action
+      // panel offset remains unchanged. The wider paint viewport is allowed
+      // to extend to the right without moving the icon's anchor point.
+      width: size,
       height: size,
-      child: CustomPaint(
-        painter: _NewSectionIconPainter(color, showPlusBadge: showPlusBadge),
+      child: OverflowBox(
+        alignment: Alignment.centerLeft,
+        minWidth: paintWidth,
+        maxWidth: paintWidth,
+        minHeight: size,
+        maxHeight: size,
+        child: CustomPaint(
+          size: Size(paintWidth, size),
+          painter: _NewSectionIconPainter(color, showPlusBadge: showPlusBadge),
+        ),
       ),
     );
   }
