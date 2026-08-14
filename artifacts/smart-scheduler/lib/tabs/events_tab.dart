@@ -12623,6 +12623,7 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
                   placeholder: 'New Section',
                   placeholderStyle: placeholderStyle,
                   style: labelStyle,
+                  onTap: _scheduleEnsureVisible,
                   onChanged: (_) {
                     setState(() {});
                     _scheduleEnsureVisible();

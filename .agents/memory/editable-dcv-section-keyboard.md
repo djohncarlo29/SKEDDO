@@ -9,4 +9,4 @@ An inline section header that autofocuses inside the DCV's scrollable content mu
 
 **Why:** Focus can happen before the keyboard resizes the viewport, and a title can become taller after the initial reveal. A single focus-time scroll leaves lower lines hidden on shorter screens.
 
-**How to apply:** Keep the reveal scheduled post-frame, use `Scrollable.ensureVisible` on the editable header, and repeat it from the focus listener, `didChangeMetrics`, and the field's `onChanged` callback.
+**How to apply:** Keep the reveal scheduled post-frame, use `Scrollable.ensureVisible` on the editable header, and repeat it from the text field's `onTap`, the focus listener, `didChangeMetrics`, and `onChanged` callback.
