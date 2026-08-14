@@ -11869,6 +11869,35 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
     return name.isEmpty ? 'New Section' : name;
   }
 
+  Widget _sectionReorderProxy(
+    Widget child,
+    int index,
+    Animation<double> animation,
+  ) {
+    // Match the event drag ghost: the row scales slightly above the list,
+    // gains the same elevated drop shadow, and receives the same Dark Mode-only
+    // hairline outline.
+    final shadows = resolveThemeShadows(const [
+      BoxShadow(color: Color(0x3A000000), blurRadius: 18, offset: Offset(0, 6)),
+    ], context);
+    return Transform.scale(
+      scale: 1.05,
+      child: _DarkModeGhostOutline(
+        child: Container(
+          decoration: ShapeDecoration(
+            color: resolveThemeColor(kSbSurface, context),
+            shape: BoundedContinuousRectangleBorder(
+              borderRadius: BorderRadius.circular(kSbCornerRadius),
+              side: BorderSide.none,
+            ),
+            shadows: shadows,
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
@@ -11944,6 +11973,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                       buildDefaultDragHandles: false,
                       itemCount: _sectionOrder.length,
                       onReorder: _reorder,
+                      proxyDecorator: _sectionReorderProxy,
                       itemBuilder: (context, rowIndex) {
                         final originalIndex = _sectionOrder[rowIndex];
                         return Container(
