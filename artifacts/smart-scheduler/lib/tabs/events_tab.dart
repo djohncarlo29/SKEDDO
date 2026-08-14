@@ -670,14 +670,6 @@ class _ContextMenuOverlay extends StatelessWidget {
         ActionItem(
           label: 'Delete Event',
           icon: SFIcons.sf_trash,
-          iconBuilder: (color) => SearchWeightedIcon(
-            CupertinoIcons.trash,
-            size: 20,
-            color: color,
-            weight: 1.5,
-            boxPadding: 4,
-            shadowsEnabled: false,
-          ),
           isDestructive: true,
           onTap: onDelete,
         ),
@@ -725,14 +717,6 @@ class _ContextMenuOverlay extends StatelessWidget {
         ActionItem(
           label: 'Delete Category',
           icon: SFIcons.sf_trash,
-          iconBuilder: (color) => SearchWeightedIcon(
-            CupertinoIcons.trash,
-            size: 20,
-            color: color,
-            weight: 1.5,
-            boxPadding: 4,
-            shadowsEnabled: false,
-          ),
           isDestructive: true,
           onTap: onDelete,
         ),

@@ -108,18 +108,21 @@ class _NewSectionIconPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // The source geometry remains a 24 px viewBox scaled to the original
-    // icon height. The larger canvas is only extra breathing room around it.
-    final scale = (size.height - topInset - 1.0) / 24.0;
+    // Keep the 16 px layout box and shrink the painted base to 15 px. The
+    // half-pixel translation centers that smaller base in the original
+    // viewBox, so both New Section states stay anchored in the same place
+    // while every edge moves inward.
+    const baseShrink = 1.0;
+    final scale = (size.height - topInset - 1.0 - baseShrink) / 24.0;
     canvas.save();
     if (showPlusBadge) {
       // The badge and its surrounding separation are transparent punches
       // through the icon layer, revealing the glass surface beneath it.
       canvas.saveLayer(Offset.zero & size, Paint());
     }
-    // Leave the added top inset available for the geometry, then move both
-    // icon states down by exactly one logical pixel.
-    canvas.translate(0, topInset + 1.0);
+    // Leave the added top inset available for the geometry, then center the
+    // one-pixel-smaller base inside its original 16 px painted height.
+    canvas.translate(baseShrink / 2, topInset + 1.0 + baseShrink / 2);
     canvas.scale(scale, scale);
 
     final fill = Paint()
@@ -135,10 +138,7 @@ class _NewSectionIconPainter extends CustomPainter {
 
     // Section heading bar — this base geometry is shared by both states.
     // New Section only adds the badge and its transparent punch below.
-    canvas.drawRect(
-      const Rect.fromLTRB(-1.0, 0.6, 28.0, 5.1),
-      fill,
-    );
+    canvas.drawRect(const Rect.fromLTRB(-1.0, 0.6, 28.0, 5.1), fill);
 
     // List rows: both bullets share the same outer diameter.  The adjacent
     // bars are two-thirds of that diameter, matching the updated icon
@@ -146,7 +146,7 @@ class _NewSectionIconPainter extends CustomPainter {
     // Increase each dot by 0.5 px overall while keeping the list lines at
     // their original thickness.
     const bulletRadius = 3.35;
-    const lineHeight = 2.6 * 2 * 2 / 3;
+    const lineHeight = 2.6 * 2 * 2 / 3 - 0.2;
     // Use one shared outer radius for both bullets.  An outlined circle's
     // stroke extends beyond its path, so inset the path radius by half the
     // stroke width; otherwise the outlined bullet appears larger than the
@@ -190,8 +190,8 @@ class _NewSectionIconPainter extends CustomPainter {
 
     if (showPlusBadge) {
       // Grow toward the upper-right while keeping the lower-left edge fixed.
-      const badgeCenter = Offset(30.0, 2.2);
-      const badgeRadius = 7.4;
+      const badgeCenter = Offset(29.8, 2.4);
+      const badgeRadius = 7.2;
       // Double the transparent separation around the badge without changing
       // the badge or the shared list-icon geometry.
       const badgeGapRadius = 10.6;
@@ -208,9 +208,9 @@ class _NewSectionIconPainter extends CustomPainter {
       // The plus is a true negative-space knockout, not a second coloured
       // glyph.
       final plus = Path()
-        ..addRect(Rect.fromCenter(center: badgeCenter, width: 2.4, height: 9.0))
+        ..addRect(Rect.fromCenter(center: badgeCenter, width: 2.2, height: 8.8))
         ..addRect(
-          Rect.fromCenter(center: badgeCenter, width: 9.0, height: 2.4),
+          Rect.fromCenter(center: badgeCenter, width: 8.8, height: 2.2),
         );
       canvas.drawPath(plus, clear);
       canvas.restore();

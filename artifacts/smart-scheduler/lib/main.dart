@@ -271,14 +271,6 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       ActionItem(
         label: 'Delete Category',
         icon: SFIcons.sf_trash,
-        iconBuilder: (color) => SearchWeightedIcon(
-          CupertinoIcons.trash,
-          size: 20,
-          color: color,
-          weight: 1.5,
-          boxPadding: 4,
-          shadowsEnabled: false,
-        ),
         isDestructive: true,
         onTap: _onDeleteCategoryTap,
       ),
