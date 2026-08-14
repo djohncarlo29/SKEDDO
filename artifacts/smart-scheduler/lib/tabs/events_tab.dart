@@ -12476,6 +12476,10 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
     with WidgetsBindingObserver {
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
+  // Keep the selection controls stable while the category colour changes so
+  // Flutter does not tear down the active selection overlay mid-gesture.
+  late final ValueNotifier<Color> _handleColorNotifier;
+  late final TintedCupertinoTextSelectionControls _selectionControls;
   bool _ensureVisibleScheduled = false;
 
   @override
@@ -12486,6 +12490,10 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
       text: widget.initialText == 'New Section' ? '' : widget.initialText,
     );
     _focusNode = FocusNode();
+    _handleColorNotifier = ValueNotifier<Color>(widget.accentColor);
+    _selectionControls = TintedCupertinoTextSelectionControls(
+      _handleColorNotifier,
+    );
     _focusNode.addListener(_onFocusChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.initialText == 'New Section') {
@@ -12527,6 +12535,9 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
   @override
   void didUpdateWidget(covariant _DcvEditableSectionLabel oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.accentColor != widget.accentColor) {
+      _handleColorNotifier.value = widget.accentColor;
+    }
     if (!_focusNode.hasFocus && oldWidget.initialText != widget.initialText) {
       _controller.text = widget.initialText == 'New Section'
           ? ''
@@ -12540,6 +12551,7 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
     _focusNode.removeListener(_onFocusChanged);
     _controller.dispose();
     _focusNode.dispose();
+    _handleColorNotifier.dispose();
     super.dispose();
   }
 
@@ -12628,6 +12640,7 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
                       maxLines: null,
                       textAlignVertical: TextAlignVertical.top,
                       textInputAction: TextInputAction.done,
+                      selectionControls: _selectionControls,
                       placeholder: 'New Section',
                       placeholderStyle: placeholderStyle,
                       style: labelStyle,
