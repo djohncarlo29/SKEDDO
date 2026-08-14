@@ -86,26 +86,22 @@ class _NewSectionIconPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..isAntiAlias = true;
 
-    // Section heading bar.
+    // Section heading bar — thicker now that the plus badge no longer shares
+    // the top row.
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        const Rect.fromLTWH(1.5, 3.5, 13.5, 3.0),
-        const Radius.circular(1.5),
+        const Rect.fromLTWH(1.5, 2.75, 13.5, 4.5),
+        const Radius.circular(2.25),
       ),
       fill,
     );
 
-    // Circular plus badge.
-    canvas.drawCircle(const Offset(19, 5), 4.4, stroke);
-    canvas.drawLine(const Offset(16.8, 5), const Offset(21.2, 5), stroke);
-    canvas.drawLine(const Offset(19, 2.8), const Offset(19, 7.2), stroke);
-
     // List rows: both bullets share the same outer diameter.  The adjacent
     // bars are two-thirds of that diameter, matching the updated icon
     // proportions.
-    // Increase both bullet diameters by 1 px while keeping the list lines at
+    // Increase both bullet diameters by 1.5 px while keeping the list lines at
     // their existing size.
-    const bulletRadius = 2.6;
+    const bulletRadius = 3.35;
     const lineHeight = bulletRadius * 2 * 2 / 3;
     const lineRadius = lineHeight / 2;
     // Use one shared outer radius for both bullets.  An outlined circle's

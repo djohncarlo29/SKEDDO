@@ -6718,10 +6718,7 @@ double _eventsCategoryListRowHeight(
     fontWeight: FontWeight.w600,
     letterSpacing: kTracking16,
   );
-  final subtitleStyle = _eventsCategoryListTextStyle(
-    13,
-    letterSpacing: -0.08,
-  );
+  final subtitleStyle = _eventsCategoryListTextStyle(13, letterSpacing: -0.08);
   final countStyle = _eventsCategoryListTextStyle(
     16,
     letterSpacing: kTracking16,
@@ -8025,7 +8022,9 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                       decoration: ShapeDecoration(
                         color: resolveThemeColor(kModalCard, context),
                         shape: BoundedContinuousRectangleBorder(
-                          borderRadius: BorderRadius.circular(kCardCornerRadius),
+                          borderRadius: BorderRadius.circular(
+                            kCardCornerRadius,
+                          ),
                         ),
                         shadows: resolveThemeShadows(kCardShadow, context),
                       ),
@@ -8061,11 +8060,14 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                               milliseconds: 180,
                                             ),
                                             curve: Curves.easeOut,
-                                            transform: Matrix4.translationValues(
-                                              _nameFocus.hasFocus ? 4.0 : 0.0,
-                                              0,
-                                              0,
-                                            ),
+                                            transform:
+                                                Matrix4.translationValues(
+                                                  _nameFocus.hasFocus
+                                                      ? 4.0
+                                                      : 0.0,
+                                                  0,
+                                                  0,
+                                                ),
                                             child: Text(
                                               'Group Name',
                                               style: TextStyle(
@@ -8160,7 +8162,10 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: Container(
                               height: 0.5,
-                              color: resolveThemeColor(kSeparatorColor, context),
+                              color: resolveThemeColor(
+                                kSeparatorColor,
+                                context,
+                              ),
                             ),
                           ),
                           // ── Row 2: Include picker ─────────────────────────
@@ -8205,7 +8210,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.center,
                                           children: [
-                                            Flexible(
+                                            Expanded(
                                               child: Text(
                                                 includeValue,
                                                 textAlign: TextAlign.right,
@@ -9138,7 +9143,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         mainAxisAlignment: MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Flexible(
+          Expanded(
             child: Text(
               value,
               style: _kRowValueStyle,
@@ -13910,7 +13915,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                     mainAxisAlignment: MainAxisAlignment.end,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Flexible(
+                      Expanded(
                         child: Text(
                           value,
                           style: valueStyle,

@@ -97,11 +97,6 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
     'Title': ['Ascending', 'Descending'],
   };
 
-  // Sort By row offset within the main panel (px from panel top).
-  // Layout: row0(52) + groupBreak(8) + row1(52) + sep(0.5) +
-  // row2(52) + sep(0.5) + new-section(52) + sep(0.5).
-  static const _kSortByTop = 217.5;
-
   @override
   void initState() {
     super.initState();
@@ -141,6 +136,31 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
   void _onEditCategoryTap() {
     widget.onEditCategory?.call();
     Future.delayed(const Duration(milliseconds: 80), widget.onDismiss);
+  }
+
+  // Sort By's position must be measured from the same scaled rows that the
+  // main ActionPanel renders.  The old fixed 217.5 px value only matched the
+  // default text size; at an accessibility text size, any wrapped row above
+  // Sort By moved the real trigger while the nested panel stayed put.
+  double _sortByTop(BuildContext context) {
+    final items = _origItems(false, false, () {});
+    var top = 0.0;
+    for (var i = 0; i < items.length; i++) {
+      final item = items[i];
+      if (item.label == 'Sort By') return top;
+      if (i > 0) {
+        top += item.groupBreakAbove
+            ? ActionItem.groupBreakH
+            : ActionItem.separatorH;
+      }
+      top += ActionItem.rowHeightForItem(
+        context,
+        item,
+        panelWidth: ExpandableActionMenu.panelW,
+        chevronColumn: true,
+      );
+    }
+    return top;
   }
 
   // ── Item lists ──────────────────────────────────────────────────────────────
@@ -268,7 +288,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       onDismiss: widget.onDismiss,
       chevronColumn: true,
       itemsBuilder: _origItems,
-      triggerRowTop: _kSortByTop,
+      triggerRowTop: _sortByTop(context),
       triggerRowHeight: ActionItem.rowHeightWithSubtitle,
       triggerLabel: 'Sort By',
       triggerSubtitle: _sortBy,
@@ -475,9 +495,7 @@ class _SKEDDOAppState extends State<SKEDDOApp> {
               // SF Symbols and other font-backed icons get the same treatment
               // through FixedSFIcon and SearchWeightedIcon.
               result = IconTheme(
-                data: IconTheme.of(context).copyWith(
-                  applyTextScaling: false,
-                ),
+                data: IconTheme.of(context).copyWith(applyTextScaling: false),
                 child: result,
               );
               // Text-size override via MediaQuery clamping.
@@ -1514,7 +1532,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               direction: _ChevronDir.left,
               color: resolveAccentColor(context),
               size: 18,
-               strokeWidth: 1.6,
+              strokeWidth: 1.6,
             ),
           ),
           AnimatedTapIcon(
@@ -1526,7 +1544,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               direction: _ChevronDir.right,
               color: resolveAccentColor(context),
               size: 18,
-               strokeWidth: 1.6,
+              strokeWidth: 1.6,
             ),
           ),
         ],
@@ -1919,14 +1937,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                             child: Transform.translate(
                                                                               offset: const Offset(
                                                                                 9,
-                                                                                 -3,
+                                                                                -3,
                                                                               ),
-                                                                                child: SearchWeightedIcon(
-                                                                                  CupertinoIcons.ellipsis_circle,
-                                                                                  size: 21,
-                                                                                  color: accent,
-                                                                                  weight: 0.0,
-                                                                                ),
+                                                                              child: SearchWeightedIcon(
+                                                                                CupertinoIcons.ellipsis_circle,
+                                                                                size: 21,
+                                                                                color: accent,
+                                                                                weight: 0.0,
+                                                                              ),
                                                                             ),
                                                                           ),
                                                                         ),
@@ -1968,25 +1986,23 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                             11.0,
                                                                             1,
                                                                           ),
-                                                                            child: ImageFiltered(
-                                                                              imageFilter: ui.ImageFilter.erode(
-                                                                                 radiusX: 0.20,
-                                                                                 radiusY: 0.20,
-                                                                              ),
-                                                                              child: SizedBox(
-                                                                                width:
-                                                                                    25,
-                                                                                height:
-                                                                                    25,
-                                                                                child: SvgPicture.asset(
-                                                                                  'assets/icons/add_category.svg',
-                                                                                  colorFilter: ColorFilter.mode(
-                                                                                    accent,
-                                                                                    BlendMode.srcIn,
-                                                                                  ),
+                                                                          child: ImageFiltered(
+                                                                            imageFilter: ui.ImageFilter.erode(
+                                                                              radiusX: 0.20,
+                                                                              radiusY: 0.20,
+                                                                            ),
+                                                                            child: SizedBox(
+                                                                              width: 25,
+                                                                              height: 25,
+                                                                              child: SvgPicture.asset(
+                                                                                'assets/icons/add_category.svg',
+                                                                                colorFilter: ColorFilter.mode(
+                                                                                  accent,
+                                                                                  BlendMode.srcIn,
                                                                                 ),
                                                                               ),
                                                                             ),
+                                                                          ),
                                                                         ),
                                                                       ),
                                                                     ),

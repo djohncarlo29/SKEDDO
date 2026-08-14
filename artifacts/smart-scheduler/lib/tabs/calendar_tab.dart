@@ -1552,8 +1552,7 @@ class CalendarTabState extends State<CalendarTab>
                                 widget.onEditEvent!(hit.event);
                               },
                       ),
-                      eventTilePressWrapper:
-                          wrapSearchEventTileWithPressScale,
+                  eventTilePressWrapper: wrapSearchEventTileWithPressScale,
                 )
               else
                 const SliverFillRemaining(
@@ -7306,9 +7305,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Flexible(
-                child: Text(label, style: _kLabelStyle, softWrap: true),
-              ),
+              Flexible(child: Text(label, style: _kLabelStyle, softWrap: true)),
               const SizedBox(width: kLabelValueGap),
               Expanded(
                 child: AnimatedOpacity(
@@ -7319,7 +7316,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     mainAxisAlignment: MainAxisAlignment.end,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Flexible(
+                      Expanded(
                         child: Text(
                           value,
                           style: valueStyle,
@@ -7355,7 +7352,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
       opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
       duration: const Duration(milliseconds: 150),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
@@ -7367,7 +7364,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             ),
           ),
           SizedBox(width: 6),
-          Flexible(
+          Expanded(
             child: Text(
               _categoryName,
               style: _kRowValueStyle,
@@ -7388,12 +7385,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Flexible(
-                child: Text(
-                  'Category',
-                  style: _kLabelStyle,
-                  softWrap: true,
-                ),
+              Expanded(
+                child: Text('Category', style: _kLabelStyle, softWrap: true),
               ),
               const SizedBox(width: kLabelValueGap),
               Expanded(child: valueWidget),
@@ -10822,7 +10815,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                     mainAxisAlignment: MainAxisAlignment.end,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Flexible(
+                      Expanded(
                         child: Text(
                           value,
                           style: valueStyle,
