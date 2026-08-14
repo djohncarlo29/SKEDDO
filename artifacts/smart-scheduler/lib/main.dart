@@ -53,6 +53,7 @@ class _DcvMenuContent extends StatefulWidget {
   final void Function(bool) onShowCompletedChanged;
   final bool initialViewAsList;
   final void Function(bool) onViewAsListChanged;
+  final VoidCallback? onArchiveCategory;
   final VoidCallback? onDeleteCategory;
   final VoidCallback? onEditCategory;
   final void Function(VoidCallback afterClosed) onDismissThen;
@@ -75,6 +76,7 @@ class _DcvMenuContent extends StatefulWidget {
     required this.onShowCompletedChanged,
     required this.initialViewAsList,
     required this.onViewAsListChanged,
+    this.onArchiveCategory,
     this.onDeleteCategory,
     this.onEditCategory,
     required this.onDismissThen,
@@ -144,6 +146,11 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
 
   void _onDeleteCategoryTap() {
     widget.onDeleteCategory?.call();
+    Future.delayed(const Duration(milliseconds: 80), widget.onDismiss);
+  }
+
+  void _onArchiveCategoryTap() {
+    widget.onArchiveCategory?.call();
     Future.delayed(const Duration(milliseconds: 80), widget.onDismiss);
   }
 
@@ -278,6 +285,11 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       iconWhenFalse: SFIcons.sf_eye_slash,
       onChanged: widget.onShowCompletedChanged,
       onDismiss: widget.onDismiss,
+    ),
+    ActionItem(
+      label: 'Archive Category',
+      icon: SFIcons.sf_archivebox,
+      onTap: _onArchiveCategoryTap,
     ),
     if (!widget.isSmartCategory)
       ActionItem(
@@ -886,6 +898,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         subtitle: 'x',
       ),
       const ActionItem(label: 'Show Completed', icon: SFIcons.sf_eye),
+      const ActionItem(label: 'Archive Category', icon: SFIcons.sf_archivebox),
       if (!isSmartCategory)
         const ActionItem(
           label: 'Delete Category',
@@ -951,6 +964,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         initialViewAsList: _dcvViewAsList,
         onViewAsListChanged: (v) {
           if (mounted) setState(() => _dcvViewAsList = v);
+        },
+        onArchiveCategory: () {
+          final cat = _dcvCategory;
+          _exitDCV();
+          if (cat != null) _eventsTabKey.currentState?.archiveCategory(cat);
         },
         onDeleteCategory: () {
           final cat = _dcvCategory;

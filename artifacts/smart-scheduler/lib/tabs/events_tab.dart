@@ -4585,6 +4585,20 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     }
   }
 
+  /// Called by AppShell when the user taps "Archive Category" in the DCV
+  /// ellipsis action panel. Built-in smart DCVs and user categories share the
+  /// same archive behavior used by their grid/list context menus.
+  void archiveCategory(String name) {
+    if (_kDCVLabels.contains(name)) {
+      _archiveSmartCategory(name);
+      return;
+    }
+    final cat = [..._userCategories, ..._pinnedUserCategories]
+        .cast<_UserCategory?>()
+        .firstWhere((c) => c?.name == name, orElse: () => null);
+    if (cat != null) _archiveCategory(cat);
+  }
+
   /// Exposed so AppShell can check whether the search bar is on-screen.
   ScrollController get scrollController => _scrollController;
 
