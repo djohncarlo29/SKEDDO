@@ -5767,6 +5767,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
   Map<String, List<List<String>>> _dcvCustomSectionEventIds = {};
   String? _initialCategoryName;
   int _selectedSectionIndex = 0;
+  // Keep the outgoing row's content mounted while its SizeTransition
+  // collapses. Without this, changing to a category with no sections replaces
+  // the row with a zero-height child before the dismissal animation can run.
+  List<String> _renderedSectionNames = const <String>[];
 
   // Resolved accent-aware category color for widget rendering.
   // Use everywhere a widget consumes _categoryColor so kCatBlue sentinel
@@ -7507,17 +7511,26 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final shouldShow = _currentSectionNames.isNotEmpty;
     final target = shouldShow ? 1.0 : 0.0;
     if (!animate) {
+      _renderedSectionNames = List<String>.of(_currentSectionNames);
       _sectionRowCtrl.value = target;
       return;
     }
-    _sectionRowCtrl.animateTo(
-      target,
-      curve: target == 1.0 ? Curves.easeOut : Curves.easeIn,
-    );
+    if (shouldShow) {
+      _renderedSectionNames = List<String>.of(_currentSectionNames);
+    }
+    _sectionRowCtrl
+        .animateTo(
+          target,
+          curve: target == 1.0 ? Curves.easeOut : Curves.easeIn,
+        )
+        .then((_) {
+          if (!mounted || shouldShow || _currentSectionNames.isNotEmpty) return;
+          setState(() => _renderedSectionNames = const <String>[]);
+        });
   }
 
   List<ActionItem> _sectionItems() {
-    final names = _currentSectionNames;
+    final names = _renderedSectionNames;
     return [
       for (var index = 0; index < names.length; index++)
         ActionItem(
@@ -7538,7 +7551,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
   }
 
   Widget _buildSectionRow() {
-    final names = _currentSectionNames;
+    final names = _renderedSectionNames;
     if (names.isEmpty) return const SizedBox.shrink();
     final safeIndex = _selectedSectionIndex.clamp(0, names.length - 1).toInt();
     final label = names.length == 1 ? 'Section' : 'Sections';
