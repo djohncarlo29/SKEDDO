@@ -10300,40 +10300,35 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   String _formatEndDate(DateTime d) =>
       '${_kMonthNames[d.month - 1]} ${d.day}, ${d.year}';
 
-  Widget _buildEndDateRow() => GestureDetector(
-    behavior: HitTestBehavior.opaque,
-    onTap: _toggleDatePicker,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Text('End Date', style: _kRowLabelStyle),
-          const Spacer(),
-          Container(
-            decoration: BoxDecoration(
-              color: resolveThemeColor(kPillColor, context),
-              borderRadius: const BorderRadius.all(Radius.circular(100)),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: Text(
-              _formatEndDate(_endDate),
-              style: TextStyle(
-                inherit: false,
-                // Accent while picker is open, primary when closed.
-                // Safe to read _datePickerCtrl.value because this method is
-                // called inside AnimatedBuilder(animation: _datePickerCtrl).
-                color: _datePickerCtrl.value > 0
-                    ? _resolvedSelectedColor
-                    : resolveThemeColor(kPrimaryLabel, context),
-                fontSize: 15,
-                fontFamily: kSFProText,
-                fontWeight: FontWeight.w500,
-                letterSpacing: kTracking17,
-              ),
-            ),
+  Widget _buildEndDateRow() => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    child: AdaptiveLabelPillRow(
+      label: 'End Date',
+      labelStyle: _kRowLabelStyle,
+      onLabelTap: _toggleDatePicker,
+      pills: [
+        AdaptivePillSpec(
+          text: _formatEndDate(_endDate),
+          compactText:
+              '${_kMonthNames[_endDate.month - 1].substring(0, 3)} '
+              '${_endDate.day}, ${_endDate.year}',
+          backgroundColor: resolveThemeColor(kPillColor, context),
+          style: TextStyle(
+            inherit: false,
+            // Accent while picker is open, primary when closed.
+            // Safe to read _datePickerCtrl.value because this method is
+            // called inside AnimatedBuilder(animation: _datePickerCtrl).
+            color: _datePickerCtrl.value > 0
+                ? _resolvedSelectedColor
+                : resolveThemeColor(kPrimaryLabel, context),
+            fontSize: 15,
+            fontFamily: kSFProText,
+            fontWeight: FontWeight.w500,
+            letterSpacing: kTracking17,
           ),
-        ],
-      ),
+          onTap: _toggleDatePicker,
+        ),
+      ],
     ),
   );
 

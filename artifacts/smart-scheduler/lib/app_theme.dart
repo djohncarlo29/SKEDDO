@@ -842,6 +842,213 @@ class MinGapLabelValueRow extends StatelessWidget {
   }
 }
 
+/// Describes one date/time-style pill in [AdaptiveLabelPillRow].
+class AdaptivePillSpec {
+  const AdaptivePillSpec({
+    required this.text,
+    required this.style,
+    required this.backgroundColor,
+    this.compactText,
+    this.onTap,
+  });
+
+  final String text;
+  final TextStyle style;
+  final Color backgroundColor;
+  final String? compactText;
+  final VoidCallback? onTap;
+}
+
+/// Lays out a label and one or more intrinsic-width pills with the shared
+/// minimum label-to-trailing gap.
+///
+/// The natural single-line layout is always preferred:
+///
+///   [label][at least 25dp][pill group]
+///
+/// If that complete group cannot fit, the label stays above the trailing group
+/// and the group either remains side-by-side or stacks its pills. This avoids
+/// clipping scaled date/time text while preserving the requested OS text size.
+class AdaptiveLabelPillRow extends StatelessWidget {
+  const AdaptiveLabelPillRow({
+    super.key,
+    required this.label,
+    required this.labelStyle,
+    required this.pills,
+    this.onLabelTap,
+    this.pillGap = 8.0,
+    this.verticalWrapGap = 8.0,
+    this.horizontalPadding = 12.0,
+    this.verticalPadding = 6.0,
+  }) : assert(pills.length > 0);
+
+  final String label;
+  final TextStyle labelStyle;
+  final List<AdaptivePillSpec> pills;
+  final VoidCallback? onLabelTap;
+  final double pillGap;
+  final double verticalWrapGap;
+  final double horizontalPadding;
+  final double verticalPadding;
+
+  double _textWidth(BuildContext context, String text, TextStyle style) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    return painter.width;
+  }
+
+  double _pillWidth(BuildContext context, AdaptivePillSpec pill) {
+    return _textWidth(context, pill.text, pill.style) + (horizontalPadding * 2);
+  }
+
+  Widget _label({required bool fillWidth}) {
+    final text = Text(label, style: labelStyle, softWrap: fillWidth);
+    if (onLabelTap == null) {
+      return fillWidth ? SizedBox(width: double.infinity, child: text) : text;
+    }
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onLabelTap,
+      child: fillWidth ? SizedBox(width: double.infinity, child: text) : text,
+    );
+  }
+
+  Widget _pill(
+    AdaptivePillSpec pill, {
+    double? maxWidth,
+    String? textOverride,
+  }) {
+    Widget child = Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: verticalPadding,
+      ),
+      decoration: BoxDecoration(
+        color: pill.backgroundColor,
+        borderRadius: const BorderRadius.all(Radius.circular(100)),
+      ),
+      child: Text(
+        textOverride ?? pill.text,
+        style: pill.style,
+        textAlign: TextAlign.center,
+        softWrap: true,
+      ),
+    );
+    if (maxWidth != null && maxWidth.isFinite) {
+      child = ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: math.max(0.0, maxWidth)),
+        child: child,
+      );
+    }
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: pill.onTap,
+      child: child,
+    );
+  }
+
+  Widget _pillGroup(
+    BuildContext context,
+    List<double> naturalWidths, {
+    required double maxWidth,
+  }) {
+    final naturalGroupWidth =
+        naturalWidths.fold<double>(0.0, (sum, width) => sum + width) +
+        (pillGap * math.max(0, pills.length - 1));
+    final canStaySideBySide = naturalGroupWidth <= maxWidth;
+
+    if (canStaySideBySide) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < pills.length; i++) ...[
+            if (i > 0) SizedBox(width: pillGap),
+            SizedBox(width: naturalWidths[i], child: _pill(pills[i])),
+          ],
+        ],
+      );
+    }
+
+    if (pills.length == 1) {
+      final pill = pills.single;
+      final compactText = pill.compactText;
+      final compactWidth = compactText == null
+          ? double.infinity
+          : _textWidth(context, compactText, pill.style) +
+                (horizontalPadding * 2);
+      final textOverride = compactText != null && compactWidth <= maxWidth
+          ? compactText
+          : null;
+      return Align(
+        alignment: Alignment.centerRight,
+        child: _pill(pill, maxWidth: maxWidth, textOverride: textOverride),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        for (var i = 0; i < pills.length; i++)
+          Padding(
+            padding: EdgeInsets.only(top: i == 0 ? 0.0 : pillGap),
+            child: _pill(pills[i], maxWidth: maxWidth),
+          ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final labelWidth = _textWidth(context, label, labelStyle);
+        final naturalWidths = pills
+            .map((pill) => _pillWidth(context, pill))
+            .toList(growable: false);
+        final naturalGroupWidth =
+            naturalWidths.fold<double>(0.0, (sum, width) => sum + width) +
+            (pillGap * math.max(0, pills.length - 1));
+        final fitsOnOneLine =
+            constraints.maxWidth.isFinite &&
+            labelWidth + kLabelValueGap + naturalGroupWidth <=
+                constraints.maxWidth;
+
+        if (fitsOnOneLine) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(width: labelWidth, child: _label(fillWidth: false)),
+              const Spacer(),
+              _pillGroup(context, naturalWidths, maxWidth: naturalGroupWidth),
+            ],
+          );
+        }
+
+        final maxWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : naturalGroupWidth;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _label(fillWidth: true),
+            SizedBox(height: verticalWrapGap),
+            Align(
+              alignment: Alignment.centerRight,
+              child: _pillGroup(context, naturalWidths, maxWidth: maxWidth),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 // ── SF Pro Line Spacing ───────────────────────────────────────────────────────
 const kLineHeight = 1.3;
 

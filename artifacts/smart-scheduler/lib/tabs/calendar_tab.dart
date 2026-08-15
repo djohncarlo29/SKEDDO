@@ -6349,66 +6349,42 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final timeOpen = _activePicker == '${target}_time';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          Text(label, style: _kLabelStyle),
-          const Spacer(),
-          // Date pill — tappable; accent when its date picker is open.
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
+      child: AdaptiveLabelPillRow(
+        label: label,
+        labelStyle: _kLabelStyle,
+        onLabelTap: () => _togglePicker(target),
+        pills: [
+          AdaptivePillSpec(
+            text: _fmtDate(dt),
+            backgroundColor: _resolvedPillColor,
+            style: TextStyle(
+              inherit: false,
+              color: dateOpen
+                  ? _resolvedCategoryColor
+                  : resolveThemeColor(kPrimaryLabel, context),
+              fontSize: 15,
+              fontFamily: kSFProText,
+              fontWeight: FontWeight.w500,
+              letterSpacing: kTracking17,
+            ),
             onTap: () => _togglePicker(target),
-            child: Container(
-              decoration: BoxDecoration(
-                color: _resolvedPillColor,
-                borderRadius: BorderRadius.all(Radius.circular(100)),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              child: Text(
-                _fmtDate(dt),
-                style: TextStyle(
-                  inherit: false,
-                  color: dateOpen
-                      ? _resolvedCategoryColor
-                      : resolveThemeColor(kPrimaryLabel, context),
-                  fontSize: 15,
-                  fontFamily: kSFProText,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: kTracking17,
-                ),
-              ),
-            ),
           ),
-          if (!_allDay) ...[
-            SizedBox(width: 8),
-            // Time pill — tappable; accent when its time picker is open.
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => _togglePicker('${target}_time'),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _resolvedPillColor,
-                  borderRadius: BorderRadius.all(Radius.circular(100)),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                child: Text(
-                  _fmtTime(dt),
-                  style: TextStyle(
-                    inherit: false,
-                    color: timeOpen
-                        ? _resolvedCategoryColor
-                        : resolveThemeColor(kPrimaryLabel, context),
-                    fontSize: 15,
-                    fontFamily: kSFProText,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: kTracking17,
-                  ),
-                ),
+          if (!_allDay)
+            AdaptivePillSpec(
+              text: _fmtTime(dt),
+              backgroundColor: _resolvedPillColor,
+              style: TextStyle(
+                inherit: false,
+                color: timeOpen
+                    ? _resolvedCategoryColor
+                    : resolveThemeColor(kPrimaryLabel, context),
+                fontSize: 15,
+                fontFamily: kSFProText,
+                fontWeight: FontWeight.w500,
+                letterSpacing: kTracking17,
               ),
+              onTap: () => _togglePicker('${target}_time'),
             ),
-          ],
         ],
       ),
     );
@@ -8166,40 +8142,32 @@ class _NewEventSheetState extends State<_NewEventSheet>
   String _formatEndDate(DateTime d) =>
       '${_kRepeatMonthNames[d.month - 1]} ${d.day}, ${d.year}';
 
-  Widget _buildEndDateRow() => GestureDetector(
-    behavior: HitTestBehavior.opaque,
-    onTap: _toggleDatePicker,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Text('End Date', style: _kLabelStyle),
-          const Spacer(),
-          Container(
-            decoration: BoxDecoration(
-              color: resolveThemeColor(kPillColor, context),
-              borderRadius: BorderRadius.all(Radius.circular(100)),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: AnimatedBuilder(
-              animation: _datePickerCtrl,
-              builder: (_, __) => Text(
-                _formatEndDate(_endDate),
-                style: TextStyle(
-                  inherit: false,
-                  color: _datePickerCtrl.value > 0
-                      ? _resolvedCategoryColor
-                      : resolveThemeColor(kPrimaryLabel, context),
-                  fontSize: 15,
-                  fontFamily: kSFProText,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: kTracking17,
-                ),
-              ),
-            ),
+  Widget _buildEndDateRow() => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    child: AdaptiveLabelPillRow(
+      label: 'End Date',
+      labelStyle: _kLabelStyle,
+      onLabelTap: _toggleDatePicker,
+      pills: [
+        AdaptivePillSpec(
+          text: _formatEndDate(_endDate),
+          compactText:
+              '${_kRepeatMonthNames[_endDate.month - 1].substring(0, 3)} '
+              '${_endDate.day}, ${_endDate.year}',
+          backgroundColor: resolveThemeColor(kPillColor, context),
+          style: TextStyle(
+            inherit: false,
+            color: _datePickerCtrl.value > 0
+                ? _resolvedCategoryColor
+                : resolveThemeColor(kPrimaryLabel, context),
+            fontSize: 15,
+            fontFamily: kSFProText,
+            fontWeight: FontWeight.w500,
+            letterSpacing: kTracking17,
           ),
-        ],
-      ),
+          onTap: _toggleDatePicker,
+        ),
+      ],
     ),
   );
 
@@ -9420,60 +9388,40 @@ class _NewEventSheetState extends State<_NewEventSheet>
   /// Row showing the reminder date + time pills (always both; no all-day case).
   Widget _buildReminderDateRow() => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-    child: Row(
-      children: [
-        Text('Reminder Date', style: _kLabelStyle),
-        const Spacer(),
-        // Date pill
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
+    child: AdaptiveLabelPillRow(
+      label: 'Reminder Date',
+      labelStyle: _kLabelStyle,
+      onLabelTap: () => _togglePicker('reminder'),
+      pills: [
+        AdaptivePillSpec(
+          text: _fmtDate(_reminderDate),
+          backgroundColor: _resolvedPillColor,
+          style: TextStyle(
+            inherit: false,
+            color: _activePicker == 'reminder'
+                ? _resolvedCategoryColor
+                : resolveThemeColor(kPrimaryLabel, context),
+            fontSize: 15,
+            fontFamily: kSFProText,
+            fontWeight: FontWeight.w500,
+            letterSpacing: kTracking17,
+          ),
           onTap: () => _togglePicker('reminder'),
-          child: Container(
-            decoration: BoxDecoration(
-              color: _resolvedPillColor,
-              borderRadius: BorderRadius.circular(100),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: Text(
-              _fmtDate(_reminderDate),
-              style: TextStyle(
-                inherit: false,
-                color: _activePicker == 'reminder'
-                    ? _resolvedCategoryColor
-                    : resolveThemeColor(kPrimaryLabel, context),
-                fontSize: 15,
-                fontFamily: kSFProText,
-                fontWeight: FontWeight.w500,
-                letterSpacing: kTracking17,
-              ),
-            ),
-          ),
         ),
-        const SizedBox(width: 8),
-        // Time pill
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => _togglePicker('reminder_time'),
-          child: Container(
-            decoration: BoxDecoration(
-              color: _resolvedPillColor,
-              borderRadius: BorderRadius.circular(100),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: Text(
-              _fmtTime(_reminderDate),
-              style: TextStyle(
-                inherit: false,
-                color: _activePicker == 'reminder_time'
-                    ? _resolvedCategoryColor
-                    : resolveThemeColor(kPrimaryLabel, context),
-                fontSize: 15,
-                fontFamily: kSFProText,
-                fontWeight: FontWeight.w500,
-                letterSpacing: kTracking17,
-              ),
-            ),
+        AdaptivePillSpec(
+          text: _fmtTime(_reminderDate),
+          backgroundColor: _resolvedPillColor,
+          style: TextStyle(
+            inherit: false,
+            color: _activePicker == 'reminder_time'
+                ? _resolvedCategoryColor
+                : resolveThemeColor(kPrimaryLabel, context),
+            fontSize: 15,
+            fontFamily: kSFProText,
+            fontWeight: FontWeight.w500,
+            letterSpacing: kTracking17,
           ),
+          onTap: () => _togglePicker('reminder_time'),
         ),
       ],
     ),
