@@ -12998,6 +12998,15 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   // True during the one invisible layout frame used to measure new positions.
   bool _sortMeasuring = false;
 
+  // Live drag swaps use the same per-row FLIP renderer as sort changes, but
+  // intentionally do not use [_sortMeasuring].  Sort changes can hide the
+  // complete view for one measurement frame because they are discrete state
+  // changes; a drag is continuous and hiding the page while the finger moves
+  // reads as a flicker.  The generation invalidates a stale post-frame
+  // measurement when the finger crosses another row or the drag ends.
+  int _dragReflowGeneration = 0;
+  static const _kDragReflowDuration = Duration(milliseconds: 280);
+
   @override
   void initState() {
     super.initState();
@@ -13302,10 +13311,12 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     if (idx < 0) return;
     _dragEvent = _items[idx];
     _dragGlobalY = globalPos.dy;
+    _dragReflowGeneration++;
     // A drag should never inherit a partially completed sort animation.  The
     // sort FLIP is for discrete sort-mode changes, while drag updates are
     // applied directly so the list never enters its hidden measuring frame.
     _sortAnimCtrl.stop();
+    _sortAnimCtrl.value = 0.0;
     setState(() {
       _sortAnimFromY.clear();
       _sortMeasuring = false;
@@ -13517,12 +13528,67 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     // Keep every live swap independent from the sort FLIP controller.  This
     // also handles a swap that happens immediately after a sort-mode change,
     // before its post-frame measurement callback has completed.
+    final beforeY = <String, double>{};
+    for (final entry in _itemKeys.entries) {
+      final box = entry.value.currentContext?.findRenderObject() as RenderBox?;
+      if (box != null && box.attached) {
+        // RenderBox's global transform includes the row's current FLIP
+        // transform, so a second rapid swap starts from what is actually on
+        // screen rather than from the stale logical slot.
+        beforeY[entry.key] = box.localToGlobal(Offset.zero).dy;
+      }
+    }
+
     _sortAnimCtrl.stop();
+    _sortAnimCtrl.value = 0.0;
     _sortAnimFromY.clear();
     setState(doSwap);
+
+    if (beforeY.isEmpty) return;
+
+    final generation = ++_dragReflowGeneration;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          _draggingIndex == null ||
+          generation != _dragReflowGeneration) {
+        return;
+      }
+
+      final offsets = <String, double>{};
+      for (final entry in _itemKeys.entries) {
+        // The dragged event is rendered in the separate finger-following
+        // overlay.  Its in-list placeholder stays hidden; only stationary
+        // event tiles should slide around it.
+        if (entry.key == _dragEvent?.id) continue;
+        final oldY = beforeY[entry.key];
+        final box =
+            entry.value.currentContext?.findRenderObject() as RenderBox?;
+        if (oldY == null || box == null || !box.attached) continue;
+        final delta = oldY - box.localToGlobal(Offset.zero).dy;
+        if (delta.abs() > 0.5) offsets[entry.key] = delta;
+      }
+
+      if (offsets.isEmpty) return;
+      setState(() {
+        _sortAnimFromY
+          ..clear()
+          ..addAll(offsets);
+      });
+      _sortAnimCtrl
+          .animateTo(
+            1.0,
+            duration: _kDragReflowDuration,
+            curve: Curves.easeInOutCubic,
+          )
+          .ignore();
+    });
   }
 
   void _endReorder() {
+    _dragReflowGeneration++;
+    _sortAnimCtrl.stop();
+    _sortAnimCtrl.value = 0.0;
+    _sortAnimFromY.clear();
     _dragOverlay?.remove();
     _dragOverlay = null;
     _dragEvent = null;
