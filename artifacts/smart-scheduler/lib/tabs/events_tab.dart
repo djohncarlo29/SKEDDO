@@ -14169,7 +14169,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
               ),
             ),
             Positioned(
-              top: 26,
+              top: 24,
               left: 0,
               right: 0,
               child: Center(
