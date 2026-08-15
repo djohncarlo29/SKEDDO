@@ -12014,6 +12014,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
       scale: 1.05,
       child: _DarkModeGhostOutline(
         child: Container(
+          clipBehavior: Clip.antiAlias,
           decoration: ShapeDecoration(
             color: resolveThemeColor(kModalCard, context),
             shape: BoundedContinuousRectangleBorder(
