@@ -598,8 +598,26 @@ class MinGapLabelValueRow extends StatelessWidget {
         // Wrapping is a fallback only. Even when either block contains several
         // words, preserve the natural single-line layout whenever the complete
         // label/value/chevron group fits with the required minimum gap.
-        final labelCanWrap = !fitsOnOneLine && _hasMultipleWords(label);
-        final valueCanWrap = !fitsOnOneLine && _hasMultipleWords(wrappedValue);
+        //
+        // Once wrapping is necessary, these known pairs have an intentional
+        // fallback preference: "Category Type" / "Standard" wraps the label
+        // only, while "Category Type" / "Shopping List" or "Smart Category"
+        // and "Second Alert" / "1 hour, 30 minutes before" wrap both blocks.
+        final forceLabelOnlyWrap =
+            !fitsOnOneLine && label == 'Category Type' && value == 'Standard';
+        final forceSharedWrap =
+            !fitsOnOneLine &&
+            ((label == 'Category Type' &&
+                    (value == 'Shopping List' || value == 'Smart Category')) ||
+                (label == 'Second Alert' &&
+                    value == '1 hour, 30 minutes before'));
+        final labelCanWrap =
+            forceLabelOnlyWrap ||
+            forceSharedWrap ||
+            (!fitsOnOneLine && _hasMultipleWords(label));
+        final valueCanWrap =
+            forceSharedWrap ||
+            (!fitsOnOneLine && _hasMultipleWords(wrappedValue));
 
         if (fitsOnOneLine && !labelCanWrap && !valueCanWrap) {
           final row = Row(
@@ -708,7 +726,8 @@ class MinGapLabelValueRow extends StatelessWidget {
           // best genuinely shared wrap separately. It is allowed to win over
           // a one-sided allocation when it keeps the row at the same maximum
           // line count, but only after the natural single-line layout has been
-          // ruled out by the minimum-gap constraint.
+          // ruled out by the minimum-gap constraint. The explicit pair
+          // preferences above are enforced by the line-count guards below.
           if (bothBlocksCanWrap &&
               labelMetrics.lineCount > 1 &&
               valueMetrics.lineCount > 1) {
