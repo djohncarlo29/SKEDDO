@@ -12892,6 +12892,7 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
                       maxLines: null,
                       textAlignVertical: TextAlignVertical.top,
                       textInputAction: TextInputAction.done,
+                      textCapitalization: TextCapitalization.sentences,
                       selectionControls: _selectionControls,
                       placeholder: 'New Section',
                       placeholderStyle: placeholderStyle,
