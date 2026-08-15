@@ -551,6 +551,10 @@ class MinGapLabelValueRow extends StatelessWidget {
     return math.min(naturalWidth, math.max(36.0, widestWord));
   }
 
+  bool _hasMultipleWords(String text) {
+    return RegExp(r'\S+\s+\S').hasMatch(text.trim());
+  }
+
   _WrappedTextMetrics _wrappedMetrics(
     BuildContext context,
     String text,
@@ -657,7 +661,6 @@ class MinGapLabelValueRow extends StatelessWidget {
         // already as short as a two-line/two-line arrangement.
         var bestLabelSlot = minLabelSlot;
         var bestValueSlot = math.max(0.0, availableAfterGap - bestLabelSlot);
-        var bestMaxHeight = double.infinity;
         var bestTotalHeight = double.infinity;
         final maxLabelSlot = math.max(
           minLabelSlot,
@@ -666,7 +669,15 @@ class MinGapLabelValueRow extends StatelessWidget {
         final searchStart = math.min(minLabelSlot, maxLabelSlot);
         final searchEnd = math.max(minLabelSlot, maxLabelSlot);
 
+        final bothBlocksCanWrap =
+            _hasMultipleWords(label) && _hasMultipleWords(wrappedValue);
+        var bestMaxLines = 999999;
         var bestWrappedBlocks = double.infinity;
+        var bestTotalLines = 999999;
+        var sharedLabelSlot = 0.0;
+        var sharedValueSlot = 0.0;
+        var sharedMaxLines = 999999;
+        var sharedTotalHeight = double.infinity;
 
         void considerAllocation(double candidateLabelSlot) {
           final labelSlot = candidateLabelSlot.clamp(
@@ -686,26 +697,51 @@ class MinGapLabelValueRow extends StatelessWidget {
             valueStyle,
             math.max(0.0, valueSlot - trailingExtraWidth),
           );
-          final maxHeight = math.max(
-            labelMetrics.height,
-            valueMetrics.height,
-          );
           final totalHeight = labelMetrics.height + valueMetrics.height;
+          final maxLines = math.max(
+            labelMetrics.lineCount,
+            valueMetrics.lineCount,
+          );
+          final totalLines = labelMetrics.lineCount + valueMetrics.lineCount;
           final wrappedBlocks =
               (labelMetrics.lineCount > 1 ? 1 : 0) +
               (valueMetrics.lineCount > 1 ? 1 : 0);
+
+          // When both text blocks have real break opportunities, remember the
+          // best genuinely shared wrap separately. It is allowed to win over
+          // a one-sided allocation when it keeps the row at the same maximum
+          // line count. This is what makes pairs such as "Category Type" /
+          // "Shopping List" and "Second Alert" / "1 hour, 30 minutes before"
+          // settle into a balanced two-line row instead of preserving one
+          // side at the cost of an unnecessarily narrow other side.
+          if (bothBlocksCanWrap &&
+              labelMetrics.lineCount > 1 &&
+              valueMetrics.lineCount > 1) {
+            if (maxLines < sharedMaxLines ||
+                (maxLines == sharedMaxLines &&
+                    totalHeight < sharedTotalHeight)) {
+              sharedLabelSlot = labelSlot;
+              sharedValueSlot = valueSlot;
+              sharedMaxLines = maxLines;
+              sharedTotalHeight = totalHeight;
+            }
+          }
+
           const epsilon = 0.01;
           final isBetter =
-              maxHeight < bestMaxHeight - epsilon ||
-              (maxHeight - bestMaxHeight).abs() <= epsilon &&
+              maxLines < bestMaxLines ||
+              (maxLines == bestMaxLines &&
                   (totalHeight < bestTotalHeight - epsilon ||
                       (totalHeight - bestTotalHeight).abs() <= epsilon &&
-                          wrappedBlocks < bestWrappedBlocks);
+                          (totalLines < bestTotalLines ||
+                              (totalLines == bestTotalLines &&
+                                  wrappedBlocks < bestWrappedBlocks))));
           if (isBetter) {
             bestLabelSlot = labelSlot;
             bestValueSlot = valueSlot;
-            bestMaxHeight = maxHeight;
+            bestMaxLines = maxLines;
             bestTotalHeight = totalHeight;
+            bestTotalLines = totalLines;
             bestWrappedBlocks = wrappedBlocks.toDouble();
           }
         }
@@ -730,6 +766,13 @@ class MinGapLabelValueRow extends StatelessWidget {
         }
         // Include the fractional endpoint so the right edge remains exact.
         considerAllocation(searchEnd);
+
+        if (bothBlocksCanWrap &&
+            sharedMaxLines <= bestMaxLines &&
+            sharedMaxLines < 999999) {
+          bestLabelSlot = sharedLabelSlot;
+          bestValueSlot = sharedValueSlot;
+        }
 
         final row = Row(
           mainAxisSize: MainAxisSize.max,
