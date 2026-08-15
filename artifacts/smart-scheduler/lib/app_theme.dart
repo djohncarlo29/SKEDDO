@@ -512,6 +512,17 @@ class MinGapLabelValueRow extends StatelessWidget {
     return painter.width;
   }
 
+  Widget _animateRowHeight(Widget row) {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      reverseDuration: const Duration(milliseconds: 220),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      clipBehavior: Clip.none,
+      child: row,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -550,7 +561,7 @@ class MinGapLabelValueRow extends StatelessWidget {
               SizedBox(width: valueWidth, child: trailing),
             ],
           );
-          return row;
+          return _animateRowHeight(row);
         }
 
         // Do not give both sides an arbitrary half of the row. Preserve the
@@ -617,12 +628,14 @@ class MinGapLabelValueRow extends StatelessWidget {
             SizedBox(width: valueSlot, child: trailing),
           ],
         );
-        if (!alignTrailing) return row;
+        if (!alignTrailing) return _animateRowHeight(row);
 
-        return Row(
-          mainAxisSize: MainAxisSize.max,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [Expanded(child: row)],
+        return _animateRowHeight(
+          Row(
+            mainAxisSize: MainAxisSize.max,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [Expanded(child: row)],
+          ),
         );
       },
     );
