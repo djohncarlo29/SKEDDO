@@ -473,8 +473,9 @@ String smartWrapChevronValue(String value) {
 /// The row remains full-width by default: the label starts at the leading edge
 /// and the value group stays pinned to the trailing edge. The gap between them
 /// is at least the minimum, and expands naturally when the row has room. When
-/// the pair cannot fit, the value keeps its natural width first and the label
-/// receives the remaining room before either side is allowed to wrap.
+/// the pair cannot fit, the shorter content keeps its natural width first:
+/// long values wrap before a shorter label, while genuinely longer labels can
+/// wrap before a shorter value.
 class MinGapLabelValueRow extends StatelessWidget {
   const MinGapLabelValueRow({
     super.key,
@@ -552,32 +553,52 @@ class MinGapLabelValueRow extends StatelessWidget {
           return row;
         }
 
-        // Do not give both sides an arbitrary half of the row. First preserve
-        // the value's single-line width whenever that is possible; otherwise
-        // preserve the label's width. Only when neither side can remain on one
-        // line do we divide the available text room proportionally.
+        // Do not give both sides an arbitrary half of the row. Preserve the
+        // shorter content first so a long trailing value wraps instead of
+        // forcing a shorter label to wrap. Conversely, a genuinely longer
+        // label yields to a shorter value. Only when neither side can remain
+        // on one line do we divide the available text room proportionally.
         final availableAfterGap = math.max(
           0.0,
           constraints.maxWidth - leadingTotal - kLabelValueGap,
         );
+        final valueTextWidth = _singleLineWidth(
+          context,
+          smartWrapChevronValue(value),
+          valueStyle,
+        );
         final valueCanStaySingleLine = valueWidth <= availableAfterGap;
-        final labelCanStaySingleLine = labelWidth <= availableAfterGap;
+        final labelCanStaySingleLine =
+            labelWidth + trailingExtraWidth <= availableAfterGap;
 
         late final double labelSlot;
         late final double valueSlot;
-        if (valueCanStaySingleLine) {
+        final valueIsLonger = valueTextWidth > labelWidth;
+        if (valueIsLonger && labelCanStaySingleLine) {
+          labelSlot = labelWidth;
+          valueSlot = math.max(
+            trailingExtraWidth,
+            availableAfterGap - labelSlot,
+          );
+        } else if (!valueIsLonger && valueCanStaySingleLine) {
           valueSlot = valueWidth;
           labelSlot = math.max(0.0, availableAfterGap - valueSlot);
         } else if (labelCanStaySingleLine) {
           labelSlot = labelWidth;
           valueSlot = math.max(0.0, availableAfterGap - labelSlot);
+        } else if (valueCanStaySingleLine) {
+          valueSlot = valueWidth;
+          labelSlot = math.max(0.0, availableAfterGap - valueSlot);
         } else {
           final naturalTotal = labelWidth + valueWidth;
           final labelShare = naturalTotal == 0
               ? 0.5
               : labelWidth / naturalTotal;
-          labelSlot = availableAfterGap * labelShare;
-          valueSlot = availableAfterGap - labelSlot;
+          valueSlot = math.max(
+            math.min(trailingExtraWidth, availableAfterGap),
+            availableAfterGap * (1.0 - labelShare),
+          );
+          labelSlot = availableAfterGap - valueSlot;
         }
 
         final row = Row(

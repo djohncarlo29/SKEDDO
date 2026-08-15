@@ -926,6 +926,24 @@ class _SettingsRowState extends State<_SettingsRow> {
         trailingExtraWidth: 22,
       );
     }
+    if (widget.trailing is _ColorTrailing) {
+      final trailing = widget.trailing! as _ColorTrailing;
+      return MinGapLabelValueRow(
+        label: widget.title,
+        labelStyle: labelStyle,
+        value: trailing.name,
+        valueStyle: TextStyle(
+          fontFamily: kSFProText,
+          fontSize: 15,
+          fontWeight: FontWeight.w400,
+          color: resolveThemeColor(kSecondaryLabel, context),
+        ),
+        trailing: trailing,
+        // Swatch + spacing + chevron occupy the non-text portion of the
+        // right-pinned value group.
+        trailingExtraWidth: 40,
+      );
+    }
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
