@@ -470,14 +470,11 @@ String smartWrapChevronValue(String value) {
 
 /// Lays out a label and its chevron value with a minimum, not fixed, gap.
 ///
-/// The row remains full-width by default: the label starts at the leading edge
-/// and the value group stays pinned to the trailing edge. The gap between them
-/// is at least the minimum, and expands naturally when the row has room. When
-/// the pair cannot fit, the shorter content keeps its natural width first:
-/// long values wrap before a shorter label, while genuinely longer labels can
-/// wrap before a shorter value. Priority compares both strings at the same
-/// typography so a larger authored label size does not make a shorter label
-/// incorrectly yield before its value.
+/// The label and value are two flexible text blocks. When the pair cannot fit
+/// on one line, the row tries the usable widths between their readable
+/// minimums and chooses the allocation with the shortest resulting row. This
+/// is intentionally a shared layout decision: a label may wrap to keep the
+/// value from becoming needlessly tall, and vice versa.
 class MinGapLabelValueRow extends StatelessWidget {
   const MinGapLabelValueRow({
     super.key,
@@ -512,6 +509,52 @@ class MinGapLabelValueRow extends StatelessWidget {
       maxLines: 1,
     )..layout();
     return painter.width;
+  }
+
+  double _longestWordWidth(
+    BuildContext context,
+    String text,
+    TextStyle style,
+  ) {
+    final words = text
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty);
+    var longest = 0.0;
+    for (final word in words) {
+      longest = math.max(longest, _singleLineWidth(context, word, style));
+    }
+    return longest;
+  }
+
+  double _minimumReadableWidth(
+    BuildContext context,
+    String text,
+    TextStyle style,
+  ) {
+    final naturalWidth = _singleLineWidth(context, text, style);
+    if (naturalWidth == 0) return 0;
+
+    // Keep at least the widest word together whenever the row has enough
+    // room. The small floor prevents short words from being squeezed into
+    // narrow slivers that are technically measurable but hard to read.
+    final widestWord = _longestWordWidth(context, text, style);
+    return math.min(naturalWidth, math.max(36.0, widestWord));
+  }
+
+  double _wrappedHeight(
+    BuildContext context,
+    String text,
+    TextStyle style,
+    double maxWidth,
+  ) {
+    if (maxWidth <= 0) return double.infinity;
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      textWidthBasis: TextWidthBasis.parent,
+    )..layout(maxWidth: maxWidth);
+    return painter.height;
   }
 
   Widget _animateRowHeight(Widget row) {
@@ -566,65 +609,107 @@ class MinGapLabelValueRow extends StatelessWidget {
           return _animateRowHeight(row);
         }
 
-        // Do not give both sides an arbitrary half of the row. Preserve the
-        // shorter content first so a long trailing value wraps instead of
-        // forcing a shorter label to wrap. Conversely, a genuinely longer
-        // label yields to a shorter value. Only when neither side can remain
-        // on one line do we divide the available text room proportionally.
+        // Both sides are flexible once the one-line layout no longer fits.
+        // Leave the gap out of the search space, and reserve the trailing
+        // group's non-text width from the value side.
         final availableAfterGap = math.max(
           0.0,
           constraints.maxWidth - leadingTotal - kLabelValueGap,
         );
-        final valueTextWidth = _singleLineWidth(
+        final wrappedValue = smartWrapChevronValue(value);
+        final minLabelWidth = _minimumReadableWidth(
           context,
-          smartWrapChevronValue(value),
+          label,
+          labelStyle,
+        );
+        final minValueTextWidth = _minimumReadableWidth(
+          context,
+          wrappedValue,
           valueStyle,
         );
-        final valueCanStaySingleLine = valueWidth <= availableAfterGap;
-        final labelCanStaySingleLine =
-            labelWidth + trailingExtraWidth <= availableAfterGap;
+        final minValueSlot = math.min(
+          availableAfterGap,
+          trailingExtraWidth + minValueTextWidth,
+        );
+        final minLabelSlot = math.min(availableAfterGap, minLabelWidth);
 
-        late final double labelSlot;
-        late final double valueSlot;
-        // Compare content priority at the value's typography, not at each
-        // side's rendered size. Labels are authored at 17pt while values are
-        // authored at 15pt; comparing those widths directly makes a shorter
-        // label such as "Category Type" incorrectly outrank "Shopping List"
-        // at large Dynamic Type sizes.
-        final priorityLabelStyle = labelStyle.copyWith(
-          fontSize: valueStyle.fontSize ?? labelStyle.fontSize,
+        // The score makes row height the primary objective. If two allocations
+        // have the same row height, prefer the one with less total text height;
+        // this keeps a one-line label beside a two-line value when that is
+        // already as short as a two-line/two-line arrangement.
+        var bestLabelSlot = minLabelSlot;
+        var bestValueSlot = math.max(0.0, availableAfterGap - bestLabelSlot);
+        var bestMaxHeight = double.infinity;
+        var bestTotalHeight = double.infinity;
+        final maxLabelSlot = math.max(
+          minLabelSlot,
+          availableAfterGap - minValueSlot,
         );
-        final priorityLabelWidth = _singleLineWidth(
+        final searchStart = math.min(minLabelSlot, maxLabelSlot);
+        final searchEnd = math.max(minLabelSlot, maxLabelSlot);
+
+        // Wrapping changes at word boundaries, so a one-pixel sweep is enough
+        // to find the useful breakpoints while remaining stable at fractional
+        // device widths and Dynamic Type sizes.
+        for (
+          var candidateLabelSlot = searchStart;
+          candidateLabelSlot <= searchEnd;
+          candidateLabelSlot += 1.0
+        ) {
+          final labelSlot = candidateLabelSlot.clamp(
+            0.0,
+            availableAfterGap,
+          );
+          final valueSlot = availableAfterGap - labelSlot;
+          final labelHeight = _wrappedHeight(
+            context,
+            label,
+            labelStyle,
+            labelSlot,
+          );
+          final valueHeight = _wrappedHeight(
+            context,
+            wrappedValue,
+            valueStyle,
+            math.max(0.0, valueSlot - trailingExtraWidth),
+          );
+          final maxHeight = math.max(labelHeight, valueHeight);
+          final totalHeight = labelHeight + valueHeight;
+          if (maxHeight < bestMaxHeight ||
+              (maxHeight == bestMaxHeight && totalHeight < bestTotalHeight)) {
+            bestLabelSlot = labelSlot;
+            bestValueSlot = valueSlot;
+            bestMaxHeight = maxHeight;
+            bestTotalHeight = totalHeight;
+          }
+        }
+
+        // Include the fractional endpoint so the right edge remains exact
+        // when the available width is not an integer.
+        final endpointLabelSlot = searchEnd;
+        final endpointValueSlot = availableAfterGap - endpointLabelSlot;
+        final endpointLabelHeight = _wrappedHeight(
           context,
-          smartWrapChevronValue(label),
-          priorityLabelStyle,
+          label,
+          labelStyle,
+          endpointLabelSlot,
         );
-        final valueIsLonger = valueTextWidth > priorityLabelWidth;
-        if (valueIsLonger && labelCanStaySingleLine) {
-          labelSlot = labelWidth;
-          valueSlot = math.max(
-            trailingExtraWidth,
-            availableAfterGap - labelSlot,
-          );
-        } else if (!valueIsLonger && valueCanStaySingleLine) {
-          valueSlot = valueWidth;
-          labelSlot = math.max(0.0, availableAfterGap - valueSlot);
-        } else if (labelCanStaySingleLine) {
-          labelSlot = labelWidth;
-          valueSlot = math.max(0.0, availableAfterGap - labelSlot);
-        } else if (valueCanStaySingleLine) {
-          valueSlot = valueWidth;
-          labelSlot = math.max(0.0, availableAfterGap - valueSlot);
-        } else {
-          final naturalTotal = labelWidth + valueWidth;
-          final labelShare = naturalTotal == 0
-              ? 0.5
-              : labelWidth / naturalTotal;
-          valueSlot = math.max(
-            math.min(trailingExtraWidth, availableAfterGap),
-            availableAfterGap * (1.0 - labelShare),
-          );
-          labelSlot = availableAfterGap - valueSlot;
+        final endpointValueHeight = _wrappedHeight(
+          context,
+          wrappedValue,
+          valueStyle,
+          math.max(0.0, endpointValueSlot - trailingExtraWidth),
+        );
+        final endpointMaxHeight = math.max(
+          endpointLabelHeight,
+          endpointValueHeight,
+        );
+        final endpointTotalHeight = endpointLabelHeight + endpointValueHeight;
+        if (endpointMaxHeight < bestMaxHeight ||
+            (endpointMaxHeight == bestMaxHeight &&
+                endpointTotalHeight < bestTotalHeight)) {
+          bestLabelSlot = endpointLabelSlot;
+          bestValueSlot = endpointValueSlot;
         }
 
         final row = Row(
@@ -636,11 +721,11 @@ class MinGapLabelValueRow extends StatelessWidget {
               SizedBox(width: leadingGap),
             ],
             SizedBox(
-              width: labelSlot,
+              width: bestLabelSlot,
               child: Text(label, style: labelStyle, softWrap: true),
             ),
             const SizedBox(width: kLabelValueGap),
-            SizedBox(width: valueSlot, child: trailing),
+            SizedBox(width: bestValueSlot, child: trailing),
           ],
         );
         if (!alignTrailing) return _animateRowHeight(row);
