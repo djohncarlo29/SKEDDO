@@ -2309,6 +2309,10 @@ class _MiniMonthGrid extends StatelessWidget {
             _kShortMonthNames[month - 1],
             maxLines: 1,
             overflow: TextOverflow.clip,
+            // This month label is sized from the fixed mini-grid geometry,
+            // so applying an extreme OS text scale would clip it and push
+            // the calendar numbers out of their cells.
+            textScaler: TextScaler.noScaling,
             style: TextStyle(
               fontFamily: kSFProText,
               fontSize: cellSize * 1.35,
@@ -2330,6 +2334,7 @@ class _MiniMonthGrid extends StatelessWidget {
                   child: Center(
                     child: Text(
                       d,
+                      textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         fontFamily: kSFProText,
                         fontSize: 8.5,
@@ -2375,6 +2380,7 @@ class _MiniMonthGrid extends StatelessWidget {
                   child: Center(
                     child: Text(
                       '$day',
+                      textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         fontFamily: kSFProText,
                         fontSize: fontSize,
@@ -2395,6 +2401,7 @@ class _MiniMonthGrid extends StatelessWidget {
                   child: Center(
                     child: Text(
                       '$day',
+                      textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         fontFamily: kSFProText,
                         fontSize: fontSize,
@@ -2407,6 +2414,7 @@ class _MiniMonthGrid extends StatelessWidget {
               } else {
                 dayCell = Text(
                   '$day',
+                  textScaler: TextScaler.noScaling,
                   style: TextStyle(
                     fontFamily: kSFProText,
                     fontSize: fontSize,

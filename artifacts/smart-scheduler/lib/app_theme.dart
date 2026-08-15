@@ -867,10 +867,9 @@ class AdaptivePillSpec {
 ///   [label][at least 25dp][pill group]
 ///
 /// If that complete group cannot fit, the label stays beside a trailing pill
-/// column whenever the individual pills can fit there. This keeps a date/time
-/// row compact without shrinking the requested OS text size. Only when the
-/// label and even the widest pill cannot share a line does the label move
-/// above the group.
+/// column. Date/time pills stack in that column and may wrap internally at
+/// the current OS text scale. Only when the label itself consumes the row does
+/// the label move above the group.
 class AdaptiveLabelPillRow extends StatelessWidget {
   const AdaptiveLabelPillRow({
     super.key,
@@ -982,7 +981,7 @@ class AdaptiveLabelPillRow extends StatelessWidget {
       // Keep the abbreviated text even when it also exceeds the bound so it
       // can wrap inside the pill instead of reverting to an unclipped full
       // month name.
-      final textOverride = compactText != null ? compactText : null;
+      final textOverride = compactText;
       return Align(
         alignment: Alignment.centerRight,
         child: _pill(pill, maxWidth: maxWidth, textOverride: textOverride),
@@ -1053,12 +1052,13 @@ class AdaptiveLabelPillRow extends StatelessWidget {
 
         // Keep the label on the left while the date/time pills stack. This is
         // the important narrow-sheet case: the pills retain their authored
-        // font size and only use the width actually available beside the
-        // label.
-        final widestPill = naturalWidths.reduce(
-          (a, b) => a > b ? a : b,
-        );
-        if (widestPill <= availableTrailingWidth) {
+        // font size and use the width actually available beside the label.
+        //
+        // For a single End Date pill, passing the trailing width here is
+        // intentional. _pillGroup then selects compactText as soon as the
+        // full month-name pill cannot fit beside the label, instead of
+        // needlessly moving the full date to a second line.
+        if (availableTrailingWidth > 0) {
           return _labelAndPills(
             label: SizedBox(width: labelWidth, child: _label(fillWidth: false)),
             pillGroup: _pillGroup(
