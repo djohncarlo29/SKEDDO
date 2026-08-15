@@ -1351,7 +1351,7 @@ class _ColorTrailing extends StatelessWidget {
         // Color name label in secondary gray.
         Flexible(
           child: Text(
-            name,
+            smartWrapChevronValue(name),
             textAlign: TextAlign.right,
             softWrap: true,
             style: TextStyle(

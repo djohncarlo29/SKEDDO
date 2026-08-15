@@ -475,7 +475,9 @@ String smartWrapChevronValue(String value) {
 /// is at least the minimum, and expands naturally when the row has room. When
 /// the pair cannot fit, the shorter content keeps its natural width first:
 /// long values wrap before a shorter label, while genuinely longer labels can
-/// wrap before a shorter value.
+/// wrap before a shorter value. Priority compares both strings at the same
+/// typography so a larger authored label size does not make a shorter label
+/// incorrectly yield before its value.
 class MinGapLabelValueRow extends StatelessWidget {
   const MinGapLabelValueRow({
     super.key,
@@ -584,7 +586,20 @@ class MinGapLabelValueRow extends StatelessWidget {
 
         late final double labelSlot;
         late final double valueSlot;
-        final valueIsLonger = valueTextWidth > labelWidth;
+        // Compare content priority at the value's typography, not at each
+        // side's rendered size. Labels are authored at 17pt while values are
+        // authored at 15pt; comparing those widths directly makes a shorter
+        // label such as "Category Type" incorrectly outrank "Shopping List"
+        // at large Dynamic Type sizes.
+        final priorityLabelStyle = labelStyle.copyWith(
+          fontSize: valueStyle.fontSize ?? labelStyle.fontSize,
+        );
+        final priorityLabelWidth = _singleLineWidth(
+          context,
+          smartWrapChevronValue(label),
+          priorityLabelStyle,
+        );
+        final valueIsLonger = valueTextWidth > priorityLabelWidth;
         if (valueIsLonger && labelCanStaySingleLine) {
           labelSlot = labelWidth;
           valueSlot = math.max(
