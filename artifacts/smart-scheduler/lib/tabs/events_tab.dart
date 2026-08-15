@@ -4445,7 +4445,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     showRoundedCupertinoSheet<void>(
       context: context,
       pageBuilder: (_) => _EditDcvSectionsSheet(
-        sectionNames: List<String>.of(names),
+        sectionNames: [
+          for (final name in names)
+            name.trim().isEmpty ? 'New Section' : name.trim(),
+        ],
         accentColor: accentColor,
         onSave: (order, editedNames) =>
             reorderDcvSections(label, order, editedNames: editedNames),
@@ -4537,13 +4540,18 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     _saveCategories();
   }
 
-  void _renameDcvSection(String label, int index, String title) {
+  void _renameDcvSection(
+    String label,
+    int index,
+    String title, {
+    bool persist = true,
+  }) {
     final sections = _dcvCustomSectionNames[label];
     if (sections == null || index < 0 || index >= sections.length) return;
     final normalized = title.trim();
     if (sections[index] == normalized) return;
     setState(() => sections[index] = normalized);
-    _saveCategories();
+    if (persist) _saveCategories();
   }
 
   /// Opens the same Add Category sheet used by the inline button so the
@@ -5834,6 +5842,16 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     onCustomSectionRenamed: (index, title) {
                       if (dcvLabel != null) {
                         _renameDcvSection(dcvLabel, index, title);
+                      }
+                    },
+                    onCustomSectionEditingChanged: (index, title) {
+                      if (dcvLabel != null) {
+                        _renameDcvSection(
+                          dcvLabel,
+                          index,
+                          title,
+                          persist: false,
+                        );
                       }
                     },
                     onCustomSectionDeleted: (index) {
@@ -11870,10 +11888,6 @@ class _EditDcvSectionsSheet extends StatefulWidget {
 
 class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
   late List<int> _sectionOrder;
-  late final List<TextEditingController> _sectionControllers;
-  late final List<FocusNode> _sectionFocusNodes;
-  late final ValueNotifier<Color> _handleColorNotifier;
-  late final TintedCupertinoTextSelectionControls _selectionControls;
   final Set<int> _deletingSections = <int>{};
 
   static const double _kHeaderEdge = 16.0;
@@ -11884,39 +11898,10 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
   void initState() {
     super.initState();
     _sectionOrder = List<int>.generate(widget.sectionNames.length, (i) => i);
-    _sectionControllers = [
-      for (final name in widget.sectionNames)
-        TextEditingController(
-          // An empty persisted name is rendered in the DCV as "New Section".
-          // Seed the editor with that same visible header instead of leaving
-          // the editable row blank.
-          text: name.trim().isEmpty ? 'New Section' : name,
-        ),
-    ];
-    _sectionFocusNodes = [for (final _ in widget.sectionNames) FocusNode()];
-    _handleColorNotifier = ValueNotifier<Color>(widget.accentColor);
-    _selectionControls = TintedCupertinoTextSelectionControls(
-      _handleColorNotifier,
-    );
-  }
-
-  @override
-  void didUpdateWidget(covariant _EditDcvSectionsSheet oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.accentColor != widget.accentColor) {
-      _handleColorNotifier.value = widget.accentColor;
-    }
   }
 
   @override
   void dispose() {
-    for (final controller in _sectionControllers) {
-      controller.dispose();
-    }
-    for (final focusNode in _sectionFocusNodes) {
-      focusNode.dispose();
-    }
-    _handleColorNotifier.dispose();
     super.dispose();
   }
 
@@ -11934,7 +11919,10 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
         for (final originalIndex in _sectionOrder)
           if (!_deletingSections.contains(originalIndex)) originalIndex,
       ],
-      [for (final controller in _sectionControllers) controller.text.trim()],
+      [
+        for (final name in widget.sectionNames)
+          name.trim().isEmpty ? 'New Section' : name,
+      ],
     );
     Navigator.of(context).pop();
   }
@@ -11999,10 +11987,6 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
       fontWeight: FontWeight.w400,
       height: 1.2,
     );
-    final sectionPlaceholderStyle = sectionTextStyle.copyWith(
-      color: resolveThemeColor(kSecondaryLabel, context),
-    );
-
     return CupertinoPageScaffold(
       backgroundColor: kModalBackground,
       child: SafeArea(
@@ -12108,52 +12092,14 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                                                         8,
                                                         16,
                                                       ),
-                                                  child: CupertinoTheme(
-                                                    data:
-                                                        CupertinoTheme.of(
-                                                          context,
-                                                        ).copyWith(
-                                                          primaryColor: widget
-                                                              .accentColor,
-                                                        ),
-                                                    child: DefaultSelectionStyle(
-                                                      selectionColor: widget
-                                                          .accentColor
-                                                          .withOpacity(0.20),
-                                                      child: CupertinoTextField(
-                                                        controller:
-                                                            _sectionControllers[originalIndex],
-                                                        focusNode:
-                                                            _sectionFocusNodes[originalIndex],
-                                                        selectionControls:
-                                                            _selectionControls,
-                                                        readOnly: false,
-                                                        autofocus: false,
-                                                        decoration: null,
-                                                        padding:
-                                                            EdgeInsets.zero,
-                                                        minLines: 1,
-                                                        maxLines: null,
-                                                        textAlignVertical:
-                                                            TextAlignVertical
-                                                                .top,
-                                                        textInputAction:
-                                                            TextInputAction
-                                                                .done,
-                                                        placeholder:
-                                                            'New Section',
-                                                        placeholderStyle:
-                                                            sectionPlaceholderStyle,
-                                                        style: sectionTextStyle,
-                                                        cursorColor:
-                                                            widget.accentColor,
-                                                        onSubmitted: (_) =>
-                                                            FocusManager
-                                                                .instance
-                                                                .primaryFocus
-                                                                ?.unfocus(),
-                                                      ),
-                                                    ),
+                                                  child: Text(
+                                                    widget.sectionNames[originalIndex]
+                                                            .trim()
+                                                            .isEmpty
+                                                        ? 'New Section'
+                                                        : widget
+                                                              .sectionNames[originalIndex],
+                                                    style: sectionTextStyle,
                                                   ),
                                                 ),
                                               ),
@@ -12392,7 +12338,10 @@ class _SwipeToRevealDeleteState extends State<_SwipeToRevealDelete>
     final revealLeft = offset > 0;
     final revealRight = offset < 0;
     return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+      // Let editable descendants receive their own tap and selection
+      // gestures. The row still fills the hit-test path, so horizontal swipes
+      // can reveal delete without making the text field feel locked.
+      behavior: HitTestBehavior.deferToChild,
       onTap: widget.dismissOnTap ? _onTap : null,
       onHorizontalDragStart: _onDragStart,
       onHorizontalDragUpdate: _onDragUpdate,
@@ -12579,6 +12528,7 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
   late final ValueNotifier<Color> _handleColorNotifier;
   late final TintedCupertinoTextSelectionControls _selectionControls;
   bool _ensureVisibleScheduled = false;
+  late String _lastCommittedText;
 
   @override
   void initState() {
@@ -12587,6 +12537,7 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
     _controller = TextEditingController(
       text: widget.initialText == 'New Section' ? '' : widget.initialText,
     );
+    _lastCommittedText = _controller.text;
     _focusNode = FocusNode();
     _handleColorNotifier = ValueNotifier<Color>(widget.accentColor);
     _selectionControls = TintedCupertinoTextSelectionControls(
@@ -12609,7 +12560,11 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
   }
 
   void _onFocusChanged() {
-    if (_focusNode.hasFocus) _scheduleEnsureVisible();
+    if (_focusNode.hasFocus) {
+      _scheduleEnsureVisible();
+    } else {
+      _commitText();
+    }
   }
 
   void _scheduleEnsureVisible() {
@@ -12640,6 +12595,7 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
       _controller.text = widget.initialText == 'New Section'
           ? ''
           : widget.initialText;
+      _lastCommittedText = _controller.text;
     }
   }
 
@@ -12653,8 +12609,15 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
     super.dispose();
   }
 
+  void _commitText() {
+    final text = _controller.text.trim();
+    if (text == _lastCommittedText) return;
+    _lastCommittedText = text;
+    widget.onSubmitted(text);
+  }
+
   void _submit() {
-    widget.onSubmitted(_controller.text.trim());
+    _commitText();
     _focusNode.unfocus();
   }
 
@@ -12831,6 +12794,10 @@ class _CategoryDetailView extends StatefulWidget {
   /// Saves a submitted custom section title.
   final void Function(int index, String title)? onCustomSectionRenamed;
 
+  /// Updates the visible title while typing without persisting every
+  /// keystroke. [onCustomSectionRenamed] performs the durable save on submit.
+  final void Function(int index, String title)? onCustomSectionEditingChanged;
+
   /// Deletes a user-created section from the DCV.
   final ValueChanged<int>? onCustomSectionDeleted;
 
@@ -12857,6 +12824,7 @@ class _CategoryDetailView extends StatefulWidget {
     this.customSectionNames = const [],
     this.customSectionEventIds,
     this.onCustomSectionRenamed,
+    this.onCustomSectionEditingChanged,
     this.onCustomSectionDeleted,
     this.onCustomSectionReordered,
     this.onEditEvent,
@@ -14037,10 +14005,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                                         final index =
                                             section.customSectionIndex;
                                         if (index != null) {
-                                          widget.onCustomSectionRenamed?.call(
-                                            index,
-                                            title,
-                                          );
+                                          widget.onCustomSectionEditingChanged
+                                              ?.call(index, title);
                                         }
                                       },
                                       onSubmitted: (title) {
