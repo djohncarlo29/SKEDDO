@@ -5757,6 +5757,17 @@ class _NewEventSheetState extends State<_NewEventSheet>
   Color _uncategorizedColor = kAccentColor;
   bool _hasUncategorized = true;
 
+  // Custom DCV sections are owned by EventsTabState, but the event sheet
+  // reads the same persisted maps so a new or edited event can be placed in
+  // the section the user selected here.
+  static const _kPrefsDcvCustomSections = 'events_dcv_custom_sections';
+  static const _kPrefsDcvCustomSectionEventIds =
+      'events_dcv_custom_section_event_ids';
+  Map<String, List<String>> _dcvCustomSectionNames = {};
+  Map<String, List<List<String>>> _dcvCustomSectionEventIds = {};
+  String? _initialCategoryName;
+  int _selectedSectionIndex = 0;
+
   // Resolved accent-aware category color for widget rendering.
   // Use everywhere a widget consumes _categoryColor so kCatBlue sentinel
   // is correctly mapped to the live accent regardless of stored value.
@@ -5792,6 +5803,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
   late final AnimationController
   _reminderPickerCtrl; // drives inline picker for reminder date
   late final AnimationController _monthSlideCtrl;
+  late final AnimationController
+  _sectionRowCtrl; // expands the Section subrow for categories with DCV sections
 
   // ── Picker overlay (Category / Repeat / Alert) ────────────────────────────
   OverlayEntry? _pickerEntry;
@@ -5856,6 +5869,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     _reminderCardCtrl = AnimationController(vsync: this, duration: dur);
     _reminderDateCtrl = AnimationController(vsync: this, duration: dur);
     _reminderPickerCtrl = AnimationController(vsync: this, duration: dur);
+    _sectionRowCtrl = AnimationController(vsync: this, duration: dur);
     // Default reminder date: tomorrow at 9 AM.
     _reminderDate = DateTime(now.year, now.month, now.day + 1, 9, 0);
     _monthSlideCtrl = AnimationController(vsync: this, duration: dur);
@@ -5921,6 +5935,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     _reminderDateCtrl.dispose();
     _reminderPickerCtrl.dispose();
     _monthSlideCtrl.dispose();
+    _sectionRowCtrl.dispose();
     _importProgressCtrl.dispose();
     _titleCtrl.dispose();
     _subtitleCtrl.dispose();
@@ -6866,9 +6881,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
           categoryId: categoryId,
         ),
       );
+      await _persistSectionAssignment(widget.initial!.id);
     } else {
       // ── Create path ─────────────────────────────────────────────────────
-      EventStore.instance.create(
+      final created = EventStore.instance.create(
         title: title,
         subtitle: subtitle.isEmpty ? null : subtitle,
         date: dateStr,
@@ -6903,6 +6919,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
         attachmentPaths: attachmentPaths,
         categoryId: categoryId,
       );
+      await _persistSectionAssignment(created.id);
     }
 
     Navigator.of(context).pop();
@@ -6994,6 +7011,54 @@ class _NewEventSheetState extends State<_NewEventSheet>
       'yearlyPositionIndex': c.yearlyPositionIndex,
       'yearlyDayIndex': c.yearlyDayIndex,
     };
+  }
+
+  Future<void> _persistSectionAssignment(String eventId) async {
+    final previousCategory = _initialCategoryName;
+    final currentCategory = _categoryName;
+    final currentNames = _currentSectionNames;
+    final previousIds = previousCategory == null
+        ? null
+        : _dcvCustomSectionEventIds[previousCategory];
+    final currentIds = _dcvCustomSectionEventIds[currentCategory] ??=
+        <List<String>>[];
+
+    // An edited event may have moved categories. Remove its old membership
+    // before assigning it to the newly selected category.
+    if (previousCategory != null && previousCategory != currentCategory) {
+      for (final section in previousIds ?? const <List<String>>[]) {
+        section.remove(eventId);
+      }
+    }
+
+    if (currentNames.isNotEmpty) {
+      while (currentIds.length < currentNames.length) {
+        currentIds.add(<String>[]);
+      }
+      while (currentIds.length > currentNames.length) {
+        currentIds.removeLast();
+      }
+      for (final section in currentIds) {
+        section.remove(eventId);
+      }
+      final index = _selectedSectionIndex
+          .clamp(0, currentNames.length - 1)
+          .toInt();
+      currentIds[index].add(eventId);
+    } else if (currentIds.isEmpty) {
+      _dcvCustomSectionEventIds.remove(currentCategory);
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _kPrefsDcvCustomSectionEventIds,
+      jsonEncode(_dcvCustomSectionEventIds),
+    );
+    // The Events tab listens to the event store, but the section membership
+    // map is a separate preference. Notify it once the map is durable so the
+    // newly saved event appears under the selected header immediately.
+    EventStore.instance.events.notifyListeners();
+    _initialCategoryName = currentCategory;
   }
 
   /// Pre-populate all sheet fields from an existing [ScheduledEvent].
@@ -7125,6 +7190,48 @@ class _NewEventSheetState extends State<_NewEventSheet>
   Future<void> _loadCategories() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList('events_user_categories') ?? [];
+    final rawDcvSections = prefs.getString(_kPrefsDcvCustomSections);
+    final rawDcvSectionEventIds = prefs.getString(
+      _kPrefsDcvCustomSectionEventIds,
+    );
+    final loadedSectionNames = <String, List<String>>{};
+    final loadedSectionEventIds = <String, List<List<String>>>{};
+    try {
+      final decoded = rawDcvSections == null
+          ? null
+          : jsonDecode(rawDcvSections);
+      if (decoded is Map) {
+        for (final entry in decoded.entries) {
+          loadedSectionNames[entry.key.toString()] = entry.value is List
+              ? [for (final name in entry.value as List) name.toString()]
+              : <String>[];
+        }
+      }
+    } catch (_) {
+      // A malformed section preference must not prevent the category picker
+      // from opening. The Events tab will repair the preference on its next
+      // successful section edit.
+    }
+    try {
+      final decoded = rawDcvSectionEventIds == null
+          ? null
+          : jsonDecode(rawDcvSectionEventIds);
+      if (decoded is Map) {
+        for (final entry in decoded.entries) {
+          final value = entry.value;
+          loadedSectionEventIds[entry.key.toString()] = value is List
+              ? [
+                  for (final section in value)
+                    section is List
+                        ? [for (final id in section) id.toString()]
+                        : <String>[],
+                ]
+              : <List<String>>[];
+        }
+      }
+    } catch (_) {
+      // See the section-name guard above.
+    }
     if (!mounted) return;
     final parsed = <_NewEventCategory>[];
     Color uncatColor = kAccentColor;
@@ -7186,6 +7293,12 @@ class _NewEventSheetState extends State<_NewEventSheet>
     }
 
     setState(() {
+      _dcvCustomSectionNames
+        ..clear()
+        ..addAll(loadedSectionNames);
+      _dcvCustomSectionEventIds
+        ..clear()
+        ..addAll(loadedSectionEventIds);
       _standardCategories = parsed;
       _uncategorizedColor = uncatColor;
       // Uncategorized is also a permanent system category.  A legacy or
@@ -7204,6 +7317,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
         if (match != null) {
           _categoryName = match.name;
           _categoryColor = match.color;
+          _initialCategoryName = _categoryName;
         }
       } else if (widget.initial == null && widget.initialCategoryId != null) {
         final match = parsed.cast<_NewEventCategory?>().firstWhere(
@@ -7219,7 +7333,14 @@ class _NewEventSheetState extends State<_NewEventSheet>
           _categoryColor = uncatColor;
         }
       }
+      if (widget.initial != null && _initialCategoryName == null) {
+        _initialCategoryName = _categoryName;
+      }
+      _selectedSectionIndex = _sectionIndexForCurrentEvent();
     });
+    // Initial sheet rendering should not slide the row in from zero. Later
+    // category changes use the animated path below.
+    _syncSectionRowAnimation(animate: false);
   }
 
   // ── Picker overlay (Category / Repeat / Alert) ────────────────────────────
@@ -7366,6 +7487,68 @@ class _NewEventSheetState extends State<_NewEventSheet>
     );
   }
 
+  List<String> get _currentSectionNames =>
+      _dcvCustomSectionNames[_categoryName] ?? const <String>[];
+
+  String _sectionDisplayName(String name) =>
+      name.trim().isEmpty ? 'New Section' : name.trim();
+
+  int _sectionIndexForCurrentEvent() {
+    if (widget.initial == null) return 0;
+    final eventId = widget.initial!.id;
+    final eventSections = _dcvCustomSectionEventIds[_categoryName];
+    if (eventSections == null) return 0;
+    final index = eventSections.indexWhere((ids) => ids.contains(eventId));
+    if (index < 0 || index >= _currentSectionNames.length) return 0;
+    return index;
+  }
+
+  void _syncSectionRowAnimation({required bool animate}) {
+    final shouldShow = _currentSectionNames.isNotEmpty;
+    final target = shouldShow ? 1.0 : 0.0;
+    if (!animate) {
+      _sectionRowCtrl.value = target;
+      return;
+    }
+    _sectionRowCtrl.animateTo(
+      target,
+      curve: target == 1.0 ? Curves.easeOut : Curves.easeIn,
+    );
+  }
+
+  List<ActionItem> _sectionItems() {
+    final names = _currentSectionNames;
+    return [
+      for (var index = 0; index < names.length; index++)
+        ActionItem(
+          label: _sectionDisplayName(names[index]),
+          icon: SFIcons.sf_circle,
+          iconBuilder: (_) => const SizedBox.shrink(),
+          checkmark: index == _selectedSectionIndex,
+          checkmarkColor: _resolvedCategoryColor,
+          onTap: () {
+            setState(() => _selectedSectionIndex = index);
+            Future.delayed(
+              const Duration(milliseconds: 80),
+              _dismissPickerOverlay,
+            );
+          },
+        ),
+    ];
+  }
+
+  Widget _buildSectionRow() {
+    final names = _currentSectionNames;
+    if (names.isEmpty) return const SizedBox.shrink();
+    final safeIndex = _selectedSectionIndex.clamp(0, names.length - 1).toInt();
+    final label = names.length == 1 ? 'Section' : 'Sections';
+    return _pickerRow(
+      label,
+      _sectionDisplayName(names[safeIndex]),
+      items: _sectionItems(),
+    );
+  }
+
   // ── Generic picker-item factory ───────────────────────────────────────────
 
   List<ActionItem> _makeItems(
@@ -7460,8 +7643,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
           _categoryId = cat.id;
           _categoryName = cat.name;
           _categoryColor = cat.color;
+          _selectedSectionIndex = 0;
           _applyPreset(cat);
         });
+        _syncSectionRowAnimation(animate: true);
         // Sync animation controllers to the newly applied preset state.
         _travelModeCtrl.animateTo(
           _travelTime != 'None' ? 1.0 : 0.0,
@@ -7507,6 +7692,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
               _categoryId = 'uncategorized';
               _categoryName = 'Uncategorized';
               _categoryColor = _uncategorizedColor;
+              _selectedSectionIndex = 0;
               // Apply system defaults — every category, including Uncategorized,
               // defaults the alert to "At time of event".
               _applyPreset(
@@ -7518,6 +7704,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 ),
               );
             });
+            _syncSectionRowAnimation(animate: true);
             _travelModeCtrl.animateTo(0.0, curve: Curves.easeIn);
             _endRepeatCtrl.animateTo(0.0, curve: Curves.easeIn);
             _endDateCtrl.animateTo(0.0, curve: Curves.easeIn);
@@ -10007,8 +10194,24 @@ class _NewEventSheetState extends State<_NewEventSheet>
                             ),
                           ),
                           const SizedBox(height: 16),
-                          // Card 5 — Category (opens ActionMenuOverlay).
-                          _card([_buildCategoryRow()], stadium: true),
+                          // Card 5 — Category + the optional custom-DCV Section
+                          // subrow. The section row stays in the same card so
+                          // its separator and rounded container behave like
+                          // the other dismissible modal-sheet subrows.
+                          AnimatedBuilder(
+                            animation: _sectionRowCtrl,
+                            builder: (_, __) => _card([
+                              _buildCategoryRow(),
+                              SizeTransition(
+                                sizeFactor: _sectionRowCtrl,
+                                axisAlignment: -1.0,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [_sep(), _buildSectionRow()],
+                                ),
+                              ),
+                            ]),
+                          ),
                           // Card 6 — Alert (normal events) / Reminder (Unscheduled).
                           // The two sections cross-fade via _alertCardCtrl and
                           // _reminderCardCtrl; each carries its own top SizedBox

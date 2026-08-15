@@ -4759,7 +4759,55 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   }
 
   // ── EventStore listener ───────────────────────────────────────────────────
-  void _onEventsChanged() => setState(() {});
+  void _onEventsChanged() {
+    if (mounted) setState(() {});
+    _reloadPersistedDcvSections();
+  }
+
+  Future<void> _reloadPersistedDcvSections() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rawNames = prefs.getString(_kPrefsDcvCustomSections);
+    final rawEventIds = prefs.getString(_kPrefsDcvCustomSectionEventIds);
+    if (!mounted || (rawNames == null && rawEventIds == null)) return;
+
+    final names = <String, List<String>>{};
+    final eventIds = <String, List<List<String>>>{};
+    try {
+      final decoded = rawNames == null ? null : jsonDecode(rawNames);
+      if (decoded is Map) {
+        for (final entry in decoded.entries) {
+          names[entry.key.toString()] = entry.value is List
+              ? [for (final name in entry.value as List) name.toString()]
+              : <String>[];
+        }
+      }
+    } catch (_) {}
+    try {
+      final decoded = rawEventIds == null ? null : jsonDecode(rawEventIds);
+      if (decoded is Map) {
+        for (final entry in decoded.entries) {
+          eventIds[entry.key.toString()] = entry.value is List
+              ? [
+                  for (final section in entry.value as List)
+                    section is List
+                        ? [for (final id in section) id.toString()]
+                        : <String>[],
+                ]
+              : <List<String>>[];
+        }
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() {
+      _dcvCustomSectionNames
+        ..clear()
+        ..addAll(names);
+      _dcvCustomSectionEventIds
+        ..clear()
+        ..addAll(eventIds);
+    });
+  }
 
   @override
   void initState() {
