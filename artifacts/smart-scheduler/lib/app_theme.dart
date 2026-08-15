@@ -468,6 +468,16 @@ String smartWrapChevronValue(String value) {
   );
 }
 
+class _WrappedTextMetrics {
+  const _WrappedTextMetrics({
+    required this.height,
+    required this.lineCount,
+  });
+
+  final double height;
+  final int lineCount;
+}
+
 /// Lays out a label and its chevron value with a minimum, not fixed, gap.
 ///
 /// The label and value are two flexible text blocks. When the pair cannot fit
@@ -541,20 +551,28 @@ class MinGapLabelValueRow extends StatelessWidget {
     return math.min(naturalWidth, math.max(36.0, widestWord));
   }
 
-  double _wrappedHeight(
+  _WrappedTextMetrics _wrappedMetrics(
     BuildContext context,
     String text,
     TextStyle style,
     double maxWidth,
   ) {
-    if (maxWidth <= 0) return double.infinity;
+    if (maxWidth <= 0) {
+      return const _WrappedTextMetrics(
+        height: double.infinity,
+        lineCount: 999999,
+      );
+    }
     final painter = TextPainter(
       text: TextSpan(text: text, style: style),
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
       textWidthBasis: TextWidthBasis.parent,
     )..layout(maxWidth: maxWidth);
-    return painter.height;
+    return _WrappedTextMetrics(
+      height: painter.height,
+      lineCount: painter.computeLineMetrics().length,
+    );
   }
 
   Widget _animateRowHeight(Widget row) {
@@ -648,69 +666,70 @@ class MinGapLabelValueRow extends StatelessWidget {
         final searchStart = math.min(minLabelSlot, maxLabelSlot);
         final searchEnd = math.max(minLabelSlot, maxLabelSlot);
 
-        // Wrapping changes at word boundaries, so a one-pixel sweep is enough
-        // to find the useful breakpoints while remaining stable at fractional
-        // device widths and Dynamic Type sizes.
-        for (
-          var candidateLabelSlot = searchStart;
-          candidateLabelSlot <= searchEnd;
-          candidateLabelSlot += 1.0
-        ) {
+        var bestWrappedBlocks = double.infinity;
+
+        void considerAllocation(double candidateLabelSlot) {
           final labelSlot = candidateLabelSlot.clamp(
             0.0,
             availableAfterGap,
-          );
+          ).toDouble();
           final valueSlot = availableAfterGap - labelSlot;
-          final labelHeight = _wrappedHeight(
+          final labelMetrics = _wrappedMetrics(
             context,
             label,
             labelStyle,
             labelSlot,
           );
-          final valueHeight = _wrappedHeight(
+          final valueMetrics = _wrappedMetrics(
             context,
             wrappedValue,
             valueStyle,
             math.max(0.0, valueSlot - trailingExtraWidth),
           );
-          final maxHeight = math.max(labelHeight, valueHeight);
-          final totalHeight = labelHeight + valueHeight;
-          if (maxHeight < bestMaxHeight ||
-              (maxHeight == bestMaxHeight && totalHeight < bestTotalHeight)) {
+          final maxHeight = math.max(
+            labelMetrics.height,
+            valueMetrics.height,
+          );
+          final totalHeight = labelMetrics.height + valueMetrics.height;
+          final wrappedBlocks =
+              (labelMetrics.lineCount > 1 ? 1 : 0) +
+              (valueMetrics.lineCount > 1 ? 1 : 0);
+          const epsilon = 0.01;
+          final isBetter =
+              maxHeight < bestMaxHeight - epsilon ||
+              (maxHeight - bestMaxHeight).abs() <= epsilon &&
+                  (totalHeight < bestTotalHeight - epsilon ||
+                      (totalHeight - bestTotalHeight).abs() <= epsilon &&
+                          wrappedBlocks < bestWrappedBlocks);
+          if (isBetter) {
             bestLabelSlot = labelSlot;
             bestValueSlot = valueSlot;
             bestMaxHeight = maxHeight;
             bestTotalHeight = totalHeight;
+            bestWrappedBlocks = wrappedBlocks.toDouble();
           }
         }
 
-        // Include the fractional endpoint so the right edge remains exact
-        // when the available width is not an integer.
-        final endpointLabelSlot = searchEnd;
-        final endpointValueSlot = availableAfterGap - endpointLabelSlot;
-        final endpointLabelHeight = _wrappedHeight(
-          context,
-          label,
-          labelStyle,
-          endpointLabelSlot,
-        );
-        final endpointValueHeight = _wrappedHeight(
-          context,
-          wrappedValue,
-          valueStyle,
-          math.max(0.0, endpointValueSlot - trailingExtraWidth),
-        );
-        final endpointMaxHeight = math.max(
-          endpointLabelHeight,
-          endpointValueHeight,
-        );
-        final endpointTotalHeight = endpointLabelHeight + endpointValueHeight;
-        if (endpointMaxHeight < bestMaxHeight ||
-            (endpointMaxHeight == bestMaxHeight &&
-                endpointTotalHeight < bestTotalHeight)) {
-          bestLabelSlot = endpointLabelSlot;
-          bestValueSlot = endpointValueSlot;
+        // First compare the two one-sided choices explicitly. These are the
+        // common cases: either preserve the label's single line and let only
+        // the value wrap, or preserve the value's single line and let only the
+        // label wrap.
+        considerAllocation(labelWidth);
+        considerAllocation(availableAfterGap - valueWidth);
+
+        // If neither one-sided choice is short enough, compare shared-wrap
+        // allocations. Wrapping changes at word boundaries, so a one-pixel
+        // sweep is enough to find useful breakpoints while remaining stable at
+        // fractional device widths and Dynamic Type sizes.
+        for (
+          var candidateLabelSlot = searchStart;
+          candidateLabelSlot <= searchEnd;
+          candidateLabelSlot += 1.0
+        ) {
+          considerAllocation(candidateLabelSlot);
         }
+        // Include the fractional endpoint so the right edge remains exact.
+        considerAllocation(searchEnd);
 
         final row = Row(
           mainAxisSize: MainAxisSize.max,
