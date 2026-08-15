@@ -12165,12 +12165,21 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                               final originalIndex = _sectionOrder[rowIndex];
                               final isDragging =
                                   originalIndex == _draggingOriginalIndex;
-                              final hasGapAbove =
+                              // Keep the reorder separator attached to the
+                              // stationary row below the live placeholder.
+                              // This is the same rule used by category rows
+                              // and event tiles: it appears only while a drag
+                              // is active and only for the row immediately
+                              // following the hidden dragged row.
+                              final showSeparatorAbove =
                                   !isDragging &&
                                   _draggingOriginalIndex != null &&
                                   rowIndex > 0 &&
                                   _sectionOrder[rowIndex - 1] ==
                                       _draggingOriginalIndex;
+                              final showSeparatorBelow =
+                                  !isDragging &&
+                                  rowIndex < _sectionOrder.length - 1;
                               return Container(
                                 key: _rowKeys.putIfAbsent(
                                   originalIndex,
@@ -12198,7 +12207,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                                                   _deleteSection(originalIndex),
                                               child: Column(
                                                 children: [
-                                                  if (hasGapAbove)
+                                                  if (showSeparatorAbove)
                                                     Container(
                                                       height: 0.5,
                                                       color: separatorColor,
@@ -12238,8 +12247,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                                                       ],
                                                     ),
                                                   ),
-                                                  if (rowIndex <
-                                                      _sectionOrder.length - 1)
+                                                  if (showSeparatorBelow)
                                                     Container(
                                                       height: 0.5,
                                                       color: separatorColor,
