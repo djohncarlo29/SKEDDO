@@ -866,9 +866,11 @@ class AdaptivePillSpec {
 ///
 ///   [label][at least 25dp][pill group]
 ///
-/// If that complete group cannot fit, the label stays above the trailing group
-/// and the group either remains side-by-side or stacks its pills. This avoids
-/// clipping scaled date/time text while preserving the requested OS text size.
+/// If that complete group cannot fit, the label stays beside a trailing pill
+/// column whenever the individual pills can fit there. This keeps a date/time
+/// row compact without shrinking the requested OS text size. Only when the
+/// label and even the widest pill cannot share a line does the label move
+/// above the group.
 class AdaptiveLabelPillRow extends StatelessWidget {
   const AdaptiveLabelPillRow({
     super.key,
@@ -976,13 +978,11 @@ class AdaptiveLabelPillRow extends StatelessWidget {
     if (pills.length == 1) {
       final pill = pills.single;
       final compactText = pill.compactText;
-      final compactWidth = compactText == null
-          ? double.infinity
-          : _textWidth(context, compactText, pill.style) +
-                (horizontalPadding * 2);
-      final textOverride = compactText != null && compactWidth <= maxWidth
-          ? compactText
-          : null;
+      // This branch is reached only after the full pill failed to fit.
+      // Keep the abbreviated text even when it also exceeds the bound so it
+      // can wrap inside the pill instead of reverting to an unclipped full
+      // month name.
+      final textOverride = compactText != null ? compactText : null;
       return Align(
         alignment: Alignment.centerRight,
         child: _pill(pill, maxWidth: maxWidth, textOverride: textOverride),
@@ -998,6 +998,23 @@ class AdaptiveLabelPillRow extends StatelessWidget {
             padding: EdgeInsets.only(top: i == 0 ? 0.0 : pillGap),
             child: _pill(pills[i], maxWidth: maxWidth),
           ),
+      ],
+    );
+  }
+
+  Widget _labelAndPills({
+    required Widget label,
+    required Widget pillGroup,
+    required bool alignLabelToTop,
+  }) {
+    return Row(
+      crossAxisAlignment: alignLabelToTop
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
+      children: [
+        label,
+        const Spacer(),
+        pillGroup,
       ],
     );
   }
@@ -1019,17 +1036,46 @@ class AdaptiveLabelPillRow extends StatelessWidget {
                 constraints.maxWidth;
 
         if (fitsOnOneLine) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(width: labelWidth, child: _label(fillWidth: false)),
-              const Spacer(),
-              _pillGroup(context, naturalWidths, maxWidth: naturalGroupWidth),
-            ],
+          return _labelAndPills(
+            label: SizedBox(width: labelWidth, child: _label(fillWidth: false)),
+            pillGroup: _pillGroup(
+              context,
+              naturalWidths,
+              maxWidth: naturalGroupWidth,
+            ),
+            alignLabelToTop: false,
           );
         }
 
-        final maxWidth = constraints.maxWidth.isFinite
+        final availableTrailingWidth = constraints.maxWidth.isFinite
+            ? math.max(0.0, constraints.maxWidth - labelWidth - kLabelValueGap)
+            : naturalGroupWidth;
+
+        // Keep the label on the left while the date/time pills stack. This is
+        // the important narrow-sheet case: the pills retain their authored
+        // font size and only use the width actually available beside the
+        // label.
+        final widestPill = naturalWidths.reduce(
+          (a, b) => a > b ? a : b,
+        );
+        if (widestPill <= availableTrailingWidth) {
+          return _labelAndPills(
+            label: SizedBox(width: labelWidth, child: _label(fillWidth: false)),
+            pillGroup: _pillGroup(
+              context,
+              naturalWidths,
+              maxWidth: availableTrailingWidth,
+            ),
+            alignLabelToTop: true,
+          );
+        }
+
+        // The pill cannot share a line with the label. Give the group the
+        // entire row instead. For a single end-date pill this is what lets the
+        // full month name remain visible whenever the complete pill fits on
+        // its own line; _pillGroup chooses the abbreviation only if it does
+        // not.
+        final fullRowWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : naturalGroupWidth;
         return Column(
@@ -1040,7 +1086,7 @@ class AdaptiveLabelPillRow extends StatelessWidget {
             SizedBox(height: verticalWrapGap),
             Align(
               alignment: Alignment.centerRight,
-              child: _pillGroup(context, naturalWidths, maxWidth: maxWidth),
+              child: _pillGroup(context, naturalWidths, maxWidth: fullRowWidth),
             ),
           ],
         );
