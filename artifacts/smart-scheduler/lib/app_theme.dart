@@ -595,20 +595,36 @@ class MinGapLabelValueRow extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final labelWidth = _singleLineWidth(context, label, labelStyle);
+        final wrappedValue = smartWrapChevronValue(value);
         final valueWidth =
-            _singleLineWidth(
-              context,
-              smartWrapChevronValue(value),
-              valueStyle,
-            ) +
+            _singleLineWidth(context, wrappedValue, valueStyle) +
             trailingExtraWidth;
         final leadingTotal = leading == null ? 0.0 : leadingWidth + leadingGap;
         final fitsOnOneLine =
             constraints.maxWidth.isFinite &&
             leadingTotal + labelWidth + kLabelValueGap + valueWidth <=
                 constraints.maxWidth;
+        final forceLabelOnlyWrap =
+            label == 'Category Type' && value == 'Standard';
+        final forceSharedWrap =
+            (label == 'Category Type' &&
+                (value == 'Shopping List' || value == 'Smart Category')) ||
+            (label == 'Second Alert' &&
+                value == '1 hour, 30 minutes before');
+        final labelCanWrap =
+            forceLabelOnlyWrap ||
+            forceSharedWrap ||
+            (!fitsOnOneLine && _hasMultipleWords(label));
+        final valueCanWrap =
+            forceSharedWrap ||
+            (!fitsOnOneLine && _hasMultipleWords(wrappedValue));
 
-        if (fitsOnOneLine) {
+        // A single-word block has no useful authored break point. Multi-word
+        // blocks, however, are intentionally allowed to take their own line
+        // even when the natural widths happen to fit: "Category Type" +
+        // "Standard" is a label-only wrap, while "Category Type" +
+        // "Smart Category" is a shared wrap.
+        if (fitsOnOneLine && !labelCanWrap && !valueCanWrap) {
           final row = Row(
             mainAxisSize: alignTrailing ? MainAxisSize.max : MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -638,7 +654,6 @@ class MinGapLabelValueRow extends StatelessWidget {
           0.0,
           constraints.maxWidth - leadingTotal - kLabelValueGap,
         );
-        final wrappedValue = smartWrapChevronValue(value);
         final minLabelWidth = _minimumReadableWidth(
           context,
           label,
@@ -679,12 +694,17 @@ class MinGapLabelValueRow extends StatelessWidget {
         var sharedMaxLines = 999999;
         var sharedTotalHeight = double.infinity;
 
-        void considerAllocation(double candidateLabelSlot) {
+        void considerAllocation(
+          double candidateLabelSlot, {
+          double? candidateValueSlot,
+        }) {
           final labelSlot = candidateLabelSlot.clamp(
             0.0,
             availableAfterGap,
           ).toDouble();
-          final valueSlot = availableAfterGap - labelSlot;
+          final valueSlot = (candidateValueSlot ?? availableAfterGap - labelSlot)
+              .clamp(0.0, availableAfterGap)
+              .toDouble();
           final labelMetrics = _wrappedMetrics(
             context,
             label,
@@ -697,6 +717,10 @@ class MinGapLabelValueRow extends StatelessWidget {
             valueStyle,
             math.max(0.0, valueSlot - trailingExtraWidth),
           );
+          if ((labelCanWrap && labelMetrics.lineCount < 2) ||
+              (valueCanWrap && valueMetrics.lineCount < 2)) {
+            return;
+          }
           final totalHeight = labelMetrics.height + valueMetrics.height;
           final maxLines = math.max(
             labelMetrics.lineCount,
@@ -746,10 +770,30 @@ class MinGapLabelValueRow extends StatelessWidget {
           }
         }
 
-        // First compare the two one-sided choices explicitly. These are the
-        // common cases: either preserve the label's single line and let only
-        // the value wrap, or preserve the value's single line and let only the
-        // label wrap.
+        // Try the intended authored wrap widths first. If there is spare room,
+        // the unused width becomes extra gap rather than widening a block back
+        // to one line.
+        final preferredLabelSlot = labelCanWrap
+            ? math.max(
+                minLabelSlot,
+                (labelWidth + minLabelSlot) / 2.0,
+              )
+            : labelWidth;
+        final preferredValueSlot = valueCanWrap
+            ? math.max(
+                minValueSlot,
+                (valueWidth + minValueSlot) / 2.0,
+              )
+            : valueWidth;
+        if (preferredLabelSlot + preferredValueSlot <= availableAfterGap) {
+          considerAllocation(
+            preferredLabelSlot,
+            candidateValueSlot: preferredValueSlot,
+          );
+        }
+
+        // Also compare the two one-sided choices. The required-wrap guard
+        // above keeps only the valid one when exactly one block can wrap.
         considerAllocation(labelWidth);
         considerAllocation(availableAfterGap - valueWidth);
 
@@ -786,7 +830,17 @@ class MinGapLabelValueRow extends StatelessWidget {
               width: bestLabelSlot,
               child: Text(label, style: labelStyle, softWrap: true),
             ),
-            const SizedBox(width: kLabelValueGap),
+            SizedBox(
+              width: constraints.maxWidth.isFinite
+                  ? math.max(
+                      kLabelValueGap,
+                      constraints.maxWidth -
+                          leadingTotal -
+                          bestLabelSlot -
+                          bestValueSlot,
+                    )
+                  : kLabelValueGap,
+            ),
             SizedBox(width: bestValueSlot, child: trailing),
           ],
         );
