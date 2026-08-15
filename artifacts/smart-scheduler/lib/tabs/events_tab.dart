@@ -11889,6 +11889,7 @@ class _EditDcvSectionsSheet extends StatefulWidget {
 class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
   late List<int> _sectionOrder;
   final Set<int> _deletingSections = <int>{};
+  bool _isReordering = false;
 
   static const double _kHeaderEdge = 16.0;
   static const double _kHeaderTopShift = 12.5;
@@ -12056,6 +12057,12 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                       buildDefaultDragHandles: false,
                       itemCount: _sectionOrder.length,
                       onReorder: _reorder,
+                      onReorderStart: (_) => setState(() {
+                        _isReordering = true;
+                      }),
+                      onReorderEnd: (_) => setState(() {
+                        _isReordering = false;
+                      }),
                       proxyDecorator: _sectionReorderProxy,
                       itemBuilder: (context, rowIndex) {
                         final originalIndex = _sectionOrder[rowIndex];
@@ -12078,6 +12085,16 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                                         _deleteSection(originalIndex),
                                     child: Column(
                                       children: [
+                                        // During a drag, keep the separator
+                                        // attached to the row below the
+                                        // reorder gap. This mirrors event
+                                        // tiles and keeps a full-width line
+                                        // visible as the gap moves.
+                                        if (_isReordering && rowIndex > 0)
+                                          Container(
+                                            height: 0.5,
+                                            color: separatorColor,
+                                          ),
                                         IntrinsicHeight(
                                           child: Row(
                                             crossAxisAlignment:
@@ -12120,7 +12137,8 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                                             ],
                                           ),
                                         ),
-                                        if (rowIndex < _sectionOrder.length - 1)
+                                        if (!_isReordering &&
+                                            rowIndex < _sectionOrder.length - 1)
                                           Padding(
                                             padding: const EdgeInsets.symmetric(
                                               horizontal: 16,
