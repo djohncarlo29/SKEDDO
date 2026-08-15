@@ -11889,7 +11889,6 @@ class _EditDcvSectionsSheet extends StatefulWidget {
 class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
   late List<int> _sectionOrder;
   final Set<int> _deletingSections = <int>{};
-  final Map<int, GlobalKey> _rowKeys = <int, GlobalKey>{};
   int? _draggingOriginalIndex;
 
   static const double _kHeaderEdge = 16.0;
@@ -11907,59 +11906,12 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
     super.dispose();
   }
 
-  void _startReorder(int rowIndex) {
-    if (_draggingOriginalIndex != null ||
-        rowIndex < 0 ||
-        rowIndex >= _sectionOrder.length) {
-      return;
-    }
-    setState(() => _draggingOriginalIndex = _sectionOrder[rowIndex]);
-  }
-
-  void _updateReorder(Offset globalPosition) {
-    final draggingOriginalIndex = _draggingOriginalIndex;
-    if (draggingOriginalIndex == null) return;
-
-    final stationaryRows = <({double top, double bottom})>[];
-    for (final originalIndex in _sectionOrder) {
-      if (originalIndex == draggingOriginalIndex) continue;
-      final box =
-          _rowKeys[originalIndex]?.currentContext?.findRenderObject()
-              as RenderBox?;
-      if (box == null || !box.attached) continue;
-      final top = box.localToGlobal(Offset.zero).dy;
-      stationaryRows.add((top: top, bottom: top + box.size.height));
-    }
-    stationaryRows.sort((a, b) => a.top.compareTo(b.top));
-    if (stationaryRows.isEmpty) return;
-
-    // Measure the insertion point with the dragged row removed. This keeps
-    // the hidden placeholder live, just like the event-tile reorder flow.
-    var insertionIndex = stationaryRows.length;
-    for (var i = 0; i < stationaryRows.length; i++) {
-      final row = stationaryRows[i];
-      if (globalPosition.dy < row.top) {
-        insertionIndex = i;
-        break;
-      }
-      if (globalPosition.dy <= row.bottom) {
-        insertionIndex =
-            i + (globalPosition.dy > (row.top + row.bottom) / 2 ? 1 : 0);
-        break;
-      }
-    }
-
-    final currentIndex = _sectionOrder.indexOf(draggingOriginalIndex);
-    if (currentIndex < 0 || currentIndex == insertionIndex) return;
+  void _reorder(int oldIndex, int newIndex) {
     setState(() {
-      _sectionOrder.removeAt(currentIndex);
-      _sectionOrder.insert(insertionIndex, draggingOriginalIndex);
+      if (newIndex > oldIndex) newIndex -= 1;
+      final moved = _sectionOrder.removeAt(oldIndex);
+      _sectionOrder.insert(newIndex, moved);
     });
-  }
-
-  void _endReorder() {
-    if (!mounted || _draggingOriginalIndex == null) return;
-    setState(() => _draggingOriginalIndex = null);
   }
 
   void _save() {
@@ -11993,18 +11945,21 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
     });
   }
 
-  Widget _sectionDragFeedback(BuildContext context, int originalIndex) {
+  Widget _sectionReorderProxy(
+    Widget child,
+    int index,
+    Animation<double> animation,
+  ) {
+    // Keep the lifted row on the modal-card surface instead of using the
+    // generic Material proxy supplied by ReorderableListView.
     final shadows = resolveThemeShadows(const [
       BoxShadow(color: Color(0x3A000000), blurRadius: 18, offset: Offset(0, 6)),
     ], context);
     final rowCardColor = resolveThemeColor(kModalCard, context);
-    final textColor = resolveThemeColor(kPrimaryLabel, context);
-    final label = widget.sectionNames[originalIndex].trim();
     return Transform.scale(
       scale: 1.05,
       child: _DarkModeGhostOutline(
         child: Container(
-          width: MediaQuery.sizeOf(context).width - 32,
           decoration: ShapeDecoration(
             color: rowCardColor,
             shape: BoundedContinuousRectangleBorder(
@@ -12013,67 +11968,25 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
             ),
             shadows: shadows,
           ),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
-                    child: Text(
-                      label.isEmpty ? 'New Section' : label,
-                      style: TextStyle(
-                        inherit: false,
-                        color: textColor,
-                        fontFamily: kSFProText,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w400,
-                        height: 1.2,
-                      ),
-                    ),
-                  ),
-                ),
-                _sectionDragHandle(
-                  context,
-                  originalIndex,
-                  widget.accentColor,
-                  interactive: false,
-                ),
-              ],
-            ),
-          ),
+          child: child,
         ),
       ),
     );
   }
 
-  Widget _sectionDragHandle(
-    BuildContext context,
-    int originalIndex,
-    Color handleColor, {
-    bool interactive = true,
-  }) {
-    final handle = SizedBox(
-      width: 52,
-      child: Center(
-        child: Icon(
-          CupertinoIcons.line_horizontal_3,
-          size: 21,
-          color: handleColor,
+  Widget _sectionDragHandle(int rowIndex, Color handleColor) {
+    return ReorderableDragStartListener(
+      index: rowIndex,
+      child: SizedBox(
+        width: 52,
+        child: Center(
+          child: Icon(
+            CupertinoIcons.line_horizontal_3,
+            size: 21,
+            color: handleColor,
+          ),
         ),
       ),
-    );
-    if (!interactive) return handle;
-    final rowIndex = _sectionOrder.indexOf(originalIndex);
-    return LongPressDraggable<int>(
-      data: originalIndex,
-      maxSimultaneousDrags: 1,
-      feedback: _sectionDragFeedback(context, originalIndex),
-      childWhenDragging: Opacity(opacity: 0, child: handle),
-      onDragStarted: () => _startReorder(rowIndex),
-      onDragUpdate: (details) => _updateReorder(details.globalPosition),
-      onDragEnd: (_) => _endReorder(),
-      child: handle,
     );
   }
 
@@ -12153,115 +12066,101 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                       ),
                       shadows: resolveThemeShadows(kCardShadow, context),
                     ),
-                    child: Column(
-                      children: [
-                        for (
-                          var rowIndex = 0;
-                          rowIndex < _sectionOrder.length;
-                          rowIndex++
-                        )
-                          Builder(
-                            builder: (context) {
-                              final originalIndex = _sectionOrder[rowIndex];
-                              final isDragging =
-                                  originalIndex == _draggingOriginalIndex;
-                              // Keep the reorder separator attached to the
-                              // stationary row below the live placeholder.
-                              // This is the same rule used by category rows
-                              // and event tiles: it appears only while a drag
-                              // is active and only for the row immediately
-                              // following the hidden dragged row.
-                              final showSeparatorAbove =
-                                  !isDragging &&
-                                  _draggingOriginalIndex != null &&
-                                  rowIndex > 0 &&
-                                  _sectionOrder[rowIndex - 1] ==
-                                      _draggingOriginalIndex;
-                              final showSeparatorBelow =
-                                  !isDragging &&
-                                  rowIndex < _sectionOrder.length - 1;
-                              return Container(
-                                key: _rowKeys.putIfAbsent(
-                                  originalIndex,
-                                  GlobalKey.new,
-                                ),
-                                child: AnimatedSize(
-                                  duration: const Duration(milliseconds: 280),
-                                  curve: Curves.easeInOut,
-                                  child:
-                                      _deletingSections.contains(originalIndex)
-                                      ? const SizedBox(
-                                          width: double.infinity,
-                                          height: 0,
-                                        )
-                                      : Opacity(
-                                          opacity: isDragging ? 0.0 : 1.0,
-                                          child: IgnorePointer(
-                                            ignoring: isDragging,
-                                            child: _SwipeToRevealDelete(
-                                              iconSize: MediaQuery.textScalerOf(
-                                                context,
-                                              ).scale(17),
-                                              dismissOnTap: false,
-                                              onDelete: () =>
-                                                  _deleteSection(originalIndex),
-                                              child: Column(
-                                                children: [
-                                                  if (showSeparatorAbove)
-                                                    Container(
-                                                      height: 0.5,
-                                                      color: separatorColor,
-                                                    ),
-                                                  IntrinsicHeight(
-                                                    child: Row(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .stretch,
-                                                      children: [
-                                                        Expanded(
-                                                          child: Padding(
-                                                            padding:
-                                                                const EdgeInsets.fromLTRB(
-                                                                  16,
-                                                                  16,
-                                                                  8,
-                                                                  16,
-                                                                ),
-                                                            child: Text(
-                                                              widget.sectionNames[originalIndex]
-                                                                      .trim()
-                                                                      .isEmpty
-                                                                  ? 'New Section'
-                                                                  : widget
-                                                                        .sectionNames[originalIndex],
-                                                              style:
-                                                                  sectionTextStyle,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        _sectionDragHandle(
-                                                          context,
-                                                          originalIndex,
-                                                          handleColor,
-                                                        ),
-                                                      ],
-                                                    ),
+                    child: ReorderableListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      buildDefaultDragHandles: false,
+                      itemCount: _sectionOrder.length,
+                      onReorder: _reorder,
+                      onReorderStart: (rowIndex) => setState(() {
+                        _draggingOriginalIndex = _sectionOrder[rowIndex];
+                      }),
+                      onReorderEnd: (_) => setState(() {
+                        _draggingOriginalIndex = null;
+                      }),
+                      proxyDecorator: _sectionReorderProxy,
+                      itemBuilder: (context, rowIndex) {
+                        final originalIndex = _sectionOrder[rowIndex];
+                        final isDragging =
+                            originalIndex == _draggingOriginalIndex;
+                        // Keep the established separator rule: while a drag
+                        // is active, the extra line belongs only above the
+                        // stationary row immediately below the reorder gap.
+                        final showSeparatorAbove =
+                            !isDragging &&
+                            _draggingOriginalIndex != null &&
+                            rowIndex > 0 &&
+                            _sectionOrder[rowIndex - 1] ==
+                                _draggingOriginalIndex;
+                        final showSeparatorBelow =
+                            !isDragging && rowIndex < _sectionOrder.length - 1;
+                        return Container(
+                          key: ValueKey(originalIndex),
+                          child: AnimatedSize(
+                            duration: const Duration(milliseconds: 280),
+                            curve: Curves.easeInOut,
+                            child: _deletingSections.contains(originalIndex)
+                                ? const SizedBox(
+                                    width: double.infinity,
+                                    height: 0,
+                                  )
+                                : _SwipeToRevealDelete(
+                                    iconSize: MediaQuery.textScalerOf(
+                                      context,
+                                    ).scale(17),
+                                    dismissOnTap: false,
+                                    onDelete: () =>
+                                        _deleteSection(originalIndex),
+                                    child: Column(
+                                      children: [
+                                        if (showSeparatorAbove)
+                                          Container(
+                                            height: 0.5,
+                                            color: separatorColor,
+                                          ),
+                                        IntrinsicHeight(
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              Expanded(
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.fromLTRB(
+                                                        16,
+                                                        16,
+                                                        8,
+                                                        16,
+                                                      ),
+                                                  child: Text(
+                                                    widget.sectionNames[originalIndex]
+                                                            .trim()
+                                                            .isEmpty
+                                                        ? 'New Section'
+                                                        : widget
+                                                              .sectionNames[originalIndex],
+                                                    style: sectionTextStyle,
                                                   ),
-                                                  if (showSeparatorBelow)
-                                                    Container(
-                                                      height: 0.5,
-                                                      color: separatorColor,
-                                                    ),
-                                                ],
+                                                ),
                                               ),
-                                            ),
+                                              _sectionDragHandle(
+                                                rowIndex,
+                                                handleColor,
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                ),
-                              );
-                            },
+                                        if (showSeparatorBelow)
+                                          Container(
+                                            height: 0.5,
+                                            color: separatorColor,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
                           ),
-                      ],
+                        );
+                      },
                     ),
                   ),
                 ],
