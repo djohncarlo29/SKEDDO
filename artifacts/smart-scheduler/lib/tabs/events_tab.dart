@@ -4479,6 +4479,21 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           ? List<String>.of(eventIds[index])
           : <String>[],
     );
+    // A newly-created event is initially assigned to the first visible
+    // section by _CategoryDetailView.  That local assignment may not have
+    // reached the parent map before the user opens Edit Sections.  Reconcile
+    // those events before applying the header permutation, otherwise the
+    // event is considered unassigned after the old first section moves.
+    final visibleEventIds = _visibleDcvEventIds(label);
+    final assignedEventIds = {
+      for (final section in normalizedEventIds) ...section,
+    };
+    final unassignedVisibleEventIds = visibleEventIds
+        .where((id) => assignedEventIds.add(id))
+        .toList();
+    if (unassignedVisibleEventIds.isNotEmpty) {
+      normalizedEventIds.first.addAll(unassignedVisibleEventIds);
+    }
     final validOrder =
         order.toSet().length == order.length &&
         order.every((index) => index >= 0 && index < names.length);
@@ -4519,6 +4534,66 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       _dcvCustomSectionEventIds[label] = reorderedEventIds;
     });
     _saveCategories();
+  }
+
+  /// Returns the event IDs currently visible in a DCV.
+  ///
+  /// This deliberately mirrors the filtering used when building the DCV.
+  /// It is used only to repair the parent-side section membership map before
+  /// a section edit, so events created immediately before the edit cannot be
+  /// mistaken for belonging to the newly-first section.
+  List<String> _visibleDcvEventIds(String label) {
+    final allEvents = EventStore.instance.events.value;
+    final cat = [..._userCategories, ..._pinnedUserCategories]
+        .cast<_UserCategory?>()
+        .firstWhere((category) => category?.name == label, orElse: () => null);
+
+    const builtIns = {
+      'Today',
+      'Tomorrow',
+      'This Week',
+      'Next Week',
+      'Scheduled',
+      'Unscheduled',
+      'All Events',
+      'Completed',
+    };
+    if (cat?.categoryType == 'Smart Category' &&
+        cat!.smartDescription.isNotEmpty) {
+      return AIServices.matcher
+          .match(
+            candidates: allEvents,
+            rule: cat.smartDescription,
+            categoryName: cat.name,
+            now: DateTime.now(),
+          )
+          .map((event) => event.id)
+          .toList();
+    }
+    if (builtIns.contains(label)) {
+      return AIServices.matcher
+          .match(
+            candidates: allEvents,
+            rule: label,
+            builtInLabel: label,
+            now: DateTime.now(),
+          )
+          .map((event) => event.id)
+          .toList();
+    }
+
+    final categoryId = cat?.id;
+    if (categoryId == null) return const <String>[];
+    const uncategorizedIds = {'sys-uncategorized', 'uncategorized', ''};
+    final isUncategorized = uncategorizedIds.contains(categoryId);
+    return allEvents
+        .where(
+          (event) => isUncategorized
+              ? uncategorizedIds.contains(event.categoryId)
+              : event.categoryId == categoryId,
+        )
+        .map((event) => event.id)
+        .toList();
   }
 
   /// Deletes a section immediately from the DCV header's swipe action.

@@ -56,3 +56,4 @@
 - [Variable category row heights](variable-category-row-heights.md) — category slots and drag geometry must use each item’s measured height, not the tallest row globally.
 - [Flutter web preview rebuilds](flutter-web-preview-rebuild.md) — compiled Flutter web previews need a workflow restart for Dart changes to appear; file touches do not provide hot reload.
 - [Editable DCV section keyboard reveal](editable-dcv-section-keyboard.md) — focused section headers near the viewport bottom need post-inset ensureVisible, including after wrapped text grows.
+- [DCV section membership reconciliation](dcv-section-membership-reconciliation.md) — reconcile newly visible events into the first section before permuting headers, or stale parent membership moves them with the new first header.
