@@ -13521,14 +13521,16 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
 
   /// Applies one live drag reorder update.
   ///
-  /// [doSwap] mutates [_items] and [_draggingIndex] in place; it is called
-  /// inside [setState] so the framework rebuilds after the mutation.
+  /// [doSwap] mutates [_items] and [_draggingIndex] in place.  The mutation is
+  /// followed by one rebuild that includes the predicted row offsets, so the
+  /// new order never paints without its starting transform.
   ///
   void _applyDragSwap(VoidCallback doSwap) {
     // Keep every live swap independent from the sort FLIP controller.  This
     // also handles a swap that happens immediately after a sort-mode change,
     // before its post-frame measurement callback has completed.
     final beforeY = <String, double>{};
+    final beforeHeight = <String, double>{};
     for (final entry in _itemKeys.entries) {
       final box = entry.value.currentContext?.findRenderObject() as RenderBox?;
       if (box != null && box.attached) {
@@ -13536,13 +13538,103 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         // transform, so a second rapid swap starts from what is actually on
         // screen rather than from the stale logical slot.
         beforeY[entry.key] = box.localToGlobal(Offset.zero).dy;
+        beforeHeight[entry.key] = box.size.height;
       }
     }
 
+    final oldSections = _buildDisplaySections();
+    final activeTransform = 1.0 - _sortAnimCtrl.value;
+    final logicalY = <String, double>{
+      for (final entry in beforeY.entries)
+        entry.key:
+            entry.value - (_sortAnimFromY[entry.key] ?? 0.0) * activeTransform,
+    };
+
+    // Mutate before the rebuild so same-section target slots can be computed
+    // synchronously.  This avoids the one-frame "new order, no transform"
+    // state that made stationary tiles flash before the post-frame FLIP pass.
+    doSwap();
+
+    final newSections = _buildDisplaySections();
+    final predictedOffsets = <String, double>{};
+    final oldSectionById = <String, int>{};
+    final newSectionById = <String, int>{};
+    for (
+      var sectionIndex = 0;
+      sectionIndex < oldSections.length;
+      sectionIndex++
+    ) {
+      for (final event in oldSections[sectionIndex].events) {
+        oldSectionById[event.id] = sectionIndex;
+      }
+    }
+    for (
+      var sectionIndex = 0;
+      sectionIndex < newSections.length;
+      sectionIndex++
+    ) {
+      for (final event in newSections[sectionIndex].events) {
+        newSectionById[event.id] = sectionIndex;
+      }
+    }
+
+    // Direct prediction is safe when the drag stays within one grouped card:
+    // section origins do not move, and each row's measured height gives the
+    // exact target slot.  Cross-section moves still use the measured fallback
+    // below because AnimatedSize may be changing the neighbouring card heights.
+    final sameSectionMove =
+        oldSections.length == newSections.length &&
+        newSectionById.entries.every(
+          (entry) => oldSectionById[entry.key] == entry.value,
+        );
+    if (sameSectionMove) {
+      for (
+        var sectionIndex = 0;
+        sectionIndex < newSections.length;
+        sectionIndex++
+      ) {
+        final oldEvents = oldSections[sectionIndex].events;
+        final newEvents = newSections[sectionIndex].events;
+        if (oldEvents.isEmpty || newEvents.isEmpty) continue;
+        final firstId = oldEvents.first.id;
+        final sectionOrigin = logicalY[firstId];
+        if (sectionOrigin == null) continue;
+
+        var targetY = sectionOrigin;
+        for (final event in newEvents) {
+          final visualY = beforeY[event.id];
+          if (visualY != null && event.id != _dragEvent?.id) {
+            final delta = visualY - targetY;
+            if (delta.abs() > 0.5) predictedOffsets[event.id] = delta;
+          }
+          targetY += beforeHeight[event.id] ?? 0.0;
+        }
+      }
+    }
+
+    // Commit the new order, starting offsets, and animation reset as one
+    // visual state change.  In particular, do not clear _sortAnimFromY before
+    // resetting the controller: AnimationController notifies its
+    // AnimatedBuilders synchronously, and that ordering used to let the newly
+    // reordered column paint once with no FLIP transform.
     _sortAnimCtrl.stop();
-    _sortAnimCtrl.value = 0.0;
-    _sortAnimFromY.clear();
-    setState(doSwap);
+    setState(() {
+      _sortAnimFromY
+        ..clear()
+        ..addAll(predictedOffsets);
+      _sortAnimCtrl.value = 0.0;
+    });
+
+    if (predictedOffsets.isNotEmpty) {
+      _sortAnimCtrl
+          .animateTo(
+            1.0,
+            duration: _kDragReflowDuration,
+            curve: Curves.easeInOutCubic,
+          )
+          .ignore();
+      return;
+    }
 
     if (beforeY.isEmpty) return;
 
