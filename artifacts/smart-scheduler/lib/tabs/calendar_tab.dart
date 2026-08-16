@@ -9402,6 +9402,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
       label: 'Reminder Date',
       labelStyle: _kLabelStyle,
       wrapLabelLast: true,
+      labelValueGap: 8.0,
       onLabelTap: () => _togglePicker('reminder'),
       pills: [
         AdaptivePillSpec(

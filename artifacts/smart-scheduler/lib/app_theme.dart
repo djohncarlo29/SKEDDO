@@ -883,12 +883,13 @@ class AdaptivePillSpec {
 ///
 /// The natural single-line layout is always preferred:
 ///
-///   [label][at least 25dp][pill group]
+///   [label][minimum label-to-pill gap][pill group]
 ///
 /// If that complete group cannot fit, the label stays beside a trailing pill
 /// column. Date/time pills stack in that column and may wrap internally at
 /// the current OS text scale. Only when the label itself consumes the row does
-/// the label move above the group.
+/// the label move above the group. The default minimum gap is 25dp and can be
+/// tightened for compact rows that prioritize keeping all content on one line.
 class AdaptiveLabelPillRow extends StatelessWidget {
   const AdaptiveLabelPillRow({
     super.key,
@@ -901,6 +902,7 @@ class AdaptiveLabelPillRow extends StatelessWidget {
     this.horizontalPadding = 12.0,
     this.verticalPadding = 6.0,
     this.wrapLabelLast = false,
+    this.labelValueGap = kLabelValueGap,
   }) : assert(pills.length > 0);
 
   final String label;
@@ -914,6 +916,9 @@ class AdaptiveLabelPillRow extends StatelessWidget {
   /// Keep a multi-word label on one line while pills stack, only allowing
   /// the label to wrap if a stacked pill would otherwise wrap internally.
   final bool wrapLabelLast;
+  /// Minimum gap used when deciding whether the label and pill group can share
+  /// one line. Existing rows retain the shared 25dp gap by default.
+  final double labelValueGap;
 
   double _textWidth(BuildContext context, String text, TextStyle style) {
     final painter = TextPainter(
@@ -1078,7 +1083,7 @@ class AdaptiveLabelPillRow extends StatelessWidget {
             (pillGap * math.max(0, pills.length - 1));
         final fitsOnOneLine =
             constraints.maxWidth.isFinite &&
-            labelWidth + kLabelValueGap + naturalGroupWidth <=
+            labelWidth + labelValueGap + naturalGroupWidth <=
                 constraints.maxWidth;
 
         if (fitsOnOneLine) {
@@ -1094,7 +1099,7 @@ class AdaptiveLabelPillRow extends StatelessWidget {
         }
 
         final availableTrailingWidth = constraints.maxWidth.isFinite
-            ? math.max(0.0, constraints.maxWidth - labelWidth - kLabelValueGap)
+            ? math.max(0.0, constraints.maxWidth - labelWidth - labelValueGap)
             : naturalGroupWidth;
 
         // Keep the label on the left while the date/time pills stack. This is
@@ -1120,7 +1125,7 @@ class AdaptiveLabelPillRow extends StatelessWidget {
               0.0,
               constraints.maxWidth -
                   wrappedLabelWidth -
-                  kLabelValueGap,
+                  labelValueGap,
             );
             if (wrappedLabelWidth < labelWidth &&
                 _pillsFitOnSingleLines(
