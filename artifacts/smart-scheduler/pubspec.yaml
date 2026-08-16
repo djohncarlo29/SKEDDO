@@ -66,18 +66,3 @@ flutter:
           weight: 700
         - asset: assets/fonts/SF-Pro-Heavy.otf
           weight: 800
-
-    - family: SFProDisplay
-      fonts:
-        - asset: assets/fonts/SF-Pro-Light.otf
-          weight: 300
-        - asset: assets/fonts/SF-Pro-Regular.otf
-          weight: 400
-        - asset: assets/fonts/SF-Pro-Medium.otf
-          weight: 500
-        - asset: assets/fonts/SF-Pro-Semibold.otf
-          weight: 600
-        - asset: assets/fonts/SF-Pro-Bold.otf
-          weight: 700
-        - asset: assets/fonts/SF-Pro-Heavy.otf
-          weight: 800

@@ -1648,7 +1648,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           Text(
             title,
             style: TextStyle(
-              fontFamily: kSFProDisplay,
+              fontFamily: kSFProText,
               fontSize: 34,
               fontWeight: FontWeight.bold,
               fontStyle: FontStyle.normal,
@@ -2416,7 +2416,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                           '',
                                                                       style: TextStyle(
                                                                         fontFamily:
-                                                                            kSFProDisplay,
+                                                                            kSFProText,
                                                                         fontSize:
                                                                             34,
                                                                         fontWeight:
@@ -2433,7 +2433,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                       _nonDCVHeaderTitle,
                                                                       style: TextStyle(
                                                                         fontFamily:
-                                                                            kSFProDisplay,
+                                                                            kSFProText,
                                                                         fontSize:
                                                                             34,
                                                                         fontWeight:

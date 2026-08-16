@@ -4049,7 +4049,7 @@ class _WeekRowState extends State<_WeekRow> {
 //
 // Mirrors the Events Tab's _CategoryDetailView empty-state exactly:
 //   list_bullet icon (64 px, kSecondaryLabel)
-//   "No Events"  headline  (22 px SFProDisplay w700)
+//   "No Events"  headline  (22 px SFProText w700)
 //   Subtitle     body copy (15 px SFProText   w400)
 // ══════════════════════════════════════════════════════════════════════════════
 class _DayListPlaceholder extends StatelessWidget {
@@ -4089,7 +4089,7 @@ class _DayListPlaceholder extends StatelessWidget {
                     inherit: false,
                     color: primaryLabel,
                     fontSize: 22,
-                    fontFamily: kSFProDisplay,
+                    fontFamily: kSFProText,
                     fontWeight: FontWeight.w700,
                     fontStyle: FontStyle.normal,
                     letterSpacing: -0.3,

@@ -763,7 +763,7 @@ class SearchNoResults extends StatelessWidget {
             inherit: false,
             color: primaryLabel,
             fontSize: 22,
-            fontFamily: kSFProDisplay,
+            fontFamily: kSFProText,
             fontWeight: FontWeight.w700,
             fontStyle: FontStyle.normal,
             letterSpacing: -0.3,

@@ -1197,10 +1197,6 @@ String? get kSFProText =>
     (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
     ? 'SFProText'
     : null;
-String? get kSFProDisplay =>
-    (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
-    ? 'SFProDisplay'
-    : null;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // AnimatedTapIcon — press-shrink + dim animation for bare icon buttons.
