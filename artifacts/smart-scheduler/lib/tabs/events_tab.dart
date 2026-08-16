@@ -3593,6 +3593,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     _UserCategory cat, {
     bool suppressDarkModeOutline = false,
   }) {
+    final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     return Container(
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
@@ -3689,7 +3690,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                   '${_liveEventCounts[cat.id] ?? 0}',
                   style: TextStyle(
                     inherit: false,
-                    color: kSecondaryLabel,
+                    color: secondaryLabel,
                     fontSize: 16,
                     fontFamily: kSFProText,
                     fontWeight: FontWeight.w400,
@@ -3697,10 +3698,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     letterSpacing: kTracking16,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 6),
                 Icon(
                   CupertinoIcons.chevron_right,
-                  color: kSecondaryLabel,
+                  color: secondaryLabel,
                   size: MediaQuery.textScalerOf(context).scale(14),
                 ),
               ],
