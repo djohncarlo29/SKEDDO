@@ -304,8 +304,8 @@ class CalendarTabState extends State<CalendarTab>
   void _resyncMonthCtrlForDayView() {
     _monthViewScrollCtrl.removeListener(_syncPreviewScrollToCurrent);
     _monthViewScrollCtrl.dispose();
-    _monthViewScrollCtrl =
-        ScrollController()..addListener(_syncPreviewScrollToCurrent);
+    _monthViewScrollCtrl = ScrollController()
+      ..addListener(_syncPreviewScrollToCurrent);
   }
 
   // Keeps the (already-mounted, IgnorePointer'd) prev/next preview MonthView
@@ -348,10 +348,9 @@ class CalendarTabState extends State<CalendarTab>
     required bool isPrev,
     required String key,
   }) {
-    final double offset =
-        _yearScrollCtrl.hasClients
-            ? _yearScrollCtrl.offset
-            : _savedYearScrollOffset;
+    final double offset = _yearScrollCtrl.hasClients
+        ? _yearScrollCtrl.offset
+        : _savedYearScrollOffset;
     if (isPrev) {
       if (_prevYearPreviewScrollKey != key) {
         _prevYearPreviewScrollCtrl?.dispose();
@@ -377,10 +376,9 @@ class CalendarTabState extends State<CalendarTab>
     required bool isPrev,
     required String key,
   }) {
-    final double offset =
-        _monthViewScrollCtrl.hasClients
-            ? _monthViewScrollCtrl.offset
-            : _savedMonthScrollOffset;
+    final double offset = _monthViewScrollCtrl.hasClients
+        ? _monthViewScrollCtrl.offset
+        : _savedMonthScrollOffset;
     if (isPrev) {
       if (_prevPreviewScrollKey != key) {
         _prevPreviewScrollCtrl?.dispose();
@@ -480,8 +478,8 @@ class CalendarTabState extends State<CalendarTab>
   }) {
     showRoundedCupertinoSheet<void>(
       context: shellContext,
-      pageBuilder:
-          (ctx) => _NewEventSheet(initialCategoryId: initialCategoryId),
+      pageBuilder: (ctx) =>
+          _NewEventSheet(initialCategoryId: initialCategoryId),
     );
   }
 
@@ -520,10 +518,12 @@ class CalendarTabState extends State<CalendarTab>
     // During morph, return adjacent titles matching whichever view owns the title
     if (t > 0.01 && t < 0.99) {
       if (t >= 0.65) {
-        final prevM =
-            _dispMonth == 1 ? (_dispYear - 1, 12) : (_dispYear, _dispMonth - 1);
-        final nextM =
-            _dispMonth == 12 ? (_dispYear + 1, 1) : (_dispYear, _dispMonth + 1);
+        final prevM = _dispMonth == 1
+            ? (_dispYear - 1, 12)
+            : (_dispYear, _dispMonth - 1);
+        final nextM = _dispMonth == 12
+            ? (_dispYear + 1, 1)
+            : (_dispYear, _dispMonth + 1);
         return (_kMonthNames[prevM.$2 - 1], curr, _kMonthNames[nextM.$2 - 1]);
       } else {
         return ('${_dispYear - 1}', curr, '${_dispYear + 1}');
@@ -533,10 +533,12 @@ class CalendarTabState extends State<CalendarTab>
       case CalendarView.year:
         return ('${_dispYear - 1}', curr, '${_dispYear + 1}');
       case CalendarView.month:
-        final prevM =
-            _dispMonth == 1 ? (_dispYear - 1, 12) : (_dispYear, _dispMonth - 1);
-        final nextM =
-            _dispMonth == 12 ? (_dispYear + 1, 1) : (_dispYear, _dispMonth + 1);
+        final prevM = _dispMonth == 1
+            ? (_dispYear - 1, 12)
+            : (_dispYear, _dispMonth - 1);
+        final nextM = _dispMonth == 12
+            ? (_dispYear + 1, 1)
+            : (_dispYear, _dispMonth + 1);
         return (_kMonthNames[prevM.$2 - 1], curr, _kMonthNames[nextM.$2 - 1]);
       case CalendarView.day:
         final prevD = _selected.subtract(const Duration(days: 1));
@@ -644,8 +646,8 @@ class CalendarTabState extends State<CalendarTab>
       case CalendarView.month:
         final target =
             _selected.month == _dispMonth && _selected.year == _dispYear
-                ? _selected
-                : DateTime(_dispYear, _dispMonth, 1);
+            ? _selected
+            : DateTime(_dispYear, _dispMonth, 1);
         _enterDay(target);
         break;
       case CalendarView.day:
@@ -685,13 +687,13 @@ class CalendarTabState extends State<CalendarTab>
     // inherit a stale initial offset from a previous Month/Day excursion.
     _monthViewScrollCtrl.removeListener(_syncPreviewScrollToCurrent);
     _monthViewScrollCtrl.dispose();
-    _monthViewScrollCtrl =
-        ScrollController()..addListener(_syncPreviewScrollToCurrent);
+    _monthViewScrollCtrl = ScrollController()
+      ..addListener(_syncPreviewScrollToCurrent);
 
     _yearScrollCtrl.removeListener(_syncYearPreviewScrollToCurrent);
     _yearScrollCtrl.dispose();
-    _yearScrollCtrl =
-        ScrollController()..addListener(_syncYearPreviewScrollToCurrent);
+    _yearScrollCtrl = ScrollController()
+      ..addListener(_syncYearPreviewScrollToCurrent);
 
     setState(() {
       _today = now;
@@ -912,22 +914,19 @@ class CalendarTabState extends State<CalendarTab>
     if (_weekStripDrag) {
       // Week-strip swipe: always bloom the incoming day (any 7-day jump is
       // a significant step and deserves visual confirmation).
-      target =
-          isNext
-              ? _selected.add(const Duration(days: 7))
-              : _selected.subtract(const Duration(days: 7));
+      target = isNext
+          ? _selected.add(const Duration(days: 7))
+          : _selected.subtract(const Duration(days: 7));
       shouldBloom = true;
     } else {
       // Single-day swipe: bloom only on cross-week or cross-month boundary.
-      target =
-          isNext
-              ? _selected.add(const Duration(days: 1))
-              : _selected.subtract(const Duration(days: 1));
-      final isCrossWeek =
-          isNext
-              ? _selected.weekday ==
-                  7 // Sun → Mon
-              : _selected.weekday == 1; // Mon → Sun
+      target = isNext
+          ? _selected.add(const Duration(days: 1))
+          : _selected.subtract(const Duration(days: 1));
+      final isCrossWeek = isNext
+          ? _selected.weekday ==
+                7 // Sun → Mon
+          : _selected.weekday == 1; // Mon → Sun
       final isCrossMonth = target.month != _selected.month;
       shouldBloom = isCrossWeek || isCrossMonth;
     }
@@ -1076,8 +1075,9 @@ class CalendarTabState extends State<CalendarTab>
   void _measureYearRowTops() {
     final calBox = context.findRenderObject() as RenderBox?;
     if (calBox == null) return;
-    final scrollOffset =
-        _yearScrollCtrl.hasClients ? _yearScrollCtrl.offset : 0.0;
+    final scrollOffset = _yearScrollCtrl.hasClients
+        ? _yearScrollCtrl.offset
+        : 0.0;
     final tops = <double>[];
     for (final key in _yearRowKeys) {
       final rowBox = key.currentContext?.findRenderObject() as RenderBox?;
@@ -1094,8 +1094,9 @@ class CalendarTabState extends State<CalendarTab>
   void _enterMonth(int monthIdx) {
     // Capture exact row positions before the zoom animation hides the YearView.
     _measureYearRowTops();
-    _zoomScrollOffset =
-        _yearScrollCtrl.hasClients ? _yearScrollCtrl.offset : 0.0;
+    _zoomScrollOffset = _yearScrollCtrl.hasClients
+        ? _yearScrollCtrl.offset
+        : 0.0;
     setState(() {
       _zoomMonthIdx = monthIdx;
       _dispMonth = monthIdx + 1;
@@ -1175,8 +1176,9 @@ class CalendarTabState extends State<CalendarTab>
     // setState triggers a rebuild.  This value is used by _AnimatedWeekRow to
     // offset its Y-translation so the selected row lands at visual-y = 0 even
     // when the user has scrolled in Details mode.
-    final capturedOffset =
-        _monthViewScrollCtrl.hasClients ? _monthViewScrollCtrl.offset : 0.0;
+    final capturedOffset = _monthViewScrollCtrl.hasClients
+        ? _monthViewScrollCtrl.offset
+        : 0.0;
     setState(() {
       _selected = date;
       _collapseRow = _weekRowForDate(date);
@@ -1532,28 +1534,23 @@ class CalendarTabState extends State<CalendarTab>
                   suggestedQuery: _searchSuggestion,
                   onSuggestionTap: _applySearchSuggestion,
                   eventTopPadding: 18,
-                  eventTileWrapper:
-                      (
-                        hit,
-                        child,
-                        previewBuilder,
-                      ) => wrapSearchEventTileWithActions(
+                  eventTileWrapper: (hit, child, previewBuilder) =>
+                      wrapSearchEventTileWithActions(
                         hit: hit,
                         child: child,
                         previewBuilder: previewBuilder,
-                        onEdit:
-                            widget.onEditEvent == null
-                                ? null
-                                : () {
-                                  // Exit Calendar's overlay search session
-                                  // before presenting the edit sheet.  The
-                                  // search field is focus-locked while search
-                                  // mode is active; leaving it mounted makes
-                                  // it reclaim focus when a sheet text field is
-                                  // tapped.
-                                  cancelSearch();
-                                  widget.onEditEvent!(hit.event);
-                                },
+                        onEdit: widget.onEditEvent == null
+                            ? null
+                            : () {
+                                // Exit Calendar's overlay search session
+                                // before presenting the edit sheet.  The
+                                // search field is focus-locked while search
+                                // mode is active; leaving it mounted makes
+                                // it reclaim focus when a sheet text field is
+                                // tapped.
+                                cancelSearch();
+                                widget.onEditEvent!(hit.event);
+                              },
                       ),
                   eventTilePressWrapper: wrapSearchEventTileWithPressScale,
                 )
@@ -1596,8 +1593,11 @@ class CalendarTabState extends State<CalendarTab>
             final zoomT = _zoomAnim.value;
             final colT = _collapseAnim.value;
             // Animated row height driven by the view-mode transition.
-            final rowHeight =
-                lerpDouble(_fromHeight, _toHeight, _viewModeCtrl.value)!;
+            final rowHeight = lerpDouble(
+              _fromHeight,
+              _toHeight,
+              _viewModeCtrl.value,
+            )!;
             // How far the week strip has slid upward out of the viewport.
             //   0.0 = strip at normal Day View pinned position
             //   1.0 = strip fully above the app header (off-screen)
@@ -1612,14 +1612,12 @@ class CalendarTabState extends State<CalendarTab>
             // Adjacent year / month / day for the three-panel rendering
             final prevYear = _dispYear - 1;
             final nextYear = _dispYear + 1;
-            final prevMY =
-                _dispMonth == 1
-                    ? (_dispYear - 1, 12)
-                    : (_dispYear, _dispMonth - 1);
-            final nextMY =
-                _dispMonth == 12
-                    ? (_dispYear + 1, 1)
-                    : (_dispYear, _dispMonth + 1);
+            final prevMY = _dispMonth == 1
+                ? (_dispYear - 1, 12)
+                : (_dispYear, _dispMonth - 1);
+            final nextMY = _dispMonth == 12
+                ? (_dispYear + 1, 1)
+                : (_dispYear, _dispMonth + 1);
 
             // In Day View the week strip swipe navigates ±7 days; the timeline
             // swipe navigates ±1 day. Use _weekStripDrag to pick the right offset.
@@ -1646,17 +1644,21 @@ class CalendarTabState extends State<CalendarTab>
               nextPanelSel = _selected.add(const Duration(days: 1));
             }
             final int prevPanelYear = inDayView ? prevPanelSel.year : prevMY.$1;
-            final int prevPanelMonth =
-                inDayView ? prevPanelSel.month : prevMY.$2;
+            final int prevPanelMonth = inDayView
+                ? prevPanelSel.month
+                : prevMY.$2;
             final int nextPanelYear = inDayView ? nextPanelSel.year : nextMY.$1;
-            final int nextPanelMonth =
-                inDayView ? nextPanelSel.month : nextMY.$2;
+            final int nextPanelMonth = inDayView
+                ? nextPanelSel.month
+                : nextMY.$2;
             final double prevColT = inDayView ? 1.0 : 0.0;
             final double nextColT = inDayView ? 1.0 : 0.0;
-            final int prevColRow =
-                inDayView ? _weekRowForDate(prevPanelSel) : 0;
-            final int nextColRow =
-                inDayView ? _weekRowForDate(nextPanelSel) : 0;
+            final int prevColRow = inDayView
+                ? _weekRowForDate(prevPanelSel)
+                : 0;
+            final int nextColRow = inDayView
+                ? _weekRowForDate(nextPanelSel)
+                : 0;
 
             // Week strip slides only for Year/Month view swipes and Day View
             // week-strip drags. For Day View content drags, the strip stays
@@ -1673,10 +1675,9 @@ class CalendarTabState extends State<CalendarTab>
               if (goingPrev && _selected.weekday == 1)
                 isCrossWeek = true; // Mon → Sun
               if (slideX != 0) {
-                final DateTime target =
-                    goingNext
-                        ? _selected.add(const Duration(days: 1))
-                        : _selected.subtract(const Duration(days: 1));
+                final DateTime target = goingNext
+                    ? _selected.add(const Duration(days: 1))
+                    : _selected.subtract(const Duration(days: 1));
                 if (target.month != _selected.month) isCrossWeek = true;
               }
             }
@@ -1687,8 +1688,9 @@ class CalendarTabState extends State<CalendarTab>
             final double monthSlideX = circleMode ? 0.0 : slideX;
             final double circleSlideX = circleMode ? slideX : 0.0;
             // Timeline stays fixed when the user is dragging the week strip.
-            final double timelineSlideX =
-                (inDayView && _weekStripDrag) ? 0.0 : slideX;
+            final double timelineSlideX = (inDayView && _weekStripDrag)
+                ? 0.0
+                : slideX;
 
             // Swipe gesture is enabled only when fully settled in one view.
             final swipeEnabled =
@@ -1960,55 +1962,55 @@ class CalendarTabState extends State<CalendarTab>
                             child: IgnorePointer(
                               child:
                                   widget.daySubMode == DayViewSubMode.multiDay
-                                      // Single instance keyed by GlobalKey so the morph
-                                      // animation state survives the subtree-type switch
-                                      // from the 3-panel Stack to the single-widget form.
-                                      ? _DayBanner(
-                                        key: _bannerCenterKey,
-                                        date: _selected,
-                                        today: _today,
-                                        daySubMode: widget.daySubMode,
-                                        slideX: slideX,
-                                        screenW: sw,
-                                      )
-                                      : Stack(
-                                        children: [
-                                          Positioned(
-                                            left: slideX - sw,
-                                            top: 0,
-                                            bottom: 0,
-                                            width: sw,
-                                            child: _DayBanner(
-                                              date: prevDay,
-                                              today: _today,
-                                              daySubMode: widget.daySubMode,
-                                            ),
+                                  // Single instance keyed by GlobalKey so the morph
+                                  // animation state survives the subtree-type switch
+                                  // from the 3-panel Stack to the single-widget form.
+                                  ? _DayBanner(
+                                      key: _bannerCenterKey,
+                                      date: _selected,
+                                      today: _today,
+                                      daySubMode: widget.daySubMode,
+                                      slideX: slideX,
+                                      screenW: sw,
+                                    )
+                                  : Stack(
+                                      children: [
+                                        Positioned(
+                                          left: slideX - sw,
+                                          top: 0,
+                                          bottom: 0,
+                                          width: sw,
+                                          child: _DayBanner(
+                                            date: prevDay,
+                                            today: _today,
+                                            daySubMode: widget.daySubMode,
                                           ),
-                                          Positioned(
-                                            left: slideX,
-                                            top: 0,
-                                            bottom: 0,
-                                            width: sw,
-                                            child: _DayBanner(
-                                              key: _bannerCenterKey,
-                                              date: _selected,
-                                              today: _today,
-                                              daySubMode: widget.daySubMode,
-                                            ),
+                                        ),
+                                        Positioned(
+                                          left: slideX,
+                                          top: 0,
+                                          bottom: 0,
+                                          width: sw,
+                                          child: _DayBanner(
+                                            key: _bannerCenterKey,
+                                            date: _selected,
+                                            today: _today,
+                                            daySubMode: widget.daySubMode,
                                           ),
-                                          Positioned(
-                                            left: slideX + sw,
-                                            top: 0,
-                                            bottom: 0,
-                                            width: sw,
-                                            child: _DayBanner(
-                                              date: nextDay,
-                                              today: _today,
-                                              daySubMode: widget.daySubMode,
-                                            ),
+                                        ),
+                                        Positioned(
+                                          left: slideX + sw,
+                                          top: 0,
+                                          bottom: 0,
+                                          width: sw,
+                                          child: _DayBanner(
+                                            date: nextDay,
+                                            today: _today,
+                                            daySubMode: widget.daySubMode,
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
+                                    ),
                             ),
                           ),
                         ),
@@ -2037,66 +2039,66 @@ class CalendarTabState extends State<CalendarTab>
                               ignoring: colT < 0.85,
                               child:
                                   widget.daySubMode == DayViewSubMode.multiDay
-                                      ? _DayTimelineMulti(
-                                        // Constant key → state survives date navigation
-                                        // so sep-entrance animation only plays once on
-                                        // mode-enter, not on every day change.
-                                        key: const Key('multi-timeline'),
-                                        selectedDate: _selected,
-                                        today: _today,
-                                        nowNotifier: _nowNotifier,
-                                        slideX: timelineSlideX,
-                                        screenW: sw,
-                                      )
-                                      : Stack(
-                                        children: [
-                                          Positioned(
-                                            left: timelineSlideX - sw,
-                                            top: 0,
-                                            bottom: 0,
-                                            width: sw,
-                                            child: _DayTimeline(
-                                              key: ValueKey(
-                                                'day-${prevDay.year}${prevDay.month}${prevDay.day}',
-                                              ),
-                                              selectedDate: prevDay,
-                                              today: _today,
-                                              nowNotifier: _nowNotifier,
-                                              daySubMode: widget.daySubMode,
+                                  ? _DayTimelineMulti(
+                                      // Constant key → state survives date navigation
+                                      // so sep-entrance animation only plays once on
+                                      // mode-enter, not on every day change.
+                                      key: const Key('multi-timeline'),
+                                      selectedDate: _selected,
+                                      today: _today,
+                                      nowNotifier: _nowNotifier,
+                                      slideX: timelineSlideX,
+                                      screenW: sw,
+                                    )
+                                  : Stack(
+                                      children: [
+                                        Positioned(
+                                          left: timelineSlideX - sw,
+                                          top: 0,
+                                          bottom: 0,
+                                          width: sw,
+                                          child: _DayTimeline(
+                                            key: ValueKey(
+                                              'day-${prevDay.year}${prevDay.month}${prevDay.day}',
                                             ),
+                                            selectedDate: prevDay,
+                                            today: _today,
+                                            nowNotifier: _nowNotifier,
+                                            daySubMode: widget.daySubMode,
                                           ),
-                                          Positioned(
-                                            left: timelineSlideX,
-                                            top: 0,
-                                            bottom: 0,
-                                            width: sw,
-                                            child: _DayTimeline(
-                                              key: ValueKey(
-                                                'day-${_selected.year}${_selected.month}${_selected.day}',
-                                              ),
-                                              selectedDate: _selected,
-                                              today: _today,
-                                              nowNotifier: _nowNotifier,
-                                              daySubMode: widget.daySubMode,
+                                        ),
+                                        Positioned(
+                                          left: timelineSlideX,
+                                          top: 0,
+                                          bottom: 0,
+                                          width: sw,
+                                          child: _DayTimeline(
+                                            key: ValueKey(
+                                              'day-${_selected.year}${_selected.month}${_selected.day}',
                                             ),
+                                            selectedDate: _selected,
+                                            today: _today,
+                                            nowNotifier: _nowNotifier,
+                                            daySubMode: widget.daySubMode,
                                           ),
-                                          Positioned(
-                                            left: timelineSlideX + sw,
-                                            top: 0,
-                                            bottom: 0,
-                                            width: sw,
-                                            child: _DayTimeline(
-                                              key: ValueKey(
-                                                'day-${nextDay.year}${nextDay.month}${nextDay.day}',
-                                              ),
-                                              selectedDate: nextDay,
-                                              today: _today,
-                                              nowNotifier: _nowNotifier,
-                                              daySubMode: widget.daySubMode,
+                                        ),
+                                        Positioned(
+                                          left: timelineSlideX + sw,
+                                          top: 0,
+                                          bottom: 0,
+                                          width: sw,
+                                          child: _DayTimeline(
+                                            key: ValueKey(
+                                              'day-${nextDay.year}${nextDay.month}${nextDay.day}',
                                             ),
+                                            selectedDate: nextDay,
+                                            today: _today,
+                                            nowNotifier: _nowNotifier,
+                                            daySubMode: widget.daySubMode,
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
+                                    ),
                             ),
                           ),
                         ),
@@ -2324,27 +2326,26 @@ class _MiniMonthGrid extends StatelessWidget {
         SizedBox(height: 5),
         // Single-letter day-of-week header
         Row(
-          children:
-              _kDayLetters
-                  .map(
-                    (d) => SizedBox(
-                      width: cellSize,
-                      height: cellSize,
-                      child: Center(
-                        child: Text(
-                          d,
-                          textScaler: TextScaler.noScaling,
-                          style: TextStyle(
-                            fontFamily: kSFProText,
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w500,
-                            color: letterC,
-                          ),
-                        ),
+          children: _kDayLetters
+              .map(
+                (d) => SizedBox(
+                  width: cellSize,
+                  height: cellSize,
+                  child: Center(
+                    child: Text(
+                      d,
+                      textScaler: TextScaler.noScaling,
+                      style: TextStyle(
+                        fontFamily: kSFProText,
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w500,
+                        color: letterC,
                       ),
                     ),
-                  )
-                  .toList(),
+                  ),
+                ),
+              )
+              .toList(),
         ),
         const SizedBox(height: 2),
         // Week rows
@@ -2676,10 +2677,9 @@ class _MorphPainter extends CustomPainter {
     final offset = _firstWeekday(year, zMonth);
     final daysInMonth = _daysInMonth(year, zMonth);
     final totalRows = _totalWeekRows(year, zMonth);
-    final nameColor =
-        (today.year == year && today.month == zMonth)
-            ? accentColor
-            : primaryColor;
+    final nameColor = (today.year == year && today.month == zMonth)
+        ? accentColor
+        : primaryColor;
 
     // 1. Background ────────────────────────────────────────────────────────────
     _p.color = bgColor;
@@ -2769,16 +2769,17 @@ class _MorphPainter extends CustomPainter {
           }
           // Font weight lerps continuously via fontVariations (variable font axis)
           // and discretely via FontWeight.lerp as a reliable fallback.
-          final fwStart =
-              (isToday || isSelected) ? FontWeight.w600 : FontWeight.w500;
-          final fwEnd =
-              (isToday || isSelected) ? FontWeight.w600 : FontWeight.w400;
-          final wght =
-              lerpDouble(
-                (isToday || isSelected) ? 600.0 : 500.0,
-                (isToday || isSelected) ? 600.0 : 400.0,
-                t,
-              )!;
+          final fwStart = (isToday || isSelected)
+              ? FontWeight.w600
+              : FontWeight.w500;
+          final fwEnd = (isToday || isSelected)
+              ? FontWeight.w600
+              : FontWeight.w400;
+          final wght = lerpDouble(
+            (isToday || isSelected) ? 600.0 : 500.0,
+            (isToday || isSelected) ? 600.0 : 400.0,
+            t,
+          )!;
           _textC(
             canvas,
             '$d',
@@ -2831,15 +2832,15 @@ class _MorphPainter extends CustomPainter {
       }
       // Font weight lerps continuously via fontVariations (variable font axis)
       // and discretely via FontWeight.lerp as a reliable fallback.
-      final fwStart =
-          (isToday || isSelected) ? FontWeight.w600 : FontWeight.w500;
+      final fwStart = (isToday || isSelected)
+          ? FontWeight.w600
+          : FontWeight.w500;
       final fwEnd = (isToday || isSelected) ? FontWeight.w600 : FontWeight.w400;
-      final wght =
-          lerpDouble(
-            (isToday || isSelected) ? 600.0 : 500.0,
-            (isToday || isSelected) ? 600.0 : 400.0,
-            t,
-          )!;
+      final wght = lerpDouble(
+        (isToday || isSelected) ? 600.0 : 500.0,
+        (isToday || isSelected) ? 600.0 : 400.0,
+        t,
+      )!;
       _textC(
         canvas,
         '$d',
@@ -2861,15 +2862,14 @@ class _MorphPainter extends CustomPainter {
       final wkNum = _isoWeekNumber(DateTime(year, zMonth, firstDayNum));
 
       final wkCX = lerpDouble(focalX, mCellW / 2, t)!;
-      final wkCY =
-          lerpDouble(
-            focalY + (wr + 1) * cellSz + cellSz / 2,
-            _kDayLabelHeight +
-                wr * viewModeRowHeight +
-                kDayCircleOffset -
-                monthScrollOffset,
-            t,
-          )!;
+      final wkCY = lerpDouble(
+        focalY + (wr + 1) * cellSz + cellSz / 2,
+        _kDayLabelHeight +
+            wr * viewModeRowHeight +
+            kDayCircleOffset -
+            monthScrollOffset,
+        t,
+      )!;
       _textC(
         canvas,
         '$wkNum',
@@ -2881,12 +2881,11 @@ class _MorphPainter extends CustomPainter {
         ls: lerpDouble(-0.1, 0.0, t)!,
       );
 
-      final sepY =
-          lerpDouble(
-            focalY + (wr + 1) * cellSz,
-            _kDayLabelHeight + (wr + 1) * viewModeRowHeight - monthScrollOffset,
-            t,
-          )!;
+      final sepY = lerpDouble(
+        focalY + (wr + 1) * cellSz,
+        _kDayLabelHeight + (wr + 1) * viewModeRowHeight - monthScrollOffset,
+        t,
+      )!;
       final sepLeft = lerpDouble(focalX, 0.0, t)!;
       final sepRight = lerpDouble(focalX + miniW, sw, t)!;
       _p.color = _fade(separatorColor, t.clamp(0.0, 1.0));
@@ -2920,16 +2919,18 @@ class _MorphPainter extends CustomPainter {
       // same smoothly-shifting hue/alpha — no sudden color snap at the crossover.
       final dowColor = Color.lerp(tertiaryColor, secondaryColor, t)!;
       for (int i = 0; i < 7; i++) {
-        final cx =
-            lerpDouble(focalX + (i + 0.5) * cellSz, mCellW * (i + 1.5), t)!;
+        final cx = lerpDouble(
+          focalX + (i + 0.5) * cellSz,
+          mCellW * (i + 1.5),
+          t,
+        )!;
         // Month-side cy is shifted up by monthScrollOffset so the labels land
         // at the same visual position as in the scrolled _MonthView.
-        final cy =
-            lerpDouble(
-              focalY + cellSz / 2,
-              _kDayLabelHeight / 2 - monthScrollOffset,
-              t,
-            )!;
+        final cy = lerpDouble(
+          focalY + cellSz / 2,
+          _kDayLabelHeight / 2 - monthScrollOffset,
+          t,
+        )!;
         final fSz = lerpDouble(cellSz * 0.55, 11.0, t)!.clamp(1.0, 200.0);
         if (lettersAlpha > 0) {
           _textC(
@@ -3048,12 +3049,11 @@ class _MonthView extends StatelessWidget {
 
         return SingleChildScrollView(
           controller: scrollController,
-          physics:
-              collapseProgress < 0.5
-                  ? const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  )
-                  : const NeverScrollableScrollPhysics(),
+          physics: collapseProgress < 0.5
+              ? const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                )
+              : const NeverScrollableScrollPhysics(),
           clipBehavior: Clip.none,
           child: SizedBox(
             height: contentH,
@@ -3084,11 +3084,13 @@ class _MonthView extends StatelessWidget {
                                 scrollOffset: collapseScrollOffset,
                                 onDayTap: onDayTap,
                                 onDayLongPress: onDayLongPress,
-                                circleSlideX:
-                                    row == collapseWeekRow ? circleSlideX : 0.0,
+                                circleSlideX: row == collapseWeekRow
+                                    ? circleSlideX
+                                    : 0.0,
                                 settleCount: settleCount,
-                                blobDeltaX:
-                                    row == collapseWeekRow ? blobDeltaX : 0.0,
+                                blobDeltaX: row == collapseWeekRow
+                                    ? blobDeltaX
+                                    : 0.0,
                                 blobSnapCount: blobSnapCount,
                                 pendingBloomDate: pendingBloomDate,
                                 daySubMode: daySubMode,
@@ -3103,13 +3105,9 @@ class _MonthView extends StatelessWidget {
                         SizedBox(
                           height: emptyH,
                           child: Opacity(
-                            opacity:
-                                collapseProgress < 0.5
-                                    ? (1.0 - collapseProgress * 4.0).clamp(
-                                      0.0,
-                                      1.0,
-                                    )
-                                    : 0.0,
+                            opacity: collapseProgress < 0.5
+                                ? (1.0 - collapseProgress * 4.0).clamp(0.0, 1.0)
+                                : 0.0,
                             child: Center(
                               child: Text(
                                 'No Events',
@@ -3235,8 +3233,11 @@ class _AnimatedWeekRow extends StatelessWidget {
   Widget build(BuildContext context) {
     // Current row height: lerps from mode-switch height → list height as the
     // collapse progresses, so Day View always shows the standard 52 px strip.
-    final currentRowHeight =
-        lerpDouble(viewModeRowHeight, _kRowHeightList, collapseProgress)!;
+    final currentRowHeight = lerpDouble(
+      viewModeRowHeight,
+      _kRowHeightList,
+      collapseProgress,
+    )!;
 
     // Natural Y-position in month view (with current animated row height).
     final naturalY = row * currentRowHeight;
@@ -3809,10 +3810,9 @@ class _WeekRowState extends State<_WeekRow> {
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () => _onDayTap(date),
-                    onLongPress:
-                        widget.onDayLongPress != null
-                            ? () => widget.onDayLongPress!(date)
-                            : null,
+                    onLongPress: widget.onDayLongPress != null
+                        ? () => widget.onDayLongPress!(date)
+                        : null,
                     child: Align(
                       alignment: Alignment.topCenter,
                       child: Padding(
@@ -4418,12 +4418,12 @@ class _DayBannerState extends State<_DayBanner>
                 final DateTime Aminus1 = A.subtract(const Duration(days: 1));
 
                 // Content-area positions (add labelColW for screen x).
-                final double posA =
-                    goingLeft ? slideX * contentW / sw : slideX * colW / sw;
-                final double posAplus1 =
-                    goingLeft
-                        ? colW + slideX * colW / sw
-                        : colW + slideX * contentW / sw;
+                final double posA = goingLeft
+                    ? slideX * contentW / sw
+                    : slideX * colW / sw;
+                final double posAplus1 = goingLeft
+                    ? colW + slideX * colW / sw
+                    : colW + slideX * contentW / sw;
                 final double posAminus1 = -contentW + slideX * contentW / sw;
                 final double posAplus2 =
                     colW + contentW + slideX * contentW / sw;
@@ -5230,12 +5230,12 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                   // ── Column position formula ─────────────────────────────
                   // Positions are left-edge offsets within the content area
                   // (add labelColW to get absolute screen x).
-                  final double posA =
-                      goingLeft ? slideX * contentW / sw : slideX * colW / sw;
-                  final double posAplus1 =
-                      goingLeft
-                          ? colW + slideX * colW / sw
-                          : colW + slideX * contentW / sw;
+                  final double posA = goingLeft
+                      ? slideX * contentW / sw
+                      : slideX * colW / sw;
+                  final double posAplus1 = goingLeft
+                      ? colW + slideX * colW / sw
+                      : colW + slideX * contentW / sw;
                   final double posAminus1 = -contentW + slideX * contentW / sw;
                   final double posAplus2 =
                       colW + contentW + slideX * contentW / sw;
@@ -5437,10 +5437,9 @@ class _CalModalCircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fontFamily =
-        icon.fontPackage != null
-            ? 'packages/${icon.fontPackage}/${icon.fontFamily}'
-            : (icon.fontFamily ?? '');
+    final fontFamily = icon.fontPackage != null
+        ? 'packages/${icon.fontPackage}/${icon.fontFamily}'
+        : (icon.fontFamily ?? '');
 
     final resolvedContainerColor = resolveThemeColor(containerColor, context);
     final resolvedIconColor = resolveThemeColor(iconColor, context);
@@ -5576,21 +5575,19 @@ class _ImportProgressPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.shortestSide - 8.0) / 2;
     // Background ring — always present at low opacity.
-    final trackPaint =
-        Paint()
-          ..color = trackColor.withOpacity(0.28)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 5.0
-          ..strokeCap = StrokeCap.round;
+    final trackPaint = Paint()
+      ..color = trackColor.withOpacity(0.28)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5.0
+      ..strokeCap = StrokeCap.round;
     canvas.drawCircle(center, radius, trackPaint);
     // Filled arc — category color, sweeps clockwise from 12 o'clock.
     if (progress > 0.001) {
-      final fillPaint =
-          Paint()
-            ..color = fillColor
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 5.0
-            ..strokeCap = StrokeCap.round;
+      final fillPaint = Paint()
+        ..color = fillColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5.0
+        ..strokeCap = StrokeCap.round;
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         -math.pi / 2,
@@ -6072,12 +6069,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
   Widget _card(List<Widget> rows, {bool stadium = false}) {
     final cardColor = resolveThemeColor(kModalCard, context);
     final shadows = resolveThemeShadows(kCardShadow, context);
-    final ShapeBorder shape =
-        stadium
-            ? const SquircleStadiumBorder()
-            : BoundedContinuousRectangleBorder(
-              borderRadius: BorderRadius.circular(kCardCornerRadius),
-            );
+    final ShapeBorder shape = stadium
+        ? const SquircleStadiumBorder()
+        : BoundedContinuousRectangleBorder(
+            borderRadius: BorderRadius.circular(kCardCornerRadius),
+          );
     return Container(
       decoration: ShapeDecoration(
         color: cardColor,
@@ -6107,10 +6103,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
     return Container(
       decoration: ShapeDecoration(
         color: cardColor,
-        shape:
-            stadium
-                ? const SquircleStadiumBorder()
-                : BoundedContinuousRectangleBorder(borderRadius: radius),
+        shape: stadium
+            ? const SquircleStadiumBorder()
+            : BoundedContinuousRectangleBorder(borderRadius: radius),
         shadows: shadows,
       ),
       clipBehavior: Clip.antiAlias,
@@ -6174,12 +6169,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: maxLinesOverride ?? (multiline ? null : 1),
                 minLines: minLinesOverride ?? (multiline ? 3 : 1),
-                scrollPhysics:
-                    multiline
-                        ? const BouncingScrollPhysics(
-                          parent: AlwaysScrollableScrollPhysics(),
-                        )
-                        : null,
+                scrollPhysics: multiline
+                    ? const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      )
+                    : null,
                 padding: const EdgeInsets.only(right: 28),
                 onChanged: (_) => setState(() {}),
               ),
@@ -6227,71 +6221,69 @@ class _NewEventSheetState extends State<_NewEventSheet>
   }) {
     return AnimatedBuilder(
       animation: ctrl,
-      builder:
-          (ctx, _) => LayoutBuilder(
-            builder: (ctx2, constraints) {
-              // Measure whether text exceeds 10 lines at the available width.
-              // Subtract horizontal padding (16 × 2) + clear-button right space (28).
-              final availableWidth = constraints.maxWidth - 32 - 28;
-              final tp = TextPainter(
-                text: TextSpan(
-                  text: ctrl.text.isEmpty ? ' ' : ctrl.text,
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontFamily: kSFProText,
-                    fontWeight: FontWeight.w400,
-                    letterSpacing: kTracking17,
-                    height: kLineHeight,
-                  ),
-                ),
-                maxLines: _kExpandableMaxLines,
-                textDirection: TextDirection.ltr,
-              )..layout(maxWidth: availableWidth.clamp(1.0, double.infinity));
+      builder: (ctx, _) => LayoutBuilder(
+        builder: (ctx2, constraints) {
+          // Measure whether text exceeds 10 lines at the available width.
+          // Subtract horizontal padding (16 × 2) + clear-button right space (28).
+          final availableWidth = constraints.maxWidth - 32 - 28;
+          final tp = TextPainter(
+            text: TextSpan(
+              text: ctrl.text.isEmpty ? ' ' : ctrl.text,
+              style: TextStyle(
+                fontSize: 17,
+                fontFamily: kSFProText,
+                fontWeight: FontWeight.w400,
+                letterSpacing: kTracking17,
+                height: kLineHeight,
+              ),
+            ),
+            maxLines: _kExpandableMaxLines,
+            textDirection: TextDirection.ltr,
+          )..layout(maxWidth: availableWidth.clamp(1.0, double.infinity));
 
-              final overflows = ctrl.text.isNotEmpty && tp.didExceedMaxLines;
-              final showToggle = overflows || expanded;
+          final overflows = ctrl.text.isNotEmpty && tp.didExceedMaxLines;
+          final showToggle = overflows || expanded;
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _textField(
-                    ctrl: ctrl,
-                    focus: focus,
-                    placeholder: placeholder,
-                    multiline: true,
-                    minLinesOverride: minLinesOverride,
-                    maxLinesOverride: expanded ? null : _kExpandableMaxLines,
-                    // Reduce bottom padding when the Show More/Less row follows.
-                    paddingOverride:
-                        showToggle
-                            ? const EdgeInsets.fromLTRB(16, 14, 16, 4)
-                            : null,
-                  ),
-                  if (showToggle)
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: onToggle,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                        child: Text(
-                          expanded ? 'Show Less\u2026' : 'Show More\u2026',
-                          style: TextStyle(
-                            inherit: false,
-                            color: kSecondaryLabel,
-                            fontSize: 13,
-                            fontFamily: kSFProText,
-                            fontWeight: FontWeight.w400,
-                            letterSpacing: kTracking17,
-                            height: kLineHeight,
-                          ),
-                        ),
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _textField(
+                ctrl: ctrl,
+                focus: focus,
+                placeholder: placeholder,
+                multiline: true,
+                minLinesOverride: minLinesOverride,
+                maxLinesOverride: expanded ? null : _kExpandableMaxLines,
+                // Reduce bottom padding when the Show More/Less row follows.
+                paddingOverride: showToggle
+                    ? const EdgeInsets.fromLTRB(16, 14, 16, 4)
+                    : null,
+              ),
+              if (showToggle)
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onToggle,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: Text(
+                      expanded ? 'Show Less\u2026' : 'Show More\u2026',
+                      style: TextStyle(
+                        inherit: false,
+                        color: kSecondaryLabel,
+                        fontSize: 13,
+                        fontFamily: kSFProText,
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: kTracking17,
+                        height: kLineHeight,
                       ),
                     ),
-                ],
-              );
-            },
-          ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -6375,10 +6367,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
             backgroundColor: _resolvedPillColor,
             style: TextStyle(
               inherit: false,
-              color:
-                  dateOpen
-                      ? _resolvedCategoryColor
-                      : resolveThemeColor(kPrimaryLabel, context),
+              color: dateOpen
+                  ? _resolvedCategoryColor
+                  : resolveThemeColor(kPrimaryLabel, context),
               fontSize: 15,
               fontFamily: kSFProText,
               fontWeight: FontWeight.w500,
@@ -6392,10 +6383,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
               backgroundColor: _resolvedPillColor,
               style: TextStyle(
                 inherit: false,
-                color:
-                    timeOpen
-                        ? _resolvedCategoryColor
-                        : resolveThemeColor(kPrimaryLabel, context),
+                color: timeOpen
+                    ? _resolvedCategoryColor
+                    : resolveThemeColor(kPrimaryLabel, context),
                 fontSize: 15,
                 fontFamily: kSFProText,
                 fontWeight: FontWeight.w500,
@@ -6512,10 +6502,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
           _starts.day,
         );
         final proposedDateOnly = DateTime(d.year, d.month, d.day);
-        final clamped =
-            proposedDateOnly.isBefore(startsDateOnly)
-                ? startsDateOnly
-                : proposedDateOnly;
+        final clamped = proposedDateOnly.isBefore(startsDateOnly)
+            ? startsDateOnly
+            : proposedDateOnly;
         _ends = DateTime(
           clamped.year,
           clamped.month,
@@ -6666,10 +6655,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
     _pickerSlideCtrl.forward(from: 0).then((_) {
       if (!mounted) return;
       setState(() {
-        _pickerCalMonth =
-            next
-                ? DateTime(_pickerCalMonth.year, _pickerCalMonth.month + 1)
-                : DateTime(_pickerCalMonth.year, _pickerCalMonth.month - 1);
+        _pickerCalMonth = next
+            ? DateTime(_pickerCalMonth.year, _pickerCalMonth.month + 1)
+            : DateTime(_pickerCalMonth.year, _pickerCalMonth.month - 1);
         _pickerDragOffset = 0;
         _pickerSlideTween = null;
       });
@@ -6748,8 +6736,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
     // Normalise the legacy 'uncategorized' sentinel to the system id so the
     // events_tab filter can match against 'sys-uncategorized' consistently.
-    final categoryId =
-        _categoryId == 'uncategorized' ? 'sys-uncategorized' : _categoryId;
+    final categoryId = _categoryId == 'uncategorized'
+        ? 'sys-uncategorized'
+        : _categoryId;
 
     // ── Repeat ──────────────────────────────────────────────────────────────
     String? repeatStr;
@@ -6853,8 +6842,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
           endTime: endTimeStr,
           isAllDay: _allDay,
           location: location.isEmpty ? null : location,
-          destination:
-              _destCtrl.text.trim().isEmpty ? null : _destCtrl.text.trim(),
+          destination: _destCtrl.text.trim().isEmpty
+              ? null
+              : _destCtrl.text.trim(),
           travelTime: _travelTime == 'None' ? null : _travelTime,
           travelMode: _travelMode == 'None' ? null : _travelMode,
           repeat: repeatStr,
@@ -6864,16 +6854,15 @@ class _NewEventSheetState extends State<_NewEventSheet>
           alert: _alert == 'None' ? null : _alert,
           secondAlert: _secondAlert == 'None' ? null : _secondAlert,
           reminderOption: _unscheduled ? _reminder : null,
-          reminderDateTime:
-              (_unscheduled && _reminder == 'On Date')
-                  ? _reminderDate.toIso8601String()
-                  : null,
-          reminderRepeat:
-              (_unscheduled && _reminder == 'On Date') ? _repeatReminder : null,
-          reminderCustomRepeatConfig:
-              (_unscheduled && _reminder == 'On Date')
-                  ? _customConfigToMap(_savedReminderCustomConfig)
-                  : null,
+          reminderDateTime: (_unscheduled && _reminder == 'On Date')
+              ? _reminderDate.toIso8601String()
+              : null,
+          reminderRepeat: (_unscheduled && _reminder == 'On Date')
+              ? _repeatReminder
+              : null,
+          reminderCustomRepeatConfig: (_unscheduled && _reminder == 'On Date')
+              ? _customConfigToMap(_savedReminderCustomConfig)
+              : null,
           url: _urlCtrl.text.trim().isEmpty ? null : _urlCtrl.text.trim(),
           notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
           attachmentPaths: attachmentPaths,
@@ -6892,8 +6881,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
         endTime: endTimeStr,
         isAllDay: _allDay,
         location: location.isEmpty ? null : location,
-        destination:
-            _destCtrl.text.trim().isEmpty ? null : _destCtrl.text.trim(),
+        destination: _destCtrl.text.trim().isEmpty
+            ? null
+            : _destCtrl.text.trim(),
         travelTime: _travelTime == 'None' ? null : _travelTime,
         travelMode: _travelMode == 'None' ? null : _travelMode,
         repeat: repeatStr,
@@ -6903,16 +6893,15 @@ class _NewEventSheetState extends State<_NewEventSheet>
         alert: _alert == 'None' ? null : _alert,
         secondAlert: _secondAlert == 'None' ? null : _secondAlert,
         reminderOption: _unscheduled ? _reminder : null,
-        reminderDateTime:
-            (_unscheduled && _reminder == 'On Date')
-                ? _reminderDate.toIso8601String()
-                : null,
-        reminderRepeat:
-            (_unscheduled && _reminder == 'On Date') ? _repeatReminder : null,
-        reminderCustomRepeatConfig:
-            (_unscheduled && _reminder == 'On Date')
-                ? _customConfigToMap(_savedReminderCustomConfig)
-                : null,
+        reminderDateTime: (_unscheduled && _reminder == 'On Date')
+            ? _reminderDate.toIso8601String()
+            : null,
+        reminderRepeat: (_unscheduled && _reminder == 'On Date')
+            ? _repeatReminder
+            : null,
+        reminderCustomRepeatConfig: (_unscheduled && _reminder == 'On Date')
+            ? _customConfigToMap(_savedReminderCustomConfig)
+            : null,
         url: _urlCtrl.text.trim().isEmpty ? null : _urlCtrl.text.trim(),
         notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
         attachmentPaths: attachmentPaths,
@@ -7016,12 +7005,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final previousCategory = _initialCategoryName;
     final currentCategory = _categoryName;
     final currentNames = _currentSectionNames;
-    final previousIds =
-        previousCategory == null
-            ? null
-            : _dcvCustomSectionEventIds[previousCategory];
-    final currentIds =
-        _dcvCustomSectionEventIds[currentCategory] ??= <List<String>>[];
+    final previousIds = previousCategory == null
+        ? null
+        : _dcvCustomSectionEventIds[previousCategory];
+    final currentIds = _dcvCustomSectionEventIds[currentCategory] ??=
+        <List<String>>[];
 
     // An edited event may have moved categories. Remove its old membership
     // before assigning it to the newly selected category.
@@ -7041,8 +7029,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
       for (final section in currentIds) {
         section.remove(eventId);
       }
-      final index =
-          _selectedSectionIndex.clamp(0, currentNames.length - 1).toInt();
+      final index = _selectedSectionIndex
+          .clamp(0, currentNames.length - 1)
+          .toInt();
       currentIds[index].add(eventId);
     } else if (currentIds.isEmpty) {
       _dcvCustomSectionEventIds.remove(currentCategory);
@@ -7126,14 +7115,16 @@ class _NewEventSheetState extends State<_NewEventSheet>
     // ── Category ──────────────────────────────────────────────────────────
     // Normalize system sentinel → sheet sentinel so the category picker
     // checkmark and colour resolve correctly.
-    _categoryId =
-        e.categoryId == 'sys-uncategorized' ? 'uncategorized' : e.categoryId;
+    _categoryId = e.categoryId == 'sys-uncategorized'
+        ? 'uncategorized'
+        : e.categoryId;
 
     // ── Attachments ───────────────────────────────────────────────────────
     // Carry the existing paths forward; they are merged into the save
     // result by _saveEvent so the user doesn't lose files they didn't touch.
-    _existingAttachmentPaths =
-        e.attachmentPaths?.isEmpty == true ? null : e.attachmentPaths;
+    _existingAttachmentPaths = e.attachmentPaths?.isEmpty == true
+        ? null
+        : e.attachmentPaths;
     // Load existing files into the attachment list so the user can see
     // and optionally remove them.
     for (final p in e.attachmentPaths ?? []) {
@@ -7143,10 +7134,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
         final rawName = p.split('/').last;
         // Strip the "<timestamp>_" prefix written by the save handler.
         final displayName = rawName.replaceFirst(RegExp(r'^\d+_'), '');
-        final ext =
-            displayName.contains('.')
-                ? displayName.split('.').last.toLowerCase()
-                : '';
+        final ext = displayName.contains('.')
+            ? displayName.split('.').last.toLowerCase()
+            : '';
         final bytes = file.readAsBytesSync();
         const imageExts = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif'};
         _attachments.add(
@@ -7195,14 +7185,14 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final loadedSectionNames = <String, List<String>>{};
     final loadedSectionEventIds = <String, List<List<String>>>{};
     try {
-      final decoded =
-          rawDcvSections == null ? null : jsonDecode(rawDcvSections);
+      final decoded = rawDcvSections == null
+          ? null
+          : jsonDecode(rawDcvSections);
       if (decoded is Map) {
         for (final entry in decoded.entries) {
-          loadedSectionNames[entry.key.toString()] =
-              entry.value is List
-                  ? [for (final name in entry.value as List) name.toString()]
-                  : <String>[];
+          loadedSectionNames[entry.key.toString()] = entry.value is List
+              ? [for (final name in entry.value as List) name.toString()]
+              : <String>[];
         }
       }
     } catch (_) {
@@ -7211,22 +7201,20 @@ class _NewEventSheetState extends State<_NewEventSheet>
       // successful section edit.
     }
     try {
-      final decoded =
-          rawDcvSectionEventIds == null
-              ? null
-              : jsonDecode(rawDcvSectionEventIds);
+      final decoded = rawDcvSectionEventIds == null
+          ? null
+          : jsonDecode(rawDcvSectionEventIds);
       if (decoded is Map) {
         for (final entry in decoded.entries) {
           final value = entry.value;
-          loadedSectionEventIds[entry.key.toString()] =
-              value is List
-                  ? [
-                    for (final section in value)
-                      section is List
-                          ? [for (final id in section) id.toString()]
-                          : <String>[],
-                  ]
-                  : <List<String>>[];
+          loadedSectionEventIds[entry.key.toString()] = value is List
+              ? [
+                  for (final section in value)
+                    section is List
+                        ? [for (final id in section) id.toString()]
+                        : <String>[],
+                ]
+              : <List<String>>[];
         }
       }
     } catch (_) {
@@ -7265,8 +7253,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
               presetRepeat: m['presetRepeat'] as String?,
               presetRepeatEndType: m['presetRepeatEndType'] as String?,
               presetRepeatEndDate: m['presetRepeatEndDate'] as String?,
-              presetCustomRepeatConfig:
-                  rawCrc is Map<String, dynamic> ? rawCrc : null,
+              presetCustomRepeatConfig: rawCrc is Map<String, dynamic>
+                  ? rawCrc
+                  : null,
               presetAlert: m['presetAlert'] as String?,
               presetSecondAlert: m['presetSecondAlert'] as String?,
             ),
@@ -7376,18 +7365,17 @@ class _NewEventSheetState extends State<_NewEventSheet>
       _openPickerLabel = rowLabel;
     });
     _pickerEntry = OverlayEntry(
-      builder:
-          (ctx) => ActionMenuOverlay(
-            buttonRect: Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height),
-            isClosing: _pickerIsClosing,
-            onDismiss: _dismissPickerOverlay,
-            actions: items,
-            panelWidth: kPickerPanelWidth,
-            chevronColumn: true,
-            anchorToRight: true,
-            labelFontSize: 15,
-            bouncingScroll: true,
-          ),
+      builder: (ctx) => ActionMenuOverlay(
+        buttonRect: Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height),
+        isClosing: _pickerIsClosing,
+        onDismiss: _dismissPickerOverlay,
+        actions: items,
+        panelWidth: kPickerPanelWidth,
+        chevronColumn: true,
+        anchorToRight: true,
+        labelFontSize: 15,
+        bouncingScroll: true,
+      ),
     );
     Overlay.of(context).insert(_pickerEntry!);
   }
@@ -7409,42 +7397,39 @@ class _NewEventSheetState extends State<_NewEventSheet>
     VoidCallback? onTap,
   }) {
     final isOpen = items != null && _openPickerLabel == label;
-    final TextStyle valueStyle =
-        valueColor != null
-            ? _kRowValueStyle.copyWith(
-              color: valueColor,
-              fontWeight: FontWeight.w600,
-            )
-            : _kRowValueStyle;
+    final TextStyle valueStyle = valueColor != null
+        ? _kRowValueStyle.copyWith(
+            color: valueColor,
+            fontWeight: FontWeight.w600,
+          )
+        : _kRowValueStyle;
     return Builder(
-      builder:
-          (ctx) => GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap:
-                items != null
-                    ? () => _showPickerOverlay(ctx, label, items)
-                    : onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: MinGapLabelValueRow(
-                label: label,
-                labelStyle: _kLabelStyle,
+      builder: (ctx) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: items != null
+            ? () => _showPickerOverlay(ctx, label, items)
+            : onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: MinGapLabelValueRow(
+            label: label,
+            labelStyle: _kLabelStyle,
+            value: value,
+            valueStyle: valueStyle,
+            trailing: AnimatedOpacity(
+              opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
+              duration: const Duration(milliseconds: 150),
+              child: ModalSheetPickerTrailing(
                 value: value,
-                valueStyle: valueStyle,
-                trailing: AnimatedOpacity(
-                  opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: ModalSheetPickerTrailing(
-                    value: value,
-                    style: valueStyle,
-                    chevronColor: resolveThemeColor(kSecondaryLabel, context),
-                    showChevron: showChevron,
-                  ),
-                ),
-                trailingExtraWidth: showChevron ? 16 : 0,
+                style: valueStyle,
+                chevronColor: resolveThemeColor(kSecondaryLabel, context),
+                showChevron: showChevron,
               ),
             ),
+            trailingExtraWidth: showChevron ? 16 : 0,
           ),
+        ),
+      ),
     );
   }
 
@@ -7472,22 +7457,21 @@ class _NewEventSheetState extends State<_NewEventSheet>
       ),
     );
     return Builder(
-      builder:
-          (ctx) => GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => _showPickerOverlay(ctx, 'Category', _categoryItems()),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: MinGapLabelValueRow(
-                label: 'Category',
-                labelStyle: _kLabelStyle,
-                value: _categoryName,
-                valueStyle: _kRowValueStyle,
-                trailing: valueWidget,
-                trailingExtraWidth: 32,
-              ),
-            ),
+      builder: (ctx) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _showPickerOverlay(ctx, 'Category', _categoryItems()),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: MinGapLabelValueRow(
+            label: 'Category',
+            labelStyle: _kLabelStyle,
+            value: _categoryName,
+            valueStyle: _kRowValueStyle,
+            trailing: valueWidget,
+            trailingExtraWidth: 32,
           ),
+        ),
+      ),
     );
   }
 
@@ -7570,26 +7554,25 @@ class _NewEventSheetState extends State<_NewEventSheet>
     void Function(String) onSelect, {
     Set<String> groupBreakBefore = const {},
     Color? checkmarkColor,
-  }) =>
-      options
-          .map(
-            (label) => ActionItem(
-              label: label,
-              icon: SFIcons.sf_circle,
-              iconBuilder: (_) => const SizedBox.shrink(),
-              checkmark: label == current,
-              checkmarkColor: checkmarkColor,
-              groupBreakAbove: groupBreakBefore.contains(label),
-              onTap: () {
-                onSelect(label);
-                Future.delayed(
-                  const Duration(milliseconds: 80),
-                  _dismissPickerOverlay,
-                );
-              },
-            ),
-          )
-          .toList();
+  }) => options
+      .map(
+        (label) => ActionItem(
+          label: label,
+          icon: SFIcons.sf_circle,
+          iconBuilder: (_) => const SizedBox.shrink(),
+          checkmark: label == current,
+          checkmarkColor: checkmarkColor,
+          groupBreakAbove: groupBreakBefore.contains(label),
+          onTap: () {
+            onSelect(label);
+            Future.delayed(
+              const Duration(milliseconds: 80),
+              _dismissPickerOverlay,
+            );
+          },
+        ),
+      )
+      .toList();
 
   // ── Category items (no None; Uncategorized is first) ─────────────────────
 
@@ -7642,15 +7625,14 @@ class _NewEventSheetState extends State<_NewEventSheet>
     ActionItem itemFor(_NewEventCategory cat) => ActionItem(
       label: cat.name,
       icon: CupertinoIcons.circle_fill,
-      iconBuilder:
-          (_) => Container(
-            width: 14,
-            height: 14,
-            decoration: BoxDecoration(
-              color: renderCategoryColor(cat.color, context),
-              shape: BoxShape.circle,
-            ),
-          ),
+      iconBuilder: (_) => Container(
+        width: 14,
+        height: 14,
+        decoration: BoxDecoration(
+          color: renderCategoryColor(cat.color, context),
+          shape: BoxShape.circle,
+        ),
+      ),
       checkmark: _categoryId == cat.id,
       checkmarkColor: renderCategoryColor(cat.color, context),
       onTap: () {
@@ -7692,15 +7674,14 @@ class _NewEventSheetState extends State<_NewEventSheet>
         ActionItem(
           label: 'Uncategorized',
           icon: CupertinoIcons.circle_fill,
-          iconBuilder:
-              (_) => Container(
-                width: 14,
-                height: 14,
-                decoration: BoxDecoration(
-                  color: renderCategoryColor(_uncategorizedColor, context),
-                  shape: BoxShape.circle,
-                ),
-              ),
+          iconBuilder: (_) => Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              color: renderCategoryColor(_uncategorizedColor, context),
+              shape: BoxShape.circle,
+            ),
+          ),
           checkmark: _categoryId == 'uncategorized',
           checkmarkColor: renderCategoryColor(_uncategorizedColor, context),
           onTap: () {
@@ -7842,62 +7823,59 @@ class _NewEventSheetState extends State<_NewEventSheet>
         duration: const Duration(milliseconds: 180),
         switchInCurve: Curves.easeOut,
         switchOutCurve: Curves.easeIn,
-        layoutBuilder:
-            (currentChild, previousChildren) => Stack(
-              alignment: Alignment.centerRight,
-              children: [
-                ...previousChildren,
-                if (currentChild != null) currentChild,
-              ],
-            ),
-        transitionBuilder:
-            (child, animation) =>
-                FadeTransition(opacity: animation, child: child),
-        child:
-            hasText
-                ? SizedBox(
-                  key: ValueKey('$prefix-clear'),
-                  width: 28,
-                  height: 28,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      ctrl.clear();
-                      setState(() {});
-                    },
-                    child: const Center(
-                      child: Icon(
-                        kSearchClearCircleIcon,
-                        color: kEmptyStateIcon,
-                        size: 17,
-                      ),
+        layoutBuilder: (currentChild, previousChildren) => Stack(
+          alignment: Alignment.centerRight,
+          children: [
+            ...previousChildren,
+            if (currentChild != null) currentChild,
+          ],
+        ),
+        transitionBuilder: (child, animation) =>
+            FadeTransition(opacity: animation, child: child),
+        child: hasText
+            ? SizedBox(
+                key: ValueKey('$prefix-clear'),
+                width: 28,
+                height: 28,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    ctrl.clear();
+                    setState(() {});
+                  },
+                  child: const Center(
+                    child: Icon(
+                      kSearchClearCircleIcon,
+                      color: kEmptyStateIcon,
+                      size: 17,
                     ),
                   ),
-                )
-                : SizedBox(
-                  key: ValueKey('$prefix-pin'),
-                  width: 28,
-                  height: 28,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => _openMaps(ctrl.text),
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: _resolvedCategoryColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: FixedSFIcon(
-                          SFIcons.sf_mappin,
-                          fontSize: 17,
-                          color: CupertinoColors.white,
-                        ),
+                ),
+              )
+            : SizedBox(
+                key: ValueKey('$prefix-pin'),
+                width: 28,
+                height: 28,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _openMaps(ctrl.text),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: _resolvedCategoryColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: FixedSFIcon(
+                        SFIcons.sf_mappin,
+                        fontSize: 17,
+                        color: CupertinoColors.white,
                       ),
                     ),
                   ),
                 ),
+              ),
       ),
     );
   }
@@ -7948,45 +7926,44 @@ class _NewEventSheetState extends State<_NewEventSheet>
     children: [
       AnimatedBuilder(
         animation: Listenable.merge([_travelModeCtrl, _travelRowCtrl]),
-        builder:
-            (ctx, _) => _cardWithRadius(
-              [
-                _locationRow(
-                  _locationTextCtrl,
-                  'Starting Location',
-                  _locationFocus,
-                  'start',
-                ),
-                _sep(),
-                _locationRow(_destCtrl, 'Destination', _destFocus, 'dest'),
-                // Travel Time row collapses when All-day is on.
-                SizeTransition(
-                  sizeFactor: _travelRowCtrl,
-                  axisAlignment: 1.0,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _sep(),
-                      _pickerRow(
-                        'Travel Time',
-                        _travelTime,
-                        items: _travelTimeItems(),
-                      ),
-                    ],
+        builder: (ctx, _) => _cardWithRadius(
+          [
+            _locationRow(
+              _locationTextCtrl,
+              'Starting Location',
+              _locationFocus,
+              'start',
+            ),
+            _sep(),
+            _locationRow(_destCtrl, 'Destination', _destFocus, 'dest'),
+            // Travel Time row collapses when All-day is on.
+            SizeTransition(
+              sizeFactor: _travelRowCtrl,
+              axisAlignment: 1.0,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _sep(),
+                  _pickerRow(
+                    'Travel Time',
+                    _travelTime,
+                    items: _travelTimeItems(),
                   ),
-                ),
-              ],
-              BorderRadius.only(
-                topLeft: Radius.circular(kCardCornerRadius),
-                topRight: Radius.circular(kCardCornerRadius),
-                bottomLeft: Radius.circular(
-                  _travelModeCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-                bottomRight: Radius.circular(
-                  _travelModeCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
+                ],
               ),
             ),
+          ],
+          BorderRadius.only(
+            topLeft: Radius.circular(kCardCornerRadius),
+            topRight: Radius.circular(kCardCornerRadius),
+            bottomLeft: Radius.circular(
+              _travelModeCtrl.value > 0 ? 0.0 : kCardCornerRadius,
+            ),
+            bottomRight: Radius.circular(
+              _travelModeCtrl.value > 0 ? 0.0 : kCardCornerRadius,
+            ),
+          ),
+        ),
       ),
       SizeTransition(
         sizeFactor: _travelModeCtrl,
@@ -8012,11 +7989,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
       final result =
           await showRoundedCupertinoSheet<_NewEventCustomRepeatResult?>(
             context: context,
-            pageBuilder:
-                (ctx) => _NewEventCustomRepeatSheet(
-                  accentColor: _resolvedCategoryColor,
-                  config: _savedCustomConfig,
-                ),
+            pageBuilder: (ctx) => _NewEventCustomRepeatSheet(
+              accentColor: _resolvedCategoryColor,
+              config: _savedCustomConfig,
+            ),
           );
       if (result != null && mounted) {
         setState(() {
@@ -8118,10 +8094,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
     _monthSlideCtrl.forward(from: 0).then((_) {
       if (!mounted) return;
       setState(() {
-        _calendarMonth =
-            next
-                ? DateTime(_calendarMonth.year, _calendarMonth.month + 1)
-                : DateTime(_calendarMonth.year, _calendarMonth.month - 1);
+        _calendarMonth = next
+            ? DateTime(_calendarMonth.year, _calendarMonth.month + 1)
+            : DateTime(_calendarMonth.year, _calendarMonth.month - 1);
         _calendarDragOffset = 0;
         _monthSlideTween = null;
       });
@@ -8190,10 +8165,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
           backgroundColor: resolveThemeColor(kPillColor, context),
           style: TextStyle(
             inherit: false,
-            color:
-                _datePickerCtrl.value > 0
-                    ? _resolvedCategoryColor
-                    : resolveThemeColor(kPrimaryLabel, context),
+            color: _datePickerCtrl.value > 0
+                ? _resolvedCategoryColor
+                : resolveThemeColor(kPrimaryLabel, context),
             fontSize: 15,
             fontFamily: kSFProText,
             fontWeight: FontWeight.w500,
@@ -8359,10 +8333,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
                   '${_kRepeatMonthNames[month.month - 1]} ${month.year}',
                   style: TextStyle(
                     inherit: false,
-                    color:
-                        isCurrent
-                            ? _resolvedCategoryColor
-                            : resolveThemeColor(kPrimaryLabel, context),
+                    color: isCurrent
+                        ? _resolvedCategoryColor
+                        : resolveThemeColor(kPrimaryLabel, context),
                     fontSize: 17,
                     fontFamily: kSFProText,
                     fontWeight: FontWeight.w600,
@@ -8448,29 +8421,25 @@ class _NewEventSheetState extends State<_NewEventSheet>
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
-            children:
-                _kRepeatDayLabels
-                    .map(
-                      (d) => Expanded(
-                        child: Center(
-                          child: Text(
-                            d,
-                            style: TextStyle(
-                              inherit: false,
-                              color: resolveThemeColor(
-                                kSecondaryLabel,
-                                context,
-                              ),
-                              fontSize: 11,
-                              fontFamily: kSFProText,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: kTracking17,
-                            ),
-                          ),
+            children: _kRepeatDayLabels
+                .map(
+                  (d) => Expanded(
+                    child: Center(
+                      child: Text(
+                        d,
+                        style: TextStyle(
+                          inherit: false,
+                          color: resolveThemeColor(kSecondaryLabel, context),
+                          fontSize: 11,
+                          fontFamily: kSFProText,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: kTracking17,
                         ),
                       ),
-                    )
-                    .toList(),
+                    ),
+                  ),
+                )
+                .toList(),
           ),
         ),
         const SizedBox(height: 2),
@@ -8497,133 +8466,133 @@ class _NewEventSheetState extends State<_NewEventSheet>
           AnimatedSize(
             duration: const Duration(milliseconds: 280),
             curve: Curves.easeInOut,
-            child:
-                _calendarBarrelMode
-                    ? SizedBox(
-                      height: cupertinoDatePickerHeight(context),
-                      child: CupertinoTheme(
-                        data: CupertinoTheme.of(context).copyWith(
-                          primaryColor: _resolvedCategoryColor,
-                          textTheme: CupertinoTheme.of(
-                            context,
-                          ).textTheme.copyWith(
-                            dateTimePickerTextStyle: TextStyle(
-                              inherit: false,
-                              fontFamily: kSFProText,
-                              fontSize: cupertinoDatePickerFontSize(context),
-                              color: resolveThemeColor(kPrimaryLabel, context),
-                              letterSpacing: kTracking17,
+            child: _calendarBarrelMode
+                ? SizedBox(
+                    height: cupertinoDatePickerHeight(context),
+                    child: CupertinoTheme(
+                      data: CupertinoTheme.of(context).copyWith(
+                        primaryColor: _resolvedCategoryColor,
+                        textTheme: CupertinoTheme.of(context).textTheme
+                            .copyWith(
+                              dateTimePickerTextStyle: TextStyle(
+                                inherit: false,
+                                fontFamily: kSFProText,
+                                fontSize: cupertinoDatePickerFontSize(context),
+                                color: resolveThemeColor(
+                                  kPrimaryLabel,
+                                  context,
+                                ),
+                                letterSpacing: kTracking17,
+                              ),
                             ),
-                          ),
-                        ),
-                        child: CupertinoDatePicker(
-                          itemExtent: cupertinoDatePickerItemExtent(context),
-                          mode: CupertinoDatePickerMode.date,
-                          initialDateTime: _endDate,
-                          minimumDate: DateTime(
-                            today.year,
-                            today.month,
-                            today.day,
-                          ),
-                          onDateTimeChanged:
-                              (dt) => setState(() {
-                                _endDate = dt;
-                                _calendarMonth = DateTime(dt.year, dt.month);
-                              }),
-                        ),
                       ),
-                    )
-                    : GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onHorizontalDragStart: (_) {
-                        if (_monthSlideTween != null) return;
-                        setState(() => _calendarDragOffset = 0.0);
-                      },
-                      onHorizontalDragUpdate: (d) {
-                        if (_monthSlideTween != null) return;
-                        setState(() => _calendarDragOffset += d.delta.dx);
-                      },
-                      onHorizontalDragEnd: (d) {
-                        if (_monthSlideTween != null) return;
-                        final v = d.primaryVelocity ?? 0;
-                        if (v < -200 || _calendarDragOffset < -40) {
-                          _commitMonthSlide(next: true);
-                        } else if (v > 200 || _calendarDragOffset > 40) {
-                          _commitMonthSlide(next: false);
-                        } else {
-                          _snapBackMonthSlide();
-                        }
-                      },
-                      child: LayoutBuilder(
-                        builder: (ctx, constraints) {
-                          _calPanelWidth = constraints.maxWidth;
-                          return ClipRect(
-                            child: Stack(
-                              children: [
-                                Positioned.fill(
-                                  child: IgnorePointer(
-                                    child: OverflowBox(
-                                      alignment: Alignment.topLeft,
-                                      maxHeight: double.infinity,
-                                      child: Transform.translate(
-                                        offset: Offset(
-                                          -_calPanelWidth + _calendarDragOffset,
-                                          0,
-                                        ),
-                                        child: SizedBox(
-                                          width: _calPanelWidth,
-                                          child: _buildEndDateMonthPanel(
-                                            prevMonth,
-                                            today,
-                                            isCenter: false,
-                                            showHeader: false,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Positioned.fill(
-                                  child: IgnorePointer(
-                                    child: OverflowBox(
-                                      alignment: Alignment.topLeft,
-                                      maxHeight: double.infinity,
-                                      child: Transform.translate(
-                                        offset: Offset(
-                                          _calPanelWidth + _calendarDragOffset,
-                                          0,
-                                        ),
-                                        child: SizedBox(
-                                          width: _calPanelWidth,
-                                          child: _buildEndDateMonthPanel(
-                                            nextMonth,
-                                            today,
-                                            isCenter: false,
-                                            showHeader: false,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Transform.translate(
-                                  offset: Offset(_calendarDragOffset, 0),
-                                  child: SizedBox(
-                                    width: _calPanelWidth,
-                                    child: _buildEndDateMonthPanel(
-                                      _calendarMonth,
-                                      today,
-                                      isCenter: true,
-                                      showHeader: false,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                      child: CupertinoDatePicker(
+                        itemExtent: cupertinoDatePickerItemExtent(context),
+                        mode: CupertinoDatePickerMode.date,
+                        initialDateTime: _endDate,
+                        minimumDate: DateTime(
+                          today.year,
+                          today.month,
+                          today.day,
+                        ),
+                        onDateTimeChanged: (dt) => setState(() {
+                          _endDate = dt;
+                          _calendarMonth = DateTime(dt.year, dt.month);
+                        }),
                       ),
                     ),
+                  )
+                : GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onHorizontalDragStart: (_) {
+                      if (_monthSlideTween != null) return;
+                      setState(() => _calendarDragOffset = 0.0);
+                    },
+                    onHorizontalDragUpdate: (d) {
+                      if (_monthSlideTween != null) return;
+                      setState(() => _calendarDragOffset += d.delta.dx);
+                    },
+                    onHorizontalDragEnd: (d) {
+                      if (_monthSlideTween != null) return;
+                      final v = d.primaryVelocity ?? 0;
+                      if (v < -200 || _calendarDragOffset < -40) {
+                        _commitMonthSlide(next: true);
+                      } else if (v > 200 || _calendarDragOffset > 40) {
+                        _commitMonthSlide(next: false);
+                      } else {
+                        _snapBackMonthSlide();
+                      }
+                    },
+                    child: LayoutBuilder(
+                      builder: (ctx, constraints) {
+                        _calPanelWidth = constraints.maxWidth;
+                        return ClipRect(
+                          child: Stack(
+                            children: [
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  child: OverflowBox(
+                                    alignment: Alignment.topLeft,
+                                    maxHeight: double.infinity,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        -_calPanelWidth + _calendarDragOffset,
+                                        0,
+                                      ),
+                                      child: SizedBox(
+                                        width: _calPanelWidth,
+                                        child: _buildEndDateMonthPanel(
+                                          prevMonth,
+                                          today,
+                                          isCenter: false,
+                                          showHeader: false,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  child: OverflowBox(
+                                    alignment: Alignment.topLeft,
+                                    maxHeight: double.infinity,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        _calPanelWidth + _calendarDragOffset,
+                                        0,
+                                      ),
+                                      child: SizedBox(
+                                        width: _calPanelWidth,
+                                        child: _buildEndDateMonthPanel(
+                                          nextMonth,
+                                          today,
+                                          isCenter: false,
+                                          showHeader: false,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Transform.translate(
+                                offset: Offset(_calendarDragOffset, 0),
+                                child: SizedBox(
+                                  width: _calPanelWidth,
+                                  child: _buildEndDateMonthPanel(
+                                    _calendarMonth,
+                                    today,
+                                    isCenter: true,
+                                    showHeader: false,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
@@ -8637,21 +8606,20 @@ class _NewEventSheetState extends State<_NewEventSheet>
     children: [
       AnimatedBuilder(
         animation: _endRepeatCtrl,
-        builder:
-            (ctx, _) => _cardWithRadius(
-              [_pickerRow('Repeat', _repeat, items: _repeatItems())],
-              BorderRadius.only(
-                topLeft: Radius.circular(kCardCornerRadius),
-                topRight: Radius.circular(kCardCornerRadius),
-                bottomLeft: Radius.circular(
-                  _endRepeatCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-                bottomRight: Radius.circular(
-                  _endRepeatCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-              ),
-              stadium: _endRepeatCtrl.value == 0.0,
+        builder: (ctx, _) => _cardWithRadius(
+          [_pickerRow('Repeat', _repeat, items: _repeatItems())],
+          BorderRadius.only(
+            topLeft: Radius.circular(kCardCornerRadius),
+            topRight: Radius.circular(kCardCornerRadius),
+            bottomLeft: Radius.circular(
+              _endRepeatCtrl.value > 0 ? 0.0 : kCardCornerRadius,
             ),
+            bottomRight: Radius.circular(
+              _endRepeatCtrl.value > 0 ? 0.0 : kCardCornerRadius,
+            ),
+          ),
+          stadium: _endRepeatCtrl.value == 0.0,
+        ),
       ),
       SizeTransition(
         sizeFactor: _endRepeatCtrl,
@@ -8661,25 +8629,24 @@ class _NewEventSheetState extends State<_NewEventSheet>
           children: [
             AnimatedBuilder(
               animation: _endDateCtrl,
-              builder:
-                  (ctx, _) => _cardWithRadius(
-                    [
-                      _sep(),
-                      _pickerRow(
-                        'End Repeat',
-                        _endRepeat,
-                        items: _endRepeatItems(),
-                      ),
-                    ],
-                    BorderRadius.only(
-                      bottomLeft: Radius.circular(
-                        _endDateCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                      ),
-                      bottomRight: Radius.circular(
-                        _endDateCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                      ),
-                    ),
+              builder: (ctx, _) => _cardWithRadius(
+                [
+                  _sep(),
+                  _pickerRow(
+                    'End Repeat',
+                    _endRepeat,
+                    items: _endRepeatItems(),
                   ),
+                ],
+                BorderRadius.only(
+                  bottomLeft: Radius.circular(
+                    _endDateCtrl.value > 0 ? 0.0 : kCardCornerRadius,
+                  ),
+                  bottomRight: Radius.circular(
+                    _endDateCtrl.value > 0 ? 0.0 : kCardCornerRadius,
+                  ),
+                ),
+              ),
             ),
             SizeTransition(
               sizeFactor: _endDateCtrl,
@@ -8689,22 +8656,17 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 children: [
                   AnimatedBuilder(
                     animation: _datePickerCtrl,
-                    builder:
-                        (ctx, _) => _cardWithRadius(
-                          [_sep(), _buildEndDateRow()],
-                          BorderRadius.only(
-                            bottomLeft: Radius.circular(
-                              _datePickerCtrl.value > 0
-                                  ? 0.0
-                                  : kCardCornerRadius,
-                            ),
-                            bottomRight: Radius.circular(
-                              _datePickerCtrl.value > 0
-                                  ? 0.0
-                                  : kCardCornerRadius,
-                            ),
-                          ),
+                    builder: (ctx, _) => _cardWithRadius(
+                      [_sep(), _buildEndDateRow()],
+                      BorderRadius.only(
+                        bottomLeft: Radius.circular(
+                          _datePickerCtrl.value > 0 ? 0.0 : kCardCornerRadius,
                         ),
+                        bottomRight: Radius.circular(
+                          _datePickerCtrl.value > 0 ? 0.0 : kCardCornerRadius,
+                        ),
+                      ),
+                    ),
                   ),
                   SizeTransition(
                     sizeFactor: _datePickerCtrl,
@@ -8742,31 +8704,31 @@ class _NewEventSheetState extends State<_NewEventSheet>
     void Function(String base) onSelect, {
     Set<String> groupBreakBefore = const {},
     Color? checkmarkColor,
-  }) =>
-      visibleBase
-          .map(
-            (base) => ActionItem(
-              label: _alertDisplayLabel(base),
-              icon: SFIcons.sf_circle,
-              iconBuilder: (_) => const SizedBox.shrink(),
-              checkmark: base == current,
-              checkmarkColor: checkmarkColor,
-              groupBreakAbove: groupBreakBefore.contains(base),
-              onTap: () {
-                onSelect(base);
-                Future.delayed(
-                  const Duration(milliseconds: 80),
-                  _dismissPickerOverlay,
-                );
-              },
-            ),
-          )
-          .toList();
+  }) => visibleBase
+      .map(
+        (base) => ActionItem(
+          label: _alertDisplayLabel(base),
+          icon: SFIcons.sf_circle,
+          iconBuilder: (_) => const SizedBox.shrink(),
+          checkmark: base == current,
+          checkmarkColor: checkmarkColor,
+          groupBreakAbove: groupBreakBefore.contains(base),
+          onTap: () {
+            onSelect(base);
+            Future.delayed(
+              const Duration(milliseconds: 80),
+              _dismissPickerOverlay,
+            );
+          },
+        ),
+      )
+      .toList();
 
   List<ActionItem> _alertItems() {
     final list = _allDay ? _kAlertAllDayBase : _kAlertAllBase;
-    final breakBefore =
-        _allDay ? {'Night before (9 PM)'} : {'At time of event'};
+    final breakBefore = _allDay
+        ? {'Night before (9 PM)'}
+        : {'At time of event'};
     return _buildAlertActionItems(
       list,
       _alert,
@@ -8808,13 +8770,13 @@ class _NewEventSheetState extends State<_NewEventSheet>
   List<ActionItem> _secondAlertItems() {
     final alertMins = _kAlertMinutes[_alert] ?? -1;
     final list = _allDay ? _kAlertAllDayBase : _kAlertAllBase;
-    final breakBefore =
-        _allDay ? {'Night before (9 PM)'} : {'At time of event'};
-    final visible =
-        list.where((base) {
-          final mins = _kAlertMinutes[base] ?? -1;
-          return mins == -1 || alertMins == -1 || mins < alertMins;
-        }).toList();
+    final breakBefore = _allDay
+        ? {'Night before (9 PM)'}
+        : {'At time of event'};
+    final visible = list.where((base) {
+      final mins = _kAlertMinutes[base] ?? -1;
+      return mins == -1 || alertMins == -1 || mins < alertMins;
+    }).toList();
     return _buildAlertActionItems(
       visible,
       _secondAlert,
@@ -8870,8 +8832,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
           width: sq,
           height: sq,
           fit: BoxFit.cover,
-          errorBuilder:
-              (_, __, ___) => _fileIconBox(file.ext, sq, sqR, context: context),
+          errorBuilder: (_, __, ___) =>
+              _fileIconBox(file.ext, sq, sqR, context: context),
         ),
       );
     } else {
@@ -9105,13 +9067,12 @@ class _NewEventSheetState extends State<_NewEventSheet>
             decoration: BoxDecoration(
               color: cardBg,
               borderRadius: BorderRadius.circular(14),
-              border:
-                  isDark
-                      ? Border.all(
-                        color: resolveThemeColor(kTertiaryLabel, context),
-                        width: 0.5,
-                      )
-                      : null,
+              border: isDark
+                  ? Border.all(
+                      color: resolveThemeColor(kTertiaryLabel, context),
+                      width: 0.5,
+                    )
+                  : null,
               boxShadow: const [
                 BoxShadow(
                   color: kImportOverlayShadow,
@@ -9248,13 +9209,12 @@ class _NewEventSheetState extends State<_NewEventSheet>
               color: cardBg,
               shape: BoundedContinuousRectangleBorder(
                 borderRadius: BorderRadius.circular(kCornerRadius),
-                side:
-                    isDark
-                        ? BorderSide(
-                          color: resolveThemeColor(kTertiaryLabel, context),
-                          width: 0.5,
-                        )
-                        : BorderSide.none,
+                side: isDark
+                    ? BorderSide(
+                        color: resolveThemeColor(kTertiaryLabel, context),
+                        width: 0.5,
+                      )
+                    : BorderSide.none,
               ),
               shadows: resolveThemeShadows(kCardShadow, context),
             ),
@@ -9303,15 +9263,14 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 const SizedBox(height: 22),
                 AnimatedBuilder(
                   animation: _importProgressCtrl,
-                  builder:
-                      (_, __) => CustomPaint(
-                        size: const Size(72, 72),
-                        painter: _ImportProgressPainter(
-                          progress: _importProgressCtrl.value,
-                          trackColor: trackColor,
-                          fillColor: catColor,
-                        ),
-                      ),
+                  builder: (_, __) => CustomPaint(
+                    size: const Size(72, 72),
+                    painter: _ImportProgressPainter(
+                      progress: _importProgressCtrl.value,
+                      trackColor: trackColor,
+                      fillColor: catColor,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Padding(
@@ -9390,11 +9349,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
       final result =
           await showRoundedCupertinoSheet<_NewEventCustomRepeatResult?>(
             context: context,
-            pageBuilder:
-                (ctx) => _NewEventCustomRepeatSheet(
-                  accentColor: _resolvedCategoryColor,
-                  config: _savedReminderCustomConfig,
-                ),
+            pageBuilder: (ctx) => _NewEventCustomRepeatSheet(
+              accentColor: _resolvedCategoryColor,
+              config: _savedReminderCustomConfig,
+            ),
           );
       if (result != null && mounted) {
         setState(() {
@@ -9439,7 +9397,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
   Widget _buildReminderDateRow() => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
     child: AdaptiveLabelPillRow(
-      label: 'Reminder Date',
+      // Keep the reminder date pill on one line by giving the label the same
+      // two-line treatment instead of making the pill wrap internally.
+      label: 'Reminder\nDate',
       labelStyle: _kLabelStyle,
       onLabelTap: () => _togglePicker('reminder'),
       pills: [
@@ -9448,10 +9408,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
           backgroundColor: _resolvedPillColor,
           style: TextStyle(
             inherit: false,
-            color:
-                _activePicker == 'reminder'
-                    ? _resolvedCategoryColor
-                    : resolveThemeColor(kPrimaryLabel, context),
+            color: _activePicker == 'reminder'
+                ? _resolvedCategoryColor
+                : resolveThemeColor(kPrimaryLabel, context),
             fontSize: 15,
             fontFamily: kSFProText,
             fontWeight: FontWeight.w500,
@@ -9464,10 +9423,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
           backgroundColor: _resolvedPillColor,
           style: TextStyle(
             inherit: false,
-            color:
-                _activePicker == 'reminder_time'
-                    ? _resolvedCategoryColor
-                    : resolveThemeColor(kPrimaryLabel, context),
+            color: _activePicker == 'reminder_time'
+                ? _resolvedCategoryColor
+                : resolveThemeColor(kPrimaryLabel, context),
             fontSize: 15,
             fontFamily: kSFProText,
             fontWeight: FontWeight.w500,
@@ -9485,66 +9443,58 @@ class _NewEventSheetState extends State<_NewEventSheet>
     children: [
       AnimatedBuilder(
         animation: Listenable.merge([_reminderDateCtrl, _reminderPickerCtrl]),
-        builder:
-            (ctx, _) => _cardWithRadius(
-              [
-                _pickerRow(
-                  'Reminder',
-                  _reminder,
-                  items: _reminderPickerItems(),
-                ),
-              ],
-              BorderRadius.only(
-                topLeft: Radius.circular(kCardCornerRadius),
-                topRight: Radius.circular(kCardCornerRadius),
-                bottomLeft: Radius.circular(
-                  _reminderDateCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-                bottomRight: Radius.circular(
-                  _reminderDateCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-              ),
-              stadium: _reminderDateCtrl.value == 0.0,
+        builder: (ctx, _) => _cardWithRadius(
+          [_pickerRow('Reminder', _reminder, items: _reminderPickerItems())],
+          BorderRadius.only(
+            topLeft: Radius.circular(kCardCornerRadius),
+            topRight: Radius.circular(kCardCornerRadius),
+            bottomLeft: Radius.circular(
+              _reminderDateCtrl.value > 0 ? 0.0 : kCardCornerRadius,
             ),
+            bottomRight: Radius.circular(
+              _reminderDateCtrl.value > 0 ? 0.0 : kCardCornerRadius,
+            ),
+          ),
+          stadium: _reminderDateCtrl.value == 0.0,
+        ),
       ),
       SizeTransition(
         sizeFactor: _reminderDateCtrl,
         axisAlignment: 1.0,
         child: AnimatedBuilder(
           animation: _reminderPickerCtrl,
-          builder:
-              (ctx, _) => Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _cardWithRadius(
-                    [
-                      _sep(),
-                      _buildReminderDateRow(),
-                      // The date/time picker belongs directly to the Reminder
-                      // Date row. Keep it above Repeat Reminder so the recurrence
-                      // control never moves out from under the active picker.
-                      SizeTransition(
-                        sizeFactor: _reminderPickerCtrl,
-                        axisAlignment: 1.0,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [_sep(), _buildInlineDatePicker()],
-                        ),
-                      ),
-                      _sep(),
-                      _pickerRow(
-                        'Repeat Reminder',
-                        _repeatReminder,
-                        items: _repeatReminderItems(),
-                      ),
-                    ],
-                    const BorderRadius.only(
-                      bottomLeft: Radius.circular(kCardCornerRadius),
-                      bottomRight: Radius.circular(kCardCornerRadius),
+          builder: (ctx, _) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _cardWithRadius(
+                [
+                  _sep(),
+                  _buildReminderDateRow(),
+                  // The date/time picker belongs directly to the Reminder
+                  // Date row. Keep it above Repeat Reminder so the recurrence
+                  // control never moves out from under the active picker.
+                  SizeTransition(
+                    sizeFactor: _reminderPickerCtrl,
+                    axisAlignment: 1.0,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [_sep(), _buildInlineDatePicker()],
                     ),
                   ),
+                  _sep(),
+                  _pickerRow(
+                    'Repeat Reminder',
+                    _repeatReminder,
+                    items: _repeatReminderItems(),
+                  ),
                 ],
+                const BorderRadius.only(
+                  bottomLeft: Radius.circular(kCardCornerRadius),
+                  bottomRight: Radius.circular(kCardCornerRadius),
+                ),
               ),
+            ],
+          ),
         ),
       ),
     ],
@@ -9557,27 +9507,26 @@ class _NewEventSheetState extends State<_NewEventSheet>
     children: [
       AnimatedBuilder(
         animation: _secondAlertCtrl,
-        builder:
-            (ctx, _) => _cardWithRadius(
-              [
-                _pickerRow(
-                  'Alert',
-                  _alertDisplayLabel(_alert),
-                  items: _alertItems(),
-                ),
-              ],
-              BorderRadius.only(
-                topLeft: Radius.circular(kCardCornerRadius),
-                topRight: Radius.circular(kCardCornerRadius),
-                bottomLeft: Radius.circular(
-                  _secondAlertCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-                bottomRight: Radius.circular(
-                  _secondAlertCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-              ),
-              stadium: _secondAlertCtrl.value == 0.0,
+        builder: (ctx, _) => _cardWithRadius(
+          [
+            _pickerRow(
+              'Alert',
+              _alertDisplayLabel(_alert),
+              items: _alertItems(),
             ),
+          ],
+          BorderRadius.only(
+            topLeft: Radius.circular(kCardCornerRadius),
+            topRight: Radius.circular(kCardCornerRadius),
+            bottomLeft: Radius.circular(
+              _secondAlertCtrl.value > 0 ? 0.0 : kCardCornerRadius,
+            ),
+            bottomRight: Radius.circular(
+              _secondAlertCtrl.value > 0 ? 0.0 : kCardCornerRadius,
+            ),
+          ),
+          stadium: _secondAlertCtrl.value == 0.0,
+        ),
       ),
       SizeTransition(
         sizeFactor: _secondAlertCtrl,
@@ -9767,10 +9716,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
                   '${_kPickerMonthNames[month.month - 1]} ${month.year}',
                   style: TextStyle(
                     inherit: false,
-                    color:
-                        isCurrent
-                            ? _resolvedCategoryColor
-                            : resolveThemeColor(kPrimaryLabel, context),
+                    color: isCurrent
+                        ? _resolvedCategoryColor
+                        : resolveThemeColor(kPrimaryLabel, context),
                     fontSize: 16,
                     fontFamily: kSFProText,
                     fontWeight: FontWeight.w600,
@@ -9858,29 +9806,25 @@ class _NewEventSheetState extends State<_NewEventSheet>
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
-            children:
-                _kDayLabels
-                    .map(
-                      (d) => Expanded(
-                        child: Center(
-                          child: Text(
-                            d,
-                            style: TextStyle(
-                              inherit: false,
-                              color: resolveThemeColor(
-                                kSecondaryLabel,
-                                context,
-                              ),
-                              fontSize: 11,
-                              fontFamily: kSFProText,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: kTracking17,
-                            ),
-                          ),
+            children: _kDayLabels
+                .map(
+                  (d) => Expanded(
+                    child: Center(
+                      child: Text(
+                        d,
+                        style: TextStyle(
+                          inherit: false,
+                          color: resolveThemeColor(kSecondaryLabel, context),
+                          fontSize: 11,
+                          fontFamily: kSFProText,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: kTracking17,
                         ),
                       ),
-                    )
-                    .toList(),
+                    ),
+                  ),
+                )
+                .toList(),
           ),
         ),
         const SizedBox(height: 2),
@@ -9919,132 +9863,131 @@ class _NewEventSheetState extends State<_NewEventSheet>
           AnimatedSize(
             duration: const Duration(milliseconds: 280),
             curve: Curves.easeInOut,
-            child:
-                _pickerBarrelMode
-                    ? SizedBox(
-                      height: cupertinoDatePickerHeight(context),
-                      child: CupertinoTheme(
-                        data: CupertinoTheme.of(context).copyWith(
-                          primaryColor: _resolvedCategoryColor,
-                          textTheme: CupertinoTheme.of(
-                            context,
-                          ).textTheme.copyWith(
-                            dateTimePickerTextStyle: TextStyle(
-                              inherit: false,
-                              fontFamily: kSFProText,
-                              fontSize: cupertinoDatePickerFontSize(context),
-                              color: resolveThemeColor(kPrimaryLabel, context),
-                              letterSpacing: kTracking17,
+            child: _pickerBarrelMode
+                ? SizedBox(
+                    height: cupertinoDatePickerHeight(context),
+                    child: CupertinoTheme(
+                      data: CupertinoTheme.of(context).copyWith(
+                        primaryColor: _resolvedCategoryColor,
+                        textTheme: CupertinoTheme.of(context).textTheme
+                            .copyWith(
+                              dateTimePickerTextStyle: TextStyle(
+                                inherit: false,
+                                fontFamily: kSFProText,
+                                fontSize: cupertinoDatePickerFontSize(context),
+                                color: resolveThemeColor(
+                                  kPrimaryLabel,
+                                  context,
+                                ),
+                                letterSpacing: kTracking17,
+                              ),
                             ),
-                          ),
-                        ),
-                        child: CupertinoDatePicker(
-                          itemExtent: cupertinoDatePickerItemExtent(context),
-                          key: ValueKey('barrel_$_activePicker'),
-                          mode: CupertinoDatePickerMode.date,
-                          initialDateTime: _pickerDate,
-                          onDateTimeChanged: (dt) {
-                            _setPickerDate(dt);
-                            setState(
-                              () =>
-                                  _pickerCalMonth = DateTime(dt.year, dt.month),
-                            );
-                          },
-                        ),
                       ),
-                    )
-                    : GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onHorizontalDragStart: (_) {
-                        if (_pickerSlideTween != null) return;
-                        setState(() => _pickerDragOffset = 0.0);
-                      },
-                      onHorizontalDragUpdate: (d) {
-                        if (_pickerSlideTween != null) return;
-                        setState(() => _pickerDragOffset += d.delta.dx);
-                      },
-                      onHorizontalDragEnd: (d) {
-                        if (_pickerSlideTween != null) return;
-                        final v = d.primaryVelocity ?? 0;
-                        if (v < -200 || _pickerDragOffset < -40) {
-                          _commitPickerMonthSlide(next: true);
-                        } else if (v > 200 || _pickerDragOffset > 40) {
-                          _commitPickerMonthSlide(next: false);
-                        } else {
-                          _snapBackPickerMonthSlide();
-                        }
-                      },
-                      child: LayoutBuilder(
-                        builder: (ctx, constraints) {
-                          _pickerPanelWidth = constraints.maxWidth;
-                          return ClipRect(
-                            child: Stack(
-                              children: [
-                                Positioned.fill(
-                                  child: IgnorePointer(
-                                    child: OverflowBox(
-                                      alignment: Alignment.topLeft,
-                                      maxHeight: double.infinity,
-                                      child: Transform.translate(
-                                        offset: Offset(
-                                          -_pickerPanelWidth +
-                                              _pickerDragOffset,
-                                          0,
-                                        ),
-                                        child: SizedBox(
-                                          width: _pickerPanelWidth,
-                                          child: _buildPickerMonthPanel(
-                                            prevMonth,
-                                            today,
-                                            isCenter: false,
-                                            showHeader: false,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Positioned.fill(
-                                  child: IgnorePointer(
-                                    child: OverflowBox(
-                                      alignment: Alignment.topLeft,
-                                      maxHeight: double.infinity,
-                                      child: Transform.translate(
-                                        offset: Offset(
-                                          _pickerPanelWidth + _pickerDragOffset,
-                                          0,
-                                        ),
-                                        child: SizedBox(
-                                          width: _pickerPanelWidth,
-                                          child: _buildPickerMonthPanel(
-                                            nextMonth,
-                                            today,
-                                            isCenter: false,
-                                            showHeader: false,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Transform.translate(
-                                  offset: Offset(_pickerDragOffset, 0),
-                                  child: SizedBox(
-                                    width: _pickerPanelWidth,
-                                    child: _buildPickerMonthPanel(
-                                      _pickerCalMonth,
-                                      today,
-                                      isCenter: true,
-                                      showHeader: false,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                      child: CupertinoDatePicker(
+                        itemExtent: cupertinoDatePickerItemExtent(context),
+                        key: ValueKey('barrel_$_activePicker'),
+                        mode: CupertinoDatePickerMode.date,
+                        initialDateTime: _pickerDate,
+                        onDateTimeChanged: (dt) {
+                          _setPickerDate(dt);
+                          setState(
+                            () => _pickerCalMonth = DateTime(dt.year, dt.month),
                           );
                         },
                       ),
                     ),
+                  )
+                : GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onHorizontalDragStart: (_) {
+                      if (_pickerSlideTween != null) return;
+                      setState(() => _pickerDragOffset = 0.0);
+                    },
+                    onHorizontalDragUpdate: (d) {
+                      if (_pickerSlideTween != null) return;
+                      setState(() => _pickerDragOffset += d.delta.dx);
+                    },
+                    onHorizontalDragEnd: (d) {
+                      if (_pickerSlideTween != null) return;
+                      final v = d.primaryVelocity ?? 0;
+                      if (v < -200 || _pickerDragOffset < -40) {
+                        _commitPickerMonthSlide(next: true);
+                      } else if (v > 200 || _pickerDragOffset > 40) {
+                        _commitPickerMonthSlide(next: false);
+                      } else {
+                        _snapBackPickerMonthSlide();
+                      }
+                    },
+                    child: LayoutBuilder(
+                      builder: (ctx, constraints) {
+                        _pickerPanelWidth = constraints.maxWidth;
+                        return ClipRect(
+                          child: Stack(
+                            children: [
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  child: OverflowBox(
+                                    alignment: Alignment.topLeft,
+                                    maxHeight: double.infinity,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        -_pickerPanelWidth + _pickerDragOffset,
+                                        0,
+                                      ),
+                                      child: SizedBox(
+                                        width: _pickerPanelWidth,
+                                        child: _buildPickerMonthPanel(
+                                          prevMonth,
+                                          today,
+                                          isCenter: false,
+                                          showHeader: false,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  child: OverflowBox(
+                                    alignment: Alignment.topLeft,
+                                    maxHeight: double.infinity,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        _pickerPanelWidth + _pickerDragOffset,
+                                        0,
+                                      ),
+                                      child: SizedBox(
+                                        width: _pickerPanelWidth,
+                                        child: _buildPickerMonthPanel(
+                                          nextMonth,
+                                          today,
+                                          isCenter: false,
+                                          showHeader: false,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Transform.translate(
+                                offset: Offset(_pickerDragOffset, 0),
+                                child: SizedBox(
+                                  width: _pickerPanelWidth,
+                                  child: _buildPickerMonthPanel(
+                                    _pickerCalMonth,
+                                    today,
+                                    isCenter: true,
+                                    showHeader: false,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
@@ -10101,18 +10044,16 @@ class _NewEventSheetState extends State<_NewEventSheet>
                           right: _kHeaderEdge,
                           child: _CalModalCircleButton(
                             icon: CupertinoIcons.checkmark,
-                            containerColor:
-                                _titleCtrl.text.trim().isEmpty
-                                    ? kTertiaryLabel
-                                    : _resolvedCategoryColor,
+                            containerColor: _titleCtrl.text.trim().isEmpty
+                                ? kTertiaryLabel
+                                : _resolvedCategoryColor,
                             iconColor: CupertinoColors.white,
                             tapDelay: const Duration(milliseconds: 130),
-                            onTap:
-                                _titleCtrl.text.trim().isEmpty
-                                    ? () {}
-                                    : () {
-                                      _saveEvent();
-                                    },
+                            onTap: _titleCtrl.text.trim().isEmpty
+                                ? () {}
+                                : () {
+                                    _saveEvent();
+                                  },
                           ),
                         ),
                       ],
@@ -10230,18 +10171,17 @@ class _NewEventSheetState extends State<_NewEventSheet>
                           // the other dismissible modal-sheet subrows.
                           AnimatedBuilder(
                             animation: _sectionRowCtrl,
-                            builder:
-                                (_, __) => _card([
-                                  _buildCategoryRow(),
-                                  SizeTransition(
-                                    sizeFactor: _sectionRowCtrl,
-                                    axisAlignment: -1.0,
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [_sep(), _buildSectionRow()],
-                                    ),
-                                  ),
-                                ]),
+                            builder: (_, __) => _card([
+                              _buildCategoryRow(),
+                              SizeTransition(
+                                sizeFactor: _sectionRowCtrl,
+                                axisAlignment: -1.0,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [_sep(), _buildSectionRow()],
+                                ),
+                              ),
+                            ]),
                           ),
                           // Card 6 — Alert (normal events) / Reminder (Unscheduled).
                           // The two sections cross-fade via _alertCardCtrl and
@@ -10376,10 +10316,9 @@ class _EventTimePickerState extends State<_EventTimePicker> {
   }
 
   void _notify() {
-    final hour24 =
-        _period == 0
-            ? (_hour12 == 12 ? 0 : _hour12)
-            : (_hour12 == 12 ? 12 : _hour12 + 12);
+    final hour24 = _period == 0
+        ? (_hour12 == 12 ? 0 : _hour12)
+        : (_hour12 == 12 ? 12 : _hour12 + 12);
     widget.onChanged(
       DateTime(
         widget.initialTime.year,
@@ -10420,14 +10359,12 @@ class _EventTimePickerState extends State<_EventTimePicker> {
           useMagnifier: true,
           overAndUnderCenterOpacity: 0.447,
           offAxisFraction: offAxisFraction,
-          childDelegate:
-              loop
-                  ? ListWheelChildLoopingListDelegate(children: children)
-                  : ListWheelChildListDelegate(children: children),
-          onSelectedItemChanged:
-              loop
-                  ? (i) => onChanged(((i % count) + count) % count)
-                  : (i) => onChanged(i),
+          childDelegate: loop
+              ? ListWheelChildLoopingListDelegate(children: children)
+              : ListWheelChildListDelegate(children: children),
+          onSelectedItemChanged: loop
+              ? (i) => onChanged(((i % count) + count) % count)
+              : (i) => onChanged(i),
         ),
         // Mirror how CupertinoPicker positions its selectionOverlay: a
         // SizedBox(height: itemExtent) centred over the wheel.
@@ -10612,10 +10549,9 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     'Yearly': 'Years',
   };
 
-  String get _everyUnit =>
-      _everyCount == 1
-          ? _kFrequencyUnit[_frequency]!
-          : _kFrequencyUnitPlural[_frequency]!;
+  String get _everyUnit => _everyCount == 1
+      ? _kFrequencyUnit[_frequency]!
+      : _kFrequencyUnitPlural[_frequency]!;
 
   // ── Weekly ────────────────────────────────────────────────────────────────
   static const List<String> _kDays = [
@@ -10726,10 +10662,9 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     if (_frequency == 'Yearly') {
       final sortedMonths = _selectedMonths.toList()..sort();
       final monthNames = sortedMonths.map((i) => _kMonthsFull[i - 1]).toList();
-      final String base =
-          monthNames.isEmpty
-              ? 'Event will occur $every'
-              : 'Event will occur $every in ${_joinDays(monthNames)}';
+      final String base = monthNames.isEmpty
+          ? 'Event will occur $every'
+          : 'Event will occur $every in ${_joinDays(monthNames)}';
       if (_yearlyDaysEnabled) {
         final pos = _kPositions[_yearlyPositionIndex];
         final day = _kDays[_yearlyDayIndex];
@@ -10842,18 +10777,17 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
       _openPickerLabel = rowLabel;
     });
     _pickerEntry = OverlayEntry(
-      builder:
-          (ctx) => ActionMenuOverlay(
-            buttonRect: Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height),
-            isClosing: _pickerIsClosing,
-            onDismiss: _dismissPickerOverlay,
-            actions: items,
-            panelWidth: kPickerPanelWidth,
-            chevronColumn: true,
-            anchorToRight: true,
-            labelFontSize: 15,
-            bouncingScroll: true,
-          ),
+      builder: (ctx) => ActionMenuOverlay(
+        buttonRect: Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height),
+        isClosing: _pickerIsClosing,
+        onDismiss: _dismissPickerOverlay,
+        actions: items,
+        panelWidth: kPickerPanelWidth,
+        chevronColumn: true,
+        anchorToRight: true,
+        labelFontSize: 15,
+        bouncingScroll: true,
+      ),
     );
     Overlay.of(context).insert(_pickerEntry!);
   }
@@ -10863,25 +10797,24 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     String current,
     void Function(String) onSelect, {
     Color? checkmarkColor,
-  }) =>
-      options
-          .map(
-            (label) => ActionItem(
-              label: label,
-              icon: SFIcons.sf_circle,
-              iconBuilder: (_) => const SizedBox.shrink(),
-              checkmark: label == current,
-              checkmarkColor: checkmarkColor,
-              onTap: () {
-                onSelect(label);
-                Future.delayed(
-                  const Duration(milliseconds: 80),
-                  _dismissPickerOverlay,
-                );
-              },
-            ),
-          )
-          .toList();
+  }) => options
+      .map(
+        (label) => ActionItem(
+          label: label,
+          icon: SFIcons.sf_circle,
+          iconBuilder: (_) => const SizedBox.shrink(),
+          checkmark: label == current,
+          checkmarkColor: checkmarkColor,
+          onTap: () {
+            onSelect(label);
+            Future.delayed(
+              const Duration(milliseconds: 80),
+              _dismissPickerOverlay,
+            );
+          },
+        ),
+      )
+      .toList();
 
   // ── Card / row helpers ────────────────────────────────────────────────────
 
@@ -10992,42 +10925,39 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     VoidCallback? onTap,
   }) {
     final isOpen = items != null && _openPickerLabel == label;
-    final TextStyle valueStyle =
-        valueColor != null
-            ? _kRowValueStyle.copyWith(
-              color: valueColor,
-              fontWeight: FontWeight.w600,
-            )
-            : _kRowValueStyle;
+    final TextStyle valueStyle = valueColor != null
+        ? _kRowValueStyle.copyWith(
+            color: valueColor,
+            fontWeight: FontWeight.w600,
+          )
+        : _kRowValueStyle;
     return Builder(
-      builder:
-          (ctx) => GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap:
-                items != null
-                    ? () => _showPickerOverlay(ctx, label, items)
-                    : onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: MinGapLabelValueRow(
-                label: label,
-                labelStyle: _kRowLabelStyle,
+      builder: (ctx) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: items != null
+            ? () => _showPickerOverlay(ctx, label, items)
+            : onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: MinGapLabelValueRow(
+            label: label,
+            labelStyle: _kRowLabelStyle,
+            value: value,
+            valueStyle: valueStyle,
+            trailing: AnimatedOpacity(
+              opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
+              duration: const Duration(milliseconds: 150),
+              child: ModalSheetPickerTrailing(
                 value: value,
-                valueStyle: valueStyle,
-                trailing: AnimatedOpacity(
-                  opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: ModalSheetPickerTrailing(
-                    value: value,
-                    style: valueStyle,
-                    chevronColor: resolveThemeColor(kSecondaryLabel, context),
-                    showChevron: showChevron,
-                  ),
-                ),
-                trailingExtraWidth: showChevron ? 16 : 0,
+                style: valueStyle,
+                chevronColor: resolveThemeColor(kSecondaryLabel, context),
+                showChevron: showChevron,
               ),
             ),
+            trailingExtraWidth: showChevron ? 16 : 0,
           ),
+        ),
+      ),
     );
   }
 
@@ -11057,8 +10987,8 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                         capStartEdge: true,
                         capEndEdge: false,
                       ),
-                  onSelectedItemChanged:
-                      (i) => setState(() => _everyCount = i + 1),
+                  onSelectedItemChanged: (i) =>
+                      setState(() => _everyCount = i + 1),
                   children: List.generate(
                     999,
                     (i) => Align(
@@ -11113,13 +11043,12 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     final selected = _selectedDays.contains(day);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap:
-          () => setState(() {
-            if (selected)
-              _selectedDays.remove(day);
-            else
-              _selectedDays.add(day);
-          }),
+      onTap: () => setState(() {
+        if (selected)
+          _selectedDays.remove(day);
+        else
+          _selectedDays.add(day);
+      }),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
@@ -11195,20 +11124,19 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                   capStartEdge: true,
                   capEndEdge: false,
                 ),
-                onSelectedItemChanged:
-                    (i) => setState(() => _onThePositionIndex = i),
-                children:
-                    _kPositions
-                        .map(
-                          (p) => Align(
-                            alignment: Alignment.centerRight,
-                            child: Padding(
-                              padding: const EdgeInsets.only(right: 20),
-                              child: Text(p, style: _kPickerItemStyle),
-                            ),
-                          ),
-                        )
-                        .toList(),
+                onSelectedItemChanged: (i) =>
+                    setState(() => _onThePositionIndex = i),
+                children: _kPositions
+                    .map(
+                      (p) => Align(
+                        alignment: Alignment.centerRight,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 20),
+                          child: Text(p, style: _kPickerItemStyle),
+                        ),
+                      ),
+                    )
+                    .toList(),
               ),
             ),
             Expanded(
@@ -11224,20 +11152,19 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                   capStartEdge: false,
                   capEndEdge: true,
                 ),
-                onSelectedItemChanged:
-                    (i) => setState(() => _onTheDayIndex = i),
-                children:
-                    _kDays
-                        .map(
-                          (d) => Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
-                              padding: const EdgeInsets.only(left: 20),
-                              child: Text(d, style: _kPickerItemStyle),
-                            ),
-                          ),
-                        )
-                        .toList(),
+                onSelectedItemChanged: (i) =>
+                    setState(() => _onTheDayIndex = i),
+                children: _kDays
+                    .map(
+                      (d) => Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 20),
+                          child: Text(d, style: _kPickerItemStyle),
+                        ),
+                      ),
+                    )
+                    .toList(),
               ),
             ),
           ],
@@ -11275,13 +11202,12 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     final selected = _selectedDates.contains(n);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap:
-          () => setState(() {
-            if (selected)
-              _selectedDates.remove(n);
-            else
-              _selectedDates.add(n);
-          }),
+      onTap: () => setState(() {
+        if (selected)
+          _selectedDates.remove(n);
+        else
+          _selectedDates.add(n);
+      }),
       child: SizedBox(
         height: 44,
         child: ColoredBox(
@@ -11290,10 +11216,9 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
             child: Text(
               '$n',
               style: _kDateCellStyle.copyWith(
-                color:
-                    selected
-                        ? CupertinoColors.white
-                        : resolveThemeColor(kPrimaryLabel, context),
+                color: selected
+                    ? CupertinoColors.white
+                    : resolveThemeColor(kPrimaryLabel, context),
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -11309,13 +11234,12 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     final selected = _selectedMonths.contains(monthIndex);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap:
-          () => setState(() {
-            if (selected)
-              _selectedMonths.remove(monthIndex);
-            else
-              _selectedMonths.add(monthIndex);
-          }),
+      onTap: () => setState(() {
+        if (selected)
+          _selectedMonths.remove(monthIndex);
+        else
+          _selectedMonths.add(monthIndex);
+      }),
       child: SizedBox(
         height: 44,
         child: ColoredBox(
@@ -11325,10 +11249,9 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
               _kMonths[monthIndex - 1],
               style: _kDateCellStyle.copyWith(
                 fontSize: 16,
-                color:
-                    selected
-                        ? CupertinoColors.white
-                        : resolveThemeColor(kPrimaryLabel, context),
+                color: selected
+                    ? CupertinoColors.white
+                    : resolveThemeColor(kPrimaryLabel, context),
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -11380,55 +11303,54 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     children: [
       AnimatedBuilder(
         animation: _yearlyDaysCtrl,
-        builder:
-            (ctx, _) => _cardWithRadius(
-              [
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _toggleYearlyDays,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    child: Row(
-                      children: [
-                        Text('Days of Week', style: _kRowLabelStyle),
-                        const Spacer(),
-                        SizedBox(
-                          width: 70 * 0.80,
-                          height: 30,
-                          child: OverflowBox(
-                            maxWidth: 70,
-                            maxHeight: 31,
-                            alignment: Alignment.center,
-                            child: Transform.scale(
-                              scale: 0.80,
-                              child: AppSwitch(
-                                value: _yearlyDaysEnabled,
-                                onChanged: (_) => _toggleYearlyDays(),
-                                color: widget.accentColor,
-                                height: 31,
-                              ),
-                            ),
+        builder: (ctx, _) => _cardWithRadius(
+          [
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _toggleYearlyDays,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    Text('Days of Week', style: _kRowLabelStyle),
+                    const Spacer(),
+                    SizedBox(
+                      width: 70 * 0.80,
+                      height: 30,
+                      child: OverflowBox(
+                        maxWidth: 70,
+                        maxHeight: 31,
+                        alignment: Alignment.center,
+                        child: Transform.scale(
+                          scale: 0.80,
+                          child: AppSwitch(
+                            value: _yearlyDaysEnabled,
+                            onChanged: (_) => _toggleYearlyDays(),
+                            color: widget.accentColor,
+                            height: 31,
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ],
-              BorderRadius.only(
-                topLeft: Radius.circular(kCardCornerRadius),
-                topRight: Radius.circular(kCardCornerRadius),
-                bottomLeft: Radius.circular(
-                  _yearlyDaysCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-                bottomRight: Radius.circular(
-                  _yearlyDaysCtrl.value > 0 ? 0.0 : kCardCornerRadius,
+                  ],
                 ),
               ),
             ),
+          ],
+          BorderRadius.only(
+            topLeft: Radius.circular(kCardCornerRadius),
+            topRight: Radius.circular(kCardCornerRadius),
+            bottomLeft: Radius.circular(
+              _yearlyDaysCtrl.value > 0 ? 0.0 : kCardCornerRadius,
+            ),
+            bottomRight: Radius.circular(
+              _yearlyDaysCtrl.value > 0 ? 0.0 : kCardCornerRadius,
+            ),
+          ),
+        ),
       ),
       SizeTransition(
         sizeFactor: _yearlyDaysCtrl,
@@ -11454,20 +11376,19 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                             capStartEdge: true,
                             capEndEdge: false,
                           ),
-                      onSelectedItemChanged:
-                          (i) => setState(() => _yearlyPositionIndex = i),
-                      children:
-                          _kPositions
-                              .map(
-                                (p) => Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(right: 20),
-                                    child: Text(p, style: _kPickerItemStyle),
-                                  ),
-                                ),
-                              )
-                              .toList(),
+                      onSelectedItemChanged: (i) =>
+                          setState(() => _yearlyPositionIndex = i),
+                      children: _kPositions
+                          .map(
+                            (p) => Align(
+                              alignment: Alignment.centerRight,
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 20),
+                                child: Text(p, style: _kPickerItemStyle),
+                              ),
+                            ),
+                          )
+                          .toList(),
                     ),
                   ),
                   Expanded(
@@ -11484,20 +11405,19 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                             capStartEdge: false,
                             capEndEdge: true,
                           ),
-                      onSelectedItemChanged:
-                          (i) => setState(() => _yearlyDayIndex = i),
-                      children:
-                          _kDays
-                              .map(
-                                (d) => Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(left: 20),
-                                    child: Text(d, style: _kPickerItemStyle),
-                                  ),
-                                ),
-                              )
-                              .toList(),
+                      onSelectedItemChanged: (i) =>
+                          setState(() => _yearlyDayIndex = i),
+                      children: _kDays
+                          .map(
+                            (d) => Align(
+                              alignment: Alignment.centerLeft,
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 20),
+                                child: Text(d, style: _kPickerItemStyle),
+                              ),
+                            ),
+                          )
+                          .toList(),
                     ),
                   ),
                 ],
@@ -11610,45 +11530,44 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                     children: [
                       AnimatedBuilder(
                         animation: _everyPickerCtrl,
-                        builder:
-                            (ctx, _) => _cardWithRadius(
-                              [
-                                _pickerRow(
-                                  'Frequency',
-                                  _frequency,
-                                  items: _makeItems(
-                                    _kFrequencyOptions,
-                                    _frequency,
-                                    (v) => setState(() => _frequency = v),
-                                    checkmarkColor: widget.accentColor,
-                                  ),
-                                ),
-                                _sep(),
-                                _pickerRow(
-                                  'Every',
-                                  _everyCount == 1
-                                      ? _everyUnit
-                                      : '$_everyCount $_everyUnit',
-                                  showChevron: false,
-                                  valueColor: widget.accentColor,
-                                  onTap: _toggleEveryPicker,
-                                ),
-                              ],
-                              BorderRadius.only(
-                                topLeft: Radius.circular(kCardCornerRadius),
-                                topRight: Radius.circular(kCardCornerRadius),
-                                bottomLeft: Radius.circular(
-                                  _everyPickerCtrl.value > 0
-                                      ? 0.0
-                                      : kCardCornerRadius,
-                                ),
-                                bottomRight: Radius.circular(
-                                  _everyPickerCtrl.value > 0
-                                      ? 0.0
-                                      : kCardCornerRadius,
-                                ),
+                        builder: (ctx, _) => _cardWithRadius(
+                          [
+                            _pickerRow(
+                              'Frequency',
+                              _frequency,
+                              items: _makeItems(
+                                _kFrequencyOptions,
+                                _frequency,
+                                (v) => setState(() => _frequency = v),
+                                checkmarkColor: widget.accentColor,
                               ),
                             ),
+                            _sep(),
+                            _pickerRow(
+                              'Every',
+                              _everyCount == 1
+                                  ? _everyUnit
+                                  : '$_everyCount $_everyUnit',
+                              showChevron: false,
+                              valueColor: widget.accentColor,
+                              onTap: _toggleEveryPicker,
+                            ),
+                          ],
+                          BorderRadius.only(
+                            topLeft: Radius.circular(kCardCornerRadius),
+                            topRight: Radius.circular(kCardCornerRadius),
+                            bottomLeft: Radius.circular(
+                              _everyPickerCtrl.value > 0
+                                  ? 0.0
+                                  : kCardCornerRadius,
+                            ),
+                            bottomRight: Radius.circular(
+                              _everyPickerCtrl.value > 0
+                                  ? 0.0
+                                  : kCardCornerRadius,
+                            ),
+                          ),
+                        ),
                       ),
                       _buildEverySubcard(),
                       SizedBox(
