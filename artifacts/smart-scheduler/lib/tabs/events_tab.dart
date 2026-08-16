@@ -2002,6 +2002,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     setState(() => _deletingFromList.addAll(categories));
     Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
+      EventStore.instance.reassignCategories(
+        fromCategoryIds: categories.map((cat) => cat.id).toSet(),
+      );
       setState(() {
         _deletingFromList.removeAll(categories);
         _userCategories.removeWhere((cat) => group.memberIds.contains(cat.id));
@@ -2024,6 +2027,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     setState(() => _deletingFromList.add(cat));
     Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
+      EventStore.instance.reassignCategories(fromCategoryIds: {cat.id});
       setState(() {
         _deletingFromList.remove(cat);
         _userCategories.remove(cat);
@@ -2039,6 +2043,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     setState(() => _deletingFromGrid.add(cat));
     Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
+      EventStore.instance.reassignCategories(fromCategoryIds: {cat.id});
       setState(() {
         _deletingFromGrid.remove(cat);
         _pinnedUserCategories.remove(cat);
@@ -4636,10 +4641,15 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     if (categoryId == null) return const <String>[];
     const uncategorizedIds = {'sys-uncategorized', 'uncategorized', ''};
     final isUncategorized = uncategorizedIds.contains(categoryId);
+    final knownCategoryIds = {
+      ..._userCategories,
+      ..._pinnedUserCategories,
+    }.map((category) => category.id).toSet();
     return allEvents
         .where(
           (event) => isUncategorized
-              ? uncategorizedIds.contains(event.categoryId)
+              ? uncategorizedIds.contains(event.categoryId) ||
+                    !knownCategoryIds.contains(event.categoryId)
               : event.categoryId == categoryId,
         )
         .map((event) => event.id)
@@ -5379,12 +5389,17 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           .toSet();
     }
 
-    const uncatIds = {'sys-uncategorized', 'uncategorized'};
+    const uncatIds = {'sys-uncategorized', 'uncategorized', ''};
     final isUncategorized = uncatIds.contains(category.id);
+    final knownCategoryIds = {
+      ..._userCategories,
+      ..._pinnedUserCategories,
+    }.map((category) => category.id).toSet();
     return {
       for (final event in allEvents)
         if (isUncategorized
-            ? (uncatIds.contains(event.categoryId) || event.categoryId.isEmpty)
+            ? (uncatIds.contains(event.categoryId) ||
+                  !knownCategoryIds.contains(event.categoryId))
             : event.categoryId == category.id)
           event.id,
     };
@@ -5615,10 +5630,16 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     // Events with no categoryId or the legacy 'uncategorized' sentinel are
     // counted under 'sys-uncategorized' so the Uncategorized tile is correct.
     {
-      const _uncatIds = {'sys-uncategorized', 'uncategorized'};
+      const _uncatIds = {'sys-uncategorized', 'uncategorized', ''};
+      final knownCategoryIds = {
+        ..._userCategories,
+        ..._pinnedUserCategories,
+      }.map((category) => category.id).toSet();
       final counts = <String, int>{};
       for (final e in allEvents) {
-        final id = (_uncatIds.contains(e.categoryId) || e.categoryId.isEmpty)
+        final id =
+            (_uncatIds.contains(e.categoryId) ||
+                !knownCategoryIds.contains(e.categoryId))
             ? 'sys-uncategorized'
             : e.categoryId;
         counts[id] = (counts[id] ?? 0) + 1;
@@ -5988,12 +6009,17 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                         const _uncatIds = {
                           'sys-uncategorized',
                           'uncategorized',
+                          '',
                         };
                         final isUncat = _uncatIds.contains(catId);
+                        final knownCategoryIds = {
+                          ..._userCategories,
+                          ..._pinnedUserCategories,
+                        }.map((category) => category.id).toSet();
                         dcvEvents = allEvents.where((e) {
                           if (isUncat) {
                             return _uncatIds.contains(e.categoryId) ||
-                                e.categoryId.isEmpty;
+                                !knownCategoryIds.contains(e.categoryId);
                           }
                           return e.categoryId == catId;
                         }).toList();
@@ -8177,12 +8203,12 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
           ),
         ),
         Align(
-          alignment: Alignment.bottomCenter,
+          alignment: Alignment.center,
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: const EdgeInsets.all(16),
               child: GelBloomCard(
-                scaleOrigin: Alignment.bottomCenter,
+                scaleOrigin: Alignment.center,
                 fillOpacity: 0.82,
                 shadowOpacity: 0.26,
                 border: sheetBorder,

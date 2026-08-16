@@ -480,6 +480,44 @@ class EventStore {
     }
   }
 
+  /// Move events away from categories that are being deleted.
+  ///
+  /// Events must not retain references to category records that no longer
+  /// exist.  Reassigning them here keeps the persisted event data aligned
+  /// with the category registry and makes the change visible immediately.
+  void reassignCategories({
+    required Set<String> fromCategoryIds,
+    String toCategoryId = 'sys-uncategorized',
+  }) {
+    if (fromCategoryIds.isEmpty) return;
+
+    var changed = false;
+    final reassigned = <ScheduledEvent>[];
+    final updated = events.value.map((event) {
+      if (!fromCategoryIds.contains(event.categoryId)) return event;
+      changed = true;
+      final next = event.copyWithCategory(toCategoryId);
+      reassigned.add(next);
+      return next;
+    }).toList();
+    if (!changed) return;
+
+    events.value = updated;
+    LocalStorage.instance.saveEvents(updated).then((ok) {
+      if (!ok) {
+        debugPrint(
+          '[EventStore] WARNING: saveEvents returned false in '
+          'reassignCategories() — event category changes are only in memory.',
+        );
+      }
+    }); // unawaited
+
+    // Keep semantic-search embeddings in sync with the updated event objects.
+    for (final event in reassigned) {
+      _onUpdated?.call(event);
+    }
+  }
+
   /// Update only the [priority] field for [id] without firing pipeline hooks.
   /// Called exclusively by EventPipeline after AI classification to avoid
   /// triggering a re-embed loop.

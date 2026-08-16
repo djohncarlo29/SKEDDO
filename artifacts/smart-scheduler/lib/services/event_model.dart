@@ -188,6 +188,43 @@ class ScheduledEvent {
     priority: priority,
   );
 
+  /// Return a copy assigned to a different standard category.
+  ///
+  /// Category reassignment is intentionally isolated from the other event
+  /// fields so deleting a category can move its events to Uncategorized
+  /// without changing any event content or scheduling data.
+  ScheduledEvent copyWithCategory(String newCategoryId) => ScheduledEvent(
+    id: id,
+    title: title,
+    subtitle: subtitle,
+    date: date,
+    time: time,
+    endDate: endDate,
+    endTime: endTime,
+    isAllDay: isAllDay,
+    location: location,
+    destination: destination,
+    travelTime: travelTime,
+    travelMode: travelMode,
+    repeat: repeat,
+    repeatEndType: repeatEndType,
+    repeatEndDate: repeatEndDate,
+    customRepeatConfig: customRepeatConfig,
+    alert: alert,
+    secondAlert: secondAlert,
+    url: url,
+    notes: notes,
+    attachmentPaths: attachmentPaths,
+    parsedDate: parsedDate,
+    categoryId: newCategoryId,
+    reminderOption: reminderOption,
+    reminderDateTime: reminderDateTime,
+    reminderRepeat: reminderRepeat,
+    reminderCustomRepeatConfig: reminderCustomRepeatConfig,
+    createdAt: createdAt,
+    priority: priority,
+  );
+
   /// Return a copy with [parsedDate] updated (used by the EventPipeline).
   ScheduledEvent withParsedDate(ParsedDate? pd) => ScheduledEvent(
     id: id,
