@@ -8181,7 +8181,7 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
               style: TextStyle(
                 inherit: false,
                 fontSize: 17,
-                fontFamily: kSFProText,
+                fontFamily: 'SFProDisplay',
                 fontWeight: FontWeight.w500,
                 color: labelColor,
                 letterSpacing: kTracking17,

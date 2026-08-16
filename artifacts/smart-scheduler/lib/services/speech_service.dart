@@ -820,7 +820,7 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
                                 style: TextStyle(
                                   inherit: false,
                                   fontSize: 17,
-                                  fontFamily: 'SFProText',
+                                  fontFamily: 'SFProDisplay',
                                   fontWeight: FontWeight.w600,
                                   color: accent,
                                   letterSpacing: kTracking17,
@@ -850,7 +850,7 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
                                 style: TextStyle(
                                   inherit: false,
                                   fontSize: 17,
-                                  fontFamily: 'SFProText',
+                                  fontFamily: 'SFProDisplay',
                                   fontWeight: FontWeight.w500,
                                   color: secondary,
                                   letterSpacing: kTracking17,
