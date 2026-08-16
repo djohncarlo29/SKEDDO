@@ -9532,7 +9532,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
 
   Widget _buildIdentityCard() {
     final previewColor = _isEmojiIcon(_effectiveIcon)
-        ? _emojiPreviewCircleColor(_resolvedSelectedColor)
+        ? _emojiCircleColor(_resolvedSelectedColor)
         : _resolvedSelectedColor;
 
     return _card([
