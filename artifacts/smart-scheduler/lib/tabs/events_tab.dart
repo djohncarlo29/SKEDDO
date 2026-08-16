@@ -9559,11 +9559,13 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Add-blend radial highlight — brightens the hue at the
-                  // top-left without washing it out the way a white lerp does.
-                  CustomPaint(
-                    painter: _CircleAddHighlightPainter(previewColor),
-                  ),
+                  // Emoji circles use only their flat white-blended swatch.
+                  // Keep the add-blend highlight for the existing non-emoji
+                  // preview treatment.
+                  if (!_isEmojiIcon(_effectiveIcon))
+                    CustomPaint(
+                      painter: _CircleAddHighlightPainter(previewColor),
+                    ),
                   Center(
                     child: _isSmart
                         ? _smartPreviewIcon(widget.smartData!)
@@ -11482,13 +11484,11 @@ bool _isEmojiIcon(Object o) =>
     o is String && !(o as String).startsWith('assets/');
 
 // Category icon circles use a deliberately quiet backdrop when the icon is a
-// native emoji. Keep each swatch's hue distinct while moving it to the same
-// pale HSL treatment; this is render-only and never changes the stored swatch
-// or the icon-picker colors.
-Color _emojiPreviewCircleColor(Color color) {
-  final hsl = HSLColor.fromColor(color);
-  return hsl.withSaturation(0.20).withLightness(0.95).toColor();
-}
+// native emoji. Blend each resolved swatch independently with 80% white and
+// 20% of the original color so every swatch keeps its own hue. This is
+// render-only and never changes the stored swatch or the icon-picker colors.
+Color _emojiCircleColor(Color color) =>
+    Color.lerp(const Color(0xFFFFFFFF), color, 0.20)!;
 
 /// Resolves the background for a saved category's icon circle.
 ///
@@ -11496,7 +11496,7 @@ Color _emojiPreviewCircleColor(Color color) {
 /// All other category icons retain the resolved category swatch unchanged.
 /// Picker swatches intentionally do not call this helper.
 Color _categoryIconCircleColor(Object iconOrSvg, Color color) =>
-    _isEmojiIcon(iconOrSvg) ? _emojiPreviewCircleColor(color) : color;
+    _isEmojiIcon(iconOrSvg) ? _emojiCircleColor(color) : color;
 
 // Visual size of an icon at the picker reference scale (_kIconCircle = 40 px).
 double _pickerIconBaseSize(Object iconOrSvg) {
@@ -11903,8 +11903,8 @@ class _BeamedNotePainter extends CustomPainter {
   bool shouldRepaint(_BeamedNotePainter old) => old.color != color;
 }
 
-// Top-to-bottom Add-blend highlight — brightens the top of the circle using
-// BlendMode.plus so the hue is preserved (unlike a white lerp which desaturates).
+// Top-to-bottom Add-blend highlight for non-emoji Card 1 previews. It brightens
+// the top of the circle using BlendMode.plus while preserving the swatch hue.
 // Light colors (Yellow, Teal, Sand) get a lower peak opacity so they are not
 // over-brightened; all other colors use the standard peak.
 class _CircleAddHighlightPainter extends CustomPainter {
