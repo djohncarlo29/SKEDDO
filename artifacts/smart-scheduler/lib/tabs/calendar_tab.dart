@@ -7998,8 +7998,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
         setState(() {
           _repeat = result.label;
           _savedCustomConfig = result.config;
+          _endRepeat = 'On Date';
         });
         _endRepeatCtrl.animateTo(1.0, curve: Curves.easeOut);
+        _endDateCtrl.animateTo(1.0, curve: Curves.easeOut);
       }
       return;
     }
@@ -8018,8 +8020,12 @@ class _NewEventSheetState extends State<_NewEventSheet>
       _endDateCtrl.animateTo(0.0, curve: Curves.easeIn);
       _datePickerCtrl.animateTo(0.0, curve: Curves.easeIn);
     } else {
-      setState(() => _repeat = v);
+      setState(() {
+        _repeat = v;
+        _endRepeat = 'On Date';
+      });
       _endRepeatCtrl.animateTo(1.0, curve: Curves.easeOut);
+      _endDateCtrl.animateTo(1.0, curve: Curves.easeOut);
     }
   }
 
