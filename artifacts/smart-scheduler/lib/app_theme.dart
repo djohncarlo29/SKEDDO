@@ -900,6 +900,7 @@ class AdaptiveLabelPillRow extends StatelessWidget {
     this.verticalWrapGap = 8.0,
     this.horizontalPadding = 12.0,
     this.verticalPadding = 6.0,
+    this.wrapLabelLast = false,
   }) : assert(pills.length > 0);
 
   final String label;
@@ -910,6 +911,9 @@ class AdaptiveLabelPillRow extends StatelessWidget {
   final double verticalWrapGap;
   final double horizontalPadding;
   final double verticalPadding;
+  /// Keep a multi-word label on one line while pills stack, only allowing
+  /// the label to wrap if a stacked pill would otherwise wrap internally.
+  final bool wrapLabelLast;
 
   double _textWidth(BuildContext context, String text, TextStyle style) {
     final painter = TextPainter(
@@ -925,15 +929,39 @@ class AdaptiveLabelPillRow extends StatelessWidget {
     return _textWidth(context, pill.text, pill.style) + (horizontalPadding * 2);
   }
 
-  Widget _label({required bool fillWidth}) {
-    final text = Text(label, style: labelStyle, softWrap: fillWidth);
+  double _longestWordWidth(BuildContext context) {
+    final words = label
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .map((word) => _textWidth(context, word, labelStyle));
+    return words.fold<double>(0.0, math.max);
+  }
+
+  bool _pillsFitOnSingleLines(List<double> widths, double maxWidth) =>
+      widths.every((width) => width <= maxWidth + 0.01);
+
+  Widget _label({
+    required bool fillWidth,
+    bool allowWrap = false,
+    double? width,
+  }) {
+    final text = Text(
+      label,
+      style: labelStyle,
+      softWrap: fillWidth || allowWrap,
+    );
+    final content = width != null
+        ? SizedBox(width: width, child: text)
+        : fillWidth
+        ? SizedBox(width: double.infinity, child: text)
+        : text;
     if (onLabelTap == null) {
-      return fillWidth ? SizedBox(width: double.infinity, child: text) : text;
+      return content;
     }
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onLabelTap,
-      child: fillWidth ? SizedBox(width: double.infinity, child: text) : text,
+      child: content,
     );
   }
 
@@ -1078,6 +1106,43 @@ class AdaptiveLabelPillRow extends StatelessWidget {
         // full month-name pill cannot fit beside the label, instead of
         // needlessly moving the full date to a second line.
         if (availableTrailingWidth > 0) {
+          // Keep Reminder Date on one line while the pills stack, unless that
+          // narrow label slot would make either pill wrap internally. Only
+          // then trade label height for pill integrity by wrapping the label
+          // at its widest-word width.
+          if (wrapLabelLast &&
+              !_pillsFitOnSingleLines(
+                naturalWidths,
+                availableTrailingWidth,
+              )) {
+            final wrappedLabelWidth = _longestWordWidth(context);
+            final wrappedTrailingWidth = math.max(
+              0.0,
+              constraints.maxWidth -
+                  wrappedLabelWidth -
+                  kLabelValueGap,
+            );
+            if (wrappedLabelWidth < labelWidth &&
+                _pillsFitOnSingleLines(
+                  naturalWidths,
+                  wrappedTrailingWidth,
+                )) {
+              return _labelAndPills(
+                label: _label(
+                  fillWidth: false,
+                  allowWrap: true,
+                  width: wrappedLabelWidth,
+                ),
+                pillGroup: _pillGroup(
+                  context,
+                  naturalWidths,
+                  maxWidth: wrappedTrailingWidth,
+                ),
+                alignLabelToTop: true,
+              );
+            }
+          }
+
           return _labelAndPills(
             label: SizedBox(width: labelWidth, child: _label(fillWidth: false)),
             pillGroup: _pillGroup(

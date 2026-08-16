@@ -9397,10 +9397,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
   Widget _buildReminderDateRow() => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
     child: AdaptiveLabelPillRow(
-      // Keep the reminder date pill on one line by giving the label the same
-      // two-line treatment instead of making the pill wrap internally.
-      label: 'Reminder\nDate',
+      // Keep the label on one line while the pills stack. It wraps only when
+      // that would otherwise make a stacked pill wrap internally.
+      label: 'Reminder Date',
       labelStyle: _kLabelStyle,
+      wrapLabelLast: true,
       onLabelTap: () => _togglePicker('reminder'),
       pills: [
         AdaptivePillSpec(
