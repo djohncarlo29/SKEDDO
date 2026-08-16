@@ -122,41 +122,39 @@ Color resolveThemeColor(Color color, BuildContext context) =>
 /// boundary before handing the style to those widgets.
 TextStyle resolveThemeTextStyle(TextStyle style, BuildContext context) =>
     style.color == null
-        ? style
-        : style.copyWith(color: resolveThemeColor(style.color!, context));
+    ? style
+    : style.copyWith(color: resolveThemeColor(style.color!, context));
 
 /// Resolves semantic colours inside a custom shadow list.
 List<BoxShadow> resolveThemeShadows(
   List<BoxShadow> shadows,
   BuildContext context,
-) =>
-    CupertinoTheme.brightnessOf(context) == Brightness.dark
-        ? const <BoxShadow>[]
-        : shadows
-            .map(
-              (shadow) => shadow.copyWith(
-                color: resolveThemeColor(shadow.color, context),
-              ),
-            )
-            .toList(growable: false);
+) => CupertinoTheme.brightnessOf(context) == Brightness.dark
+    ? const <BoxShadow>[]
+    : shadows
+          .map(
+            (shadow) => shadow.copyWith(
+              color: resolveThemeColor(shadow.color, context),
+            ),
+          )
+          .toList(growable: false);
 
 /// Resolves text glyph shadows while respecting the app-wide shadow policy.
 /// Text shadows are only used for light-mode visual weight; Dark Mode has none.
 List<Shadow> resolveThemeTextShadows(
   List<Shadow> shadows,
   BuildContext context,
-) =>
-    CupertinoTheme.brightnessOf(context) == Brightness.dark
-        ? const <Shadow>[]
-        : shadows
-            .map(
-              (shadow) => Shadow(
-                color: resolveThemeColor(shadow.color, context),
-                offset: shadow.offset,
-                blurRadius: shadow.blurRadius,
-              ),
-            )
-            .toList(growable: false);
+) => CupertinoTheme.brightnessOf(context) == Brightness.dark
+    ? const <Shadow>[]
+    : shadows
+          .map(
+            (shadow) => Shadow(
+              color: resolveThemeColor(shadow.color, context),
+              offset: shadow.offset,
+              blurRadius: shadow.blurRadius,
+            ),
+          )
+          .toList(growable: false);
 
 // ── Shadow colours (transparent in Dark Mode — no shadows needed) ─────────────
 const kShadowBlack = CupertinoDynamicColor.withBrightness(
@@ -606,11 +604,21 @@ class MinGapLabelValueRow extends StatelessWidget {
         // label/value/chevron group fits with the required minimum gap.
         //
         // Once wrapping is necessary, these known pairs have an intentional
-        // fallback preference: "Category Type" / "Standard" wraps the label
-        // only, while "Category Type" / "Shopping List" or "Smart Category"
-        // and "Second Alert" / "1 hour, 30 minutes before" wrap both blocks.
+        // fallback preference: "Category Type" / "Standard" and "Default
+        // Event Duration" / "1 hour" or "2 hours" wrap the label only;
+        // "Travel Time" / "1 hour, 30 minutes" keeps the label on one line
+        // and wraps only the value; "Category Type" / "Shopping List" or
+        // "Smart Category" and "Second Alert" / "1 hour, 30 minutes before"
+        // wrap both blocks.
         final forceLabelOnlyWrap =
-            !fitsOnOneLine && label == 'Category Type' && value == 'Standard';
+            !fitsOnOneLine &&
+            ((label == 'Category Type' && value == 'Standard') ||
+                (label == 'Default Event Duration' &&
+                    (value == '1 hour' || value == '2 hours')));
+        final forceValueOnlyWrap =
+            !fitsOnOneLine &&
+            label == 'Travel Time' &&
+            value == '1 hour, 30 minutes';
         final forceSharedWrap =
             !fitsOnOneLine &&
             ((label == 'Category Type' &&
@@ -620,10 +628,13 @@ class MinGapLabelValueRow extends StatelessWidget {
         final labelCanWrap =
             forceLabelOnlyWrap ||
             forceSharedWrap ||
-            (!fitsOnOneLine && _hasMultipleWords(label));
+            (!fitsOnOneLine && !forceValueOnlyWrap && _hasMultipleWords(label));
         final valueCanWrap =
+            forceValueOnlyWrap ||
             forceSharedWrap ||
-            (!fitsOnOneLine && _hasMultipleWords(wrappedValue));
+            (!fitsOnOneLine &&
+                !forceLabelOnlyWrap &&
+                _hasMultipleWords(wrappedValue));
 
         if (fitsOnOneLine && !labelCanWrap && !valueCanWrap) {
           final row = Row(
@@ -695,8 +706,9 @@ class MinGapLabelValueRow extends StatelessWidget {
           double candidateLabelSlot, {
           double? candidateValueSlot,
         }) {
-          final labelSlot =
-              candidateLabelSlot.clamp(0.0, availableAfterGap).toDouble();
+          final labelSlot = candidateLabelSlot
+              .clamp(0.0, availableAfterGap)
+              .toDouble();
           final valueSlot =
               (candidateValueSlot ?? availableAfterGap - labelSlot)
                   .clamp(0.0, availableAfterGap)
@@ -713,7 +725,9 @@ class MinGapLabelValueRow extends StatelessWidget {
             valueStyle,
             math.max(0.0, valueSlot - trailingExtraWidth),
           );
-          if ((labelCanWrap && labelMetrics.lineCount < 2) ||
+          if ((!labelCanWrap && labelMetrics.lineCount > 1) ||
+              (!valueCanWrap && valueMetrics.lineCount > 1) ||
+              (labelCanWrap && labelMetrics.lineCount < 2) ||
               (valueCanWrap && valueMetrics.lineCount < 2)) {
             return;
           }
@@ -768,14 +782,12 @@ class MinGapLabelValueRow extends StatelessWidget {
         // Try the intended authored wrap widths first. If there is spare room,
         // the unused width becomes extra gap rather than widening a block back
         // to one line.
-        final preferredLabelSlot =
-            labelCanWrap
-                ? math.max(minLabelSlot, (labelWidth + minLabelSlot) / 2.0)
-                : labelWidth;
-        final preferredValueSlot =
-            valueCanWrap
-                ? math.max(minValueSlot, (valueWidth + minValueSlot) / 2.0)
-                : valueWidth;
+        final preferredLabelSlot = labelCanWrap
+            ? math.max(minLabelSlot, (labelWidth + minLabelSlot) / 2.0)
+            : labelWidth;
+        final preferredValueSlot = valueCanWrap
+            ? math.max(minValueSlot, (valueWidth + minValueSlot) / 2.0)
+            : valueWidth;
         if (preferredLabelSlot + preferredValueSlot <= availableAfterGap) {
           considerAllocation(
             preferredLabelSlot,
@@ -822,16 +834,15 @@ class MinGapLabelValueRow extends StatelessWidget {
               child: Text(label, style: labelStyle, softWrap: true),
             ),
             SizedBox(
-              width:
-                  constraints.maxWidth.isFinite
-                      ? math.max(
-                        kLabelValueGap,
-                        constraints.maxWidth -
-                            leadingTotal -
-                            bestLabelSlot -
-                            bestValueSlot,
-                      )
-                      : kLabelValueGap,
+              width: constraints.maxWidth.isFinite
+                  ? math.max(
+                      kLabelValueGap,
+                      constraints.maxWidth -
+                          leadingTotal -
+                          bestLabelSlot -
+                          bestValueSlot,
+                    )
+                  : kLabelValueGap,
             ),
             SizedBox(width: bestValueSlot, child: trailing),
           ],
@@ -1019,10 +1030,9 @@ class AdaptiveLabelPillRow extends StatelessWidget {
     required bool alignLabelToTop,
   }) {
     return Row(
-      crossAxisAlignment:
-          alignLabelToTop
-              ? CrossAxisAlignment.start
-              : CrossAxisAlignment.center,
+      crossAxisAlignment: alignLabelToTop
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
       children: [label, const Spacer(), pillGroup],
     );
   }
@@ -1055,13 +1065,9 @@ class AdaptiveLabelPillRow extends StatelessWidget {
           );
         }
 
-        final availableTrailingWidth =
-            constraints.maxWidth.isFinite
-                ? math.max(
-                  0.0,
-                  constraints.maxWidth - labelWidth - kLabelValueGap,
-                )
-                : naturalGroupWidth;
+        final availableTrailingWidth = constraints.maxWidth.isFinite
+            ? math.max(0.0, constraints.maxWidth - labelWidth - kLabelValueGap)
+            : naturalGroupWidth;
 
         // Keep the label on the left while the date/time pills stack. This is
         // the important narrow-sheet case: the pills retain their authored
@@ -1088,10 +1094,9 @@ class AdaptiveLabelPillRow extends StatelessWidget {
         // full month name remain visible whenever the complete pill fits on
         // its own line; _pillGroup chooses the abbreviation only if it does
         // not.
-        final fullRowWidth =
-            constraints.maxWidth.isFinite
-                ? constraints.maxWidth
-                : naturalGroupWidth;
+        final fullRowWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : naturalGroupWidth;
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1120,12 +1125,12 @@ const kLineHeight = 1.3;
 // Android; iOS already ships with the real SF Pro as a system font.
 String? get kSFProText =>
     (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
-        ? 'SFProText'
-        : null;
+    ? 'SFProText'
+    : null;
 String? get kSFProDisplay =>
     (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
-        ? 'SFProDisplay'
-        : null;
+    ? 'SFProDisplay'
+    : null;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // AnimatedTapIcon — press-shrink + dim animation for bare icon buttons.
@@ -1236,11 +1241,10 @@ class _AnimatedTapIconState extends State<AnimatedTapIcon>
         padding: widget.padding,
         child: AnimatedBuilder(
           animation: _ctrl,
-          builder:
-              (context, child) => Transform.scale(
-                scale: widget.scaleEnabled ? _scale.value : 1.0,
-                child: Opacity(opacity: _opacity.value, child: child),
-              ),
+          builder: (context, child) => Transform.scale(
+            scale: widget.scaleEnabled ? _scale.value : 1.0,
+            child: Opacity(opacity: _opacity.value, child: child),
+          ),
           child: widget.child,
         ),
       ),
@@ -1633,24 +1637,22 @@ class _SplitChevronPainter extends CustomPainter {
     final bottomBaseY = topBaseY + safeGap;
     final centerX = size / 2;
 
-    final paint =
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = strokeWidth
-          ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
 
-    final path =
-        Path()
-          // Up chevron.
-          ..moveTo(inset, topBaseY)
-          ..lineTo(centerX, margin)
-          ..lineTo(size - inset, topBaseY)
-          // Down chevron.
-          ..moveTo(inset, bottomBaseY)
-          ..lineTo(centerX, size - margin)
-          ..lineTo(size - inset, bottomBaseY);
+    final path = Path()
+      // Up chevron.
+      ..moveTo(inset, topBaseY)
+      ..lineTo(centerX, margin)
+      ..lineTo(size - inset, topBaseY)
+      // Down chevron.
+      ..moveTo(inset, bottomBaseY)
+      ..lineTo(centerX, size - margin)
+      ..lineTo(size - inset, bottomBaseY);
 
     canvas.save();
     canvas.translate((size - (size * scaleX)) / 2, 0);
@@ -1757,10 +1759,9 @@ class FrostedGlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final blur = blurSigma * progress;
     final fill = (fillOpacity * progress).clamp(0.0, 1.0);
-    final shadow =
-        CupertinoTheme.brightnessOf(context) == Brightness.dark
-            ? 0.0
-            : shadowOpacity * progress;
+    final shadow = CupertinoTheme.brightnessOf(context) == Brightness.dark
+        ? 0.0
+        : shadowOpacity * progress;
     final effectiveBR = borderRadius ?? BorderRadius.circular(cornerRadius);
     final useStadium = stadium && borderRadius == null;
 
@@ -1773,23 +1774,21 @@ class FrostedGlassCard extends StatelessWidget {
             offset: const Offset(0, 8),
           ),
         ], context),
-        shape:
-            useStadium
-                ? SquircleStadiumBorder(side: border ?? BorderSide.none)
-                : BoundedContinuousRectangleBorder(
-                  borderRadius: effectiveBR,
-                  side: border ?? BorderSide.none,
-                ),
+        shape: useStadium
+            ? SquircleStadiumBorder(side: border ?? BorderSide.none)
+            : BoundedContinuousRectangleBorder(
+                borderRadius: effectiveBR,
+                side: border ?? BorderSide.none,
+              ),
       ),
       child: ClipPath(
         clipper: ShapeBorderClipper(
-          shape:
-              useStadium
-                  ? SquircleStadiumBorder(side: border ?? BorderSide.none)
-                  : BoundedContinuousRectangleBorder(
-                    borderRadius: effectiveBR,
-                    side: border ?? BorderSide.none,
-                  ),
+          shape: useStadium
+              ? SquircleStadiumBorder(side: border ?? BorderSide.none)
+              : BoundedContinuousRectangleBorder(
+                  borderRadius: effectiveBR,
+                  side: border ?? BorderSide.none,
+                ),
         ),
         child: BackdropFilter(
           filter: ImageFilter.blur(
@@ -2001,9 +2000,8 @@ class _GelBloomButtonState extends State<GelBloomButton>
       },
       child: AnimatedBuilder(
         animation: _scale,
-        builder:
-            (context, child) =>
-                Transform.scale(scale: _scale.value, child: child),
+        builder: (context, child) =>
+            Transform.scale(scale: _scale.value, child: child),
         child: widget.child,
       ),
     );
