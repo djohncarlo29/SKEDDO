@@ -11484,11 +11484,11 @@ bool _isEmojiIcon(Object o) =>
     o is String && !(o as String).startsWith('assets/');
 
 // Category icon circles use a deliberately quiet backdrop when the icon is a
-// native emoji. Blend each resolved swatch independently with 80% white and
-// 20% of the original color so every swatch keeps its own hue. This is
+// native emoji. Blend each resolved swatch independently with 60% white and
+// 40% of the original color so every swatch keeps its own hue. This is
 // render-only and never changes the stored swatch or the icon-picker colors.
 Color _emojiCircleColor(Color color) =>
-    Color.lerp(const Color(0xFFFFFFFF), color, 0.20)!;
+    Color.lerp(const Color(0xFFFFFFFF), color, 0.40)!;
 
 /// Resolves the background for a saved category's icon circle.
 ///
