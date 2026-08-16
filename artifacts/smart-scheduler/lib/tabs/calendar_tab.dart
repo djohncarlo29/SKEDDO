@@ -9166,7 +9166,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       decoration: ShapeDecoration(
                         color: addMoreBg,
-                        shape: const SquircleStadiumBorder(),
+                        shape: const BoundedContinuousRectangleBorder(
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(kSquircleStadiumRadius),
+                          ),
+                        ),
                       ),
                       alignment: Alignment.center,
                       child: Text(
@@ -9283,7 +9287,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       decoration: ShapeDecoration(
                         color: resolveThemeColor(kPillColor, context),
-                        shape: const SquircleStadiumBorder(),
+                        shape: const BoundedContinuousRectangleBorder(
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(kSquircleStadiumRadius),
+                          ),
+                        ),
                       ),
                       alignment: Alignment.center,
                       child: Text(
