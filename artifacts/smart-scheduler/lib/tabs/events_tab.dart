@@ -3570,7 +3570,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: renderCategoryColor(cat.color, context),
+                color: _categoryIconCircleColor(
+                  cat.iconOrSvg,
+                  renderCategoryColor(cat.color, context),
+                ),
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -4066,7 +4069,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               width: 35.5,
               height: 35.5,
               decoration: BoxDecoration(
-                color: renderCategoryColor(cat.color, context),
+                color: _categoryIconCircleColor(
+                  cat.iconOrSvg,
+                  renderCategoryColor(cat.color, context),
+                ),
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -6949,7 +6955,10 @@ class _PinnedUserTile extends StatelessWidget {
               width: 35.5,
               height: 35.5,
               decoration: BoxDecoration(
-                color: renderCategoryColor(category.color, context),
+                color: _categoryIconCircleColor(
+                  category.iconOrSvg,
+                  renderCategoryColor(category.color, context),
+                ),
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -7732,7 +7741,10 @@ class _CategoryRow extends StatelessWidget {
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: renderCategoryColor(category.color, context),
+                        color: _categoryIconCircleColor(
+                          category.iconOrSvg,
+                          renderCategoryColor(category.color, context),
+                        ),
                         shape: BoxShape.circle,
                       ),
                       child: Center(
@@ -9518,210 +9530,222 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
 
   // ── Card 1: Identity ──────────────────────────────────────────────────────
 
-  Widget _buildIdentityCard() => _card([
-    // Static blue circle icon centred above the fields.
-    Padding(
-      padding: const EdgeInsets.only(top: 20, bottom: 16),
-      child: Center(
-        child: Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            color: _resolvedSelectedColor,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: _resolvedSelectedColor.withOpacity(0.32),
-                blurRadius: 16,
-                spreadRadius: 0,
-                offset: Offset.zero,
-              ),
-            ],
-          ),
-          child: ClipOval(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Add-blend radial highlight — brightens the hue at the
-                // top-left without washing it out the way a white lerp does.
-                CustomPaint(
-                  painter: _CircleAddHighlightPainter(_resolvedSelectedColor),
-                ),
-                Center(
-                  child: _isSmart
-                      ? _smartPreviewIcon(widget.smartData!)
-                      : _renderCatIcon(
-                          _effectiveIcon,
-                          64,
-                          CupertinoColors.white,
-                          emojiOffsetY: 2,
-                          ctx: context,
-                        ),
+  Widget _buildIdentityCard() {
+    final previewColor = _isEmojiIcon(_effectiveIcon)
+        ? _emojiPreviewCircleColor(_resolvedSelectedColor)
+        : _resolvedSelectedColor;
+
+    return _card([
+      // Static blue circle icon centred above the fields.
+      Padding(
+        padding: const EdgeInsets.only(top: 20, bottom: 16),
+        child: Center(
+          child: Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: previewColor,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: previewColor.withOpacity(0.32),
+                  blurRadius: 16,
+                  spreadRadius: 0,
+                  offset: Offset.zero,
                 ),
               ],
             ),
+            child: ClipOval(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Add-blend radial highlight — brightens the hue at the
+                  // top-left without washing it out the way a white lerp does.
+                  CustomPaint(
+                    painter: _CircleAddHighlightPainter(previewColor),
+                  ),
+                  Center(
+                    child: _isSmart
+                        ? _smartPreviewIcon(widget.smartData!)
+                        : _renderCatIcon(
+                            _effectiveIcon,
+                            64,
+                            CupertinoColors.white,
+                            emojiOffsetY: 2,
+                            ctx: context,
+                          ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
-    ),
-    _sep(),
-    // Category title — centred on the screen.
-    //
-    // Layout: Stack with CupertinoTextField (37 px horizontal padding on each
-    // side) + Positioned clear button overlay on the right.  Equal padding on
-    // both sides keeps TextAlign.center anchored to the true screen centre
-    // whether or not the clear button is visible, without using the built-in
-    // prefix/suffix slots which interfere with text-selection gesture handling.
-    CupertinoTheme(
-      data: CupertinoTheme.of(
-        context,
-      ).copyWith(primaryColor: _resolvedSelectedColor),
-      child: DefaultSelectionStyle(
-        selectionColor: _resolvedSelectedColor.withOpacity(0.20),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            CupertinoTextField(
-              controller: _titleCtrl,
-              focusNode: _titleFocus,
-              readOnly: _isSmart,
-              showCursor: !_isSmart,
-              // New Category (not Edit, not a smart tile) opens with the
-              // keyboard already up and focused here.
-              autofocus: !_isSmart && widget.initial == null,
-              // selectionControls uses a captured colour so handles update live
-              // when the user changes the category swatch.
-              selectionControls: _selectionControls,
-              // No contextMenuBuilder here: _TintedCupertinoTextSelectionControls
-              // inherits CupertinoTextSelectionControls.buildToolbar, which always
-              // renders the full Cupertino floating-bubble toolbar (Select All,
-              // Look Up, Share, etc.) regardless of platform — matching the Notes
-              // tab and every other CupertinoTextField in the app.
-              placeholder: 'Category Title',
-              placeholderStyle: _kPlaceholderStyle,
-              style: _isSmart
-                  ? _kFieldStyle.copyWith(
-                      color: resolveThemeColor(kSecondaryLabel, context),
-                    )
-                  : _titleCtrl.text.isNotEmpty
-                  ? _kFieldStyle.copyWith(
-                      color: _resolvedSelectedColor,
-                      fontWeight: FontWeight.w600,
-                    )
-                  : _kFieldStyle,
-              textAlign: TextAlign.center,
-              cursorColor: _resolvedSelectedColor,
-              // 37 px on each side keeps text centred; no prefix/suffix slots.
-              padding: const EdgeInsets.symmetric(horizontal: 37, vertical: 14),
-              clearButtonMode: OverlayVisibilityMode.never,
-              onChanged: (_) => setState(() {}),
-              textCapitalization: TextCapitalization.sentences,
-              decoration: null,
-              textInputAction: TextInputAction.next,
-            ),
-            // Clear button — Positioned overlay so it never enters the text
-            // field's internal layout and cannot block selection gestures.
-            if (!_isSmart)
-              AnimatedBuilder(
-                animation: _titleCtrl,
-                builder: (_, __) {
-                  if (_titleCtrl.text.isEmpty) return const SizedBox.shrink();
-                  return Positioned(
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        _titleCtrl.clear();
-                        setState(() {});
-                      },
-                      child: const Padding(
-                        padding: EdgeInsets.only(left: 7, right: 12),
-                        child: Icon(
-                          kSearchClearCircleIcon,
-                          color: kEmptyStateIcon,
-                          size: 18,
+      _sep(),
+      // Category title — centred on the screen.
+      //
+      // Layout: Stack with CupertinoTextField (37 px horizontal padding on each
+      // side) + Positioned clear button overlay on the right.  Equal padding on
+      // both sides keeps TextAlign.center anchored to the true screen centre
+      // whether or not the clear button is visible, without using the built-in
+      // prefix/suffix slots which interfere with text-selection gesture handling.
+      CupertinoTheme(
+        data: CupertinoTheme.of(
+          context,
+        ).copyWith(primaryColor: _resolvedSelectedColor),
+        child: DefaultSelectionStyle(
+          selectionColor: _resolvedSelectedColor.withOpacity(0.20),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              CupertinoTextField(
+                controller: _titleCtrl,
+                focusNode: _titleFocus,
+                readOnly: _isSmart,
+                showCursor: !_isSmart,
+                // New Category (not Edit, not a smart tile) opens with the
+                // keyboard already up and focused here.
+                autofocus: !_isSmart && widget.initial == null,
+                // selectionControls uses a captured colour so handles update live
+                // when the user changes the category swatch.
+                selectionControls: _selectionControls,
+                // No contextMenuBuilder here: _TintedCupertinoTextSelectionControls
+                // inherits CupertinoTextSelectionControls.buildToolbar, which always
+                // renders the full Cupertino floating-bubble toolbar (Select All,
+                // Look Up, Share, etc.) regardless of platform — matching the Notes
+                // tab and every other CupertinoTextField in the app.
+                placeholder: 'Category Title',
+                placeholderStyle: _kPlaceholderStyle,
+                style: _isSmart
+                    ? _kFieldStyle.copyWith(
+                        color: resolveThemeColor(kSecondaryLabel, context),
+                      )
+                    : _titleCtrl.text.isNotEmpty
+                    ? _kFieldStyle.copyWith(
+                        color: _resolvedSelectedColor,
+                        fontWeight: FontWeight.w600,
+                      )
+                    : _kFieldStyle,
+                textAlign: TextAlign.center,
+                cursorColor: _resolvedSelectedColor,
+                // 37 px on each side keeps text centred; no prefix/suffix slots.
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 37,
+                  vertical: 14,
+                ),
+                clearButtonMode: OverlayVisibilityMode.never,
+                onChanged: (_) => setState(() {}),
+                textCapitalization: TextCapitalization.sentences,
+                decoration: null,
+                textInputAction: TextInputAction.next,
+              ),
+              // Clear button — Positioned overlay so it never enters the text
+              // field's internal layout and cannot block selection gestures.
+              if (!_isSmart)
+                AnimatedBuilder(
+                  animation: _titleCtrl,
+                  builder: (_, __) {
+                    if (_titleCtrl.text.isEmpty) return const SizedBox.shrink();
+                    return Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          _titleCtrl.clear();
+                          setState(() {});
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.only(left: 7, right: 12),
+                          child: Icon(
+                            kSearchClearCircleIcon,
+                            color: kEmptyStateIcon,
+                            size: 18,
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
-              ),
-          ],
+                    );
+                  },
+                ),
+            ],
+          ),
         ),
-      ),
-    ), // CupertinoTextField stack + DefaultSelectionStyle + CupertinoTheme
-    _sep(),
-    // Description — same Stack-based layout as the title field above.
-    CupertinoTheme(
-      data: CupertinoTheme.of(
-        context,
-      ).copyWith(primaryColor: _resolvedSelectedColor),
-      child: DefaultSelectionStyle(
-        selectionColor: _resolvedSelectedColor.withOpacity(0.20),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            CupertinoTextField(
-              controller: _descCtrl,
-              focusNode: _descFocus,
-              scrollController: _descScrollCtrl,
-              readOnly: _isSmart,
-              showCursor: !_isSmart,
-              selectionControls: _selectionControls,
-              placeholder: 'Subtitle',
-              placeholderStyle: _kPlaceholderStyle,
-              style: _isSmart
-                  ? _kFieldStyle.copyWith(
-                      color: resolveThemeColor(kSecondaryLabel, context),
-                    )
-                  : _kFieldStyle,
-              textAlign: TextAlign.center,
-              cursorColor: _resolvedSelectedColor,
-              padding: const EdgeInsets.symmetric(horizontal: 37, vertical: 14),
-              clearButtonMode: OverlayVisibilityMode.never,
-              onChanged: (_) => setState(() {}),
-              textCapitalization: TextCapitalization.sentences,
-              decoration: null,
-              textInputAction: TextInputAction.done,
-            ),
-            if (!_isSmart)
-              AnimatedBuilder(
-                animation: _descCtrl,
-                builder: (_, __) {
-                  if (_descCtrl.text.isEmpty) return const SizedBox.shrink();
-                  return Positioned(
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        _descCtrl.clear();
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (_descScrollCtrl.hasClients)
-                            _descScrollCtrl.jumpTo(0);
-                        });
-                        setState(() {});
-                      },
-                      child: const Padding(
-                        padding: EdgeInsets.only(left: 7, right: 12),
-                        child: Icon(
-                          kSearchClearCircleIcon,
-                          color: kEmptyStateIcon,
-                          size: 18,
+      ), // CupertinoTextField stack + DefaultSelectionStyle + CupertinoTheme
+      _sep(),
+      // Description — same Stack-based layout as the title field above.
+      CupertinoTheme(
+        data: CupertinoTheme.of(
+          context,
+        ).copyWith(primaryColor: _resolvedSelectedColor),
+        child: DefaultSelectionStyle(
+          selectionColor: _resolvedSelectedColor.withOpacity(0.20),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              CupertinoTextField(
+                controller: _descCtrl,
+                focusNode: _descFocus,
+                scrollController: _descScrollCtrl,
+                readOnly: _isSmart,
+                showCursor: !_isSmart,
+                selectionControls: _selectionControls,
+                placeholder: 'Subtitle',
+                placeholderStyle: _kPlaceholderStyle,
+                style: _isSmart
+                    ? _kFieldStyle.copyWith(
+                        color: resolveThemeColor(kSecondaryLabel, context),
+                      )
+                    : _kFieldStyle,
+                textAlign: TextAlign.center,
+                cursorColor: _resolvedSelectedColor,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 37,
+                  vertical: 14,
+                ),
+                clearButtonMode: OverlayVisibilityMode.never,
+                onChanged: (_) => setState(() {}),
+                textCapitalization: TextCapitalization.sentences,
+                decoration: null,
+                textInputAction: TextInputAction.done,
+              ),
+              if (!_isSmart)
+                AnimatedBuilder(
+                  animation: _descCtrl,
+                  builder: (_, __) {
+                    if (_descCtrl.text.isEmpty) return const SizedBox.shrink();
+                    return Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          _descCtrl.clear();
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (_descScrollCtrl.hasClients)
+                              _descScrollCtrl.jumpTo(0);
+                          });
+                          setState(() {});
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.only(left: 7, right: 12),
+                          child: Icon(
+                            kSearchClearCircleIcon,
+                            color: kEmptyStateIcon,
+                            size: 18,
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
-              ),
-          ],
+                    );
+                  },
+                ),
+            ],
+          ),
         ),
-      ),
-    ), // CupertinoTextField stack + DefaultSelectionStyle + CupertinoTheme
-  ]);
+      ), // CupertinoTextField stack + DefaultSelectionStyle + CupertinoTheme
+    ]);
+  }
 
   // ── Card 2: Category Type ─────────────────────────────────────────────────
 
@@ -11456,6 +11480,23 @@ String _resolveIconSvg(String path, Brightness brightness) {
 /// IconData).  All SVG asset paths start with 'assets/'; emoji strings do not.
 bool _isEmojiIcon(Object o) =>
     o is String && !(o as String).startsWith('assets/');
+
+// Category icon circles use a deliberately quiet backdrop when the icon is a
+// native emoji. Keep each swatch's hue distinct while moving it to the same
+// pale HSL treatment; this is render-only and never changes the stored swatch
+// or the icon-picker colors.
+Color _emojiPreviewCircleColor(Color color) {
+  final hsl = HSLColor.fromColor(color);
+  return hsl.withSaturation(0.20).withLightness(0.95).toColor();
+}
+
+/// Resolves the background for a saved category's icon circle.
+///
+/// Native emoji need a pale, per-swatch backdrop so the emoji remains legible.
+/// All other category icons retain the resolved category swatch unchanged.
+/// Picker swatches intentionally do not call this helper.
+Color _categoryIconCircleColor(Object iconOrSvg, Color color) =>
+    _isEmojiIcon(iconOrSvg) ? _emojiPreviewCircleColor(color) : color;
 
 // Visual size of an icon at the picker reference scale (_kIconCircle = 40 px).
 double _pickerIconBaseSize(Object iconOrSvg) {
