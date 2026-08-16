@@ -8172,7 +8172,13 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
     final secondary = resolveThemeColor(kSecondaryLabel, context);
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
-      shape: const SquircleStadiumBorder(),
+      // Keep the pill corners at the configured radius when a label wraps.
+      // The button should grow vertically, not stretch its corner geometry.
+      shape: const BoundedContinuousRectangleBorder(
+        borderRadius: BorderRadius.all(
+          Radius.circular(kSquircleStadiumRadius),
+        ),
+      ),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
     final sheetBorder = CupertinoTheme.brightnessOf(context) == Brightness.dark

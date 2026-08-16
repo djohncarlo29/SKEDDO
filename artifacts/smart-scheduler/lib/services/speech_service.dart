@@ -749,7 +749,14 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
         : null;
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
-      shape: const SquircleStadiumBorder(),
+      // These buttons may become taller when their labels wrap at a larger
+      // accessibility text size. Keep the pill's corner radius fixed instead
+      // of letting a stadium shape stretch with the button's height.
+      shape: const BoundedContinuousRectangleBorder(
+        borderRadius: BorderRadius.all(
+          Radius.circular(kSquircleStadiumRadius),
+        ),
+      ),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
     const buttonPadding = EdgeInsets.symmetric(vertical: 16);
