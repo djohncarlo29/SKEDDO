@@ -168,7 +168,8 @@ class _CategoryContextMenu extends StatefulWidget {
   final bool isSmartCategory;
   final bool isPinned;
 
-  /// When true, renders the group context menu (Edit Group, Ungroup) instead
+  /// When true, renders the group context menu (Edit Group Info, Delete Group)
+  /// instead
   /// of the standard category menu (Pin, Edit, Archive, Delete).
   final bool isGroup;
   final VoidCallback? onTap;
@@ -178,7 +179,7 @@ class _CategoryContextMenu extends StatefulWidget {
   final VoidCallback? onArchive;
   final VoidCallback? onDelete;
   final VoidCallback? onEditGroup;
-  final VoidCallback? onUngroup;
+  final VoidCallback? onDeleteGroup;
 
   /// Whether this tile/row supports long-press-drag reordering. When true,
   /// a brief grace window follows long-press-start: if the finger moves
@@ -204,7 +205,7 @@ class _CategoryContextMenu extends StatefulWidget {
     this.onArchive,
     this.onDelete,
     this.onEditGroup,
-    this.onUngroup,
+    this.onDeleteGroup,
     this.reorderable = false,
     this.onReorderStart,
     this.onReorderUpdate,
@@ -354,8 +355,8 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
         onEditGroup: widget.onEditGroup != null
             ? () => _hide(then: widget.onEditGroup)
             : null,
-        onUngroup: widget.onUngroup != null
-            ? () => _hide(then: widget.onUngroup)
+        onDeleteGroup: widget.onDeleteGroup != null
+            ? () => _hide(then: widget.onDeleteGroup)
             : null,
       ),
     );
@@ -627,7 +628,8 @@ class _ContextMenuOverlay extends StatelessWidget {
   /// Event mode: shows "Edit Event" and "Delete Event" instead of category actions.
   final bool isEvent;
 
-  /// Group mode: shows "Edit Group" and "Ungroup" instead of category actions.
+  /// Group mode: shows "Edit Group Info" and "Delete Group" instead of
+  /// category actions.
   final bool isGroup;
   final VoidCallback onDismiss;
   final VoidCallback? onPin;
@@ -636,7 +638,7 @@ class _ContextMenuOverlay extends StatelessWidget {
   final VoidCallback? onArchive;
   final VoidCallback? onDelete;
   final VoidCallback? onEditGroup;
-  final VoidCallback? onUngroup;
+  final VoidCallback? onDeleteGroup;
 
   const _ContextMenuOverlay({
     required this.animation,
@@ -655,7 +657,7 @@ class _ContextMenuOverlay extends StatelessWidget {
     this.onArchive,
     this.onDelete,
     this.onEditGroup,
-    this.onUngroup,
+    this.onDeleteGroup,
   });
 
   List<ActionItem> _actions() {
@@ -679,17 +681,17 @@ class _ContextMenuOverlay extends StatelessWidget {
     if (isGroup) {
       return [
         ActionItem(
-          label: 'Edit Group',
+          label: 'Edit Group Info',
           icon: SFIcons.sf_pencil,
           iconSize: 22,
           iconWeight: FontWeight.w500,
           onTap: onEditGroup,
         ),
         ActionItem(
-          label: 'Ungroup',
-          icon: SFIcons.sf_rectangle_stack,
-          iconSize: 20,
-          onTap: onUngroup,
+          label: 'Delete Group',
+          icon: SFIcons.sf_trash,
+          isDestructive: true,
+          onTap: onDeleteGroup,
         ),
       ];
     }
@@ -1972,6 +1974,48 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         onSave: (updated) => _updateGroup(group, updated),
       ),
     );
+  }
+
+  /// Opens the confirmation sheet before dissolving or deleting a group.
+  void _openDeleteGroupSheet(_CategoryGroup group) async {
+    final choice = await _DeleteGroupSheet.show(context, groupName: group.name);
+    if (!mounted || choice == null) return;
+    switch (choice) {
+      case _DeleteGroupChoice.only:
+        _ungroupGroup(group);
+      case _DeleteGroupChoice.withCategories:
+        _deleteGroupAndCategories(group);
+    }
+  }
+
+  /// Deletes the group and its member categories using the same visible
+  /// category-collapse animation as the existing Delete Category action.
+  void _deleteGroupAndCategories(_CategoryGroup group) {
+    final categories = _userCategories
+        .where((cat) => group.memberIds.contains(cat.id))
+        .toList();
+    if (categories.isEmpty) {
+      _ungroupGroup(group);
+      return;
+    }
+
+    setState(() => _deletingFromList.addAll(categories));
+    Future.delayed(const Duration(milliseconds: 260), () {
+      if (!mounted) return;
+      setState(() {
+        _deletingFromList.removeAll(categories);
+        _userCategories.removeWhere((cat) => group.memberIds.contains(cat.id));
+        _listTopOrder.removeWhere(
+          (token) =>
+              token == 'grp-${group.id}' || group.memberIds.contains(token),
+        );
+        _categoryGroups.removeWhere((candidate) => candidate.id == group.id);
+        _expandedGroupIds.remove(group.id);
+        _expandingGroupIds.remove(group.id);
+        _collapsingGroupIds.remove(group.id);
+      });
+      _saveCategories();
+    });
   }
 
   /// Phase 1: shrink + fade the row with a brief destructive-red flash.
@@ -5814,7 +5858,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     onArchive: _archiveCategory,
                     onDelete: _deleteUserCategory,
                     onEditGroup: _editGroupSheet,
-                    onUngroup: _ungroupGroup,
+                    onDeleteGroup: _openDeleteGroupSheet,
                     onToggleExpand: _toggleGroupExpanded,
                     listStackKey: _listStackKey,
                     draggingCat: _draggingListCat,
@@ -7235,7 +7279,7 @@ class _CategoryCard extends StatelessWidget {
   final void Function(_UserCategory)? onArchive;
   final void Function(_UserCategory)? onDelete;
   final void Function(_CategoryGroup)? onEditGroup;
-  final void Function(_CategoryGroup)? onUngroup;
+  final void Function(_CategoryGroup)? onDeleteGroup;
   final void Function(String groupId)? onToggleExpand;
   // Category drag-reorder wiring
   final GlobalKey? listStackKey;
@@ -7270,7 +7314,7 @@ class _CategoryCard extends StatelessWidget {
     this.onArchive,
     this.onDelete,
     this.onEditGroup,
-    this.onUngroup,
+    this.onDeleteGroup,
     this.onToggleExpand,
     this.listStackKey,
     this.draggingCat,
@@ -7474,7 +7518,9 @@ class _CategoryCard extends StatelessWidget {
         glowColor: glowColor,
         onTap: onToggleExpand != null ? () => onToggleExpand!(group.id) : null,
         onEditGroup: onEditGroup != null ? () => onEditGroup!(group) : null,
-        onUngroup: onUngroup != null ? () => onUngroup!(group) : null,
+        onDeleteGroup: onDeleteGroup != null
+            ? () => onDeleteGroup!(group)
+            : null,
         onReorderStart: onGroupHeaderReorderStart != null
             ? (p) => onGroupHeaderReorderStart!(group, p)
             : null,
@@ -7838,7 +7884,8 @@ class _CategoryRow extends StatelessWidget {
 
 /// One group header row in the CATEGORIES list.
 /// Shows the stack icon, group name, member count, and an expand/collapse
-/// chevron. Long-press opens the group context menu (Edit Group, Ungroup).
+/// chevron. Long-press opens the group context menu (Edit Group Info, Delete
+/// Group).
 class _GroupRow extends StatelessWidget {
   final _CategoryGroup group;
   final bool isExpanded;
@@ -7853,7 +7900,7 @@ class _GroupRow extends StatelessWidget {
   final Color glowColor;
   final VoidCallback? onTap;
   final VoidCallback? onEditGroup;
-  final VoidCallback? onUngroup;
+  final VoidCallback? onDeleteGroup;
   // Drag-reorder callbacks (same signature as _CategoryContextMenu expects).
   final void Function(Offset)? onReorderStart;
   final void Function(Offset)? onReorderUpdate;
@@ -7871,7 +7918,7 @@ class _GroupRow extends StatelessWidget {
     this.glowColor = kAccentColor,
     this.onTap,
     this.onEditGroup,
-    this.onUngroup,
+    this.onDeleteGroup,
     this.onReorderStart,
     this.onReorderUpdate,
     this.onReorderEnd,
@@ -7886,7 +7933,7 @@ class _GroupRow extends StatelessWidget {
       isPinned: false,
       reorderable: true,
       onEditGroup: onEditGroup,
-      onUngroup: onUngroup,
+      onDeleteGroup: onDeleteGroup,
       onTap: onTap,
       onReorderStart: onReorderStart,
       onReorderUpdate: onReorderUpdate,
@@ -8025,6 +8072,176 @@ class _GroupRow extends StatelessWidget {
           ),
         ),
         if (!isLast) Container(height: 0.5, color: separatorColor),
+      ],
+    );
+  }
+}
+
+enum _DeleteGroupChoice { only, withCategories }
+
+/// Overlay confirmation sheet for group deletion.
+///
+/// This intentionally follows the same overlay-based presentation as the
+/// microphone access sheet: the card blooms in place and the scrim remains in
+/// the same compositing layer as the Events Tab behind it.
+class _DeleteGroupSheet {
+  static Future<_DeleteGroupChoice?> show(
+    BuildContext context, {
+    required String groupName,
+  }) async {
+    final completer = Completer<_DeleteGroupChoice?>();
+    late final OverlayEntry entry;
+    final overlay = Overlay.of(context, rootOverlay: true);
+
+    void close(_DeleteGroupChoice? result) {
+      if (completer.isCompleted) return;
+      entry.remove();
+      completer.complete(result);
+    }
+
+    entry = OverlayEntry(
+      builder: (_) =>
+          _DeleteGroupSheetOverlay(groupName: groupName, onResult: close),
+    );
+    overlay.insert(entry);
+    return completer.future;
+  }
+}
+
+class _DeleteGroupSheetOverlay extends StatelessWidget {
+  final String groupName;
+  final void Function(_DeleteGroupChoice?) onResult;
+
+  const _DeleteGroupSheetOverlay({
+    required this.groupName,
+    required this.onResult,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = resolveThemeColor(kPrimaryLabel, context);
+    final secondary = resolveThemeColor(kSecondaryLabel, context);
+    final buttonDecor = ShapeDecoration(
+      color: resolveThemeColor(kModalButtonBackground, context),
+      shape: const SquircleStadiumBorder(),
+      shadows: resolveThemeShadows(kCardShadow, context),
+    );
+    final sheetBorder = CupertinoTheme.brightnessOf(context) == Brightness.dark
+        ? BorderSide(
+            color: resolveThemeColor(kTertiaryLabel, context),
+            width: 0.5,
+          )
+        : null;
+
+    Widget button({
+      required String label,
+      required Color labelColor,
+      required VoidCallback onTap,
+    }) {
+      return GelBloomButton(
+        peakScale: 1.06,
+        tapDelay: const Duration(milliseconds: 120),
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          clipBehavior: Clip.antiAlias,
+          decoration: buttonDecor,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Center(
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                inherit: false,
+                fontSize: 17,
+                fontFamily: kSFProText,
+                fontWeight: FontWeight.w500,
+                color: labelColor,
+                letterSpacing: kTracking17,
+                height: kLineHeight,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Stack(
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => onResult(null),
+          child: const ColoredBox(
+            color: Color(0x44000000),
+            child: SizedBox.expand(),
+          ),
+        ),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: GelBloomCard(
+                scaleOrigin: Alignment.bottomCenter,
+                fillOpacity: 0.82,
+                shadowOpacity: 0.26,
+                border: sheetBorder,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Delete the group "$groupName"?',
+                        style: TextStyle(
+                          inherit: false,
+                          fontSize: 18,
+                          fontFamily: 'SFProDisplay',
+                          fontWeight: FontWeight.w600,
+                          color: primary,
+                          letterSpacing: kTracking16,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Choose whether to keep or delete categories and their events.',
+                        style: TextStyle(
+                          inherit: false,
+                          fontSize: 15,
+                          fontFamily: kSFProText,
+                          fontWeight: FontWeight.w400,
+                          color: secondary,
+                          height: 1.5,
+                          letterSpacing: kTracking16,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      button(
+                        label: 'Delete Group Only',
+                        labelColor: primary,
+                        onTap: () => onResult(_DeleteGroupChoice.only),
+                      ),
+                      const SizedBox(height: 12),
+                      button(
+                        label: 'Delete Group and Categories',
+                        labelColor: CupertinoColors.destructiveRed,
+                        onTap: () =>
+                            onResult(_DeleteGroupChoice.withCategories),
+                      ),
+                      const SizedBox(height: 12),
+                      button(
+                        label: 'Cancel',
+                        labelColor: primary,
+                        onTap: () => onResult(null),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
