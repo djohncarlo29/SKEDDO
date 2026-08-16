@@ -4494,6 +4494,16 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     _saveCategories();
   }
 
+  /// Returns whether the category currently has at least one custom section.
+  ///
+  /// The DCV ellipsis menu uses this live value instead of a separate
+  /// transition flag, so deleting the final section immediately restores the
+  /// "New Section" state.
+  bool dcvHasSections(String? label) {
+    if (label == null || label.trim().isEmpty) return false;
+    return _dcvCustomSectionNames[label]?.isNotEmpty ?? false;
+  }
+
   /// Opens the section-order editor for the currently visible DCV.
   void editDcvSections(String label, Color accentColor) {
     final names = _dcvCustomSectionNames[label];
@@ -4565,6 +4575,18 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final reorderedEventIds = <List<String>>[
       for (final index in order) List<String>.of(normalizedEventIds[index]),
     ];
+
+    // Deleting the final section returns the DCV to its section-less state.
+    // Do not synthesize an "Others" section in this case; the menu must show
+    // "New Section" again and events should render in the flat DCV list.
+    if (reorderedNames.isEmpty) {
+      setState(() {
+        _dcvCustomSectionNames.remove(label);
+        _dcvCustomSectionEventIds.remove(label);
+      });
+      _saveCategories();
+      return;
+    }
 
     // Events from a deleted section must remain grouped rather than silently
     // joining an unrelated section.  Keep a single generated "Others" bucket

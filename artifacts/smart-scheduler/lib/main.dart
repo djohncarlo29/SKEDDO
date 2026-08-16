@@ -826,7 +826,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // 'Manual' / '' when absent.  Each DCV maintains its own independent sort.
   final Map<String, String> _dcvSortByMap = {};
   final Map<String, String> _dcvSortDirMap = {};
-  final Map<String, bool> _dcvManageSectionsMap = {};
   bool _dcvShowCompleted = true;
   bool _dcvViewAsList = false;
 
@@ -860,7 +859,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
     final isSmartCategory = _kSmartCategoryLabels.contains(_dcvCategory);
     final sectionsEnabled = _dcvSectionsEnabled(_dcvCategory);
-    final manageSections = _dcvManageSectionsMap[_dcvCategory] ?? false;
+    final manageSections =
+        _eventsTabKey.currentState?.dcvHasSections(_dcvCategory) ?? false;
 
     // Pre-compute panel origin based on the FULL item set so the position
     // stays stable even when Sort By expands (removing rows below it).
@@ -983,8 +983,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           final cat = _dcvCategory;
           if (cat != null && mounted) {
             _eventsTabKey.currentState?.addDcvSection(cat);
-            setState(() => _dcvManageSectionsMap[cat] = true);
-            LocalStorage.instance.saveDcvManageSections(_dcvManageSectionsMap);
           }
         },
         onEditSectionsTriggered: () {
@@ -1331,10 +1329,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           _dcvSortDirMap.addAll(maps.$2);
         });
     });
-    LocalStorage.instance.loadDcvManageSections().then((values) {
-      if (mounted) setState(() => _dcvManageSectionsMap.addAll(values));
-    });
-
     // Show any crash report captured from the previous session.
     if (_pendingCrashReport != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1820,7 +1814,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             // Section-enabled categories open in their initial flat manual
             // view.  Built-in date Smart Categories retain their date
             // grouping.  This is intentionally independent from the menu's
-            // "New Section" → "Manage Sections" transition state.
+            // Live section membership is resolved by the Events tab so the
+            // menu state always matches the currently visible DCV sections.
             dcvShowManualDateSections: !_dcvSectionsEnabled(_dcvCategory),
             onTileTapped: (label, color) => _enterDCV(label, color),
             onActiveDCVCategoryChanged: (label, color) {

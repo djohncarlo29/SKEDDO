@@ -11,6 +11,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:record/record.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../app_theme.dart';
 
 // ── Permission request outcome ─────────────────────────────────────────────────
@@ -73,6 +74,8 @@ class SpeechService {
   bool _available = false;
   bool _listening = false;
   bool _prePromptShown = false;
+  static const _kMicPermissionPromptContinued =
+      'skeddo_mic_permission_prompt_continued_v1';
 
   // OLD: EventChannel subscription
   // StreamSubscription<dynamic>? _eventSub;
@@ -90,10 +93,34 @@ class SpeechService {
 
     // First launch: show rationale sheet before triggering the OS dialog.
     if (!_prePromptShown) {
-      _prePromptShown = true;
-      if (!context.mounted) return SttRequestResult.userCancelled;
-      final proceed = await MicPermissionSheet.show(context);
-      if (!proceed || !context.mounted) return SttRequestResult.userCancelled;
+      var continuedPreviously = false;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        continuedPreviously =
+            prefs.getBool(_kMicPermissionPromptContinued) ?? false;
+      } catch (_) {}
+
+      if (continuedPreviously) {
+        _prePromptShown = true;
+      } else {
+        _prePromptShown = true;
+        if (!context.mounted) {
+          _prePromptShown = false;
+          return SttRequestResult.userCancelled;
+        }
+        final proceed = await MicPermissionSheet.show(context);
+        if (!proceed || !context.mounted) {
+          // "Not Now" / Cancel is intentionally retryable. The rationale
+          // will be shown again the next time microphone input is requested.
+          _prePromptShown = false;
+          return SttRequestResult.userCancelled;
+        }
+
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool(_kMicPermissionPromptContinued, true);
+        } catch (_) {}
+      }
     }
 
     // NEW: use the record package to check / request microphone permission.
