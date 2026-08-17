@@ -3780,7 +3780,6 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     fontStyle: FontStyle.normal,
                     letterSpacing: kTracking16,
                   ),
-                  textScaler: TextScaler.noScaling,
                 ),
                 const SizedBox(width: 6),
                 SizedBox(
@@ -7915,7 +7914,6 @@ class _CategoryRow extends StatelessWidget {
                             fontStyle: FontStyle.normal,
                             letterSpacing: kTracking16,
                           ),
-                          textScaler: TextScaler.noScaling,
                         ),
                         const SizedBox(width: 6),
                         Icon(
