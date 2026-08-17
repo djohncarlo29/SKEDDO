@@ -5643,6 +5643,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   // ── Attachments ───────────────────────────────────────────────────────────
   final List<_AttachmentFile> _attachments = [];
+  final GlobalKey<AnimatedListState> _attachmentListKey =
+      GlobalKey<AnimatedListState>();
   // Pre-existing attachment paths loaded from the event being edited.
   // Preserved unchanged on save unless the user explicitly removes them.
   List<String>? _existingAttachmentPaths;
@@ -8822,7 +8824,16 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   /// One row per already-added attachment file.
   Widget _buildAttachmentFileRow(int index) {
-    final file = _attachments[index];
+    return _buildAttachmentFileRowForFile(
+      _attachments[index],
+      onRemove: () => _removeAttachment(index),
+    );
+  }
+
+  Widget _buildAttachmentFileRowForFile(
+    _AttachmentFile file, {
+    VoidCallback? onRemove,
+  }) {
     const double sq = 32.5;
     const double sqR = sq * 0.52; // ContinuousRectangleBorder squircle radius
 
@@ -8867,7 +8878,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             const SizedBox(width: 8),
             GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: () => setState(() => _attachments.removeAt(index)),
+              onTap: onRemove,
               child: const Padding(
                 padding: EdgeInsets.only(left: 4),
                 child: Icon(
@@ -8880,6 +8891,26 @@ class _NewEventSheetState extends State<_NewEventSheet>
           ],
         ),
       ),
+    );
+  }
+
+  void _removeAttachment(int index) {
+    if (index < 0 || index >= _attachments.length) return;
+    final removedFile = _attachments.removeAt(index);
+    final listState = _attachmentListKey.currentState;
+
+    setState(() {});
+    listState?.removeItem(
+      index,
+      (context, animation) => SizeTransition(
+        sizeFactor: animation,
+        axisAlignment: -1.0,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [_buildAttachmentFileRowForFile(removedFile), _sep()],
+        ),
+      ),
+      duration: const Duration(milliseconds: 280),
     );
   }
 
@@ -9023,10 +9054,20 @@ class _NewEventSheetState extends State<_NewEventSheet>
       await Future.delayed(const Duration(milliseconds: 450));
       if (!mounted) return;
       _removeImportingOverlay();
+      final insertIndex = _attachments.length;
       setState(() {
         _attachments.addAll(newFiles);
         _importingActive = false;
       });
+      final listState = _attachmentListKey.currentState;
+      if (listState != null) {
+        for (var i = 0; i < newFiles.length; i++) {
+          listState.insertItem(
+            insertIndex + i,
+            duration: const Duration(milliseconds: 280),
+          );
+        }
+      }
     } else {
       _removeImportingOverlay();
       setState(() => _importingActive = false);
@@ -10232,14 +10273,24 @@ class _NewEventSheetState extends State<_NewEventSheet>
                             curve: Curves.easeInOut,
                             alignment: Alignment.topCenter,
                             child: _card([
-                              for (
-                                int i = 0;
-                                i < _attachments.length;
-                                i++
-                              ) ...[
-                                _buildAttachmentFileRow(i),
-                                _sep(),
-                              ],
+                              AnimatedList(
+                                key: _attachmentListKey,
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                initialItemCount: _attachments.length,
+                                itemBuilder: (context, index, animation) =>
+                                    SizeTransition(
+                                      sizeFactor: animation,
+                                      axisAlignment: -1.0,
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          _buildAttachmentFileRow(index),
+                                          _sep(),
+                                        ],
+                                      ),
+                                    ),
+                              ),
                               _buildAttachmentRow(),
                             ], stadium: _attachments.isEmpty),
                           ),
