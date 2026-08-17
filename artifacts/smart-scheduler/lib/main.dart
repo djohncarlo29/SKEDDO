@@ -661,6 +661,8 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
+  static const double _dcvColorSnapThreshold = 0.5;
+
   final _notesTabKey = GlobalKey<NotesTabState>();
   final _calendarTabKey = GlobalKey<CalendarTabState>();
   final _eventsTabKey = GlobalKey<EventsTabState>();
@@ -1928,7 +1930,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               // from the same controller tick as the SlideTransition,
                               // the snap and the content cross exactly the same frame.
                               final isDCVVisual =
-                                  pageP >= 0.5 && _selectedIndex == 2;
+                                  pageP >= _dcvColorSnapThreshold &&
+                                  _selectedIndex == 2;
                               // Header icons swap to the category's own colour while
                               // its DCV is visible, snapping at the same 50 % pageP
                               // threshold as the icons themselves (see comment above).
@@ -2462,53 +2465,66 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   ),
 
                   // Tab bar — sits below the Stack so its top border and upward
-                  // shadow are also visible over the content.
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      border: Border(
-                        top: BorderSide(color: separatorColor, width: 0.75),
-                      ),
-                      boxShadow: resolveThemeShadows([
-                        BoxShadow(
-                          color: tabBarShadowColor,
-                          blurRadius: 6,
-                          offset: Offset(0, -2),
+                  // shadow are also visible over the content. The Events
+                  // accent is rebuilt from the same DCV controller and
+                  // midpoint threshold as the header icons, so entry and exit
+                  // switch on the same frame in both directions.
+                  AnimatedBuilder(
+                    animation: _dcvSlideController,
+                    builder: (context, _) {
+                      final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
+                      final isDCVVisual =
+                          pageP >= _dcvColorSnapThreshold &&
+                          _selectedIndex == 2;
+                      final eventsAccent = isDCVVisual
+                          ? (_dcvColor ?? resolveAccentColor(context))
+                          : resolveAccentColor(context);
+                      return Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          border: Border(
+                            top: BorderSide(color: separatorColor, width: 0.75),
+                          ),
+                          boxShadow: resolveThemeShadows([
+                            BoxShadow(
+                              color: tabBarShadowColor,
+                              blurRadius: 6,
+                              offset: Offset(0, -2),
+                            ),
+                          ], context),
                         ),
-                      ], context),
-                    ),
-                    padding: EdgeInsets.only(bottom: bottomInset),
-                    child: SizedBox(
-                      height: 60,
-                      child: Row(
-                        children: [
-                          _TabItem(
-                            icon: SFIcons.sf_text_document,
-                            label: 'Notes',
-                            active: _selectedIndex == 0,
-                            onTap: () => _switchTab(0),
-                            accentColor: resolveAccentColor(context),
+                        padding: EdgeInsets.only(bottom: bottomInset),
+                        child: SizedBox(
+                          height: 60,
+                          child: Row(
+                            children: [
+                              _TabItem(
+                                icon: SFIcons.sf_text_document,
+                                label: 'Notes',
+                                active: _selectedIndex == 0,
+                                onTap: () => _switchTab(0),
+                                accentColor: resolveAccentColor(context),
+                              ),
+                              _TabItem(
+                                icon: SFIcons.sf_calendar,
+                                label: 'Calendar',
+                                active: _selectedIndex == 1,
+                                onTap: () => _switchTab(1),
+                                accentColor: resolveAccentColor(context),
+                              ),
+                              _TabItem(
+                                icon: SFIcons.sf_list_bullet,
+                                label: 'Events',
+                                active: _selectedIndex == 2,
+                                onTap: () => _switchTab(2),
+                                accentColor: eventsAccent,
+                              ),
+                            ],
                           ),
-                          _TabItem(
-                            icon: SFIcons.sf_calendar,
-                            label: 'Calendar',
-                            active: _selectedIndex == 1,
-                            onTap: () => _switchTab(1),
-                            accentColor: resolveAccentColor(context),
-                          ),
-                          _TabItem(
-                            icon: SFIcons.sf_list_bullet,
-                            label: 'Events',
-                            active: _selectedIndex == 2,
-                            onTap: () => _switchTab(2),
-                            accentColor: _isDCV
-                                ? (_dcvColor ?? resolveAccentColor(context))
-                                : resolveAccentColor(context),
-                          ),
-                        ],
-                      ),
-                    ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
