@@ -13,3 +13,15 @@ smart-category icon circles, and there alone.
 **How to apply:** When tuning these numbers, change the main smart tile and its
 matching drag ghost together, but leave the add/edit preview and detail
 placeholder layouts unchanged.
+
+The drag ghost is rendered in the global overlay, so its day-number Text must
+also explicitly use `TextScaler.noScaling`; matching font size and position
+alone is not enough when the device accessibility text scale is enlarged.
+
+**Why:** The overlay inherits the device text scale independently of the
+fixed-position badge geometry, which changes the measured glyph height and
+shifts the day number inside the calendar circle.
+
+**How to apply:** Any future change to the four calendar badge numbers must be
+made in both the in-grid tile and the lifted-card renderer, including their
+text-scaling policy.

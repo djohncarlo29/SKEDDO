@@ -3997,6 +3997,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                       height: 1.0,
                       letterSpacing: 0,
                     ),
+                    // Keep the lifted card's calendar badge identical to the
+                    // in-grid tile.  This text sits at a fixed position inside
+                    // the 35.5px circle, so OS text scaling changes its
+                    // measured height and shifts the number vertically.
+                    textScaler: TextScaler.noScaling,
                   ),
                 ),
               ),
