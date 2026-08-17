@@ -3714,6 +3714,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
   /// Ghost rendered in the Overlay while a group header is being dragged.
   Widget _buildListDragGroupHeaderGhost(_CategoryGroup group) {
+    final textScaler = MediaQuery.textScalerOf(context);
     return Container(
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
@@ -3781,12 +3782,17 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                   ),
                   textScaler: TextScaler.noScaling,
                 ),
-                const SizedBox(width: 4),
-                FixedSFIcon(
-                  SFIcons.sf_chevron_right,
-                  fontSize: MediaQuery.textScalerOf(context).scale(13),
-                  color: resolveAccentColor(context),
-                  fontWeight: FontWeight.w700,
+                const SizedBox(width: 6),
+                SizedBox(
+                  width: textScaler.scale(14),
+                  child: Center(
+                    child: FixedSFIcon(
+                      SFIcons.sf_chevron_right,
+                      fontSize: textScaler.scale(13),
+                      color: resolveAccentColor(context),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ],
             ),
