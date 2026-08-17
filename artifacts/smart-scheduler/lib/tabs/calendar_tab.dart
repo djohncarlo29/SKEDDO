@@ -10227,13 +10227,22 @@ class _NewEventSheetState extends State<_NewEventSheet>
                           ),
                           const SizedBox(height: kModalCardGap),
                           // Card 7 — attached files + "Add attachment…"
-                          _card([
-                            for (int i = 0; i < _attachments.length; i++) ...[
-                              _buildAttachmentFileRow(i),
-                              _sep(),
-                            ],
-                            _buildAttachmentRow(),
-                          ], stadium: _attachments.isEmpty),
+                          AnimatedSize(
+                            duration: const Duration(milliseconds: 280),
+                            curve: Curves.easeInOut,
+                            alignment: Alignment.topCenter,
+                            child: _card([
+                              for (
+                                int i = 0;
+                                i < _attachments.length;
+                                i++
+                              ) ...[
+                                _buildAttachmentFileRow(i),
+                                _sep(),
+                              ],
+                              _buildAttachmentRow(),
+                            ], stadium: _attachments.isEmpty),
+                          ),
                           const SizedBox(height: kModalCardGap),
                           // Card 8 — URL + Notes
                           _card([

@@ -1613,6 +1613,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   // Initialised from _buildSmartTiles() in initState; persisted and updated
   // by drag-reorder so the user's arrangement survives restarts.
   final List<String> _smartCategoryOrder = [];
+  // The global drag overlay is outside the Events-tab build subtree, so it
+  // cannot read the tile list computed by the live grid build unless we retain
+  // that list here. Keeping the live instances also preserves current counts
+  // while a tile is lifted.
+  List<_TileData> _liveSmartTiles = const [];
   // Unified ordering for the grid: both smart labels (String) and pinned
   // user categories (_UserCategory) in a single cross-section sequence.
   // Archived items are NOT kept here — they are removed on archive and not
@@ -1683,6 +1688,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   bool _dragGridFullWidth =
       false; // true while targeting the solitary final slot
   OverlayEntry? _gridDragOverlayEntry;
+  // Capture the exact live smart tile at drag start. The drag ghost lives in
+  // the root Overlay, outside the grid build that produced the tile, so it
+  // must not fall back to the zero-count editor/default tile data while the
+  // grid is being reordered.
+  _TileData? _draggingSmartTile;
 
   // ── List (user-categories) drag-reorder state ─────────────────────────────
   _UserCategory? _draggingListCat;
@@ -2087,12 +2097,19 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final grab = isFullWidth
         ? Offset(rawGrab.dx.clamp(0.0, tileWidth), rawGrab.dy)
         : rawGrab;
+    final draggingSmartTile = key is String
+        ? _liveSmartTiles.cast<_TileData?>().firstWhere(
+            (tile) => tile?.label == key.substring(6),
+            orElse: () => null,
+          )
+        : null;
     setState(() {
       _draggingGridKey = key;
       _dragGridGrabOffset = grab;
       _dragGridTopLeft = tileTopLeft;
       _dragGridTileWidth = tileWidth;
       _dragGridFullWidth = isFullWidth;
+      _draggingSmartTile = draggingSmartTile;
     });
     // Insert drag ghost into the global Overlay (above all scroll content).
     _gridDragOverlayEntry?.remove();
@@ -2318,6 +2335,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         _dragGridGrabOffset = null;
         _dragGridTileWidth = null;
         _dragGridFullWidth = false;
+        _draggingSmartTile = null;
         _gridDragCrossingToList = false;
         _crossListTargetIdx = null;
         _crossListGhostGlobalTop = null;
@@ -2380,6 +2398,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       _dragGridGrabOffset = null;
       _dragGridTileWidth = null;
       _dragGridFullWidth = false;
+      _draggingSmartTile = null;
     });
     _saveCategories();
   }
@@ -3322,6 +3341,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       _dragGridGrabOffset = null;
       _dragGridTileWidth = null;
       _dragGridFullWidth = false;
+      _draggingSmartTile = null;
     });
   }
 
@@ -3917,11 +3937,16 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     );
     if (key is String) {
       final label = key.substring(6);
-      final allTiles = _buildSmartTiles();
-      final tile = allTiles.firstWhere(
-        (t) => t.label == label,
-        orElse: () => allTiles.first,
-      );
+      final liveTiles = _liveSmartTiles;
+      final tile = _draggingSmartTile?.label == label
+          ? _draggingSmartTile!
+          : liveTiles.firstWhere(
+              (t) => t.label == label,
+              orElse: () => _buildSmartTiles().firstWhere(
+                (t) => t.label == label,
+                orElse: () => _buildSmartTiles().first,
+              ),
+            );
       final color = _smartCategoryColors[label] ?? resolveAccentColor(context);
       return _buildSmartTileGhostCard(
         tile,
@@ -5728,6 +5753,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       unscheduledCount: unscheduledCount,
       allCount: baseEvents.length,
     );
+    _liveSmartTiles = allSmartTiles;
     final smartTiles = _smartCategoryOrder.isNotEmpty
         ? _smartCategoryOrder
               .where((label) => !_archivedSmartCategories.contains(label))
@@ -8188,9 +8214,7 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
       // Keep the pill corners at the configured radius when a label wraps.
       // The button should grow vertically, not stretch its corner geometry.
       shape: const BoundedContinuousRectangleBorder(
-        borderRadius: BorderRadius.all(
-          Radius.circular(kSquircleStadiumRadius),
-        ),
+        borderRadius: BorderRadius.all(Radius.circular(kSquircleStadiumRadius)),
       ),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
@@ -8273,7 +8297,7 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'Choose whether to keep or delete categories and their events.',
+                        'Choose whether to keep or delete the group and their categories.',
                         style: TextStyle(
                           inherit: false,
                           fontSize: 15,

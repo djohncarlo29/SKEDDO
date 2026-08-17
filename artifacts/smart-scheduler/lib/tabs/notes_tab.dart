@@ -362,6 +362,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     });
   }
 
+  @override
   void deactivate() {
     if (_searchFocused || _searchText.isNotEmpty || _greyActive) {
       // Hard reset — skip animations when the widget is leaving the tree.
@@ -377,6 +378,8 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
       FocusManager.instance.primaryFocus?.unfocus();
       widget.onSearchFocusChanged?.call(false);
     }
+
+    super.deactivate();
   }
 
   /// True while the attach action panel or the attachment preview overlay is open.

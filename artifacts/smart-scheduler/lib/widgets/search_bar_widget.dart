@@ -789,3 +789,41 @@ class SearchNoResults extends StatelessWidget {
     );
   }
 }
+
+/// Centers search empty states inside the usable search content viewport.
+///
+/// Search overlays remain mounted behind the keyboard on Android, so
+/// [MediaQuery.viewInsets] must be removed from the centering height rather
+/// than allowing the placeholder to center beneath the keyboard.
+class SearchNoResultsCentered extends StatelessWidget {
+  final Widget child;
+
+  const SearchNoResultsCentered({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final keyboardBottom = MediaQuery.viewInsetsOf(context).bottom;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (!constraints.hasBoundedHeight) {
+          return Center(child: child);
+        }
+        final usableHeight = (constraints.maxHeight - keyboardBottom)
+            .clamp(0.0, constraints.maxHeight)
+            .toDouble();
+        return SizedBox(
+          width: double.infinity,
+          height: constraints.maxHeight,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              width: double.infinity,
+              height: usableHeight,
+              child: Center(child: child),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}

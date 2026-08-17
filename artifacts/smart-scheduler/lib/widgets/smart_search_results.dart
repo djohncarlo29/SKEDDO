@@ -44,7 +44,7 @@ class SmartSearchResultsSliver extends StatelessWidget {
     if (hits.isEmpty) {
       return SliverFillRemaining(
         hasScrollBody: false,
-        child: Center(
+        child: SearchNoResultsCentered(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -137,7 +137,7 @@ class SmartDcvSearchResults extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (primary.isEmpty && overflow.isEmpty) {
-      return Center(
+      return SearchNoResultsCentered(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
