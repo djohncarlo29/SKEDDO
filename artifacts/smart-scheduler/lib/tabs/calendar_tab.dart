@@ -10,6 +10,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/physics.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../app_theme.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
@@ -5660,6 +5661,15 @@ class _NewEventSheetState extends State<_NewEventSheet>
   List<PlatformFile> _stagedFiles = [];
   OverlayEntry? _stagedOverlayEntry;
 
+  // External drag-and-drop state.  The native drop region is attached only to
+  // the "Add attachment…" row so the rest of the sheet keeps its normal
+  // gesture behavior.
+  late final AnimationController _attachmentDropCtrl;
+  late final AnimationController _attachmentConsumeCtrl;
+  bool _attachmentDropActive = false;
+  bool _readingAttachmentDrop = false;
+  PlatformFile? _attachmentDropGhost;
+
   bool _allDay = false;
   bool _unscheduled = false;
   late DateTime _starts;
@@ -5892,6 +5902,14 @@ class _NewEventSheetState extends State<_NewEventSheet>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+    _attachmentDropCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 180),
+    );
+    _attachmentConsumeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 340),
+    );
     // Focus listeners drive placeholder-slide animations and trailing-icon
     // visibility.  They MUST NOT call setState synchronously: FocusNode
     // notifies listeners during the pointer-down phase of a tap, so a
@@ -5951,6 +5969,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
     _monthSlideCtrl.dispose();
     _sectionRowCtrl.dispose();
     _importProgressCtrl.dispose();
+    _attachmentDropCtrl.dispose();
+    _attachmentConsumeCtrl.dispose();
     _titleCtrl.dispose();
     _subtitleCtrl.dispose();
     _locationTextCtrl.dispose();
@@ -8810,17 +8830,257 @@ class _NewEventSheetState extends State<_NewEventSheet>
   };
 
   /// "Add attachment…" row — always at the bottom of Card 7.
-  Widget _buildAttachmentRow() => GestureDetector(
-    behavior: HitTestBehavior.opaque,
-    onTap: _pickAndImport,
-    child: SizedBox(
-      width: double.infinity,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Text('Add attachment\u2026', style: _kLabelStyle),
+  ///
+  /// [DropRegion] is a native drop target rather than Flutter's [DragTarget],
+  /// so it can receive files dragged from Files, a desktop file manager, or
+  /// another app. The tap path remains the existing file picker.
+  Widget _buildAttachmentRow() {
+    return DropRegion(
+      formats: Formats.standardFormats,
+      hitTestBehavior: HitTestBehavior.opaque,
+      onDropOver: _onAttachmentDropOver,
+      onDropEnter: (_) => _setAttachmentDropActive(true),
+      onDropLeave: (_) => _setAttachmentDropActive(false),
+      onDropEnded: (_) => _setAttachmentDropActive(false),
+      onPerformDrop: _onAttachmentDrop,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _pickAndImport,
+        child: AnimatedBuilder(
+          animation: Listenable.merge([
+            _attachmentDropCtrl,
+            _attachmentConsumeCtrl,
+          ]),
+          builder: (context, _) {
+            final hoverProgress = _attachmentDropCtrl.value.clamp(0.0, 1.0);
+            final consumeProgress = _attachmentConsumeCtrl.value.clamp(
+              0.0,
+              1.0,
+            );
+            final dropColor = _resolvedCategoryColor;
+            final ghost = _attachmentDropGhost;
+            final ghostProgress = Curves.easeInCubic.transform(
+              consumeProgress,
+            );
+            final ghostAlignment = Alignment.lerp(
+              Alignment.centerLeft,
+              Alignment.center,
+              ghostProgress,
+            )!;
+            final ghostOpacity = (1.0 - ghostProgress * 1.25).clamp(
+              0.0,
+              1.0,
+            );
+            final ghostScale = 1.0 - ghostProgress * 0.72;
+
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              curve: Curves.easeOut,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Color.lerp(
+                  const Color(0x00000000),
+                  dropColor.withOpacity(0.12),
+                  hoverProgress,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                child: Stack(
+                  children: [
+                    Text(
+                      _attachmentDropActive
+                          ? 'Release to import'
+                          : 'Add attachment\u2026',
+                      style: _kLabelStyle.copyWith(
+                        color: _attachmentDropActive
+                            ? dropColor
+                            : _kLabelStyle.color,
+                        fontWeight: _attachmentDropActive
+                            ? FontWeight.w500
+                            : _kLabelStyle.fontWeight,
+                      ),
+                    ),
+                    if (ghost != null)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: Align(
+                            alignment: ghostAlignment,
+                            child: Opacity(
+                              opacity: ghostOpacity,
+                              child: Transform.scale(
+                                scale: ghostScale,
+                                alignment: Alignment.center,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: ShapeDecoration(
+                                    color: resolveThemeColor(
+                                      kModalCard,
+                                      context,
+                                    ),
+                                    shape: BoundedContinuousRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      side: BorderSide(
+                                        color: dropColor.withOpacity(0.35),
+                                        width: 0.75,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _fileIconBox(
+                                        (ghost.extension ?? '').toLowerCase(),
+                                        25,
+                                        13,
+                                        context: context,
+                                      ),
+                                      const SizedBox(width: 7),
+                                      ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 150,
+                                        ),
+                                        child: Text(
+                                          ghost.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: _kLabelStyle.copyWith(
+                                            color: dropColor,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       ),
-    ),
-  );
+    );
+  }
+
+  bool _dropItemHasFile(DropItem item) {
+    if (item.canProvide(Formats.fileUri)) return true;
+    return Formats.standardFormats
+        .whereType<FileFormat>()
+        .any(item.canProvide);
+  }
+
+  FutureOr<DropOperation> _onAttachmentDropOver(DropOverEvent event) {
+    final canAccept = event.session.items.any(_dropItemHasFile);
+    if (canAccept &&
+        event.session.allowedOperations.contains(DropOperation.copy)) {
+      return DropOperation.copy;
+    }
+    return DropOperation.none;
+  }
+
+  void _setAttachmentDropActive(bool active) {
+    if (!mounted || _readingAttachmentDrop || active == _attachmentDropActive) {
+      return;
+    }
+    setState(() => _attachmentDropActive = active);
+    if (active) {
+      _attachmentDropCtrl.forward();
+    } else {
+      _attachmentDropCtrl.reverse();
+    }
+  }
+
+  Future<List<PlatformFile>> _readDroppedAttachments(
+    PerformDropEvent event,
+  ) async {
+    final dropped = <PlatformFile>[];
+    for (final item in event.session.items) {
+      if (!_dropItemHasFile(item)) continue;
+      final reader = item.dataReader;
+      if (reader == null) continue;
+
+      final fileFormats = reader
+          .getFormats(Formats.standardFormats)
+          .whereType<FileFormat>()
+          .toList(growable: false);
+      final format = fileFormats.isEmpty ? null : fileFormats.first;
+      final completer = Completer<PlatformFile?>();
+
+      void complete(PlatformFile? file) {
+        if (!completer.isCompleted) completer.complete(file);
+      }
+
+      final progress = reader.getFile(
+        format,
+        (dataFile) async {
+          try {
+            final bytes = await dataFile.readAll();
+            final suggestedName = await reader.getSuggestedName();
+            final name = dataFile.fileName ??
+                suggestedName ??
+                'Dropped attachment';
+            complete(
+              PlatformFile(name: name, size: bytes.length, bytes: bytes),
+            );
+          } catch (_) {
+            complete(null);
+          }
+        },
+        onError: (_) => complete(null),
+      );
+      if (progress == null) complete(null);
+
+      final file = await completer.future;
+      if (file != null) dropped.add(file);
+    }
+    return dropped;
+  }
+
+  Future<void> _onAttachmentDrop(PerformDropEvent event) async {
+    if (_readingAttachmentDrop || !mounted) return;
+    _readingAttachmentDrop = true;
+    setState(() => _attachmentDropActive = true);
+    await _attachmentDropCtrl.forward();
+
+    final files = await _readDroppedAttachments(event);
+    if (!mounted) return;
+    if (files.isEmpty) {
+      _readingAttachmentDrop = false;
+      setState(() => _attachmentDropActive = false);
+      await _attachmentDropCtrl.reverse();
+      return;
+    }
+
+    // The system drag image disappears at release. This local ghost takes its
+    // place, then shrinks toward the row's center so the file looks absorbed
+    // before the normal Import sheet is presented.
+    _attachmentConsumeCtrl.value = 0.0;
+    setState(() => _attachmentDropGhost = files.first);
+    await _attachmentConsumeCtrl.forward();
+    if (!mounted) return;
+
+    setState(() {
+      _attachmentDropGhost = null;
+      _attachmentDropActive = false;
+      _stagedFiles = files;
+    });
+    _readingAttachmentDrop = false;
+    _attachmentDropCtrl.reverse();
+    _showStagedOverlay();
+  }
 
   /// One row per already-added attachment file.
   Widget _buildAttachmentFileRow(int index) {

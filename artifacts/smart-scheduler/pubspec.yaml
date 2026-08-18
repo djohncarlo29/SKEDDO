@@ -20,6 +20,7 @@ dependencies:
   flutter_svg: ^2.0.0
   image_picker: ^1.1.2
   file_picker: ^8.1.4
+  super_drag_and_drop: ^0.9.1
   pdfx: ^2.9.2
   archive: ^4.0.9
   xml: ^6.0.0
