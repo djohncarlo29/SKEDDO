@@ -5880,6 +5880,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             eventTileWrapper: _wrapSearchEventTile,
             eventTilePressWrapper: (child) => _TilePressScale(child: child),
           ),
+          if (_searchAll.isNotEmpty)
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: floatingTabBarContentBottomClearance(context),
+              ),
+            ),
         ]
         // ── Normal grid (also shown behind the overlay when off-screen) ───
         else ...[
@@ -5973,7 +5979,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           ),
           SliverToBoxAdapter(
             child: SizedBox(
-              height: floatingTabBarContentBottomClearance(context),
+              // The button already owns its original 28 px trailing inset;
+              // don't compound that spacing with the pill clearance.
+              height: floatingTabBarContentBottomClearance(
+                context,
+                existingTrailingContentPadding: 28,
+              ),
             ),
           ),
         ],
@@ -6205,11 +6216,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                   hasScrollBody: false,
                   child: SizedBox.expand(),
                 ),
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: floatingTabBarContentBottomClearance(context),
+              if (!showResults || _searchAll.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: floatingTabBarContentBottomClearance(context),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -14911,6 +14923,12 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         ],
       ),
     );
+    final emptyStateContent = Padding(
+      padding: EdgeInsets.only(
+        bottom: floatingTabBarContentBottomClearance(context),
+      ),
+      child: content,
+    );
     // On web a CustomScrollView causes a one-frame positional flash before
     // the sliver geometry settles; SizedBox.expand sidesteps that entirely.
     //
@@ -14922,13 +14940,21 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     // hit-test exclusion, ultimately calling primaryFocus?.unfocus() and
     // dismissing the search keyboard.  Using SizedBox.expand eliminates all
     // gesture recognizers entirely, matching the Notes Tab's clean structure.
-    if (kIsWeb || widget.label.isEmpty) return SizedBox.expand(child: content);
+    if (kIsWeb || widget.label.isEmpty) {
+      return SizedBox.expand(child: emptyStateContent);
+    }
     return CustomScrollView(
+      primary: false,
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
       ),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-      slivers: [SliverFillRemaining(hasScrollBody: false, child: content)],
+      slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: emptyStateContent,
+        ),
+      ],
     );
   }
 }

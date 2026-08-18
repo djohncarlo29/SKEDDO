@@ -33,15 +33,25 @@ const double kFloatingTabBarTouchTargetHeight = 44.0;
 // Shared visual gap used between the last content edge and the floating pill.
 // Events' category card → Add Category gap uses the same value.
 const double kFloatingTabBarVisualGap = 18.0;
-const double kFloatingTabBarSafetyMargin = kFloatingTabBarVisualGap;
+// Keep the pill's final-item safety buffer independent from the Events layout
+// gap. Reusing kFloatingTabBarVisualGap here compounds spacing at controls
+// that already have their own trailing padding.
+const double kFloatingTabBarSafetyMargin = 12.0;
 
 /// Extra scroll-content clearance needed so the final item in a tab can be
 /// scrolled fully above the floating pill rather than ending underneath it.
-double floatingTabBarContentBottomClearance(BuildContext context) =>
-    kFloatingTabBarHeight +
-    kFloatingTabBarBottomSpacing +
-    MediaQuery.viewPaddingOf(context).bottom +
-    kFloatingTabBarSafetyMargin;
+double floatingTabBarContentBottomClearance(
+  BuildContext context, {
+  double existingTrailingContentPadding = 0,
+}) {
+  final clearance =
+      kFloatingTabBarHeight +
+      kFloatingTabBarBottomSpacing +
+      MediaQuery.viewPaddingOf(context).bottom +
+      kFloatingTabBarSafetyMargin -
+      existingTrailingContentPadding;
+  return math.max(0.0, clearance);
+}
 
 const kSbSurface = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFFDFDFD),

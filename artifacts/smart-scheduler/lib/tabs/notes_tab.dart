@@ -553,6 +553,12 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                     ),
                 eventTilePressWrapper: wrapSearchEventTileWithPressScale,
               ),
+              if (_searchHits.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: floatingTabBarContentBottomClearance(context),
+                  ),
+                ),
             ] else ...[
               // Normal content — also kept in the tree when off-screen search
               // is active (it is hidden by the overlay) so it is already
@@ -646,11 +652,12 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                       hasScrollBody: false,
                       child: SizedBox.expand(),
                     ),
-                  SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: floatingTabBarContentBottomClearance(context),
+                  if (!showResults || _searchHits.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: floatingTabBarContentBottomClearance(context),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

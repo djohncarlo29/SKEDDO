@@ -1561,11 +1561,12 @@ class CalendarTabState extends State<CalendarTab>
                   hasScrollBody: false,
                   child: SizedBox.expand(),
                 ),
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: floatingTabBarContentBottomClearance(context),
+              if (!showResults || _searchHits.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: floatingTabBarContentBottomClearance(context),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
