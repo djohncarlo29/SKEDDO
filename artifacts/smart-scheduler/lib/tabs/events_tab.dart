@@ -5971,6 +5971,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               child: _AddCategoryButton(onCategorySaved: _handleNewCategory),
             ),
           ),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: floatingTabBarContentBottomClearance(context),
+            ),
+          ),
         ],
       ],
     );
@@ -6200,6 +6205,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                   hasScrollBody: false,
                   child: SizedBox.expand(),
                 ),
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: floatingTabBarContentBottomClearance(context),
+                ),
+              ),
             ],
           ),
         ),
@@ -6256,17 +6266,22 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               // ── Scrollable content area (rubber-band stays here) ───────
               if (showResults)
                 Expanded(
-                  child: SmartDcvSearchResults(
-                    primary: _searchPrimary,
-                    overflow: _searchOverflow,
-                    suggestedQuery: _searchSuggestion,
-                    onSuggestionTap: _applySearchSuggestion,
-                    hidePrimaryCategoryName:
-                        activeStandardDcvCategoryId != null,
-                    eventTopPadding: 18,
-                    eventTileWrapper: _wrapSearchEventTile,
-                    eventTilePressWrapper: (child) =>
-                        _TilePressScale(child: child),
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      bottom: floatingTabBarContentBottomClearance(context),
+                    ),
+                    child: SmartDcvSearchResults(
+                      primary: _searchPrimary,
+                      overflow: _searchOverflow,
+                      suggestedQuery: _searchSuggestion,
+                      onSuggestionTap: _applySearchSuggestion,
+                      hidePrimaryCategoryName:
+                          activeStandardDcvCategoryId != null,
+                      eventTopPadding: 18,
+                      eventTileWrapper: _wrapSearchEventTile,
+                      eventTilePressWrapper: (child) =>
+                          _TilePressScale(child: child),
+                    ),
                   ),
                 ),
             ],
@@ -14839,6 +14854,11 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                     ),
                   );
                 },
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: floatingTabBarContentBottomClearance(context),
               ),
             ),
           ],

@@ -526,7 +526,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                   searchBarRow: searchBarRow,
                   extent: 76.5,
                   showSeparator: true,
-                           ),
+                ),
               )
             else
               SliverToBoxAdapter(child: searchBarRow),
@@ -576,6 +576,11 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
               const SliverFillRemaining(
                 hasScrollBody: false,
                 child: Center(child: _EmptyState()),
+              ),
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: floatingTabBarContentBottomClearance(context),
+                ),
               ),
             ],
           ],
@@ -634,14 +639,18 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                                 ? null
                                 : () => widget.onEditEvent!(hit.event),
                           ),
-                      eventTilePressWrapper:
-                          wrapSearchEventTileWithPressScale,
+                      eventTilePressWrapper: wrapSearchEventTileWithPressScale,
                     )
                   else
                     const SliverFillRemaining(
                       hasScrollBody: false,
                       child: SizedBox.expand(),
                     ),
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: floatingTabBarContentBottomClearance(context),
+                    ),
+                  ),
                 ],
               ),
             ),

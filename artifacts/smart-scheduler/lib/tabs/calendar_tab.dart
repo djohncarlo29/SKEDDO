@@ -1561,6 +1561,11 @@ class CalendarTabState extends State<CalendarTab>
                   hasScrollBody: false,
                   child: SizedBox.expand(),
                 ),
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: floatingTabBarContentBottomClearance(context),
+                ),
+              ),
             ],
           ),
         ),
@@ -2216,11 +2221,11 @@ class _YearView extends StatelessWidget {
             parent: BouncingScrollPhysics(),
           ),
           clipBehavior: Clip.hardEdge,
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
             _kYearOuterPad,
             17.5,
             _kYearOuterPad,
-            14.5,
+            14.5 + floatingTabBarContentBottomClearance(context),
           ),
           child: Column(
             children: [
@@ -3043,10 +3048,9 @@ class _MonthView extends StatelessWidget {
         //   (b) provide at least 80 px of space below the grid so the
         //       "No Events" placeholder is visible even in Details view.
         const double noEventsMinHeight = 80.0;
-        final contentH = math.max(
-          constraints.maxHeight,
-          gridH + noEventsMinHeight,
-        );
+        final contentH =
+            math.max(constraints.maxHeight, gridH + noEventsMinHeight) +
+            floatingTabBarContentBottomClearance(context);
         final emptyH = contentH - gridH;
 
         return SingleChildScrollView(
@@ -4117,6 +4121,11 @@ class _DayListPlaceholder extends StatelessWidget {
             ),
           ),
         ),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: floatingTabBarContentBottomClearance(context),
+          ),
+        ),
       ],
     );
   }
@@ -4736,7 +4745,11 @@ class _DayTimelineState extends State<_DayTimeline>
           // first/last hour labels from being hard-clipped by the Stack.
           // The extra +8 preserves the breathing room below the 12:00 am
           // end-of-day line (which itself sits +8 into its slot).
-          height: 2 * _kTimelinePad + 24 * _kHourHeight + 16,
+          height:
+              2 * _kTimelinePad +
+              24 * _kHourHeight +
+              16 +
+              floatingTabBarContentBottomClearance(context),
           // ValueListenableBuilder rebuilds only this subtree at every minute
           // boundary driven by the parent's clock notifier — guaranteed real-time.
           child: ValueListenableBuilder<DateTime>(
@@ -5209,7 +5222,11 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
         controller: _scroll,
         physics: const BouncingScrollPhysics(),
         child: SizedBox(
-          height: 2 * _kTimelinePad + 24 * _kHourHeight + 16,
+          height:
+              2 * _kTimelinePad +
+              24 * _kHourHeight +
+              16 +
+              floatingTabBarContentBottomClearance(context),
           child: ValueListenableBuilder<DateTime>(
             valueListenable: widget.nowNotifier,
             builder: (context, now, _) {

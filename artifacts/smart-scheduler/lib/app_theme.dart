@@ -31,6 +31,15 @@ const double kFloatingTabBarBottomSpacing = 8.0;
 const double kFloatingTabBarHeight = 50.0;
 const double kFloatingTabBarTouchTargetHeight = 44.0;
 const double kFloatingTabBarSafetyMargin = 12.0;
+
+/// Extra scroll-content clearance needed so the final item in a tab can be
+/// scrolled fully above the floating pill rather than ending underneath it.
+double floatingTabBarContentBottomClearance(BuildContext context) =>
+    kFloatingTabBarHeight +
+    kFloatingTabBarBottomSpacing +
+    MediaQuery.viewPaddingOf(context).bottom +
+    kFloatingTabBarSafetyMargin;
+
 const kSbSurface = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFFDFDFD),
   darkColor: Color(0xFF1C1C1E),
@@ -920,9 +929,11 @@ class AdaptiveLabelPillRow extends StatelessWidget {
   final double verticalWrapGap;
   final double horizontalPadding;
   final double verticalPadding;
+
   /// Keep a multi-word label on one line while pills stack, only allowing
   /// the label to wrap if a stacked pill would otherwise wrap internally.
   final bool wrapLabelLast;
+
   /// Minimum gap used when deciding whether the label and pill group can share
   /// one line. Existing rows retain the shared 25dp gap by default.
   final double labelValueGap;
@@ -1123,22 +1134,14 @@ class AdaptiveLabelPillRow extends StatelessWidget {
           // then trade label height for pill integrity by wrapping the label
           // at its widest-word width.
           if (wrapLabelLast &&
-              !_pillsFitOnSingleLines(
-                naturalWidths,
-                availableTrailingWidth,
-              )) {
+              !_pillsFitOnSingleLines(naturalWidths, availableTrailingWidth)) {
             final wrappedLabelWidth = _longestWordWidth(context);
             final wrappedTrailingWidth = math.max(
               0.0,
-              constraints.maxWidth -
-                  wrappedLabelWidth -
-                  labelValueGap,
+              constraints.maxWidth - wrappedLabelWidth - labelValueGap,
             );
             if (wrappedLabelWidth < labelWidth &&
-                _pillsFitOnSingleLines(
-                  naturalWidths,
-                  wrappedTrailingWidth,
-                )) {
+                _pillsFitOnSingleLines(naturalWidths, wrappedTrailingWidth)) {
               return _labelAndPills(
                 label: _label(
                   fillWidth: false,
