@@ -33,14 +33,16 @@ class FloatingTabPill extends StatelessWidget {
     final glassBorder = brightness == Brightness.dark
         ? Color.lerp(separatorColor, CupertinoColors.white, 0.18)!
         : Color.lerp(separatorColor, CupertinoColors.white, 0.48)!;
+    final stadiumShape = SquircleStadiumBorder(
+      side: BorderSide(color: glassBorder, width: 0.75),
+    );
 
     return Semantics(
       container: true,
       label: 'Main navigation',
       child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(kFloatingTabBarCornerRadius),
-          boxShadow: resolveThemeShadows([
+        decoration: ShapeDecoration(
+          shadows: resolveThemeShadows([
             BoxShadow(
               color: kTabBarShadowColor,
               blurRadius: 18,
@@ -48,20 +50,15 @@ class FloatingTabPill extends StatelessWidget {
               offset: const Offset(0, 5),
             ),
           ], context),
+          shape: stadiumShape,
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(kFloatingTabBarCornerRadius),
+        child: ClipPath(
+          clipper: ShapeBorderClipper(shape: stadiumShape),
           // The resolved translucent surface is the portable glass fallback.
           // It intentionally avoids requiring a blur compositor on Android and
           // Flutter web, where BackdropFilter support varies by renderer.
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: glassSurface,
-              borderRadius: BorderRadius.circular(
-                kFloatingTabBarCornerRadius,
-              ),
-              border: Border.all(color: glassBorder, width: 0.75),
-            ),
+          child: ColoredBox(
+            color: glassSurface,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
               child: Row(
@@ -137,18 +134,16 @@ class _FloatingTabItem extends StatelessWidget {
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
             height: kFloatingTabBarTouchTargetHeight,
-            decoration: BoxDecoration(
+            decoration: ShapeDecoration(
               color: activeFill,
-              borderRadius: BorderRadius.circular(
-                kFloatingTabBarCornerRadius - 4,
-              ),
+              shape: const SquircleStadiumBorder(),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 FixedSFIcon(
                   icon,
-                  fontSize: 25,
+                  fontSize: 21,
                   fontWeight: active ? FontWeight.w500 : FontWeight.normal,
                   color: color,
                 ),
@@ -157,7 +152,7 @@ class _FloatingTabItem extends StatelessWidget {
                   label,
                   style: TextStyle(
                     fontFamily: kSFProText,
-                    fontSize: 11,
+                    fontSize: 10,
                     fontWeight: FontWeight.w700,
                     fontStyle: FontStyle.normal,
                     color: color,

@@ -27,10 +27,9 @@ const kCardColor = CupertinoDynamicColor.withBrightness(
 // Floating AppShell tab pill geometry.  Keep these values in the shared theme
 // so its position and the content clearance stay in lock-step.
 const double kFloatingTabBarHorizontalMargin = 16.0;
-const double kFloatingTabBarBottomSpacing = 0.0;
+const double kFloatingTabBarBottomSpacing = 8.0;
 const double kFloatingTabBarHeight = 50.0;
 const double kFloatingTabBarTouchTargetHeight = 44.0;
-const double kFloatingTabBarCornerRadius = 25.0;
 const double kFloatingTabBarSafetyMargin = 12.0;
 const kSbSurface = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFFDFDFD),
