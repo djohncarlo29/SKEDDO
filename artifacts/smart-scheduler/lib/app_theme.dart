@@ -212,13 +212,6 @@ const kSecondaryLabel = CupertinoDynamicColor.withBrightness(
   color: Color(0x993C3C43),
   darkColor: Color(0x99EBEBF5), // 60% dark-mode opacity
 );
-// The selected floating-tab surface is intentionally independent from the
-// accent colour: near-white in Light Mode and the resolved secondary-label
-// colour in Dark Mode.
-const kFloatingTabBarActivePillColor = CupertinoDynamicColor.withBrightness(
-  color: Color(0xFFF7F7F7),
-  darkColor: Color(0x99EBEBF5),
-);
 const kTertiaryLabel = CupertinoDynamicColor.withBrightness(
   color: Color(0x4C3C3C43), // #3C3C434D light
   darkColor: Color(0x66EBEBF5), // 40% dark-mode opacity

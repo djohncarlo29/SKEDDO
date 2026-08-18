@@ -23,70 +23,48 @@ class FloatingTabPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = CupertinoTheme.brightnessOf(context);
-    final cardColor = resolveThemeColor(kCardColor, context);
-    final separatorColor = resolveThemeColor(kSeparatorColor, context);
-
-    final glassSurface = cardColor.withValues(
-      alpha: brightness == Brightness.dark ? 0.92 : 0.84,
-    );
-    final glassBorder = brightness == Brightness.dark
-        ? Color.lerp(separatorColor, CupertinoColors.white, 0.18)!
-        : Color.lerp(separatorColor, CupertinoColors.white, 0.48)!;
-    final stadiumShape = SquircleStadiumBorder(
-      side: BorderSide(color: glassBorder, width: 0.75),
-    );
+    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
+    final borderColor = resolveThemeColor(kTertiaryLabel, context);
 
     return Semantics(
       container: true,
       label: 'Main navigation',
-      child: DecoratedBox(
-        decoration: ShapeDecoration(
-          shadows: resolveThemeShadows([
-            BoxShadow(
-              color: kTabBarShadowColor,
-              blurRadius: 18,
-              spreadRadius: 1,
-              offset: const Offset(0, 5),
-            ),
-          ], context),
-          shape: stadiumShape,
-        ),
-        child: ClipPath(
-          clipper: ShapeBorderClipper(shape: stadiumShape),
-          // The resolved translucent surface is the portable glass fallback.
-          // It intentionally avoids requiring a blur compositor on Android and
-          // Flutter web, where BackdropFilter support varies by renderer.
-          child: ColoredBox(
-            color: glassSurface,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-              child: Row(
-                children: [
-                  _FloatingTabItem(
-                    icon: SFIcons.sf_text_document,
-                    label: 'Notes',
-                    active: selectedIndex == 0,
-                    accentColor: resolveAccentColor(context),
-                    onTap: () => onTabSelected(0),
-                  ),
-                  _FloatingTabItem(
-                    icon: SFIcons.sf_calendar,
-                    label: 'Calendar',
-                    active: selectedIndex == 1,
-                    accentColor: resolveAccentColor(context),
-                    onTap: () => onTabSelected(1),
-                  ),
-                  _FloatingTabItem(
-                    icon: SFIcons.sf_list_bullet,
-                    label: 'Events',
-                    active: selectedIndex == 2,
-                    accentColor: eventsAccent,
-                    onTap: () => onTabSelected(2),
-                  ),
-                ],
+      child: FrostedGlassCard(
+        // Match the Action Panel material: backdrop blur, translucent fill,
+        // shared shadow policy, and a subtle Dark Mode hairline only.
+        progress: 1.0,
+        fillOpacity: isDark ? 0.75 : 0.65,
+        shadowOpacity: 0.22,
+        stadium: true,
+        border: isDark
+            ? BorderSide(color: borderColor, width: 0.5)
+            : BorderSide.none,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+          child: Row(
+            children: [
+              _FloatingTabItem(
+                icon: SFIcons.sf_text_document,
+                label: 'Notes',
+                active: selectedIndex == 0,
+                accentColor: resolveAccentColor(context),
+                onTap: () => onTabSelected(0),
               ),
-            ),
+              _FloatingTabItem(
+                icon: SFIcons.sf_calendar,
+                label: 'Calendar',
+                active: selectedIndex == 1,
+                accentColor: resolveAccentColor(context),
+                onTap: () => onTabSelected(1),
+              ),
+              _FloatingTabItem(
+                icon: SFIcons.sf_list_bullet,
+                label: 'Events',
+                active: selectedIndex == 2,
+                accentColor: eventsAccent,
+                onTap: () => onTabSelected(2),
+              ),
+            ],
           ),
         ),
       ),
@@ -114,9 +92,6 @@ class _FloatingTabItem extends StatelessWidget {
     final color = active
         ? CupertinoDynamicColor.resolve(accentColor, context)
         : resolveThemeColor(kSecondaryLabel, context);
-    final activeFill = active
-        ? resolveThemeColor(kFloatingTabBarActivePillColor, context)
-        : const Color(0x00000000);
 
     return Expanded(
       child: Semantics(
@@ -126,14 +101,8 @@ class _FloatingTabItem extends StatelessWidget {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
+          child: SizedBox(
             height: kFloatingTabBarTouchTargetHeight,
-            decoration: ShapeDecoration(
-              color: activeFill,
-              shape: const SquircleStadiumBorder(),
-            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
