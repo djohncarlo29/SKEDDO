@@ -9,6 +9,7 @@ import 'package:flutter/gestures.dart' show DeviceGestureSettings, kTouchSlop;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/physics.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -5657,18 +5658,14 @@ class _NewEventSheetState extends State<_NewEventSheet>
   bool _importCancelled = false;
   late final AnimationController _importProgressCtrl;
   OverlayEntry? _importOverlayEntry;
-  // Staged selection — files accumulate here before the import begins.
-  List<PlatformFile> _stagedFiles = [];
-  OverlayEntry? _stagedOverlayEntry;
 
   // External drag-and-drop state.  The native drop region is attached only to
   // the "Add attachment…" row so the rest of the sheet keeps its normal
   // gesture behavior.
   late final AnimationController _attachmentDropCtrl;
   late final AnimationController _attachmentConsumeCtrl;
-  bool _attachmentDropActive = false;
+  bool _attachmentDropHovered = false;
   bool _readingAttachmentDrop = false;
-  PlatformFile? _attachmentDropGhost;
 
   bool _allDay = false;
   bool _unscheduled = false;
@@ -5949,7 +5946,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
   void dispose() {
     _pickerEntry?.remove();
     _importOverlayEntry?.remove();
-    _stagedOverlayEntry?.remove();
     _pickerIsClosing.dispose();
     _startsPickerCtrl.dispose();
     _endsPickerCtrl.dispose();
@@ -8839,9 +8835,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
       formats: Formats.standardFormats,
       hitTestBehavior: HitTestBehavior.opaque,
       onDropOver: _onAttachmentDropOver,
-      onDropEnter: (_) => _setAttachmentDropActive(true),
-      onDropLeave: (_) => _setAttachmentDropActive(false),
-      onDropEnded: (_) => _setAttachmentDropActive(false),
+      onDropEnter: (_) => _setAttachmentDropHovered(true),
+      onDropLeave: (_) => _setAttachmentDropHovered(false),
+      onDropEnded: (_) => _setAttachmentDropHovered(false),
       onPerformDrop: _onAttachmentDrop,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -8857,115 +8853,26 @@ class _NewEventSheetState extends State<_NewEventSheet>
               0.0,
               1.0,
             );
-            final dropColor = _resolvedCategoryColor;
-            final ghost = _attachmentDropGhost;
-            final ghostProgress = Curves.easeInCubic.transform(
-              consumeProgress,
-            );
-            final ghostAlignment = Alignment.lerp(
-              Alignment.centerLeft,
-              Alignment.center,
-              ghostProgress,
-            )!;
-            final ghostOpacity = (1.0 - ghostProgress * 1.25).clamp(
-              0.0,
-              1.0,
-            );
-            final ghostScale = 1.0 - ghostProgress * 0.72;
-
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 120),
-              curve: Curves.easeOut,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Color.lerp(
-                  const Color(0x00000000),
-                  dropColor.withOpacity(0.12),
-                  hoverProgress,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                child: Stack(
-                  children: [
-                    Text(
-                      _attachmentDropActive
-                          ? 'Release to import'
-                          : 'Add attachment\u2026',
-                      style: _kLabelStyle.copyWith(
-                        color: _attachmentDropActive
-                            ? dropColor
-                            : _kLabelStyle.color,
-                        fontWeight: _attachmentDropActive
-                            ? FontWeight.w500
-                            : _kLabelStyle.fontWeight,
-                      ),
+            // A drop feels like the row briefly catches and settles the item.
+            // It deliberately does not alter color, label, or add an overlay.
+            final reaction = math.max(hoverProgress, consumeProgress);
+            return Transform.translate(
+              offset: Offset(0, reaction * 1.5),
+              child: Transform.scale(
+                scale: 1.0 - reaction * 0.025,
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
                     ),
-                    if (ghost != null)
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: Align(
-                            alignment: ghostAlignment,
-                            child: Opacity(
-                              opacity: ghostOpacity,
-                              child: Transform.scale(
-                                scale: ghostScale,
-                                alignment: Alignment.center,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: ShapeDecoration(
-                                    color: resolveThemeColor(
-                                      kModalCard,
-                                      context,
-                                    ),
-                                    shape: BoundedContinuousRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                      side: BorderSide(
-                                        color: dropColor.withOpacity(0.35),
-                                        width: 0.75,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      _fileIconBox(
-                                        (ghost.extension ?? '').toLowerCase(),
-                                        25,
-                                        13,
-                                        context: context,
-                                      ),
-                                      const SizedBox(width: 7),
-                                      ConstrainedBox(
-                                        constraints: const BoxConstraints(
-                                          maxWidth: 150,
-                                        ),
-                                        child: Text(
-                                          ghost.name,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: _kLabelStyle.copyWith(
-                                            color: dropColor,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
+                    child: Text(
+                      'Add attachment\u2026',
+                      style: _kLabelStyle,
+                    ),
+                  ),
                 ),
               ),
             );
@@ -8991,12 +8898,13 @@ class _NewEventSheetState extends State<_NewEventSheet>
     return DropOperation.none;
   }
 
-  void _setAttachmentDropActive(bool active) {
-    if (!mounted || _readingAttachmentDrop || active == _attachmentDropActive) {
+  void _setAttachmentDropHovered(bool hovered) {
+    if (!mounted || _readingAttachmentDrop || hovered == _attachmentDropHovered) {
       return;
     }
-    setState(() => _attachmentDropActive = active);
-    if (active) {
+    _attachmentDropHovered = hovered;
+    if (hovered) {
+      HapticFeedback.lightImpact();
       _attachmentDropCtrl.forward();
     } else {
       _attachmentDropCtrl.reverse();
@@ -9052,34 +8960,28 @@ class _NewEventSheetState extends State<_NewEventSheet>
   Future<void> _onAttachmentDrop(PerformDropEvent event) async {
     if (_readingAttachmentDrop || !mounted) return;
     _readingAttachmentDrop = true;
-    setState(() => _attachmentDropActive = true);
     await _attachmentDropCtrl.forward();
 
     final files = await _readDroppedAttachments(event);
     if (!mounted) return;
     if (files.isEmpty) {
       _readingAttachmentDrop = false;
-      setState(() => _attachmentDropActive = false);
       await _attachmentDropCtrl.reverse();
       return;
     }
 
-    // The system drag image disappears at release. This local ghost takes its
-    // place, then shrinks toward the row's center so the file looks absorbed
-    // before the normal Import sheet is presented.
+    HapticFeedback.mediumImpact();
+    // Briefly press and release the row, then start the existing importing
+    // sheet directly. There is no intermediate confirmation overlay.
     _attachmentConsumeCtrl.value = 0.0;
-    setState(() => _attachmentDropGhost = files.first);
     await _attachmentConsumeCtrl.forward();
+    await _attachmentConsumeCtrl.reverse();
     if (!mounted) return;
 
-    setState(() {
-      _attachmentDropGhost = null;
-      _attachmentDropActive = false;
-      _stagedFiles = files;
-    });
     _readingAttachmentDrop = false;
-    _attachmentDropCtrl.reverse();
-    _showStagedOverlay();
+    _attachmentDropHovered = false;
+    await _attachmentDropCtrl.reverse();
+    await _runImport(files);
   }
 
   /// One row per already-added attachment file.
@@ -9227,21 +9129,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
     _importOverlayEntry = null;
   }
 
-  // ── Staged selection (pre-import) ────────────────────────────────────────
-
-  void _showStagedOverlay() {
-    _stagedOverlayEntry?.remove();
-    _stagedOverlayEntry = OverlayEntry(
-      builder: (ctx) => _buildStagedFilesOverlay(ctx),
-    );
-    Overlay.of(context, rootOverlay: true).insert(_stagedOverlayEntry!);
-  }
-
-  void _removeStagedOverlay() {
-    _stagedOverlayEntry?.remove();
-    _stagedOverlayEntry = null;
-  }
-
   Future<void> _pickAndImport() async {
     FocusManager.instance.primaryFocus?.unfocus();
     final result = await FilePicker.platform.pickFiles(
@@ -9250,23 +9137,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
     );
     if (result == null || result.files.isEmpty || !mounted) return;
     await _runImport(result.files);
-  }
-
-  Future<void> _addMoreStagedFiles() async {
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: true,
-      withData: true,
-    );
-    if (result == null || result.files.isEmpty || !mounted) return;
-    setState(() => _stagedFiles = [..._stagedFiles, ...result.files]);
-    _stagedOverlayEntry?.markNeedsBuild();
-  }
-
-  Future<void> _importStagedFiles() async {
-    final files = List<PlatformFile>.from(_stagedFiles);
-    setState(() => _stagedFiles = []);
-    _removeStagedOverlay();
-    await _runImport(files);
   }
 
   // ── Actual import loop ────────────────────────────────────────────────────
@@ -9340,159 +9210,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
       _importCancelled = true;
       _importingActive = false;
     });
-  }
-
-  // ── Staged-files confirmation overlay ─────────────────────────────────────
-
-  Widget _buildStagedFilesOverlay(BuildContext context) {
-    final priColor = CupertinoDynamicColor.resolve(kPrimaryLabel, context);
-    final secColor = CupertinoDynamicColor.resolve(kSecondaryLabel, context);
-    final cardBg = CupertinoDynamicColor.resolve(kModalCard, context);
-    final addMoreBg = CupertinoDynamicColor.resolve(kModalBackground, context);
-    final catColor = _resolvedCategoryColor;
-    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
-
-    final n = _stagedFiles.length;
-    final titleText = '${n == 1 ? 'One file' : '$n files'} selected';
-    final importText = n == 1 ? 'Import one item' : 'Import $n items';
-
-    final labelStyle = TextStyle(
-      inherit: false,
-      fontSize: 17,
-      fontFamily: kSFProText,
-      fontWeight: FontWeight.w400,
-      letterSpacing: kTracking17,
-      height: kLineHeight,
-    );
-
-    return Positioned.fill(
-      child: ColoredBox(
-        color: resolveThemeColor(kImportOverlayScrim, context),
-        child: Center(
-          child: Container(
-            width: 270,
-            decoration: BoxDecoration(
-              color: cardBg,
-              borderRadius: BorderRadius.circular(14),
-              border: isDark
-                  ? Border.all(
-                      color: resolveThemeColor(kTertiaryLabel, context),
-                      width: 0.5,
-                    )
-                  : null,
-              boxShadow: const [
-                BoxShadow(
-                  color: kImportOverlayShadow,
-                  blurRadius: 24,
-                  offset: Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(height: 22),
-                // Title
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      titleText,
-                      style: TextStyle(
-                        inherit: false,
-                        color: priColor,
-                        fontSize: 17,
-                        fontFamily: kSFProText,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: kTracking17,
-                        height: kLineHeight,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                // "Add more files" pill
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _addMoreStagedFiles,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: addMoreBg,
-                        borderRadius: BorderRadius.circular(100),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Add more files',
-                        style: labelStyle.copyWith(color: priColor),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // "Import N items" pill — category color
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: n > 0 ? _importStagedFiles : null,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: catColor,
-                        borderRadius: BorderRadius.circular(100),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        importText,
-                        style: labelStyle.copyWith(
-                          color: const Color(0xFFFFFFFF),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 14),
-                // Cancel pill
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      setState(() => _stagedFiles = []);
-                      _removeStagedOverlay();
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: ShapeDecoration(
-                        color: addMoreBg,
-                        shape: const BoundedContinuousRectangleBorder(
-                          borderRadius: BorderRadius.all(
-                            Radius.circular(kSquircleStadiumRadius),
-                          ),
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Cancel',
-                        style: labelStyle.copyWith(color: secColor),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   // ── Importing progress overlay ────────────────────────────────────────────
