@@ -63,7 +63,7 @@ class FloatingTabPill extends StatelessWidget {
               border: Border.all(color: glassBorder, width: 0.75),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
               child: Row(
                 children: [
                   _FloatingTabItem(
@@ -136,7 +136,7 @@ class _FloatingTabItem extends StatelessWidget {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
-            height: kFloatingTabBarHeight - 8,
+            height: kFloatingTabBarTouchTargetHeight,
             decoration: BoxDecoration(
               color: activeFill,
               borderRadius: BorderRadius.circular(
@@ -148,7 +148,7 @@ class _FloatingTabItem extends StatelessWidget {
               children: [
                 FixedSFIcon(
                   icon,
-                  fontSize: 21,
+                  fontSize: 25,
                   fontWeight: active ? FontWeight.w500 : FontWeight.normal,
                   color: color,
                 ),
@@ -157,7 +157,7 @@ class _FloatingTabItem extends StatelessWidget {
                   label,
                   style: TextStyle(
                     fontFamily: kSFProText,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                     fontStyle: FontStyle.normal,
                     color: color,
