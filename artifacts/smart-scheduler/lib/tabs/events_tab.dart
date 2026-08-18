@@ -5984,6 +5984,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               height: floatingTabBarContentBottomClearance(
                 context,
                 existingTrailingContentPadding: 28,
+                finalContentGap: kFloatingTabBarVisualGap,
               ),
             ),
           ),
@@ -14929,18 +14930,15 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       ),
       child: content,
     );
-    // On web a CustomScrollView causes a one-frame positional flash before
-    // the sliver geometry settles; SizedBox.expand sidesteps that entirely.
-    //
-    // On native, rubber-band overscroll feel is only needed when the DCV is
-    // actually visible (label is not empty).  When label is empty the DCV is
-    // always off-screen (controller value == 0, wrapped in IgnorePointer).
+    // Rubber-band overscroll is needed for every visible empty DCV, including
+    // the web preview. When label is empty the DCV is always off-screen
+    // (controller value == 0, wrapped in IgnorePointer).
     // Keeping a CustomScrollView alive in that state registers drag gesture
     // recognizers that can win the gesture arena even through IgnorePointer's
     // hit-test exclusion, ultimately calling primaryFocus?.unfocus() and
     // dismissing the search keyboard.  Using SizedBox.expand eliminates all
     // gesture recognizers entirely, matching the Notes Tab's clean structure.
-    if (kIsWeb || widget.label.isEmpty) {
+    if (widget.label.isEmpty) {
       return SizedBox.expand(child: emptyStateContent);
     }
     return CustomScrollView(

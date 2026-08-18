@@ -43,12 +43,13 @@ const double kFloatingTabBarSafetyMargin = 12.0;
 double floatingTabBarContentBottomClearance(
   BuildContext context, {
   double existingTrailingContentPadding = 0,
+  double finalContentGap = kFloatingTabBarSafetyMargin,
 }) {
   final clearance =
       kFloatingTabBarHeight +
       kFloatingTabBarBottomSpacing +
       MediaQuery.viewPaddingOf(context).bottom +
-      kFloatingTabBarSafetyMargin -
+      finalContentGap -
       existingTrailingContentPadding;
   return math.max(0.0, clearance);
 }
