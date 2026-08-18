@@ -62,6 +62,10 @@ fi
 # AAB download fails mid-write). Workspace has no such limit.
 mkdir -p "$ROOT_DIR/.cache/shorebird-tmp"
 export TMPDIR="$ROOT_DIR/.cache/shorebird-tmp"
+# Shorebird leaves large AAB/download staging directories behind after a
+# patch attempt. Clear only this disposable temp area so repeated pushes do
+# not exhaust Replit's per-user home quota.
+find "$TMPDIR" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
 
 # Ensure per-session cache symlinks are intact.  They can be reset between
 # restarts (the home partition has a per-user quota far below its apparent
