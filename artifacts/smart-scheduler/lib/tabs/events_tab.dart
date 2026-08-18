@@ -5984,7 +5984,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               height: floatingTabBarContentBottomClearance(
                 context,
                 existingTrailingContentPadding: 28,
-                finalContentGap: kFloatingTabBarVisualGap,
+                finalContentGap: kAddCategoryFloatingTabBarGap,
               ),
             ),
           ),

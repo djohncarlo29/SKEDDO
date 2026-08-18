@@ -115,11 +115,7 @@ class _FloatingTabItem extends StatelessWidget {
         ? CupertinoDynamicColor.resolve(accentColor, context)
         : resolveThemeColor(kSecondaryLabel, context);
     final activeFill = active
-        ? color.withValues(
-            alpha: CupertinoTheme.brightnessOf(context) == Brightness.dark
-                ? 0.22
-                : 0.13,
-          )
+        ? resolveThemeColor(kFloatingTabBarActivePillColor, context)
         : const Color(0x00000000);
 
     return Expanded(
