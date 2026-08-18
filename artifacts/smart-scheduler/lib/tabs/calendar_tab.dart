@@ -8864,14 +8864,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 child: SizedBox(
                   width: double.infinity,
                   child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    child: Text(
-                      'Add attachment\u2026',
-                      style: _kLabelStyle,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    child: Text('Add attachment\u2026', style: _kLabelStyle),
                   ),
                 ),
               ),
@@ -8884,9 +8878,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   bool _dropItemHasFile(DropItem item) {
     if (item.canProvide(Formats.fileUri)) return true;
-    return Formats.standardFormats
-        .whereType<FileFormat>()
-        .any(item.canProvide);
+    return Formats.standardFormats.whereType<FileFormat>().any(item.canProvide);
   }
 
   FutureOr<DropOperation> _onAttachmentDropOver(DropOverEvent event) {
@@ -8899,7 +8891,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
   }
 
   void _setAttachmentDropHovered(bool hovered) {
-    if (!mounted || _readingAttachmentDrop || hovered == _attachmentDropHovered) {
+    if (!mounted ||
+        _readingAttachmentDrop ||
+        hovered == _attachmentDropHovered) {
       return;
     }
     _attachmentDropHovered = hovered;
@@ -8920,6 +8914,30 @@ class _NewEventSheetState extends State<_NewEventSheet>
       final reader = item.dataReader;
       if (reader == null) continue;
 
+      // Some Android drag providers expose a content:// URI without putting
+      // the display name on DataReaderFile. Read the URI name before consuming
+      // the file so the row can preserve the source filename.
+      String? uriName;
+      if (reader.canProvide(Formats.fileUri)) {
+        final uriCompleter = Completer<Uri?>();
+        final uriProgress = reader.getValue<Uri>(
+          Formats.fileUri,
+          (uri) async {
+            if (!uriCompleter.isCompleted) uriCompleter.complete(uri);
+          },
+          onError: (_) {
+            if (!uriCompleter.isCompleted) uriCompleter.complete(null);
+          },
+        );
+        if (uriProgress != null) {
+          final uri = await uriCompleter.future;
+          if (uri != null && uri.pathSegments.isNotEmpty) {
+            final lastSegment = Uri.decodeComponent(uri.pathSegments.last);
+            if (lastSegment.trim().isNotEmpty) uriName = lastSegment;
+          }
+        }
+      }
+
       final fileFormats = reader
           .getFormats(Formats.standardFormats)
           .whereType<FileFormat>()
@@ -8931,30 +8949,40 @@ class _NewEventSheetState extends State<_NewEventSheet>
         if (!completer.isCompleted) completer.complete(file);
       }
 
-      final progress = reader.getFile(
-        format,
-        (dataFile) async {
-          try {
-            final bytes = await dataFile.readAll();
-            final suggestedName = await reader.getSuggestedName();
-            final name = dataFile.fileName ??
-                suggestedName ??
-                'Dropped attachment';
-            complete(
-              PlatformFile(name: name, size: bytes.length, bytes: bytes),
-            );
-          } catch (_) {
-            complete(null);
-          }
-        },
-        onError: (_) => complete(null),
-      );
+      final progress = reader.getFile(format, (dataFile) async {
+        try {
+          final bytes = await dataFile.readAll();
+          final suggestedName = await reader.getSuggestedName();
+          final name =
+              _usableDroppedFileName(dataFile.fileName) ??
+              _usableDroppedFileName(suggestedName) ??
+              _usableDroppedFileName(uriName) ??
+              'Attachment';
+          complete(PlatformFile(name: name, size: bytes.length, bytes: bytes));
+        } catch (_) {
+          complete(null);
+        }
+      }, onError: (_) => complete(null));
       if (progress == null) complete(null);
 
       final file = await completer.future;
       if (file != null) dropped.add(file);
     }
     return dropped;
+  }
+
+  /// Reject names emitted by drag providers as placeholders. Smart Hub can
+  /// expose "DROP" as a drag label rather than the source file name.
+  String? _usableDroppedFileName(String? value) {
+    final name = value?.trim();
+    if (name == null || name.isEmpty) return null;
+    final normalized = name.toLowerCase();
+    if (normalized == 'drop' ||
+        normalized == 'dropped attachment' ||
+        normalized == 'dropped file') {
+      return null;
+    }
+    return name;
   }
 
   Future<void> _onAttachmentDrop(PerformDropEvent event) async {
@@ -9159,7 +9187,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
       if (!mounted || _importCancelled) break;
 
       final pf = files[i];
-      final ext = (pf.extension ?? '').toLowerCase();
+      final ext = (pf.extension ?? _attachmentExtension(pf.name)).toLowerCase();
       final isImg = _kImageExts.contains(ext);
       newFiles.add(
         _AttachmentFile(
@@ -9202,6 +9230,12 @@ class _NewEventSheetState extends State<_NewEventSheet>
       _removeImportingOverlay();
       setState(() => _importingActive = false);
     }
+  }
+
+  String _attachmentExtension(String name) {
+    final dot = name.lastIndexOf('.');
+    if (dot <= 0 || dot == name.length - 1) return '';
+    return name.substring(dot + 1);
   }
 
   void _cancelImport() {
