@@ -60,3 +60,4 @@
 - [Flexible label-value wrapping](flexible-label-value-wrapping.md) — choose label/value widths together by measured wrapped height; never give one side all remaining width.
 - [Attachment import flow](attachment-import-flow.md) — remove only the pre-import confirmation overlay; keep the Importing sheet and its Cancel behavior unchanged.
 - [Attachment card corner stability](attachment-card-corner-stability.md) — let AnimatedList animate attachment rows inside one fixed-radius outer card; avoid AnimatedSize and empty-state stadium switching.
+- [AppShell floating overlays](app-shell-floating-overlays.md) — Positioned shell controls must be direct Stack children; nesting one in Column causes a blank Flutter web shell.

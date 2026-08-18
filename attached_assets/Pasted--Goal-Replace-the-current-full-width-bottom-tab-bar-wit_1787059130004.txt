@@ -1,0 +1,549 @@
+## Goal
+
+Replace the current full-width bottom tab bar with a custom floating pill-style tab bar.
+
+The new tab bar should:
+
+- Work consistently on Android and iOS.
+- Visually resemble the iOS 26 floating glass style.
+- Avoid platform-specific iOS tab APIs.
+- Preserve all existing tab behavior and state.
+- Remain pinned to the bottom of the app window.
+- Respect iOS and Android bottom system areas.
+- Keep all content visible above and around the floating pill.
+- Continue working correctly with sheets, overlays, settings, keyboards, scrolling, and dark mode.
+
+---
+
+## Important Architectural Decision
+
+This should be treated as an **AppShell UI refactor**, not a complete navigation refactor.
+
+The existing tab architecture should remain unchanged:
+
+- Notes remains tab index `0`.
+- Calendar remains tab index `1`.
+- Events remains tab index `2`.
+- `_selectedIndex` remains the source of truth.
+- `_switchTab()` remains responsible for changing tabs.
+- `IndexedStack` remains responsible for preserving each tab's state.
+- Existing tab `GlobalKey`s remain unchanged.
+- Existing back-button behavior remains unchanged.
+- Existing tab-to-shell callbacks remain unchanged.
+
+We should not replace the current navigation system with:
+
+- `CupertinoTabScaffold`
+- A platform-native tab API
+- A new route-based navigation system
+- Separate navigation stacks for each tab
+- A rewrite of Notes, Calendar, or Events
+
+---
+
+## Current Layout
+
+The current shell is effectively structured like this:
+
+```text
+AppShell
+└── Column
+    ├── Header and content Stack
+    └── Full-width bottom tab bar
+```
+
+The current tab bar consumes layout height at the bottom of the `Column`.
+
+---
+
+## New Layout
+
+The new layout should move the tab pill into the AppShell's outer `Stack`:
+
+```text
+AppShell
+└── Stack
+    ├── Header and content
+    ├── Floating tab pill
+    ├── Settings scrim
+    ├── Settings panel
+    └── Topmost shell controls
+```
+
+The pill should be part of the AppShell, not part of an individual tab.
+
+This means:
+
+- The pill remains visible while switching tabs.
+- The pill does not get recreated when a tab changes.
+- Tab content can remain inside the existing `IndexedStack`.
+- The pill can be layered correctly with settings, sheets, menus, and other overlays.
+
+---
+
+## Floating Pill Positioning
+
+The pill should be positioned relative to the bottom of the app window.
+
+Conceptually:
+
+```dart
+Positioned(
+  left: horizontalMargin,
+  right: horizontalMargin,
+  bottom: bottomSystemInset + bottomSpacing,
+  child: FloatingTabPill(...),
+)
+```
+
+The exact values should come from shared design constants rather than being scattered through `main.dart`.
+
+Suggested constants:
+
+```dart
+const double kFloatingTabBarHorizontalMargin = 16.0;
+const double kFloatingTabBarBottomSpacing = 8.0;
+const double kFloatingTabBarHeight = 64.0;
+const double kFloatingTabBarCornerRadius = 32.0;
+```
+
+The actual values should be adjusted during visual testing.
+
+---
+
+## Safe-Area Requirements
+
+The tab pill must account for the device's bottom system area.
+
+It must work with:
+
+### iOS
+
+- iPhones with a home indicator.
+- Older iPhones with different safe-area sizes.
+- Devices with no bottom inset.
+- Portrait orientation.
+- Landscape orientation if supported.
+
+### Android
+
+- Gesture navigation.
+- Three-button navigation.
+- Devices with different navigation-bar heights.
+- Devices with transparent or opaque system navigation bars.
+
+The pill's bottom position should be based on:
+
+```dart
+MediaQuery.of(context).padding.bottom
+```
+
+or the appropriate safe-area value already used by the app.
+
+The keyboard inset should not accidentally be used as the normal bottom position.
+
+---
+
+## Content Clearance
+
+Because the pill floats over the content instead of consuming `Column` height, the content needs additional bottom clearance.
+
+The clearance should include:
+
+```text
+floating pill height
++ pill bottom spacing
++ system bottom inset
++ a small visual safety margin
+```
+
+This prevents:
+
+- The last note from being hidden behind the pill.
+- The last event from being inaccessible.
+- Calendar rows from being covered.
+- Scroll indicators from being obscured.
+- Drag targets near the bottom from becoming difficult to use.
+
+The content should remain scrollable into the clearance area so the user can still reach the final item.
+
+This padding must be applied without changing each tab's existing internal scroll behavior.
+
+---
+
+## Visual Design
+
+The pill should visually resemble a floating glass control without depending on iOS-only APIs.
+
+Recommended structure:
+
+```text
+Outer pill
+├── Translucent or resolved theme surface
+├── Optional backdrop blur
+├── Subtle border or hairline
+├── Soft shadow
+├── Rounded stadium shape
+└── Three tab items
+```
+
+The visual treatment should support:
+
+- Light mode.
+- Dark mode.
+- Theme accent colors.
+- The existing Events/DCV accent behavior.
+- Reduced visual intensity while menus or overlays are active.
+
+The surface should be resolved at build time using the existing theme utilities instead of relying on a single hard-coded light-mode color.
+
+Example visual layers:
+
+```text
+BackdropFilter, if supported
+└── DecoratedBox
+    ├── Theme-aware translucent background
+    ├── Theme-aware border
+    └── Theme-aware shadow
+```
+
+If blur is unreliable or too expensive on a device, the pill should still look correct using a translucent or opaque fallback surface.
+
+The fallback must not break Android rendering.
+
+---
+
+## Tab Item Behavior
+
+The existing three tab items should retain their behavior:
+
+```text
+Notes     → index 0
+Calendar  → index 1
+Events    → index 2
+```
+
+Each item should preserve:
+
+- Existing icon.
+- Existing label.
+- Existing active/inactive colors.
+- Existing touch behavior.
+- Existing press-state animation.
+- Existing accessibility label.
+- Existing `onTap` behavior.
+
+Only the visual container changes from a full-width bar to the floating pill.
+
+The active tab indicator may be redesigned as:
+
+- A moving translucent capsule.
+- A tinted active background.
+- A subtle glass highlight.
+- The current accent color with reduced opacity.
+
+The active indicator animation must not rebuild or replace the tab contents.
+
+---
+
+## Events/DCV Accent Handling
+
+The Events tab currently changes accent color while a Detailed Category View is active.
+
+That behavior must remain unchanged.
+
+The floating pill should continue to derive the Events accent from the same DCV animation state and midpoint threshold used by:
+
+- The header.
+- The Events content.
+- Existing DCV controls.
+
+The tab pill must not introduce a one-frame mismatch between:
+
+- The Events tab icon.
+- The Events header.
+- The DCV content.
+- The active indicator.
+
+The existing `_dcvSlideController` should continue to drive this visual synchronization.
+
+---
+
+## Overlay and Modal Layering
+
+The floating pill must not interfere with existing overlays.
+
+Recommended layer order:
+
+```text
+1. Tab content
+2. Header
+3. Floating tab pill
+4. Settings scrim
+5. Settings panel
+6. Topmost hamburger/back control
+```
+
+This ensures the settings scrim can visually cover and disable the pill.
+
+For modal sheets presented through the app's sheet routes:
+
+- The sheet should appear above the AppShell and therefore above the pill.
+- The pill should not receive touches while the sheet is open.
+- No additional sheet-specific tab logic should be added unless testing exposes a layering problem.
+
+For custom `OverlayEntry` menus:
+
+- Verify whether the overlay is above the pill.
+- Ensure the pill does not win hit testing when a menu is active.
+- Preserve existing delayed-action behavior for closing overlays.
+
+---
+
+## Settings Panel Behavior
+
+When the settings panel opens:
+
+- The pill should be behind the settings scrim.
+- It should no longer be interactive.
+- It should not appear above the panel.
+- The settings panel should continue using the existing top and bottom inset values.
+- The existing hamburger-to-close control should remain topmost.
+
+No settings navigation changes are required.
+
+---
+
+## Keyboard Behavior
+
+The agreed behavior is that the pill remains attached to the bottom of the app window in the same general way as the current tab bar.
+
+The implementation must avoid causing the pill to jump unpredictably when the keyboard appears.
+
+Recommended first behavior:
+
+- Keep the pill positioned relative to the app window's normal bottom safe area.
+- Do not use `viewInsets.bottom` for normal pill positioning.
+- Verify that text editing remains usable.
+- Ensure the keyboard does not create an accidental gap or overlap that prevents editing.
+- If the current app shell resizes during keyboard presentation, the pill should follow the same shell behavior rather than introducing a new independent animation.
+
+The final keyboard behavior should be tested specifically in Notes and Event editing fields.
+
+---
+
+## Scroll Behavior
+
+The floating pill must not modify the existing scroll-controller architecture.
+
+Important requirements:
+
+- Preserve all existing tab scroll positions.
+- Do not recreate the `IndexedStack` children.
+- Do not change the primary scroll controller behavior.
+- Do not place a new overlay `CustomScrollView` inside the tab stack.
+- Keep `primary: false` on any scroll view that is introduced as an overlay.
+- Verify that opening and closing menus does not reset scroll positions.
+- Verify that Calendar day and multi-day views still respond correctly near the bottom inset.
+
+---
+
+## Component Structure
+
+The floating pill should preferably be extracted from the large `AppShell.build()` method into a focused widget.
+
+Possible structure:
+
+```text
+lib/
+├── main.dart
+├── widgets/
+│   └── floating_tab_pill.dart
+└── theme.dart
+```
+
+Suggested responsibilities:
+
+### `FloatingTabPill`
+
+Owns:
+
+- Pill decoration.
+- Blur/translucency.
+- Border.
+- Shadow.
+- Internal tab item layout.
+- Active indicator animation.
+- Tab item semantics.
+- Press states.
+
+### `AppShell`
+
+Owns:
+
+- Selected tab index.
+- Tab switching.
+- Safe-area positioning.
+- Overlay ordering.
+- Content bottom clearance.
+- DCV accent state.
+- Visibility or interaction state when the settings panel is open.
+
+The pill should receive data and callbacks rather than directly owning AppShell navigation state.
+
+---
+
+## Suggested Implementation Phases
+
+### Phase 1: Extract Existing Tab Item Behavior
+
+Before changing the layout:
+
+- Identify the current `_TabItem`.
+- Preserve its icon, label, active state, color, and tap behavior.
+- Move reusable tab item behavior into the new pill component if needed.
+- Avoid changing navigation behavior during this phase.
+
+### Phase 2: Build the Visual Pill
+
+Create the pill with:
+
+- Fixed stadium shape.
+- Theme-aware surface.
+- Border.
+- Shadow.
+- Three existing tab items.
+- Existing accent colors.
+- Existing tab callbacks.
+
+Initially render it in a safe test position while the old tab bar remains available for comparison.
+
+### Phase 3: Move It into the AppShell Stack
+
+- Remove the old tab bar from the bottom of the `Column`.
+- Insert the floating pill into the outer AppShell `Stack`.
+- Keep the same `_selectedIndex` and `_switchTab()` logic.
+- Confirm all three tabs switch correctly.
+
+### Phase 4: Add Bottom Clearance
+
+- Calculate pill height and bottom safe-area requirements.
+- Add bottom clearance to the content layer.
+- Ensure final content is visible and scrollable.
+- Test Notes, Calendar, and Events independently.
+
+### Phase 5: Fix Overlay Ordering
+
+Verify:
+
+- Settings scrim covers the pill.
+- Settings panel appears above the pill.
+- Modal sheets cover the pill.
+- Context menus remain above or disable the pill correctly.
+- The pill does not win hit testing when an overlay is open.
+
+### Phase 6: Add Active Indicator Animation
+
+- Animate the active pill state.
+- Keep the animation independent from tab content.
+- Preserve the Events/DCV accent synchronization.
+- Test rapid switching between all three tabs.
+
+### Phase 7: Device and Theme Verification
+
+Test:
+
+- iOS light mode.
+- iOS dark mode.
+- Android light mode.
+- Android dark mode.
+- iOS home indicator.
+- Android gesture navigation.
+- Android three-button navigation.
+- Keyboard editing.
+- Settings panel.
+- Event modal sheet.
+- Attachment sheet.
+- Calendar scrolling.
+- Events scrolling.
+- Notes scrolling.
+- Dynamic Category View.
+
+---
+
+## Acceptance Criteria
+
+The refactor is complete when:
+
+- The old full-width bottom bar is gone.
+- One floating pill is visible consistently on Android and iOS.
+- Notes, Calendar, and Events switch exactly as before.
+- Each tab preserves its state and scroll position.
+- The pill remains pinned to the bottom of the app shell.
+- iOS home-indicator space is respected.
+- Android gesture-navigation space is respected.
+- Android three-button-navigation space is respected.
+- No final content row is hidden behind the pill.
+- The pill does not interfere with modal sheets.
+- The pill is covered or disabled by the settings scrim.
+- Dark mode surfaces, shadows, and borders resolve correctly.
+- Events/DCV accent colors remain synchronized.
+- Keyboard editing continues to work.
+- Calendar and Events gestures remain unaffected.
+- No platform-specific iOS tab API is introduced.
+- No tab content or database behavior is rewritten.
+
+---
+
+## Main Risks
+
+### Content being hidden behind the pill
+
+Mitigation: calculate explicit bottom clearance and test the last scrollable item in every tab.
+
+### Pill overlapping Android navigation controls
+
+Mitigation: use the runtime bottom safe-area inset rather than a fixed bottom offset.
+
+### Incorrect overlay hit testing
+
+Mitigation: keep the pill below settings scrims and modal routes, and disable hit testing while covered.
+
+### Dark-mode glass looking too bright
+
+Mitigation: resolve the surface, border, and shadow using the existing theme utilities at build time.
+
+### Scroll positions resetting
+
+Mitigation: preserve the existing `IndexedStack` and avoid recreating tab subtrees.
+
+### DCV accent timing mismatch
+
+Mitigation: continue using the existing `_dcvSlideController` and midpoint threshold.
+
+### Blur performance on Android
+
+Mitigation: support a translucent/opaque fallback that does not require backdrop blur.
+
+---
+
+## Final Recommendation
+
+Implement this as a focused AppShell refactor.
+
+The safest design is:
+
+```text
+Existing tab state
+        +
+Existing IndexedStack
+        +
+New custom FloatingTabPill
+        +
+Safe-area-aware AppShell positioning
+        +
+Content bottom clearance
+```
+
+This gives the app the desired iOS 26-inspired floating glass appearance while preserving the behavior that already works.
+```

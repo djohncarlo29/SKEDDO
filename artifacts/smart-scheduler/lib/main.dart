@@ -20,7 +20,7 @@ import 'tabs/events_tab.dart';
 import 'tabs/notes_tab.dart';
 import 'widgets/action_panel.dart';
 import 'widgets/events_header_icon.dart';
-import 'widgets/fixed_size_icon.dart';
+import 'widgets/floating_tab_pill.dart';
 import 'widgets/native_text_input.dart';
 import 'widgets/rounded_cupertino_sheet.dart';
 import 'widgets/search_bar_widget.dart';
@@ -1845,7 +1845,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
     final cardColor = resolveThemeColor(kCardColor, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
-    final tabBarShadowColor = resolveThemeColor(kTabBarShadowColor, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final shadowBlack = resolveThemeColor(kShadowBlack, context);
 
@@ -1891,6 +1890,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                             return Padding(
                               padding: EdgeInsets.only(
                                 top: topInset + 101.0 * (1 - t),
+                                bottom:
+                                    kFloatingTabBarHeight +
+                                    kFloatingTabBarBottomSpacing +
+                                    bottomInset +
+                                    kFloatingTabBarSafetyMargin,
                               ),
                               child: child,
                             );
@@ -2464,69 +2468,36 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                     ),
                   ),
 
-                  // Tab bar — sits below the Stack so its top border and upward
-                  // shadow are also visible over the content. The Events
-                  // accent is rebuilt from the same DCV controller and
-                  // midpoint threshold as the header icons, so entry and exit
-                  // switch on the same frame in both directions.
-                  AnimatedBuilder(
-                    animation: _dcvSlideController,
-                    builder: (context, _) {
-                      final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
-                      final isDCVVisual =
-                          pageP >= _dcvColorSnapThreshold &&
-                          _selectedIndex == 2;
-                      final eventsAccent = isDCVVisual
-                          ? (_dcvColor ?? resolveAccentColor(context))
-                          : resolveAccentColor(context);
-                      return Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: cardColor,
-                          border: Border(
-                            top: BorderSide(color: separatorColor, width: 0.75),
-                          ),
-                          boxShadow: resolveThemeShadows([
-                            BoxShadow(
-                              color: tabBarShadowColor,
-                              blurRadius: 6,
-                              offset: Offset(0, -2),
-                            ),
-                          ], context),
-                        ),
-                        padding: EdgeInsets.only(bottom: bottomInset),
-                        child: SizedBox(
-                          height: 60,
-                          child: Row(
-                            children: [
-                              _TabItem(
-                                icon: SFIcons.sf_text_document,
-                                label: 'Notes',
-                                active: _selectedIndex == 0,
-                                onTap: () => _switchTab(0),
-                                accentColor: resolveAccentColor(context),
-                              ),
-                              _TabItem(
-                                icon: SFIcons.sf_calendar,
-                                label: 'Calendar',
-                                active: _selectedIndex == 1,
-                                onTap: () => _switchTab(1),
-                                accentColor: resolveAccentColor(context),
-                              ),
-                              _TabItem(
-                                icon: SFIcons.sf_list_bullet,
-                                label: 'Events',
-                                active: _selectedIndex == 2,
-                                onTap: () => _switchTab(2),
-                                accentColor: eventsAccent,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
                 ],
+              ),
+
+              // The tab bar is now a floating shell control. It is placed
+              // above the content but below the settings scrim so it stays
+              // available across tabs and is naturally covered by shell
+              // overlays.
+              AnimatedBuilder(
+                animation: _dcvSlideController,
+                builder: (context, _) {
+                  final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
+                  final isDCVVisual =
+                      pageP >= _dcvColorSnapThreshold && _selectedIndex == 2;
+                  final eventsAccent = isDCVVisual
+                      ? (_dcvColor ?? resolveAccentColor(context))
+                      : resolveAccentColor(context);
+                  return Positioned(
+                    left: kFloatingTabBarHorizontalMargin,
+                    right: kFloatingTabBarHorizontalMargin,
+                    bottom: bottomInset + kFloatingTabBarBottomSpacing,
+                    child: SizedBox(
+                      height: kFloatingTabBarHeight,
+                      child: FloatingTabPill(
+                        selectedIndex: _selectedIndex,
+                        eventsAccent: eventsAccent,
+                        onTabSelected: _switchTab,
+                      ),
+                    ),
+                  );
+                },
               ),
 
               // Scrim — fades in as the settings panel slides open.
@@ -2896,65 +2867,6 @@ class _MenuStroke extends StatelessWidget {
       decoration: ShapeDecoration(
         color: color,
         shape: const SquircleStadiumBorder(),
-      ),
-    );
-  }
-}
-
-class _TabItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-  // Colour used for the active state. Defaults to kAccentColor; AppShell
-  // passes the open category's own colour here while its DCV is visible so
-  // the active tab indicator matches the header icons (see AppShell._isDCV).
-  final Color accentColor;
-
-  const _TabItem({
-    required this.icon,
-    required this.label,
-    required this.active,
-    required this.onTap,
-    this.accentColor = kAccentColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // SVG filters do not resolve CupertinoDynamicColor themselves. Resolve
-    // both states here so inactive tabs keep the intended contrast in Dark
-    // Mode rather than retaining the light-mode secondary label alpha.
-    final color = active
-        ? CupertinoDynamicColor.resolve(accentColor, context)
-        : resolveThemeColor(kSecondaryLabel, context);
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            FixedSFIcon(
-              icon,
-              fontSize: 21,
-              fontWeight: active ? FontWeight.w500 : FontWeight.normal,
-              color: color,
-            ),
-            SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: kSFProText,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                fontStyle: FontStyle.normal,
-                color: color,
-                letterSpacing: kTracking10,
-                height: kLineHeight,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
