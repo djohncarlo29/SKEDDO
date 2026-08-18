@@ -30,7 +30,10 @@ const double kFloatingTabBarHorizontalMargin = 16.0;
 const double kFloatingTabBarBottomSpacing = 8.0;
 const double kFloatingTabBarHeight = 50.0;
 const double kFloatingTabBarTouchTargetHeight = 44.0;
-const double kFloatingTabBarSafetyMargin = 12.0;
+// Shared visual gap used between the last content edge and the floating pill.
+// Events' category card → Add Category gap uses the same value.
+const double kFloatingTabBarVisualGap = 18.0;
+const double kFloatingTabBarSafetyMargin = kFloatingTabBarVisualGap;
 
 /// Extra scroll-content clearance needed so the final item in a tab can be
 /// scrolled fully above the floating pill rather than ending underneath it.

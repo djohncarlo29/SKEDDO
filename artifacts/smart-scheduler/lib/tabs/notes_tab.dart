@@ -575,7 +575,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
               ),
               const SliverFillRemaining(
                 hasScrollBody: false,
-                child: Center(child: _EmptyState()),
+                child: _EmptyState(),
               ),
               SliverToBoxAdapter(
                 child: SizedBox(
@@ -1608,18 +1608,23 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        'No Events',
-        style: TextStyle(
-          inherit: false,
-          color: resolveThemeColor(kSecondaryLabel, context),
-          fontSize: 17,
-          fontFamily: 'SFProText',
-          fontWeight: FontWeight.w400,
-          fontStyle: FontStyle.normal,
-          letterSpacing: kTracking16,
-          height: kLineHeight,
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: floatingTabBarContentBottomClearance(context),
+      ),
+      child: Center(
+        child: Text(
+          'No Events',
+          style: TextStyle(
+            inherit: false,
+            color: resolveThemeColor(kSecondaryLabel, context),
+            fontSize: 17,
+            fontFamily: 'SFProText',
+            fontWeight: FontWeight.w400,
+            fontStyle: FontStyle.normal,
+            letterSpacing: kTracking16,
+            height: kLineHeight,
+          ),
         ),
       ),
     );

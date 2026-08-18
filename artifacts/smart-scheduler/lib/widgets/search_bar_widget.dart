@@ -797,8 +797,13 @@ class SearchNoResults extends StatelessWidget {
 /// than allowing the placeholder to center beneath the keyboard.
 class SearchNoResultsCentered extends StatelessWidget {
   final Widget child;
+  final double bottomClearance;
 
-  const SearchNoResultsCentered({super.key, required this.child});
+  const SearchNoResultsCentered({
+    super.key,
+    required this.child,
+    this.bottomClearance = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -808,9 +813,10 @@ class SearchNoResultsCentered extends StatelessWidget {
         if (!constraints.hasBoundedHeight) {
           return Center(child: child);
         }
-        final usableHeight = (constraints.maxHeight - keyboardBottom)
-            .clamp(0.0, constraints.maxHeight)
-            .toDouble();
+        final usableHeight =
+            (constraints.maxHeight - keyboardBottom - bottomClearance)
+                .clamp(0.0, constraints.maxHeight)
+                .toDouble();
         return SizedBox(
           width: double.infinity,
           height: constraints.maxHeight,

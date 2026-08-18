@@ -5963,7 +5963,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           SliverPadding(
             padding: EdgeInsets.fromLTRB(
               16,
-              _buildFlatDisplayList().isEmpty ? 0.0 : 18.0,
+              _buildFlatDisplayList().isEmpty ? 0.0 : kFloatingTabBarVisualGap,
               16,
               28,
             ),

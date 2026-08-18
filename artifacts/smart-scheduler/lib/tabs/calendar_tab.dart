@@ -3048,10 +3048,12 @@ class _MonthView extends StatelessWidget {
         //   (b) provide at least 80 px of space below the grid so the
         //       "No Events" placeholder is visible even in Details view.
         const double noEventsMinHeight = 80.0;
+        final floatingClearance = floatingTabBarContentBottomClearance(context);
         final contentH =
             math.max(constraints.maxHeight, gridH + noEventsMinHeight) +
-            floatingTabBarContentBottomClearance(context);
+            floatingClearance;
         final emptyH = contentH - gridH;
+        final emptyStateH = math.max(0.0, emptyH - floatingClearance);
 
         return SingleChildScrollView(
           controller: scrollController,
@@ -3110,20 +3112,31 @@ class _MonthView extends StatelessWidget {
                       if (emptyH > 0)
                         SizedBox(
                           height: emptyH,
-                          child: Opacity(
-                            opacity: collapseProgress < 0.5
-                                ? (1.0 - collapseProgress * 4.0).clamp(0.0, 1.0)
-                                : 0.0,
-                            child: Center(
-                              child: Text(
-                                'No Events',
-                                style: TextStyle(
-                                  fontFamily: kSFProText,
-                                  fontSize: 17,
-                                  color: secondaryC,
+                          child: Column(
+                            children: [
+                              SizedBox(
+                                height: emptyStateH,
+                                child: Opacity(
+                                  opacity: collapseProgress < 0.5
+                                      ? (1.0 - collapseProgress * 4.0).clamp(
+                                          0.0,
+                                          1.0,
+                                        )
+                                      : 0.0,
+                                  child: Center(
+                                    child: Text(
+                                      'No Events',
+                                      style: TextStyle(
+                                        fontFamily: kSFProText,
+                                        fontSize: 17,
+                                        color: secondaryC,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
+                              SizedBox(height: emptyH - emptyStateH),
+                            ],
                           ),
                         ),
                     ],
@@ -4745,10 +4758,13 @@ class _DayTimelineState extends State<_DayTimeline>
           // first/last hour labels from being hard-clipped by the Stack.
           // The extra +8 preserves the breathing room below the 12:00 am
           // end-of-day line (which itself sits +8 into its slot).
+          // Keep the end-of-day hairline immediately above the shared
+          // floating-pill clearance.  This makes the visible gap from the
+          // midnight line to the pill match the category-card gap.
           height:
-              2 * _kTimelinePad +
+              _kTimelinePad +
               24 * _kHourHeight +
-              16 +
+              8.5 +
               floatingTabBarContentBottomClearance(context),
           // ValueListenableBuilder rebuilds only this subtree at every minute
           // boundary driven by the parent's clock notifier — guaranteed real-time.
@@ -5222,10 +5238,13 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
         controller: _scroll,
         physics: const BouncingScrollPhysics(),
         child: SizedBox(
+          // Keep the end-of-day hairline immediately above the shared
+          // floating-pill clearance.  This makes the visible gap from the
+          // midnight line to the pill match the category-card gap.
           height:
-              2 * _kTimelinePad +
+              _kTimelinePad +
               24 * _kHourHeight +
-              16 +
+              8.5 +
               floatingTabBarContentBottomClearance(context),
           child: ValueListenableBuilder<DateTime>(
             valueListenable: widget.nowNotifier,
