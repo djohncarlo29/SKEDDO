@@ -10245,32 +10245,33 @@ class _NewEventSheetState extends State<_NewEventSheet>
                           ),
                           const SizedBox(height: kModalCardGap),
                           // Card 7 — attached files + "Add attachment…"
-                          AnimatedSize(
-                            duration: const Duration(milliseconds: 280),
-                            curve: Curves.easeInOut,
-                            alignment: Alignment.topCenter,
-                            child: _card([
-                              AnimatedList(
-                                key: _attachmentListKey,
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                initialItemCount: _attachments.length,
-                                itemBuilder: (context, index, animation) =>
-                                    SizeTransition(
-                                      sizeFactor: animation,
-                                      axisAlignment: -1.0,
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          _buildAttachmentFileRow(index),
-                                          _sep(),
-                                        ],
-                                      ),
+                          //
+                          // AnimatedList owns the row insertion/removal height
+                          // animation. The outer card deliberately keeps one
+                          // fixed-radius shape in both empty and populated
+                          // states, so its corners do not morph as the list
+                          // grows or shrinks.
+                          _card([
+                            AnimatedList(
+                              key: _attachmentListKey,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              initialItemCount: _attachments.length,
+                              itemBuilder: (context, index, animation) =>
+                                  SizeTransition(
+                                    sizeFactor: animation,
+                                    axisAlignment: -1.0,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        _buildAttachmentFileRow(index),
+                                        _sep(),
+                                      ],
                                     ),
-                              ),
-                              _buildAttachmentRow(),
-                            ], stadium: _attachments.isEmpty),
-                          ),
+                                  ),
+                            ),
+                            _buildAttachmentRow(),
+                          ]),
                           const SizedBox(height: kModalCardGap),
                           // Card 8 — URL + Notes
                           _card([
