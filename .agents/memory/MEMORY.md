@@ -62,3 +62,4 @@
 - [Attachment card corner stability](attachment-card-corner-stability.md) — let AnimatedList animate attachment rows inside one fixed-radius outer card; avoid AnimatedSize and empty-state stadium switching.
 - [AppShell floating overlays](app-shell-floating-overlays.md) — Positioned shell controls must be direct Stack children; nesting one in Column causes a blank Flutter web shell.
 - [Floating bar clearance math](floating-bar-clearance-math.md) — keep pill safety margin separate from layout gaps and subtract existing trailing padding before adding scroll clearance.
+- [Shell backdrop filter bounds](shell-backdrop-filter-bounds.md) — permanent Android glass overlays need explicit finite clipping and clamped blur sampling or they can veil the whole app.

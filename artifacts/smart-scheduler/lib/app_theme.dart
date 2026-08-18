@@ -1807,6 +1807,7 @@ class FrostedGlassCard extends StatelessWidget {
     required this.progress,
     required this.child,
     this.blurSigma = 20.0,
+    this.tileMode = TileMode.decal,
     this.fillOpacity = 0.80,
     this.shadowOpacity = 0.22,
     this.shadowBlurRadius = 28.0,
@@ -1824,6 +1825,11 @@ class FrostedGlassCard extends StatelessWidget {
 
   /// Maximum BackdropFilter blur sigma at progress = 1.
   final double blurSigma;
+
+  /// Sampling mode used outside the filtered input bounds. Shell controls can
+  /// opt into clamping because they remain mounted in a permanent overlay
+  /// stack on Android.
+  final TileMode tileMode;
 
   /// Maximum fill opacity at progress = 1.  Keep below 1.0 so the
   /// BackdropFilter blur shows through as frosted glass.
@@ -1887,7 +1893,7 @@ class FrostedGlassCard extends StatelessWidget {
           filter: ImageFilter.blur(
             sigmaX: blur,
             sigmaY: blur,
-            tileMode: TileMode.decal,
+            tileMode: tileMode,
           ),
           child: ColoredBox(
             color: resolveThemeColor(

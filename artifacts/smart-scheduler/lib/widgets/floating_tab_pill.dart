@@ -29,42 +29,48 @@ class FloatingTabPill extends StatelessWidget {
     return Semantics(
       container: true,
       label: 'Main navigation',
-      child: FrostedGlassCard(
-        // Match the Action Panel material: backdrop blur, translucent fill,
-        // shared shadow policy, and a subtle Dark Mode hairline only.
-        progress: 1.0,
-        fillOpacity: isDark ? 0.75 : 0.65,
-        shadowOpacity: 0.22,
-        stadium: true,
-        border: isDark
-            ? BorderSide(color: borderColor, width: 0.5)
-            : BorderSide.none,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-          child: Row(
-            children: [
-              _FloatingTabItem(
-                icon: SFIcons.sf_text_document,
-                label: 'Notes',
-                active: selectedIndex == 0,
-                accentColor: resolveAccentColor(context),
-                onTap: () => onTabSelected(0),
-              ),
-              _FloatingTabItem(
-                icon: SFIcons.sf_calendar,
-                label: 'Calendar',
-                active: selectedIndex == 1,
-                accentColor: resolveAccentColor(context),
-                onTap: () => onTabSelected(1),
-              ),
-              _FloatingTabItem(
-                icon: SFIcons.sf_list_bullet,
-                label: 'Events',
-                active: selectedIndex == 2,
-                accentColor: eventsAccent,
-                onTap: () => onTabSelected(2),
-              ),
-            ],
+      child: ClipRect(
+        // BackdropFilter must have an explicit finite clip in the permanent
+        // shell overlay; otherwise Android can expand its filtered region to
+        // the full scene and leave a grey veil over the app.
+        child: FrostedGlassCard(
+          // Match the Action Panel material: backdrop blur, translucent fill,
+          // shared shadow policy, and a subtle Dark Mode hairline only.
+          progress: 1.0,
+          tileMode: TileMode.clamp,
+          fillOpacity: isDark ? 0.75 : 0.65,
+          shadowOpacity: 0.22,
+          stadium: true,
+          border: isDark
+              ? BorderSide(color: borderColor, width: 0.5)
+              : BorderSide.none,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+            child: Row(
+              children: [
+                _FloatingTabItem(
+                  icon: SFIcons.sf_text_document,
+                  label: 'Notes',
+                  active: selectedIndex == 0,
+                  accentColor: resolveAccentColor(context),
+                  onTap: () => onTabSelected(0),
+                ),
+                _FloatingTabItem(
+                  icon: SFIcons.sf_calendar,
+                  label: 'Calendar',
+                  active: selectedIndex == 1,
+                  accentColor: resolveAccentColor(context),
+                  onTap: () => onTabSelected(1),
+                ),
+                _FloatingTabItem(
+                  icon: SFIcons.sf_list_bullet,
+                  label: 'Events',
+                  active: selectedIndex == 2,
+                  accentColor: eventsAccent,
+                  onTap: () => onTabSelected(2),
+                ),
+              ],
+            ),
           ),
         ),
       ),
