@@ -143,7 +143,7 @@ class _FloatingTabItem extends StatelessWidget {
               children: [
                 FixedSFIcon(
                   icon,
-                  fontSize: 21,
+                  fontSize: 20,
                   fontWeight: active ? FontWeight.w500 : FontWeight.normal,
                   color: color,
                 ),
@@ -152,7 +152,7 @@ class _FloatingTabItem extends StatelessWidget {
                   label,
                   style: TextStyle(
                     fontFamily: kSFProText,
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: FontWeight.w700,
                     fontStyle: FontStyle.normal,
                     color: color,

@@ -1894,11 +1894,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                             return Padding(
                               padding: EdgeInsets.only(
                                 top: topInset + 101.0 * (1 - t),
-                                bottom:
-                                    kFloatingTabBarHeight +
-                                    kFloatingTabBarBottomSpacing +
-                                    bottomSafeInset +
-                                    kFloatingTabBarSafetyMargin,
                               ),
                               child: child,
                             );
