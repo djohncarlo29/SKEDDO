@@ -60,23 +60,23 @@ class FloatingTabPill extends StatelessWidget {
                 : BorderSide.none,
           ),
         ),
-        child: ClipPath(
-          // The group below is intentionally taller than the visible pill.
-          // ClipPath keeps the expanded backdrop field from painting outside
-          // the original stadium shape.
-          clipper: const SquircleClipper(kFloatingTabBarHeight / 2),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final visibleWidth = constraints.maxWidth;
-              final fieldWidth =
-                  visibleWidth + (_kLiquidGlassFieldExtension * 2);
-              return OverflowBox(
-                minWidth: fieldWidth,
-                maxWidth: fieldWidth,
-                minHeight: fieldHeight,
-                maxHeight: fieldHeight,
-                alignment: Alignment.center,
-                child: OCLiquidGlassGroup(
+        // Do not clip the expanded group before BackdropFilter runs. That
+        // would clip away the very outside pixels the optical field needs.
+        // The shader's shape SDF remains the final visible mask, and the
+        // registered OCLiquidGlass render object keeps all controls inside the
+        // original pill bounds.
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final visibleWidth = constraints.maxWidth;
+            final fieldWidth =
+                visibleWidth + (_kLiquidGlassFieldExtension * 2);
+            return OverflowBox(
+              minWidth: fieldWidth,
+              maxWidth: fieldWidth,
+              minHeight: fieldHeight,
+              maxHeight: fieldHeight,
+              alignment: Alignment.center,
+              child: OCLiquidGlassGroup(
                   settings: OCLiquidGlassSettings(
                     // Preserve the strong original optical response. The
                     // shader's expanded field is additional source material,
@@ -135,11 +135,10 @@ class FloatingTabPill extends StatelessWidget {
                         ),
                       ),
                     ),
-                  ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
