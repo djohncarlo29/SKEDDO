@@ -1824,10 +1824,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).padding.top;
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    // viewPadding is the stable OS safe area. Unlike padding, it does not
-    // collapse to zero when the keyboard is visible, so the floating pill
-    // keeps its normal relationship to the home indicator/navigation area.
-    final bottomSafeInset = MediaQuery.of(context).viewPadding.bottom;
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
     final cardColor = resolveThemeColor(kCardColor, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
