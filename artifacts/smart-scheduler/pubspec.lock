@@ -480,6 +480,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.5.0"
+  oc_liquid_glass:
+    dependency: "direct main"
+    description:
+      name: oc_liquid_glass
+      sha256: "59b718a7dd24a0fb80dbead428c20a85221ef1e7d0a4aad9f89d3e158fc9dfe7"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.0"
   path:
     dependency: transitive
     description:

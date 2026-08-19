@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
+import 'package:oc_liquid_glass/oc_liquid_glass.dart';
 
 import '../app_theme.dart';
 import 'fixed_size_icon.dart';
@@ -26,51 +27,79 @@ class FloatingTabPill extends StatelessWidget {
     final brightness = CupertinoTheme.brightnessOf(context);
     final isDark = brightness == Brightness.dark;
     final borderColor = resolveThemeColor(kTertiaryLabel, context);
+    final glassColor = resolveThemeColor(
+      kGlassFillColor,
+      context,
+    ).withValues(alpha: isDark ? 0.75 : 0.65);
+    final shadowColor = isDark
+        ? const Color(0x00000000)
+        : const Color(0x38000000);
 
     return Semantics(
       container: true,
       label: 'Main navigation',
-      child: FrostedGlassCard(
-        // Use the complete ActionPanel glass material, including the bounded
-        // backdrop blur, so content directly behind the tab bar is frosted.
-        progress: 1.0,
-        enableBackdropFilter: true,
-        // Clamp the blur sample at the pill edge so the frosted treatment
-        // remains visually uniform through the bottom of this permanent shell
-        // control instead of fading where decal samples outside the clip.
-        tileMode: TileMode.clamp,
-        fillOpacity: isDark ? 0.75 : 0.65,
-        shadowOpacity: 0.22,
-        stadium: true,
-        border: isDark
-            ? BorderSide(color: borderColor, width: 0.5)
-            : BorderSide.none,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-          child: Row(
-            children: [
-              _FloatingTabItem(
-                icon: SFIcons.sf_text_document,
-                label: 'Notes',
-                active: selectedIndex == 0,
-                accentColor: resolveAccentColor(context),
-                onTap: () => onTabSelected(0),
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          shadows: resolveThemeShadows([
+            BoxShadow(
+              color: shadowColor,
+              blurRadius: 28,
+              offset: const Offset(0, 8),
+            ),
+          ], context),
+          shape: SquircleStadiumBorder(
+            side: isDark
+                ? BorderSide(color: borderColor, width: 0.5)
+                : BorderSide.none,
+          ),
+        ),
+        child: OCLiquidGlassGroup(
+          settings: OCLiquidGlassSettings(
+            // Keep the effect broad and even across the shallow navigation
+            // pill; avoid droplet-like distortion on the tab labels.
+            refractStrength: -0.03,
+            distortFalloffPx: 32,
+            distortExponent: 4,
+            blurRadiusPx: 2.0,
+            specStrength: 8.0,
+            specPower: 80,
+            specWidth: 8,
+            lightbandStrength: 0.25,
+            lightbandColor: isDark ? CupertinoColors.white : CupertinoColors.white,
+          ),
+          child: OCLiquidGlass(
+            width: double.infinity,
+            height: kFloatingTabBarHeight,
+            borderRadius: kFloatingTabBarHeight / 2,
+            color: glassColor,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+              child: Row(
+                children: [
+                  _FloatingTabItem(
+                    icon: SFIcons.sf_text_document,
+                    label: 'Notes',
+                    active: selectedIndex == 0,
+                    accentColor: resolveAccentColor(context),
+                    onTap: () => onTabSelected(0),
+                  ),
+                  _FloatingTabItem(
+                    icon: SFIcons.sf_calendar,
+                    label: 'Calendar',
+                    active: selectedIndex == 1,
+                    accentColor: resolveAccentColor(context),
+                    onTap: () => onTabSelected(1),
+                  ),
+                  _FloatingTabItem(
+                    icon: SFIcons.sf_list_bullet,
+                    label: 'Events',
+                    active: selectedIndex == 2,
+                    accentColor: eventsAccent,
+                    onTap: () => onTabSelected(2),
+                  ),
+                ],
               ),
-              _FloatingTabItem(
-                icon: SFIcons.sf_calendar,
-                label: 'Calendar',
-                active: selectedIndex == 1,
-                accentColor: resolveAccentColor(context),
-                onTap: () => onTabSelected(1),
-              ),
-              _FloatingTabItem(
-                icon: SFIcons.sf_list_bullet,
-                label: 'Events',
-                active: selectedIndex == 2,
-                accentColor: eventsAccent,
-                onTap: () => onTabSelected(2),
-              ),
-            ],
+            ),
           ),
         ),
       ),
