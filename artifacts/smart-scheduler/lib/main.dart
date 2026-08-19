@@ -2498,27 +2498,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 },
               ),
 
-              // Scrim — fades in as the settings panel slides open.
-              AnimatedBuilder(
-                animation: _settingsController,
-                builder: (context, _) {
-                  final v = _settingsController.value;
-                  // A stale non-zero controller value must never leave the
-                  // full-screen dimmer mounted after settings is closed.
-                  if (v == 0.0 ||
-                      (!_settingsOpen && !_settingsController.isAnimating)) {
-                    return const SizedBox.shrink();
-                  }
-                  return GestureDetector(
-                    onTap: _closeSettings,
-                    child: ColoredBox(
-                      color: Color.fromRGBO(0, 0, 0, 0.4 * v),
-                      child: const SizedBox.expand(),
-                    ),
-                  );
-                },
-              ),
-
               // Settings panel — slides in from the left edge.
               SlideTransition(
                 position: _settingsPanelOffset,
