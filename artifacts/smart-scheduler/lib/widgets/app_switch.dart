@@ -42,12 +42,22 @@ class AppSwitch extends StatelessWidget {
                 // Independent from the switch capture: this is painted onto
                 // the surrounding scene before the glass thumb is composited.
                 LiquidGlassShadow(
-                  blur: 8,
+                  blur: 9,
                   opacity: CupertinoTheme.brightnessOf(context) == Brightness.dark
                       ? 0
-                      : 0.14,
-                  offset: const Offset(0, 3),
+                      : 0.26,
+                  offset: const Offset(0, 4),
                   cornerRadius: 15.5,
+                  child: const SizedBox(width: 70, height: 31),
+                ),
+                LiquidGlassShadow(
+                  blur: 3,
+                  opacity: CupertinoTheme.brightnessOf(context) == Brightness.dark
+                      ? 0
+                      : 0.18,
+                  offset: const Offset(0, 2),
+                  cornerRadius: 15.5,
+                  inset: 1,
                   child: const SizedBox(width: 70, height: 31),
                 ),
                 LiquidGlassSwitch(

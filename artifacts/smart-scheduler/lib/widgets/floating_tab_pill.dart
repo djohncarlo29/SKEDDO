@@ -80,12 +80,30 @@ class FloatingTabPill extends StatelessWidget {
                 kFloatingTabBarBottomSpacing,
             height: kFloatingTabBarHeight,
             child: IgnorePointer(
-              child: LiquidGlassShadow(
-                blur: 16,
-                opacity: isDark ? 0 : 0.13,
-                offset: const Offset(0, 5),
-                cornerRadius: kSquircleStadiumRadius,
-                child: const SizedBox.expand(),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Broad environmental penumbra. This is intentionally
+                  // stronger than ordinary card elevation because the glass
+                  // surface itself remains transparent.
+                  LiquidGlassShadow(
+                    blur: 15,
+                    opacity: isDark ? 0 : 0.24,
+                    offset: const Offset(0, 6),
+                    cornerRadius: kSquircleStadiumRadius,
+                    child: const SizedBox.expand(),
+                  ),
+                  // A tighter contact ring keeps the capsule readable on
+                  // white backgrounds without filling the glass interior.
+                  LiquidGlassShadow(
+                    blur: 4,
+                    opacity: isDark ? 0 : 0.17,
+                    offset: const Offset(0, 2),
+                    cornerRadius: kSquircleStadiumRadius,
+                    inset: 1,
+                    child: const SizedBox.expand(),
+                  ),
+                ],
               ),
             ),
           ),
@@ -109,12 +127,25 @@ class FloatingTabPill extends StatelessWidget {
                 8,
             height: kFloatingTabBarHeight - 8,
             child: IgnorePointer(
-              child: LiquidGlassShadow(
-                blur: 8,
-                opacity: isDark ? 0 : 0.16,
-                offset: const Offset(0, 3),
-                cornerRadius: kSquircleStadiumRadius,
-                child: const SizedBox.expand(),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  LiquidGlassShadow(
+                    blur: 9,
+                    opacity: isDark ? 0 : 0.28,
+                    offset: const Offset(0, 4),
+                    cornerRadius: kSquircleStadiumRadius,
+                    child: const SizedBox.expand(),
+                  ),
+                  LiquidGlassShadow(
+                    blur: 3,
+                    opacity: isDark ? 0 : 0.18,
+                    offset: const Offset(0, 2),
+                    cornerRadius: kSquircleStadiumRadius,
+                    inset: 1,
+                    child: const SizedBox.expand(),
+                  ),
+                ],
               ),
             ),
           ),
