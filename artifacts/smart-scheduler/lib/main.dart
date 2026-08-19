@@ -1870,7 +1870,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           color: backgroundColor,
           child: Stack(
             children: [
-              Column(
+              Stack(
+                fit: StackFit.expand,
                 children: [
                   // Header + Content share a Stack so the header (with its drop-shadow
                   // and hairline separator) paints on top of the scrolling content.
@@ -1880,7 +1881,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   // is the first (bottom) Stack child and the header is the last
                   // (top) Stack child — guaranteeing the shadow/hairline are always
                   // rendered above whatever the scroll view draws.
-                  Expanded(
+                  Positioned.fill(
                     child: Stack(
                       children: [
                         // Content — fills the full Stack area but gets an animated
