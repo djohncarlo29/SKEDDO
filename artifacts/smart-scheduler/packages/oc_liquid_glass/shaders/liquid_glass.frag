@@ -227,12 +227,22 @@ void main(){
 
   // Direct backdrop response remains the base material. The extended capture
   // contributes only as a broad environmental tint; it is never used as a
-  // geometric image source. Keeping refraction centered also prevents the
-  // enlarged group coordinates from producing an upside-down recognizable
-  // sample when the capture field is taller than the visible pill.
+  // geometric image source.
   vec4 directBase = radialBlur(uv0, uRadialBlurPx);
-  vec4 refractedBase = radialBlur(uv0 + off*REFRACTION_SAMPLE_SCALE,
-                                   uRadialBlurPx);
+  /*
+   * Use a paired displacement around the direct coordinate. A single
+   * displaced lookup can expose the backdrop layer's platform-dependent
+   * texture orientation when the group capture is larger than the shape.
+   * Averaging equal and opposite optical paths preserves strong diffusion and
+   * edge refraction, but removes the directional transformed-image artifact.
+   * The small blur also turns nearby text/icons into light and color rather
+   * than recognizable upside-down detail.
+   */
+  vec2 refractOff = off * REFRACTION_SAMPLE_SCALE;
+  float opticalBlurPx = max(uRadialBlurPx, 3.0);
+  vec4 refractedPlus = radialBlur(uv0 + refractOff, opticalBlurPx);
+  vec4 refractedMinus = radialBlur(uv0 - refractOff, opticalBlurPx);
+  vec4 refractedBase = (refractedPlus + refractedMinus) * 0.5;
   vec4 ambient = ambientRing(uv0, AMBIENT_RING_RADIUS_PX);
   // Keep the full refraction response. The ambient ring is part of the same
   // optical field and only enriches the sample with nearby low-frequency
