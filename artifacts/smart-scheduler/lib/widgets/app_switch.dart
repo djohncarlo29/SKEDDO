@@ -45,6 +45,11 @@ class AppSwitch extends StatelessWidget {
               inactiveColor: inactiveColor,
               style: LiquidGlassSwitch.defaultStyle.copyWith(
                 refraction: LiquidGlassSwitch.defaultStyle.refraction.copyWith(
+                  // Match the active tab pill's tuned lens behavior while
+                  // keeping the switch's own native thumb geometry.
+                  distortion: 0.04,
+                  distortionWidth: 12,
+                  magnification: 1,
                   chromaticAberration: 0.0002,
                 ),
               ),
