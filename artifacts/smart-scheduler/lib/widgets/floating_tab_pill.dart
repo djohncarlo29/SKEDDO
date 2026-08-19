@@ -5,6 +5,11 @@ import 'package:oc_liquid_glass/oc_liquid_glass.dart';
 import '../app_theme.dart';
 import 'fixed_size_icon.dart';
 
+// Extra backdrop capture around the visible pill. The expanded field is
+// clipped back to the existing stadium, so it changes only the optical sample
+// region, not layout, hit targets, or the visible tab-bar geometry.
+const double _kLiquidGlassFieldExtension = 16.0;
+
 /// The AppShell's platform-neutral floating tab control.
 ///
 /// This widget owns the pill's presentation and tab-item interaction only.
@@ -34,6 +39,8 @@ class FloatingTabPill extends StatelessWidget {
     final shadowColor = isDark
         ? const Color(0x00000000)
         : const Color(0x38000000);
+    final fieldHeight =
+        kFloatingTabBarHeight + (_kLiquidGlassFieldExtension * 2);
 
     return Semantics(
       container: true,
@@ -53,53 +60,72 @@ class FloatingTabPill extends StatelessWidget {
                 : BorderSide.none,
           ),
         ),
-        child: OCLiquidGlassGroup(
-          settings: OCLiquidGlassSettings(
-            // Keep the effect broad and even across the shallow navigation
-            // pill; avoid droplet-like distortion on the tab labels.
-            refractStrength: -0.03,
-            distortFalloffPx: 32,
-            distortExponent: 4,
-            blurRadiusPx: 2.0,
-            // Keep the tab bar calm and uniform; the shader's specular
-            // highlight is what creates the bright corner shimmer.
-            specStrength: 0.0,
-            specPower: 80,
-            specWidth: 8,
-            lightbandStrength: 0.0,
-            lightbandColor: isDark ? CupertinoColors.white : CupertinoColors.white,
-          ),
-          child: OCLiquidGlass(
-            width: double.infinity,
-            height: kFloatingTabBarHeight,
-            borderRadius: kFloatingTabBarHeight / 2,
-            color: glassColor,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-              child: Row(
-                children: [
-                  _FloatingTabItem(
-                    icon: SFIcons.sf_text_document,
-                    label: 'Notes',
-                    active: selectedIndex == 0,
-                    accentColor: resolveAccentColor(context),
-                    onTap: () => onTabSelected(0),
+        child: ClipPath(
+          // The group below is intentionally taller than the visible pill.
+          // ClipPath keeps the expanded backdrop field from painting outside
+          // the original stadium shape.
+          clipper: const SquircleClipper(kFloatingTabBarHeight / 2),
+          child: OverflowBox(
+            minHeight: fieldHeight,
+            maxHeight: fieldHeight,
+            alignment: Alignment.center,
+            child: OCLiquidGlassGroup(
+              settings: OCLiquidGlassSettings(
+                // The expanded capture field lets edge refraction sample
+                // nearby content, while the low strength preserves the current
+                // calm appearance instead of turning the bar into a droplet.
+                refractStrength: -0.08,
+                distortFalloffPx: 44,
+                distortExponent: 4,
+                blurRadiusPx: 2.0,
+                specStrength: 0.0,
+                specPower: 80,
+                specWidth: 8,
+                lightbandStrength: 0.0,
+                lightbandColor: CupertinoColors.white,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                height: fieldHeight,
+                child: Center(
+                  child: OCLiquidGlass(
+                    width: double.infinity,
+                    height: kFloatingTabBarHeight,
+                    borderRadius: kFloatingTabBarHeight / 2,
+                    color: glassColor,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 3,
+                      ),
+                      child: Row(
+                        children: [
+                          _FloatingTabItem(
+                            icon: SFIcons.sf_text_document,
+                            label: 'Notes',
+                            active: selectedIndex == 0,
+                            accentColor: resolveAccentColor(context),
+                            onTap: () => onTabSelected(0),
+                          ),
+                          _FloatingTabItem(
+                            icon: SFIcons.sf_calendar,
+                            label: 'Calendar',
+                            active: selectedIndex == 1,
+                            accentColor: resolveAccentColor(context),
+                            onTap: () => onTabSelected(1),
+                          ),
+                          _FloatingTabItem(
+                            icon: SFIcons.sf_list_bullet,
+                            label: 'Events',
+                            active: selectedIndex == 2,
+                            accentColor: eventsAccent,
+                            onTap: () => onTabSelected(2),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  _FloatingTabItem(
-                    icon: SFIcons.sf_calendar,
-                    label: 'Calendar',
-                    active: selectedIndex == 1,
-                    accentColor: resolveAccentColor(context),
-                    onTap: () => onTabSelected(1),
-                  ),
-                  _FloatingTabItem(
-                    icon: SFIcons.sf_list_bullet,
-                    label: 'Events',
-                    active: selectedIndex == 2,
-                    accentColor: eventsAccent,
-                    onTap: () => onTabSelected(2),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
