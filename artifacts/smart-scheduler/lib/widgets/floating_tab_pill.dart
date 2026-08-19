@@ -190,7 +190,7 @@ class _FloatingTabItem extends StatelessWidget {
                   label,
                   style: TextStyle(
                     fontFamily: kSFProText,
-                    fontSize: 9,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                     fontStyle: FontStyle.normal,
                     color: color,
