@@ -30,7 +30,7 @@ class FloatingTabPill extends StatelessWidget {
     final glassColor = resolveThemeColor(
       kGlassFillColor,
       context,
-    ).withValues(alpha: isDark ? 0.75 : 0.65);
+    ).withValues(alpha: isDark ? 0.80 : 0.70);
     final shadowColor = isDark
         ? const Color(0x00000000)
         : const Color(0x38000000);
@@ -61,10 +61,12 @@ class FloatingTabPill extends StatelessWidget {
             distortFalloffPx: 32,
             distortExponent: 4,
             blurRadiusPx: 2.0,
-            specStrength: 8.0,
+            // Keep the tab bar calm and uniform; the shader's specular
+            // highlight is what creates the bright corner shimmer.
+            specStrength: 0.0,
             specPower: 80,
             specWidth: 8,
-            lightbandStrength: 0.25,
+            lightbandStrength: 0.0,
             lightbandColor: isDark ? CupertinoColors.white : CupertinoColors.white,
           ),
           child: OCLiquidGlass(
