@@ -9,6 +9,11 @@ unbounded or decal-sampled filter in the shell overlay can render as a
 slightly opaque grey veil over the entire app on Android even when the visual
 control itself is small.
 
+Full-screen shell surfaces positioned off-screen with a transform should also
+be taken offstage after their close animation. Android can retain the
+transformed layer's paint or hit-test participation even when its offset places
+it outside the viewport.
+
 **Why:** The floating navigation bar remains mounted in the root Stack,
 unlike transient Action Panels. Android can expand or mis-handle that
 backdrop layer when its bounds are not enforced.

@@ -2499,14 +2499,34 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               ),
 
               // Settings panel — slides in from the left edge.
-              SlideTransition(
-                position: _settingsPanelOffset,
-                child: SettingsPanel(
-                  topInset: topInset,
-                  bottomInset: bottomInset,
-                  onClose: _closeSettings,
-                  subScreenBackAction: _settingsBackAction,
-                ),
+              //
+              // Keep the panel mounted only while it is opening, open, or
+              // closing.  SettingsPanel is intentionally a full-screen
+              // ColoredBox inside a SlideTransition.  Leaving that full-screen
+              // layer mounted at Offset(-1, 0) is harmless on iOS/Web, but
+              // Android can retain the transformed composited layer and paint
+              // a grey veil over the app; it can also keep winning hit tests
+              // even though the panel is visually off-screen.  Offstage
+              // removes both paint and hit testing once the close animation
+              // has settled while preserving the panel's state.
+              AnimatedBuilder(
+                animation: _settingsController,
+                builder: (context, _) {
+                  final panelActive =
+                      _settingsOpen || _settingsController.isAnimating;
+                  return Offstage(
+                    offstage: !panelActive,
+                    child: SlideTransition(
+                      position: _settingsPanelOffset,
+                      child: SettingsPanel(
+                        topInset: topInset,
+                        bottomInset: bottomInset,
+                        onClose: _closeSettings,
+                        subScreenBackAction: _settingsBackAction,
+                      ),
+                    ),
+                  );
+                },
               ),
 
               // Hamburger → X overlay — always the topmost child so it paints
