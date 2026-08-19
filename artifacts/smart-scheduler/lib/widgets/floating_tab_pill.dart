@@ -65,56 +65,106 @@ class FloatingTabPill extends StatelessWidget {
     return Semantics(
       container: true,
       label: 'Main navigation',
-      child: LiquidGlassTabBar.withImpeller(
-        items: [
-          _tabItem(SFIcons.sf_text_document, 'Notes'),
-          _tabItem(SFIcons.sf_calendar, 'Calendar'),
-          _tabItem(SFIcons.sf_list_bullet, 'Events'),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // This layer is deliberately outside the glass capture. It paints
+          // onto the page first, then the translucent bar composites above it.
+          // Nothing in the shadow can therefore darken or refract through the
+          // bar's material.
+          Positioned(
+            left: kFloatingTabBarHorizontalMargin,
+            right: kFloatingTabBarHorizontalMargin,
+            bottom:
+                MediaQuery.paddingOf(context).bottom +
+                kFloatingTabBarBottomSpacing,
+            height: kFloatingTabBarHeight,
+            child: IgnorePointer(
+              child: LiquidGlassShadow(
+                blur: 16,
+                opacity: isDark ? 0 : 0.13,
+                offset: const Offset(0, 5),
+                cornerRadius: kSquircleStadiumRadius,
+                child: const SizedBox.expand(),
+              ),
+            ),
+          ),
+          // A separate, tighter environmental shadow gives the lifted active
+          // lens its own elevation cue rather than making it borrow the bar's
+          // shadow. It follows the committed tab with a short eased move.
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            left:
+                kFloatingTabBarHorizontalMargin +
+                ((screenWidth - (kFloatingTabBarHorizontalMargin * 2)) / 3) *
+                    selectedIndex +
+                4,
+            bottom:
+                MediaQuery.paddingOf(context).bottom +
+                kFloatingTabBarBottomSpacing +
+                4,
+            width:
+                ((screenWidth - (kFloatingTabBarHorizontalMargin * 2)) / 3) -
+                8,
+            height: kFloatingTabBarHeight - 8,
+            child: IgnorePointer(
+              child: LiquidGlassShadow(
+                blur: 8,
+                opacity: isDark ? 0 : 0.16,
+                offset: const Offset(0, 3),
+                cornerRadius: kSquircleStadiumRadius,
+                child: const SizedBox.expand(),
+              ),
+            ),
+          ),
+          LiquidGlassTabBar.withImpeller(
+            items: [
+              _tabItem(SFIcons.sf_text_document, 'Notes'),
+              _tabItem(SFIcons.sf_calendar, 'Calendar'),
+              _tabItem(SFIcons.sf_list_bullet, 'Events'),
+            ],
+            selectedIndex: selectedIndex,
+            onChanged: onTabSelected,
+            width: (screenWidth - (kFloatingTabBarHorizontalMargin * 2)).clamp(
+              0.0,
+              double.infinity,
+            ),
+            height: kFloatingTabBarHeight,
+            margin: const EdgeInsets.only(bottom: kFloatingTabBarBottomSpacing),
+            itemPadding: 4,
+            itemStyle: LiquidGlassTabItemStyle(
+              selectedColor: selectedColor,
+              unselectedColor: unselectedColor,
+              iconSize: 20,
+              labelFontSize: 11,
+              iconLabelGap: 3,
+              selectedFontWeight: FontWeight.w700,
+              unselectedFontWeight: FontWeight.w700,
+            ),
+            style: barStyle,
+            // The environmental shadows above own elevation. Keep the glass
+            // material itself shadow-free so its refraction remains clean.
+            pillStyle: const LiquidGlassTabPillStyle(
+              mode: LiquidGlassPillMode.impellerOnly,
+              animated: true,
+              shape: LiquidGlassShape.continuousRoundedRectangle(
+                cornerRadius: kSquircleStadiumRadius,
+              ),
+              glassStyle: LiquidGlassStyle(
+                shape: LiquidGlassShape.continuousRoundedRectangle(
+                  cornerRadius: kSquircleStadiumRadius,
+                ),
+                refraction: LiquidGlassRefraction(
+                  distortion: 0.04,
+                  distortionWidth: 12,
+                  magnification: 1,
+                  chromaticAberration: 0.0002,
+                ),
+              ),
+            ),
+          ),
         ],
-        selectedIndex: selectedIndex,
-        onChanged: onTabSelected,
-        width: (screenWidth - (kFloatingTabBarHorizontalMargin * 2)).clamp(
-          0.0,
-          double.infinity,
-        ),
-        height: kFloatingTabBarHeight,
-        margin: const EdgeInsets.only(bottom: kFloatingTabBarBottomSpacing),
-        itemPadding: 4,
-        itemStyle: LiquidGlassTabItemStyle(
-          selectedColor: selectedColor,
-          unselectedColor: unselectedColor,
-          iconSize: 20,
-          labelFontSize: 11,
-          iconLabelGap: 3,
-          selectedFontWeight: FontWeight.w700,
-          unselectedFontWeight: FontWeight.w700,
-        ),
-        style: barStyle,
-        // Keep the package's tuned glass pill, including its raised
-        // transition and magnifier layer. The quieter rim is applied to the
-        // outer bar surface above, without adding a static border.
-        pillStyle: const LiquidGlassTabPillStyle(
-          mode: LiquidGlassPillMode.impellerOnly,
-          animated: true,
-          // Keep the active pill on the same bounded 24 px squircle family
-          // as the bar and the rest of the app, including while it lifts.
-          shape: LiquidGlassShape.continuousRoundedRectangle(
-            cornerRadius: kSquircleStadiumRadius,
-          ),
-          // The active pill is the most noticeable source of RGB fringing.
-          // This is close to neutral while preserving the glass movement.
-          glassStyle: LiquidGlassStyle(
-            shape: LiquidGlassShape.continuousRoundedRectangle(
-              cornerRadius: kSquircleStadiumRadius,
-            ),
-            refraction: LiquidGlassRefraction(
-              distortion: 0.04,
-              distortionWidth: 12,
-              magnification: 1,
-              chromaticAberration: 0.0002,
-            ),
-          ),
-        ),
       ),
     );
   }

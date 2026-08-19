@@ -36,23 +36,54 @@ class AppSwitch extends StatelessWidget {
         child: SizedBox(
           height: height,
           child: Center(
-            child: LiquidGlassSwitch(
-              value: value,
-              onChanged: onChanged,
-              width: 70.0,
-              height: 31.0,
-              activeColor: activeColor,
-              inactiveColor: inactiveColor,
-              style: LiquidGlassSwitch.defaultStyle.copyWith(
-                refraction: LiquidGlassSwitch.defaultStyle.refraction.copyWith(
-                  // Match the active tab pill's tuned lens behavior while
-                  // keeping the switch's own native thumb geometry.
-                  distortion: 0.04,
-                  distortionWidth: 12,
-                  magnification: 1,
-                  chromaticAberration: 0.0002,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Independent from the switch capture: this is painted onto
+                // the surrounding scene before the glass thumb is composited.
+                LiquidGlassShadow(
+                  blur: 8,
+                  opacity: CupertinoTheme.brightnessOf(context) == Brightness.dark
+                      ? 0
+                      : 0.14,
+                  offset: const Offset(0, 3),
+                  cornerRadius: 15.5,
+                  child: const SizedBox(width: 70, height: 31),
                 ),
-              ),
+                LiquidGlassSwitch(
+                  value: value,
+                  onChanged: onChanged,
+                  width: 70.0,
+                  height: 31.0,
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
+                  style: LiquidGlassStyle(
+                    shape: LiquidGlassSwitch.defaultStyle.shape,
+                    // Keep the switch optically interactive; only move the
+                    // environmental shadow out of the material appearance.
+                    appearance: LiquidGlassAppearance(
+                      saturation: LiquidGlassSwitch
+                          .defaultStyle
+                          .appearance
+                          .saturation,
+                      blur: LiquidGlassSwitch.defaultStyle.appearance.blur,
+                      color: LiquidGlassSwitch.defaultStyle.appearance.color,
+                      enableInnerRadiusTransparent: LiquidGlassSwitch
+                          .defaultStyle
+                          .appearance
+                          .enableInnerRadiusTransparent,
+                    ),
+                    refraction: LiquidGlassSwitch.defaultStyle.refraction.copyWith(
+                      // Match the active tab pill's tuned lens behavior while
+                      // keeping the switch's own native thumb geometry.
+                      distortion: 0.04,
+                      distortionWidth: 12,
+                      magnification: 1,
+                      chromaticAberration: 0.0002,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
