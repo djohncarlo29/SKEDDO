@@ -1331,31 +1331,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           _dcvSortDirMap.addAll(maps.$2);
         });
     });
-    // Show any crash report captured from the previous session.
-    if (_pendingCrashReport != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        showCupertinoDialog<void>(
-          context: context,
-          builder: (_) => CupertinoAlertDialog(
-            title: const Text('Crash Report'),
-            content: SingleChildScrollView(
-              child: Text(
-                _pendingCrashReport!,
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
-              ),
-            ),
-            actions: [
-              CupertinoDialogAction(
-                child: const Text('Dismiss'),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-        );
-        _pendingCrashReport = null;
-      });
-    }
+    // A previous build could leave a crash report in app documents.  Never
+    // surface that diagnostic as a startup dialog: showCupertinoDialog adds a
+    // modal barrier before the user has any way to recover, and persisted
+    // reports survive ordinary restarts, APK replacement, and Shorebird
+    // patches.  The report has already been read and removed in main(); keep
+    // the value available for debugger inspection without blocking startup.
+    _pendingCrashReport = null;
 
     _searchModeController = AnimationController(
       vsync: this,
