@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' show Colors;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
@@ -31,12 +30,13 @@ class FloatingTabPill extends StatelessWidget {
         : resolveAccentColor(context);
     final unselectedColor = resolveThemeColor(kSecondaryLabel, context);
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final barOpacity = isDark ? 0.72 : 0.62;
+    final headerColor = resolveThemeColor(kCardColor, context);
+    final barOpacity = isDark ? 0.7 : 0.6;
     final barStyle = LiquidGlassTabBar.defaultStyle.copyWith(
       appearance: LiquidGlassTabBar.defaultStyle.appearance.copyWith(
-        // A denser neutral frost makes the bar read as a surface instead of
-        // letting the live backdrop dominate it.
-        color: Colors.white.withValues(alpha: barOpacity),
+        // Use the resolved header surface itself, not a white overlay. This
+        // keeps the bar denser while preserving the correct Light/Dark tone.
+        color: headerColor.withValues(alpha: barOpacity),
       ),
       shape: const LiquidGlassShape.continuousRoundedRectangle(
         // Match the shared bounded stadium geometry used by the rest of the
