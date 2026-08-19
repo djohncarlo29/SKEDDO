@@ -31,11 +31,10 @@ class FloatingTabPill extends StatelessWidget {
       container: true,
       label: 'Main navigation',
       child: FrostedGlassCard(
-        // Match ActionPanel's appearance-specific glass values. The tab bar
-        // is permanently mounted in the shell, so keep the shared material's
-        // Android-safe translucent surface without a BackdropFilter layer.
+        // Use the complete ActionPanel glass material, including the bounded
+        // backdrop blur, so content directly behind the tab bar is frosted.
         progress: 1.0,
-        enableBackdropFilter: false,
+        enableBackdropFilter: true,
         fillOpacity: isDark ? 0.75 : 0.65,
         shadowOpacity: 0.22,
         stadium: true,
