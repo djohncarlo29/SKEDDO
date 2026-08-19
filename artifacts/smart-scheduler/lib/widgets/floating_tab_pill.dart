@@ -31,7 +31,7 @@ class FloatingTabPill extends StatelessWidget {
     final unselectedColor = resolveThemeColor(kSecondaryLabel, context);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final headerColor = resolveThemeColor(kCardColor, context);
-    final barOpacity = isDark ? 0.7 : 0.6;
+    final barOpacity = 0.8;
     final barStyle = LiquidGlassTabBar.defaultStyle.copyWith(
       appearance: LiquidGlassTabBar.defaultStyle.appearance.copyWith(
         // Use the resolved header surface itself, not a white overlay. This
