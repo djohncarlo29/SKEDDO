@@ -2465,17 +2465,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   final eventsAccent = isDCVVisual
                       ? (_dcvColor ?? resolveAccentColor(context))
                       : resolveAccentColor(context);
-                  return Positioned(
-                    left: kFloatingTabBarHorizontalMargin,
-                    right: kFloatingTabBarHorizontalMargin,
-                    bottom: bottomSafeInset + kFloatingTabBarBottomSpacing,
-                    child: SizedBox(
-                      height: kFloatingTabBarHeight,
-                      child: FloatingTabPill(
-                        selectedIndex: _selectedIndex,
-                        eventsAccent: eventsAccent,
-                        onTabSelected: _switchTab,
-                      ),
+                  return Positioned.fill(
+                    child: FloatingTabPill(
+                      selectedIndex: _selectedIndex,
+                      eventsAccent: eventsAccent,
+                      onTabSelected: _switchTab,
                     ),
                   );
                 },

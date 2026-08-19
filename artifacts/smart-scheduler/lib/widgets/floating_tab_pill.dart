@@ -24,95 +24,42 @@ class FloatingTabPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = CupertinoTheme.brightnessOf(context);
-    final isDark = brightness == Brightness.dark;
-    final glassColor = resolveThemeColor(
-      kGlassFillColor,
-      context,
-    ).withValues(alpha: isDark ? 0.80 : 0.70);
-    final shadowColor = isDark
-        ? const Color(0x00000000)
-        : const Color(0x38000000);
     final selectedColor = selectedIndex == 2
         ? CupertinoDynamicColor.resolve(eventsAccent, context)
         : resolveAccentColor(context);
     final unselectedColor = resolveThemeColor(kSecondaryLabel, context);
+    final screenWidth = MediaQuery.sizeOf(context).width;
 
     return Semantics(
       container: true,
       label: 'Main navigation',
-      child: DecoratedBox(
-        decoration: ShapeDecoration(
-          shadows: resolveThemeShadows([
-            BoxShadow(
-              color: shadowColor,
-              blurRadius: 28,
-              offset: const Offset(0, 8),
-            ),
-          ], context),
-          // The glass package owns the edge treatment below. Avoid a second
-          // static outline here, which would read as a bright shimmer over
-          // the optical rim.
-          shape: const SquircleStadiumBorder(),
+      child: LiquidGlassTabBar.withImpeller(
+        items: [
+          _tabItem(SFIcons.sf_text_document, 'Notes'),
+          _tabItem(SFIcons.sf_calendar, 'Calendar'),
+          _tabItem(SFIcons.sf_list_bullet, 'Events'),
+        ],
+        selectedIndex: selectedIndex,
+        onChanged: onTabSelected,
+        width: (screenWidth - (kFloatingTabBarHorizontalMargin * 2))
+            .clamp(0.0, double.infinity),
+        height: kFloatingTabBarHeight,
+        margin: const EdgeInsets.only(bottom: kFloatingTabBarBottomSpacing),
+        itemPadding: 4,
+        itemStyle: LiquidGlassTabItemStyle(
+          selectedColor: selectedColor,
+          unselectedColor: unselectedColor,
+          iconSize: 20,
+          labelFontSize: 11,
+          iconLabelGap: 3,
+          selectedFontWeight: FontWeight.w700,
+          unselectedFontWeight: FontWeight.w700,
         ),
-        child: LiquidGlassTabBar(
-          items: [
-            _tabItem(SFIcons.sf_text_document, 'Notes'),
-            _tabItem(SFIcons.sf_calendar, 'Calendar'),
-            _tabItem(SFIcons.sf_list_bullet, 'Events'),
-          ],
-          selectedIndex: selectedIndex,
-          onChanged: onTabSelected,
-          width: double.infinity,
-          height: kFloatingTabBarHeight,
-          itemPadding: 4,
-          itemStyle: LiquidGlassTabItemStyle(
-            selectedColor: selectedColor,
-            unselectedColor: unselectedColor,
-            iconSize: 20,
-            labelFontSize: 11,
-            iconLabelGap: 3,
-            selectedFontWeight: FontWeight.w700,
-            unselectedFontWeight: FontWeight.w700,
-          ),
-          pillStyle: LiquidGlassTabPillStyle(
-            mode: LiquidGlassPillMode.both,
-            animated: true,
-            color: glassColor,
-            distortion: 0.08,
-            distortionWidth: 44,
-            rest: LiquidGlassStyle(
-              shape: const LiquidGlassShape.continuousRoundedRectangle(
-                cornerRadius: kFloatingTabBarHeight / 2,
-                borderWidth: 0,
-              ),
-              appearance: LiquidGlassAppearance(color: glassColor),
-            ),
-          ),
-          style: LiquidGlassTabBar.defaultStyle.copyWith(
-            shape: LiquidGlassShape.continuousRoundedRectangle(
-              cornerRadius: kFloatingTabBarHeight / 2,
-              borderWidth: isDark ? 0.7 : 0.5,
-              lightIntensity: 1.15,
-              lightDirection: 80,
-              borderType: const OpticalBorder(
-                // Keep the rim directional and translucent instead of
-                // producing a uniform, static-looking edge glow.
-                borderSaturation: 1.1,
-                ambientIntensity: 0.12,
-                borderSolidity: 0.08,
-                lightSpread: 0.24,
-              ),
-            ),
-            appearance: LiquidGlassAppearance(
-              color: glassColor,
-              blur: const LiquidGlassBlur(sigmaX: 2, sigmaY: 2),
-            ),
-            refraction: const LiquidGlassRefraction(
-              distortion: 0.08,
-              distortionWidth: 44,
-            ),
-          ),
+        // Keep the package's tuned glass pill, including its raised
+        // transition, magnifier layer, optical rim, and settled appearance.
+        pillStyle: const LiquidGlassTabPillStyle(
+          mode: LiquidGlassPillMode.impellerOnly,
+          animated: true,
         ),
       ),
     );
