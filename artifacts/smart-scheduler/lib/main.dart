@@ -2498,6 +2498,31 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 },
               ),
 
+              // Settings scrim — fades in with the settings panel and sits
+              // above the floating tab bar, matching the original shell
+              // behavior.  The explicit state/animation guard is important:
+              // a stale non-zero controller value must never leave this
+              // full-screen hit-test layer over the closed app.
+              AnimatedBuilder(
+                animation: _settingsController,
+                builder: (context, _) {
+                  final v = _settingsController.value;
+                  final scrimActive =
+                      _settingsOpen || _settingsController.isAnimating;
+                  if (!scrimActive || v <= 0.0) {
+                    return const SizedBox.shrink();
+                  }
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _closeSettings,
+                    child: ColoredBox(
+                      color: Color.fromRGBO(0, 0, 0, 0.4 * v),
+                      child: const SizedBox.expand(),
+                    ),
+                  );
+                },
+              ),
+
               // Settings panel — slides in from the left edge.
               //
               // Keep the panel mounted only while it is opening, open, or
