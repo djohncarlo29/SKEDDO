@@ -982,11 +982,9 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
     final sepLineColor = kSeparatorColor.resolveFrom(context);
     final labelColor = kPrimaryLabel.resolveFrom(context);
     final cardColor = resolveThemeColor(kModalCard, context);
-    final shadows = resolveThemeShadows(kCardShadow, context);
 
     // Back chevron — replaces xmark in sub-sheets to indicate navigation back.
     // Uses chevron_left to match the DCV header back indicator.
@@ -998,14 +996,8 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
       peakScale: 1.15,
       tapDelay: const Duration(milliseconds: 130),
       onTap: _close,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: ShapeDecoration(
+        child: LiquidGlassGelCircle(
           color: cardColor,
-          shape: const CircleBorder(),
-          shadows: shadows,
-        ),
         child: Center(
           child: SizedBox(
             width: 20,

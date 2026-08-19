@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
 const kAccentColor = CupertinoDynamicColor.withBrightness(
   color: Color(0xFF007AFF),
@@ -2054,6 +2055,91 @@ class GelBloomButton extends StatefulWidget {
 
   @override
   State<GelBloomButton> createState() => _GelBloomButtonState();
+}
+
+/// Circular gel-bloom surface matching the Floating Tab Bar material:
+/// 80% color-preserving fill, bounded blur, and directional rim lighting.
+/// The caller continues to own the button's icon and semantic color.
+class LiquidGlassGelCircle extends StatelessWidget {
+  const LiquidGlassGelCircle({
+    super.key,
+    required this.color,
+    required this.child,
+    this.size = 40,
+  });
+
+  final Color color;
+  final Widget child;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
+    return LiquidGlassShadow(
+      // Match the Floating Tab Bar's moderate environmental shadow. This
+      // remains outside the circular glass surface, so it cannot darken or
+      // refract through the button material.
+      blur: 16,
+      opacity: isDark ? 0 : 0.18,
+      offset: const Offset(0, 5),
+      cornerRadius: size / 2,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: ClipOval(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+            child: CustomPaint(
+              painter: _LiquidGlassGelRimPainter(isDark: isDark),
+              child: ColoredBox(
+                color: color.withValues(alpha: 0.8),
+                child: child,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LiquidGlassGelRimPainter extends CustomPainter {
+  const _LiquidGlassGelRimPainter({required this.isDark});
+
+  final bool isDark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final rimRect = (Offset.zero & size).deflate(0.45 / 2);
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.45
+      ..shader = SweepGradient(
+        startAngle: math.pi * 0.15,
+        endAngle: math.pi * 1.95,
+        colors: isDark
+            ? const [
+                Color(0x443C3C43),
+                Color(0x664C4C52),
+                Color(0x223C3C43),
+                Color(0x554C4C52),
+                Color(0x443C3C43),
+              ]
+            : const [
+                Color(0xA6FFFFFF),
+                Color(0x403C3C43),
+                Color(0x1AFFFFFF),
+                Color(0x803C3C43),
+                Color(0xA6FFFFFF),
+              ],
+      ).createShader(rimRect);
+    canvas.drawOval(rimRect, paint);
+  }
+
+  @override
+  bool shouldRepaint(_LiquidGlassGelRimPainter oldDelegate) =>
+      oldDelegate.isDark != isDark;
 }
 
 class _GelBloomButtonState extends State<GelBloomButton>

@@ -703,7 +703,6 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
   Widget _buildCircle(BuildContext context) {
     final surfaceColor = resolveThemeColor(kCardColor, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
-    final shadows = resolveThemeShadows(kCardShadow, context);
     return TapRegion(
       groupId: kSbGroupId,
       child: Padding(
@@ -712,14 +711,8 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
           peakScale: 1.15,
           tapDelay: const Duration(milliseconds: 130),
           onTap: widget.onTap,
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: ShapeDecoration(
-              color: surfaceColor,
-              shape: CircleBorder(),
-              shadows: shadows,
-            ),
+          child: LiquidGlassGelCircle(
+            color: surfaceColor,
             child: Center(
               child: SearchWeightedIcon(
                 CupertinoIcons.xmark,

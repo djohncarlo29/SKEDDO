@@ -3031,20 +3031,12 @@ class _PreviewCircleButton extends StatelessWidget {
 
     final resolvedContainerColor = resolveThemeColor(containerColor, context);
     final resolvedIconColor = resolveThemeColor(iconColor, context);
-    final shadows = resolveThemeShadows(kCardShadow, context);
-
     return GelBloomButton(
       peakScale: 1.15,
       tapDelay: tapDelay,
       onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: ShapeDecoration(
-          color: resolvedContainerColor,
-          shape: const CircleBorder(),
-          shadows: shadows,
-        ),
+      child: LiquidGlassGelCircle(
+        color: resolvedContainerColor,
         child: Center(
           child: Transform.translate(
             offset: Offset(0, verticalIconOffset),

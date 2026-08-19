@@ -85,7 +85,7 @@ class FloatingTabPill extends StatelessWidget {
                 // shadow is separate from the glass, but never competes with
                 // the transient raised selection lens below.
                 blur: 16,
-                opacity: isDark ? 0 : 0.13,
+                opacity: isDark ? 0 : 0.18,
                 offset: const Offset(0, 5),
                 cornerRadius: kSquircleStadiumRadius,
                 child: const SizedBox.expand(),
