@@ -2457,17 +2457,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               // available across tabs and is naturally covered by shell
               // overlays.
               AnimatedBuilder(
-                animation: Listenable.merge([
-                  _dcvSlideController,
-                  _searchModeController,
-                ]),
+                animation: _dcvSlideController,
                 builder: (context, _) {
-                  // Search mode owns the navigation surface while active.
-                  // Keep the bar hidden through the transition as well so it
-                  // cannot flash back in while the search header is restoring.
-                  if (_searchFocused || _searchModeController.value > 0.0) {
-                    return const SizedBox.shrink();
-                  }
                   final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
                   final isDCVVisual =
                       pageP >= _dcvColorSnapThreshold && _selectedIndex == 2;
