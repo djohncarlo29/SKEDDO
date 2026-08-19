@@ -23,53 +23,71 @@ class FloatingTabPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
-    final borderColor = resolveThemeColor(kTertiaryLabel, context);
+    final brightness = CupertinoTheme.brightnessOf(context);
+    final cardColor = resolveThemeColor(kCardColor, context);
+    final separatorColor = resolveThemeColor(kSeparatorColor, context);
+
+    final glassSurface = cardColor.withValues(
+      alpha: brightness == Brightness.dark ? 0.92 : 0.84,
+    );
+    final glassBorder = brightness == Brightness.dark
+        ? Color.lerp(separatorColor, CupertinoColors.white, 0.18)!
+        : Color.lerp(separatorColor, CupertinoColors.white, 0.48)!;
+    final stadiumShape = SquircleStadiumBorder(
+      side: BorderSide(color: glassBorder, width: 0.75),
+    );
 
     return Semantics(
       container: true,
       label: 'Main navigation',
-      // This control is permanently mounted in the root shell.  Do not use a
-      // BackdropFilter here: on both the web preview and Android it can expand
-      // beyond the stadium clip and paint a faint rectangular layer, while on
-      // Android the same layer can become a full-app grey veil.  The rounded
-      // translucent surface below preserves the pill appearance without
-      // creating a scene-wide compositor layer.
-      child: FrostedGlassCard(
-        progress: 1.0,
-        enableBackdropFilter: false,
-        fillOpacity: isDark ? 0.75 : 0.65,
-        shadowOpacity: 0.22,
-        stadium: true,
-        border: isDark
-            ? BorderSide(color: borderColor, width: 0.5)
-            : BorderSide.none,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-          child: Row(
-            children: [
-              _FloatingTabItem(
-                icon: SFIcons.sf_text_document,
-                label: 'Notes',
-                active: selectedIndex == 0,
-                accentColor: resolveAccentColor(context),
-                onTap: () => onTabSelected(0),
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          shadows: resolveThemeShadows([
+            BoxShadow(
+              color: kTabBarShadowColor,
+              blurRadius: 18,
+              spreadRadius: 1,
+              offset: const Offset(0, 5),
+            ),
+          ], context),
+          shape: stadiumShape,
+        ),
+        child: ClipPath(
+          clipper: ShapeBorderClipper(shape: stadiumShape),
+          // This portable translucent surface is intentionally used instead
+          // of BackdropFilter. The pill is permanently mounted in the root
+          // shell, and Android can expand a backdrop layer into a full-screen
+          // grey veil even when the pill itself is small.
+          child: ColoredBox(
+            color: glassSurface,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+              child: Row(
+                children: [
+                  _FloatingTabItem(
+                    icon: SFIcons.sf_text_document,
+                    label: 'Notes',
+                    active: selectedIndex == 0,
+                    accentColor: resolveAccentColor(context),
+                    onTap: () => onTabSelected(0),
+                  ),
+                  _FloatingTabItem(
+                    icon: SFIcons.sf_calendar,
+                    label: 'Calendar',
+                    active: selectedIndex == 1,
+                    accentColor: resolveAccentColor(context),
+                    onTap: () => onTabSelected(1),
+                  ),
+                  _FloatingTabItem(
+                    icon: SFIcons.sf_list_bullet,
+                    label: 'Events',
+                    active: selectedIndex == 2,
+                    accentColor: eventsAccent,
+                    onTap: () => onTabSelected(2),
+                  ),
+                ],
               ),
-              _FloatingTabItem(
-                icon: SFIcons.sf_calendar,
-                label: 'Calendar',
-                active: selectedIndex == 1,
-                accentColor: resolveAccentColor(context),
-                onTap: () => onTabSelected(1),
-              ),
-              _FloatingTabItem(
-                icon: SFIcons.sf_list_bullet,
-                label: 'Events',
-                active: selectedIndex == 2,
-                accentColor: eventsAccent,
-                onTap: () => onTabSelected(2),
-              ),
-            ],
+            ),
           ),
         ),
       ),
