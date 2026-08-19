@@ -119,7 +119,7 @@ class FloatingTabPill extends StatelessWidget {
             style: barStyle,
             // The environmental shadows above own elevation. Keep the glass
             // material itself shadow-free so its refraction remains clean.
-            pillStyle: const LiquidGlassTabPillStyle(
+            pillStyle: LiquidGlassTabPillStyle(
               mode: LiquidGlassPillMode.impellerOnly,
               animated: true,
               shape: LiquidGlassShape.continuousRoundedRectangle(
