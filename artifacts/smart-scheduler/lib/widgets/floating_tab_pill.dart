@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
@@ -24,8 +25,7 @@ class FloatingTabPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark =
-        CupertinoTheme.brightnessOf(context) == Brightness.dark;
+    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
     final selectedColor = selectedIndex == 2
         ? CupertinoDynamicColor.resolve(eventsAccent, context)
         : resolveAccentColor(context);
@@ -73,8 +73,10 @@ class FloatingTabPill extends StatelessWidget {
         ],
         selectedIndex: selectedIndex,
         onChanged: onTabSelected,
-        width: (screenWidth - (kFloatingTabBarHorizontalMargin * 2))
-            .clamp(0.0, double.infinity),
+        width: (screenWidth - (kFloatingTabBarHorizontalMargin * 2)).clamp(
+          0.0,
+          double.infinity,
+        ),
         height: kFloatingTabBarHeight,
         margin: const EdgeInsets.only(bottom: kFloatingTabBarBottomSpacing),
         itemPadding: 4,
