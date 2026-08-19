@@ -5,10 +5,10 @@ import 'package:oc_liquid_glass/oc_liquid_glass.dart';
 import '../app_theme.dart';
 import 'fixed_size_icon.dart';
 
-// Extra backdrop capture around the visible pill. The expanded field is
-// clipped back to the existing stadium, so it changes only the optical sample
-// region, not layout, hit targets, or the visible tab-bar geometry.
-const double _kLiquidGlassFieldExtension = 16.0;
+// Extra backdrop capture around the visible pill. The local glass shader uses
+// this field only for a low-frequency ambient ring, then clips its output back
+// to the existing stadium; it never displays the expanded field directly.
+const double _kLiquidGlassFieldExtension = 18.0;
 
 /// The AppShell's platform-neutral floating tab control.
 ///
@@ -71,11 +71,11 @@ class FloatingTabPill extends StatelessWidget {
             alignment: Alignment.center,
             child: OCLiquidGlassGroup(
               settings: OCLiquidGlassSettings(
-                // The expanded capture field lets edge refraction sample
-                // nearby content, while the low strength preserves the current
-                // calm appearance instead of turning the bar into a droplet.
-                refractStrength: -0.08,
-                distortFalloffPx: 44,
+                // Keep the package's shape response gentle. The local shader
+                // adds the extended field as diffuse environmental light, not
+                // as a transformed backdrop image.
+                refractStrength: -0.045,
+                distortFalloffPx: 38,
                 distortExponent: 4,
                 blurRadiusPx: 2.0,
                 specStrength: 0.0,

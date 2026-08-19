@@ -43,6 +43,12 @@ precision highp float;
 #define BACKDROP_FALLBACK_ALPHA 0.95
 // Must stay in sync with any Dart-side backdrop clipping inflation.
 #define REFRACTION_SAMPLE_SCALE 0.6
+// The expanded group is intentionally an optical capture field, not a second
+// image plane. Keep the surrounding contribution broad and low-frequency so
+// text, icons, and hard edges cannot become recognizable in the glass.
+#define AMBIENT_RING_STEPS 16
+#define AMBIENT_RING_RADIUS_PX 18.0
+#define AMBIENT_RING_STRENGTH 0.075
 
 /* ── Global uniforms ─────────────────────────────────────────── */
 uniform vec2   u_size;             // (w,h)  px
@@ -162,6 +168,26 @@ vec4 radialBlur(vec2 uv,float radiusPx){
   return sum/float(cnt);
 }
 
+/*
+ * Samples a soft annulus around the current fragment. Unlike refraction,
+ * these samples are averaged into a single environmental light/color term.
+ * That makes the enlarged backdrop useful outside the shape without copying
+ * or mirroring nearby geometry into it.
+ */
+vec4 ambientRing(vec2 uv, float radiusPx){
+  vec4 sum = vec4(0.0);
+  float total = 0.0;
+  for(int j=0; j<AMBIENT_RING_STEPS; ++j){
+    float a = float(j) * 2.0 * PI / float(AMBIENT_RING_STEPS);
+    vec2 dir = vec2(cos(a), sin(a));
+    // Two radii soften both immediate edge content and slightly farther light.
+    sum += glassBg(uv + dir * px(radiusPx * 0.55));
+    sum += glassBg(uv + dir * px(radiusPx));
+    total += 2.0;
+  }
+  return sum / total;
+}
+
 /* ── Main ────────────────────────────────────────────────────── */
 void main(){
   vec2 fragPx = FlutterFragCoord().xy;
@@ -199,7 +225,17 @@ void main(){
   vec2 off = grad * pow(smoothstep(-px(uDistortFalloffPx),0.0,dU),
                         uDistortExponent) * uRefractStrength * mask;
 
-  vec4 glassBase = radialBlur(uv0 + off*REFRACTION_SAMPLE_SCALE, uRadialBlurPx);
+  // Direct backdrop response remains the base material. The extended capture
+  // contributes only as a broad environmental tint; it is never used as a
+  // geometric image source. Keeping refraction centered also prevents the
+  // enlarged group coordinates from producing an upside-down recognizable
+  // sample when the capture field is taller than the visible pill.
+  vec4 directBase = radialBlur(uv0, uRadialBlurPx);
+  vec4 refractedBase = radialBlur(uv0 + off*REFRACTION_SAMPLE_SCALE,
+                                   uRadialBlurPx);
+  vec4 ambient = ambientRing(uv0, AMBIENT_RING_RADIUS_PX);
+  vec4 glassBase = mix(directBase, refractedBase, 0.22 * mask);
+  glassBase.rgb = mix(glassBase.rgb, ambient.rgb, AMBIENT_RING_STRENGTH * mask);
 
   /* tint blend (soft-max) */
   vec3  accum = vec3(0.0);
