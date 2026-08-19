@@ -6,8 +6,8 @@ import '../app_theme.dart';
 import 'fixed_size_icon.dart';
 
 // Extra backdrop capture around the visible pill. The local glass shader uses
-// this field only for a low-frequency ambient ring, then clips its output back
-// to the existing stadium; it never displays the expanded field directly.
+// this field as one unified optical input: direct refraction stays strong while
+// a broad ambient contribution can reach in from just outside the pill.
 const double _kLiquidGlassFieldExtension = 18.0;
 
 /// The AppShell's platform-neutral floating tab control.
@@ -65,69 +65,80 @@ class FloatingTabPill extends StatelessWidget {
           // ClipPath keeps the expanded backdrop field from painting outside
           // the original stadium shape.
           clipper: const SquircleClipper(kFloatingTabBarHeight / 2),
-          child: OverflowBox(
-            minHeight: fieldHeight,
-            maxHeight: fieldHeight,
-            alignment: Alignment.center,
-            child: OCLiquidGlassGroup(
-              settings: OCLiquidGlassSettings(
-                // Keep the package's shape response gentle. The local shader
-                // adds the extended field as diffuse environmental light, not
-                // as a transformed backdrop image.
-                refractStrength: -0.045,
-                distortFalloffPx: 38,
-                distortExponent: 4,
-                blurRadiusPx: 2.0,
-                specStrength: 0.0,
-                specPower: 80,
-                specWidth: 8,
-                lightbandStrength: 0.0,
-                lightbandColor: CupertinoColors.white,
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                height: fieldHeight,
-                child: Center(
-                  child: OCLiquidGlass(
-                    width: double.infinity,
-                    height: kFloatingTabBarHeight,
-                    borderRadius: kFloatingTabBarHeight / 2,
-                    color: glassColor,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 3,
-                      ),
-                      child: Row(
-                        children: [
-                          _FloatingTabItem(
-                            icon: SFIcons.sf_text_document,
-                            label: 'Notes',
-                            active: selectedIndex == 0,
-                            accentColor: resolveAccentColor(context),
-                            onTap: () => onTabSelected(0),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final visibleWidth = constraints.maxWidth;
+              final fieldWidth =
+                  visibleWidth + (_kLiquidGlassFieldExtension * 2);
+              return OverflowBox(
+                minWidth: fieldWidth,
+                maxWidth: fieldWidth,
+                minHeight: fieldHeight,
+                maxHeight: fieldHeight,
+                alignment: Alignment.center,
+                child: OCLiquidGlassGroup(
+                  settings: OCLiquidGlassSettings(
+                    // Preserve the strong original optical response. The
+                    // shader's expanded field is additional source material,
+                    // not a reason to weaken the refraction pass.
+                    refractStrength: -0.08,
+                    distortFalloffPx: 44,
+                    distortExponent: 4,
+                    blurRadiusPx: 2.0,
+                    specStrength: 0.0,
+                    specPower: 80,
+                    specWidth: 8,
+                    lightbandStrength: 0.0,
+                    lightbandColor: CupertinoColors.white,
+                  ),
+                  child: SizedBox(
+                    width: fieldWidth,
+                    height: fieldHeight,
+                    child: Center(
+                      child: OCLiquidGlass(
+                        // The render field is larger, but the registered
+                        // shape remains exactly the original pill width.
+                        width: visibleWidth,
+                        height: kFloatingTabBarHeight,
+                        borderRadius: kFloatingTabBarHeight / 2,
+                        color: glassColor,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 3,
                           ),
-                          _FloatingTabItem(
-                            icon: SFIcons.sf_calendar,
-                            label: 'Calendar',
-                            active: selectedIndex == 1,
-                            accentColor: resolveAccentColor(context),
-                            onTap: () => onTabSelected(1),
+                          child: Row(
+                            children: [
+                              _FloatingTabItem(
+                                icon: SFIcons.sf_text_document,
+                                label: 'Notes',
+                                active: selectedIndex == 0,
+                                accentColor: resolveAccentColor(context),
+                                onTap: () => onTabSelected(0),
+                              ),
+                              _FloatingTabItem(
+                                icon: SFIcons.sf_calendar,
+                                label: 'Calendar',
+                                active: selectedIndex == 1,
+                                accentColor: resolveAccentColor(context),
+                                onTap: () => onTabSelected(1),
+                              ),
+                              _FloatingTabItem(
+                                icon: SFIcons.sf_list_bullet,
+                                label: 'Events',
+                                active: selectedIndex == 2,
+                                accentColor: eventsAccent,
+                                onTap: () => onTabSelected(2),
+                              ),
+                            ],
                           ),
-                          _FloatingTabItem(
-                            icon: SFIcons.sf_list_bullet,
-                            label: 'Events',
-                            active: selectedIndex == 2,
-                            accentColor: eventsAccent,
-                            onTap: () => onTabSelected(2),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
       ),

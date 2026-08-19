@@ -48,7 +48,7 @@ precision highp float;
 // text, icons, and hard edges cannot become recognizable in the glass.
 #define AMBIENT_RING_STEPS 16
 #define AMBIENT_RING_RADIUS_PX 18.0
-#define AMBIENT_RING_STRENGTH 0.075
+#define AMBIENT_RING_STRENGTH 0.11
 
 /* ── Global uniforms ─────────────────────────────────────────── */
 uniform vec2   u_size;             // (w,h)  px
@@ -234,7 +234,10 @@ void main(){
   vec4 refractedBase = radialBlur(uv0 + off*REFRACTION_SAMPLE_SCALE,
                                    uRadialBlurPx);
   vec4 ambient = ambientRing(uv0, AMBIENT_RING_RADIUS_PX);
-  vec4 glassBase = mix(directBase, refractedBase, 0.22 * mask);
+  // Keep the full refraction response. The ambient ring is part of the same
+  // optical field and only enriches the sample with nearby low-frequency
+  // light; it must not replace the glass response underneath the pill.
+  vec4 glassBase = mix(directBase, refractedBase, mask);
   glassBase.rgb = mix(glassBase.rgb, ambient.rgb, AMBIENT_RING_STRENGTH * mask);
 
   /* tint blend (soft-max) */
