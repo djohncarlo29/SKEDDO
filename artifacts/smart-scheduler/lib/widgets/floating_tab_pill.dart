@@ -1,4 +1,6 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_sficon/flutter_sficon.dart';
 
 import '../app_theme.dart';
@@ -25,6 +27,13 @@ class FloatingTabPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
     final borderColor = resolveThemeColor(kTertiaryLabel, context);
+    // BackdropFilter is safe for transient bounded panels, but an always-
+    // mounted shell filter can expand into a full-scene grey veil on Android.
+    // Keep the same translucent glass surface there without the risky filter.
+    final enableBackdropBlur =
+        kIsWeb ||
+        defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS;
 
     return Semantics(
       container: true,
@@ -38,6 +47,7 @@ class FloatingTabPill extends StatelessWidget {
           // shared shadow policy, and a subtle Dark Mode hairline only.
           progress: 1.0,
           tileMode: TileMode.clamp,
+          enableBackdropFilter: enableBackdropBlur,
           fillOpacity: isDark ? 0.75 : 0.65,
           shadowOpacity: 0.22,
           stadium: true,

@@ -2466,7 +2466,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                       ],
                     ),
                   ),
-
                 ],
               ),
 
@@ -2486,8 +2485,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   return Positioned(
                     left: kFloatingTabBarHorizontalMargin,
                     right: kFloatingTabBarHorizontalMargin,
-                    bottom:
-                        bottomSafeInset + kFloatingTabBarBottomSpacing,
+                    bottom: bottomSafeInset + kFloatingTabBarBottomSpacing,
                     child: SizedBox(
                       height: kFloatingTabBarHeight,
                       child: FloatingTabPill(
@@ -2505,7 +2503,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 animation: _settingsController,
                 builder: (context, _) {
                   final v = _settingsController.value;
-                  if (v == 0.0) return const SizedBox.shrink();
+                  // A stale non-zero controller value must never leave the
+                  // full-screen dimmer mounted after settings is closed.
+                  if (v == 0.0 ||
+                      (!_settingsOpen && !_settingsController.isAnimating)) {
+                    return const SizedBox.shrink();
+                  }
                   return GestureDetector(
                     onTap: _closeSettings,
                     child: ColoredBox(

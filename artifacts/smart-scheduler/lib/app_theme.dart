@@ -1808,6 +1808,7 @@ class FrostedGlassCard extends StatelessWidget {
     required this.child,
     this.blurSigma = 20.0,
     this.tileMode = TileMode.decal,
+    this.enableBackdropFilter = true,
     this.fillOpacity = 0.80,
     this.shadowOpacity = 0.22,
     this.shadowBlurRadius = 28.0,
@@ -1830,6 +1831,10 @@ class FrostedGlassCard extends StatelessWidget {
   /// opt into clamping because they remain mounted in a permanent overlay
   /// stack on Android.
   final TileMode tileMode;
+
+  /// Allows always-mounted shell controls to keep the translucent glass
+  /// surface while avoiding a full-scene backdrop layer on Android.
+  final bool enableBackdropFilter;
 
   /// Maximum fill opacity at progress = 1.  Keep below 1.0 so the
   /// BackdropFilter blur shows through as frosted glass.
@@ -1889,19 +1894,25 @@ class FrostedGlassCard extends StatelessWidget {
                   side: border ?? BorderSide.none,
                 ),
         ),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: blur,
-            sigmaY: blur,
-            tileMode: tileMode,
-          ),
-          child: ColoredBox(
-            color: resolveThemeColor(
-              kGlassFillColor,
-              context,
-            ).withValues(alpha: fill),
-            child: child,
-          ),
+        child: Builder(
+          builder: (context) {
+            final glassSurface = ColoredBox(
+              color: resolveThemeColor(
+                kGlassFillColor,
+                context,
+              ).withValues(alpha: fill),
+              child: child,
+            );
+            if (!enableBackdropFilter) return glassSurface;
+            return BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: blur,
+                sigmaY: blur,
+                tileMode: tileMode,
+              ),
+              child: glassSurface,
+            );
+          },
         ),
       ),
     );
