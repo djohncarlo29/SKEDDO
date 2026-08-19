@@ -80,72 +80,15 @@ class FloatingTabPill extends StatelessWidget {
                 kFloatingTabBarBottomSpacing,
             height: kFloatingTabBarHeight,
             child: IgnorePointer(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Broad environmental penumbra. This is intentionally
-                  // stronger than ordinary card elevation because the glass
-                  // surface itself remains transparent.
-                  LiquidGlassShadow(
-                    blur: 15,
-                    opacity: isDark ? 0 : 0.24,
-                    offset: const Offset(0, 6),
-                    cornerRadius: kSquircleStadiumRadius,
-                    child: const SizedBox.expand(),
-                  ),
-                  // A tighter contact ring keeps the capsule readable on
-                  // white backgrounds without filling the glass interior.
-                  LiquidGlassShadow(
-                    blur: 4,
-                    opacity: isDark ? 0 : 0.17,
-                    offset: const Offset(0, 2),
-                    cornerRadius: kSquircleStadiumRadius,
-                    inset: 1,
-                    child: const SizedBox.expand(),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // A separate, tighter environmental shadow gives the lifted active
-          // lens its own elevation cue rather than making it borrow the bar's
-          // shadow. It follows the committed tab with a short eased move.
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
-            left:
-                kFloatingTabBarHorizontalMargin +
-                ((screenWidth - (kFloatingTabBarHorizontalMargin * 2)) / 3) *
-                    selectedIndex +
-                4,
-            bottom:
-                MediaQuery.paddingOf(context).bottom +
-                kFloatingTabBarBottomSpacing +
-                4,
-            width:
-                ((screenWidth - (kFloatingTabBarHorizontalMargin * 2)) / 3) -
-                8,
-            height: kFloatingTabBarHeight - 8,
-            child: IgnorePointer(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  LiquidGlassShadow(
-                    blur: 9,
-                    opacity: isDark ? 0 : 0.28,
-                    offset: const Offset(0, 4),
-                    cornerRadius: kSquircleStadiumRadius,
-                    child: const SizedBox.expand(),
-                  ),
-                  LiquidGlassShadow(
-                    blur: 3,
-                    opacity: isDark ? 0 : 0.18,
-                    offset: const Offset(0, 2),
-                    cornerRadius: kSquircleStadiumRadius,
-                    inset: 1,
-                    child: const SizedBox.expand(),
-                  ),
-                ],
+              child: LiquidGlassShadow(
+                // The bar itself stays at the earlier, softer level. Its
+                // shadow is separate from the glass, but never competes with
+                // the transient raised selection lens below.
+                blur: 16,
+                opacity: isDark ? 0 : 0.13,
+                offset: const Offset(0, 5),
+                cornerRadius: kSquircleStadiumRadius,
+                child: const SizedBox.expand(),
               ),
             ),
           ),
@@ -185,6 +128,18 @@ class FloatingTabPill extends StatelessWidget {
               glassStyle: LiquidGlassStyle(
                 shape: LiquidGlassShape.continuousRoundedRectangle(
                   cornerRadius: kSquircleStadiumRadius,
+                ),
+                appearance: LiquidGlassAppearance(
+                  // This shadow belongs to the motion lens only. The package
+                  // fades it with the lift/morph handoff, so the settled
+                  // active pill remains clean and the moving pill gets depth.
+                  shadow: LiquidGlassShadow(
+                    blur: 6,
+                    opacity: isDark ? 0 : 0.22,
+                    offset: const Offset(0, 3),
+                    cornerRadius: kSquircleStadiumRadius,
+                    inset: 1,
+                  ),
                 ),
                 refraction: LiquidGlassRefraction(
                   distortion: 0.04,
