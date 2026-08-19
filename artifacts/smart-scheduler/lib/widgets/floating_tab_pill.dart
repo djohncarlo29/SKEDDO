@@ -26,7 +26,6 @@ class FloatingTabPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final brightness = CupertinoTheme.brightnessOf(context);
     final isDark = brightness == Brightness.dark;
-    final borderColor = resolveThemeColor(kTertiaryLabel, context);
     final glassColor = resolveThemeColor(
       kGlassFillColor,
       context,
@@ -51,11 +50,10 @@ class FloatingTabPill extends StatelessWidget {
               offset: const Offset(0, 8),
             ),
           ], context),
-          shape: SquircleStadiumBorder(
-            side: isDark
-                ? BorderSide(color: borderColor, width: 0.5)
-                : BorderSide.none,
-          ),
+          // The glass package owns the edge treatment below. Avoid a second
+          // static outline here, which would read as a bright shimmer over
+          // the optical rim.
+          shape: const SquircleStadiumBorder(),
         ),
         child: LiquidGlassTabBar(
           items: [
@@ -83,12 +81,28 @@ class FloatingTabPill extends StatelessWidget {
             color: glassColor,
             distortion: 0.08,
             distortionWidth: 44,
+            rest: LiquidGlassStyle(
+              shape: const LiquidGlassShape.continuousRoundedRectangle(
+                cornerRadius: kFloatingTabBarHeight / 2,
+                borderWidth: 0,
+              ),
+              appearance: LiquidGlassAppearance(color: glassColor),
+            ),
           ),
           style: LiquidGlassTabBar.defaultStyle.copyWith(
             shape: LiquidGlassShape.continuousRoundedRectangle(
               cornerRadius: kFloatingTabBarHeight / 2,
-              borderWidth: isDark ? 0.5 : 0,
-              borderColor: isDark ? borderColor : null,
+              borderWidth: isDark ? 0.7 : 0.5,
+              lightIntensity: 1.15,
+              lightDirection: 80,
+              borderType: const OpticalBorder(
+                // Keep the rim directional and translucent instead of
+                // producing a uniform, static-looking edge glow.
+                borderSaturation: 1.1,
+                ambientIntensity: 0.12,
+                borderSolidity: 0.08,
+                lightSpread: 0.24,
+              ),
             ),
             appearance: LiquidGlassAppearance(
               color: glassColor,
