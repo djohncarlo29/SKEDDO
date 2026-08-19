@@ -2,7 +2,7 @@ name: smart_scheduler
 description: "SKEDDO"
 publish_to: 'none'
 
-version: 1.0.0+13
+version: 1.0.0+14
 
 environment:
   # Support both the workspace Flutter toolchain and Shorebird's newer Dart
@@ -29,10 +29,7 @@ dependencies:
   url_launcher: ^6.3.0
   flutter_dotenv: ^6.0.1
   ai_glow: ^0.0.2
-  # Local fork keeps the upstream widget API while allowing the tab bar to use
-  # an expanded optical capture without exposing transformed backdrop detail.
-  oc_liquid_glass:
-    path: packages/oc_liquid_glass
+  liquid_glass_easy: ^4.0.0
   connectivity_plus: ^6.0.0
   speech_to_text: ^7.0.0
   record: ^6.0.0

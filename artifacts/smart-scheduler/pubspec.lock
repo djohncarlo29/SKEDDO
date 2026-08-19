@@ -440,6 +440,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.1.1"
+  liquid_glass_easy:
+    dependency: "direct main"
+    description:
+      name: liquid_glass_easy
+      sha256: "6cf4d3f15088ce83669429f568aad918cdfa851f3d6de01f1a7d199d5032a7dc"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.0"
   matcher:
     dependency: transitive
     description:
@@ -480,13 +488,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.5.0"
-  oc_liquid_glass:
-    dependency: "direct main"
-    description:
-      path: "packages/oc_liquid_glass"
-      relative: true
-    source: path
-    version: "0.3.0"
   path:
     dependency: transitive
     description:
