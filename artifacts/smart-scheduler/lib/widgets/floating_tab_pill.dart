@@ -35,6 +35,10 @@ class FloatingTabPill extends StatelessWidget {
         // backdrop blur, so content directly behind the tab bar is frosted.
         progress: 1.0,
         enableBackdropFilter: true,
+        // Clamp the blur sample at the pill edge so the frosted treatment
+        // remains visually uniform through the bottom of this permanent shell
+        // control instead of fading where decal samples outside the clip.
+        tileMode: TileMode.clamp,
         fillOpacity: isDark ? 0.75 : 0.65,
         shadowOpacity: 0.22,
         stadium: true,
