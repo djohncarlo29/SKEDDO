@@ -107,6 +107,16 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
   VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
   echo "→ App version: $VERSION"
 
+  # Shorebird runs dependency resolution with its bundled Flutter SDK. Repair
+  # a stale/malformed lock file first so one bad indentation cannot abort the
+  # patch before compilation starts.
+  FLUTTER_BIN="$(dirname "$SHOREBIRD_BIN")/cache/flutter/bin/flutter"
+  if [[ ! -x "$FLUTTER_BIN" ]]; then
+    FLUTTER_BIN="flutter"
+  fi
+  echo "→ Resolving dependencies..."
+  "$FLUTTER_BIN" pub get
+
   # Pass --release-version explicitly so shorebird doesn't prompt interactively.
   "$SHOREBIRD_BIN" patch "$PLATFORM" \
     --release-version "$VERSION" \
