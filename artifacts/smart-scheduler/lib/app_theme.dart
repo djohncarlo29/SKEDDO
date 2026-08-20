@@ -2143,7 +2143,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
       ),
       shape: LiquidGlassShape.continuousRoundedRectangle(
         cornerRadius: circle.size / 2,
-        borderWidth: 0.65,
+        borderWidth: 0.5,
         lightIntensity: 0.38,
         lightDirection: 62,
         borderType: const OpticalBorder(
@@ -2165,7 +2165,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
       child: LiquidGlassShadow(
         // Keep this close to the silhouette: it is an edge-defining ring,
         // not a broad elevation shadow.
-        blur: 2.25,
+        blur: isLightMode ? 3.25 : 2.25,
         opacity: isLightMode ? 0.20 : 0.0,
         offset: const Offset(1.0, 1.5),
         cornerRadius: circle.size / 2,
@@ -2176,36 +2176,51 @@ class _GelBloomButtonState extends State<GelBloomButton>
             // above an occluding route. The local view captures a stable
             // backdrop once and the lens evaluates its optical rim against
             // that cached image.
-            child: LiquidGlassView(
-              // LiquidGlassView paints its capture surface as a rectangle. The
-              // backgroundWidget clip alone is not enough: the view/lens
-              // output can still expose that rectangular surface on Android.
-              // Clip the complete view so the gel remains circular.
-              backgroundWidget: ClipOval(
-                child: ColoredBox(color: surfaceColor.withValues(alpha: 0.8)),
+            child: DecoratedBox(
+              // This is deliberately separate from the glass lens' optical
+              // rim light: it is a stable, white 30% hairline around the
+              // complete button silhouette in both appearances.
+              position: DecorationPosition.foreground,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.fromBorderSide(
+                  BorderSide(
+                    color: Color(0x4DFFFFFF),
+                    width: 0.5,
+                  ),
+                ),
               ),
-              realTimeCapture: false,
-              useSync: true,
-              useImpellerBackdrop: false,
-              child: LiquidGlassLens(
-                style: style,
-                // The wrapper owns the same bloom as regular GelBloomButton.
-                // Avoid a second package flex animation changing the scale and
-                // making this path look flatter or out of sync.
-                touch: const LiquidGlassTouch(),
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    _bloom();
-                    if (widget.tapDelay == Duration.zero) {
-                      widget.onTap();
-                    } else {
-                      Future.delayed(widget.tapDelay, () {
-                        if (mounted) widget.onTap();
-                      });
-                    }
-                  },
-                  child: Center(child: circle.child),
+              child: LiquidGlassView(
+                // LiquidGlassView paints its capture surface as a rectangle.
+                // The backgroundWidget clip alone is not enough: the view/lens
+                // output can still expose that rectangular surface on Android.
+                // Clip the complete view so the gel remains circular.
+                backgroundWidget: ClipOval(
+                  child: ColoredBox(color: surfaceColor.withValues(alpha: 0.8)),
+                ),
+                realTimeCapture: false,
+                useSync: true,
+                useImpellerBackdrop: false,
+                child: LiquidGlassLens(
+                  style: style,
+                  // The wrapper owns the same bloom as regular GelBloomButton.
+                  // Avoid a second package flex animation changing the scale
+                  // and making this path look flatter or out of sync.
+                  touch: const LiquidGlassTouch(),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      _bloom();
+                      if (widget.tapDelay == Duration.zero) {
+                        widget.onTap();
+                      } else {
+                        Future.delayed(widget.tapDelay, () {
+                          if (mounted) widget.onTap();
+                        });
+                      }
+                    },
+                    child: Center(child: circle.child),
+                  ),
                 ),
               ),
             ),
