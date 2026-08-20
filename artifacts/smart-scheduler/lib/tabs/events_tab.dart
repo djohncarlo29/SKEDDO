@@ -5883,7 +5883,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           if (_searchAll.isNotEmpty)
             SliverToBoxAdapter(
               child: SizedBox(
-                height: floatingTabBarContentBottomClearance(context),
+                height: floatingTabBarContentBottomClearance(
+                  context,
+                  existingTrailingContentPadding: 32,
+                  finalContentGap: 20,
+                ),
               ),
             ),
         ]
@@ -6220,7 +6224,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               if (!showResults || _searchAll.isNotEmpty)
                 SliverToBoxAdapter(
                   child: SizedBox(
-                    height: floatingTabBarContentBottomClearance(context),
+                    height: floatingTabBarContentBottomClearance(
+                      context,
+                      existingTrailingContentPadding: 32,
+                      finalContentGap: 20,
+                    ),
                   ),
                 ),
             ],
@@ -6280,9 +6288,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               if (showResults)
                 Expanded(
                   child: Padding(
-                    padding: EdgeInsets.only(
-                      bottom: floatingTabBarContentBottomClearance(context),
-                    ),
+                    padding: EdgeInsets.zero,
                     child: SmartDcvSearchResults(
                       primary: _searchPrimary,
                       overflow: _searchOverflow,
@@ -10308,22 +10314,22 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                             FocusManager.instance.primaryFocus?.unfocus();
                             setState(() => _smartDescriptionSaved = true);
                           },
-                           child: LiquidGlassGelCircle(
-                             size: 28,
-                             color: _smartDescriptionCtrl.text.trim().isEmpty
-                                 ? resolveThemeColor(
-                                     kTertiaryLabel,
-                                     context,
-                                   ).withValues(alpha: 0.5)
-                                 : _resolvedSelectedColor,
-                             child: Center(
-                               child: Transform.translate(
-                                 offset: const Offset(-0.5, -0.5),
-                                 child: SearchWeightedIcon(
-                                   SFIcons.sf_checkmark,
-                                   size: 13,
-                                   color: CupertinoColors.white,
-                                   weight: kGelBloomIconWeight,
+                          child: LiquidGlassGelCircle(
+                            size: 28,
+                            color: _smartDescriptionCtrl.text.trim().isEmpty
+                                ? resolveThemeColor(
+                                    kTertiaryLabel,
+                                    context,
+                                  ).withValues(alpha: 0.5)
+                                : _resolvedSelectedColor,
+                            child: Center(
+                              child: Transform.translate(
+                                offset: const Offset(-0.5, -0.5),
+                                child: SearchWeightedIcon(
+                                  SFIcons.sf_checkmark,
+                                  size: 13,
+                                  color: CupertinoColors.white,
+                                  weight: kGelBloomIconWeight,
                                 ),
                               ),
                             ),
@@ -14858,7 +14864,11 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
             ),
             SliverToBoxAdapter(
               child: SizedBox(
-                height: floatingTabBarContentBottomClearance(context),
+                height: floatingTabBarContentBottomClearance(
+                  context,
+                  existingTrailingContentPadding: 32,
+                  finalContentGap: 20,
+                ),
               ),
             ),
           ],
@@ -14935,10 +14945,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       ),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
       slivers: [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: emptyStateContent,
-        ),
+        SliverFillRemaining(hasScrollBody: false, child: emptyStateContent),
       ],
     );
   }

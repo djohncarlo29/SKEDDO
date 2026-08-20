@@ -233,6 +233,15 @@ class SmartDcvSearchResults extends StatelessWidget {
 
         if (primary.isNotEmpty && overflow.isEmpty)
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: floatingTabBarContentBottomClearance(
+              context,
+              existingTrailingContentPadding: 32,
+              finalContentGap: 20,
+            ),
+          ),
+        ),
       ],
     );
   }
