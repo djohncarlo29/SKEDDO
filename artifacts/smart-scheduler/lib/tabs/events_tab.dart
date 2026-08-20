@@ -10311,7 +10311,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   )
                 else
                   const SizedBox(width: 28, height: 28),
-                ),
               ],
             ),
           ),
