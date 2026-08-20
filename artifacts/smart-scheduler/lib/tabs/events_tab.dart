@@ -11386,19 +11386,37 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         _handleColorNotifier.value = renderCategoryColor(c, context);
       },
       peakScale: 1.10,
-      child: LiquidGlassGelCircle(
-        size: 40,
-        color: resolveThemeColor(c, context),
+      child: AspectRatio(
+        aspectRatio: 1,
         child: selected
-            ? Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: ringColor, width: 3.0),
+            // Ring sits outside the circle. Values are doubled from the
+            // initial design: 1.0 outer + 4.0 ring + 4.0 gap each side.
+            ? Padding(
+                padding: const EdgeInsets.all(1.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: ringColor, width: 3.0),
+                  ),
+                  padding: const EdgeInsets.all(3.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: resolveThemeColor(c, context),
+                    ),
+                  ),
                 ),
               )
-            : const SizedBox.shrink(),
+            // Unselected: plain circle with 4.5 px breathing room.
+            : Padding(
+                padding: const EdgeInsets.all(4.5),
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: resolveThemeColor(c, context),
+                  ),
+                ),
+              ),
       ),
     );
   }
@@ -11553,8 +11571,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
 
                               // Selection shown via category-colour circle fill;
                               // no ring indicator anywhere in the picker grid.
-                              final circle = LiquidGlassGelCircle(
-                                color: circleBg,
+                              final circle = Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: circleBg,
+                                ),
                                 child: Center(
                                   child: Transform.scale(
                                     scale: glyphScale,
