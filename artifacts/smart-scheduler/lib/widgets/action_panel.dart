@@ -918,11 +918,12 @@ class _ActionPanelState extends State<ActionPanel>
         final resolvedBorder = borderColor.withValues(
           alpha: borderColor.a * outlineT,
         );
-        // Standard overlays sit over the app rather than inside a modal sheet.
-        // Give their dark glass another 10 percentage points of fill opacity.
-        // Picker mini-panels opt into bouncingScroll and retain their existing
-        // modal-sheet glass value.
-        final fillOpacity = isDark && !widget.bouncingScroll ? 0.75 : 0.65;
+        // The Notes attachment panel uses the same translucent material density
+        // as the Floating Tab Bar.  Keep the rows independent from this value
+        // so their content animation never dims the glass surface itself.
+        final fillOpacity = widget.useLiquidGlass
+            ? 0.80
+            : (isDark && !widget.bouncingScroll ? 0.75 : 0.65);
 
         // liquid_glass_easy intentionally paints no lens when its shader
         // cannot load. The web preview can run in a CPU-only renderer, so
@@ -933,7 +934,7 @@ class _ActionPanelState extends State<ActionPanel>
             ? _LiquidGlassActionPanelCard(
                 progress: gt,
                 fillOpacity: fillOpacity,
-                shadowOpacity: 0.22,
+                shadowOpacity: 0.18,
                 child: panelContent,
               )
             : FrostedGlassCard(
@@ -1650,44 +1651,44 @@ class _LiquidGlassActionPanelCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark =
         CupertinoTheme.brightnessOf(context) == Brightness.dark;
-    final radius = kCornerRadius;
+    // Keep the bounded stadium-squircle geometry used by the rest of the app.
+    // This is intentionally not derived from the panel's animated height.
+    final radius = kSquircleStadiumRadius;
     final fill = (fillOpacity * progress).clamp(0.0, 1.0);
     final shadow = isDark ? 0.0 : shadowOpacity * progress;
     final shape = LiquidGlassShape.continuousRoundedRectangle(
       cornerRadius: radius,
-      borderWidth: 0.5,
-      lightIntensity: 0.38,
+      // Match the Floating Tab Bar's optical rim and edge-light response.
+      borderWidth: 0.45,
+      lightIntensity: 0.46,
       lightDirection: 62,
       borderType: const OpticalBorder(
         borderSaturation: 1.0,
         ambientIntensity: 0.18,
-        borderSolidity: 0.16,
-        lightSpread: 0.14,
+        borderSolidity: 0.28,
+        lightSpread: 0.12,
       ),
     );
-    final style = LiquidGlassStyle(
+    final style = LiquidGlassTabBar.defaultStyle.copyWith(
       shape: shape,
-      appearance: LiquidGlassAppearance(
-        color: resolveThemeColor(kGlassFillColor, context).withValues(
-          alpha: fill,
-        ),
-        blur: LiquidGlassBlur(
-          sigmaX: 20.0 * progress,
-          sigmaY: 20.0 * progress,
-        ),
+      appearance: LiquidGlassTabBar.defaultStyle.appearance.copyWith(
+        // Use the resolved card surface, matching the tab bar, rather than a
+        // separate glass tint.  The 80% alpha is the tab bar's settled density.
+        color: resolveThemeColor(kCardColor, context).withValues(alpha: fill),
       ),
-      refraction: const LiquidGlassRefraction(
-        distortion: 0.04,
-        distortionWidth: 12,
-        magnification: 1,
+      refraction: LiquidGlassTabBar.defaultStyle.refraction.copyWith(
+        // Keep the tab bar's refraction and only suppress visible colour
+        // fringing, as its own renderer does.
         chromaticAberration: 0.0002,
       ),
     );
 
     return LiquidGlassShadow(
-      blur: 28,
+      // Environmental shadow stays outside the capture, using the same
+      // broad, low-opacity lift as the Floating Tab Bar.
+      blur: 16,
       opacity: shadow,
-      offset: const Offset(0, 8),
+      offset: const Offset(0, 5),
       cornerRadius: radius,
       child: Stack(
         clipBehavior: Clip.none,
@@ -1705,7 +1706,7 @@ class _LiquidGlassActionPanelCard extends StatelessWidget {
               backgroundWidget: ClipPath(
                 clipper: SquircleClipper(radius),
                 child: ColoredBox(
-                  color: resolveThemeColor(kGlassFillColor, context).withValues(
+                  color: resolveThemeColor(kCardColor, context).withValues(
                     alpha: fill,
                   ),
                 ),
@@ -1715,10 +1716,17 @@ class _LiquidGlassActionPanelCard extends StatelessWidget {
               useImpellerBackdrop: true,
               child: LiquidGlassLens(
                 style: style,
-                child: child,
+                // Keep the lens' geometry alive independently from the
+                // action rows. If a renderer cannot load the shader, the
+                // package omits the lens subtree; the rows must still paint.
+                child: const SizedBox.expand(),
               ),
             ),
           ),
+          // Action-panel behavior and content stay outside the lens. The
+          // Liquid Glass layer is visual-only, so shader availability can
+          // never make the menu's actions disappear.
+          Positioned.fill(child: child),
           Positioned.fill(
             child: IgnorePointer(
               child: DecoratedBox(
