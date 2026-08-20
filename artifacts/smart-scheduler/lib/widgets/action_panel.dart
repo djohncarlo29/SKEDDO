@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import '../app_theme.dart';
@@ -923,7 +924,12 @@ class _ActionPanelState extends State<ActionPanel>
         // modal-sheet glass value.
         final fillOpacity = isDark && !widget.bouncingScroll ? 0.75 : 0.65;
 
-        final panelCard = widget.useLiquidGlass
+        // liquid_glass_easy intentionally paints no lens when its shader
+        // cannot load. The web preview can run in a CPU-only renderer, so
+        // keep the panel visible there with the proven frosted surface.
+        // Native iOS/Android renderers continue through the real Liquid Glass
+        // composition below.
+        final panelCard = widget.useLiquidGlass && !kIsWeb
             ? _LiquidGlassActionPanelCard(
                 progress: gt,
                 fillOpacity: fillOpacity,
