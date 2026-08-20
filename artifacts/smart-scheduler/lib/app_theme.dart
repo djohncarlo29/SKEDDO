@@ -2067,14 +2067,12 @@ class LiquidGlassGelCircle extends StatelessWidget {
     required this.child,
     this.size = 40,
     this.isCheckmark = false,
-    this.isEnabled = true,
   });
 
   final Color color;
   final Widget child;
   final double size;
   final bool isCheckmark;
-  final bool isEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -2238,23 +2236,6 @@ class _GelBloomButtonState extends State<GelBloomButton>
         ? widget.child as LiquidGlassGelCircle
         : null;
     if (circle != null) {
-      if (!circle.isEnabled) {
-        final disabledColor = resolveThemeColor(circle.color, context);
-        return SizedBox.square(
-          dimension: circle.size,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: disabledColor,
-              border: Border.all(
-                color: const Color(0x26FFFFFF),
-                width: 0.5,
-              ),
-            ),
-            child: Center(child: circle.child),
-          ),
-        );
-      }
       return _buildLiquidGlassButton(context, circle);
     }
 
