@@ -8712,10 +8712,10 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                               icon: CupertinoIcons.checkmark,
                               containerColor: canSave
                                   ? resolveAccentColor(context)
-                                   : resolveThemeColor(
-                                       kDisabledActionSurface,
-                                       context,
-                                     ),
+                                  : resolveThemeColor(
+                                      kDisabledActionSurface,
+                                      context,
+                                    ),
                               iconColor: CupertinoColors.white,
                               tapDelay: const Duration(milliseconds: 130),
                               onTap: canSave ? _save : () {},
@@ -11696,7 +11696,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                         child: _ModalCircleButton(
                           icon: CupertinoIcons.checkmark,
                           containerColor: _titleCtrl.text.trim().isEmpty
-                              ? kTertiaryLabel
+                              ? resolveThemeColor(
+                                  kDisabledActionSurface,
+                                  context,
+                                )
                               : _resolvedSelectedColor,
                           iconColor: CupertinoColors.white,
                           tapDelay: const Duration(milliseconds: 130),
@@ -12307,7 +12310,7 @@ class _ModalCircleButton extends StatelessWidget {
 
   /// Background color of the circle container.  Defaults to [kModalCard] for
   /// dismiss/close buttons.  Pass the category/accent color for save-ready
-  /// checkmark buttons and [kTertiaryLabel] for save-unready ones.
+  /// checkmark buttons and [kDisabledActionSurface] for save-unready ones.
   final Color containerColor;
   final VoidCallback onTap;
   final Duration tapDelay;

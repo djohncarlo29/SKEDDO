@@ -2275,29 +2275,46 @@ class _PersistentGelCirclePainter extends CustomPainter {
       );
     }
 
-    // The package's OpticalBorder is directional, not a uniform outline.
-    // Keep the same 0.65 px width and approximate its 62° light direction
-    // with a diagonal highlight/shadow shader.
+    // Mirror the package's OpticalBorder rather than drawing a uniform
+    // diagonal outline. LiquidGlassPainter expands an optical 0.65 px border
+    // by 2 px before the shader evaluates its rim, then modulates that band
+    // with two opposing light lobes (lightDirection 62°, lightSpread 0.14).
+    // A sweep gradient is the closest Skia equivalent for this circular SDF
+    // result and remains visible when the live lens has no backdrop image.
+    final opticalBand = 0.65 * 2.0 + 2.0;
+    final lightAngle = 62.0 * math.pi / 180.0;
+    final rimColors = <Color>[
+      const Color(0x00FFFFFF),
+      const Color(0x18FFFFFF),
+      const Color(0x00FFFFFF),
+      const Color(0x00FFFFFF),
+      const Color(0x20FFFFFF),
+      const Color(0x00FFFFFF),
+      const Color(0x00FFFFFF),
+    ];
+    final rimStops = <double>[0.0, 0.10, 0.24, 0.50, 0.60, 0.76, 1.0];
     final rimPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.65
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: isDark
-            ? const [
-                Color(0x805E5E66),
-                Color(0x334C4C52),
-                Color(0x664C4C52),
-              ]
-            : const [
-                Color(0x996E6E76),
-                Color(0x335A5A62),
-                Color(0x665A5A62),
-              ],
-        stops: const [0.0, 0.42, 1.0],
+      ..strokeWidth = opticalBand
+      ..shader = SweepGradient(
+        // SweepGradient's zero angle points right; rotate so the primary
+        // lobe is centered on the package's 62° light direction.
+        startAngle: lightAngle - math.pi * 0.18,
+        endAngle: lightAngle + math.pi * 2.0 - math.pi * 0.18,
+        colors: rimColors,
+        stops: rimStops,
       ).createShader(rect);
     canvas.drawOval(rect, rimPaint);
+
+    // OpticalBorder also has a low, all-around ambient contribution. Keep it
+    // as a very soft inner edge instead of baking gray into the whole ring;
+    // this preserves the bright directional rim on both light and dark glass.
+    final ambientPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = opticalBand * 0.72
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.3)
+      ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.045);
+    canvas.drawOval(rect.deflate(opticalBand * 0.18), ambientPaint);
     canvas.restore();
   }
 
