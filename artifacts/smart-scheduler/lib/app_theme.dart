@@ -2165,7 +2165,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
       child: LiquidGlassShadow(
         // Keep this close to the silhouette: it is an edge-defining ring,
         // not a broad elevation shadow.
-        blur: isLightMode ? 3.25 : 2.25,
+         blur: isLightMode ? 8.0 : 2.25,
         opacity: isLightMode ? 0.20 : 0.0,
         offset: const Offset(1.0, 1.5),
         cornerRadius: circle.size / 2,
@@ -2177,15 +2177,15 @@ class _GelBloomButtonState extends State<GelBloomButton>
             // backdrop once and the lens evaluates its optical rim against
             // that cached image.
             child: DecoratedBox(
-              // This is deliberately separate from the glass lens' optical
-              // rim light: it is a stable, white 30% hairline around the
+               // This is deliberately separate from the glass lens' optical
+               // rim light: it is a stable, white 15% hairline around the
               // complete button silhouette in both appearances.
               position: DecorationPosition.foreground,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.fromBorderSide(
                   BorderSide(
-                    color: Color(0x4DFFFFFF),
+                     color: Color(0x26FFFFFF),
                     width: 0.5,
                   ),
                 ),
