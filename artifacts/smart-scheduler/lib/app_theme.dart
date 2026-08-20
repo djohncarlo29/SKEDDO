@@ -2022,18 +2022,11 @@ class _GelBloomCardState extends State<GelBloomCard>
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// GelBloomButton — gel-bloom tap animation wrapper.
+// GelBloomButton — compatibility wrapper for the app's gel-bloom controls.
 //
-// Wraps any child widget.  On tap the child springs to [peakScale] using
-// easeOutBack then returns to 1.0 with easeInOut, giving the gel "pop" feel.
-//
-// [tapDelay] holds the onTap callback until the bloom peak is visible —
-// useful for dismiss buttons so the animation completes before the screen
-// closes.
-//
-// Typical peakScale values:
-//   1.15 — circle buttons (pronounced pop — more travel, more "alive")
-//   1.06 — wide card buttons (subtle bloom — large surface, less travel)
+// All tap surfaces go through LiquidGlassButton from liquid_glass_easy.  The
+// package owns the glass lens and its native-feeling flex/pop response; this
+// wrapper only keeps the existing call-site API and delayed-dismiss behavior.
 // ══════════════════════════════════════════════════════════════════════════════
 class GelBloomButton extends StatefulWidget {
   const GelBloomButton({
@@ -2057,9 +2050,8 @@ class GelBloomButton extends StatefulWidget {
   State<GelBloomButton> createState() => _GelBloomButtonState();
 }
 
-/// Circular gel-bloom surface matching the Floating Tab Bar material:
-/// 80% color-preserving fill, bounded blur, and directional rim lighting.
-/// The caller continues to own the button's icon and semantic color.
+/// Legacy child marker used by [GelBloomButton] to retain compact circular
+/// button geometry while moving the actual glass surface to LiquidGlassButton.
 class LiquidGlassGelCircle extends StatelessWidget {
   const LiquidGlassGelCircle({
     super.key,
@@ -2074,106 +2066,8 @@ class LiquidGlassGelCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
-    return LiquidGlassShadow(
-      // Match the Floating Tab Bar's moderate environmental shadow. This
-      // remains outside the circular glass surface, so it cannot darken or
-      // refract through the button material.
-      blur: 16,
-      opacity: isDark ? 0 : 0.18,
-      offset: const Offset(0, 5),
-      cornerRadius: size / 2,
-      child: SizedBox.square(
-        dimension: size,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // A persistent material layer is intentional. When this circle's
-            // route is underneath a stacked sheet, the live backdrop capture
-            // used by LiquidGlassLens can be occluded by the route above it.
-            // Keep the glass tint and rim painted independently so the button
-            // never becomes a flat opaque-looking circle during that handoff.
-            CustomPaint(
-              painter: _PersistentGelCirclePainter(
-                color: color,
-                isDark: isDark,
-              ),
-            ),
-            LiquidGlassLens(
-              style: LiquidGlassStyle(
-                shape: LiquidGlassShape.continuousRoundedRectangle(
-                  cornerRadius: size / 2,
-                  // Use the same optical-border pipeline as the Floating Tab
-                  // Bar, with a softer scale appropriate for a small circle.
-                  borderWidth: 0.65,
-                  lightIntensity: 0.38,
-                  lightDirection: 62,
-                  borderType: const OpticalBorder(
-                    borderSaturation: 1.0,
-                    ambientIntensity: 0.18,
-                    borderSolidity: 0.16,
-                    lightSpread: 0.14,
-                  ),
-                ),
-                // The persistent layer owns the color so it remains visible
-                // when this lens is behind a route; the lens owns blur,
-                // refraction, and the live optical response when available.
-                appearance: const LiquidGlassAppearance(
-                  color: Color(0x00000000),
-                  blur: LiquidGlassBlur(sigmaX: 2, sigmaY: 2),
-                ),
-                refraction: const LiquidGlassRefraction(
-                  distortion: 0.06,
-                  distortionWidth: 14,
-                  magnification: 1,
-                  chromaticAberration: 0.0002,
-                ),
-              ),
-              child: child,
-            ),
-          ],
-        ),
-      ),
-    );
+    return child;
   }
-}
-
-/// Always-painted material fallback for a gel circle whose live lens is
-/// temporarily occluded by a stacked modal route.
-class _PersistentGelCirclePainter extends CustomPainter {
-  const _PersistentGelCirclePainter({
-    required this.color,
-    required this.isDark,
-  });
-
-  final Color color;
-  final bool isDark;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.isEmpty) return;
-    final center = size.center(Offset.zero);
-    final radius = math.min(size.width, size.height) / 2;
-    final rect = Rect.fromCircle(center: center, radius: radius - 0.35);
-
-    canvas.drawCircle(
-      center,
-      radius,
-      Paint()..color = color.withValues(alpha: 0.8),
-    );
-
-    final rimPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.65
-      ..color = isDark
-          ? const Color(0x664C4C52)
-          : const Color(0x665A5A62);
-    canvas.drawOval(rect, rimPaint);
-  }
-
-  @override
-  bool shouldRepaint(_PersistentGelCirclePainter oldDelegate) =>
-      oldDelegate.color != color || oldDelegate.isDark != isDark;
 }
 
 class _GelBloomButtonState extends State<GelBloomButton>
@@ -2214,8 +2108,65 @@ class _GelBloomButtonState extends State<GelBloomButton>
 
   void _bloom() => _ctrl.forward(from: 0.0);
 
+  Widget _buildLiquidGlassButton(
+    BuildContext context,
+    LiquidGlassGelCircle circle,
+  ) {
+    final style = LiquidGlassButton.defaultStyle.copyWith(
+      appearance: LiquidGlassAppearance(
+        color: circle.color.withValues(alpha: 0.8),
+        blur: const LiquidGlassBlur(sigmaX: 2, sigmaY: 2),
+      ),
+      refraction: const LiquidGlassRefraction(
+        distortion: 0.06,
+        distortionWidth: 14,
+        magnification: 1,
+        chromaticAberration: 0.0002,
+      ),
+      shape: LiquidGlassShape.continuousRoundedRectangle(
+        cornerRadius: circle.size / 2,
+        borderWidth: 0.65,
+        lightIntensity: 0.38,
+        lightDirection: 62,
+        borderType: const OpticalBorder(
+          borderSaturation: 1.0,
+          ambientIntensity: 0.18,
+          borderSolidity: 0.16,
+          lightSpread: 0.14,
+        ),
+      ),
+    );
+
+    return LiquidGlassButton(
+      width: circle.size,
+      height: circle.size,
+      padding: EdgeInsets.zero,
+      style: style,
+      foregroundColor: resolveThemeColor(kPrimaryLabel, context),
+      touch: const LiquidGlassTouch.flexing(LiquidGlassFlex.pronounced()),
+      onPressed: () {
+        _bloom();
+        if (widget.tapDelay == Duration.zero) {
+          widget.onTap();
+        } else {
+          Future.delayed(widget.tapDelay, () {
+            if (mounted) widget.onTap();
+          });
+        }
+      },
+      child: circle.child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final circle = widget.child is LiquidGlassGelCircle
+        ? widget.child as LiquidGlassGelCircle
+        : null;
+    if (circle != null) {
+      return _buildLiquidGlassButton(context, circle);
+    }
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
@@ -2237,3 +2188,4 @@ class _GelBloomButtonState extends State<GelBloomButton>
     );
   }
 }
+
