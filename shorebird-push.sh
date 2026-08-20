@@ -110,9 +110,11 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
   # Shorebird runs dependency resolution with its bundled Flutter SDK. Repair
   # a stale/malformed lock file first so one bad indentation cannot abort the
   # patch before compilation starts.
-  FLUTTER_BIN="$(dirname "$SHOREBIRD_BIN")/cache/flutter/bin/flutter"
-  if [[ ! -x "$FLUTTER_BIN" ]]; then
-    FLUTTER_BIN="flutter"
+  FLUTTER_BIN="$(find "$(dirname "$SHOREBIRD_BIN")/cache/flutter" \
+    -mindepth 3 -maxdepth 3 -type f -path '*/bin/flutter' -print -quit 2>/dev/null || true)"
+  if [[ -z "$FLUTTER_BIN" || ! -x "$FLUTTER_BIN" ]]; then
+    echo "❌  Shorebird's bundled Flutter SDK was not found." >&2
+    exit 1
   fi
   echo "→ Resolving dependencies..."
   "$FLUTTER_BIN" pub get

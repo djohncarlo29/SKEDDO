@@ -9,6 +9,8 @@ Two things must be in place before every `shorebird patch` run:
 
 2. **Home-partition symlinks must be intact.** `~/.gradle`, `~/.pub-cache`, and `~/.shorebird` can silently become real directories after Replit restarts, consuming the per-user home quota and causing `Disk quota exceeded` mid-build. `shorebird-push.sh` now auto-detects and restores these symlinks before every push.
 
+3. **The generated lock file must be valid YAML.** A damaged `pubspec.lock` can fail before compilation with a misleading dependency-resolution error; regenerate it with the Shorebird-bundled Flutter SDK before patching.
+
 **Why:** Both failure modes are environment-level, not code-level. They produce confusing error messages that look like Gradle or Dart failures.
 
-**How to apply:** Both fixes are already baked into `shorebird-push.sh`. Re-run the script to push any future patch — no manual setup needed as long as the workspace caches exist.
+**How to apply:** These safeguards are baked into `shorebird-push.sh`. Re-run the script to push any future patch — no manual setup needed as long as the workspace caches exist.
