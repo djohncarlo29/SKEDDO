@@ -5493,6 +5493,7 @@ class _CalModalCircleButton extends StatelessWidget {
       onTap: onTap,
       child: LiquidGlassGelCircle(
         color: resolvedContainerColor,
+        isCheckmark: icon == CupertinoIcons.checkmark,
         child: Center(
           child: SizedBox(
             width: 20,

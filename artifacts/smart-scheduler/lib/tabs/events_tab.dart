@@ -10279,8 +10279,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                               textCapitalization: TextCapitalization.sentences,
                               textInputAction: TextInputAction.done,
                               onChanged: (_) => setState(() {}),
-                              onSubmitted: (_) =>
-                                  _commitSmartDescriptionRule(),
+                              onSubmitted: (_) => _commitSmartDescriptionRule(),
                             ),
                           ),
                         ),
@@ -12311,6 +12310,7 @@ class _ModalCircleButton extends StatelessWidget {
       onTap: onTap,
       child: LiquidGlassGelCircle(
         color: resolvedContainerColor,
+        isCheckmark: icon == CupertinoIcons.checkmark,
         child: Center(
           child: SizedBox(
             width: 20,

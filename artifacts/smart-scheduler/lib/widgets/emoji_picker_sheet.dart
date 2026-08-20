@@ -996,8 +996,8 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
       peakScale: 1.15,
       tapDelay: const Duration(milliseconds: 130),
       onTap: _close,
-        child: LiquidGlassGelCircle(
-          color: cardColor,
+      child: LiquidGlassGelCircle(
+        color: cardColor,
         child: Center(
           child: SizedBox(
             width: 20,
@@ -1054,7 +1054,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                           'Choose Emoji',
                           style: TextStyle(
                             inherit: false,
-                            color: kPrimaryLabel,
+                            color: labelColor,
                             fontFamily: kSFProText,
                             fontSize: 17,
                             fontWeight: FontWeight.w600,

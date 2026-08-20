@@ -2066,11 +2066,13 @@ class LiquidGlassGelCircle extends StatelessWidget {
     required this.color,
     required this.child,
     this.size = 40,
+    this.isCheckmark = false,
   });
 
   final Color color;
   final Widget child;
   final double size;
+  final bool isCheckmark;
 
   @override
   Widget build(BuildContext context) {
@@ -2120,9 +2122,17 @@ class _GelBloomButtonState extends State<GelBloomButton>
     BuildContext context,
     LiquidGlassGelCircle circle,
   ) {
+    final isLightMode =
+        CupertinoTheme.brightnessOf(context) == Brightness.light;
+    // Close/back/search controls are white in Light Mode. Save buttons are
+    // deliberately excluded so accent and disabled checkmark surfaces remain
+    // meaningful.
+    final surfaceColor = circle.isCheckmark || !isLightMode
+        ? circle.color
+        : const Color(0xFFFFFFFF);
     final style = LiquidGlassButton.defaultStyle.copyWith(
       appearance: LiquidGlassAppearance(
-        color: circle.color.withValues(alpha: 0.8),
+        color: surfaceColor.withValues(alpha: 0.8),
         blur: const LiquidGlassBlur(sigmaX: 2, sigmaY: 2),
       ),
       refraction: const LiquidGlassRefraction(
@@ -2152,42 +2162,49 @@ class _GelBloomButtonState extends State<GelBloomButton>
       // Apply the same pronounced gel bloom used by the non-glass path. The
       // old LiquidGlass branch only received the package's flexing response,
       // so its tap bloom looked noticeably flatter than regular buttons.
-      child: ClipOval(
-        child: SizedBox.square(
-          dimension: circle.size,
-          // Keep the package's real shader active when this control sits above
-          // an occluding route. The local view captures a stable backdrop once
-          // and the lens evaluates its actual optical rim against that cached
-          // image.
-          child: LiquidGlassView(
-            // LiquidGlassView paints its capture surface as a rectangle. The
-            // backgroundWidget clip alone is not enough: the view/lens output
-            // can still expose that rectangular surface on Android. Clip the
-            // complete view so the gel remains circular.
-            backgroundWidget: ClipOval(
-              child: ColoredBox(color: circle.color.withValues(alpha: 0.8)),
-            ),
-            realTimeCapture: false,
-            useSync: true,
-            useImpellerBackdrop: false,
-            child: LiquidGlassLens(
-              style: style,
-              touch: const LiquidGlassTouch.flexing(
-                LiquidGlassFlex.pronounced(),
+      child: LiquidGlassShadow(
+        blur: 5.5,
+        opacity: isLightMode ? 0.24 : 0.0,
+        offset: const Offset(0, 3),
+        cornerRadius: circle.size / 2,
+        child: ClipOval(
+          child: SizedBox.square(
+            dimension: circle.size,
+            // Keep the package's real shader active when this control sits
+            // above an occluding route. The local view captures a stable
+            // backdrop once and the lens evaluates its optical rim against
+            // that cached image.
+            child: LiquidGlassView(
+              // LiquidGlassView paints its capture surface as a rectangle. The
+              // backgroundWidget clip alone is not enough: the view/lens
+              // output can still expose that rectangular surface on Android.
+              // Clip the complete view so the gel remains circular.
+              backgroundWidget: ClipOval(
+                child: ColoredBox(color: surfaceColor.withValues(alpha: 0.8)),
               ),
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  _bloom();
-                  if (widget.tapDelay == Duration.zero) {
-                    widget.onTap();
-                  } else {
-                    Future.delayed(widget.tapDelay, () {
-                      if (mounted) widget.onTap();
-                    });
-                  }
-                },
-                child: Center(child: circle.child),
+              realTimeCapture: false,
+              useSync: true,
+              useImpellerBackdrop: false,
+              child: LiquidGlassLens(
+                style: style,
+                // The wrapper owns the same bloom as regular GelBloomButton.
+                // Avoid a second package flex animation changing the scale and
+                // making this path look flatter or out of sync.
+                touch: const LiquidGlassTouch(),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    _bloom();
+                    if (widget.tapDelay == Duration.zero) {
+                      widget.onTap();
+                    } else {
+                      Future.delayed(widget.tapDelay, () {
+                        if (mounted) widget.onTap();
+                      });
+                    }
+                  },
+                  child: Center(child: circle.child),
+                ),
               ),
             ),
           ),
