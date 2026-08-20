@@ -2050,8 +2050,8 @@ class GelBloomButton extends StatefulWidget {
   State<GelBloomButton> createState() => _GelBloomButtonState();
 }
 
-/// Legacy child marker used by [GelBloomButton] to retain compact circular
-/// button geometry while moving the actual glass surface to LiquidGlassButton.
+/// Child marker used by [GelBloomButton] to retain compact circular geometry
+/// and the persistent material fallback behind LiquidGlassButton.
 class LiquidGlassGelCircle extends StatelessWidget {
   const LiquidGlassGelCircle({
     super.key,
@@ -2137,24 +2137,36 @@ class _GelBloomButtonState extends State<GelBloomButton>
       ),
     );
 
-    return LiquidGlassButton(
-      width: circle.size,
-      height: circle.size,
-      padding: EdgeInsets.zero,
-      style: style,
-      foregroundColor: resolveThemeColor(kPrimaryLabel, context),
-      touch: const LiquidGlassTouch.flexing(LiquidGlassFlex.pronounced()),
-      onPressed: () {
-        _bloom();
-        if (widget.tapDelay == Duration.zero) {
-          widget.onTap();
-        } else {
-          Future.delayed(widget.tapDelay, () {
-            if (mounted) widget.onTap();
-          });
-        }
-      },
-      child: circle.child,
+    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        CustomPaint(
+          painter: _PersistentGelCirclePainter(
+            color: circle.color,
+            isDark: isDark,
+          ),
+        ),
+        LiquidGlassButton(
+          width: circle.size,
+          height: circle.size,
+          padding: EdgeInsets.zero,
+          style: style,
+          foregroundColor: resolveThemeColor(kPrimaryLabel, context),
+          touch: const LiquidGlassTouch.flexing(LiquidGlassFlex.pronounced()),
+          onPressed: () {
+            _bloom();
+            if (widget.tapDelay == Duration.zero) {
+              widget.onTap();
+            } else {
+              Future.delayed(widget.tapDelay, () {
+                if (mounted) widget.onTap();
+              });
+            }
+          },
+          child: circle.child,
+        ),
+      ],
     );
   }
 
@@ -2187,5 +2199,43 @@ class _GelBloomButtonState extends State<GelBloomButton>
       ),
     );
   }
+}
+
+/// Always-painted material fallback for a LiquidGlassButton whose live lens
+/// is temporarily occluded by a stacked modal route.
+class _PersistentGelCirclePainter extends CustomPainter {
+  const _PersistentGelCirclePainter({
+    required this.color,
+    required this.isDark,
+  });
+
+  final Color color;
+  final bool isDark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final center = size.center(Offset.zero);
+    final radius = math.min(size.width, size.height) / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius - 0.35);
+
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()..color = color.withValues(alpha: 0.8),
+    );
+
+    final rimPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.65
+      ..color = isDark
+          ? const Color(0x664C4C52)
+          : const Color(0x665A5A62);
+    canvas.drawOval(rect, rimPaint);
+  }
+
+  @override
+  bool shouldRepaint(_PersistentGelCirclePainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.isDark != isDark;
 }
 
