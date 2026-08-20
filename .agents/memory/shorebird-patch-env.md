@@ -13,4 +13,4 @@ Two things must be in place before every `shorebird patch` run:
 
 **Why:** Both failure modes are environment-level, not code-level. They produce confusing error messages that look like Gradle or Dart failures.
 
-**How to apply:** These safeguards are baked into `shorebird-push.sh`. Re-run the script to push any future patch — no manual setup needed as long as the workspace caches exist.
+**How to apply:** The temp-directory and cache-link safeguards are baked into `shorebird-push.sh`. Keep the generated lock file committed and valid; if it is ever corrupted again, regenerate it with the Shorebird-bundled Flutter SDK before rerunning the patch script.

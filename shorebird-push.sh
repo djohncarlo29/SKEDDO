@@ -107,19 +107,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
   VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
   echo "→ App version: $VERSION"
 
-  # Shorebird runs dependency resolution with its bundled Flutter SDK. Repair
-  # a stale/malformed lock file first so one bad indentation cannot abort the
-  # patch before compilation starts.
-  FLUTTER_BIN="$(find "$(dirname "$SHOREBIRD_BIN")/cache/flutter" \
-    -mindepth 3 -maxdepth 3 -type f -path '*/bin/flutter' -print -quit 2>/dev/null || true)"
-  if [[ -z "$FLUTTER_BIN" || ! -x "$FLUTTER_BIN" ]]; then
-    echo "❌  Shorebird's bundled Flutter SDK was not found." >&2
-    exit 1
-  fi
-  echo "→ Resolving dependencies..."
-  "$FLUTTER_BIN" pub get
-
-  # Pass --release-version explicitly so shorebird doesn't prompt interactively.
+  # Pass --release-version explicitly so shorebird targets this release.
   "$SHOREBIRD_BIN" patch "$PLATFORM" \
     --release-version "$VERSION" \
     --dart-define=PROXY_BASE_URL="${PROXY_BASE_URL:-}" \
