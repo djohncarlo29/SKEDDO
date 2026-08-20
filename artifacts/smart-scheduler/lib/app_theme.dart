@@ -2119,7 +2119,7 @@ class LiquidGlassGelCircle extends StatelessWidget {
                 // when this lens is behind a route; the lens owns blur,
                 // refraction, and the live optical response when available.
                 appearance: const LiquidGlassAppearance(
-                  color: Colors.transparent,
+                  color: Color(0x00000000),
                   blur: LiquidGlassBlur(sigmaX: 2, sigmaY: 2),
                 ),
                 refraction: const LiquidGlassRefraction(
