@@ -150,6 +150,27 @@ class FloatingTabPill extends StatelessWidget {
               ),
             ),
           ),
+          // Keep the shared 15% hairline outside the glass capture so it stays
+          // stable against the page instead of being refracted into the bar.
+          Positioned(
+            left: kFloatingTabBarHorizontalMargin,
+            right: kFloatingTabBarHorizontalMargin,
+            bottom:
+                MediaQuery.paddingOf(context).bottom +
+                kFloatingTabBarBottomSpacing,
+            height: kFloatingTabBarHeight,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: const Color(0x26FFFFFF),
+                    width: 0.5,
+                  ),
+                  borderRadius: BorderRadius.circular(kSquircleStadiumRadius),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
