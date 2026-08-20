@@ -44,7 +44,19 @@ class AppSwitch extends StatelessWidget {
               activeColor: activeColor,
               inactiveColor: inactiveColor,
               style: LiquidGlassStyle(
-                shape: LiquidGlassSwitch.defaultStyle.shape,
+                // This shape is used by the expanding glass thumb only. The
+                // opaque settled thumb keeps its own native surface.
+                shape: const LiquidGlassShape.continuousRoundedRectangle(
+                  borderWidth: 0.5,
+                  lightIntensity: 0.38,
+                  lightDirection: 62,
+                  borderType: OpticalBorder(
+                    borderSaturation: 1.0,
+                    ambientIntensity: 0.18,
+                    borderSolidity: 0.16,
+                    lightSpread: 0.14,
+                  ),
+                ),
                 // LiquidGlassSwitch applies this appearance shadow to the
                 // expanding thumb lens and fades it with the morph. It does
                 // not shadow the track or the opaque resting thumb.
