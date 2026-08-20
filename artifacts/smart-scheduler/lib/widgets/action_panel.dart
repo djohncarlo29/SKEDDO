@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
+import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import '../app_theme.dart';
 import 'fixed_size_icon.dart';
 
@@ -522,6 +523,9 @@ class ActionPanel extends StatefulWidget {
   // False (default) → ClampingScrollPhysics, used for all outer tab panels.
   // Set true for mini panels inside modal sheets.
   final bool bouncingScroll;
+  // Uses the liquid-glass lens surface for this panel only. The default stays
+  // on FrostedGlassCard because the shared action-panel API serves other menus.
+  final bool useLiquidGlass;
 
   const ActionPanel({
     super.key,
@@ -535,6 +539,7 @@ class ActionPanel extends StatefulWidget {
     this.maxHeight,
     this.labelFontSize = 16,
     this.bouncingScroll = false,
+    this.useLiquidGlass = false,
   });
 
   @override
@@ -918,20 +923,29 @@ class _ActionPanelState extends State<ActionPanel>
         // modal-sheet glass value.
         final fillOpacity = isDark && !widget.bouncingScroll ? 0.75 : 0.65;
 
+        final panelCard = widget.useLiquidGlass
+            ? _LiquidGlassActionPanelCard(
+                progress: gt,
+                fillOpacity: fillOpacity,
+                shadowOpacity: 0.22,
+                child: panelContent,
+              )
+            : FrostedGlassCard(
+                progress: gt,
+                fillOpacity: fillOpacity,
+                shadowOpacity: 0.22,
+                borderRadius: widget.borderRadius,
+                stadium: widget.items.length == 1,
+                border: isDark
+                    ? BorderSide(color: resolvedBorder, width: 0.5)
+                    : BorderSide.none,
+                child: panelContent,
+              );
+
         return Transform.scale(
           scale: panelScale,
           alignment: Alignment.topCenter,
-          child: FrostedGlassCard(
-            progress: gt,
-            fillOpacity: fillOpacity,
-            shadowOpacity: 0.22,
-            borderRadius: widget.borderRadius,
-            stadium: widget.items.length == 1,
-            border: isDark
-                ? BorderSide(color: resolvedBorder, width: 0.5)
-                : BorderSide.none,
-            child: panelContent,
-          ),
+          child: panelCard,
         );
       },
     );
@@ -1610,6 +1624,116 @@ class _ExpandableRowSharedContentState
   }
 }
 
+// ── Liquid-glass action-panel surface ─────────────────────────────────────────
+// Used only by the Notes attachment menu. The rows and their animation remain
+// owned by ActionPanel; this widget swaps just the card material.
+class _LiquidGlassActionPanelCard extends StatelessWidget {
+  const _LiquidGlassActionPanelCard({
+    required this.progress,
+    required this.fillOpacity,
+    required this.shadowOpacity,
+    required this.child,
+  });
+
+  final double progress;
+  final double fillOpacity;
+  final double shadowOpacity;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark =
+        CupertinoTheme.brightnessOf(context) == Brightness.dark;
+    final radius = kCornerRadius;
+    final fill = (fillOpacity * progress).clamp(0.0, 1.0);
+    final shadow = isDark ? 0.0 : shadowOpacity * progress;
+    final shape = LiquidGlassShape.continuousRoundedRectangle(
+      cornerRadius: radius,
+      borderWidth: 0.5,
+      lightIntensity: 0.38,
+      lightDirection: 62,
+      borderType: const OpticalBorder(
+        borderSaturation: 1.0,
+        ambientIntensity: 0.18,
+        borderSolidity: 0.16,
+        lightSpread: 0.14,
+      ),
+    );
+    final style = LiquidGlassStyle(
+      shape: shape,
+      appearance: LiquidGlassAppearance(
+        color: resolveThemeColor(kGlassFillColor, context).withValues(
+          alpha: fill,
+        ),
+        blur: LiquidGlassBlur(
+          sigmaX: 20.0 * progress,
+          sigmaY: 20.0 * progress,
+        ),
+      ),
+      refraction: const LiquidGlassRefraction(
+        distortion: 0.04,
+        distortionWidth: 12,
+        magnification: 1,
+        chromaticAberration: 0.0002,
+      ),
+    );
+
+    return LiquidGlassShadow(
+      blur: 28,
+      opacity: shadow,
+      offset: const Offset(0, 8),
+      cornerRadius: radius,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // LiquidGlassView owns a rectangular capture layer. Keep both its
+          // fallback background and rendered lens output inside the same
+          // continuous panel silhouette so the optical surface cannot expose
+          // square corners during the open/close scale animation.
+          ClipPath(
+            clipper: SquircleClipper(radius),
+            child: LiquidGlassView(
+              // The overlay has no sibling subtree to capture. The local
+              // backdrop still gives the lens a stable surface on Web/Skia;
+              // Impeller samples the live page backdrop beneath the overlay.
+              backgroundWidget: ClipPath(
+                clipper: SquircleClipper(radius),
+                child: ColoredBox(
+                  color: resolveThemeColor(kGlassFillColor, context).withValues(
+                    alpha: fill,
+                  ),
+                ),
+              ),
+              realTimeCapture: false,
+              useSync: true,
+              useImpellerBackdrop: false,
+              child: LiquidGlassLens(
+                style: style,
+                child: child,
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: ShapeDecoration(
+                  shape: BoundedContinuousRectangleBorder(
+                    borderRadius: BorderRadius.circular(radius),
+                    side: const BorderSide(
+                      color: Color(0x26FFFFFF),
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // ActionMenuOverlay — full-screen overlay that positions an ActionPanel near
 // a source button.  The barrier dismisses the panel on outside tap.
@@ -1634,6 +1758,7 @@ class ActionMenuOverlay extends StatelessWidget {
   // Forwarded to ActionPanel — true restores BouncingScrollPhysics for
   // mini panels inside modal sheets.
   final bool bouncingScroll;
+  final bool useLiquidGlass;
 
   const ActionMenuOverlay({
     super.key,
@@ -1646,6 +1771,7 @@ class ActionMenuOverlay extends StatelessWidget {
     this.anchorToRight = false,
     this.labelFontSize = 16,
     this.bouncingScroll = false,
+    this.useLiquidGlass = false,
   });
 
   @override
@@ -1715,6 +1841,7 @@ class ActionMenuOverlay extends StatelessWidget {
             maxHeight: effectiveMaxHeight,
             labelFontSize: labelFontSize,
             bouncingScroll: bouncingScroll,
+            useLiquidGlass: useLiquidGlass,
           ),
         ),
       ],
