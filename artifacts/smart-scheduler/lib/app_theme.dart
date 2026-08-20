@@ -218,6 +218,14 @@ const kTertiaryLabel = CupertinoDynamicColor.withBrightness(
   darkColor: Color(0x66EBEBF5), // 40% dark-mode opacity
 );
 
+// Explicit disabled action surface. Do not derive this by multiplying the
+// tertiary label alpha: the unavailable checkmark buttons are intentionally a
+// fixed 25% surface in both appearances.
+const kDisabledActionSurface = CupertinoDynamicColor.withBrightness(
+  color: Color(0x263C3C43),
+  darkColor: Color(0x33EBEBF5),
+);
+
 // ── Empty-state placeholder icon colour ───────────────────────────────────────
 // Used for the large icon in every "No Events" / "No Results" placeholder
 // (DCV, Calendar Day-List, Search).  Intentionally between kTertiaryLabel and
@@ -2233,19 +2241,64 @@ class _PersistentGelCirclePainter extends CustomPainter {
     final radius = math.min(size.width, size.height) / 2;
     final rect = Rect.fromCircle(center: center, radius: radius - 0.35);
 
+    canvas.save();
+    canvas.clipPath(Path()..addOval(rect));
+
     if (!rimOnly) {
+      // Match LiquidGlassAppearance(color: circle.color @ 80%) while the
+      // live lens is unavailable behind an occluding route. The second radial
+      // pass supplies the soft lens bloom that a flat fill cannot reproduce.
       canvas.drawCircle(
         center,
         radius,
         Paint()..color = color.withValues(alpha: 0.8),
       );
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..shader = RadialGradient(
+            center: const Alignment(-0.42, -0.52),
+            radius: 1.05,
+            colors: isDark
+                ? const [
+                    Color(0x2BFFFFFF),
+                    Color(0x0DFFFFFF),
+                    Color(0x001C1C1E),
+                  ]
+                : const [
+                    Color(0x42FFFFFF),
+                    Color(0x12FFFFFF),
+                    Color(0x00FFFFFF),
+                  ],
+            stops: const [0.0, 0.36, 1.0],
+          ).createShader(rect),
+      );
     }
 
+    // The package's OpticalBorder is directional, not a uniform outline.
+    // Keep the same 0.65 px width and approximate its 62° light direction
+    // with a diagonal highlight/shadow shader.
     final rimPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.65
-      ..color = isDark ? const Color(0x664C4C52) : const Color(0x665A5A62);
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: isDark
+            ? const [
+                Color(0x805E5E66),
+                Color(0x334C4C52),
+                Color(0x664C4C52),
+              ]
+            : const [
+                Color(0x996E6E76),
+                Color(0x335A5A62),
+                Color(0x665A5A62),
+              ],
+        stops: const [0.0, 0.42, 1.0],
+      ).createShader(rect);
     canvas.drawOval(rect, rimPaint);
+    canvas.restore();
   }
 
   @override

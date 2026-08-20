@@ -8712,17 +8712,10 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                               icon: CupertinoIcons.checkmark,
                               containerColor: canSave
                                   ? resolveAccentColor(context)
-                                  : resolveThemeColor(
-                                      kTertiaryLabel,
-                                      context,
-                                    ).withValues(
-                                      alpha:
-                                          resolveThemeColor(
-                                            kTertiaryLabel,
-                                            context,
-                                          ).a *
-                                          0.5,
-                                    ),
+                                   : resolveThemeColor(
+                                       kDisabledActionSurface,
+                                       context,
+                                     ),
                               iconColor: CupertinoColors.white,
                               tapDelay: const Duration(milliseconds: 130),
                               onTap: canSave ? _save : () {},

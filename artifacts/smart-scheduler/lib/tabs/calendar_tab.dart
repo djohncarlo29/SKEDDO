@@ -10148,15 +10148,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
                             icon: CupertinoIcons.checkmark,
                             containerColor: _titleCtrl.text.trim().isEmpty
                                 ? resolveThemeColor(
-                                    kTertiaryLabel,
+                                    kDisabledActionSurface,
                                     context,
-                                  ).withValues(
-                                    alpha:
-                                        resolveThemeColor(
-                                          kTertiaryLabel,
-                                          context,
-                                        ).a *
-                                        0.5,
                                   )
                                 : _resolvedCategoryColor,
                             iconColor: CupertinoColors.white,
