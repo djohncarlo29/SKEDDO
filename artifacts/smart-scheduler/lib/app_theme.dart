@@ -2165,7 +2165,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
       child: LiquidGlassShadow(
         // Keep this close to the silhouette: it is an edge-defining ring,
         // not a broad elevation shadow.
-        blur: 1.75,
+        blur: 2.25,
         opacity: isLightMode ? 0.20 : 0.0,
         offset: const Offset(1.0, 1.5),
         cornerRadius: circle.size / 2,
