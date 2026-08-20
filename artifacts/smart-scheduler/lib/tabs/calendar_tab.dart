@@ -10143,7 +10143,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
                           child: _CalModalCircleButton(
                             icon: CupertinoIcons.checkmark,
                             containerColor: _titleCtrl.text.trim().isEmpty
-                                ? kTertiaryLabel
+                                ? resolveThemeColor(
+                                    kTertiaryLabel,
+                                    context,
+                                  ).withValues(alpha: 0.5)
                                 : _resolvedCategoryColor,
                             iconColor: CupertinoColors.white,
                             tapDelay: const Duration(milliseconds: 130),

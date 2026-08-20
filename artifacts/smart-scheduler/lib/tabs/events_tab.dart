@@ -8706,7 +8706,10 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                               icon: CupertinoIcons.checkmark,
                               containerColor: canSave
                                   ? resolveAccentColor(context)
-                                  : kTertiaryLabel,
+                                  : resolveThemeColor(
+                                      kTertiaryLabel,
+                                      context,
+                                    ).withValues(alpha: 0.5),
                               iconColor: CupertinoColors.white,
                               tapDelay: const Duration(milliseconds: 130),
                               onTap: canSave ? _save : () {},
@@ -10308,7 +10311,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                            child: LiquidGlassGelCircle(
                              size: 28,
                              color: _smartDescriptionCtrl.text.trim().isEmpty
-                                 ? resolveThemeColor(kTertiaryLabel, context)
+                                 ? resolveThemeColor(
+                                     kTertiaryLabel,
+                                     context,
+                                   ).withValues(alpha: 0.5)
                                  : _resolvedSelectedColor,
                              child: Center(
                                child: Transform.translate(
