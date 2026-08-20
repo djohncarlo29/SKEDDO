@@ -2138,35 +2138,40 @@ class _GelBloomButtonState extends State<GelBloomButton>
     );
 
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        CustomPaint(
-          painter: _PersistentGelCirclePainter(
-            color: circle.color,
-            isDark: isDark,
+    return SizedBox.square(
+      dimension: circle.size,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          CustomPaint(
+            painter: _PersistentGelCirclePainter(
+              color: circle.color,
+              isDark: isDark,
+            ),
           ),
-        ),
-        LiquidGlassButton(
-          width: circle.size,
-          height: circle.size,
-          padding: EdgeInsets.zero,
-          style: style,
-          foregroundColor: resolveThemeColor(kPrimaryLabel, context),
-          touch: const LiquidGlassTouch.flexing(LiquidGlassFlex.pronounced()),
-          onPressed: () {
-            _bloom();
-            if (widget.tapDelay == Duration.zero) {
-              widget.onTap();
-            } else {
-              Future.delayed(widget.tapDelay, () {
-                if (mounted) widget.onTap();
-              });
-            }
-          },
-          child: circle.child,
-        ),
-      ],
+          LiquidGlassButton(
+            width: circle.size,
+            height: circle.size,
+            padding: EdgeInsets.zero,
+            style: style,
+            foregroundColor: resolveThemeColor(kPrimaryLabel, context),
+            touch: const LiquidGlassTouch.flexing(
+              LiquidGlassFlex.pronounced(),
+            ),
+            onPressed: () {
+              _bloom();
+              if (widget.tapDelay == Duration.zero) {
+                widget.onTap();
+              } else {
+                Future.delayed(widget.tapDelay, () {
+                  if (mounted) widget.onTap();
+                });
+              }
+            },
+            child: circle.child,
+          ),
+        ],
+      ),
     );
   }
 
