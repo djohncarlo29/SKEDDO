@@ -2085,38 +2085,95 @@ class LiquidGlassGelCircle extends StatelessWidget {
       cornerRadius: size / 2,
       child: SizedBox.square(
         dimension: size,
-        child: LiquidGlassLens(
-          style: LiquidGlassStyle(
-            shape: LiquidGlassShape.continuousRoundedRectangle(
-              cornerRadius: size / 2,
-              // Use the same optical-border pipeline as the Floating Tab Bar,
-              // with a stronger scale appropriate for a small circular edge.
-              borderWidth: 0.65,
-              lightIntensity: 0.38,
-              lightDirection: 62,
-              borderType: const OpticalBorder(
-                borderSaturation: 1.0,
-                ambientIntensity: 0.18,
-                borderSolidity: 0.16,
-                lightSpread: 0.14,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // A persistent material layer is intentional. When this circle's
+            // route is underneath a stacked sheet, the live backdrop capture
+            // used by LiquidGlassLens can be occluded by the route above it.
+            // Keep the glass tint and rim painted independently so the button
+            // never becomes a flat opaque-looking circle during that handoff.
+            CustomPaint(
+              painter: _PersistentGelCirclePainter(
+                color: color,
+                isDark: isDark,
               ),
             ),
-            appearance: LiquidGlassAppearance(
-              color: color.withValues(alpha: 0.8),
-              blur: const LiquidGlassBlur(sigmaX: 2, sigmaY: 2),
+            LiquidGlassLens(
+              style: LiquidGlassStyle(
+                shape: LiquidGlassShape.continuousRoundedRectangle(
+                  cornerRadius: size / 2,
+                  // Use the same optical-border pipeline as the Floating Tab
+                  // Bar, with a softer scale appropriate for a small circle.
+                  borderWidth: 0.65,
+                  lightIntensity: 0.38,
+                  lightDirection: 62,
+                  borderType: const OpticalBorder(
+                    borderSaturation: 1.0,
+                    ambientIntensity: 0.18,
+                    borderSolidity: 0.16,
+                    lightSpread: 0.14,
+                  ),
+                ),
+                // The persistent layer owns the color so it remains visible
+                // when this lens is behind a route; the lens owns blur,
+                // refraction, and the live optical response when available.
+                appearance: const LiquidGlassAppearance(
+                  color: Colors.transparent,
+                  blur: LiquidGlassBlur(sigmaX: 2, sigmaY: 2),
+                ),
+                refraction: const LiquidGlassRefraction(
+                  distortion: 0.06,
+                  distortionWidth: 14,
+                  magnification: 1,
+                  chromaticAberration: 0.0002,
+                ),
+              ),
+              child: child,
             ),
-            refraction: const LiquidGlassRefraction(
-              distortion: 0.06,
-              distortionWidth: 14,
-              magnification: 1,
-              chromaticAberration: 0.0002,
-            ),
-          ),
-          child: child,
+          ],
         ),
       ),
     );
   }
+}
+
+/// Always-painted material fallback for a gel circle whose live lens is
+/// temporarily occluded by a stacked modal route.
+class _PersistentGelCirclePainter extends CustomPainter {
+  const _PersistentGelCirclePainter({
+    required this.color,
+    required this.isDark,
+  });
+
+  final Color color;
+  final bool isDark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final center = size.center(Offset.zero);
+    final radius = math.min(size.width, size.height) / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius - 0.35);
+
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()..color = color.withValues(alpha: 0.8),
+    );
+
+    final rimPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.65
+      ..color = isDark
+          ? const Color(0x664C4C52)
+          : const Color(0x665A5A62);
+    canvas.drawOval(rect, rimPaint);
+  }
+
+  @override
+  bool shouldRepaint(_PersistentGelCirclePainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.isDark != isDark;
 }
 
 class _GelBloomButtonState extends State<GelBloomButton>
