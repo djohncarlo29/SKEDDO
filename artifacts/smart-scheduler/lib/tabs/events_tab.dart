@@ -8709,6 +8709,11 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                           builder: (_, __) {
                             final canSave = _canSave;
                             return _ModalCircleButton(
+                              // Edit Group starts valid because its name is
+                              // prefilled. Remount only when validity flips so
+                              // the stateful glass lens cannot retain the
+                              // previous blue surface during the transition.
+                              key: ValueKey<bool>(canSave),
                               icon: CupertinoIcons.checkmark,
                               containerColor: canSave
                                   ? resolveAccentColor(context)
@@ -8717,7 +8722,6 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                       context,
                                     ),
                               iconColor: CupertinoColors.white,
-                              enabled: canSave,
                               tapDelay: const Duration(milliseconds: 130),
                               onTap: canSave ? _save : () {},
                             );
@@ -12274,6 +12278,16 @@ class _CircleAddHighlightPainter extends CustomPainter {
 // tapDelay mirrors the Notes-tab convention: ~130 ms for dismiss buttons so
 // the bloom peak is visible before the screen closes.
 class _ModalCircleButton extends StatelessWidget {
+  const _ModalCircleButton({
+    super.key,
+    required this.icon,
+    required this.iconColor,
+    required this.onTap,
+    this.containerColor = kModalCard,
+    this.tapDelay = Duration.zero,
+    this.iconOffset = Offset.zero,
+  });
+
   final IconData icon;
   final Color iconColor;
 
@@ -12281,7 +12295,6 @@ class _ModalCircleButton extends StatelessWidget {
   /// dismiss/close buttons.  Pass the category/accent color for save-ready
   /// checkmark buttons and [kDisabledActionSurface] for save-unready ones.
   final Color containerColor;
-  final bool enabled;
   final VoidCallback onTap;
   final Duration tapDelay;
 
@@ -12289,15 +12302,6 @@ class _ModalCircleButton extends StatelessWidget {
   /// Use [Offset(-2, 0)] for [CupertinoIcons.chevron_left] to optically
   /// centre the asymmetric glyph within the circle.
   final Offset iconOffset;
-  const _ModalCircleButton({
-    required this.icon,
-    required this.iconColor,
-    required this.onTap,
-    this.containerColor = kModalCard,
-    this.enabled = true,
-    this.tapDelay = Duration.zero,
-    this.iconOffset = Offset.zero,
-  });
 
   @override
   Widget build(BuildContext context) {
@@ -12314,7 +12318,6 @@ class _ModalCircleButton extends StatelessWidget {
       child: LiquidGlassGelCircle(
         color: resolvedContainerColor,
         isCheckmark: icon == CupertinoIcons.checkmark,
-        isEnabled: enabled,
         child: Center(
           child: SizedBox(
             width: 20,
