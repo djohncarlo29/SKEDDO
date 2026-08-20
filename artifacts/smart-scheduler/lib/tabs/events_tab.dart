@@ -8717,6 +8717,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                       context,
                                     ),
                               iconColor: CupertinoColors.white,
+                              enabled: canSave,
                               tapDelay: const Duration(milliseconds: 130),
                               onTap: canSave ? _save : () {},
                             );
@@ -12280,6 +12281,7 @@ class _ModalCircleButton extends StatelessWidget {
   /// dismiss/close buttons.  Pass the category/accent color for save-ready
   /// checkmark buttons and [kDisabledActionSurface] for save-unready ones.
   final Color containerColor;
+  final bool enabled;
   final VoidCallback onTap;
   final Duration tapDelay;
 
@@ -12292,6 +12294,7 @@ class _ModalCircleButton extends StatelessWidget {
     required this.iconColor,
     required this.onTap,
     this.containerColor = kModalCard,
+    this.enabled = true,
     this.tapDelay = Duration.zero,
     this.iconOffset = Offset.zero,
   });
@@ -12311,6 +12314,7 @@ class _ModalCircleButton extends StatelessWidget {
       child: LiquidGlassGelCircle(
         color: resolvedContainerColor,
         isCheckmark: icon == CupertinoIcons.checkmark,
+        isEnabled: enabled,
         child: Center(
           child: SizedBox(
             width: 20,
