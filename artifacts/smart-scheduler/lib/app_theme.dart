@@ -2091,14 +2091,14 @@ class LiquidGlassGelCircle extends StatelessWidget {
               cornerRadius: size / 2,
               // Use the same optical-border pipeline as the Floating Tab Bar,
               // with a stronger scale appropriate for a small circular edge.
-              borderWidth: 1.0,
-              lightIntensity: 0.9,
+              borderWidth: 0.65,
+              lightIntensity: 0.38,
               lightDirection: 62,
               borderType: const OpticalBorder(
                 borderSaturation: 1.0,
-                ambientIntensity: 0.46,
-                borderSolidity: 0.38,
-                lightSpread: 0.2,
+                ambientIntensity: 0.18,
+                borderSolidity: 0.16,
+                lightSpread: 0.14,
               ),
             ),
             appearance: LiquidGlassAppearance(
