@@ -1693,9 +1693,9 @@ class _LiquidGlassActionPanelCard extends StatelessWidget {
           ClipPath(
             clipper: SquircleClipper(radius),
             child: LiquidGlassView(
-              // The overlay has no sibling subtree to capture. The local
-              // backdrop still gives the lens a stable surface on Web/Skia;
-              // Impeller samples the live page backdrop beneath the overlay.
+              // The overlay is above the Notes card, so keep its capture live:
+              // the lens must sample the input card and page behind the panel,
+              // rather than rendering only the static fallback colour.
               backgroundWidget: ClipPath(
                 clipper: SquircleClipper(radius),
                 child: ColoredBox(
@@ -1704,9 +1704,9 @@ class _LiquidGlassActionPanelCard extends StatelessWidget {
                   ),
                 ),
               ),
-              realTimeCapture: false,
+              realTimeCapture: true,
               useSync: true,
-              useImpellerBackdrop: false,
+              useImpellerBackdrop: true,
               child: LiquidGlassLens(
                 style: style,
                 child: child,
