@@ -9058,7 +9058,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   OverlayEntry? _pickerEntry;
   bool _pickerMenuOpen = false;
   String? _openPickerLabel;
-  bool _smartDescriptionSaved = false;
 
   // ── Cascading-card animation controllers ──────────────────────────────────
   // Each controller drives a SizeTransition that reveals a connected child card.
@@ -9192,9 +9191,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   @override
   void initState() {
     super.initState();
-    _smartDescriptionSaved =
-        widget.initial?.smartDescription.trim().isNotEmpty ?? false;
-
     // ── Restore preset field values when editing an existing category ────────
     final init = widget.initial;
     if (init != null && !_isSmart) {
@@ -9681,6 +9677,20 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       ),
     );
     Navigator.of(context).pop();
+  }
+
+  /// Commits the rule edit from the keyboard's Return/Done action. The sheet's
+  /// main Save action still persists the complete category; this commit only
+  /// ends editing and leaves the authored text in the controller.
+  void _commitSmartDescriptionRule() {
+    final trimmed = _smartDescriptionCtrl.text.trim();
+    _smartDescriptionCtrl.value = _smartDescriptionCtrl.value.copyWith(
+      text: trimmed,
+      selection: TextSelection.collapsed(offset: trimmed.length),
+      composing: TextRange.empty,
+    );
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {});
   }
 
   // Mirrors _CategoryTile._buildIconContent, scaled up 2x (32px tile circle
@@ -10268,9 +10278,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                               decoration: null,
                               textCapitalization: TextCapitalization.sentences,
                               textInputAction: TextInputAction.done,
-                              onChanged: (_) => setState(
-                                () => _smartDescriptionSaved = false,
-                              ),
+                               onChanged: (_) => setState(() {}),
+                               onSubmitted: (_) => _commitSmartDescriptionRule(),
                             ),
                           ),
                         ),
@@ -10279,69 +10288,29 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   ),
                 ),
                 const SizedBox(width: 10),
-                // Crossfades between the save-checkmark (typing / unsaved) and the
-                // clear-circle (rule saved), giving clear visual differentiation
-                // between the two states.
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  transitionBuilder: (child, animation) =>
-                      FadeTransition(opacity: animation, child: child),
-                  child: _smartDescriptionSaved
-                      ? GestureDetector(
-                          key: const ValueKey('smartdesc-clear'),
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () {
-                            _smartDescriptionCtrl.clear();
-                            _smartDescriptionFocus.requestFocus();
-                            setState(() => _smartDescriptionSaved = false);
-                          },
-                          child: const SizedBox(
-                            width: 28,
-                            height: 28,
-                            child: Center(
-                              child: Icon(
-                                kSearchClearCircleIcon,
-                                color: kEmptyStateIcon,
-                                size: 17,
-                              ),
-                            ),
-                          ),
-                        )
-                      : GelBloomButton(
-                          key: const ValueKey('smartdesc-checkmark'),
-                          peakScale: 1.14,
-                          onTap: () {
-                            FocusManager.instance.primaryFocus?.unfocus();
-                            setState(() => _smartDescriptionSaved = true);
-                          },
-                          child: LiquidGlassGelCircle(
-                            size: 28,
-                            color: _smartDescriptionCtrl.text.trim().isEmpty
-                                ? resolveThemeColor(
-                                    kTertiaryLabel,
-                                    context,
-                                  ).withValues(
-                                    alpha:
-                                        resolveThemeColor(
-                                          kTertiaryLabel,
-                                          context,
-                                        ).a *
-                                        0.5,
-                                  )
-                                : _resolvedSelectedColor,
-                            child: Center(
-                              child: Transform.translate(
-                                offset: const Offset(-0.5, -0.5),
-                                child: SearchWeightedIcon(
-                                  SFIcons.sf_checkmark,
-                                  size: 13,
-                                  color: CupertinoColors.white,
-                                  weight: kGelBloomIconWeight,
-                                ),
-                              ),
-                            ),
-                          ),
+                if (_smartDescriptionCtrl.text.isNotEmpty)
+                  GestureDetector(
+                    key: const ValueKey('smartdesc-clear'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      _smartDescriptionCtrl.clear();
+                      _smartDescriptionFocus.requestFocus();
+                      setState(() {});
+                    },
+                    child: const SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: Center(
+                        child: Icon(
+                          kSearchClearCircleIcon,
+                          color: kEmptyStateIcon,
+                          size: 17,
                         ),
+                      ),
+                    ),
+                  )
+                else
+                  const SizedBox(width: 28, height: 28),
                 ),
               ],
             ),

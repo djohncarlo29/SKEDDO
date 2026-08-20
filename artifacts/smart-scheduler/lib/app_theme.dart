@@ -2145,26 +2145,24 @@ class _GelBloomButtonState extends State<GelBloomButton>
       ),
     );
 
-    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
     return SizedBox.square(
       dimension: circle.size,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          CustomPaint(
-            painter: _PersistentGelCirclePainter(
-              color: circle.color,
-              isDark: isDark,
-            ),
-          ),
-          LiquidGlassButton(
-            width: circle.size,
-            height: circle.size,
-            padding: EdgeInsets.zero,
-            style: style,
-            foregroundColor: resolveThemeColor(kPrimaryLabel, context),
-            touch: const LiquidGlassTouch.flexing(LiquidGlassFlex.pronounced()),
-            onPressed: () {
+      // Keep the package's real shader active when this control sits above an
+      // occluding route. The local view captures a stable backdrop once and
+      // the lens evaluates its actual optical rim against that cached image.
+      child: LiquidGlassView(
+        backgroundWidget: ColoredBox(
+          color: circle.color.withValues(alpha: 0.8),
+        ),
+        realTimeCapture: false,
+        useSync: true,
+        useImpellerBackdrop: false,
+        child: LiquidGlassLens(
+          style: style,
+          touch: const LiquidGlassTouch.flexing(LiquidGlassFlex.pronounced()),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
               _bloom();
               if (widget.tapDelay == Duration.zero) {
                 widget.onTap();
@@ -2174,18 +2172,9 @@ class _GelBloomButtonState extends State<GelBloomButton>
                 });
               }
             },
-            child: circle.child,
+            child: Center(child: circle.child),
           ),
-          IgnorePointer(
-            child: CustomPaint(
-              painter: _PersistentGelCirclePainter(
-                color: circle.color,
-                isDark: isDark,
-                rimOnly: true,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -2221,106 +2210,3 @@ class _GelBloomButtonState extends State<GelBloomButton>
   }
 }
 
-/// Always-painted material fallback for a LiquidGlassButton whose live lens
-/// is temporarily occluded by a stacked modal route.
-class _PersistentGelCirclePainter extends CustomPainter {
-  const _PersistentGelCirclePainter({
-    required this.color,
-    required this.isDark,
-    this.rimOnly = false,
-  });
-
-  final Color color;
-  final bool isDark;
-  final bool rimOnly;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.isEmpty) return;
-    final center = size.center(Offset.zero);
-    final radius = math.min(size.width, size.height) / 2;
-    final rect = Rect.fromCircle(center: center, radius: radius - 0.35);
-
-    canvas.save();
-    canvas.clipPath(Path()..addOval(rect));
-
-    if (!rimOnly) {
-      // Match LiquidGlassAppearance(color: circle.color @ 80%) while the
-      // live lens is unavailable behind an occluding route. The second radial
-      // pass supplies the soft lens bloom that a flat fill cannot reproduce.
-      canvas.drawCircle(
-        center,
-        radius,
-        Paint()..color = color.withValues(alpha: 0.8),
-      );
-      canvas.drawRect(
-        rect,
-        Paint()
-          ..shader = RadialGradient(
-            center: const Alignment(-0.42, -0.52),
-            radius: 1.05,
-            colors: isDark
-                ? const [
-                    Color(0x2BFFFFFF),
-                    Color(0x0DFFFFFF),
-                    Color(0x001C1C1E),
-                  ]
-                : const [
-                    Color(0x42FFFFFF),
-                    Color(0x12FFFFFF),
-                    Color(0x00FFFFFF),
-                  ],
-            stops: const [0.0, 0.36, 1.0],
-          ).createShader(rect),
-      );
-    }
-
-    // Mirror the package's OpticalBorder rather than drawing a uniform
-    // diagonal outline. LiquidGlassPainter expands an optical 0.65 px border
-    // by 2 px before the shader evaluates its rim, then modulates that band
-    // with two opposing light lobes (lightDirection 62°, lightSpread 0.14).
-    // A sweep gradient is the closest Skia equivalent for this circular SDF
-    // result and remains visible when the live lens has no backdrop image.
-    final opticalBand = 0.65 * 2.0 + 2.0;
-    final lightAngle = 62.0 * math.pi / 180.0;
-    final rimColors = <Color>[
-      const Color(0x00FFFFFF),
-      const Color(0x18FFFFFF),
-      const Color(0x00FFFFFF),
-      const Color(0x00FFFFFF),
-      const Color(0x20FFFFFF),
-      const Color(0x00FFFFFF),
-      const Color(0x00FFFFFF),
-    ];
-    final rimStops = <double>[0.0, 0.10, 0.24, 0.50, 0.60, 0.76, 1.0];
-    final rimPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = opticalBand
-      ..shader = SweepGradient(
-        // SweepGradient's zero angle points right; rotate so the primary
-        // lobe is centered on the package's 62° light direction.
-        startAngle: lightAngle - math.pi * 0.18,
-        endAngle: lightAngle + math.pi * 2.0 - math.pi * 0.18,
-        colors: rimColors,
-        stops: rimStops,
-      ).createShader(rect);
-    canvas.drawOval(rect, rimPaint);
-
-    // OpticalBorder also has a low, all-around ambient contribution. Keep it
-    // as a very soft inner edge instead of baking gray into the whole ring;
-    // this preserves the bright directional rim on both light and dark glass.
-    final ambientPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = opticalBand * 0.72
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.3)
-      ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.045);
-    canvas.drawOval(rect.deflate(opticalBand * 0.18), ambientPaint);
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(_PersistentGelCirclePainter oldDelegate) =>
-      oldDelegate.color != color ||
-      oldDelegate.isDark != isDark ||
-      oldDelegate.rimOnly != rimOnly;
-}
