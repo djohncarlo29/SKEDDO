@@ -222,8 +222,8 @@ const kTertiaryLabel = CupertinoDynamicColor.withBrightness(
 // tertiary label alpha: the unavailable checkmark buttons are intentionally a
 // fixed 25% surface in both appearances.
 const kDisabledActionSurface = CupertinoDynamicColor.withBrightness(
-  color: Color(0x263C3C43),
-  darkColor: Color(0x33EBEBF5),
+  color: Color(0xFFCECDD3),
+  darkColor: Color(0xFF474747),
 );
 
 // ── Empty-state placeholder icon colour ───────────────────────────────────────
