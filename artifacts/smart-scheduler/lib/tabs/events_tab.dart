@@ -10305,30 +10305,19 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                             FocusManager.instance.primaryFocus?.unfocus();
                             setState(() => _smartDescriptionSaved = true);
                           },
-                          child: Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: _smartDescriptionCtrl.text.trim().isEmpty
-                                  ? kTertiaryLabel
-                                  : _resolvedSelectedColor,
-                              shape: BoxShape.circle,
-                              boxShadow: resolveThemeShadows(const [
-                                BoxShadow(
-                                  color: Color(0x1F000000),
-                                  blurRadius: 6,
-                                  offset: Offset(0, 2),
-                                ),
-                              ], context),
-                            ),
-                            child: Center(
-                              child: Transform.translate(
-                                offset: const Offset(-0.5, -0.5),
-                                child: SearchWeightedIcon(
-                                  SFIcons.sf_checkmark,
-                                  size: 13,
-                                  color: CupertinoColors.white,
-                                  weight: kGelBloomIconWeight,
+                           child: LiquidGlassGelCircle(
+                             size: 28,
+                             color: _smartDescriptionCtrl.text.trim().isEmpty
+                                 ? resolveThemeColor(kTertiaryLabel, context)
+                                 : _resolvedSelectedColor,
+                             child: Center(
+                               child: Transform.translate(
+                                 offset: const Offset(-0.5, -0.5),
+                                 child: SearchWeightedIcon(
+                                   SFIcons.sf_checkmark,
+                                   size: 13,
+                                   color: CupertinoColors.white,
+                                   weight: kGelBloomIconWeight,
                                 ),
                               ),
                             ),
@@ -11397,37 +11386,19 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         _handleColorNotifier.value = renderCategoryColor(c, context);
       },
       peakScale: 1.10,
-      child: AspectRatio(
-        aspectRatio: 1,
+      child: LiquidGlassGelCircle(
+        size: 40,
+        color: resolveThemeColor(c, context),
         child: selected
-            // Ring sits outside the circle. Values are doubled from the
-            // initial design: 1.0 outer + 4.0 ring + 4.0 gap each side.
-            ? Padding(
-                padding: const EdgeInsets.all(1.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: ringColor, width: 3.0),
-                  ),
-                  padding: const EdgeInsets.all(3.0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: resolveThemeColor(c, context),
-                    ),
-                  ),
+            ? Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: ringColor, width: 3.0),
                 ),
               )
-            // Unselected: plain circle with 4.5 px breathing room.
-            : Padding(
-                padding: const EdgeInsets.all(4.5),
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: resolveThemeColor(c, context),
-                  ),
-                ),
-              ),
+            : const SizedBox.shrink(),
       ),
     );
   }
@@ -11582,11 +11553,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
 
                               // Selection shown via category-colour circle fill;
                               // no ring indicator anywhere in the picker grid.
-                              final circle = Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: circleBg,
-                                ),
+                              final circle = LiquidGlassGelCircle(
+                                color: circleBg,
                                 child: Center(
                                   child: Transform.scale(
                                     scale: glyphScale,
