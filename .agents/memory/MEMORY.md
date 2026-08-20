@@ -35,6 +35,7 @@
 - [Dark-mode ghost and sheet outlines](dark-mode-ghost-and-sheet-outlines.md) — overlay/lifted-card hairlines are Dark Mode-only; grouping snap glow bypasses shadow suppression.
 - [Flutter APK Gradle stability](flutter-apk-gradle-stability.md) — SIGBUS fix requires DEFAULT_JVM_OPTS in gradlew (not just gradle.properties); daemon=false runs in wrapper JVM which ignores org.gradle.jvmargs.
 - [Shorebird patch environment](shorebird-patch-env.md) — set TMPDIR to workspace before every patch push; /tmp overlayfs fails on large writes. shorebird-push.sh now auto-restores symlinks and sets TMPDIR.
+- [Shorebird native diff safety](shorebird-native-diff.md) — DEX field/method differences mean the patch no longer matches the installed release’s native baseline; publish a new release instead of allowing native diffs.
 - [Dart 3.9 collection nesting](dart39-collection-nesting.md) — if→for→if collection elements crash Dart 3.9 parser; fold outer if into for-loop condition instead.
 - [Shorebird SDK constraint](shorebird-sdk-constraint.md) — app sdk must be >=3.8.0 <4.0.0; also patch cupertino_native cached pubspec which ships ^3.9.0.
 - [liquid_glass_widgets Android crash](liquid-glass-android-crash.md) — liquid_glass shaders are SkSL-incompatible; app crashes on Android when any GlassSwitch is rendered. Use _SlidingSwitch (pure Flutter) on non-iOS.
