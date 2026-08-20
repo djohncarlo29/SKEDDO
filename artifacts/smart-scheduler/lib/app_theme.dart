@@ -2151,8 +2151,13 @@ class _GelBloomButtonState extends State<GelBloomButton>
       // occluding route. The local view captures a stable backdrop once and
       // the lens evaluates its actual optical rim against that cached image.
       child: LiquidGlassView(
-        backgroundWidget: ColoredBox(
-          color: circle.color.withValues(alpha: 0.8),
+        // LiquidGlassView paints its backgroundWidget as a full rectangular
+        // capture surface. Clip it to the gel's bounds so the cached backdrop
+        // cannot leak as a square behind the circular lens.
+        backgroundWidget: ClipOval(
+          child: ColoredBox(
+            color: circle.color.withValues(alpha: 0.8),
+          ),
         ),
         realTimeCapture: false,
         useSync: true,

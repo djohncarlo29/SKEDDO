@@ -10278,8 +10278,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                               decoration: null,
                               textCapitalization: TextCapitalization.sentences,
                               textInputAction: TextInputAction.done,
-                               onChanged: (_) => setState(() {}),
-                               onSubmitted: (_) => _commitSmartDescriptionRule(),
+                              onChanged: (_) => setState(() {}),
+                              onSubmitted: (_) =>
+                                  _commitSmartDescriptionRule(),
                             ),
                           ),
                         ),
