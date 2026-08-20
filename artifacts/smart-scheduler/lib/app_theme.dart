@@ -2163,9 +2163,11 @@ class _GelBloomButtonState extends State<GelBloomButton>
       // old LiquidGlass branch only received the package's flexing response,
       // so its tap bloom looked noticeably flatter than regular buttons.
       child: LiquidGlassShadow(
-        blur: 5.5,
-        opacity: isLightMode ? 0.24 : 0.0,
-        offset: const Offset(0, 3),
+        // Keep this close to the silhouette: it is an edge-defining ring,
+        // not a broad elevation shadow.
+        blur: 1.75,
+        opacity: isLightMode ? 0.20 : 0.0,
+        offset: const Offset(1.0, 1.5),
         cornerRadius: circle.size / 2,
         child: ClipOval(
           child: SizedBox.square(
