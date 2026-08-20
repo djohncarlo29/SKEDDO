@@ -2155,9 +2155,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
             padding: EdgeInsets.zero,
             style: style,
             foregroundColor: resolveThemeColor(kPrimaryLabel, context),
-            touch: const LiquidGlassTouch.flexing(
-              LiquidGlassFlex.pronounced(),
-            ),
+            touch: const LiquidGlassTouch.flexing(LiquidGlassFlex.pronounced()),
             onPressed: () {
               _bloom();
               if (widget.tapDelay == Duration.zero) {
@@ -2169,6 +2167,15 @@ class _GelBloomButtonState extends State<GelBloomButton>
               }
             },
             child: circle.child,
+          ),
+          IgnorePointer(
+            child: CustomPaint(
+              painter: _PersistentGelCirclePainter(
+                color: circle.color,
+                isDark: isDark,
+                rimOnly: true,
+              ),
+            ),
           ),
         ],
       ),
@@ -2212,10 +2219,12 @@ class _PersistentGelCirclePainter extends CustomPainter {
   const _PersistentGelCirclePainter({
     required this.color,
     required this.isDark,
+    this.rimOnly = false,
   });
 
   final Color color;
   final bool isDark;
+  final bool rimOnly;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2224,23 +2233,24 @@ class _PersistentGelCirclePainter extends CustomPainter {
     final radius = math.min(size.width, size.height) / 2;
     final rect = Rect.fromCircle(center: center, radius: radius - 0.35);
 
-    canvas.drawCircle(
-      center,
-      radius,
-      Paint()..color = color.withValues(alpha: 0.8),
-    );
+    if (!rimOnly) {
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()..color = color.withValues(alpha: 0.8),
+      );
+    }
 
     final rimPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.65
-      ..color = isDark
-          ? const Color(0x664C4C52)
-          : const Color(0x665A5A62);
+      ..color = isDark ? const Color(0x664C4C52) : const Color(0x665A5A62);
     canvas.drawOval(rect, rimPaint);
   }
 
   @override
   bool shouldRepaint(_PersistentGelCirclePainter oldDelegate) =>
-      oldDelegate.color != color || oldDelegate.isDark != isDark;
+      oldDelegate.color != color ||
+      oldDelegate.isDark != isDark ||
+      oldDelegate.rimOnly != rimOnly;
 }
-

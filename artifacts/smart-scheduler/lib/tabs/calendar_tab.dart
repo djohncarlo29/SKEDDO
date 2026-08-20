@@ -10150,7 +10150,14 @@ class _NewEventSheetState extends State<_NewEventSheet>
                                 ? resolveThemeColor(
                                     kTertiaryLabel,
                                     context,
-                                  ).withValues(alpha: 0.5)
+                                  ).withValues(
+                                    alpha:
+                                        resolveThemeColor(
+                                          kTertiaryLabel,
+                                          context,
+                                        ).a *
+                                        0.5,
+                                  )
                                 : _resolvedCategoryColor,
                             iconColor: CupertinoColors.white,
                             tapDelay: const Duration(milliseconds: 130),

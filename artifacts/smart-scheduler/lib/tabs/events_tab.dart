@@ -8715,7 +8715,14 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                   : resolveThemeColor(
                                       kTertiaryLabel,
                                       context,
-                                    ).withValues(alpha: 0.5),
+                                    ).withValues(
+                                      alpha:
+                                          resolveThemeColor(
+                                            kTertiaryLabel,
+                                            context,
+                                          ).a *
+                                          0.5,
+                                    ),
                               iconColor: CupertinoColors.white,
                               tapDelay: const Duration(milliseconds: 130),
                               onTap: canSave ? _save : () {},
@@ -10320,7 +10327,14 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                                 ? resolveThemeColor(
                                     kTertiaryLabel,
                                     context,
-                                  ).withValues(alpha: 0.5)
+                                  ).withValues(
+                                    alpha:
+                                        resolveThemeColor(
+                                          kTertiaryLabel,
+                                          context,
+                                        ).a *
+                                        0.5,
+                                  )
                                 : _resolvedSelectedColor,
                             child: Center(
                               child: Transform.translate(
