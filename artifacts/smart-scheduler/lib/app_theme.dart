@@ -2083,63 +2083,40 @@ class LiquidGlassGelCircle extends StatelessWidget {
       opacity: isDark ? 0 : 0.18,
       offset: const Offset(0, 5),
       cornerRadius: size / 2,
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: ClipOval(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
-            child: CustomPaint(
-              painter: _LiquidGlassGelRimPainter(isDark: isDark),
-              child: ColoredBox(
-                color: color.withValues(alpha: 0.8),
-                child: child,
+      child: SizedBox.square(
+        dimension: size,
+        child: LiquidGlassLens(
+          style: LiquidGlassStyle(
+            shape: LiquidGlassShape.continuousRoundedRectangle(
+              cornerRadius: size / 2,
+              // Use the same optical-border pipeline as the Floating Tab Bar,
+              // with a stronger scale appropriate for a small circular edge.
+              borderWidth: 1.0,
+              lightIntensity: 0.9,
+              lightDirection: 62,
+              borderType: const OpticalBorder(
+                borderSaturation: 1.0,
+                ambientIntensity: 0.46,
+                borderSolidity: 0.38,
+                lightSpread: 0.2,
               ),
             ),
+            appearance: LiquidGlassAppearance(
+              color: color.withValues(alpha: 0.8),
+              blur: const LiquidGlassBlur(sigmaX: 2, sigmaY: 2),
+            ),
+            refraction: const LiquidGlassRefraction(
+              distortion: 0.06,
+              distortionWidth: 14,
+              magnification: 1,
+              chromaticAberration: 0.0002,
+            ),
           ),
+          child: child,
         ),
       ),
     );
   }
-}
-
-class _LiquidGlassGelRimPainter extends CustomPainter {
-  const _LiquidGlassGelRimPainter({required this.isDark});
-
-  final bool isDark;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.isEmpty) return;
-    final rimRect = (Offset.zero & size).deflate(0.45 / 2);
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.45
-      ..shader = SweepGradient(
-        startAngle: math.pi * 0.15,
-        endAngle: math.pi * 1.95,
-        colors: isDark
-            ? const [
-                Color(0x443C3C43),
-                Color(0x664C4C52),
-                Color(0x223C3C43),
-                Color(0x554C4C52),
-                Color(0x443C3C43),
-              ]
-            : const [
-                Color(0xA6FFFFFF),
-                Color(0x403C3C43),
-                Color(0x1AFFFFFF),
-                Color(0x803C3C43),
-                Color(0xA6FFFFFF),
-              ],
-      ).createShader(rimRect);
-    canvas.drawOval(rimRect, paint);
-  }
-
-  @override
-  bool shouldRepaint(_LiquidGlassGelRimPainter oldDelegate) =>
-      oldDelegate.isDark != isDark;
 }
 
 class _GelBloomButtonState extends State<GelBloomButton>
