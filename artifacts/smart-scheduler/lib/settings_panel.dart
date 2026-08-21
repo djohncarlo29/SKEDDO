@@ -929,7 +929,6 @@ class _LiquidGlassSection extends StatelessWidget {
 
 // The slider row has a fixed 18 px content inset. The settled thumb must sit
 // 16 px inside the stadium row edge at either endpoint.
-const double _kLiquidGlassThumbWidth = 37.0;
 const double _kLiquidGlassRowHorizontalPadding = 18.0;
 const double _kLiquidGlassSettledEdgeInset = 16.0;
 // The package's own track coordinates are also the endpoint tick centers.

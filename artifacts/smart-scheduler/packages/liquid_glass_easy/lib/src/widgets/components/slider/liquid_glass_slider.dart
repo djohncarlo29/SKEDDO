@@ -220,7 +220,6 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
     with TickerProviderStateMixin {
   // ── Constants that are not geometry ────────────────────────────────
   static const double _tapTimeThreshold = 0.15; // seconds
-  static const double _fillEndRamp = 10; // px, the fill's end snap zone
   static const double _hapticEdge = 2; // px
 
   /// The geometry actually in force: [LiquidGlassSlider.layout] with the
@@ -533,7 +532,7 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
       final newValue = _snapValue(_valueAt(clampedX));
       _gestureValue = newValue;
       widget.onChanged(newValue);
-      _thumbSpringTarget = clampedX;
+      _thumbSpringTarget = _centerForValue(newValue);
       _rubberSettling = _rubber != 0;
 
       // The tap's own end haptics: light landing on the minimum,
@@ -594,14 +593,9 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
     final trackX = _trackMinX + trackShift;
     final trackW = _trackWidth + _rubber.abs() / 2;
     final trackY = centerY - effTrackHeight / 2;
-    final trackRadius = effTrackHeight / 2;
 
-    // The fill: ends exactly under the thumb's centre, easing to
-    // exactly empty / exactly full inside the 10 px end zones.
-    final kMin = ((_thumbCX - _minThumbCX) / _fillEndRamp).clamp(0.0, 1.0);
-    final kMax = ((_maxThumbCX - _thumbCX) / _fillEndRamp).clamp(0.0, 1.0);
-    final fillW =
-        math.max(0.0, _thumbCX - trackX) * kMin * kMax + trackW * (1 - kMax);
+    // The progress line ends directly beneath the settled thumb centre.
+    final fillEndX = _thumbCX - trackX;
 
     // Where a touch is allowed to START. The control's box is much
     // larger than the track — it reserves room for the lifted thumb, the
@@ -660,9 +654,11 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
                       painter: _LiquidGlassSliderTrackPainter(
                         inactiveColor: widget.inactiveColor,
                         activeColor: widget.activeColor,
-                        fillWidth: fillW,
+                        fillEndX: fillEndX,
                         trackWidth: trackW,
                         trackHeight: effTrackHeight,
+                        tickStartX: _minThumbCX - trackX,
+                        tickEndX: _maxThumbCX - trackX,
                         divisions: widget.divisions,
                       ),
                     ),
@@ -733,4 +729,88 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
       ),
     );
   }
+}
+
+class _LiquidGlassSliderTrackPainter extends CustomPainter {
+  const _LiquidGlassSliderTrackPainter({
+    required this.inactiveColor,
+    required this.activeColor,
+    required this.fillEndX,
+    required this.trackWidth,
+    required this.trackHeight,
+    required this.tickStartX,
+    required this.tickEndX,
+    required this.divisions,
+  });
+
+  final Color inactiveColor;
+  final Color activeColor;
+  final double fillEndX;
+  final double trackWidth;
+  final double trackHeight;
+  final double tickStartX;
+  final double tickEndX;
+  final int divisions;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final tickHalfWidth = 1.0;
+    final tickTop = trackHeight / 2 - 5;
+    final tickBottom = trackHeight / 2 + 5;
+    final tickCount = divisions > 0 ? divisions : 0;
+    final tickRange = math.max(0.0, tickEndX - tickStartX);
+
+    // The horizontal line is deliberately butt-ended. The thumb-center
+    // travel range, not the raw line width, is the tick distribution range:
+    // the first/last ticks sit directly beneath the settled thumb centers.
+    final lineStartX = tickStartX.clamp(0.0, trackWidth).toDouble();
+    final lineEndX = tickEndX.clamp(lineStartX, trackWidth).toDouble();
+    final inactivePath = Path()
+      ..addRect(Rect.fromLTRB(lineStartX, 0, lineEndX, trackHeight));
+    for (var i = 0; i <= tickCount; i++) {
+      final x = tickCount == 0
+          ? tickStartX
+          : tickStartX + tickRange * i / tickCount;
+      inactivePath.addRect(
+        Rect.fromLTRB(x - tickHalfWidth, tickTop, x + tickHalfWidth, tickBottom),
+      );
+    }
+    canvas.drawPath(inactivePath, Paint()..color = inactiveColor);
+
+    // Paint the accent segment in pieces around the grey ticks. Each pixel
+    // belongs to exactly one color path, so the step geometry never changes
+    // opacity through compositing. Rectangles keep every progress endpoint
+    // straight rather than introducing rounded caps.
+    final clampedFill = fillEndX.clamp(lineStartX, lineEndX).toDouble();
+    final activePath = Path();
+    if (clampedFill > lineStartX) {
+      var start = lineStartX;
+      for (var i = 0; i <= tickCount; i++) {
+        final x = tickCount == 0
+            ? tickStartX
+            : tickStartX + tickRange * i / tickCount;
+        final end = math.min(clampedFill, x - tickHalfWidth);
+        if (end > start) {
+          activePath.addRect(Rect.fromLTRB(start, 0, end, trackHeight));
+        }
+        start = math.max(start, x + tickHalfWidth);
+        if (x >= clampedFill) break;
+      }
+      if (start < clampedFill) {
+        activePath.addRect(Rect.fromLTRB(start, 0, clampedFill, trackHeight));
+      }
+    }
+    canvas.drawPath(activePath, Paint()..color = activeColor);
+  }
+
+  @override
+  bool shouldRepaint(_LiquidGlassSliderTrackPainter oldDelegate) =>
+      oldDelegate.inactiveColor != inactiveColor ||
+      oldDelegate.activeColor != activeColor ||
+      oldDelegate.fillEndX != fillEndX ||
+      oldDelegate.trackWidth != trackWidth ||
+      oldDelegate.trackHeight != trackHeight ||
+      oldDelegate.tickStartX != tickStartX ||
+      oldDelegate.tickEndX != tickEndX ||
+      oldDelegate.divisions != divisions;
 }
