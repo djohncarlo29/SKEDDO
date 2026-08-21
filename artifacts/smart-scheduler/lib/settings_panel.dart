@@ -287,8 +287,8 @@ class _SettingsPanelState extends State<SettingsPanel>
             appDateLocaleNotifier.value == DateLocalePreference.dayFirst
             ? 'Day first (D/M/Y)'
             : 'Month first (M/D/Y)';
-        final liquidGlassOpacityLabel = appLiquidGlassOpacityNotifier.value
-            .toStringAsFixed(1);
+        final liquidGlassOpacityLabel =
+            '${(appLiquidGlassOpacityNotifier.value * 100).round()}%';
 
         final headerHeight = widget.topInset + 101;
 
