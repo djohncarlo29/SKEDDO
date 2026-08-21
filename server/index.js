@@ -1,9 +1,10 @@
 'use strict';
 // ─────────────────────────────────────────────────────────────────────────────
-// SKEDDO Gemini proxy server
+// SKEDDO AI proxy server
 //
-// Handles two API routes that call Google's Gemini API server-side so the
-// GEMINI_API_KEY never needs to be compiled into the Flutter binary.
+// Handles the remaining optional language features that call Google's Gemini
+// API server-side. File/event analysis is intentionally offline-only in the
+// Flutter app and has no Gemini route here.
 //
 // Also serves the Flutter web build from ../artifacts/smart-scheduler/build/web
 // as a static file server, replacing the previous Python HTTP server.
@@ -193,75 +194,7 @@ const PARSE_RULE_PROMPT =
   '  "doctor appointments" → {"weekdays":[],"timeOfDay":null,"months":[],"topic":"doctor appointment"}\n\n' +
   'Return ONLY the JSON object, no markdown, no explanation.';
 
-const EXTRACT_PROMPT =
-  'Analyze the attached image or document and extract every event, meeting, appointment, ' +
-  'reminder, deadline, or scheduled activity you can find. ' +
-  'Return a JSON array of objects. Each object must have: ' +
-  '"title" (string, required), ' +
-  '"date" (string, optional — use natural language like "June 5" or "next Monday"), ' +
-  '"time" (string, optional — use "3:00 PM" format), ' +
-  '"location" (string, optional). ' +
-  'Return ONLY the raw JSON array with no markdown fences or extra text. ' +
-  'If there are no events, return [].';
-
 // ── Route handlers ────────────────────────────────────────────────────────────
-
-async function handleExtract(req, res) {
-  if (!API_KEY) { json(res, 503, { error: 'AI not configured' }); return; }
-  try {
-    const body = await readBody(req);
-    let parts;
-    if (body.imageBase64 && body.mimeType) {
-      parts = [
-        { inline_data: { mime_type: body.mimeType, data: body.imageBase64 } },
-        { text: EXTRACT_PROMPT },
-      ];
-    } else if (body.legacyFileBase64 && body.filename) {
-      let convertedText;
-      try {
-        convertedText = convertLegacyOfficeToText(
-          body.legacyFileBase64,
-          path.basename(String(body.filename)),
-        );
-      } catch (conversionError) {
-        json(res, 422, {
-          error: `Could not convert this legacy Office file. ${conversionError.message}`,
-        });
-        return;
-      }
-      parts = [{
-        text: `Extract events from the converted legacy Office document ` +
-          `("${path.basename(String(body.filename))}"):\n\n` +
-          `${convertedText}\n\n${EXTRACT_PROMPT}`,
-      }];
-    } else if (body.text) {
-      parts = [{ text: `Extract events from the following text:\n\n${body.text}\n\n${EXTRACT_PROMPT}` }];
-    } else {
-      json(res, 400, { error: 'Provide imageBase64+mimeType or text' });
-      return;
-    }
-
-    const result = await callGemini({
-      contents: [{ parts }],
-      generationConfig: { maxOutputTokens: 8192 },
-    });
-
-    const raw = geminiText(result);
-    const cleaned = raw
-      .replace(/^```[a-z]*\n?/gm, '')
-      .replace(/```$/gm, '')
-      .trim();
-
-    let events = [];
-    try { events = JSON.parse(cleaned); } catch (_) {}
-    if (!Array.isArray(events)) events = [];
-
-    json(res, 200, { events });
-  } catch (e) {
-    console.error('[extract]', e.message);
-    json(res, 500, { error: 'AI analysis failed. Please try again.' });
-  }
-}
 
 async function handleParseRule(req, res) {
   if (!API_KEY) { json(res, 503, { error: 'AI not configured' }); return; }
@@ -384,7 +317,6 @@ const server = http.createServer((req, res) => {
 
   const url = req.url.split('?')[0];
 
-  if (req.method === 'POST' && url === '/api/gemini/extract')    { handleExtract(req, res);    return; }
   if (req.method === 'POST' && url === '/api/gemini/punctuate')  { handlePunctuate(req, res);  return; }
   if (req.method === 'POST' && url === '/api/gemini/parse-rule') { handleParseRule(req, res);  return; }
 

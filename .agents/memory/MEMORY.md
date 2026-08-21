@@ -69,3 +69,4 @@
 - [Android model asset stripping](android-model-asset-stripping.md) — Flutter/AGP can repopulate model assets after dependency-based tasks; strip platform-excluded assets in the final asset task action and clean before auditing.
 - [OOXML attribute case handling](ooxml-attribute-case.md) — Office relationship and worksheet attributes need case-insensitive local-name matching.
 - [Offline OCR phase boundary](offline-ocr-phase-boundary.md) — native OCR bridges can be implemented offline, but final completion still requires device/sample validation and honest engine-confidence semantics.
+- [Offline file analysis route](offline-file-analysis-route.md) — Notes attachments use local extraction/OCR and deterministic analysis only; Gemini is not a fallback for this flow.

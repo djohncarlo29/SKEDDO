@@ -1,12 +1,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Data model
-// ─────────────────────────────────────────────────────────────────────────────
+import 'offline_analysis.dart' as offline;
+
+// The attachment UI consumes this small presentation model. Keep the richer
+// offline-analysis model inside the analysis service so the sheet remains
+// independent from extraction details.
 class ExtractedEvent {
   final String title;
   final String? date;
@@ -19,247 +18,90 @@ class ExtractedEvent {
     this.time,
     this.location,
   });
-
-  factory ExtractedEvent.fromJson(Map<String, dynamic> j) => ExtractedEvent(
-    title: (j['title'] as String?)?.trim() ?? '',
-    date: (j['date'] as String?)?.trim(),
-    time: (j['time'] as String?)?.trim(),
-    location: (j['location'] as String?)?.trim(),
-  );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Extraction service
-// ─────────────────────────────────────────────────────────────────────────────
-//
-// Routing logic:
-//   Web               → same-origin proxy  /api/gemini/extract
-//   Mobile + proxy    → PROXY_BASE_URL/api/gemini/extract
-//   Mobile + key only → Gemini REST API directly (key from .env)
-// ─────────────────────────────────────────────────────────────────────────────
+/// Offline-only event extraction used by the Notes attachment flow.
+///
+/// File analysis must not depend on a network, proxy, API key, or Gemini.
+/// Native OCR is invoked by [FileAnalysisCoordinator] for images and PDFs
+/// whose text layer is insufficient.
 class EventExtractor {
-  static const _geminiModel = 'gemini-2.5-flash';
-  static const _geminiHost =
-      'https://generativelanguage.googleapis.com/v1beta/models';
+  static final offline.FileAnalysisCoordinator _coordinator =
+      offline.FileAnalysisCoordinator();
 
-  static const _extractPrompt =
-      'Analyze the attached image or document and extract every event, meeting, appointment, '
-      'reminder, deadline, or scheduled activity you can find. '
-      'Return a JSON array of objects. Each object must have: '
-      '"title" (string, required), '
-      '"date" (string, optional — use natural language like "June 5" or "next Monday"), '
-      '"time" (string, optional — use "3:00 PM" format), '
-      '"location" (string, optional). '
-      'Return ONLY the raw JSON array with no markdown fences or extra text. '
-      'If there are no events, return [].';
-
-  static String get _proxyBase => dotenv.env['PROXY_BASE_URL'] ?? '';
-  static String get _directKey => dotenv.env['GEMINI_API_KEY'] ?? '';
-  static bool get _hasProxy => kIsWeb || _proxyBase.isNotEmpty;
-  static bool get _hasDirectKey => !kIsWeb && _directKey.isNotEmpty;
-  static bool get _enabled => _hasProxy || _hasDirectKey;
-
-  // ── Public API ──────────────────────────────────────────────────────────────
-
-  /// Extract events from image bytes (multimodal Gemini call).
   static Future<List<ExtractedEvent>> fromImage(
     Uint8List bytes,
     String mimeType,
-  ) async {
-    _assertEnabled();
-    if (_hasProxy) {
-      final base = kIsWeb ? '' : _proxyBase;
-      final response = await http
-          .post(
-            Uri.parse('$base/api/gemini/extract'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'imageBase64': base64Encode(bytes),
-              'mimeType': mimeType,
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
-      return _parseProxy(response);
-    } else {
-      return _directFromImage(bytes, mimeType);
-    }
-  }
+  ) => _analyze(
+    sourceName: _sourceNameForMime(mimeType),
+    bytes: bytes,
+    mimeType: mimeType,
+  );
 
-  /// Extract events from plain text.
-  static Future<List<ExtractedEvent>> fromText(String text) async {
-    _assertEnabled();
-    if (_hasProxy) {
-      final base = kIsWeb ? '' : _proxyBase;
-      final response = await http
-          .post(
-            Uri.parse('$base/api/gemini/extract'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'text': text}),
-          )
-          .timeout(const Duration(seconds: 30));
-      return _parseProxy(response);
-    } else {
-      return _directFromText(text);
-    }
-  }
+  static Future<List<ExtractedEvent>> fromText(String text) => _analyze(
+    sourceName: 'pasted.txt',
+    bytes: Uint8List.fromList(utf8.encode(text)),
+    mimeType: 'text/plain',
+  );
 
-  /// Extract events from a legacy binary Office file. The proxy converts the
-  /// file with LibreOffice, then uses the same text-based Gemini flow.
   static Future<List<ExtractedEvent>> fromLegacyOffice(
     Uint8List bytes,
     String filename,
-  ) async {
-    _assertEnabled();
-    if (!_hasProxy) {
-      throw const ExtractionException(
-        'Legacy Office files require the server conversion service.',
-      );
-    }
-    final base = kIsWeb ? '' : _proxyBase;
-    final response = await http
-        .post(
-          Uri.parse('$base/api/gemini/extract'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'legacyFileBase64': base64Encode(bytes),
-            'filename': filename,
-          }),
-        )
-        .timeout(const Duration(seconds: 90));
-    return _parseProxy(response);
-  }
+  ) => _analyze(sourceName: filename, bytes: bytes);
 
-  // ── Direct Gemini calls (mobile, no proxy) ──────────────────────────────────
-
-  static Future<List<ExtractedEvent>> _directFromImage(
-    Uint8List bytes,
-    String mimeType,
-  ) async {
-    final body = jsonEncode({
-      'contents': [
-        {
-          'parts': [
-            {
-              'inline_data': {
-                'mime_type': mimeType,
-                'data': base64Encode(bytes),
-              },
-            },
-            {'text': _extractPrompt},
-          ],
-        },
-      ],
-      'generationConfig': {'maxOutputTokens': 8192},
-    });
-    final raw = await _callGeminiDirect(body);
-    return _parseGeminiText(raw);
-  }
-
-  static Future<List<ExtractedEvent>> _directFromText(String text) async {
-    final prompt =
-        'Extract events from the following text:\n\n$text\n\n$_extractPrompt';
-    final body = jsonEncode({
-      'contents': [
-        {
-          'parts': [
-            {'text': prompt},
-          ],
-        },
-      ],
-      'generationConfig': {'maxOutputTokens': 8192},
-    });
-    final raw = await _callGeminiDirect(body);
-    return _parseGeminiText(raw);
-  }
-
-  static Future<String> _callGeminiDirect(String body) async {
-    final uri = Uri.parse(
-      '$_geminiHost/$_geminiModel:generateContent?key=$_directKey',
+  static Future<List<ExtractedEvent>> _analyze({
+    required String sourceName,
+    required Uint8List bytes,
+    String? mimeType,
+  }) async {
+    final result = await _coordinator.analyzeOffline(
+      sourceName: sourceName,
+      bytes: bytes,
+      mimeType: mimeType,
     );
-    for (var attempt = 0; attempt < 3; attempt++) {
-      final response = await http
-          .post(uri, headers: {'Content-Type': 'application/json'}, body: body)
-          .timeout(const Duration(seconds: 30));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        return (data['candidates']?[0]?['content']?['parts']?[0]?['text']
-                as String?) ??
-            '';
-      }
-
-      if (response.statusCode == 429 && attempt < 2) {
-        await Future<void>.delayed(Duration(seconds: 1 << attempt));
-        continue;
-      }
-
-      if (response.statusCode == 429) {
-        throw const ExtractionException(
-          'Gemini rate limit or quota reached (HTTP 429). '
-          'Wait a little and try again, or check the Gemini API quota for '
-          'the configured key.',
-        );
-      }
-
-      String? detail;
-      try {
-        final error =
-            (jsonDecode(response.body) as Map<String, dynamic>)['error'];
-        if (error is Map<String, dynamic>) {
-          detail = error['message'] as String?;
-        }
-      } catch (_) {
-        // Keep the status-only message when Gemini returns a non-JSON error.
-      }
+    if (!result.isSuccess) {
       throw ExtractionException(
-        detail == null || detail.isEmpty
-            ? 'AI analysis failed (HTTP ${response.statusCode})'
-            : 'AI analysis failed (HTTP ${response.statusCode}): $detail',
+        result.failure?.message ?? _statusMessage(result.status),
       );
     }
-    throw const ExtractionException('AI analysis failed.');
+    return result.events.map(_fromOfflineEvent).toList(growable: false);
   }
 
-  static List<ExtractedEvent> _parseGeminiText(String raw) {
-    final cleaned = raw
-        .replaceAll(RegExp(r'^```[a-z]*\n?', multiLine: true), '')
-        .replaceAll(RegExp(r'```$', multiLine: true), '')
-        .trim();
-    List<dynamic> events = [];
-    try {
-      events = jsonDecode(cleaned) as List;
-    } catch (_) {}
-    return events
-        .whereType<Map<String, dynamic>>()
-        .map(ExtractedEvent.fromJson)
-        .where((e) => e.title.isNotEmpty)
-        .toList();
-  }
-
-  // ── Proxy response parser ───────────────────────────────────────────────────
-
-  static List<ExtractedEvent> _parseProxy(http.Response response) {
-    if (response.statusCode != 200) {
-      throw ExtractionException(
-        'AI analysis failed (HTTP ${response.statusCode})',
+  static ExtractedEvent _fromOfflineEvent(offline.ExtractedEvent event) =>
+      ExtractedEvent(
+        title: event.title,
+        date: event.date,
+        time: event.time,
+        location: event.location,
       );
+
+  static String _sourceNameForMime(String mimeType) {
+    switch (mimeType.toLowerCase()) {
+      case 'application/pdf':
+        return 'attachment.pdf';
+      case 'image/png':
+        return 'attachment.png';
+      case 'image/webp':
+        return 'attachment.webp';
+      default:
+        return 'attachment.jpg';
     }
-    final data = jsonDecode(response.body);
-    if (data is Map && data.containsKey('error')) {
-      throw ExtractionException('AI analysis failed: ${data['error']}');
-    }
-    final raw = (data as Map<String, dynamic>)['events'] as List? ?? [];
-    return raw
-        .whereType<Map<String, dynamic>>()
-        .map(ExtractedEvent.fromJson)
-        .where((e) => e.title.isNotEmpty)
-        .toList();
   }
 
-  static void _assertEnabled() {
-    if (!_enabled) {
-      throw ExtractionException(
-        'AI service not configured — add GEMINI_API_KEY to your .env file.',
-      );
+  static String _statusMessage(offline.AnalysisStatus status) {
+    switch (status) {
+      case offline.AnalysisStatus.noEventsFound:
+        return 'No scheduled events were found in this file.';
+      case offline.AnalysisStatus.unsupportedFormat:
+        return 'This file format is not supported for offline analysis.';
+      case offline.AnalysisStatus.encryptedFile:
+        return 'This file is encrypted and cannot be analyzed offline.';
+      case offline.AnalysisStatus.ocrFailed:
+        return 'Offline OCR could not read this file.';
+      case offline.AnalysisStatus.cancelled:
+        return 'Offline analysis was cancelled.';
+      default:
+        return 'The file could not be analyzed offline.';
     }
   }
 }
@@ -267,6 +109,7 @@ class EventExtractor {
 class ExtractionException implements Exception {
   final String message;
   const ExtractionException(this.message);
+
   @override
   String toString() => 'ExtractionException: $message';
 }
