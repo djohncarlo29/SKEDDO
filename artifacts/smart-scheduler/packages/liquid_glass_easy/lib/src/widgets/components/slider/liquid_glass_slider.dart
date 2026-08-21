@@ -767,30 +767,26 @@ class _LiquidGlassSliderTrackPainter extends CustomPainter {
     final lineEndX = tickEndX.clamp(lineStartX, trackWidth).toDouble();
     final clampedFill = fillEndX.clamp(lineStartX, lineEndX).toDouble();
 
-    // Ticks live beneath the line. This keeps the line visually continuous
-    // through the marker instead of making the marker look like a separate
-    // element laid on top of it.
-    final inactiveTicks = Path();
+    // Ticks live beneath the line visually, but the line and ticks belong to
+    // one filled path. Adding overlapping rectangles to one path and painting
+    // it once prevents their shared pixels from accumulating opacity.
+    final inactivePath = Path()
+      ..addRect(Rect.fromLTRB(lineStartX, 0, lineEndX, trackHeight));
     final tickXs = <double>[];
     for (var i = 0; i <= tickCount; i++) {
       final x = tickCount == 0
           ? tickStartX
           : tickStartX + tickRange * i / tickCount;
       tickXs.add(x);
-      inactiveTicks.addRect(
+      inactivePath.addRect(
         Rect.fromLTRB(x - tickHalfWidth, tickTop, x + tickHalfWidth, tickBottom),
       );
     }
-    canvas.drawPath(inactiveTicks, Paint()..color = inactiveColor);
+    canvas.drawPath(inactivePath, Paint()..color = inactiveColor);
 
     // Both inactive and active line ends are deliberately square. The line
     // and all passed ticks share one active path, so a tick turns blue as the
     // thumb crosses it rather than being composited as a second element.
-    canvas.drawRect(
-      Rect.fromLTRB(lineStartX, 0, lineEndX, trackHeight),
-      Paint()..color = inactiveColor,
-    );
-
     final activePath = Path();
     if (clampedFill > lineStartX) {
       activePath.addRect(
