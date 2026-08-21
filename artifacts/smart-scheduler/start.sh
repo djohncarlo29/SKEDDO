@@ -57,6 +57,8 @@ fi
 # block the app from being embedded in the Replit preview iframe.
 "$FLUTTER_BIN" pub get 2>&1
 "$FLUTTER_BIN" build web --no-tree-shake-icons 2>&1
+bash /home/runner/workspace/scripts/strip-platform-model-assets.sh web \
+  /home/runner/workspace/artifacts/smart-scheduler/build/web
 
 # Start the Node.js proxy + static file server.
 # It reads GEMINI_API_KEY from the environment (Replit secret) and serves

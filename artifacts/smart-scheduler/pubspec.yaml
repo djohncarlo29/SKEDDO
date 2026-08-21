@@ -47,6 +47,10 @@ dependency_overrides:
   # plugin's Android implementation. Android uses tflite_flutter instead.
   flutter_onnxruntime:
     path: packages/flutter_onnxruntime
+  # Keep TFLite's Android implementation, but do not expose its Apple native
+  # implementations. iOS/macOS use flutter_onnxruntime instead.
+  tflite_flutter:
+    path: packages/tflite_flutter
 
 flutter:
   uses-material-design: true
