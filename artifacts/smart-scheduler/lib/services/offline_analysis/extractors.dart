@@ -660,6 +660,14 @@ class LocalContentExtractor implements ContentExtractor {
     }
     values.removeWhere((value) => value.trim().isEmpty);
     final text = values.join(' ');
+    final pageCount = RegExp(
+      r'/Type\s*/Page\b',
+    ).allMatches(raw).length.clamp(1, 10000);
+    final pageBlocks = _pdfPageBlocks(raw, pageCount);
+    final poorPages = pageBlocks
+        .where((page) => _pdfQuality(page.text, bytes.length) < .55)
+        .map((page) => page.index)
+        .toList();
     final quality = _pdfQuality(text, bytes.length);
     final classification = _pdfClassification(text, raw, quality);
     return _content(
@@ -672,7 +680,8 @@ class LocalContentExtractor implements ContentExtractor {
         'sourceName': sourceName,
         'format': 'pdf',
         'quality': classification,
-        'pageCount': '${RegExp(r'/Type\s*/Page\b').allMatches(raw).length}',
+        'pageCount': '$pageCount',
+        'ocrPageIndices': poorPages.join(','),
       },
       warnings: [
         if (classification != 'usable')
@@ -684,6 +693,27 @@ class LocalContentExtractor implements ContentExtractor {
       ],
       confidence: quality,
     );
+  }
+
+  List<({int index, String text})> _pdfPageBlocks(String raw, int pageCount) {
+    if (pageCount <= 1) return [(index: 0, text: raw)];
+    final markers = RegExp(r'/Type\s*/Page\b').allMatches(raw).toList();
+    return List.generate(pageCount, (index) {
+      final start = index == 0 ? 0 : markers[index - 1].end;
+      final end = index + 1 < markers.length
+          ? markers[index].start
+          : raw.length;
+      final pageRaw = raw.substring(start, end);
+      final pageText = [
+        ...RegExp(
+          r'\(([^()]*)\)\s*Tj',
+        ).allMatches(pageRaw).map((m) => _unescapePdfText(m.group(1)!)),
+        ...RegExp(
+          r'<([0-9A-Fa-f\s]+)>\s*Tj',
+        ).allMatches(pageRaw).map((m) => _decodePdfHex(m.group(1)!)),
+      ].join(' ');
+      return (index: index, text: pageText);
+    });
   }
 
   ExtractedContent _zip(
@@ -955,6 +985,7 @@ class UnavailableOfflineOcrService implements OfflineOcrService {
     required String sourceName,
     required Uint8List bytes,
     required DetectedFileType sourceType,
+    List<int>? pageIndices,
     AnalysisCancellationToken? cancellation,
     AnalysisProgress? onProgress,
   }) {

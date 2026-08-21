@@ -8,7 +8,8 @@ import 'models.dart';
 class DefaultEventAnalyzer implements EventAnalyzer {
   final DateParser parser;
 
-  DefaultEventAnalyzer({DateParser? parser}) : parser = parser ?? RuleBasedDateParser();
+  DefaultEventAnalyzer({DateParser? parser})
+    : parser = parser ?? RuleBasedDateParser();
 
   @override
   Future<List<ExtractedEvent>> analyze(
@@ -40,7 +41,9 @@ class DefaultEventAnalyzer implements EventAnalyzer {
       final temporal = _temporalFragment(text);
       if (temporal == null) continue;
       final parsed = parser.parse(temporal);
-      if (!parsed.isScheduled && parsed.canonicalTime == null && !parsed.isRecurring) {
+      if (!parsed.isScheduled &&
+          parsed.canonicalTime == null &&
+          !parsed.isRecurring) {
         continue;
       }
 
@@ -59,28 +62,35 @@ class DefaultEventAnalyzer implements EventAnalyzer {
         }
       }
 
-      events.add(ExtractedEvent(
-        title: title,
-        date: parsed.canonicalDate,
-        time: parsed.canonicalTime,
-        endDate: parsed.endDateTime == null ? null : _date(parsed.endDateTime!),
-        endTime: parsed.canonicalEndTime,
-        recurrence: parsed.recurrence,
-        timeZone: parsed.timezone,
-        originalDateText: temporal,
-        originalTimeText: parsed.rawInput,
-        sourceFile: content.sourceName,
-        sourcePage: block.pageIndex,
-        sourceSection: block.sectionIndex?.toString(),
-        sourceText: text,
-        boundingBox: block.boundingBox,
-        extractionMethod: 'deterministic+minilm',
-        extractionConfidence: content.extractionConfidence,
-        interpretationConfidence: _interpretationConfidence(parsed, title),
-        warnings: content.warnings,
-        semanticRelevance: semanticRelevance,
-      ));
-      onProgress?.call('Checking event relevance', .65 + .3 * ((index + 1) / total));
+      events.add(
+        ExtractedEvent(
+          title: title,
+          date: parsed.canonicalDate,
+          time: parsed.canonicalTime,
+          endDate: parsed.endDateTime == null
+              ? null
+              : _date(parsed.endDateTime!),
+          endTime: parsed.canonicalEndTime,
+          recurrence: parsed.recurrence,
+          timeZone: parsed.timezone,
+          originalDateText: temporal,
+          originalTimeText: parsed.rawInput,
+          sourceFile: content.sourceName,
+          sourcePage: block.pageIndex,
+          sourceSection: block.sectionIndex?.toString(),
+          sourceText: text,
+          boundingBox: block.boundingBox,
+          extractionMethod: 'deterministic+minilm',
+          extractionConfidence: content.extractionConfidence,
+          interpretationConfidence: _interpretationConfidence(parsed, title),
+          warnings: content.warnings,
+          semanticRelevance: semanticRelevance,
+        ),
+      );
+      onProgress?.call(
+        'Checking event relevance',
+        .65 + .3 * ((index + 1) / total),
+      );
     }
     return _dedupe(events);
   }
@@ -109,31 +119,38 @@ class DefaultEventAnalyzer implements EventAnalyzer {
       final end = _calendarDate(fields['DTEND']);
       final startRaw = fields['DTSTART'] ?? '';
       final endRaw = fields['DTEND'];
-      final zone = _parameter(fields.keys.firstWhere(
-        (key) => key.startsWith('DTSTART;'),
-        orElse: () => 'DTSTART',
-      ), 'TZID');
-      events.add(ExtractedEvent(
-        title: summary,
-        date: _date(start),
-        time: _time(start),
-        endDate: end == null ? null : _date(end),
-        endTime: end == null ? null : _time(end),
-        location: fields['LOCATION'],
-        recurrence: fields['RRULE'],
-        timeZone: zone ?? fields['X-WR-TIMEZONE'],
-        originalDateText: startRaw,
-        originalTimeText: endRaw,
-        sourceFile: content.sourceName,
-        sourceText: fields.entries.map((e) => '${e.key}: ${e.value}').join('\n'),
-        extractionMethod: 'ics-deterministic',
-        extractionConfidence: 1,
-        interpretationConfidence: 1,
-        uid: fields['UID'],
-        organizer: fields['ORGANIZER'],
-        attendees: List.unmodifiable(attendees),
-        alarms: List.unmodifiable(alarms),
-      ));
+      final zone = _parameter(
+        fields.keys.firstWhere(
+          (key) => key.startsWith('DTSTART;'),
+          orElse: () => 'DTSTART',
+        ),
+        'TZID',
+      );
+      events.add(
+        ExtractedEvent(
+          title: summary,
+          date: _date(start),
+          time: _time(start),
+          endDate: end == null ? null : _date(end),
+          endTime: end == null ? null : _time(end),
+          location: fields['LOCATION'],
+          recurrence: fields['RRULE'],
+          timeZone: zone ?? fields['X-WR-TIMEZONE'],
+          originalDateText: startRaw,
+          originalTimeText: endRaw,
+          sourceFile: content.sourceName,
+          sourceText: fields.entries
+              .map((e) => '${e.key}: ${e.value}')
+              .join('\n'),
+          extractionMethod: 'ics-deterministic',
+          extractionConfidence: 1,
+          interpretationConfidence: 1,
+          uid: fields['UID'],
+          organizer: fields['ORGANIZER'],
+          attendees: List.unmodifiable(attendees),
+          alarms: List.unmodifiable(alarms),
+        ),
+      );
       fields = {};
       attendees.clear();
       alarms.clear();
@@ -172,7 +189,8 @@ class DefaultEventAnalyzer implements EventAnalyzer {
   List<String> _unfold(String text) {
     final output = <String>[];
     for (final line in text.split(RegExp(r'\r?\n'))) {
-      if ((line.startsWith(' ') || line.startsWith('\t')) && output.isNotEmpty) {
+      if ((line.startsWith(' ') || line.startsWith('\t')) &&
+          output.isNotEmpty) {
         output[output.length - 1] += line.substring(1);
       } else {
         output.add(line);
@@ -184,8 +202,9 @@ class DefaultEventAnalyzer implements EventAnalyzer {
   DateTime? _calendarDate(String? value) {
     if (value == null || value.isEmpty) return null;
     final raw = value.startsWith('VALUE=DATE:') ? value.substring(11) : value;
-    final match = RegExp(r'^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2}))?')
-        .firstMatch(raw);
+    final match = RegExp(
+      r'^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2}))?',
+    ).firstMatch(raw);
     if (match == null) return DateTime.tryParse(raw);
     return DateTime(
       int.parse(match.group(1)!),
@@ -198,7 +217,10 @@ class DefaultEventAnalyzer implements EventAnalyzer {
   }
 
   String? _parameter(String key, String name) {
-    final match = RegExp(';$name=([^;:]+)', caseSensitive: false).firstMatch(key);
+    final match = RegExp(
+      ';$name=([^;:]+)',
+      caseSensitive: false,
+    ).firstMatch(key);
     return match?.group(1);
   }
 
@@ -228,7 +250,9 @@ class DefaultEventAnalyzer implements EventAnalyzer {
   }
 
   String _title(String text, String temporal) {
-    final without = text.replaceFirst(temporal, '').replaceAll(RegExp(r'^[\s,:;-]+|[\s,:;-]+$'), '');
+    final without = text
+        .replaceFirst(temporal, '')
+        .replaceAll(RegExp(r'^[\s,:;-]+|[\s,:;-]+$'), '');
     return without.isEmpty ? text : without;
   }
 

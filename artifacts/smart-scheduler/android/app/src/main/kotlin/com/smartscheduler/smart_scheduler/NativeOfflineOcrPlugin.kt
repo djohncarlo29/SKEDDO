@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
+import com.google.android.gms.tasks.CancellationTokenSource
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -23,12 +24,18 @@ class NativeOfflineOcrPlugin(
 
     private val channel = MethodChannel(messenger, "com.smartscheduler/offline_ocr")
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    private var cancellation = CancellationTokenSource()
 
     init {
         channel.setMethodCallHandler(this)
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        if (call.method == "cancel") {
+            cancellation.cancel()
+            result.success(null)
+            return
+        }
         if (call.method != "recognize") {
             result.notImplemented()
             return
@@ -39,8 +46,11 @@ class NativeOfflineOcrPlugin(
             result.error("INVALID_INPUT", "OCR input is empty", null)
             return
         }
+        cancellation.cancel()
+        cancellation = CancellationTokenSource()
+        val pageIndices = call.argument<List<Int>>("pageIndices")?.toSet()
         if (sourceType == "pdf") {
-            recognizePdf(bytes, result)
+            recognizePdf(bytes, pageIndices, result)
         } else {
             val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
             if (bitmap == null) {
@@ -51,14 +61,14 @@ class NativeOfflineOcrPlugin(
         }
     }
 
-    private fun recognizePdf(bytes: ByteArray, result: MethodChannel.Result) {
+    private fun recognizePdf(bytes: ByteArray, pageIndices: Set<Int>?, result: MethodChannel.Result) {
         val file = File.createTempFile("offline-ocr-", ".pdf", activity.cacheDir)
         try {
             FileOutputStream(file).use { it.write(bytes) }
             val descriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
             val renderer = PdfRenderer(descriptor)
             val pages = mutableListOf<Map<String, Any?>>()
-            processPdfPage(renderer, 0, pages) {
+            processPdfPage(renderer, 0, pageIndices, pages) {
                 renderer.close()
                 descriptor.close()
                 file.delete()
@@ -73,11 +83,20 @@ class NativeOfflineOcrPlugin(
     private fun processPdfPage(
         renderer: PdfRenderer,
         index: Int,
+        pageIndices: Set<Int>?,
         blocks: MutableList<Map<String, Any?>>,
         done: () -> Unit,
     ) {
+        if (cancellation.token.isCancellationRequested) {
+            done()
+            return
+        }
         if (index >= renderer.pageCount) {
             done()
+            return
+        }
+        if (pageIndices != null && !pageIndices.contains(index)) {
+            processPdfPage(renderer, index + 1, pageIndices, blocks, done)
             return
         }
         val page = renderer.openPage(index)
@@ -95,13 +114,13 @@ class NativeOfflineOcrPlugin(
                     val pageBlocks = value["blocks"] as? List<*>
                     pageBlocks?.filterIsInstance<Map<String, Any?>>()?.let(blocks::addAll)
                 }
-                processPdfPage(renderer, index + 1, blocks, done)
+                processPdfPage(renderer, index + 1, pageIndices, blocks, done)
             }
             override fun error(code: String, message: String?, details: Any?) {
-                processPdfPage(renderer, index + 1, blocks, done)
+                processPdfPage(renderer, index + 1, pageIndices, blocks, done)
             }
             override fun notImplemented() {
-                processPdfPage(renderer, index + 1, blocks, done)
+                processPdfPage(renderer, index + 1, pageIndices, blocks, done)
             }
         })
     }
@@ -141,7 +160,7 @@ class NativeOfflineOcrPlugin(
             "text" to line.text,
             "pageIndex" to pageIndex,
             "order" to order,
-            "confidence" to 0.5,
+            "confidence" to null,
             "orientation" to 0,
             "boundingBox" to mapOf(
                 "left" to left,
@@ -159,13 +178,17 @@ class NativeOfflineOcrPlugin(
         "engine" to engine,
         "offline" to true,
         "orientation" to 0,
-        "confidence" to if (blocks.isEmpty()) 0.0 else
-            blocks.map { (it["confidence"] as? Double) ?: 0.5 }.average(),
+        "confidence" to 0.0,
+        "confidenceSource" to "unavailable: ML Kit bundled text recognition exposes no confidence score",
         "blocks" to blocks,
-        "warnings" to if (blocks.isEmpty()) listOf("No text was recognized") else emptyList<String>(),
+        "warnings" to buildList {
+            add("Android ML Kit does not expose per-line recognition confidence.")
+            if (blocks.isEmpty()) add("No text was recognized")
+        },
     )
 
     fun dispose() {
+        cancellation.cancel()
         recognizer.close()
         channel.setMethodCallHandler(null)
     }

@@ -1,10 +1,9 @@
-import 'dart:typed_data';
-
 import 'package:flutter/services.dart';
 
 import 'contracts.dart';
 import 'extractors.dart';
 import 'models.dart';
+import 'platform_support.dart';
 
 class NativeOfflineOcrService implements OfflineOcrService {
   const NativeOfflineOcrService();
@@ -12,23 +11,33 @@ class NativeOfflineOcrService implements OfflineOcrService {
   static const _channel = MethodChannel('com.smartscheduler/offline_ocr');
 
   @override
-  bool get isAvailable => true;
+  bool get isAvailable => nativeOcrPlatform;
 
   @override
   Future<ExtractedContent> recognize({
     required String sourceName,
     required Uint8List bytes,
     required DetectedFileType sourceType,
+    List<int>? pageIndices,
     AnalysisCancellationToken? cancellation,
     AnalysisProgress? onProgress,
   }) async {
     cancellation?.throwIfCancelled();
+    if (!nativeOcrPlatform) {
+      throw const OfflineExtractionException(
+        AnalysisStatus.ocrFailed,
+        'Offline OCR is not available on the web build.',
+      );
+    }
     onProgress?.call('Preparing offline OCR', .58);
+    Future<void> cancel() => _channel.invokeMethod<void>('cancel');
+    cancellation?.addListener(cancel);
     try {
       final response = await _channel.invokeMethod<Object?>('recognize', {
         'sourceName': sourceName,
         'sourceType': sourceType.name,
         'bytes': bytes,
+        if (pageIndices != null) 'pageIndices': pageIndices,
       });
       cancellation?.throwIfCancelled();
       if (response is! Map) {
@@ -43,6 +52,7 @@ class NativeOfflineOcrService implements OfflineOcrService {
         'sourceType': sourceType.name,
         'engine': '${response['engine'] ?? 'native'}',
         'offline': '${response['offline'] ?? true}',
+        'confidenceSource': '${response['confidenceSource'] ?? 'engine'}',
         if (response['orientation'] != null)
           'orientation': '${response['orientation']}',
       };
@@ -66,6 +76,12 @@ class NativeOfflineOcrService implements OfflineOcrService {
         extractionConfidence: _confidence(response['confidence'], blocks),
       );
     } on PlatformException catch (error) {
+      if (cancellation?.isCancelled == true) {
+        throw const OfflineExtractionException(
+          AnalysisStatus.cancelled,
+          'Offline OCR was cancelled.',
+        );
+      }
       throw OfflineExtractionException(
         AnalysisStatus.ocrFailed,
         error.message ?? 'Offline OCR failed.',
@@ -75,6 +91,8 @@ class NativeOfflineOcrService implements OfflineOcrService {
         AnalysisStatus.ocrFailed,
         'Offline OCR is not available on this platform build.',
       );
+    } finally {
+      cancellation?.removeListener(cancel);
     }
   }
 
@@ -119,7 +137,7 @@ class NativeOfflineOcrService implements OfflineOcrService {
         .whereType<num>()
         .map((value) => value.toDouble())
         .toList();
-    if (values.isEmpty) return .5;
+    if (values.isEmpty) return 0;
     return values.reduce((a, b) => a + b) / values.length;
   }
 }

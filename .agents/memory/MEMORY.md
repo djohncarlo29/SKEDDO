@@ -68,3 +68,4 @@
 - [Liquid Glass environmental shadows](liquid-glass-environment-shadow.md) — composite Light Mode shadows as parent layers beneath glass; do not attach them to the translucent material appearance.
 - [Android model asset stripping](android-model-asset-stripping.md) — Flutter/AGP can repopulate model assets after dependency-based tasks; strip platform-excluded assets in the final asset task action and clean before auditing.
 - [OOXML attribute case handling](ooxml-attribute-case.md) — Office relationship and worksheet attributes need case-insensitive local-name matching.
+- [Offline OCR phase boundary](offline-ocr-phase-boundary.md) — native OCR bridges can be implemented offline, but final completion still requires device/sample validation and honest engine-confidence semantics.

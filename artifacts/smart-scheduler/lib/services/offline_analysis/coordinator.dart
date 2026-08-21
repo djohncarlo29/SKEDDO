@@ -16,9 +16,9 @@ class FileAnalysisCoordinator {
     ContentExtractor? extractor,
     ContentPreprocessor? preprocessor,
     EventAnalyzer? analyzer,
-  })  : extractor = extractor ?? LocalContentExtractor(),
-        preprocessor = preprocessor ?? const DefaultContentPreprocessor(),
-        analyzer = analyzer ?? DefaultEventAnalyzer();
+  }) : extractor = extractor ?? LocalContentExtractor(),
+       preprocessor = preprocessor ?? const DefaultContentPreprocessor(),
+       analyzer = analyzer ?? DefaultEventAnalyzer();
 
   Future<AnalysisResult> analyzeOffline({
     required String sourceName,
@@ -71,8 +71,8 @@ class FileAnalysisCoordinator {
       final status = events.isEmpty
           ? AnalysisStatus.noEventsFound
           : warnings.isEmpty
-              ? AnalysisStatus.success
-              : AnalysisStatus.successWithWarnings;
+          ? AnalysisStatus.success
+          : AnalysisStatus.successWithWarnings;
       return AnalysisResult(
         status: status,
         content: prepared,

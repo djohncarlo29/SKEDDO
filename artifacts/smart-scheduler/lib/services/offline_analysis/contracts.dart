@@ -8,10 +8,28 @@ class AnalysisCancelled implements Exception {
 
 class AnalysisCancellationToken {
   bool _cancelled = false;
+  final List<void Function()> _listeners = [];
 
   bool get isCancelled => _cancelled;
 
-  void cancel() => _cancelled = true;
+  void cancel() {
+    if (_cancelled) return;
+    _cancelled = true;
+    for (final listener in List<void Function()>.from(_listeners)) {
+      listener();
+    }
+    _listeners.clear();
+  }
+
+  void addListener(void Function() listener) {
+    if (_cancelled) {
+      listener();
+    } else {
+      _listeners.add(listener);
+    }
+  }
+
+  void removeListener(void Function() listener) => _listeners.remove(listener);
 
   void throwIfCancelled() {
     if (_cancelled) throw const AnalysisCancelled();
@@ -67,6 +85,7 @@ abstract class OfflineOcrService {
     required String sourceName,
     required Uint8List bytes,
     required DetectedFileType sourceType,
+    List<int>? pageIndices,
     AnalysisCancellationToken? cancellation,
     AnalysisProgress? onProgress,
   });

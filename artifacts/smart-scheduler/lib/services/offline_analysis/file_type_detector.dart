@@ -17,10 +17,15 @@ class FileTypeDetector {
     String? mimeType,
   }) {
     final lower = filename.toLowerCase();
-    final ext = lower.contains('.') ? lower.substring(lower.lastIndexOf('.') + 1) : '';
+    final ext = lower.contains('.')
+        ? lower.substring(lower.lastIndexOf('.') + 1)
+        : '';
 
     if (_has(bytes, [0x25, 0x50, 0x44, 0x46])) {
-      return const DetectedFile(DetectedFileType.pdf, mimeType: 'application/pdf');
+      return const DetectedFile(
+        DetectedFileType.pdf,
+        mimeType: 'application/pdf',
+      );
     }
     if (_has(bytes, [0x50, 0x4b, 0x03, 0x04])) {
       if (ext == 'docx') return const DetectedFile(DetectedFileType.docx);
@@ -32,18 +37,33 @@ class FileTypeDetector {
       return const DetectedFile(DetectedFileType.legacyOffice);
     }
     if (_has(bytes, [0x52, 0x54, 0x46, 0x5c, 0x31])) {
-      return const DetectedFile(DetectedFileType.rtf, mimeType: 'application/rtf');
+      return const DetectedFile(
+        DetectedFileType.rtf,
+        mimeType: 'application/rtf',
+      );
     }
 
     switch (ext) {
       case 'txt':
-        return const DetectedFile(DetectedFileType.plainText, mimeType: 'text/plain');
+        return const DetectedFile(
+          DetectedFileType.plainText,
+          mimeType: 'text/plain',
+        );
       case 'md':
-        return const DetectedFile(DetectedFileType.markdown, mimeType: 'text/markdown');
+        return const DetectedFile(
+          DetectedFileType.markdown,
+          mimeType: 'text/markdown',
+        );
       case 'json':
-        return const DetectedFile(DetectedFileType.json, mimeType: 'application/json');
+        return const DetectedFile(
+          DetectedFileType.json,
+          mimeType: 'application/json',
+        );
       case 'xml':
-        return const DetectedFile(DetectedFileType.xml, mimeType: 'application/xml');
+        return const DetectedFile(
+          DetectedFileType.xml,
+          mimeType: 'application/xml',
+        );
       case 'csv':
         return const DetectedFile(DetectedFileType.csv, mimeType: 'text/csv');
       case 'html':
@@ -52,14 +72,26 @@ class FileTypeDetector {
       case 'log':
         return const DetectedFile(DetectedFileType.log, mimeType: 'text/plain');
       case 'ics':
-        return const DetectedFile(DetectedFileType.ics, mimeType: 'text/calendar');
+        return const DetectedFile(
+          DetectedFileType.ics,
+          mimeType: 'text/calendar',
+        );
       case 'vcs':
-        return const DetectedFile(DetectedFileType.vcs, mimeType: 'text/x-vcalendar');
+        return const DetectedFile(
+          DetectedFileType.vcs,
+          mimeType: 'text/x-vcalendar',
+        );
       case 'jpg':
       case 'jpeg':
-        return const DetectedFile(DetectedFileType.image, mimeType: 'image/jpeg');
+        return const DetectedFile(
+          DetectedFileType.image,
+          mimeType: 'image/jpeg',
+        );
       case 'png':
-        return const DetectedFile(DetectedFileType.image, mimeType: 'image/png');
+        return const DetectedFile(
+          DetectedFileType.image,
+          mimeType: 'image/png',
+        );
       case 'doc':
       case 'xls':
       case 'ppt':

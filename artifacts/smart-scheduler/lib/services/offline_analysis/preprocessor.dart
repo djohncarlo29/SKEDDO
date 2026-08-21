@@ -30,10 +30,14 @@ class DefaultContentPreprocessor implements ContentPreprocessor {
       cancellation?.throwIfCancelled();
       onProgress?.call('Running OCR', .55);
       try {
+        final pageIndices = content.detectedType == DetectedFileType.pdf
+            ? _ocrPageIndices(content)
+            : null;
         final ocrContent = await ocr.recognize(
           sourceName: content.sourceName,
           bytes: sourceBytes ?? Uint8List(0),
           sourceType: content.detectedType,
+          pageIndices: pageIndices,
           cancellation: cancellation,
           onProgress: onProgress,
         );
@@ -43,6 +47,12 @@ class DefaultContentPreprocessor implements ContentPreprocessor {
       }
     }
     return normalized;
+  }
+
+  List<int> _ocrPageIndices(ExtractedContent content) {
+    final encoded = content.metadata['ocrPageIndices'];
+    if (encoded == null || encoded.trim().isEmpty) return const [0];
+    return encoded.split(',').map(int.tryParse).whereType<int>().toList();
   }
 
   ExtractedContent _normalize(ExtractedContent content) {
