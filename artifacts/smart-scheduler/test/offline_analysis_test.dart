@@ -80,6 +80,44 @@ void main() {
     expect(result.failure?.message, contains('OCR'));
   });
 
+  test('OCR lines are combined before finding events', () async {
+    final analyzer = DefaultEventAnalyzer();
+    final content = ExtractedContent(
+      sourceName: 'invite.png',
+      detectedType: DetectedFileType.image,
+      byteSize: 1,
+      plainText: 'Design review\nAugust 28\n9:00 AM\nRoom A',
+      blocks: const [
+        ContentBlock(
+          kind: ContentBlockKind.paragraph,
+          text: 'Design review',
+          order: 0,
+        ),
+        ContentBlock(
+          kind: ContentBlockKind.paragraph,
+          text: 'August 28',
+          order: 1,
+        ),
+        ContentBlock(
+          kind: ContentBlockKind.paragraph,
+          text: '9:00 AM',
+          order: 2,
+        ),
+        ContentBlock(
+          kind: ContentBlockKind.paragraph,
+          text: 'Room A',
+          order: 3,
+        ),
+      ],
+    );
+
+    final events = await analyzer.analyze(content);
+
+    expect(events, hasLength(1));
+    expect(events.single.title, contains('Design review'));
+    expect(events.single.time, '09:00');
+  });
+
   test(
     'legacy Office files are not reported as successfully analyzed',
     () async {

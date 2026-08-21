@@ -22,15 +22,31 @@ class DefaultEventAnalyzer implements EventAnalyzer {
       return _calendarEvents(content, cancellation, onProgress);
     }
     final events = <ExtractedEvent>[];
-    final sourceBlocks = content.blocks.isEmpty
-        ? [
-            ContentBlock(
-              kind: ContentBlockKind.paragraph,
-              text: content.plainText,
-              order: 0,
-            ),
-          ]
-        : content.blocks;
+    final sourceBlocks = <ContentBlock>[
+      if (content.blocks.isEmpty)
+        ContentBlock(
+          kind: ContentBlockKind.paragraph,
+          text: content.plainText,
+          order: 0,
+        )
+      else ...content.blocks,
+    ];
+    // OCR engines normally return one block per line. Dates and times are
+    // often split across multiple lines on invitations and screenshots, so
+    // also analyze the reconstructed document text as one candidate. The
+    // final dedupe pass prevents this combined candidate from duplicating an
+    // event already found in an individual block.
+    final combinedText = content.plainText.trim();
+    if (content.blocks.length > 1 && combinedText.isNotEmpty) {
+      sourceBlocks.add(
+        ContentBlock(
+          kind: ContentBlockKind.paragraph,
+          text: combinedText,
+          order: content.blocks.length,
+          metadata: const {'combinedSource': true},
+        ),
+      );
+    }
     final total = sourceBlocks.isEmpty ? 1 : sourceBlocks.length;
 
     for (var index = 0; index < sourceBlocks.length; index++) {
