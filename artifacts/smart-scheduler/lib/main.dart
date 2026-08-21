@@ -21,7 +21,6 @@ import 'widgets/action_panel.dart';
 import 'widgets/events_header_icon.dart';
 import 'widgets/floating_tab_pill.dart';
 import 'widgets/native_text_input.dart';
-import 'widgets/rounded_cupertino_sheet.dart';
 import 'widgets/search_bar_widget.dart';
 import 'widgets/view_mode_icons.dart';
 import 'app_settings.dart';

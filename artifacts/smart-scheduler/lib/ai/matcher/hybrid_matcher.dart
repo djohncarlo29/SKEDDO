@@ -1,6 +1,5 @@
 import 'dart:math' show sqrt;
 import '../interfaces.dart';
-import '../parsed_date.dart';
 import '../smart_rule_parser.dart';
 import '../../services/event_model.dart';
 

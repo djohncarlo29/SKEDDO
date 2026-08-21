@@ -1,5 +1,3 @@
-import 'dart:collection';
-
 // ─────────────────────────────────────────────────────────────────────────────
 // WordPieceTokenizer — BERT-style tokenizer for all-MiniLM-L6-v2.
 //

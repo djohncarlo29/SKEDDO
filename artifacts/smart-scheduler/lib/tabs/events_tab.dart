@@ -8,14 +8,11 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart'
     show
-        DeviceGestureSettings,
         GestureRecognizerFactoryWithHandlers,
-        kTouchSlop,
         ScaleGestureRecognizer;
 import 'package:flutter/material.dart'
-    show Icons, ReorderableDragStartListener, ReorderableListView;
+    show ReorderableDragStartListener, ReorderableListView;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/physics.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:flutter_svg/flutter_svg.dart';

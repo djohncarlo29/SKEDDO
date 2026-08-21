@@ -5,7 +5,6 @@
 import FlutterMacOS
 import Foundation
 
-import cupertino_native
 import device_info_plus
 import file_picker
 import file_selector_macos
@@ -18,7 +17,6 @@ import super_native_extensions
 import url_launcher_macos
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
-  CupertinoNativePlugin.register(with: registry.registrar(forPlugin: "CupertinoNativePlugin"))
   DeviceInfoPlusMacosPlugin.register(with: registry.registrar(forPlugin: "DeviceInfoPlusMacosPlugin"))
   FilePickerPlugin.register(with: registry.registrar(forPlugin: "FilePickerPlugin"))
   FileSelectorPlugin.register(with: registry.registrar(forPlugin: "FileSelectorPlugin"))
