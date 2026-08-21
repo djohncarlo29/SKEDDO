@@ -453,6 +453,10 @@ const kPillColor = CupertinoDynamicColor.withBrightness(
   darkColor: Color(0xFF3E3E40),
 );
 
+// Settled Liquid Glass slider thumb. This intentionally stays the Light Mode
+// color in both themes.
+const kLiquidGlassSliderThumbColor = Color(0xFFFDFDFD);
+
 // ── Shared shape constants ────────────────────────────────────────────────────
 // Shared radius for every SquircleStadiumBorder.  The path clamps this only
 // when the painted control is physically shorter than 48 px.

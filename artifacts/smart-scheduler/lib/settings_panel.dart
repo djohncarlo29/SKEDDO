@@ -884,9 +884,13 @@ class _LiquidGlassSection extends StatelessWidget {
                         width: constraints.maxWidth,
                         height: rowHeight,
                         layout: _liquidGlassSliderLayout,
+                        // Report only the final value on a drag release. This
+                        // lets the parent's snapped value retarget the slider
+                        // spring, including exact 0.0 and 1.0 endpoints.
+                        isContinuous: false,
                         activeColor: accent,
                         inactiveColor: inactive,
-                        thumbColor: cardBg,
+                        thumbColor: kLiquidGlassSliderThumbColor,
                         onChanged: (raw) {
                           _setLiquidGlassOpacity(raw);
                         },
@@ -909,7 +913,10 @@ class _LiquidGlassSection extends StatelessWidget {
 // The slider package reserves this inset so the lifted glass thumb remains
 // completely inside the control while it deforms at either end. Keep the
 // painted stops in the thumb-centre range, rather than at the outer track box.
-const double _kLiquidGlassSliderInset = 27.2;
+// No extra visual inset: the resting thumb's 37 px width now reaches the
+// previous stop length at both sides. The slider's Stack intentionally allows
+// the 58 px lifted glass thumb to extend beyond that resting edge.
+const double _kLiquidGlassSliderInset = 0.0;
 const LiquidGlassSliderLayout _liquidGlassSliderLayout =
     LiquidGlassSliderLayout(horizontalInset: _kLiquidGlassSliderInset);
 
