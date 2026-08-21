@@ -4,11 +4,14 @@ import 'dart:typed_data';
 import 'contracts.dart';
 import 'extractors.dart';
 import 'models.dart';
+import 'native_ocr.dart';
 
 class DefaultContentPreprocessor implements ContentPreprocessor {
   final OfflineOcrService ocr;
 
-  const DefaultContentPreprocessor({this.ocr = const UnavailableOfflineOcrService()});
+  const DefaultContentPreprocessor({
+    this.ocr = const NativeOfflineOcrService(),
+  });
 
   @override
   Future<ExtractedContent> preprocess(
@@ -44,32 +47,42 @@ class DefaultContentPreprocessor implements ContentPreprocessor {
 
   ExtractedContent _normalize(ExtractedContent content) {
     final blocks = content.blocks
-        .map((block) => ContentBlock(
-              kind: block.kind,
-              text: _clean(block.text),
-              pageIndex: block.pageIndex,
-              sectionIndex: block.sectionIndex,
-              boundingBox: block.boundingBox,
-              order: block.order,
-              metadata: block.metadata,
-            ))
+        .map(
+          (block) => ContentBlock(
+            kind: block.kind,
+            text: _clean(block.text),
+            pageIndex: block.pageIndex,
+            sectionIndex: block.sectionIndex,
+            boundingBox: block.boundingBox,
+            order: block.order,
+            metadata: block.metadata,
+          ),
+        )
         .where((block) => block.text.isNotEmpty)
         .toList();
-    final plain = blocks.isEmpty ? _clean(content.plainText) : blocks.map((b) => b.text).join('\n');
+    final plain = blocks.isEmpty
+        ? _clean(content.plainText)
+        : blocks.map((b) => b.text).join('\n');
     final deduped = <String>{};
     final filtered = blocks.where((b) => deduped.add(b.text)).toList();
     return content.copyWith(
-      plainText: filtered.map((b) => b.text).join('\n').isEmpty ? plain : filtered.map((b) => b.text).join('\n'),
+      plainText: filtered.map((b) => b.text).join('\n').isEmpty
+          ? plain
+          : filtered.map((b) => b.text).join('\n'),
       blocks: filtered,
       sections: filtered,
       warnings: [
         ...content.warnings,
-        if (filtered.length != blocks.length) 'Repeated content was removed before analysis.',
+        if (filtered.length != blocks.length)
+          'Repeated content was removed before analysis.',
       ],
     );
   }
 
-  ExtractedContent _merge(ExtractedContent original, ExtractedContent ocrContent) {
+  ExtractedContent _merge(
+    ExtractedContent original,
+    ExtractedContent ocrContent,
+  ) {
     return original.copyWith(
       plainText: ocrContent.plainText,
       blocks: ocrContent.blocks,
@@ -77,7 +90,10 @@ class DefaultContentPreprocessor implements ContentPreprocessor {
       sections: ocrContent.sections,
       images: ocrContent.images,
       warnings: [...original.warnings, ...ocrContent.warnings],
-      extractionConfidence: math.min(original.extractionConfidence + .2, ocrContent.extractionConfidence),
+      extractionConfidence: math.min(
+        original.extractionConfidence + .2,
+        ocrContent.extractionConfidence,
+      ),
     );
   }
 

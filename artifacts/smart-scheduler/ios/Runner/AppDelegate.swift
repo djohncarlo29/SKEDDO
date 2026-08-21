@@ -4,6 +4,7 @@ import UIKit
 @main
 @objc class AppDelegate: FlutterAppDelegate {
   private var nativeStt: NativeSttPlugin?
+  private var offlineOcr: NativeOfflineOcrPlugin?
 
   override func application(
     _ application: UIApplication,
@@ -14,6 +15,7 @@ import UIKit
     // messenger is fully initialised.
     if let controller = window?.rootViewController as? FlutterViewController {
       nativeStt = NativeSttPlugin(messenger: controller.binaryMessenger)
+      offlineOcr = NativeOfflineOcrPlugin(messenger: controller.binaryMessenger)
     }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
