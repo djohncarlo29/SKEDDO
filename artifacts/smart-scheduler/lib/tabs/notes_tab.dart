@@ -3084,6 +3084,7 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
                   icon: CupertinoIcons.checkmark,
                   containerColor: resolveAccentColor(context),
                   iconColor: CupertinoColors.white,
+                  isCheckmark: true,
                   tapDelay: const Duration(milliseconds: 130),
                   onTap: widget.onConfirm,
                 ),
@@ -3293,6 +3294,7 @@ class _PreviewCircleButton extends StatelessWidget {
   // Delay before firing onTap. Use ~130 ms for dismiss buttons so the bloom
   // peak is visible before the screen closes. Duration.zero = immediate.
   final Duration tapDelay;
+  final bool isCheckmark;
 
   const _PreviewCircleButton({
     required this.icon,
@@ -3302,6 +3304,7 @@ class _PreviewCircleButton extends StatelessWidget {
     this.flipHorizontal = false,
     this.verticalIconOffset = 0.0,
     this.tapDelay = Duration.zero,
+    this.isCheckmark = false,
   });
 
   @override
@@ -3318,6 +3321,7 @@ class _PreviewCircleButton extends StatelessWidget {
       onTap: onTap,
       child: LiquidGlassGelCircle(
         color: resolvedContainerColor,
+        isCheckmark: isCheckmark,
         child: Center(
           child: Transform.translate(
             offset: Offset(0, verticalIconOffset),
