@@ -2,7 +2,7 @@ name: smart_scheduler
 description: "SKEDDO"
 publish_to: 'none'
 
-version: 1.0.0+15
+version: 1.0.0+16
 
 environment:
   # Support both the workspace Flutter toolchain and Shorebird's newer Dart
@@ -41,6 +41,12 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+
+dependency_overrides:
+  # Keep ONNX Runtime's Dart/iOS/macOS implementation, but do not expose the
+  # plugin's Android implementation. Android uses tflite_flutter instead.
+  flutter_onnxruntime:
+    path: packages/flutter_onnxruntime
 
 flutter:
   uses-material-design: true

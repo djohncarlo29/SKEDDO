@@ -99,3 +99,61 @@ afterEvaluate {
         dependsOn("patchGeneratedPluginRegistrant")
     }
 }
+
+// Android uses only the TFLite model. Keep the shared asset declaration intact
+// for iOS/macOS, but remove the ONNX model from Flutter's Android asset bundle
+// after Flutter assembles it and before AGP packages the release APK.
+val stripAndroidOnnxAsset = tasks.register("stripAndroidOnnxAsset") {
+    doLast {
+        val assetRoots = listOf(
+            file("${project.layout.buildDirectory.get().asFile}/intermediates/flutter/release/flutter_assets"),
+            file("${project.layout.buildDirectory.get().asFile}/intermediates/assets/release/mergeReleaseAssets/flutter_assets"),
+            file("${project.layout.buildDirectory.get().asFile}/intermediates/compressed_assets/release/compressReleaseAssets/out/assets/flutter_assets")
+        )
+        var removed = false
+        for (assetRoot in assetRoots) {
+            val onnxAsset = file("${assetRoot.path}/assets/models/all-MiniLM-L6-v2.onnx")
+            if (onnxAsset.exists()) {
+                onnxAsset.delete()
+                println("stripAndroidOnnxAsset: removed ${onnxAsset.path}")
+                removed = true
+            }
+        }
+        if (!removed) {
+            println("stripAndroidOnnxAsset: ONNX asset was not present in Android asset inputs")
+        }
+    }
+}
+
+afterEvaluate {
+    tasks.matching {
+        it.name == "copyFlutterAssetsRelease" ||
+            it.name == "mergeReleaseAssets" ||
+            it.name == "compressReleaseAssets"
+    }.configureEach {
+        // These tasks can copy Flutter assets after an ordinary dependency-based
+        // strip task. Run the same removal as the final action of each task.
+        doLast {
+            val onnxPaths = listOf(
+                "${project.layout.buildDirectory.get().asFile}/intermediates/flutter/release/flutter_assets/assets/models/all-MiniLM-L6-v2.onnx",
+                "${project.layout.buildDirectory.get().asFile}/intermediates/assets/release/mergeReleaseAssets/flutter_assets/assets/models/all-MiniLM-L6-v2.onnx",
+                "${project.layout.buildDirectory.get().asFile}/intermediates/compressed_assets/release/compressReleaseAssets/out/assets/flutter_assets/assets/models/all-MiniLM-L6-v2.onnx"
+            )
+            onnxPaths.map(::file).filter { it.exists() }.forEach {
+                it.delete()
+                println("${name}: removed ${it.path}")
+            }
+        }
+    }
+    tasks.matching { it.name == "stripAndroidOnnxAsset" }.configureEach {
+        dependsOn("compileFlutterBuildRelease")
+        dependsOn("copyFlutterAssetsRelease")
+        dependsOn("mergeReleaseAssets")
+        dependsOn("compressReleaseAssets")
+    }
+    tasks.matching {
+        it.name == "packageRelease" || it.name == "packageReleaseBundle"
+    }.configureEach {
+        dependsOn(stripAndroidOnnxAsset)
+    }
+}
