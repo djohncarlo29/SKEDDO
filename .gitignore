@@ -56,3 +56,8 @@ node_modules/
 project.zip
 SKEDDO.apk
 build/
+
+# Local environment files — never commit secret values
+.env
+.env.*
+!.env.example
