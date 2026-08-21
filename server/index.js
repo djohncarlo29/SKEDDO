@@ -12,6 +12,8 @@ const http  = require('http');
 const https = require('https');
 const path  = require('path');
 const fs    = require('fs');
+const os    = require('os');
+const { spawnSync } = require('child_process');
 
 const PORT    = process.env.PORT || 24355;
 const WEB_DIR = path.join(__dirname, '..', 'artifacts', 'smart-scheduler', 'build', 'web');
@@ -100,6 +102,79 @@ function geminiText(result) {
   return result?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 }
 
+// LibreOffice is the reliable bridge for the old OLE/binary Office formats.
+// Keep the conversion server-side: the Flutter client should not need to ship
+// a fragile binary parser or change its Gemini request format.
+const LEGACY_OFFICE_EXTS = new Set([
+  'doc', 'xls', 'ppt',
+  // Other legacy/OpenDocument-era formats LibreOffice can commonly read.
+  'wps', 'wpd', 'sxw', 'sxc', 'sxi', 'sdw', 'vor',
+]);
+
+function findLibreOffice() {
+  const configured = process.env.LIBREOFFICE_BIN;
+  const candidates = configured ? [configured] : ['libreoffice', 'soffice'];
+  for (const command of candidates) {
+    const probe = spawnSync(command, ['--version'], {
+      stdio: 'ignore',
+      timeout: 5000,
+    });
+    if (!probe.error && probe.status === 0) return command;
+  }
+  return null;
+}
+
+function convertLegacyOfficeToText(fileBase64, filename) {
+  if (typeof fileBase64 !== 'string' || fileBase64.length > 40 * 1024 * 1024) {
+    throw new Error('The legacy Office file is missing or too large');
+  }
+  const ext = path.extname(filename).slice(1).toLowerCase();
+  if (!LEGACY_OFFICE_EXTS.has(ext)) {
+    throw new Error(`Unsupported legacy Office format: .${ext || 'unknown'}`);
+  }
+
+  const office = findLibreOffice();
+  if (!office) {
+    throw new Error('LibreOffice is not installed on the analysis server');
+  }
+
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'skeddo-office-'));
+  const inputPath = path.join(tempRoot, `input.${ext}`);
+  const outputPath = path.join(tempRoot, 'input.txt');
+  try {
+    fs.writeFileSync(inputPath, Buffer.from(fileBase64, 'base64'));
+    const converted = spawnSync(
+      office,
+      [
+        '--headless',
+        `-env:UserInstallation=file://${path.join(tempRoot, 'lo-profile')}`,
+        '--convert-to', 'txt:Text',
+        '--outdir', tempRoot,
+        inputPath,
+      ],
+      {
+        cwd: tempRoot,
+        encoding: 'utf8',
+        timeout: 60000,
+        maxBuffer: 1024 * 1024,
+      },
+    );
+    if (converted.error || converted.status !== 0 || !fs.existsSync(outputPath)) {
+      const detail = (converted.stderr || converted.stdout || '').trim();
+      throw new Error(
+        detail
+          ? `LibreOffice conversion failed: ${detail.slice(0, 400)}`
+          : 'LibreOffice conversion failed',
+      );
+    }
+    const text = fs.readFileSync(outputPath, 'utf8').replace(/\u0000/g, '').trim();
+    if (!text) throw new Error('The converted file contains no readable text');
+    return text;
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+}
+
 // ── Prompts ───────────────────────────────────────────────────────────────────
 
 const PARSE_RULE_PROMPT =
@@ -141,6 +216,24 @@ async function handleExtract(req, res) {
         { inline_data: { mime_type: body.mimeType, data: body.imageBase64 } },
         { text: EXTRACT_PROMPT },
       ];
+    } else if (body.legacyFileBase64 && body.filename) {
+      let convertedText;
+      try {
+        convertedText = convertLegacyOfficeToText(
+          body.legacyFileBase64,
+          path.basename(String(body.filename)),
+        );
+      } catch (conversionError) {
+        json(res, 422, {
+          error: `Could not convert this legacy Office file. ${conversionError.message}`,
+        });
+        return;
+      }
+      parts = [{
+        text: `Extract events from the converted legacy Office document ` +
+          `("${path.basename(String(body.filename))}"):\n\n` +
+          `${convertedText}\n\n${EXTRACT_PROMPT}`,
+      }];
     } else if (body.text) {
       parts = [{ text: `Extract events from the following text:\n\n${body.text}\n\n${EXTRACT_PROMPT}` }];
     } else {

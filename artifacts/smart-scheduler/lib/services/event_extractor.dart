@@ -103,6 +103,32 @@ class EventExtractor {
     }
   }
 
+  /// Extract events from a legacy binary Office file. The proxy converts the
+  /// file with LibreOffice, then uses the same text-based Gemini flow.
+  static Future<List<ExtractedEvent>> fromLegacyOffice(
+    Uint8List bytes,
+    String filename,
+  ) async {
+    _assertEnabled();
+    if (!_hasProxy) {
+      throw const ExtractionException(
+        'Legacy Office files require the server conversion service.',
+      );
+    }
+    final base = kIsWeb ? '' : _proxyBase;
+    final response = await http
+        .post(
+          Uri.parse('$base/api/gemini/extract'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'legacyFileBase64': base64Encode(bytes),
+            'filename': filename,
+          }),
+        )
+        .timeout(const Duration(seconds: 90));
+    return _parseProxy(response);
+  }
+
   // ── Direct Gemini calls (mobile, no proxy) ──────────────────────────────────
 
   static Future<List<ExtractedEvent>> _directFromImage(

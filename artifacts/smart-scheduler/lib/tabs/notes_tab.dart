@@ -914,11 +914,41 @@ class _NoteInputCardState extends State<_NoteInputCard>
           _analyzeText(_extractOpenDocumentText(bytes));
           return;
         default:
-          final message = _kLegacyOfficeExts.contains(ext)
-              ? 'Legacy .$ext files need to be saved as PDF, DOCX, XLSX, or PPTX for AI analysis.'
-              : 'This file format is not supported yet for AI analysis.';
-          setState(() => _extractionError = message);
+          if (_kLegacyOfficeExts.contains(ext)) {
+            _analyzeLegacyOffice(bytes, _pickedFile!.name);
+          } else {
+            setState(
+              () => _extractionError =
+                  'This file format is not supported yet for AI analysis.',
+            );
+          }
       }
+    }
+  }
+
+  Future<void> _analyzeLegacyOffice(Uint8List bytes, String filename) async {
+    if (!mounted) return;
+    setState(() {
+      _isAnalyzing = true;
+      _extractionError = null;
+    });
+    try {
+      final events = await EventExtractor.fromLegacyOffice(bytes, filename);
+      if (!mounted) return;
+      setState(() => _isAnalyzing = false);
+      if (context.mounted) _showResultSheet(events);
+    } on ExtractionException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isAnalyzing = false;
+        _extractionError = e.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isAnalyzing = false;
+        _extractionError = 'Could not convert this legacy Office file.';
+      });
     }
   }
 
@@ -2185,8 +2215,9 @@ const _kMonoExts = <String>{'csv', 'tsv', 'json', 'xml', 'ini', 'toml'};
 const _kNoPreviewExts = <String>{'doc', 'xls', 'xlsx', 'ppt', 'pptx'};
 
 // Common document formats that can be analyzed after picking them from the
-// Notes attachment menu. PDFs remain multimodal input; office/open-document
-// formats are converted to readable text locally before the AI call.
+// Notes attachment menu. PDFs remain multimodal input; modern Office and
+// OpenDocument formats are read locally, while legacy binary formats use the
+// server's LibreOffice conversion path.
 const _kAiDocumentExts = <String>{
   'pdf',
   'docx',
@@ -2197,7 +2228,18 @@ const _kAiDocumentExts = <String>{
   'odp',
 };
 
-const _kLegacyOfficeExts = <String>{'doc', 'xls', 'ppt'};
+const _kLegacyOfficeExts = <String>{
+  'doc',
+  'xls',
+  'ppt',
+  'wps',
+  'wpd',
+  'sxw',
+  'sxc',
+  'sxi',
+  'sdw',
+  'vor',
+};
 
 String _mimeForImageExtension(String ext) {
   switch (ext) {
@@ -2367,9 +2409,11 @@ String _extractXlsxText(Uint8List bytes) {
             values.add('');
           } else if (type == 's') {
             final index = int.tryParse(value);
-            values.add(index != null && index >= 0 && index < shared.length
-                ? shared[index]
-                : value);
+            values.add(
+              index != null && index >= 0 && index < shared.length
+                  ? shared[index]
+                  : value,
+            );
           } else {
             values.add(value);
           }
@@ -2380,7 +2424,9 @@ String _extractXlsxText(Uint8List bytes) {
       }
     }
     final result = output.toString().trim();
-    return result.isEmpty ? '[Spreadsheet appears to have no text content]' : result;
+    return result.isEmpty
+        ? '[Spreadsheet appears to have no text content]'
+        : result;
   } catch (e) {
     return '[Could not parse XLSX: $e]';
   }
@@ -2406,7 +2452,9 @@ String _extractPptxText(Uint8List bytes) {
       if (text.isNotEmpty) output.writeln(text);
     }
     final result = output.toString().trim();
-    return result.isEmpty ? '[Presentation appears to have no text content]' : result;
+    return result.isEmpty
+        ? '[Presentation appears to have no text content]'
+        : result;
   } catch (e) {
     return '[Could not parse PPTX: $e]';
   }

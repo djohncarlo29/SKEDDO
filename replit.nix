@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.libreoffice
     pkgs.flutter329
     pkgs.dart
     pkgs.timetrap
