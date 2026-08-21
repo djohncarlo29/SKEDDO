@@ -902,12 +902,8 @@ class _LiquidGlassSection extends StatelessWidget {
                             activeColor: accent,
                             inactiveColor: inactive,
                             thumbColor: const Color(0xFFFDFDFD),
-                            onChanged: (raw) {
-                              _setLiquidGlassOpacity(raw);
-                            },
-                            onChangeEnd: (raw) {
-                              _setLiquidGlassOpacity(raw);
-                            },
+                            onChanged: _setLiquidGlassOpacity,
+                            onChangeEnd: _setLiquidGlassOpacity,
                           ),
                         ),
                       );
@@ -954,7 +950,7 @@ class _LiquidGlassStopsPainter extends CustomPainter {
     final centerY = size.height / 2;
     final paint = Paint()
       ..color = color
-      ..strokeWidth = 1
+      ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
     for (var i = 0; i <= 10; i++) {
       final x = left + (right - left) * i / 10;
