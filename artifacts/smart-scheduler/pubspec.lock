@@ -410,10 +410,9 @@ packages:
   liquid_glass_easy:
     dependency: "direct main"
     description:
-      name: liquid_glass_easy
-      sha256: "6cf4d3f15088ce83669429f568aad918cdfa851f3d6de01f1a7d199d5032a7dc"
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/liquid_glass_easy"
+      relative: true
+    source: path
     version: "4.0.0"
   matcher:
     dependency: transitive

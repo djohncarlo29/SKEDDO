@@ -840,10 +840,7 @@ class _LiquidGlassSection extends StatelessWidget {
     final cardBg = resolveThemeColor(kCardColor, context);
     final shadowColor = resolveThemeColor(kCardShadowColor, context);
     final accent = resolveAccentColor(context);
-    final inactive = resolveThemeColor(
-      kSeparatorColor,
-      context,
-    ).withValues(alpha: 0.55);
+    final inactive = resolveThemeColor(kTertiaryLabel, context);
     final textScaler = MediaQuery.textScalerOf(context);
     // Keep this control aligned with the other solo settings rows at the
     // default size, while allowing the row to grow with Dynamic Type.
