@@ -758,7 +758,6 @@ class _NoteInputCardState extends State<_NoteInputCard>
         isClosing: _attachClosing,
         onDismiss: _hideAttachMenu,
         actions: items,
-        useLiquidGlass: true,
       ),
     );
     Overlay.of(context).insert(_attachOverlay!);
