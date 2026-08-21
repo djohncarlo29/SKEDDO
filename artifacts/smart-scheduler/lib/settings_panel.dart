@@ -892,9 +892,7 @@ class _LiquidGlassSection extends StatelessWidget {
                         alignment: Alignment.center,
                         minWidth: sliderWidth,
                         maxWidth: sliderWidth,
-                        child: CustomPaint(
-                          painter: _LiquidGlassStopsPainter(color: inactive),
-                          child: LiquidGlassSlider(
+                        child: LiquidGlassSlider(
                             value: value,
                             minimumValue: 0,
                             maximumValue: 1,
@@ -909,13 +907,13 @@ class _LiquidGlassSection extends StatelessWidget {
                             // This lets the parent's snapped value retarget
                             // the slider spring, including exact endpoints.
                             isContinuous: false,
+                            divisions: 10,
                             activeColor: accent,
                             inactiveColor: inactive,
                             thumbColor: const Color(0xFFFDFDFD),
                             onChanged: _setLiquidGlassOpacity,
                             onChangeEnd: _setLiquidGlassOpacity,
                           ),
-                        ),
                       );
                     },
                   );
@@ -945,44 +943,6 @@ void _setLiquidGlassOpacity(double raw) {
     appLiquidGlassOpacityNotifier.value = snapped;
     saveAppSetting('Liquid Glass', snapped.toString());
   }
-}
-
-class _LiquidGlassStopsPainter extends CustomPainter {
-  final Color color;
-
-  const _LiquidGlassStopsPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const thumbHalfWidth = _kLiquidGlassThumbWidth / 2;
-    final left = _kLiquidGlassSliderInset + thumbHalfWidth;
-    final right = size.width - left;
-    final centerY = size.height / 2;
-    // The package paints the 6 px track after this painter. Keep the ticks'
-    // shared-color pixels outside that track so translucent colors do not
-    // accumulate where a vertical tick crosses the horizontal track.
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    for (var i = 0; i <= 10; i++) {
-      final x = left + (right - left) * i / 10;
-      canvas.drawLine(
-        Offset(x, centerY - 5),
-        Offset(x, centerY - 3),
-        paint,
-      );
-      canvas.drawLine(
-        Offset(x, centerY + 3),
-        Offset(x, centerY + 5),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_LiquidGlassStopsPainter oldDelegate) =>
-      oldDelegate.color != color;
 }
 
 // ── Squircle card shell shared by both section types ──────────────────────────
