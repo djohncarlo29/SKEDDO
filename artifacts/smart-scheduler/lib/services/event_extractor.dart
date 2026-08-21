@@ -176,18 +176,47 @@ class EventExtractor {
     final uri = Uri.parse(
       '$_geminiHost/$_geminiModel:generateContent?key=$_directKey',
     );
-    final response = await http
-        .post(uri, headers: {'Content-Type': 'application/json'}, body: body)
-        .timeout(const Duration(seconds: 30));
-    if (response.statusCode != 200) {
+    for (var attempt = 0; attempt < 3; attempt++) {
+      final response = await http
+          .post(uri, headers: {'Content-Type': 'application/json'}, body: body)
+          .timeout(const Duration(seconds: 30));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return (data['candidates']?[0]?['content']?['parts']?[0]?['text']
+                as String?) ??
+            '';
+      }
+
+      if (response.statusCode == 429 && attempt < 2) {
+        await Future<void>.delayed(Duration(seconds: 1 << attempt));
+        continue;
+      }
+
+      if (response.statusCode == 429) {
+        throw const ExtractionException(
+          'Gemini rate limit or quota reached (HTTP 429). '
+          'Wait a little and try again, or check the Gemini API quota for '
+          'the configured key.',
+        );
+      }
+
+      String? detail;
+      try {
+        final error =
+            (jsonDecode(response.body) as Map<String, dynamic>)['error'];
+        if (error is Map<String, dynamic>) {
+          detail = error['message'] as String?;
+        }
+      } catch (_) {
+        // Keep the status-only message when Gemini returns a non-JSON error.
+      }
       throw ExtractionException(
-        'AI analysis failed (HTTP ${response.statusCode})',
+        detail == null || detail.isEmpty
+            ? 'AI analysis failed (HTTP ${response.statusCode})'
+            : 'AI analysis failed (HTTP ${response.statusCode}): $detail',
       );
     }
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    return (data['candidates']?[0]?['content']?['parts']?[0]?['text']
-            as String?) ??
-        '';
+    throw const ExtractionException('AI analysis failed.');
   }
 
   static List<ExtractedEvent> _parseGeminiText(String raw) {
