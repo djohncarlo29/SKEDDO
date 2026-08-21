@@ -2442,7 +2442,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               // available across tabs and is naturally covered by shell
               // overlays.
               AnimatedBuilder(
-                animation: _dcvSlideController,
+                animation: Listenable.merge([
+                  _dcvSlideController,
+                  appLiquidGlassOpacityNotifier,
+                ]),
                 builder: (context, _) {
                   final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
                   final isDCVVisual =

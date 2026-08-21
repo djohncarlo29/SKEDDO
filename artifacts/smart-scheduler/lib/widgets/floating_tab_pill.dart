@@ -3,6 +3,7 @@ import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
 import '../app_theme.dart';
+import '../app_settings.dart';
 import 'fixed_size_icon.dart';
 
 /// The AppShell's platform-neutral floating tab control.
@@ -37,7 +38,9 @@ class FloatingTabPill extends StatelessWidget {
       appearance: LiquidGlassTabBar.defaultStyle.appearance.copyWith(
         // Use the resolved header surface itself, not a white overlay. This
         // keeps the bar denser while preserving the correct Light/Dark tone.
-        color: headerColor.withValues(alpha: barOpacity),
+        color: headerColor.withValues(
+          alpha: appLiquidGlassOpacityNotifier.value,
+        ),
       ),
       shape: const LiquidGlassShape.continuousRoundedRectangle(
         // Match the shared bounded stadium geometry used by the rest of the

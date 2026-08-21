@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
+import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'ai/ai_services.dart';
 import 'ai/parsed_date.dart';
 import 'app_settings.dart';
@@ -65,11 +68,13 @@ class _SettingsRoute {
   // When true, _SubScreen renders the accent-color picker instead of the
   // standard text-option list.
   final bool isAccentColor;
+  final bool isLiquidGlass;
   const _SettingsRoute({
     required this.title,
     required this.options,
     required this.defaultValue,
     this.isAccentColor = false,
+    this.isLiquidGlass = false,
   });
 }
 
@@ -101,6 +106,12 @@ const _kRoutes = <String, _SettingsRoute>{
     title: 'Text Size',
     options: ['Compact', 'Default', 'Large'],
     defaultValue: 'Default',
+  ),
+  'Liquid Glass': _SettingsRoute(
+    title: 'Liquid Glass',
+    options: [],
+    defaultValue: '',
+    isLiquidGlass: true,
   ),
   'App Icon': _SettingsRoute(
     title: 'App Icon',
@@ -254,6 +265,7 @@ class _SettingsPanelState extends State<SettingsPanel>
         appDefaultViewNotifier,
         appEventDurationNotifier,
         appDateLocaleNotifier,
+        appLiquidGlassOpacityNotifier,
       ]),
       builder: (context, _) {
         final swatch = _kAccentSwatches[appAccentNotifier.value];
@@ -275,6 +287,8 @@ class _SettingsPanelState extends State<SettingsPanel>
             appDateLocaleNotifier.value == DateLocalePreference.dayFirst
             ? 'Day first (D/M/Y)'
             : 'Month first (M/D/Y)';
+        final liquidGlassOpacityLabel = appLiquidGlassOpacityNotifier.value
+            .toStringAsFixed(1);
 
         final headerHeight = widget.topInset + 101;
 
@@ -301,6 +315,7 @@ class _SettingsPanelState extends State<SettingsPanel>
                         defaultViewLabel: defaultViewLabel,
                         eventDurationLabel: eventDurationLabel,
                         dateFormatLabel: dateFormatLabel,
+                        liquidGlassOpacityLabel: liquidGlassOpacityLabel,
                       ),
                     ),
                   ),
@@ -368,6 +383,7 @@ class _MainSettingsContent extends StatelessWidget {
   final String defaultViewLabel;
   final String eventDurationLabel;
   final String dateFormatLabel;
+  final String liquidGlassOpacityLabel;
 
   const _MainSettingsContent({
     required this.bottomInset,
@@ -380,6 +396,7 @@ class _MainSettingsContent extends StatelessWidget {
     required this.defaultViewLabel,
     required this.eventDurationLabel,
     required this.dateFormatLabel,
+    required this.liquidGlassOpacityLabel,
   });
 
   void _tap(String title) {
@@ -437,6 +454,11 @@ class _MainSettingsContent extends StatelessWidget {
               title: 'Text Size',
               trailing: _ValueTrailing(textSizeLabel),
               onTap: () => _tap('Text Size'),
+            ),
+            _SettingsRow(
+              title: 'Liquid Glass',
+              trailing: _ValueTrailing(liquidGlassOpacityLabel),
+              onTap: () => _tap('Liquid Glass'),
             ),
           ],
         ),
@@ -620,6 +642,8 @@ class _SubScreenState extends State<_SubScreen> {
           // Branch: accent-color picker vs. standard option list.
           if (widget.route.isAccentColor)
             _AccentColorSection(accentNotifier: widget.accentNotifier)
+          else if (widget.route.isLiquidGlass)
+            const _LiquidGlassSection()
           else
             _SubScreenSection(
               options: widget.route.options,
@@ -805,6 +829,122 @@ class _SubScreenSection extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Liquid Glass opacity control ──────────────────────────────────────────────
+class _LiquidGlassSection extends StatelessWidget {
+  const _LiquidGlassSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final cardBg = resolveThemeColor(kCardColor, context);
+    final shadowColor = resolveThemeColor(kCardShadowColor, context);
+    final accent = resolveAccentColor(context);
+    final inactive = resolveThemeColor(
+      kSeparatorColor,
+      context,
+    ).withValues(alpha: 0.55);
+    final textScaler = MediaQuery.textScalerOf(context);
+    // Keep this control aligned with the other solo settings rows at the
+    // default size, while allowing the row to grow with Dynamic Type.
+    final rowHeight = math.max(
+      _kSettingsRowHeight,
+      textScaler.scale(_kSettingsRowHeight),
+    );
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: DecoratedBox(
+          decoration: ShapeDecoration(
+            color: cardBg,
+            shadows: resolveThemeShadows([
+              BoxShadow(
+                color: shadowColor,
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ], context),
+            shape: const AdaptiveStadiumBorder(),
+          ),
+          child: SizedBox(
+            height: rowHeight,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: ValueListenableBuilder<double>(
+                valueListenable: appLiquidGlassOpacityNotifier,
+                builder: (context, value, _) {
+                  return LayoutBuilder(
+                    builder: (context, constraints) => CustomPaint(
+                      painter: _LiquidGlassStopsPainter(color: inactive),
+                      child: LiquidGlassSlider(
+                        value: value,
+                        minimumValue: 0,
+                        maximumValue: 1,
+                        width: constraints.maxWidth,
+                        height: rowHeight,
+                        layout: _liquidGlassSliderLayout,
+                        activeColor: accent,
+                        inactiveColor: inactive,
+                        thumbColor: cardBg,
+                        onChanged: (raw) {
+                          _setLiquidGlassOpacity(raw);
+                        },
+                        onChangeEnd: (raw) {
+                          _setLiquidGlassOpacity(raw);
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// The slider package reserves this inset so the lifted glass thumb remains
+// completely inside the control while it deforms at either end. Keep the
+// painted stops in the thumb-centre range, rather than at the outer track box.
+const double _kLiquidGlassSliderInset = 27.2;
+const LiquidGlassSliderLayout _liquidGlassSliderLayout =
+    LiquidGlassSliderLayout(horizontalInset: _kLiquidGlassSliderInset);
+
+void _setLiquidGlassOpacity(double raw) {
+  final snapped = (raw * 10).round() / 10;
+  if (snapped != appLiquidGlassOpacityNotifier.value) {
+    appLiquidGlassOpacityNotifier.value = snapped;
+    saveAppSetting('Liquid Glass', snapped.toString());
+  }
+}
+
+class _LiquidGlassStopsPainter extends CustomPainter {
+  final Color color;
+
+  const _LiquidGlassStopsPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1
+      ..strokeCap = StrokeCap.round;
+    const thumbHalfWidth = 37.0 / 2;
+    final left = _kLiquidGlassSliderInset + thumbHalfWidth;
+    final right = size.width - left;
+    final centerY = size.height / 2;
+    for (var i = 0; i <= 10; i++) {
+      final x = left + (right - left) * i / 10;
+      canvas.drawLine(Offset(x, centerY - 8), Offset(x, centerY + 8), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_LiquidGlassStopsPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 // ── Squircle card shell shared by both section types ──────────────────────────

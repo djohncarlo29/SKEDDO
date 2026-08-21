@@ -13,6 +13,7 @@ import 'ai/parsed_date.dart';
 //   appDefaultViewNotifier   — 'Day' | 'Week' | 'Month' | 'Year'.
 //   appEventDurationNotifier — '15 minutes' | '30 minutes' | '1 hour' | '2 hours'.
 //   appDateLocaleNotifier    — monthFirst or dayFirst for ambiguous numeric dates.
+//   appLiquidGlassOpacityNotifier — 0.0..1.0 opacity of the floating tab bar.
 // ══════════════════════════════════════════════════════════════════════════════
 
 /// Brightness override applied to CupertinoThemeData.
@@ -52,6 +53,11 @@ final ValueNotifier<String> appEventDurationNotifier = ValueNotifier<String>(
 final ValueNotifier<DateLocalePreference> appDateLocaleNotifier =
     ValueNotifier<DateLocalePreference>(DateLocalePreference.monthFirst);
 
+/// Opacity of the floating Liquid Glass tab bar material.
+/// The setting is quantized to tenths by the Appearance subscreen.
+final ValueNotifier<double> appLiquidGlassOpacityNotifier =
+    ValueNotifier<double>(0.8);
+
 // ── SharedPreferences keys ────────────────────────────────────────────────────
 const _kThemeKey = 'app_theme';
 const _kTextSizeKey = 'app_text_size';
@@ -60,6 +66,7 @@ const _kStartOfWeekKey = 'app_start_of_week';
 const _kDefaultViewKey = 'app_default_view';
 const _kEventDurationKey = 'app_event_duration';
 const _kDateLocaleKey = 'app_date_locale';
+const _kLiquidGlassOpacityKey = 'app_liquid_glass_opacity';
 
 /// Load all persisted settings from SharedPreferences and update notifiers.
 /// Call this once at startup (before [runApp]) so the first build reflects the
@@ -106,6 +113,12 @@ Future<void> loadAppSettings() async {
   if (savedPreference != null) {
     appDateLocaleNotifier.value = savedPreference;
   }
+
+  final liquidGlassOpacity = prefs.getDouble(_kLiquidGlassOpacityKey);
+  if (liquidGlassOpacity != null) {
+    appLiquidGlassOpacityNotifier.value =
+        (liquidGlassOpacity.clamp(0.0, 1.0) * 10).round() / 10;
+  }
   AIServices.setDateLocalePreference(appDateLocaleNotifier.value);
 }
 
@@ -126,6 +139,11 @@ void saveAppSetting(String routeTitle, String value) {
         prefs.setString(_kEventDurationKey, value);
       case 'Date Format':
         prefs.setString(_kDateLocaleKey, appDateLocaleNotifier.value.name);
+      case 'Liquid Glass':
+        prefs.setDouble(
+          _kLiquidGlassOpacityKey,
+          appLiquidGlassOpacityNotifier.value,
+        );
     }
   });
 }
