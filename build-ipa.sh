@@ -24,25 +24,6 @@ if ! command -v flutter >/dev/null 2>&1; then
   exit 1
 fi
 
-# ── Proxy URL check ────────────────────────────────────────────────────────────
-# The Gemini API key is NOT compiled into the IPA.
-# AI features work by calling the server-side proxy over HTTPS.
-# Set PROXY_BASE_URL to your deployed Replit URL before building, e.g.:
-#   export PROXY_BASE_URL=https://skeddo.yourusername.replit.app
-
-if [[ -z "${PROXY_BASE_URL:-}" ]]; then
-  echo "WARNING: PROXY_BASE_URL is not set — AI features (smart punctuation, attachment analyzer) will be disabled."
-  echo "  Export it before running:  export PROXY_BASE_URL=https://your-deployment.replit.app"
-  echo ""
-  read -rp "Continue without AI features? [y/N] " confirm
-  if [[ "${confirm,,}" != "y" ]]; then
-    echo "Aborted."
-    exit 1
-  fi
-else
-  echo "→ PROXY_BASE_URL=${PROXY_BASE_URL} — AI features will be enabled."
-fi
-
 # ── Clean ──────────────────────────────────────────────────────────────────────
 
 echo "→ Cleaning previous build artifacts…"
@@ -63,7 +44,7 @@ echo "→ Building release IPA…"
 (
   cd "$APP_DIR"
   flutter build ipa --release \
-    --dart-define=PROXY_BASE_URL="${PROXY_BASE_URL:-}"
+ 
 )
 
 # ── Copy output ────────────────────────────────────────────────────────────────

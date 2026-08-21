@@ -18,7 +18,6 @@ workflows:
         # shorebird:
         #   SHOREBIRD_TOKEN
         # project:
-        #   PROXY_BASE_URL
         - app_store_connect
         - shorebird
         - project
@@ -55,7 +54,6 @@ workflows:
           shorebird release ios \
             --artifact ipa \
             -- \
-            --dart-define=PROXY_BASE_URL="${PROXY_BASE_URL:-}"
 
     artifacts:
       - build/ios/ipa/*.ipa

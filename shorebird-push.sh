@@ -89,12 +89,6 @@ for _pair in \
   fi
 done
 
-# Inject GEMINI_API_KEY into the bundled .env so the patched APK can reach AI
-if [[ -n "${GEMINI_API_KEY:-}" ]]; then
-  echo "GEMINI_API_KEY=${GEMINI_API_KEY}" > "$APP_DIR/.env"
-  echo "→ GEMINI_API_KEY injected."
-fi
-
 PLATFORM="${1:-android}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  🐦 Shorebird patch → $PLATFORM"
@@ -110,7 +104,6 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
   # Pass --release-version explicitly so shorebird targets this release.
   "$SHOREBIRD_BIN" patch "$PLATFORM" \
     --release-version "$VERSION" \
-    --dart-define=PROXY_BASE_URL="${PROXY_BASE_URL:-}" \
     -- --no-tree-shake-icons
 )
 

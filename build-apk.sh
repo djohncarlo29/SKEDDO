@@ -121,21 +121,6 @@ EOF
 
 rm -f "$OUTPUT_APK"
 
-# ── Inject secrets ─────────────────────────────────────────────────────────────
-if [[ -n "${GEMINI_API_KEY:-}" ]]; then
-  echo "GEMINI_API_KEY=${GEMINI_API_KEY}" > "$APP_DIR/.env"
-  echo "→ GEMINI_API_KEY injected from Replit secret."
-else
-  echo "WARNING: GEMINI_API_KEY not set — using existing .env value."
-fi
-
-if [[ -z "${PROXY_BASE_URL:-}" ]]; then
-  echo "WARNING: PROXY_BASE_URL is not set — AI features will be disabled in this APK."
-  echo "         Set it to your deployed server URL and rebuild to enable them."
-else
-  echo "→ PROXY_BASE_URL=${PROXY_BASE_URL} — AI features will be enabled."
-fi
-
 # ── Clean ──────────────────────────────────────────────────────────────────────
 echo "→ Cleaning previous build artifacts…"
 (cd "$APP_DIR" && "$FLUTTER_BIN" clean)
@@ -152,13 +137,11 @@ echo "→ Cleaning previous build artifacts…"
     "$SHOREBIRD_BIN" release android \
       --artifact apk \
       -- \
-      --no-tree-shake-icons \
-      --dart-define=PROXY_BASE_URL="${PROXY_BASE_URL:-}"
+      --no-tree-shake-icons
   else
     echo "→ Building release APK (Flutter)…"
     "$FLUTTER_BIN" build apk --release \
-      --no-tree-shake-icons \
-      --dart-define=PROXY_BASE_URL="${PROXY_BASE_URL:-}"
+      --no-tree-shake-icons
   fi
 )
 
