@@ -884,38 +884,29 @@ class _NoteInputCardState extends State<_NoteInputCard>
       }
 
       if (_kTextExts.contains(ext)) {
-        final raw = utf8.decode(bytes, allowMalformed: true);
-        final text = ext == 'rtf'
-            ? _stripRtf(raw)
-            : (ext == 'html' || ext == 'htm')
-            ? _stripTags(raw)
-            : raw;
-        _analyzeText(text);
+        _analyzeFile(bytes, _pickedFile!.name, _mimeForDocumentExtension(ext));
         return;
       }
 
       switch (ext) {
         case 'pdf':
-          // PDFs are handled by the offline document extractor and OCR path.
-          _analyzeImage(bytes, 'application/pdf');
+          _analyzeFile(bytes, _pickedFile!.name, 'application/pdf');
           return;
         case 'docx':
-          _analyzeText(_extractDocxText(bytes));
-          return;
         case 'xlsx':
-          _analyzeText(_extractXlsxText(bytes));
-          return;
         case 'pptx':
-          _analyzeText(_extractPptxText(bytes));
-          return;
         case 'odt':
         case 'ods':
         case 'odp':
-          _analyzeText(_extractOpenDocumentText(bytes));
+          _analyzeFile(
+            bytes,
+            _pickedFile!.name,
+            _mimeForDocumentExtension(ext),
+          );
           return;
         default:
           if (_kLegacyOfficeExts.contains(ext)) {
-            _analyzeLegacyOffice(bytes, _pickedFile!.name);
+            _analyzeFile(bytes, _pickedFile!.name, null);
           } else {
             setState(
               () => _extractionError =
@@ -926,14 +917,22 @@ class _NoteInputCardState extends State<_NoteInputCard>
     }
   }
 
-  Future<void> _analyzeLegacyOffice(Uint8List bytes, String filename) async {
+  Future<void> _analyzeFile(
+    Uint8List bytes,
+    String filename,
+    String? mimeType,
+  ) async {
     if (!mounted) return;
     setState(() {
       _isAnalyzing = true;
       _extractionError = null;
     });
     try {
-      final events = await EventExtractor.fromLegacyOffice(bytes, filename);
+      final events = await EventExtractor.fromFile(
+        bytes: bytes,
+        filename: filename,
+        mimeType: mimeType,
+      );
       if (!mounted) return;
       setState(() => _isAnalyzing = false);
       if (context.mounted) _showResultSheet(events);
@@ -2252,6 +2251,47 @@ String _mimeForImageExtension(String ext) {
       return 'image/heic';
     default:
       return 'image/jpeg';
+  }
+}
+
+String _mimeForDocumentExtension(String ext) {
+  switch (ext.toLowerCase()) {
+    case 'txt':
+    case 'log':
+      return 'text/plain';
+    case 'md':
+      return 'text/markdown';
+    case 'json':
+      return 'application/json';
+    case 'xml':
+      return 'application/xml';
+    case 'csv':
+      return 'text/csv';
+    case 'html':
+    case 'htm':
+      return 'text/html';
+    case 'ics':
+      return 'text/calendar';
+    case 'vcs':
+      return 'text/x-vcalendar';
+    case 'rtf':
+      return 'application/rtf';
+    case 'pdf':
+      return 'application/pdf';
+    case 'docx':
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'xlsx':
+      return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case 'pptx':
+      return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    case 'odt':
+      return 'application/vnd.oasis.opendocument.text';
+    case 'ods':
+      return 'application/vnd.oasis.opendocument.spreadsheet';
+    case 'odp':
+      return 'application/vnd.oasis.opendocument.presentation';
+    default:
+      return 'application/octet-stream';
   }
 }
 

@@ -38,6 +38,16 @@ class EventExtractor {
     mimeType: mimeType,
   );
 
+  static Future<List<ExtractedEvent>> fromFile({
+    required Uint8List bytes,
+    required String filename,
+    String? mimeType,
+  }) => _analyze(
+    sourceName: filename,
+    bytes: bytes,
+    mimeType: mimeType,
+  );
+
   static Future<List<ExtractedEvent>> fromText(String text) => _analyze(
     sourceName: 'pasted.txt',
     bytes: Uint8List.fromList(utf8.encode(text)),
