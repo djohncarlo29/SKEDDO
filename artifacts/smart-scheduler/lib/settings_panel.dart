@@ -876,21 +876,22 @@ class _LiquidGlassSection extends StatelessWidget {
                 builder: (context, value, _) {
                   return LayoutBuilder(
                     builder: (context, constraints) {
-                      final sliderWidth = constraints.maxWidth;
+                      final sliderWidth =
+                          constraints.maxWidth + _kLiquidGlassThumbWidth;
                       return OverflowBox(
                         alignment: Alignment.center,
                         minWidth: sliderWidth,
                         maxWidth: sliderWidth,
                         child: CustomPaint(
-                          painter: _LiquidGlassStopsPainter(
-                            value: value,
-                            activeColor: accent,
-                            inactiveColor: inactive,
-                          ),
+                          painter: _LiquidGlassStopsPainter(color: inactive),
                           child: LiquidGlassSlider(
                             value: value,
                             minimumValue: 0,
                             maximumValue: 1,
+                            // Extend the package's internal geometry by one
+                            // resting-thumb width and center it. Its built-in
+                            // half-thumb center offsets then place the 0.0
+                            // and 1.0 centers on the visible row edges.
                             width: sliderWidth,
                             height: rowHeight,
                             layout: _liquidGlassSliderLayout,
@@ -926,12 +927,11 @@ class _LiquidGlassSection extends StatelessWidget {
 // completely inside the control while it deforms at either end. Keep the
 // painted stops in the thumb-centre range, rather than at the outer track box.
 const double _kLiquidGlassThumbWidth = 37.0;
-const double _kLiquidGlassSliderInset = 16.0;
+// No extra internal inset. The slider itself is widened by one resting-thumb
+// width and centered, so its thumb centers land on the visible row edges.
+const double _kLiquidGlassSliderInset = 0.0;
 const LiquidGlassSliderLayout _liquidGlassSliderLayout =
-    LiquidGlassSliderLayout(
-      horizontalInset: _kLiquidGlassSliderInset,
-      trackHeight: 0,
-    );
+    LiquidGlassSliderLayout(horizontalInset: _kLiquidGlassSliderInset);
 
 void _setLiquidGlassOpacity(double raw) {
   final snapped = (raw * 10).round() / 10;
@@ -942,15 +942,9 @@ void _setLiquidGlassOpacity(double raw) {
 }
 
 class _LiquidGlassStopsPainter extends CustomPainter {
-  final double value;
-  final Color activeColor;
-  final Color inactiveColor;
+  final Color color;
 
-  const _LiquidGlassStopsPainter({
-    required this.value,
-    required this.activeColor,
-    required this.inactiveColor,
-  });
+  const _LiquidGlassStopsPainter({required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -958,50 +952,23 @@ class _LiquidGlassStopsPainter extends CustomPainter {
     final left = _kLiquidGlassSliderInset + thumbHalfWidth;
     final right = size.width - left;
     final centerY = size.height / 2;
-    final thumbX = left + (right - left) * value.clamp(0.0, 1.0);
-
-    // Keep the visible line exactly between the endpoint stop centers. The
-    // package track is disabled above so it cannot add extra line beyond 0.0
-    // and 1.0.
-    final inactivePaint = Paint()
-      ..color = inactiveColor
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.square;
-    canvas.drawLine(
-      Offset(left, centerY),
-      Offset(right, centerY),
-      inactivePaint,
-    );
-
-    final activePaint = Paint()
-      ..color = activeColor
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.square;
-    canvas.drawLine(
-      Offset(left, centerY),
-      Offset(thumbX, centerY),
-      activePaint,
-    );
-
-    final stopPaint = Paint()
-      ..color = inactiveColor
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.square;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1
+      ..strokeCap = StrokeCap.round;
     for (var i = 0; i <= 10; i++) {
       final x = left + (right - left) * i / 10;
       canvas.drawLine(
         Offset(x, centerY - 4),
         Offset(x, centerY + 4),
-        stopPaint,
+        paint,
       );
     }
   }
 
   @override
   bool shouldRepaint(_LiquidGlassStopsPainter oldDelegate) =>
-      oldDelegate.value != value ||
-      oldDelegate.activeColor != activeColor ||
-      oldDelegate.inactiveColor != inactiveColor;
+      oldDelegate.color != color;
 }
 
 // ── Squircle card shell shared by both section types ──────────────────────────
