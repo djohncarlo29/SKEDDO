@@ -43,7 +43,7 @@ class EventExtractor {
       'https://generativelanguage.googleapis.com/v1beta/models';
 
   static const _extractPrompt =
-      'Look at this image and extract every event, meeting, appointment, '
+      'Analyze the attached image or document and extract every event, meeting, appointment, '
       'reminder, deadline, or scheduled activity you can find. '
       'Return a JSON array of objects. Each object must have: '
       '"title" (string, required), '

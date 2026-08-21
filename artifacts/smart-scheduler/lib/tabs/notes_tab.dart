@@ -817,20 +817,26 @@ class _NoteInputCardState extends State<_NoteInputCard>
   void _onDocumentFile() {
     _hideAttachMenu();
     Future.microtask(() async {
-      final result = await FilePicker.platform.pickFiles(withData: true);
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: [
+          'jpg',
+          'jpeg',
+          'png',
+          'webp',
+          'gif',
+          'heic',
+          ..._kTextExts,
+          ..._kAiDocumentExts,
+          ..._kLegacyOfficeExts,
+        ],
+        withData: true,
+      );
       if (result == null || result.files.isEmpty || !mounted) return;
       final file = result.files.first;
       final ext = (file.extension ?? '').toLowerCase();
       final isImg = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic'].contains(ext);
-      final mime = isImg
-          ? (ext == 'png'
-                ? 'image/png'
-                : ext == 'webp'
-                ? 'image/webp'
-                : ext == 'gif'
-                ? 'image/gif'
-                : 'image/jpeg')
-          : '';
+      final mime = isImg ? _mimeForImageExtension(ext) : '';
       setState(() {
         _pickedFile = file;
         _pickedImage = null;
@@ -871,15 +877,47 @@ class _NoteInputCardState extends State<_NoteInputCard>
       _analyzeImage(_imageBytes!, _pendingMime);
     } else if (_pickedFile != null) {
       final ext = (_pickedFile!.extension ?? '').toLowerCase();
-      final textExts = ['txt', 'md', 'csv', 'rtf'];
-      if (textExts.contains(ext) && _pickedFile!.bytes != null) {
-        _analyzeText(String.fromCharCodes(_pickedFile!.bytes!));
-      } else {
-        setState(
-          () => _extractionError =
-              'Document type not yet supported for AI analysis. '
-              'Try attaching a photo instead.',
-        );
+      final bytes = _pickedFile!.bytes;
+      if (bytes == null || bytes.isEmpty) {
+        setState(() => _extractionError = 'Could not read this file.');
+        return;
+      }
+
+      if (_kTextExts.contains(ext)) {
+        final raw = utf8.decode(bytes, allowMalformed: true);
+        final text = ext == 'rtf'
+            ? _stripRtf(raw)
+            : (ext == 'html' || ext == 'htm')
+            ? _stripTags(raw)
+            : raw;
+        _analyzeText(text);
+        return;
+      }
+
+      switch (ext) {
+        case 'pdf':
+          // Gemini accepts PDFs as native multimodal document input.
+          _analyzeImage(bytes, 'application/pdf');
+          return;
+        case 'docx':
+          _analyzeText(_extractDocxText(bytes));
+          return;
+        case 'xlsx':
+          _analyzeText(_extractXlsxText(bytes));
+          return;
+        case 'pptx':
+          _analyzeText(_extractPptxText(bytes));
+          return;
+        case 'odt':
+        case 'ods':
+        case 'odp':
+          _analyzeText(_extractOpenDocumentText(bytes));
+          return;
+        default:
+          final message = _kLegacyOfficeExts.contains(ext)
+              ? 'Legacy .$ext files need to be saved as PDF, DOCX, XLSX, or PPTX for AI analysis.'
+              : 'This file format is not supported yet for AI analysis.';
+          setState(() => _extractionError = message);
       }
     }
   }
@@ -2146,6 +2184,36 @@ const _kMonoExts = <String>{'csv', 'tsv', 'json', 'xml', 'ini', 'toml'};
 // Formats that are structurally unrenderable without server-side conversion.
 const _kNoPreviewExts = <String>{'doc', 'xls', 'xlsx', 'ppt', 'pptx'};
 
+// Common document formats that can be analyzed after picking them from the
+// Notes attachment menu. PDFs remain multimodal input; office/open-document
+// formats are converted to readable text locally before the AI call.
+const _kAiDocumentExts = <String>{
+  'pdf',
+  'docx',
+  'xlsx',
+  'pptx',
+  'odt',
+  'ods',
+  'odp',
+};
+
+const _kLegacyOfficeExts = <String>{'doc', 'xls', 'ppt'};
+
+String _mimeForImageExtension(String ext) {
+  switch (ext) {
+    case 'png':
+      return 'image/png';
+    case 'webp':
+      return 'image/webp';
+    case 'gif':
+      return 'image/gif';
+    case 'heic':
+      return 'image/heic';
+    default:
+      return 'image/jpeg';
+  }
+}
+
 // Human-readable hint shown for each unsupported format.
 String _noPreviewNote(String ext) {
   switch (ext) {
@@ -2228,6 +2296,132 @@ String _extractDocxText(Uint8List bytes) {
         : result;
   } catch (e) {
     return '[Could not parse DOCX: $e]';
+  }
+}
+
+String _archiveEntryText(ArchiveFile entry) {
+  return utf8.decode(entry.content as List<int>, allowMalformed: true);
+}
+
+String _xmlText(XmlDocument doc, {String? localName}) {
+  final parts = <String>[];
+  for (final node in doc.descendants) {
+    if (node is! XmlElement) continue;
+    if (localName != null && node.name.local != localName) continue;
+    if (node.name.local == 't' ||
+        node.name.local == 'p' ||
+        node.name.local == 'h' ||
+        node.name.local == 'span') {
+      final text = node.innerText.trim();
+      if (text.isNotEmpty) parts.add(text);
+    }
+  }
+  return parts.join('\n').trim();
+}
+
+/// Extract readable cell values from an XLSX ZIP package.
+String _extractXlsxText(Uint8List bytes) {
+  try {
+    final archive = ZipDecoder().decodeBytes(bytes);
+    final shared = <String>[];
+    final sharedEntry = archive.findFile('xl/sharedStrings.xml');
+    if (sharedEntry != null) {
+      final doc = XmlDocument.parse(_archiveEntryText(sharedEntry));
+      for (final si in doc.findAllElements('si')) {
+        shared.add(
+          si.descendants
+              .whereType<XmlElement>()
+              .where((e) => e.name.local == 't')
+              .map((e) => e.innerText)
+              .join(),
+        );
+      }
+    }
+
+    final sheets =
+        archive.files
+            .where(
+              (file) =>
+                  file.name.startsWith('xl/worksheets/sheet') &&
+                  file.name.endsWith('.xml'),
+            )
+            .toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
+    final output = StringBuffer();
+    for (final sheet in sheets) {
+      final doc = XmlDocument.parse(_archiveEntryText(sheet));
+      for (final row in doc.descendants.whereType<XmlElement>().where(
+        (e) => e.name.local == 'row',
+      )) {
+        final values = <String>[];
+        for (final cell in row.children.whereType<XmlElement>().where(
+          (e) => e.name.local == 'c',
+        )) {
+          final type = cell.getAttribute('t');
+          final value = cell.children
+              .whereType<XmlElement>()
+              .where((e) => e.name.local == 'v')
+              .map((e) => e.innerText)
+              .firstOrNull;
+          if (value == null) {
+            values.add('');
+          } else if (type == 's') {
+            final index = int.tryParse(value);
+            values.add(index != null && index >= 0 && index < shared.length
+                ? shared[index]
+                : value);
+          } else {
+            values.add(value);
+          }
+        }
+        if (values.any((value) => value.isNotEmpty)) {
+          output.writeln(values.join('\t'));
+        }
+      }
+    }
+    final result = output.toString().trim();
+    return result.isEmpty ? '[Spreadsheet appears to have no text content]' : result;
+  } catch (e) {
+    return '[Could not parse XLSX: $e]';
+  }
+}
+
+/// Extract text from PPTX slide XML files in slide order.
+String _extractPptxText(Uint8List bytes) {
+  try {
+    final archive = ZipDecoder().decodeBytes(bytes);
+    final slides =
+        archive.files
+            .where(
+              (file) =>
+                  file.name.startsWith('ppt/slides/slide') &&
+                  file.name.endsWith('.xml'),
+            )
+            .toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
+    final output = StringBuffer();
+    for (final slide in slides) {
+      final doc = XmlDocument.parse(_archiveEntryText(slide));
+      final text = _xmlText(doc, localName: 't');
+      if (text.isNotEmpty) output.writeln(text);
+    }
+    final result = output.toString().trim();
+    return result.isEmpty ? '[Presentation appears to have no text content]' : result;
+  } catch (e) {
+    return '[Could not parse PPTX: $e]';
+  }
+}
+
+/// Extract prose from OpenDocument packages (ODT/ODS/ODP).
+String _extractOpenDocumentText(Uint8List bytes) {
+  try {
+    final archive = ZipDecoder().decodeBytes(bytes);
+    final entry = archive.findFile('content.xml');
+    if (entry == null) return '[No content.xml found in OpenDocument file]';
+    final text = _xmlText(XmlDocument.parse(_archiveEntryText(entry)));
+    return text.isEmpty ? '[Document appears to have no text content]' : text;
+  } catch (e) {
+    return '[Could not parse OpenDocument file: $e]';
   }
 }
 

@@ -119,7 +119,7 @@ const PARSE_RULE_PROMPT =
   'Return ONLY the JSON object, no markdown, no explanation.';
 
 const EXTRACT_PROMPT =
-  'Look at this image and extract every event, meeting, appointment, ' +
+  'Analyze the attached image or document and extract every event, meeting, appointment, ' +
   'reminder, deadline, or scheduled activity you can find. ' +
   'Return a JSON array of objects. Each object must have: ' +
   '"title" (string, required), ' +
