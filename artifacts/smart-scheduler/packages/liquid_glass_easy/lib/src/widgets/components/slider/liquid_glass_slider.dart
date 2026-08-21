@@ -760,47 +760,53 @@ class _LiquidGlassSliderTrackPainter extends CustomPainter {
     final tickCount = divisions > 0 ? divisions : 0;
     final tickRange = math.max(0.0, tickEndX - tickStartX);
 
-    // The horizontal line is deliberately butt-ended. The thumb-center
-    // travel range, not the raw line width, is the tick distribution range:
-    // the first/last ticks sit directly beneath the settled thumb centers.
+    // The thumb-center travel range, not the raw line width, is the tick
+    // distribution range: the first/last ticks sit directly beneath the
+    // settled thumb centers.
     final lineStartX = tickStartX.clamp(0.0, trackWidth).toDouble();
     final lineEndX = tickEndX.clamp(lineStartX, trackWidth).toDouble();
-    final inactivePath = Path()
-      ..addRect(Rect.fromLTRB(lineStartX, 0, lineEndX, trackHeight));
+    final clampedFill = fillEndX.clamp(lineStartX, lineEndX).toDouble();
+
+    // Ticks live beneath the line. This keeps the line visually continuous
+    // through the marker instead of making the marker look like a separate
+    // element laid on top of it.
+    final inactiveTicks = Path();
+    final tickXs = <double>[];
     for (var i = 0; i <= tickCount; i++) {
       final x = tickCount == 0
           ? tickStartX
           : tickStartX + tickRange * i / tickCount;
-      inactivePath.addRect(
+      tickXs.add(x);
+      inactiveTicks.addRect(
         Rect.fromLTRB(x - tickHalfWidth, tickTop, x + tickHalfWidth, tickBottom),
       );
     }
-    canvas.drawPath(inactivePath, Paint()..color = inactiveColor);
+    canvas.drawPath(inactiveTicks, Paint()..color = inactiveColor);
 
-    // Paint the accent segment in pieces around the grey ticks. Each pixel
-    // belongs to exactly one color path, so the step geometry never changes
-    // opacity through compositing. Rectangles keep every progress endpoint
-    // straight rather than introducing rounded caps.
-    final clampedFill = fillEndX.clamp(lineStartX, lineEndX).toDouble();
+    // Both inactive and active line ends are deliberately square. The line
+    // and all passed ticks share one active path, so a tick turns blue as the
+    // thumb crosses it rather than being composited as a second element.
+    canvas.drawRect(
+      Rect.fromLTRB(lineStartX, 0, lineEndX, trackHeight),
+      Paint()..color = inactiveColor,
+    );
+
     final activePath = Path();
     if (clampedFill > lineStartX) {
-      var start = lineStartX;
-      for (var i = 0; i <= tickCount; i++) {
-        final x = tickCount == 0
-            ? tickStartX
-            : tickStartX + tickRange * i / tickCount;
-        final end = math.min(clampedFill, x - tickHalfWidth);
-        if (end > start) {
-          activePath.addRect(Rect.fromLTRB(start, 0, end, trackHeight));
-        }
-        start = math.max(start, x + tickHalfWidth);
-        if (x >= clampedFill) break;
-      }
-      if (start < clampedFill) {
-        activePath.addRect(Rect.fromLTRB(start, 0, clampedFill, trackHeight));
+      activePath.addRect(
+        Rect.fromLTRB(lineStartX, 0, clampedFill, trackHeight),
+      );
+    }
+    for (final x in tickXs) {
+      if (x <= clampedFill) {
+        activePath.addRect(
+          Rect.fromLTRB(x - tickHalfWidth, tickTop, x + tickHalfWidth, tickBottom),
+        );
       }
     }
-    canvas.drawPath(activePath, Paint()..color = activeColor);
+    if (!activePath.getBounds().isEmpty) {
+      canvas.drawPath(activePath, Paint()..color = activeColor);
+    }
   }
 
   @override
