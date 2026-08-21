@@ -881,7 +881,11 @@ class _LiquidGlassSection extends StatelessWidget {
                         value: value,
                         minimumValue: 0,
                         maximumValue: 1,
-                        width: constraints.maxWidth,
+                        // Extend the package's internal geometry by one
+                        // resting-thumb width and center it. Its built-in
+                        // half-thumb center offsets then place the 0.0 and
+                        // 1.0 centers on the visible row edges.
+                        width: constraints.maxWidth + _kLiquidGlassThumbWidth,
                         height: rowHeight,
                         layout: _liquidGlassSliderLayout,
                         // Report only the final value on a drag release. This
@@ -890,7 +894,7 @@ class _LiquidGlassSection extends StatelessWidget {
                         isContinuous: false,
                         activeColor: accent,
                         inactiveColor: inactive,
-                        thumbColor: kLiquidGlassSliderThumbColor,
+                        thumbColor: const Color(0xFFFDFDFD),
                         onChanged: (raw) {
                           _setLiquidGlassOpacity(raw);
                         },
@@ -913,9 +917,9 @@ class _LiquidGlassSection extends StatelessWidget {
 // The slider package reserves this inset so the lifted glass thumb remains
 // completely inside the control while it deforms at either end. Keep the
 // painted stops in the thumb-centre range, rather than at the outer track box.
-// No extra visual inset: the resting thumb's 37 px width now reaches the
-// previous stop length at both sides. The slider's Stack intentionally allows
-// the 58 px lifted glass thumb to extend beyond that resting edge.
+const double _kLiquidGlassThumbWidth = 37.0;
+// No extra internal inset. The slider itself is widened by one resting-thumb
+// width and centered, so its thumb centers land on the visible row edges.
 const double _kLiquidGlassSliderInset = 0.0;
 const LiquidGlassSliderLayout _liquidGlassSliderLayout =
     LiquidGlassSliderLayout(horizontalInset: _kLiquidGlassSliderInset);
@@ -939,7 +943,7 @@ class _LiquidGlassStopsPainter extends CustomPainter {
       ..color = color
       ..strokeWidth = 1
       ..strokeCap = StrokeCap.round;
-    const thumbHalfWidth = 37.0 / 2;
+    const thumbHalfWidth = _kLiquidGlassThumbWidth / 2;
     final left = _kLiquidGlassSliderInset + thumbHalfWidth;
     final right = size.width - left;
     final centerY = size.height / 2;
