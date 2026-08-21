@@ -4,7 +4,6 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
@@ -469,15 +468,6 @@ Future<void> main() async {
     };
   }
 
-  // Load .env so keys are available before any service initialises.
-  // isOptional: true prevents a crash when the file hasn't been created yet.
-  try {
-    await dotenv
-        .load(fileName: '.env', isOptional: true)
-        .timeout(const Duration(seconds: 3));
-  } catch (_) {
-    // Environment loading is optional; never block the first frame on it.
-  }
   // Load the locale preference before any event parsing can occur so all
   // subsequent parser calls use the user's chosen interpretation.
   try {

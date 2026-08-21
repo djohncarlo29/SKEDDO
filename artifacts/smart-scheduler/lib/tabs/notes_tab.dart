@@ -712,7 +712,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
   String _preListenText = '';
   int _sttSession = 0;
 
-  // [GEMINI LIVE] Background Gemini correction timer — kept as inert state so
+  // Background correction timer — kept as inert state so
   // the SquircleGlowBorder widget in the build tree compiles.  Re-enable by
   // un-commenting the mutation sites in _onMicTap and restoring the two
   // commented-out methods below.
@@ -896,7 +896,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
 
       switch (ext) {
         case 'pdf':
-          // Gemini accepts PDFs as native multimodal document input.
+          // PDFs are handled by the offline document extractor and OCR path.
           _analyzeImage(bytes, 'application/pdf');
           return;
         case 'docx':
@@ -1059,8 +1059,8 @@ class _NoteInputCardState extends State<_NoteInputCard>
     return t;
   }
 
-  // ── [GEMINI LIVE] Gemini REST correction methods — commented out, not deleted
-  // Replaced by the in-stream Gemini Live path in SpeechService.  Re-enable
+  // ── Legacy REST correction methods — intentionally disabled
+  // Replaced by local speech recognition. Re-enable
   // both methods (and the mutation sites in _onMicTap below) to restore the
   // old two-step REST correction + AI glow flow.
   //
@@ -1129,8 +1129,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
     if (_micListening) {
       _sttSession++;
       _sttBoundaryTimer?.cancel();
-      // [GEMINI LIVE] _bgLock++;
-      // [GEMINI LIVE] _bgRaw = ''; _bgFormatted = ''; _bgActive = false; _glowActive = false;
+      // Legacy background-formatting state remains inert.
       _pulseCtrl.stop();
       _pulseCtrl.value = 1.0;
       // Keep _micBusy = true until AnimatedSwitcher fade-out finishes (180ms)
@@ -1178,7 +1177,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
       return;
     }
 
-    // [GEMINI LIVE] _bgRaw = ''; _bgFormatted = ''; _bgActive = false; _glowActive = false; _bgLock++;
+    // Legacy background-formatting state remains inert.
 
     // Snapshot current text so partials are appended, not replaced.
     _preListenText = widget.controller.text;
@@ -1200,7 +1199,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
       _sttBoundaryTimer?.cancel();
       _pulseCtrl.stop();
       _pulseCtrl.value = 1.0;
-      // Commit whatever was transcribed (already smart-formatted by Gemini Live
+      // Commit whatever was transcribed by local speech recognition
       // in-stream; no post-processing step needed).
       if (words.trim().isNotEmpty) {
         final sep = _preListenText.isEmpty ? '' : ' ';
@@ -1210,7 +1209,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
         _micListening = false;
         _micBusy = false;
       });
-      // [GEMINI LIVE] Old two-step REST correction path:
+      // Legacy two-step REST correction path:
       // _bgRaw = ''; _bgFormatted = ''; _bgActive = false; _glowActive = false;
       // setState(() { _micListening = false; });
       // _finalizeDictation(words, sessionId);
@@ -1220,11 +1219,11 @@ class _NoteInputCardState extends State<_NoteInputCard>
       onPartial: (words) {
         if (!mounted || _sttSession != sessionId) return;
         lastWords = words;
-        // Show raw text live; Gemini Live formats it in-stream so no
+        // Show raw text live; local speech recognition provides
         // background correction step is needed.
         final sep = _preListenText.isEmpty ? '' : ' ';
         widget.controller.text = '$_preListenText$sep$words';
-        // [GEMINI LIVE] Background Gemini REST correction timer removed —
+      // Background correction timer removed —
         // in-stream formatting means no post-processing pause needed.
         // _sttBoundaryTimer?.cancel();
         // final rawNew = words.length > _bgRaw.length
@@ -1575,7 +1574,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
             ),
           ),
           // ── AI glow — inner-edge glow on the whole card ────────────────
-          // Shown while Gemini is actively correcting (_bgActive).  Uses
+          // Shown while background correction is active (_bgActive). Uses
           // SquircleGlowBorder so the path follows ContinuousRectangleBorder
           // exactly — no corner gaps.  clipBehavior on the parent Container
           // clips the glow to the squircle shape automatically.

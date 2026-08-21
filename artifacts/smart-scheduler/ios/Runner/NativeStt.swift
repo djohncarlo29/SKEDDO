@@ -21,7 +21,7 @@ import Speech
 //
 // Silence handling:  a 3-second Timer resets on every partial result.  If the
 // user is silent for 3 s (including the initial silence) the recognizer stops
-// automatically, matching the behaviour of speech_to_text's pauseFor:3s.
+// automatically after three seconds of silence.
 
 class NativeSttPlugin: NSObject, FlutterStreamHandler {
 

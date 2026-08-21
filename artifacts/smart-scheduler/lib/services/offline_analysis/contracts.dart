@@ -77,7 +77,7 @@ abstract class LocalGenerativeAnalyzer {
 
 /// OCR is intentionally an injectable capability. The current project does
 /// not bundle an OCR model, so the default implementation reports a precise
-/// unsupported result instead of silently falling back to Gemini.
+/// unsupported result instead of silently falling back to an online service.
 abstract class OfflineOcrService {
   bool get isAvailable;
 

@@ -186,10 +186,7 @@ class AppSearchBarState extends State<AppSearchBar>
 
   String _preListenText = '';
   Timer? _sttBoundaryTimer;
-  // [GEMINI LIVE: glow state kept as inert variables so the SquircleGlowBorder
-  //  widget in the build tree compiles and can be re-activated by un-commenting
-  //  the mutation sites below.  Values are never set to true while the hybrid
-  //  Gemini Live engine is active — formatting happens in-stream, no glow needed.]
+  // Legacy background-formatting state remains inert.
   String _bgRaw = '';
   String _bgFormatted = '';
   bool _bgActive = false;
@@ -251,8 +248,7 @@ class AppSearchBarState extends State<AppSearchBar>
     if (!_micListening && !_micBusy) return;
     _sttSession++;
     _sttBoundaryTimer?.cancel();
-    // [GEMINI LIVE] _bgLock++;
-    // [GEMINI LIVE] _bgRaw = ''; _bgFormatted = ''; _bgActive = false; _glowActive = false;
+    // Legacy background-formatting state remains inert.
     _pulseCtrl.stop();
     _pulseCtrl.value = 1.0;
     setState(() {
@@ -262,8 +258,8 @@ class AppSearchBarState extends State<AppSearchBar>
     SpeechService.instance.cancel();
   }
 
-  // ── [GEMINI LIVE] Gemini REST finalization — commented out, not deleted ──────
-  // Replaced by the in-stream Gemini Live path in SpeechService.  Re-enable
+  // ── Legacy REST finalization — intentionally disabled ──────────────────────
+  // Local speech recognition provides the final text. Re-enable
   // these two methods (and the mutation sites in _onMicTap below) to restore
   // the old two-step REST correction + AI glow flow.
   //
@@ -317,8 +313,7 @@ class AppSearchBarState extends State<AppSearchBar>
     if (_micListening) {
       _sttSession++;
       _sttBoundaryTimer?.cancel();
-      // [GEMINI LIVE] _bgLock++;
-      // [GEMINI LIVE] _bgRaw = ''; _bgFormatted = ''; _bgActive = false; _glowActive = false;
+      // Legacy background-formatting state remains inert.
       _pulseCtrl.stop();
       _pulseCtrl.value = 1.0;
       // Keep _micBusy = true until AnimatedSwitcher fade-out finishes (200ms)
@@ -371,7 +366,7 @@ class AppSearchBarState extends State<AppSearchBar>
       return;
     }
 
-    // [GEMINI LIVE] _bgRaw = ''; _bgFormatted = ''; _bgActive = false; _glowActive = false; _bgLock++;
+    // Legacy background-formatting state remains inert.
     _preListenText = widget.controller.text;
     final sessionId = ++_sttSession;
 
@@ -392,7 +387,7 @@ class AppSearchBarState extends State<AppSearchBar>
       _sttBoundaryTimer?.cancel();
       _pulseCtrl.stop();
       _pulseCtrl.value = 1.0;
-      // Commit whatever was transcribed (already smart-formatted by Gemini Live
+      // Commit whatever was transcribed by local speech recognition
       // in-stream; no post-processing step needed).
       if (words.trim().isNotEmpty) {
         widget.controller.text = words.trim();
@@ -406,7 +401,7 @@ class AppSearchBarState extends State<AppSearchBar>
             _micBusy = false;
           });
       });
-      // [GEMINI LIVE] Old two-step REST correction path:
+      // Legacy two-step REST correction path:
       // _bgRaw = ''; _bgFormatted = ''; _bgActive = false; _glowActive = false;
       // _finalizeDictation(words.trim(), sessionId);
     }
@@ -416,8 +411,7 @@ class AppSearchBarState extends State<AppSearchBar>
         if (!mounted || _sttSession != sessionId) return;
         lastWords = words;
         widget.controller.text = words;
-        // [GEMINI LIVE] Background Gemini REST correction timer removed —
-        // in-stream formatting from Gemini Live means no post-processing needed.
+        // Background correction is disabled; no post-processing is needed.
         // _sttBoundaryTimer?.cancel();
         // final rawNew = words.length > _bgRaw.length
         //     ? words.substring(_bgRaw.length).trim()
@@ -627,7 +621,7 @@ class AppSearchBarState extends State<AppSearchBar>
             ),
           ), // Container
           // ── AI glow — outer-edge glow around the search bar pill ────────
-          // Shown while Gemini is actively correcting (_bgActive).  Outer mode
+          // Shown while background correction is active (_bgActive). Outer mode
           // inverts the clip so blur bleeds outward past the pill border.
           // Stack(clipBehavior: Clip.none) allows the overflow to paint.
           if (_glowActive)

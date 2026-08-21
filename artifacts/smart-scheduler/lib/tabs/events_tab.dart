@@ -4472,7 +4472,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     );
     // Keep the Smart Category AI parse cache consistent when the rule changes.
     // Evict the old description so a revert to the previous text gets a fresh
-    // Gemini parse rather than the cached result from before the edit.
+    // Local parse rather than the cached result from before the edit.
     if (updated.categoryType == 'Smart Category') {
       final oldDesc = oldCat.smartDescription;
       final newDesc = updated.smartDescription;

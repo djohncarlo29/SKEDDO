@@ -12,7 +12,6 @@
 
 	<!-- Required-reason API usage declarations. -->
 	<!-- shared_preferences reads/writes NSUserDefaults.                   -->
-	<!-- flutter_dotenv reads NSUserDefaults for fallback env resolution.  -->
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
 		<dict>
@@ -42,7 +41,7 @@
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
 			</array>
 		</dict>
-		<!-- Photos/images sent to Gemini AI for event extraction -->
+		<!-- Photos/images processed for event extraction -->
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypePhotosOrVideos</string>
@@ -55,7 +54,7 @@
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
 			</array>
 		</dict>
-		<!-- Voice audio transcribed on-device; transcription sent to Gemini -->
+		<!-- Voice audio transcribed on-device -->
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeAudioData</string>

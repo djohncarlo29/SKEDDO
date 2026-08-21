@@ -48,7 +48,7 @@ class HybridMatcher implements SmartCategoryMatcher {
   /// Populated externally by EventPipeline.
   final _eventEmbeddings = <String, List<double>>{};
 
-  /// Map from rule string → its Gemini-parsed rule components.
+  /// Map from rule string → its locally parsed rule components.
   /// Populated by [setParsedRule] when AIServices.parseAndRegisterRule resolves.
   final _parsedRules = <String, ParsedRule>{};
 
@@ -154,7 +154,7 @@ class HybridMatcher implements SmartCategoryMatcher {
     final ruleLower = rule.toLowerCase();
 
     // ── Step 1: resolve temporal constraints ────────────────────────────
-    // Prefer a Gemini-parsed rule if one has been registered; fall back to
+    // Prefer a parsed rule if one has been registered; fall back to
     // the built-in regex extractors so matching is never left empty-handed.
     final pr = _parsedRules[rule];
     final weekdays = pr != null ? pr.weekdays : _extractWeekdays(ruleLower);

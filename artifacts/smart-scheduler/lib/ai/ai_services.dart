@@ -202,15 +202,15 @@ class AIServices {
 
   /// Evict a cached parsed rule so it is re-parsed on the next call to
   /// [parseAndRegisterRule].  Call this before re-parsing whenever the user
-  /// edits a Smart Category's rule string, so the old Gemini result is not
+  /// edits a Smart Category's rule string, so the old parsed result is not
   /// served if the user later reverts to the previous text.
   static void evictRule(String rule) => SmartRuleParser.evict(rule);
 
-  /// Parse a Smart Category's rule string with Gemini and register the
-  /// structured result in the matcher for improved compound-rule matching.
+  /// Parse a Smart Category's rule string locally and register the structured
+  /// result in the matcher for improved compound-rule matching.
   ///
   /// Fire-and-forget safe; never throws.  Falls back to simple regex
-  /// extraction automatically if Gemini is unavailable.
+  /// extraction automatically if the rule contains only partial constraints.
   static Future<void> parseAndRegisterRule(String rule) async {
     if (rule.trim().isEmpty) return;
     try {

@@ -22,7 +22,7 @@ class ExtractedEvent {
 
 /// Offline-only event extraction used by the Notes attachment flow.
 ///
-/// File analysis must not depend on a network, proxy, API key, or Gemini.
+/// File analysis must not depend on a network, proxy, or API key.
 /// Native OCR is invoked by [FileAnalysisCoordinator] for images and PDFs
 /// whose text layer is insufficient.
 class EventExtractor {
