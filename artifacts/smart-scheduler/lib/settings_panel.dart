@@ -875,34 +875,43 @@ class _LiquidGlassSection extends StatelessWidget {
                 valueListenable: appLiquidGlassOpacityNotifier,
                 builder: (context, value, _) {
                   return LayoutBuilder(
-                    builder: (context, constraints) => CustomPaint(
-                      painter: _LiquidGlassStopsPainter(color: inactive),
-                      child: LiquidGlassSlider(
-                        value: value,
-                        minimumValue: 0,
-                        maximumValue: 1,
-                        // Extend the package's internal geometry by one
-                        // resting-thumb width and center it. Its built-in
-                        // half-thumb center offsets then place the 0.0 and
-                        // 1.0 centers on the visible row edges.
-                        width: constraints.maxWidth + _kLiquidGlassThumbWidth,
-                        height: rowHeight,
-                        layout: _liquidGlassSliderLayout,
-                        // Report only the final value on a drag release. This
-                        // lets the parent's snapped value retarget the slider
-                        // spring, including exact 0.0 and 1.0 endpoints.
-                        isContinuous: false,
-                        activeColor: accent,
-                        inactiveColor: inactive,
-                        thumbColor: const Color(0xFFFDFDFD),
-                        onChanged: (raw) {
-                          _setLiquidGlassOpacity(raw);
-                        },
-                        onChangeEnd: (raw) {
-                          _setLiquidGlassOpacity(raw);
-                        },
-                      ),
-                    ),
+                    builder: (context, constraints) {
+                      final sliderWidth =
+                          constraints.maxWidth + _kLiquidGlassThumbWidth;
+                      return OverflowBox(
+                        alignment: Alignment.center,
+                        minWidth: sliderWidth,
+                        maxWidth: sliderWidth,
+                        child: CustomPaint(
+                          painter: _LiquidGlassStopsPainter(color: inactive),
+                          child: LiquidGlassSlider(
+                            value: value,
+                            minimumValue: 0,
+                            maximumValue: 1,
+                            // Extend the package's internal geometry by one
+                            // resting-thumb width and center it. Its built-in
+                            // half-thumb center offsets then place the 0.0
+                            // and 1.0 centers on the visible row edges.
+                            width: sliderWidth,
+                            height: rowHeight,
+                            layout: _liquidGlassSliderLayout,
+                            // Report only the final value on a drag release.
+                            // This lets the parent's snapped value retarget
+                            // the slider spring, including exact endpoints.
+                            isContinuous: false,
+                            activeColor: accent,
+                            inactiveColor: inactive,
+                            thumbColor: const Color(0xFFFDFDFD),
+                            onChanged: (raw) {
+                              _setLiquidGlassOpacity(raw);
+                            },
+                            onChangeEnd: (raw) {
+                              _setLiquidGlassOpacity(raw);
+                            },
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
