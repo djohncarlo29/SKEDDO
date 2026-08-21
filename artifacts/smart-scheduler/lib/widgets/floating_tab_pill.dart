@@ -32,6 +32,7 @@ class FloatingTabPill extends StatelessWidget {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final headerColor = resolveThemeColor(kCardColor, context);
     final barOpacity = 0.8;
+    final bottomOffset = floatingTabBarBottomOffset(context);
     final barStyle = LiquidGlassTabBar.defaultStyle.copyWith(
       appearance: LiquidGlassTabBar.defaultStyle.appearance.copyWith(
         // Use the resolved header surface itself, not a white overlay. This
@@ -75,9 +76,7 @@ class FloatingTabPill extends StatelessWidget {
           Positioned(
             left: kFloatingTabBarHorizontalMargin,
             right: kFloatingTabBarHorizontalMargin,
-            bottom:
-                MediaQuery.paddingOf(context).bottom +
-                kFloatingTabBarBottomSpacing,
+            bottom: bottomOffset,
             height: kFloatingTabBarHeight,
             child: IgnorePointer(
               child: LiquidGlassShadow(
@@ -105,7 +104,7 @@ class FloatingTabPill extends StatelessWidget {
               double.infinity,
             ),
             height: kFloatingTabBarHeight,
-            margin: const EdgeInsets.only(bottom: kFloatingTabBarBottomSpacing),
+            margin: EdgeInsets.only(bottom: bottomOffset),
             itemPadding: 4,
             itemStyle: LiquidGlassTabItemStyle(
               selectedColor: selectedColor,
@@ -155,9 +154,7 @@ class FloatingTabPill extends StatelessWidget {
           Positioned(
             left: kFloatingTabBarHorizontalMargin,
             right: kFloatingTabBarHorizontalMargin,
-            bottom:
-                MediaQuery.paddingOf(context).bottom +
-                kFloatingTabBarBottomSpacing,
+            bottom: bottomOffset,
             height: kFloatingTabBarHeight,
             child: IgnorePointer(
               child: DecoratedBox(

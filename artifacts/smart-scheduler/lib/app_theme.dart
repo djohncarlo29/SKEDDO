@@ -28,7 +28,7 @@ const kCardColor = CupertinoDynamicColor.withBrightness(
 // Floating AppShell tab pill geometry.  Keep these values in the shared theme
 // so its position and the content clearance stay in lock-step.
 const double kFloatingTabBarHorizontalMargin = 16.0;
-const double kFloatingTabBarBottomSpacing = 8.0;
+const double kFloatingTabBarBottomSpacing = 16.0;
 const double kFloatingTabBarHeight = 50.0;
 const double kFloatingTabBarTouchTargetHeight = 44.0;
 // Shared visual gap used between the last content edge and the floating pill.
@@ -42,6 +42,18 @@ const double kAddCategoryFloatingTabBarGap = 20.0;
 // that already have their own trailing padding.
 const double kFloatingTabBarSafetyMargin = 12.0;
 
+/// The tab bar's bottom edge is constrained by two competing requirements:
+/// its 16 px design margin and the persistent system navigation/home-indicator
+/// inset. They are not additive. viewPadding intentionally excludes keyboard
+/// viewInsets so the bar does not move just because an editor is focused.
+double floatingTabBarBottomOffsetForInset(double systemBottomInset) =>
+    math.max(kFloatingTabBarBottomSpacing, systemBottomInset);
+
+double floatingTabBarBottomOffset(BuildContext context) =>
+    floatingTabBarBottomOffsetForInset(
+      MediaQuery.viewPaddingOf(context).bottom,
+    );
+
 /// Extra scroll-content clearance needed so the final item in a tab can be
 /// scrolled fully above the floating pill rather than ending underneath it.
 double floatingTabBarContentBottomClearance(
@@ -51,8 +63,7 @@ double floatingTabBarContentBottomClearance(
 }) {
   final clearance =
       kFloatingTabBarHeight +
-      kFloatingTabBarBottomSpacing +
-      MediaQuery.viewPaddingOf(context).bottom +
+      floatingTabBarBottomOffset(context) +
       finalContentGap -
       existingTrailingContentPadding;
   return math.max(0.0, clearance);
