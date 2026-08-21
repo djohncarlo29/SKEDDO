@@ -56,11 +56,11 @@ class LocalContentExtractor implements ContentExtractor {
       case DetectedFileType.rtf:
         return _text(sourceName, bytes, type);
       case DetectedFileType.docx:
-        return _ooxml(sourceName, bytes, type, 'word/document.xml', 'w:t');
+        return _docx(sourceName, bytes);
       case DetectedFileType.xlsx:
-        return _ooxml(sourceName, bytes, type, 'xl/workbook.xml', 't');
+        return _xlsx(sourceName, bytes);
       case DetectedFileType.pptx:
-        return _ooxml(sourceName, bytes, type, 'ppt/presentation.xml', 'a:t');
+        return _pptx(sourceName, bytes);
       case DetectedFileType.pdf:
         return _pdfText(sourceName, bytes);
       case DetectedFileType.zipArchive:
@@ -77,7 +77,9 @@ class LocalContentExtractor implements ContentExtractor {
           bytes.length,
           '',
           const [],
-          warnings: const ['Image content requires the offline OCR capability.'],
+          warnings: const [
+            'Image content requires the offline OCR capability.',
+          ],
           confidence: 0,
         );
       case DetectedFileType.unsupported:
@@ -98,12 +100,18 @@ class LocalContentExtractor implements ContentExtractor {
     final raw = utf8.decode(bytes, allowMalformed: true);
     final text = type == DetectedFileType.html
         ? raw
-            .replaceAll(RegExp(r'<script[\s\S]*?</script>', caseSensitive: false), ' ')
-            .replaceAll(RegExp(r'<style[\s\S]*?</style>', caseSensitive: false), ' ')
-            .replaceAll(RegExp(r'<[^>]+>'), ' ')
+              .replaceAll(
+                RegExp(r'<script[\s\S]*?</script>', caseSensitive: false),
+                ' ',
+              )
+              .replaceAll(
+                RegExp(r'<style[\s\S]*?</style>', caseSensitive: false),
+                ' ',
+              )
+              .replaceAll(RegExp(r'<[^>]+>'), ' ')
         : type == DetectedFileType.rtf
-            ? _stripRtf(raw)
-            : raw;
+        ? _stripRtf(raw)
+        : raw;
     final lines = _lines(text);
     return _content(
       sourceName,
@@ -115,56 +123,81 @@ class LocalContentExtractor implements ContentExtractor {
     );
   }
 
-  ExtractedContent _ooxml(
-    String sourceName,
-    Uint8List bytes,
-    DetectedFileType type,
-    String primaryPart,
-    String textTag,
-  ) {
+  ExtractedContent _docx(String sourceName, Uint8List bytes) {
     final archive = _decodeZip(bytes);
-    final textParts = <String>[];
     final blocks = <ContentBlock>[];
     final tables = <ExtractedTable>[];
     var order = 0;
 
     for (final entry in archive) {
-      if (!entry.isFile || !entry.name.endsWith('.xml')) continue;
-      final name = entry.name;
-      if (name == '[Content_Types].xml' ||
-          name.contains('/_rels/') ||
-          name.endsWith('.rels')) {
+      if (!entry.isFile ||
+          (!entry.name.endsWith('word/document.xml') &&
+              !entry.name.startsWith('word/header') &&
+              !entry.name.startsWith('word/footer'))) {
         continue;
       }
+      final name = entry.name;
       final xml = _safeXml(entry.readBytes() ?? const <int>[]);
       if (xml == null) continue;
-      final values = xml
-          .findAllElements(textTag.contains(':') ? textTag.split(':').last : textTag)
-          .map((e) => e.innerText.trim())
-          .where((v) => v.isNotEmpty)
-          .toList();
-      if (values.isEmpty) continue;
-      final partText = values.join(' ');
-      textParts.add(partText);
-      blocks.add(ContentBlock(
-        kind: type == DetectedFileType.pptx
-            ? ContentBlockKind.slide
-            : ContentBlockKind.paragraph,
-        text: partText,
-        sectionIndex: order,
-        order: order++,
-        metadata: {'part': name, 'primaryPart': name == primaryPart},
-      ));
-      if (type == DetectedFileType.xlsx && name.contains('sheet')) {
-        tables.add(ExtractedTable(
-          name: name,
-          rows: [values],
-          sectionIndex: order - 1,
-        ));
+
+      for (final paragraph in _elements(xml, 'p')) {
+        if (paragraph.ancestors.any(
+          (ancestor) => ancestor is XmlElement && ancestor.name.local == 'tbl',
+        )) {
+          continue;
+        }
+        final text = paragraph.descendants
+            .whereType<XmlElement>()
+            .where((element) => element.name.local == 't')
+            .map((e) => e.innerText)
+            .join()
+            .trim();
+        if (text.isEmpty) continue;
+        final styleElements = _elements(paragraph, 'pStyle').toList();
+        final style = styleElements.isEmpty
+            ? null
+            : _attributeLocal(styleElements.first, 'val');
+        final isList = _elements(paragraph, 'numPr').isNotEmpty;
+        blocks.add(
+          ContentBlock(
+            kind: style?.toLowerCase().startsWith('heading') == true
+                ? ContentBlockKind.heading
+                : ContentBlockKind.paragraph,
+            text: text,
+            sectionIndex: order,
+            order: order++,
+            metadata: {
+              'part': name,
+              if (style != null) 'style': style,
+              if (isList) 'list': 'true',
+            },
+          ),
+        );
+      }
+
+      for (final table in _elements(xml, 'tbl')) {
+        final rows = <List<String>>[];
+        for (final row in _elements(table, 'tr')) {
+          final cells = _elements(row, 'tc')
+              .map(
+                (cell) => cell.descendants
+                    .whereType<XmlElement>()
+                    .where((element) => element.name.local == 't')
+                    .map((e) => e.innerText)
+                    .join()
+                    .trim(),
+              )
+              .toList();
+          if (cells.any((cell) => cell.isNotEmpty)) rows.add(cells);
+        }
+        if (rows.isEmpty) continue;
+        tables.add(
+          ExtractedTable(name: name, rows: rows, sectionIndex: order - 1),
+        );
       }
     }
 
-    if (textParts.isEmpty) {
+    if (blocks.isEmpty && tables.isEmpty) {
       throw const OfflineExtractionException(
         AnalysisStatus.corruptFile,
         'The Office document did not contain readable text parts.',
@@ -172,16 +205,189 @@ class LocalContentExtractor implements ContentExtractor {
     }
     return _content(
       sourceName,
-      type,
+      DetectedFileType.docx,
       bytes.length,
-      textParts.join('\n'),
+      blocks.map((block) => block.text).join('\n'),
       blocks,
       tables: tables,
-      warnings: [
-        if (type == DetectedFileType.xlsx)
-          'Spreadsheet structure is preserved conservatively; formulas are not recalculated.',
+      metadata: {'sourceName': sourceName, 'format': 'docx'},
+      warnings: const [],
+      confidence: .9,
+    );
+  }
+
+  ExtractedContent _xlsx(String sourceName, Uint8List bytes) {
+    final archive = _decodeZip(bytes);
+    final sharedStrings = <String>[];
+    final worksheetNames = <String>[];
+    ArchiveFile? sharedEntry;
+    for (final candidate in archive) {
+      if (candidate.name == 'xl/sharedStrings.xml') {
+        sharedEntry = candidate;
+        break;
+      }
+    }
+    for (final entry in archive) {
+      if (entry.name != 'xl/workbook.xml') continue;
+      final xml = _safeXml(entry.readBytes() ?? const <int>[]);
+      if (xml == null) continue;
+      worksheetNames.addAll(
+        _elements(
+          xml,
+          'sheet',
+        ).map((sheet) => sheet.getAttribute('name') ?? 'Sheet').toList(),
+      );
+    }
+    if (sharedEntry != null) {
+      final xml = _safeXml(sharedEntry.readBytes() ?? const <int>[]);
+      if (xml != null) {
+        for (final item in _elements(xml, 'si')) {
+          sharedStrings.add(
+            _elements(item, 't').map((e) => e.innerText).join(),
+          );
+        }
+      }
+    }
+
+    final blocks = <ContentBlock>[];
+    final tables = <ExtractedTable>[];
+    var order = 0;
+    for (final entry in archive.where(
+      (entry) =>
+          entry.isFile &&
+          RegExp(r'xl/worksheets/sheet\d+\.xml$').hasMatch(entry.name),
+    )) {
+      final xml = _safeXml(entry.readBytes() ?? const <int>[]);
+      if (xml == null) continue;
+      final rows = <List<String>>[];
+      final coordinates = <String>[];
+      for (final row in _elements(xml, 'row')) {
+        final cells = <String>[];
+        for (final cell in _elements(row, 'c')) {
+          final coordinate = cell.getAttribute('r');
+          if (coordinate != null) coordinates.add(coordinate);
+          final type = cell.getAttribute('t');
+          final value = _elements(cell, 'v').map((e) => e.innerText).join();
+          final inline = _elements(cell, 'is')
+              .expand((inlineString) => _elements(inlineString, 't'))
+              .map((e) => e.innerText)
+              .join();
+          var resolved = inline.isNotEmpty ? inline : value;
+          if (type == 's') {
+            final index = int.tryParse(value);
+            resolved =
+                index != null && index >= 0 && index < sharedStrings.length
+                ? sharedStrings[index]
+                : resolved;
+          } else if (type == 'b') {
+            resolved = value == '1' ? 'TRUE' : 'FALSE';
+          }
+          cells.add(resolved.trim());
+        }
+        if (cells.any((cell) => cell.isNotEmpty)) rows.add(cells);
+      }
+      if (rows.isEmpty) continue;
+      final worksheetIndex = order;
+      final worksheetName = worksheetNames.length > worksheetIndex
+          ? worksheetNames[worksheetIndex]
+          : 'Sheet${worksheetIndex + 1}';
+      final text = rows.map((row) => row.join(' | ')).join('\n');
+      blocks.add(
+        ContentBlock(
+          kind: ContentBlockKind.table,
+          text: text,
+          sectionIndex: order,
+          order: order++,
+          metadata: {
+            'part': entry.name,
+            'worksheetName': worksheetName,
+            'cellCoordinates': coordinates,
+          },
+        ),
+      );
+      tables.add(
+        ExtractedTable(
+          name: worksheetName,
+          rows: rows,
+          sectionIndex: order - 1,
+        ),
+      );
+    }
+    if (blocks.isEmpty) {
+      throw const OfflineExtractionException(
+        AnalysisStatus.corruptFile,
+        'The spreadsheet did not contain readable worksheet data.',
+      );
+    }
+    return _content(
+      sourceName,
+      DetectedFileType.xlsx,
+      bytes.length,
+      blocks.map((block) => block.text).join('\n'),
+      blocks,
+      tables: tables,
+      metadata: {'sourceName': sourceName, 'format': 'xlsx'},
+      warnings: const [
+        'Formulas are read from cached values and are not recalculated.',
       ],
-      confidence: .82,
+      confidence: .88,
+    );
+  }
+
+  ExtractedContent _pptx(String sourceName, Uint8List bytes) {
+    final archive = _decodeZip(bytes);
+    final blocks = <ContentBlock>[];
+    var order = 0;
+    final slides =
+        archive
+            .where(
+              (entry) =>
+                  entry.isFile &&
+                  RegExp(r'ppt/slides/slide\d+\.xml$').hasMatch(entry.name),
+            )
+            .toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
+    for (final entry in slides) {
+      final xml = _safeXml(entry.readBytes() ?? const <int>[]);
+      if (xml == null) continue;
+      final text = xml.descendants
+          .whereType<XmlElement>()
+          .where((element) => element.name.local == 't')
+          .map((e) => e.innerText)
+          .join(' ')
+          .trim();
+      if (text.isEmpty) continue;
+      final slideNumber = int.tryParse(
+        RegExp(r'slide(\d+)\.xml$').firstMatch(entry.name)?.group(1) ?? '',
+      );
+      blocks.add(
+        ContentBlock(
+          kind: ContentBlockKind.slide,
+          text: text,
+          pageIndex: slideNumber == null ? null : slideNumber - 1,
+          sectionIndex: order,
+          order: order++,
+          metadata: {
+            'part': entry.name,
+            'slideNumber': '${slideNumber ?? order}',
+          },
+        ),
+      );
+    }
+    if (blocks.isEmpty) {
+      throw const OfflineExtractionException(
+        AnalysisStatus.corruptFile,
+        'The presentation did not contain readable slide text.',
+      );
+    }
+    return _content(
+      sourceName,
+      DetectedFileType.pptx,
+      bytes.length,
+      blocks.map((block) => block.text).join('\n'),
+      blocks,
+      metadata: {'sourceName': sourceName, 'format': 'pptx'},
+      confidence: .88,
     );
   }
 
@@ -190,12 +396,29 @@ class LocalContentExtractor implements ContentExtractor {
     // that arbitrary PDF layout extraction is complete; poor output gets an
     // explicit OCR-required warning for the coordinator.
     final raw = latin1.decode(bytes, allowInvalid: true);
-    final matches = RegExp(r'\(([^()]*)\)\s*Tj').allMatches(raw);
-    final values = matches
-        .map((m) => m.group(1)!)
-        .map(_unescapePdfText)
-        .where((v) => v.trim().isNotEmpty)
-        .toList();
+    final values = <String>[];
+    values.addAll(
+      RegExp(
+        r'\(([^()]*)\)\s*Tj',
+      ).allMatches(raw).map((m) => _unescapePdfText(m.group(1)!)),
+    );
+    values.addAll(
+      RegExp(
+        r'<([0-9A-Fa-f\s]+)>\s*Tj',
+      ).allMatches(raw).map((m) => _decodePdfHex(m.group(1)!)),
+    );
+    for (final match in RegExp(r'\[((?:.|\n)*?)\]\s*TJ').allMatches(raw)) {
+      values.addAll(
+        RegExp(r'\(([^()]*)\)|<([0-9A-Fa-f\s]+)>')
+            .allMatches(match.group(1)!)
+            .map(
+              (part) => part.group(1) != null
+                  ? _unescapePdfText(part.group(1)!)
+                  : _decodePdfHex(part.group(2)!),
+            ),
+      );
+    }
+    values.removeWhere((value) => value.trim().isEmpty);
     final text = values.join(' ');
     final quality = _pdfQuality(text, bytes.length);
     return _content(
@@ -204,8 +427,11 @@ class LocalContentExtractor implements ContentExtractor {
       bytes.length,
       text,
       _lines(text),
+      metadata: {'sourceName': sourceName, 'format': 'pdf'},
       warnings: quality < .55
-          ? const ['PDF text layer is incomplete or low quality; OCR is required for affected pages.']
+          ? const [
+              'PDF text layer is incomplete or low quality; OCR is required for affected pages.',
+            ]
           : const [],
       confidence: quality,
     );
@@ -245,18 +471,26 @@ class LocalContentExtractor implements ContentExtractor {
           'The archive expands beyond the offline safety limit.',
         );
       }
-      final type = FileTypeDetector.detect(filename: name, bytes: Uint8List.fromList(data)).type;
+      final type = FileTypeDetector.detect(
+        filename: name,
+        bytes: Uint8List.fromList(data),
+      ).type;
       if (!_isTextLike(type)) continue;
       final text = utf8.decode(data, allowMalformed: true);
       if (text.trim().isEmpty) continue;
-      blocks.add(ContentBlock(
-        kind: ContentBlockKind.paragraph,
-        text: text,
-        sectionIndex: order,
-        order: order++,
-        metadata: {'archiveEntry': name, 'detectedType': type.name},
-      ));
-      onProgress?.call('Reading archive entry $name', .2 + .6 * (order / archive.length));
+      blocks.add(
+        ContentBlock(
+          kind: ContentBlockKind.paragraph,
+          text: text,
+          sectionIndex: order,
+          order: order++,
+          metadata: {'archiveEntry': name, 'detectedType': type.name},
+        ),
+      );
+      onProgress?.call(
+        'Reading archive entry $name',
+        .2 + .6 * (order / archive.length),
+      );
     }
     final text = blocks.map((b) => b.text).join('\n');
     return _content(
@@ -265,7 +499,9 @@ class LocalContentExtractor implements ContentExtractor {
       bytes.length,
       text,
       blocks,
-      warnings: const ['Only supported text-like archive entries were analyzed.'],
+      warnings: const [
+        'Only supported text-like archive entries were analyzed.',
+      ],
       confidence: blocks.isEmpty ? .1 : .76,
     );
   }
@@ -288,6 +524,7 @@ class LocalContentExtractor implements ContentExtractor {
     String text,
     List<ContentBlock> blocks, {
     List<ExtractedTable> tables = const [],
+    Map<String, String> metadata = const {},
     List<String> warnings = const [],
     double confidence = 0,
   }) {
@@ -299,6 +536,7 @@ class LocalContentExtractor implements ContentExtractor {
       blocks: blocks,
       sections: blocks,
       tables: tables,
+      metadata: metadata,
       warnings: warnings,
       extractionConfidence: confidence,
     );
@@ -312,11 +550,13 @@ class LocalContentExtractor implements ContentExtractor {
         .toList()
         .asMap()
         .entries
-        .map((e) => ContentBlock(
-              kind: ContentBlockKind.paragraph,
-              text: e.value,
-              order: e.key,
-            ))
+        .map(
+          (e) => ContentBlock(
+            kind: ContentBlockKind.paragraph,
+            text: e.value,
+            order: e.key,
+          ),
+        )
         .toList();
   }
 
@@ -329,6 +569,18 @@ class LocalContentExtractor implements ContentExtractor {
     } catch (_) {
       return null;
     }
+  }
+
+  static Iterable<XmlElement> _elements(XmlNode node, String localName) => node
+      .descendants
+      .whereType<XmlElement>()
+      .where((element) => element.name.local == localName);
+
+  static String? _attributeLocal(XmlElement element, String localName) {
+    for (final attribute in element.attributes) {
+      if (attribute.name.local == localName) return attribute.value;
+    }
+    return null;
   }
 
   static bool _isTextLike(DetectedFileType type) =>
@@ -361,6 +613,16 @@ class LocalContentExtractor implements ContentExtractor {
       .replaceAll(r'\)', ')')
       .replaceAll(r'\\', r'\')
       .replaceAll(RegExp(r'\\[0-7]{1,3}'), ' ');
+
+  static String _decodePdfHex(String value) {
+    final compact = value.replaceAll(RegExp(r'\s+'), '');
+    final padded = compact.length.isOdd ? '${compact}0' : compact;
+    final bytes = <int>[];
+    for (var i = 0; i < padded.length; i += 2) {
+      bytes.add(int.tryParse(padded.substring(i, i + 2), radix: 16) ?? 32);
+    }
+    return latin1.decode(bytes, allowInvalid: true);
+  }
 
   static double _pdfQuality(String text, int bytes) {
     if (text.trim().length < 20) return .15;
