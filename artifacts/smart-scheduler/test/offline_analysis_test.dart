@@ -139,6 +139,43 @@ void main() {
     ]);
   });
 
+  test('DOCX preserves hyperlinks, headers, and section metadata', () async {
+    final bytes = officeZip({
+      'word/_rels/document.xml.rels': '''
+        <Relationships xmlns="urn:rel">
+          <Relationship Id="rId5" Target="https://example.com/room" Type="hyperlink"/>
+        </Relationships>
+      ''',
+      'word/document.xml': '''
+        <w:document xmlns:w="urn:word" xmlns:r="urn:rel">
+          <w:body>
+            <w:p><w:hyperlink r:id="rId5"><w:r><w:t>Room details</w:t></w:r></w:hyperlink></w:p>
+            <w:p><w:pPr><w:sectPr/></w:pPr><w:r><w:t>Section two</w:t></w:r></w:p>
+          </w:body>
+        </w:document>
+      ''',
+      'word/header1.xml': '''
+        <w:hdr xmlns:w="urn:word"><w:p><w:r><w:t>Confidential header</w:t></w:r></w:p></w:hdr>
+      ''',
+    });
+    final result = await coordinator.analyzeOffline(
+      sourceName: 'linked.docx',
+      bytes: bytes,
+    );
+    final blocks = result.content!.blocks;
+    expect(blocks.any((block) => block.text == 'Confidential header'), isTrue);
+    final linkBlock = blocks.firstWhere(
+      (block) => block.text == 'Room details',
+    );
+    expect(linkBlock.metadata['hyperlinks'], {
+      'rId5': 'https://example.com/room',
+    });
+    final sectionBlock = blocks.firstWhere(
+      (block) => block.text == 'Section two',
+    );
+    expect(sectionBlock.metadata['sourceSection'], 0);
+  });
+
   test('XLSX resolves shared strings and worksheet rows', () async {
     final bytes = officeZip({
       'xl/sharedStrings.xml': '''
@@ -173,6 +210,44 @@ void main() {
     expect(result.content?.metadata['sourceName'], 'schedule.xlsx');
   });
 
+  test(
+    'XLSX preserves date formats, merged cells, hidden rows, and links',
+    () async {
+      final bytes = officeZip({
+        'xl/workbook.xml': '''
+        <workbook xmlns="urn:sheet"><sheets><sheet name="Dates"/></sheets></workbook>
+      ''',
+        'xl/styles.xml': '''
+        <styleSheet xmlns="urn:sheet">
+          <cellXfs><xf numFmtId="14"/></cellXfs>
+        </styleSheet>
+      ''',
+        'xl/worksheets/_rels/sheet1.xml.rels': '''
+        <Relationships xmlns="urn:rel">
+          <Relationship Id="rId7" Target="https://example.com/event" Type="hyperlink"/>
+        </Relationships>
+      ''',
+        'xl/worksheets/sheet1.xml': '''
+        <worksheet xmlns="urn:sheet" xmlns:r="urn:rel">
+          <sheetData><row r="1" hidden="1"><c r="A1" s="0"><v>46262</v></c></row></sheetData>
+          <mergeCells><mergeCell ref="A1:B1"/></mergeCells>
+          <hyperlinks><hyperlink ref="A1" r:id="rId7"/></hyperlinks>
+        </worksheet>
+      ''',
+      });
+      final result = await coordinator.analyzeOffline(
+        sourceName: 'semantics.xlsx',
+        bytes: bytes,
+      );
+      final table = result.content!.tables.single;
+      expect(table.metadata['mergedRanges'], ['A1:B1']);
+      expect(table.metadata['hiddenRows'], ['1']);
+      expect(table.metadata['hyperlinks'], {'A1': 'https://example.com/event'});
+      expect(table.metadata['dateValues'], {'A1': '2026-08-28'});
+      expect(table.rows.single, ['2026-08-28']);
+    },
+  );
+
   test('PPTX preserves slide boundaries and slide numbers', () async {
     final bytes = officeZip({
       'ppt/slides/slide1.xml': '''
@@ -196,6 +271,32 @@ void main() {
     expect(result.content?.blocks[1].text, 'Follow-up');
     expect(result.content?.blocks[1].pageIndex, 1);
     expect(result.content?.metadata['sourceName'], 'deck.pptx');
+  });
+
+  test('PPTX preserves titles, notes, and basic tables', () async {
+    final bytes = officeZip({
+      'ppt/slides/slide1.xml': '''
+        <p:sld xmlns:p="urn:pres" xmlns:a="urn:drawing">
+          <p:sp><p:nvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr><p:txBody><a:t>Schedule</a:t></p:txBody></p:sp>
+          <a:tbl><a:tr><a:tc><a:t>Owner</a:t></a:tc><a:tc><a:t>Room A</a:t></a:tc></a:tr></a:tbl>
+        </p:sld>
+      ''',
+      'ppt/notesSlides/notesSlide1.xml': '''
+        <p:notes xmlns:p="urn:pres" xmlns:a="urn:drawing"><a:t>Prepare handouts</a:t></p:notes>
+      ''',
+    });
+    final result = await coordinator.analyzeOffline(
+      sourceName: 'details.pptx',
+      bytes: bytes,
+    );
+    expect(result.content?.blocks.single.metadata['title'], 'Schedule');
+    expect(
+      result.content?.blocks.single.metadata['speakerNotes'],
+      'Prepare handouts',
+    );
+    expect(result.content?.tables.single.rows, [
+      ['Owner', 'Room A'],
+    ]);
   });
 
   test('PDF parser accepts hex text streams', () async {
@@ -224,4 +325,21 @@ void main() {
       expect(result.failure?.message, contains('OCR'));
     },
   );
+
+  test('PDF extractor classifies image-only and corrupt text layers', () async {
+    final extractor = LocalContentExtractor();
+    final imageOnly = await extractor.extract(
+      sourceName: 'scan.pdf',
+      bytes: Uint8List.fromList('%PDF-1.7 /Type /Page %%EOF'.codeUnits),
+      type: DetectedFileType.pdf,
+    );
+    expect(imageOnly.metadata['quality'], 'image-only');
+
+    final corrupt = await extractor.extract(
+      sourceName: 'broken.pdf',
+      bytes: Uint8List.fromList('%PDF-1.7'.codeUnits),
+      type: DetectedFileType.pdf,
+    );
+    expect(corrupt.metadata['quality'], 'corrupt-or-unreadable');
+  });
 }

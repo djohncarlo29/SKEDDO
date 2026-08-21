@@ -60,11 +60,11 @@ class BoundingBox {
   const BoundingBox(this.left, this.top, this.width, this.height);
 
   Map<String, dynamic> toJson() => {
-        'left': left,
-        'top': top,
-        'width': width,
-        'height': height,
-      };
+    'left': left,
+    'top': top,
+    'width': width,
+    'height': height,
+  };
 }
 
 class ContentBlock {
@@ -92,12 +92,14 @@ class ExtractedTable {
   final List<List<String>> rows;
   final int? pageIndex;
   final int? sectionIndex;
+  final Map<String, dynamic> metadata;
 
   const ExtractedTable({
     required this.rows,
     this.name,
     this.pageIndex,
     this.sectionIndex,
+    this.metadata = const {},
   });
 }
 
@@ -144,7 +146,9 @@ class ExtractedContent {
     this.extractionConfidence = 0,
   });
 
-  bool get hasText => plainText.trim().isNotEmpty || blocks.any((b) => b.text.trim().isNotEmpty);
+  bool get hasText =>
+      plainText.trim().isNotEmpty ||
+      blocks.any((b) => b.text.trim().isNotEmpty);
 
   ExtractedContent copyWith({
     String? plainText,
@@ -156,21 +160,20 @@ class ExtractedContent {
     Map<String, String>? metadata,
     List<String>? warnings,
     double? extractionConfidence,
-  }) =>
-      ExtractedContent(
-        sourceName: sourceName,
-        detectedType: detectedType,
-        byteSize: byteSize,
-        plainText: plainText ?? this.plainText,
-        blocks: blocks ?? this.blocks,
-        pages: pages ?? this.pages,
-        sections: sections ?? this.sections,
-        tables: tables ?? this.tables,
-        images: images ?? this.images,
-        metadata: metadata ?? this.metadata,
-        warnings: warnings ?? this.warnings,
-        extractionConfidence: extractionConfidence ?? this.extractionConfidence,
-      );
+  }) => ExtractedContent(
+    sourceName: sourceName,
+    detectedType: detectedType,
+    byteSize: byteSize,
+    plainText: plainText ?? this.plainText,
+    blocks: blocks ?? this.blocks,
+    pages: pages ?? this.pages,
+    sections: sections ?? this.sections,
+    tables: tables ?? this.tables,
+    images: images ?? this.images,
+    metadata: metadata ?? this.metadata,
+    warnings: warnings ?? this.warnings,
+    extractionConfidence: extractionConfidence ?? this.extractionConfidence,
+  );
 }
 
 class ExtractedEvent {

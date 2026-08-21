@@ -127,7 +127,9 @@ class LocalContentExtractor implements ContentExtractor {
     final archive = _decodeZip(bytes);
     final blocks = <ContentBlock>[];
     final tables = <ExtractedTable>[];
+    final relationships = _docxRelationships(archive);
     var order = 0;
+    var section = 0;
 
     for (final entry in archive) {
       if (!entry.isFile ||
@@ -158,21 +160,33 @@ class LocalContentExtractor implements ContentExtractor {
             ? null
             : _attributeLocal(styleElements.first, 'val');
         final isList = _elements(paragraph, 'numPr').isNotEmpty;
+        final hyperlinkIds = _elements(
+          paragraph,
+          'hyperlink',
+        ).map((element) => _attributeLocal(element, 'id')).whereType<String>();
+        final hasSectionBreak = _elements(paragraph, 'sectPr').isNotEmpty;
         blocks.add(
           ContentBlock(
             kind: style?.toLowerCase().startsWith('heading') == true
                 ? ContentBlockKind.heading
                 : ContentBlockKind.paragraph,
             text: text,
-            sectionIndex: order,
+            sectionIndex: section,
             order: order++,
             metadata: {
               'part': name,
+              'sourceSection': section,
               if (style != null) 'style': style,
               if (isList) 'list': 'true',
+              if (hyperlinkIds.isNotEmpty)
+                'hyperlinks': {
+                  for (final id in hyperlinkIds)
+                    if (relationships[id] != null) id: relationships[id],
+                },
             },
           ),
         );
+        if (hasSectionBreak) section++;
       }
 
       for (final table in _elements(xml, 'tbl')) {
@@ -192,7 +206,12 @@ class LocalContentExtractor implements ContentExtractor {
         }
         if (rows.isEmpty) continue;
         tables.add(
-          ExtractedTable(name: name, rows: rows, sectionIndex: order - 1),
+          ExtractedTable(
+            name: name,
+            rows: rows,
+            sectionIndex: section,
+            metadata: {'part': name, 'sourceSection': section},
+          ),
         );
       }
     }
@@ -216,10 +235,30 @@ class LocalContentExtractor implements ContentExtractor {
     );
   }
 
+  Map<String, String> _docxRelationships(Archive archive) {
+    for (final entry in archive) {
+      if (entry.name != 'word/_rels/document.xml.rels') continue;
+      final xml = _safeXml(entry.readBytes() ?? const <int>[]);
+      if (xml == null) return const {};
+      return {
+        for (final relationship in _elements(xml, 'Relationship'))
+          if (_attributeLocal(relationship, 'id') != null &&
+              _attributeLocal(relationship, 'target') != null)
+            _attributeLocal(relationship, 'id')!: _attributeLocal(
+              relationship,
+              'target',
+            )!,
+      };
+    }
+    return const {};
+  }
+
   ExtractedContent _xlsx(String sourceName, Uint8List bytes) {
     final archive = _decodeZip(bytes);
     final sharedStrings = <String>[];
     final worksheetNames = <String>[];
+    final date1904 = _xlsxUses1904Calendar(archive);
+    final numberFormats = _xlsxNumberFormats(archive);
     ArchiveFile? sharedEntry;
     for (final candidate in archive) {
       if (candidate.name == 'xl/sharedStrings.xml') {
@@ -261,12 +300,29 @@ class LocalContentExtractor implements ContentExtractor {
       if (xml == null) continue;
       final rows = <List<String>>[];
       final coordinates = <String>[];
+      final mergedRanges = _elements(xml, 'mergeCell')
+          .map((element) => _attributeLocal(element, 'ref'))
+          .whereType<String>()
+          .toList();
+      final hiddenRows = _elements(xml, 'row')
+          .where((row) => _attributeLocal(row, 'hidden') == '1')
+          .map((row) => _attributeLocal(row, 'r'))
+          .whereType<String>()
+          .toList();
+      final hiddenColumns = _elements(xml, 'col')
+          .where((column) => _attributeLocal(column, 'hidden') == '1')
+          .map((column) => _attributeLocal(column, 'min'))
+          .whereType<String>()
+          .toList();
+      final hyperlinkTargets = _xlsxHyperlinks(archive, entry.name);
+      final cellFormats = <String, String>{};
+      final dateValues = <String, String>{};
       for (final row in _elements(xml, 'row')) {
         final cells = <String>[];
         for (final cell in _elements(row, 'c')) {
-          final coordinate = cell.getAttribute('r');
+          final coordinate = _attributeLocal(cell, 'r');
           if (coordinate != null) coordinates.add(coordinate);
-          final type = cell.getAttribute('t');
+          final type = _attributeLocal(cell, 't');
           final value = _elements(cell, 'v').map((e) => e.innerText).join();
           final inline = _elements(cell, 'is')
               .expand((inlineString) => _elements(inlineString, 't'))
@@ -281,6 +337,22 @@ class LocalContentExtractor implements ContentExtractor {
                 : resolved;
           } else if (type == 'b') {
             resolved = value == '1' ? 'TRUE' : 'FALSE';
+          }
+          final styleIndex = int.tryParse(_attributeLocal(cell, 's') ?? '');
+          final format = styleIndex == null ? null : numberFormats[styleIndex];
+          if (coordinate != null && format != null) {
+            cellFormats[coordinate] = format;
+          }
+          if (coordinate != null &&
+              format != null &&
+              _looksLikeExcelDateFormat(format) &&
+              double.tryParse(value) != null) {
+            final parsedDate = _excelSerialDate(
+              double.parse(value),
+              date1904: date1904,
+            );
+            resolved = parsedDate;
+            dateValues[coordinate] = parsedDate;
           }
           cells.add(resolved.trim());
         }
@@ -302,6 +374,12 @@ class LocalContentExtractor implements ContentExtractor {
             'part': entry.name,
             'worksheetName': worksheetName,
             'cellCoordinates': coordinates,
+            'mergedRanges': mergedRanges,
+            'hiddenRows': hiddenRows,
+            'hiddenColumns': hiddenColumns,
+            'numberFormats': cellFormats,
+            'hyperlinks': hyperlinkTargets,
+            'dateValues': dateValues,
           },
         ),
       );
@@ -310,6 +388,15 @@ class LocalContentExtractor implements ContentExtractor {
           name: worksheetName,
           rows: rows,
           sectionIndex: order - 1,
+          metadata: {
+            'part': entry.name,
+            'mergedRanges': mergedRanges,
+            'hiddenRows': hiddenRows,
+            'hiddenColumns': hiddenColumns,
+            'numberFormats': cellFormats,
+            'hyperlinks': hyperlinkTargets,
+            'dateValues': dateValues,
+          },
         ),
       );
     }
@@ -334,9 +421,118 @@ class LocalContentExtractor implements ContentExtractor {
     );
   }
 
+  bool _xlsxUses1904Calendar(Archive archive) {
+    for (final entry in archive) {
+      if (entry.name != 'xl/workbook.xml') continue;
+      final xml = _safeXml(entry.readBytes() ?? const <int>[]);
+      if (xml == null) return false;
+      final workbookPr = _elements(xml, 'workbookPr').toList();
+      return workbookPr.isNotEmpty &&
+          _attributeLocal(workbookPr.first, 'date1904') == '1';
+    }
+    return false;
+  }
+
+  Map<int, String> _xlsxNumberFormats(Archive archive) {
+    final builtIn = <int, String>{
+      14: 'm/d/yy',
+      15: 'd-mmm-yy',
+      16: 'd-mmm',
+      17: 'mmm-yy',
+      18: 'h:mm AM/PM',
+      19: 'h:mm:ss AM/PM',
+      20: 'h:mm',
+      21: 'h:mm:ss',
+      22: 'm/d/yy h:mm',
+    };
+    final custom = <int, String>{};
+    for (final entry in archive) {
+      if (entry.name != 'xl/styles.xml') continue;
+      final xml = _safeXml(entry.readBytes() ?? const <int>[]);
+      if (xml == null) break;
+      for (final format in _elements(xml, 'numFmt')) {
+        final id = int.tryParse(_attributeLocal(format, 'numFmtId') ?? '');
+        final code = _attributeLocal(format, 'formatCode');
+        if (id != null && code != null) custom[id] = code;
+      }
+      final xfs = _elements(
+        xml,
+        'cellXfs',
+      ).expand((element) => _elements(element, 'xf')).toList();
+      return {
+        for (var index = 0; index < xfs.length; index++)
+          index:
+              builtIn[int.tryParse(
+                    _attributeLocal(xfs.elementAt(index), 'numFmtId') ?? '',
+                  ) ??
+                  -1] ??
+              custom[int.tryParse(
+                    _attributeLocal(xfs.elementAt(index), 'numFmtId') ?? '',
+                  ) ??
+                  -1] ??
+              '',
+      };
+    }
+    return const {};
+  }
+
+  Map<String, String> _xlsxHyperlinks(Archive archive, String sheetPath) {
+    final slash = sheetPath.lastIndexOf('/');
+    final directory = slash < 0 ? '' : sheetPath.substring(0, slash);
+    final filename = slash < 0 ? sheetPath : sheetPath.substring(slash + 1);
+    final relsPath = '$directory/_rels/$filename.rels';
+    final relationships = <String, String>{};
+    for (final entry in archive) {
+      if (entry.name != relsPath) continue;
+      final xml = _safeXml(entry.readBytes() ?? const <int>[]);
+      if (xml == null) return const {};
+      for (final relationship in _elements(xml, 'Relationship')) {
+        final id = _attributeLocal(relationship, 'id');
+        final target = _attributeLocal(relationship, 'target');
+        if (id != null && target != null) relationships[id] = target;
+      }
+    }
+    for (final entry in archive) {
+      if (entry.name != sheetPath) continue;
+      final xml = _safeXml(entry.readBytes() ?? const <int>[]);
+      if (xml == null) return const {};
+      return {
+        for (final link in _elements(xml, 'hyperlink'))
+          if (_attributeLocal(link, 'ref') != null &&
+              (_attributeLocal(link, 'id') != null &&
+                  relationships[_attributeLocal(link, 'id')] != null))
+            _attributeLocal(link, 'ref')!:
+                relationships[_attributeLocal(link, 'id')]!,
+      };
+    }
+    return const {};
+  }
+
+  bool _looksLikeExcelDateFormat(String format) {
+    final withoutLiterals = format
+        .replaceAll(RegExp(r'"[^"]*"'), '')
+        .replaceAll(RegExp(r'\[[^\]]+\]'), '')
+        .toLowerCase();
+    return RegExp(r'[ymd]').hasMatch(withoutLiterals) &&
+        !RegExp(r'[^a-z]m(?![a-z])').hasMatch(withoutLiterals);
+  }
+
+  String _excelSerialDate(double serial, {required bool date1904}) {
+    final epoch = date1904
+        ? DateTime.utc(1904, 1, 1)
+        : DateTime.utc(1899, 12, 30);
+    final date = epoch.add(
+      Duration(microseconds: (serial * 86400000000).round()),
+    );
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
+  }
+
   ExtractedContent _pptx(String sourceName, Uint8List bytes) {
     final archive = _decodeZip(bytes);
     final blocks = <ContentBlock>[];
+    final tables = <ExtractedTable>[];
     var order = 0;
     final slides =
         archive
@@ -360,6 +556,34 @@ class LocalContentExtractor implements ContentExtractor {
       final slideNumber = int.tryParse(
         RegExp(r'slide(\d+)\.xml$').firstMatch(entry.name)?.group(1) ?? '',
       );
+      final title = _elements(xml, 'sp')
+          .where((shape) {
+            return _elements(shape, 'ph').any(
+              (placeholder) => _attributeLocal(placeholder, 'type') == 'title',
+            );
+          })
+          .map(_elementText)
+          .where((value) => value.isNotEmpty)
+          .toList();
+      final slideTitle = title.isEmpty ? null : title.first;
+      for (final table in _elements(xml, 'tbl')) {
+        final rows = <List<String>>[];
+        for (final row in _elements(table, 'tr')) {
+          final cells = _elements(row, 'tc').map(_elementText).toList();
+          if (cells.any((cell) => cell.isNotEmpty)) rows.add(cells);
+        }
+        if (rows.isNotEmpty) {
+          tables.add(
+            ExtractedTable(
+              name: 'Slide ${slideNumber ?? order + 1}',
+              rows: rows,
+              pageIndex: slideNumber == null ? null : slideNumber - 1,
+              metadata: {'part': entry.name},
+            ),
+          );
+        }
+      }
+      final notes = _pptxNotes(archive, slideNumber);
       blocks.add(
         ContentBlock(
           kind: ContentBlockKind.slide,
@@ -370,6 +594,8 @@ class LocalContentExtractor implements ContentExtractor {
           metadata: {
             'part': entry.name,
             'slideNumber': '${slideNumber ?? order}',
+            if (slideTitle != null) 'title': slideTitle,
+            if (notes != null) 'speakerNotes': notes,
           },
         ),
       );
@@ -386,9 +612,23 @@ class LocalContentExtractor implements ContentExtractor {
       bytes.length,
       blocks.map((block) => block.text).join('\n'),
       blocks,
+      tables: tables,
       metadata: {'sourceName': sourceName, 'format': 'pptx'},
       confidence: .88,
     );
+  }
+
+  String? _pptxNotes(Archive archive, int? slideNumber) {
+    if (slideNumber == null) return null;
+    final noteName = 'ppt/notesSlides/notesSlide$slideNumber.xml';
+    for (final entry in archive) {
+      if (entry.name != noteName) continue;
+      final xml = _safeXml(entry.readBytes() ?? const <int>[]);
+      if (xml == null) return null;
+      final text = _elementText(xml).trim();
+      return text.isEmpty ? null : text;
+    }
+    return null;
   }
 
   ExtractedContent _pdfText(String sourceName, Uint8List bytes) {
@@ -421,18 +661,27 @@ class LocalContentExtractor implements ContentExtractor {
     values.removeWhere((value) => value.trim().isEmpty);
     final text = values.join(' ');
     final quality = _pdfQuality(text, bytes.length);
+    final classification = _pdfClassification(text, raw, quality);
     return _content(
       sourceName,
       DetectedFileType.pdf,
       bytes.length,
       text,
       _lines(text),
-      metadata: {'sourceName': sourceName, 'format': 'pdf'},
-      warnings: quality < .55
-          ? const [
-              'PDF text layer is incomplete or low quality; OCR is required for affected pages.',
-            ]
-          : const [],
+      metadata: {
+        'sourceName': sourceName,
+        'format': 'pdf',
+        'quality': classification,
+        'pageCount': '${RegExp(r'/Type\s*/Page\b').allMatches(raw).length}',
+      },
+      warnings: [
+        if (classification != 'usable')
+          'PDF text layer classification: $classification.',
+        if (classification == 'partial' ||
+            classification == 'scrambled' ||
+            classification == 'image-only')
+          'OCR is required for affected PDF pages.',
+      ],
       confidence: quality,
     );
   }
@@ -533,9 +782,52 @@ class LocalContentExtractor implements ContentExtractor {
       detectedType: type,
       byteSize: byteSize,
       plainText: text,
-      blocks: blocks,
-      sections: blocks,
-      tables: tables,
+      blocks: [
+        for (final block in blocks)
+          ContentBlock(
+            kind: block.kind,
+            text: block.text,
+            pageIndex: block.pageIndex,
+            sectionIndex: block.sectionIndex,
+            boundingBox: block.boundingBox,
+            order: block.order,
+            metadata: {
+              'sourceFile': sourceName,
+              'sourceType': type.name,
+              ...block.metadata,
+            },
+          ),
+      ],
+      sections: [
+        for (final block in blocks)
+          ContentBlock(
+            kind: block.kind,
+            text: block.text,
+            pageIndex: block.pageIndex,
+            sectionIndex: block.sectionIndex,
+            boundingBox: block.boundingBox,
+            order: block.order,
+            metadata: {
+              'sourceFile': sourceName,
+              'sourceType': type.name,
+              ...block.metadata,
+            },
+          ),
+      ],
+      tables: [
+        for (final table in tables)
+          ExtractedTable(
+            name: table.name,
+            rows: table.rows,
+            pageIndex: table.pageIndex,
+            sectionIndex: table.sectionIndex,
+            metadata: {
+              'sourceFile': sourceName,
+              'sourceType': type.name,
+              ...table.metadata,
+            },
+          ),
+      ],
       metadata: metadata,
       warnings: warnings,
       extractionConfidence: confidence,
@@ -576,9 +868,18 @@ class LocalContentExtractor implements ContentExtractor {
       .whereType<XmlElement>()
       .where((element) => element.name.local == localName);
 
+  static String _elementText(XmlNode node) => node.descendants
+      .whereType<XmlElement>()
+      .where((element) => element.name.local == 't')
+      .map((element) => element.innerText)
+      .join(' ')
+      .trim();
+
   static String? _attributeLocal(XmlElement element, String localName) {
     for (final attribute in element.attributes) {
-      if (attribute.name.local == localName) return attribute.value;
+      if (attribute.name.local.toLowerCase() == localName.toLowerCase()) {
+        return attribute.value;
+      }
     }
     return null;
   }
@@ -631,6 +932,15 @@ class LocalContentExtractor implements ContentExtractor {
     if (ratio < .8) return .3;
     if (text.length < bytes ~/ 500) return .45;
     return .78;
+  }
+
+  static String _pdfClassification(String text, String raw, double quality) {
+    if (text.trim().isEmpty) {
+      return raw.contains('%%EOF') ? 'image-only' : 'corrupt-or-unreadable';
+    }
+    if (quality < .35) return 'scrambled';
+    if (quality < .55) return 'partial';
+    return 'usable';
   }
 }
 
