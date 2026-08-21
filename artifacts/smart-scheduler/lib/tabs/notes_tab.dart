@@ -1199,11 +1199,11 @@ class _NoteInputCardState extends State<_NoteInputCard>
       _sttBoundaryTimer?.cancel();
       _pulseCtrl.stop();
       _pulseCtrl.value = 1.0;
-      // Commit whatever was transcribed by local speech recognition
-      // in-stream; no post-processing step needed).
+      // Commit the final local transcript with lightweight punctuation and
+      // capitalization cleanup. Partials remain raw so dictation stays live.
       if (words.trim().isNotEmpty) {
         final sep = _preListenText.isEmpty ? '' : ' ';
-        widget.controller.text = '$_preListenText$sep${words.trim()}';
+        widget.controller.text = '$_preListenText$sep${_localPunctuate(words)}';
       }
       setState(() {
         _micListening = false;
@@ -1223,7 +1223,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
         // background correction step is needed.
         final sep = _preListenText.isEmpty ? '' : ' ';
         widget.controller.text = '$_preListenText$sep$words';
-      // Background correction timer removed —
+        // Background correction timer removed —
         // in-stream formatting means no post-processing pause needed.
         // _sttBoundaryTimer?.cancel();
         // final rawNew = words.length > _bgRaw.length
