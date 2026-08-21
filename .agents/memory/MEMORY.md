@@ -32,7 +32,8 @@
 - [Bounded squircle geometry](bounded-squircle-geometry.md) — constrain shared-radius paths to each card’s actual rect; Flutter’s individual clamp leaves seams on short cards.
 - [Split Cupertino picker chevrons](split-chevron-clipping.md) — clip upper/lower halves separately; translate the lower source by -half + offset to move only the lower chevron.
 - [Fixed Squircle Stadium radius](fixed-stadium-radius.md) — shared stadium controls use 24px corners; the 40px search bar explicitly remains 20px.
-- [Dark-mode ghost and sheet outlines](dark-mode-ghost-and-sheet-outlines.md) — overlay/lifted-card hairlines are Dark Mode-only; grouping snap glow bypasses shadow suppression.
+ - [Dark-mode ghost and sheet outlines](dark-mode-ghost-and-sheet-outlines.md) — overlay/lifted-card hairlines are Dark Mode-only; grouping snap glow bypasses shadow suppression.
+ - [Light-mode attachment confirm surface](light-mode-checkmark-glass.md) — confirm uses a solid accent circle with a white glyph in Light Mode; the glass lens neutralizes saturated surfaces.
 - [Flutter APK Gradle stability](flutter-apk-gradle-stability.md) — SIGBUS fix requires DEFAULT_JVM_OPTS in gradlew (not just gradle.properties); daemon=false runs in wrapper JVM which ignores org.gradle.jvmargs.
 - [Shorebird patch environment](shorebird-patch-env.md) — set TMPDIR to workspace before every patch push; /tmp overlayfs fails on large writes. shorebird-push.sh now auto-restores symlinks and sets TMPDIR.
 - [Shorebird native diff safety](shorebird-native-diff.md) — DEX field/method differences mean the patch no longer matches the installed release’s native baseline; publish a new release instead of allowing native diffs.
