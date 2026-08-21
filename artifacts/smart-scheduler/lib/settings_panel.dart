@@ -876,8 +876,18 @@ class _LiquidGlassSection extends StatelessWidget {
                 builder: (context, value, _) {
                   return LayoutBuilder(
                     builder: (context, constraints) {
+                      // The slider sits inside the row's fixed 18 px
+                      // horizontal content inset.  Widen it only by the
+                      // difference between that inset and the required
+                      // settled-thumb edge inset, so the package's thumb
+                      // centers resolve to:
+                      //   rowLeft + 16 + thumbWidth / 2
+                      //   rowRight - 16 - thumbWidth / 2
                       final sliderWidth =
-                          constraints.maxWidth + _kLiquidGlassThumbWidth;
+                          constraints.maxWidth +
+                          2 *
+                              (_kLiquidGlassRowHorizontalPadding -
+                                  _kLiquidGlassSettledEdgeInset);
                       return OverflowBox(
                         alignment: Alignment.center,
                         minWidth: sliderWidth,
@@ -919,12 +929,12 @@ class _LiquidGlassSection extends StatelessWidget {
   }
 }
 
-// The slider package reserves this inset so the lifted glass thumb remains
-// completely inside the control while it deforms at either end. Keep the
-// painted stops in the thumb-centre range, rather than at the outer track box.
+// The slider row has a fixed 18 px content inset. The settled thumb must sit
+// 16 px inside the stadium row edge at either endpoint.
 const double _kLiquidGlassThumbWidth = 37.0;
-// No extra internal inset. The slider itself is widened by one resting-thumb
-// width and centered, so its thumb centers land on the visible row edges.
+const double _kLiquidGlassRowHorizontalPadding = 18.0;
+const double _kLiquidGlassSettledEdgeInset = 16.0;
+// The package's own track coordinates are also the endpoint tick centers.
 const double _kLiquidGlassSliderInset = 0.0;
 const LiquidGlassSliderLayout _liquidGlassSliderLayout =
     LiquidGlassSliderLayout(horizontalInset: _kLiquidGlassSliderInset);
@@ -948,6 +958,9 @@ class _LiquidGlassStopsPainter extends CustomPainter {
     final left = _kLiquidGlassSliderInset + thumbHalfWidth;
     final right = size.width - left;
     final centerY = size.height / 2;
+    // The package paints the 6 px track after this painter. Keep the ticks'
+    // shared-color pixels outside that track so translucent colors do not
+    // accumulate where a vertical tick crosses the horizontal track.
     final paint = Paint()
       ..color = color
       ..strokeWidth = 2
@@ -955,8 +968,13 @@ class _LiquidGlassStopsPainter extends CustomPainter {
     for (var i = 0; i <= 10; i++) {
       final x = left + (right - left) * i / 10;
       canvas.drawLine(
-        Offset(x, centerY - 4),
-        Offset(x, centerY + 4),
+        Offset(x, centerY - 5),
+        Offset(x, centerY - 3),
+        paint,
+      );
+      canvas.drawLine(
+        Offset(x, centerY + 3),
+        Offset(x, centerY + 5),
         paint,
       );
     }
