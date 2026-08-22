@@ -888,7 +888,7 @@ class _LiquidGlassSection extends StatelessWidget {
                     fit: StackFit.expand,
                     children: [
                       Image.asset(
-                        'liquid_glass_background.webp',
+                        'assets/liquid_glass_background.webp',
                         fit: BoxFit.cover,
                       ),
                       const Center(child: FloatingTabBarGlassPreview()),

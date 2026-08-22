@@ -194,7 +194,7 @@ class FloatingTabBarGlassPreview extends StatelessWidget {
         LiquidGlassTabBar(
           items: [
             _previewItem(SFIcons.sf_trash),
-            _previewItem(SFIcons.sf_folder),
+            _previewItem(SFIcons.sf_folder, size: 23),
             _previewItem(SFIcons.sf_arrow_uturn_backward),
           ],
           selectedIndex: 0,
@@ -220,14 +220,10 @@ class FloatingTabBarGlassPreview extends StatelessWidget {
     );
   }
 
-  LiquidGlassTabBarItem _previewItem(IconData icon) {
+  LiquidGlassTabBarItem _previewItem(IconData icon, {double size = 20}) {
     return LiquidGlassTabBarItem(
-      iconBuilder: (context, glyph) => FixedSFIcon(
-        icon,
-        fontSize: glyph.size,
-        fontWeight: FontWeight.normal,
-        color: glyph.color,
-      ),
+      iconBuilder: (context, glyph) => FixedSFIcon(icon,
+          fontSize: size, fontWeight: FontWeight.normal, color: glyph.color),
     );
   }
 }
