@@ -65,6 +65,8 @@ final ValueNotifier<List<double>> appTextScaleStopsNotifier =
 final ValueNotifier<List<TextScaler>> appPlatformTextScalersNotifier =
     ValueNotifier<List<TextScaler>>(<TextScaler>[]);
 
+const _textScaleChannel = MethodChannel('com.smartscheduler/text_scale');
+
 /// Whether the native profile was loaded successfully. When true, the native
 /// currentScale is authoritative; Flutter's MediaQuery value is only a
 /// fallback for web and older binaries without this bridge.
@@ -143,9 +145,9 @@ int skeddoTextScaleIndexForSystemScale(double scale) {
 /// app, without changing the actual spacing between the platform stops.
 Future<void> initializeDeviceTextScaleProfile() async {
   try {
-    final raw = await const MethodChannel(
-      'com.smartscheduler/text_scale',
-    ).invokeMethod<Map<Object?, Object?>>('getProfile');
+    final raw = await _textScaleChannel.invokeMethod<Map<Object?, Object?>>(
+      'getProfile',
+    );
     final rawStops = raw?['stops'];
     if (rawStops is! List) return;
     final nativeStops = rawStops
@@ -250,6 +252,26 @@ Future<void> initializeDeviceTextScaleProfile() async {
     }
   } on PlatformException {
     // Flutter's MediaQuery scale remains the authoritative fallback.
+  } on MissingPluginException {
+    // Web and older binaries do not have the native profile channel.
+  }
+}
+
+/// Cheaply detect an OS text-size change without transferring the full native
+/// curve profile. This matters in Android split-screen/floating-window mode,
+/// where SKEDDO can remain resumed while the user changes Settings beside it.
+Future<void> refreshDeviceTextScaleProfileIfChanged() async {
+  try {
+    final current = await _textScaleChannel.invokeMethod<num>(
+      'getCurrentScale',
+    );
+    if (current != null &&
+        current.isFinite &&
+        current.toDouble() != appSystemTextScaleNotifier.value) {
+      await initializeDeviceTextScaleProfile();
+    }
+  } on PlatformException {
+    // The existing Flutter MediaQuery fallback remains authoritative.
   } on MissingPluginException {
     // Web and older binaries do not have the native profile channel.
   }

@@ -20,7 +20,11 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, textScaleChannel)
             .setMethodCallHandler { call, result ->
                 if (call.method != "getProfile") {
-                    result.notImplemented()
+                    if (call.method == "getCurrentScale") {
+                        result.success(resources.configuration.fontScale.toDouble())
+                    } else {
+                        result.notImplemented()
+                    }
                     return@setMethodCallHandler
                 }
                 val current = resources.configuration.fontScale.toDouble()

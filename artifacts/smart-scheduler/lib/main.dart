@@ -515,10 +515,16 @@ class SKEDDOApp extends StatefulWidget {
 }
 
 class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
+  Timer? _textScalePollTimer;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _textScalePollTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => unawaited(refreshDeviceTextScaleProfileIfChanged()),
+    );
     // Load the Settings preview background while the app is starting so
     // opening the Liquid Glass sub-screen does not wait on the asset decode.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -550,6 +556,7 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _textScalePollTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
