@@ -288,7 +288,7 @@ class _SettingsPanelState extends State<SettingsPanel>
         };
         final textSizeLabel = appTextSizeUsesSystemNotifier.value
             ? 'System'
-            : '${appTextSizeIndexNotifier.value + 1} of 7';
+            : 'Custom';
         final startOfWeekLabel = appStartOfWeekNotifier.value;
         final defaultViewLabel = appDefaultViewNotifier.value;
         final eventDurationLabel = appEventDurationNotifier.value;
@@ -935,63 +935,50 @@ class _TextSizeSliderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
-    final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
+    final inactiveColor = resolveThemeColor(kTertiaryLabel, context);
+    final textScaler = MediaQuery.textScalerOf(context);
+    // Keep Text Size's custom control in the same 52 pt row as Liquid Glass,
+    // while allowing both controls to grow together for larger Dynamic Type.
+    final rowHeight = math.max(
+      _kSettingsRowHeight,
+      textScaler.scale(_kSettingsRowHeight),
+    );
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 13, 16, 10),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Custom',
-                  style: TextStyle(
-                    fontFamily: kSFProText,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w400,
-                    color: primaryLabel,
-                  ),
-                ),
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: SizedBox(
+        height: rowHeight,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Match Liquid Glass's tuned endpoint geometry exactly: the
+            // settled thumb centers sit 16 px inside the visible card edge.
+            final sliderWidth =
+                constraints.maxWidth +
+                2 *
+                    (_kLiquidGlassRowHorizontalPadding -
+                        _kLiquidGlassSettledEdgeInset);
+            return OverflowBox(
+              alignment: Alignment.center,
+              minWidth: sliderWidth,
+              maxWidth: sliderWidth,
+              child: LiquidGlassSlider(
+                value: index / 6,
+                minimumValue: 0,
+                maximumValue: 1,
+                width: sliderWidth,
+                height: rowHeight,
+                layout: _liquidGlassSliderLayout,
+                isContinuous: true,
+                divisions: 6,
+                activeColor: accentColor,
+                inactiveColor: inactiveColor,
+                thumbColor: const Color(0xFFFDFDFD),
+                onChanged: (raw) => onChanged(raw * 6),
+                onChangeEnd: (raw) => onChanged(raw * 6),
               ),
-              Text(
-                '${index + 1} of 7',
-                style: TextStyle(
-                  fontFamily: kSFProText,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w400,
-                  color: secondaryLabel,
-                ),
-              ),
-            ],
-          ),
-          CupertinoSlider(
-            value: index.toDouble(),
-            min: 0,
-            max: 6,
-            divisions: 6,
-            activeColor: accentColor,
-            onChanged: onChanged,
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List<Widget>.generate(
-                7,
-                (tick) => DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: tick <= index
-                        ? accentColor
-                        : resolveThemeColor(kTertiaryLabel, context),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const SizedBox(width: 4, height: 4),
-                ),
-              ),
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }

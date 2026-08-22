@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
@@ -198,104 +199,114 @@ class _FloatingTabBarGlassPreviewState
           _offset.dy.clamp(-maxY, maxY),
         );
 
-        return GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onPanUpdate: (details) {
-            setState(() {
-              _offset = Offset(
-                (_offset.dx + details.delta.dx).clamp(-maxX, maxX),
-                (_offset.dy + details.delta.dy).clamp(-maxY, maxY),
-              );
-            });
-          },
-          onDoubleTap: () => setState(() => _offset = Offset.zero),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Transform.translate(
-                offset: boundedOffset,
-                child: Semantics(
-                  label: 'Liquid Glass preview',
-                  hint: 'Drag to move. Double-tap to center.',
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      IgnorePointer(
-                        child: LiquidGlassShadow(
-                          blur: 16,
-                          opacity: isDark ? 0 : 0.18,
-                          offset: const Offset(0, 5),
-                          cornerRadius: kSquircleStadiumRadius,
-                          child: SizedBox(width: barWidth, height: 50),
+        return SizedBox.expand(
+          child: GestureDetector(
+            // The preview lives inside the settings CustomScrollView. Claim
+            // the full preview surface rather than only the painted pill so
+            // the scroll view cannot steal a drag that starts near its edge.
+            behavior: HitTestBehavior.opaque,
+            dragStartBehavior: DragStartBehavior.down,
+            onPanUpdate: (details) {
+              setState(() {
+                _offset = Offset(
+                  (_offset.dx + details.delta.dx).clamp(-maxX, maxX),
+                  (_offset.dy + details.delta.dy).clamp(-maxY, maxY),
+                );
+              });
+            },
+            onDoubleTap: () => setState(() => _offset = Offset.zero),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Transform.translate(
+                  offset: boundedOffset,
+                  child: Semantics(
+                    label: 'Liquid Glass preview',
+                    hint: 'Drag to move. Double-tap to center.',
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        IgnorePointer(
+                          child: LiquidGlassShadow(
+                            blur: 16,
+                            opacity: isDark ? 0 : 0.18,
+                            offset: const Offset(0, 5),
+                            cornerRadius: kSquircleStadiumRadius,
+                            child: SizedBox(width: barWidth, height: 50),
+                          ),
                         ),
-                      ),
-                      // The Settings preview is a visual sample, not a second
-                      // navigation control. Ignore the tab bar's own hit
-                      // testing so taps cannot make a selection indicator
-                      // appear; the parent GestureDetector still owns the
-                      // preview's drag and double-tap gestures.
-                      ValueListenableBuilder<double>(
-                        valueListenable: appLiquidGlassOpacityNotifier,
-                        builder: (context, _, __) {
-                          // Re-resolve the glass appearance on every slider
-                          // update while this preview remains mounted.
-                          final style = _floatingTabBarStyle(context);
-                          return IgnorePointer(
-                            child: LiquidGlassTabBar(
-                              items: [
-                                _previewItem(SFIcons.sf_trash),
-                                _previewItem(SFIcons.sf_folder, size: 23),
-                                _previewItem(SFIcons.sf_arrow_uturn_left),
-                              ],
-                              selectedIndex: 0,
-                              onChanged: (_) {},
-                              width: barWidth,
-                              height: 50,
-                              itemPadding: 4,
-                              itemStyle: LiquidGlassTabItemStyle(
-                                selectedColor:
-                                    resolveThemeColor(kSecondaryLabel, context),
-                                unselectedColor:
-                                    resolveThemeColor(kSecondaryLabel, context),
-                                iconSize: 20,
-                                selectedFontWeight: FontWeight.w500,
-                                unselectedFontWeight: FontWeight.w500,
+                        // The Settings preview is a visual sample, not a second
+                        // navigation control. Ignore the tab bar's own hit
+                        // testing so taps cannot make a selection indicator
+                        // appear; the parent GestureDetector still owns the
+                        // preview's drag and double-tap gestures.
+                        ValueListenableBuilder<double>(
+                          valueListenable: appLiquidGlassOpacityNotifier,
+                          builder: (context, _, __) {
+                            // Re-resolve the glass appearance on every slider
+                            // update while this preview remains mounted.
+                            final style = _floatingTabBarStyle(context);
+                            return IgnorePointer(
+                              child: LiquidGlassTabBar(
+                                items: [
+                                  _previewItem(SFIcons.sf_trash),
+                                  _previewItem(SFIcons.sf_folder, size: 23),
+                                  _previewItem(SFIcons.sf_arrow_uturn_left),
+                                ],
+                                selectedIndex: 0,
+                                onChanged: (_) {},
+                                width: barWidth,
+                                height: 50,
+                                itemPadding: 4,
+                                itemStyle: LiquidGlassTabItemStyle(
+                                  selectedColor: resolveThemeColor(
+                                    kSecondaryLabel,
+                                    context,
+                                  ),
+                                  unselectedColor: resolveThemeColor(
+                                    kSecondaryLabel,
+                                    context,
+                                  ),
+                                  iconSize: 20,
+                                  selectedFontWeight: FontWeight.w500,
+                                  unselectedFontWeight: FontWeight.w500,
+                                ),
+                                style: style,
+                                pillStyle: const LiquidGlassTabPillStyle(
+                                  mode: LiquidGlassPillMode.none,
+                                  show: false,
+                                  animated: false,
+                                ),
                               ),
-                              style: style,
-                              pillStyle: const LiquidGlassTabPillStyle(
-                                mode: LiquidGlassPillMode.none,
-                                show: false,
-                                animated: false,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      // Match the Floating Tab Bar's stable hairline: it is
-                      // painted outside the glass capture so the rim remains
-                      // crisp and does not refract with the background.
-                      IgnorePointer(
-                        child: SizedBox(
-                          width: barWidth,
-                          height: 50,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: const Color(0x26FFFFFF),
-                                width: 0.5,
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                kSquircleStadiumRadius,
+                            );
+                          },
+                        ),
+                        // Match the Floating Tab Bar's stable hairline: it is
+                        // painted outside the glass capture so the rim remains
+                        // crisp and does not refract with the background.
+                        IgnorePointer(
+                          child: SizedBox(
+                            width: barWidth,
+                            height: 50,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: const Color(0x26FFFFFF),
+                                  width: 0.5,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  kSquircleStadiumRadius,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -304,8 +315,12 @@ class _FloatingTabBarGlassPreviewState
 
   LiquidGlassTabBarItem _previewItem(IconData icon, {double size = 20}) {
     return LiquidGlassTabBarItem(
-      iconBuilder: (context, glyph) => FixedSFIcon(icon,
-          fontSize: size, fontWeight: FontWeight.normal, color: glyph.color),
+      iconBuilder: (context, glyph) => FixedSFIcon(
+        icon,
+        fontSize: size,
+        fontWeight: FontWeight.normal,
+        color: glyph.color,
+      ),
     );
   }
 }
@@ -325,9 +340,7 @@ LiquidGlassStyle _floatingTabBarStyle(BuildContext context) {
 
   return LiquidGlassTabBar.defaultStyle.copyWith(
     appearance: LiquidGlassTabBar.defaultStyle.appearance.copyWith(
-      color: headerColor.withValues(
-        alpha: appLiquidGlassOpacityNotifier.value,
-      ),
+      color: headerColor.withValues(alpha: appLiquidGlassOpacityNotifier.value),
       blur: LiquidGlassBlur(
         sigmaX: defaultBlur.sigmaX * blurScale,
         sigmaY: defaultBlur.sigmaY * blurScale,

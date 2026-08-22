@@ -183,12 +183,14 @@ Future<void> loadAppSettings() async {
 
   final liquidGlassOpacity = prefs.getDouble(_kLiquidGlassOpacityKey);
   if (liquidGlassOpacity != null) {
+    final range = kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity;
     final normalized =
-        ((liquidGlassOpacity - kLiquidGlassMinimumOpacity) /
-                (kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity))
-            .clamp(0.0, 1.0);
+        ((liquidGlassOpacity - kLiquidGlassMinimumOpacity) / range).clamp(
+          0.0,
+          1.0,
+        );
     appLiquidGlassOpacityNotifier.value =
-        (normalized * 10).round() / 10 * kLiquidGlassMaximumOpacity;
+        kLiquidGlassMinimumOpacity + normalized * range;
   }
   AIServices.setDateLocalePreference(appDateLocaleNotifier.value);
 }
