@@ -860,6 +860,7 @@ class _TextSizeSection extends StatelessWidget {
         appTextSizeUsesSystemNotifier,
         appTextSizeIndexNotifier,
         appSystemTextScaleNotifier,
+        appTextScaleStopsNotifier,
       ]),
       builder: (context, _) {
         final usesSystem = appTextSizeUsesSystemNotifier.value;
@@ -887,33 +888,22 @@ class _TextSizeSection extends StatelessWidget {
         return SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              children: [
-                _SettingsCard(
-                  rows: [
-                    _OptionRow(
-                      title: 'System',
-                      selected: usesSystem,
-                      accentColor: accentColor,
-                      onTap: selectSystem,
-                    ),
-                  ],
-                  cardBg: cardBg,
-                  shadowColor: shadowColor,
+            child: _SettingsCard(
+              rows: [
+                _OptionRow(
+                  title: 'System',
+                  selected: usesSystem,
+                  accentColor: accentColor,
+                  onTap: selectSystem,
                 ),
-                const SizedBox(height: 14),
-                _SettingsCard(
-                  rows: [
-                    _TextSizeSliderRow(
-                      index: customIndex,
-                      accentColor: accentColor,
-                      onChanged: selectCustom,
-                    ),
-                  ],
-                  cardBg: cardBg,
-                  shadowColor: shadowColor,
+                _TextSizeSliderRow(
+                  index: customIndex,
+                  accentColor: accentColor,
+                  onChanged: selectCustom,
                 ),
               ],
+              cardBg: cardBg,
+              shadowColor: shadowColor,
             ),
           ),
         );

@@ -442,6 +442,7 @@ void _writeCrashReport(String message) {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDeviceTextScaleProfile();
 
   // ── Global crash capture (non-web only) ────────────────────────────────────
   if (!kIsWeb) {

@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'ai/ai_services.dart';
 import 'ai/parsed_date.dart';
@@ -27,11 +28,9 @@ final ValueNotifier<bool> appTextSizeUsesSystemNotifier = ValueNotifier<bool>(
   true,
 );
 
-/// Custom SKEDDO text-size position. The seven positions are ordered around
-/// the phone's five standard text-size stops: position 0 is the smallest
-/// standard stop, position 1 is the phone's default, positions 2–4 are the
-/// remaining standard larger stops, and positions 5–6 extend the range.
-final ValueNotifier<int> appTextSizeIndexNotifier = ValueNotifier<int>(1);
+/// Custom SKEDDO text-size position. This is kept as an index into the
+/// device-specific stops below.
+final ValueNotifier<int> appTextSizeIndexNotifier = ValueNotifier<int>(3);
 
 /// The unmodified OS text scale captured above SKEDDO's optional custom
 /// MediaQuery override. Settings uses this to keep the seven-position slider
@@ -40,12 +39,9 @@ final ValueNotifier<double> appSystemTextScaleNotifier = ValueNotifier<double>(
   1.0,
 );
 
-/// Seven SKEDDO text-size positions, expressed as scale factors relative to
-/// the platform's default body text size. The first five correspond to the
-/// phone's standard five-stop range (with the default at stop 2); the final
-/// two are intentional larger extensions. System mode is never clamped to
-/// these values.
-const List<double> kSkeddoTextScaleStops = <double>[
+/// Fallback stops used until the native platform profile is available, and on
+/// platforms that only expose the current effective scale.
+const List<double> kFallbackSkeddoTextScaleStops = <double>[
   0.88,
   1.00,
   1.12,
@@ -55,20 +51,77 @@ const List<double> kSkeddoTextScaleStops = <double>[
   1.57,
 ];
 
+/// Seven SKEDDO stops derived from the phone's text-size profile. The first
+/// five are the platform stops where available; positions are trimmed or
+/// extrapolated at the extremes to keep exactly seven app choices.
+final ValueNotifier<List<double>> appTextScaleStopsNotifier =
+    ValueNotifier<List<double>>(kFallbackSkeddoTextScaleStops);
+
+List<double> get appTextScaleStops => appTextScaleStopsNotifier.value;
+
 double skeddoTextScaleForIndex(int index) =>
-    kSkeddoTextScaleStops[index.clamp(0, 6)];
+    appTextScaleStops[index.clamp(0, appTextScaleStops.length - 1)];
 
 int skeddoTextScaleIndexForSystemScale(double scale) {
   var closestIndex = 0;
   var closestDistance = double.infinity;
-  for (var i = 0; i < kSkeddoTextScaleStops.length; i++) {
-    final distance = (kSkeddoTextScaleStops[i] - scale).abs();
+  for (var i = 0; i < appTextScaleStops.length; i++) {
+    final distance = (appTextScaleStops[i] - scale).abs();
     if (distance < closestDistance) {
       closestDistance = distance;
       closestIndex = i;
     }
   }
   return closestIndex;
+}
+
+/// Fetch the native OS profile. Android exposes its current font scale and
+/// iOS exposes its current Dynamic Type category plus native category scales.
+/// The returned profile is intentionally normalized to seven stops for the
+/// app, without changing the actual spacing between the platform stops.
+Future<void> initializeDeviceTextScaleProfile() async {
+  try {
+    final raw = await const MethodChannel(
+      'com.smartscheduler/text_scale',
+    ).invokeMethod<Map<Object?, Object?>>('getProfile');
+    final rawStops = raw?['stops'];
+    if (rawStops is! List) return;
+    final nativeStops = rawStops
+        .whereType<num>()
+        .map((value) => value.toDouble())
+        .where((value) => value.isFinite && value > 0)
+        .toList();
+    if (nativeStops.isEmpty) return;
+
+    final stops = <double>[...nativeStops];
+    while (stops.length > 7) {
+      // Remove only an outer extreme; never compress the platform's gaps.
+      final removeFirst = stops.first.abs() > stops.last.abs();
+      if (removeFirst) {
+        stops.removeAt(0);
+      } else {
+        stops.removeLast();
+      }
+    }
+    while (stops.length < 7) {
+      final gap = stops.length > 1
+          ? stops.last - stops[stops.length - 2]
+          : stops.last * 0.12;
+      stops.add(stops.last + (gap > 0 ? gap : stops.last * 0.12));
+    }
+    appTextScaleStopsNotifier.value = List<double>.unmodifiable(stops);
+    final current = (raw?['currentScale'] as num?)?.toDouble();
+    if (current != null && current.isFinite) {
+      appSystemTextScaleNotifier.value = current;
+      appTextSizeIndexNotifier.value = skeddoTextScaleIndexForSystemScale(
+        current,
+      );
+    }
+  } on PlatformException {
+    // Flutter's MediaQuery scale remains the authoritative fallback.
+  } on MissingPluginException {
+    // Web and older binaries do not have the native profile channel.
+  }
 }
 
 /// Accent-color swatch index into [kCategorySwatches] / [kAccentSwatches]
