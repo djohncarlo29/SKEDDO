@@ -57,6 +57,11 @@ const List<double> kFallbackSkeddoTextScaleStops = <double>[
 final ValueNotifier<List<double>> appTextScaleStopsNotifier =
     ValueNotifier<List<double>>(kFallbackSkeddoTextScaleStops);
 
+/// Whether the native profile was loaded successfully. When true, the native
+/// currentScale is authoritative; Flutter's MediaQuery value is only a
+/// fallback for web and older binaries without this bridge.
+bool appHasNativeTextScaleProfile = false;
+
 List<double> get appTextScaleStops => appTextScaleStopsNotifier.value;
 
 double skeddoTextScaleForIndex(int index) =>
@@ -112,6 +117,7 @@ Future<void> initializeDeviceTextScaleProfile() async {
     appTextScaleStopsNotifier.value = List<double>.unmodifiable(stops);
     final current = (raw?['currentScale'] as num?)?.toDouble();
     if (current != null && current.isFinite) {
+      appHasNativeTextScaleProfile = true;
       appSystemTextScaleNotifier.value = current;
       appTextSizeIndexNotifier.value = skeddoTextScaleIndexForSystemScale(
         current,

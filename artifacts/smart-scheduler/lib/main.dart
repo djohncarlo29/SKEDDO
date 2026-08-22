@@ -562,7 +562,12 @@ class _SKEDDOAppState extends State<SKEDDOApp> {
         final followsSystemTextSize = appTextSizeUsesSystemNotifier.value;
         final customTextSizeIndex = appTextSizeIndexNotifier.value;
         final systemTextScale = MediaQuery.textScalerOf(context).scale(16) / 16;
-        if (appSystemTextScaleNotifier.value != systemTextScale) {
+        // Native Android/iOS profiles are authoritative. MediaQuery is only
+        // the compatibility fallback for web and older binaries without the
+        // text-scale bridge; overwriting a native profile here makes the
+        // System thumb point at a different stop than the rendered text.
+        if (!appHasNativeTextScaleProfile &&
+            appSystemTextScaleNotifier.value != systemTextScale) {
           appSystemTextScaleNotifier.value = systemTextScale;
         }
         // The selected accent swatch (strongly typed CupertinoDynamicColor).
