@@ -66,10 +66,11 @@ class MainActivity : FlutterActivity() {
                         }
                         if (value.isFinite() && value > 0f) add(value.toDouble())
                     }
-                }.distinct().sorted()
-                // Resource overlays are outside the app's control. Normalize
-                // duplicate and out-of-order entries, but refuse a profile
-                // that has fewer than two meaningful positions.
+                }
+                // Resource overlays are outside the app's control, but the
+                // profile itself is platform-owned data. Preserve every
+                // meaningful stop and its original platform order; Dart keeps
+                // this complete list separate from SKEDDO's seven UI stops.
                 if (stops.size >= 2) return stops
             } finally {
                 values.recycle()

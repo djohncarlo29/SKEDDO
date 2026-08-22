@@ -579,7 +579,8 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
         appTextSizeUsesSystemNotifier,
         appTextSizeIndexNotifier,
         appSystemTextScaleNotifier,
-        appPlatformTextScalersNotifier,
+        appSkeddoTextScaleMappingNotifier,
+        appCustomTextScalerNotifier,
         appAccentNotifier,
         appDateLocaleNotifier,
       ]),
@@ -673,40 +674,23 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
               // System mode leaves the full platform text scaler untouched,
               // including accessibility sizes above SKEDDO's seventh stop.
               if (!followsSystemTextSize) {
-                final capturedScaler = appCapturedSystemTextScaler;
-                final capturedIndex = appCapturedSystemTextScaleIndex;
-                if (capturedScaler != null &&
-                    capturedIndex == customTextSizeIndex) {
-                  // This is the exact scaler supplied by the OS for the
-                  // matching System position, not a linear approximation.
+                final customScaler = appCustomTextScalerNotifier.value;
+                if (customScaler != null) {
                   result = MediaQuery(
                     data: MediaQuery.of(
                       context,
-                    ).copyWith(textScaler: capturedScaler),
-                    child: result,
-                  );
-                } else if (customTextSizeIndex <
-                        appPlatformTextScalersNotifier.value.length &&
-                    appPlatformTextScalersNotifier.value[customTextSizeIndex] !=
-                        null) {
-                  // For every other Custom tick, use the platform-sampled
-                  // curve rather than converting that tick to an arbitrary
-                  // linear multiplier.
-                  result = MediaQuery(
-                    data: MediaQuery.of(context).copyWith(
-                      textScaler: appPlatformTextScalersNotifier
-                          .value[customTextSizeIndex]!,
-                    ),
+                    ).copyWith(textScaler: customScaler),
                     child: result,
                   );
                 } else {
+                  final mapping = appSkeddoTextScaleMappingNotifier.value;
+                  final mappedScale =
+                      customTextSizeIndex < mapping.length
+                      ? mapping[customTextSizeIndex].scale
+                      : skeddoTextScaleForIndex(customTextSizeIndex);
                   result = MediaQuery.withClampedTextScaling(
-                    minScaleFactor: skeddoTextScaleForIndex(
-                      customTextSizeIndex,
-                    ),
-                    maxScaleFactor: skeddoTextScaleForIndex(
-                      customTextSizeIndex,
-                    ),
+                    minScaleFactor: mappedScale,
+                    maxScaleFactor: mappedScale,
                     child: result,
                   );
                 }

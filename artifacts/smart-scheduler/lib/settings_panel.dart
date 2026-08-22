@@ -860,7 +860,7 @@ class _TextSizeSection extends StatelessWidget {
         appTextSizeUsesSystemNotifier,
         appTextSizeIndexNotifier,
         appSystemTextScaleNotifier,
-        appTextScaleStopsNotifier,
+        appSkeddoTextScaleStopsNotifier,
       ]),
       builder: (context, _) {
         final usesSystem = appTextSizeUsesSystemNotifier.value;
@@ -880,15 +880,16 @@ class _TextSizeSection extends StatelessWidget {
 
         void selectCustom(double value) {
           final index = value.round().clamp(0, 6);
-          appTextSizeIndexNotifier.value = index;
-          appTextSizeUsesSystemNotifier.value = false;
+          selectCustomTextScaleIndex(index);
           saveAppSetting('Text Size', 'Custom');
         }
 
         void previewCustom(double value) {
           final index = value.round().clamp(0, 6);
-          appTextSizeIndexNotifier.value = index;
-          appTextSizeUsesSystemNotifier.value = false;
+          // Previewing a different position is an explicit Custom change:
+          // capture its scaler now so a later native refresh cannot replace
+          // the behavior the user just selected.
+          selectCustomTextScaleIndex(index);
         }
 
         return SliverToBoxAdapter(
