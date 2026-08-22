@@ -35,15 +35,13 @@ class FloatingTabPill extends StatelessWidget {
     // The default Liquid Glass blur is sigma 2/2. Give the slider a stronger
     // frosted-glass ceiling, then distribute that ceiling across its
     // normalized 0–100% range.
-    const defaultSetting = kLiquidGlassMaximumOpacity;
     final defaultBlur = LiquidGlassTabBar.defaultStyle.appearance.blur;
     const maximumBlurScale = 1.5;
-    final blurScale =
-        (appLiquidGlassOpacityNotifier.value / defaultSetting).clamp(
-          0.0,
-          1.0,
-        ) *
-        maximumBlurScale;
+    final blurProgress =
+        ((appLiquidGlassOpacityNotifier.value - kLiquidGlassMinimumOpacity) /
+                (kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity))
+            .clamp(0.0, 1.0);
+    final blurScale = blurProgress * maximumBlurScale;
     final bottomOffset = floatingTabBarBottomOffset(context);
     final barStyle = LiquidGlassTabBar.defaultStyle.copyWith(
       appearance: LiquidGlassTabBar.defaultStyle.appearance.copyWith(

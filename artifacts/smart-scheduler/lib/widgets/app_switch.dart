@@ -43,52 +43,6 @@ class AppSwitch extends StatelessWidget {
               height: 31.0,
               activeColor: activeColor,
               inactiveColor: inactiveColor,
-              style: LiquidGlassStyle(
-                // This shape is used by the expanding glass thumb only. The
-                // opaque settled thumb keeps its own native surface.
-                shape: const LiquidGlassShape.continuousRoundedRectangle(
-                  borderWidth: 0.5,
-                  lightIntensity: 0.38,
-                  lightDirection: 62,
-                  borderType: OpticalBorder(
-                    borderSaturation: 1.0,
-                    ambientIntensity: 0.18,
-                    borderSolidity: 0.16,
-                    lightSpread: 0.14,
-                  ),
-                ),
-                // LiquidGlassSwitch applies this appearance shadow to the
-                // expanding thumb lens and fades it with the morph. It does
-                // not shadow the track or the opaque resting thumb.
-                appearance: LiquidGlassAppearance(
-                  saturation:
-                      LiquidGlassSwitch.defaultStyle.appearance.saturation,
-                  blur: LiquidGlassSwitch.defaultStyle.appearance.blur,
-                  color: LiquidGlassSwitch.defaultStyle.appearance.color,
-                  enableInnerRadiusTransparent: LiquidGlassSwitch
-                      .defaultStyle
-                      .appearance
-                      .enableInnerRadiusTransparent,
-                  shadow: LiquidGlassShadow(
-                    blur: 6,
-                    opacity: CupertinoTheme.brightnessOf(context) ==
-                            Brightness.dark
-                        ? 0
-                        : 0.22,
-                    offset: const Offset(0, 3),
-                    cornerRadius: 15.5,
-                    inset: 3,
-                  ),
-                ),
-                refraction: LiquidGlassSwitch.defaultStyle.refraction.copyWith(
-                  // Match the active tab pill's tuned lens behavior while
-                  // keeping the switch's own native thumb geometry.
-                  distortion: 0.04,
-                  distortionWidth: 12,
-                  magnification: 1,
-                  chromaticAberration: 0.0002,
-                ),
-              ),
             ),
           ),
         ),
