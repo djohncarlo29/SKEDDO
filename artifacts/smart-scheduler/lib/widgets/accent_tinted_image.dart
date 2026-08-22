@@ -46,6 +46,29 @@ class AccentTintedImage extends StatelessWidget {
   }
 }
 
+/// Warms the transformed preview images for every supplied accent color.
+///
+/// The source WebP files are small enough to decode in the background, while
+/// the transformed images are kept in [_AccentImageCache] so the first visit
+/// to the Liquid Glass settings screen does not need to tint them on demand.
+Future<void> precacheAccentTintedImages({
+  required Iterable<Color> lightAccentColors,
+  required Iterable<Color> darkAccentColors,
+}) async {
+  await Future.wait<void>([
+    for (final color in lightAccentColors)
+      _AccentImageCache.image(
+        assetName: 'assets/liquid_glass_background_light.webp',
+        accentColor: color,
+      ),
+    for (final color in darkAccentColors)
+      _AccentImageCache.image(
+        assetName: 'assets/liquid_glass_background_dark.webp',
+        accentColor: color,
+      ),
+  ]);
+}
+
 class _AccentImageCache {
   static final Map<String, Future<ui.Image>> _images =
       <String, Future<ui.Image>>{};

@@ -18,6 +18,7 @@ import 'tabs/calendar_tab.dart';
 import 'tabs/events_tab.dart';
 import 'tabs/notes_tab.dart';
 import 'widgets/action_panel.dart';
+import 'widgets/accent_tinted_image.dart';
 import 'widgets/events_header_icon.dart';
 import 'widgets/floating_tab_pill.dart';
 import 'widgets/native_text_input.dart';
@@ -530,6 +531,16 @@ class _SKEDDOAppState extends State<SKEDDOApp> {
         precacheImage(
           const AssetImage('assets/liquid_glass_background_dark.webp'),
           context,
+        ),
+      );
+      // Prewarm both light and dark transformed variants for the full accent
+      // palette. The tint cache is separate from Flutter's ImageCache, so
+      // precaching only the source WebPs would still leave the first accent
+      // change waiting for pixel transformation.
+      unawaited(
+        precacheAccentTintedImages(
+          lightAccentColors: kAccentSwatches.map((swatch) => swatch.color),
+          darkAccentColors: kAccentSwatches.map((swatch) => swatch.darkColor),
         ),
       );
     });
