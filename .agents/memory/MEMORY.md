@@ -71,3 +71,4 @@
 - [OOXML attribute case handling](ooxml-attribute-case.md) — Office relationship and worksheet attributes need case-insensitive local-name matching.
 - [Offline OCR phase boundary](offline-ocr-phase-boundary.md) — native OCR bridges can be implemented offline, but final completion still requires device/sample validation and honest engine-confidence semantics.
 - [Offline file analysis route](offline-file-analysis-route.md) — Notes attachments use local extraction/OCR and deterministic analysis only; Gemini is not a fallback for this flow.
+- [Platform text scaling profile](platform-text-scaling-profile.md) — source text-size positions from the OS profile and preserve nonlinear curves through System↔Custom transitions.

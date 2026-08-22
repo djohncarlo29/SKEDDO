@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -39,8 +41,8 @@ final ValueNotifier<double> appSystemTextScaleNotifier = ValueNotifier<double>(
   1.0,
 );
 
-/// Fallback stops used until the native platform profile is available, and on
-/// platforms that only expose the current effective scale.
+/// Compatibility stops used on web and on old native binaries that expose only
+/// the active scale. Native Android/iOS builds use the platform profile.
 const List<double> kFallbackSkeddoTextScaleStops = <double>[
   0.88,
   1.00,
@@ -57,6 +59,12 @@ const List<double> kFallbackSkeddoTextScaleStops = <double>[
 final ValueNotifier<List<double>> appTextScaleStopsNotifier =
     ValueNotifier<List<double>>(kFallbackSkeddoTextScaleStops);
 
+/// Text scalers sampled from the native platform profile, one per stop.
+/// This is separate from [appCapturedSystemTextScaler], which is the exact
+/// Flutter scaler for the currently active OS setting.
+final ValueNotifier<List<TextScaler>> appPlatformTextScalersNotifier =
+    ValueNotifier<List<TextScaler>>(<TextScaler>[]);
+
 /// Whether the native profile was loaded successfully. When true, the native
 /// currentScale is authoritative; Flutter's MediaQuery value is only a
 /// fallback for web and older binaries without this bridge.
@@ -70,6 +78,46 @@ bool appHasNativeTextScaleProfile = false;
 /// active, so Custom remains independent from later OS changes.
 TextScaler? appCapturedSystemTextScaler;
 int? appCapturedSystemTextScaleIndex;
+
+class _SampledPlatformTextScaler extends TextScaler {
+  final List<double> _probeSizes;
+  final List<double> _ratios;
+
+  const _SampledPlatformTextScaler(this._probeSizes, this._ratios);
+
+  @override
+  double scale(double fontSize) {
+    if (_probeSizes.isEmpty || _ratios.isEmpty) return fontSize;
+    if (fontSize <= _probeSizes.first) return fontSize * _ratios.first;
+    for (var i = 1; i < _probeSizes.length; i++) {
+      if (fontSize <= _probeSizes[i]) {
+        final t =
+            (fontSize - _probeSizes[i - 1]) /
+            (_probeSizes[i] - _probeSizes[i - 1]);
+        final ratio = _ratios[i - 1] + (_ratios[i] - _ratios[i - 1]) * t;
+        return fontSize * ratio;
+      }
+    }
+    return fontSize * _ratios.last;
+  }
+
+  @override
+  double get textScaleFactor => scale(16) / 16;
+}
+
+_SampledPlatformTextScaler _extrapolatePlatformScaler(
+  _SampledPlatformTextScaler previous,
+  _SampledPlatformTextScaler last,
+) {
+  final ratios = <double>[
+    for (var i = 0; i < last._ratios.length; i++)
+      last._ratios[i] +
+          (i < previous._ratios.length
+              ? last._ratios[i] - previous._ratios[i]
+              : 0),
+  ];
+  return _SampledPlatformTextScaler(last._probeSizes, ratios);
+}
 
 List<double> get appTextScaleStops => appTextScaleStopsNotifier.value;
 
@@ -107,16 +155,75 @@ Future<void> initializeDeviceTextScaleProfile() async {
         .toList();
     if (nativeStops.isEmpty) return;
 
-    final stops = <double>[...nativeStops];
-    while (stops.length > 7) {
-      // Remove only an outer extreme; never compress the platform's gaps.
-      final removeFirst = stops.first.abs() > stops.last.abs();
-      if (removeFirst) {
-        stops.removeAt(0);
-      } else {
-        stops.removeLast();
+    final rawProbeSizes = raw?['probeSizes'];
+    final rawCurves = raw?['curves'];
+    final probeSizes = rawProbeSizes is List
+        ? rawProbeSizes
+              .whereType<num>()
+              .map((value) => value.toDouble())
+              .where((value) => value.isFinite && value > 0)
+              .toList()
+        : <double>[];
+    final platformScalers = <TextScaler>[];
+    if (rawCurves is List && probeSizes.length > 1) {
+      for (final curve in rawCurves) {
+        if (curve is! List) continue;
+        final ratios = curve
+            .whereType<num>()
+            .map((value) => value.toDouble())
+            .where((value) => value.isFinite && value > 0)
+            .toList();
+        final count = math.min(probeSizes.length, ratios.length);
+        if (count > 1) {
+          platformScalers.add(
+            _SampledPlatformTextScaler(
+              List<double>.unmodifiable(probeSizes.take(count)),
+              List<double>.unmodifiable(ratios.take(count)),
+            ),
+          );
+        }
       }
     }
+
+    // Keep each curve paired with its native stop while trimming. Otherwise
+    // an OEM profile with more than seven stops could shift the nonlinear
+    // curves away from the slider positions they describe.
+    final pairedStops = <({double scale, TextScaler? scaler})>[
+      for (var i = 0; i < nativeStops.length; i++)
+        (
+          scale: nativeStops[i],
+          scaler: i < platformScalers.length ? platformScalers[i] : null,
+        ),
+    ];
+    while (pairedStops.length > 7) {
+      // Remove only an outer extreme; never compress the platform's gaps.
+      final removeFirst =
+          pairedStops.first.scale.abs() > pairedStops.last.scale.abs();
+      if (removeFirst) {
+        pairedStops.removeAt(0);
+      } else {
+        pairedStops.removeLast();
+      }
+    }
+    while (pairedStops.length < 7 &&
+        pairedStops.length >= 2 &&
+        pairedStops.last.scaler is _SampledPlatformTextScaler &&
+        pairedStops[pairedStops.length - 2].scaler
+            is _SampledPlatformTextScaler) {
+      final previous =
+          pairedStops[pairedStops.length - 2].scaler!
+              as _SampledPlatformTextScaler;
+      final last = pairedStops.last.scaler! as _SampledPlatformTextScaler;
+      final gap =
+          pairedStops.last.scale - pairedStops[pairedStops.length - 2].scale;
+      pairedStops.add((
+        scale:
+            pairedStops.last.scale +
+            (gap > 0 ? gap : pairedStops.last.scale * 0.12),
+        scaler: _extrapolatePlatformScaler(previous, last),
+      ));
+    }
+    final stops = pairedStops.map((item) => item.scale).toList();
     while (stops.length < 7) {
       final gap = stops.length > 1
           ? stops.last - stops[stops.length - 2]
@@ -124,6 +231,15 @@ Future<void> initializeDeviceTextScaleProfile() async {
       stops.add(stops.last + (gap > 0 ? gap : stops.last * 0.12));
     }
     appTextScaleStopsNotifier.value = List<double>.unmodifiable(stops);
+    final retainedScalers = pairedStops
+        .map((item) => item.scaler)
+        .whereType<TextScaler>()
+        .toList();
+    if (retainedScalers.isNotEmpty) {
+      appPlatformTextScalersNotifier.value = List<TextScaler>.unmodifiable(
+        retainedScalers,
+      );
+    }
     final current = (raw?['currentScale'] as num?)?.toDouble();
     if (current != null && current.isFinite) {
       appHasNativeTextScaleProfile = true;

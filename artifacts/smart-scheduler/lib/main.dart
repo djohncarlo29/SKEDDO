@@ -554,6 +554,7 @@ class _SKEDDOAppState extends State<SKEDDOApp> {
         appBrightnessNotifier,
         appTextSizeUsesSystemNotifier,
         appTextSizeIndexNotifier,
+        appPlatformTextScalersNotifier,
         appAccentNotifier,
         appDateLocaleNotifier,
       ]),
@@ -576,10 +577,9 @@ class _SKEDDOAppState extends State<SKEDDOApp> {
           // reproduce System exactly. Do not refresh this while Custom mode is
           // active; Custom must remain independent from later OS changes.
           appCapturedSystemTextScaler = MediaQuery.textScalerOf(context);
-          appCapturedSystemTextScaleIndex =
-              skeddoTextScaleIndexForSystemScale(
-                appSystemTextScaleNotifier.value,
-              );
+          appCapturedSystemTextScaleIndex = skeddoTextScaleIndexForSystemScale(
+            appSystemTextScaleNotifier.value,
+          );
         }
         // The selected accent swatch (strongly typed CupertinoDynamicColor).
         final accentSwatch = kAccentSwatches[appAccentNotifier.value];
@@ -658,6 +658,18 @@ class _SKEDDOAppState extends State<SKEDDOApp> {
                     data: MediaQuery.of(
                       context,
                     ).copyWith(textScaler: capturedScaler),
+                    child: result,
+                  );
+                } else if (customTextSizeIndex <
+                    appPlatformTextScalersNotifier.value.length) {
+                  // For every other Custom tick, use the platform-sampled
+                  // curve rather than converting that tick to an arbitrary
+                  // linear multiplier.
+                  result = MediaQuery(
+                    data: MediaQuery.of(context).copyWith(
+                      textScaler: appPlatformTextScalersNotifier
+                          .value[customTextSizeIndex],
+                    ),
                     child: result,
                   );
                 } else {

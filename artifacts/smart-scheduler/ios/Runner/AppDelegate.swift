@@ -25,6 +25,7 @@ import UIKit
           .extraSmall, .small, .medium, .large, .extraLarge,
           .extraExtraLarge, .extraExtraExtraLarge
         ]
+        let probeSizes: [Double] = stride(from: 1.0, through: 256.0, by: 0.25).map { $0 }
         let body = UIFontMetrics(forTextStyle: .body)
         let base = body.scaledValue(for: 17, compatibleWith: UITraitCollection(
           preferredContentSizeCategory: .large
@@ -35,8 +36,19 @@ import UIKit
             compatibleWith: UITraitCollection(preferredContentSizeCategory: category)
           ) / base
         }
+        let curves = categories.map { category in
+          let traits = UITraitCollection(preferredContentSizeCategory: category)
+          return probeSizes.map { size in
+            body.scaledValue(for: CGFloat(size), compatibleWith: traits) / CGFloat(size)
+          }
+        }
         let current = body.scaledValue(for: 17) / base
-        result(["currentScale": current, "stops": stops])
+        result([
+          "currentScale": current,
+          "stops": stops,
+          "probeSizes": probeSizes,
+          "curves": curves
+        ])
       }
     }
     // Native STT — register after plugin registration so the binary
