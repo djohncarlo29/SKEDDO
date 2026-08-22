@@ -158,18 +158,6 @@ class _SampledPlatformTextScaler extends TextScaler {
   double get textScaleFactor => scale(16) / 16;
 }
 
-_SampledPlatformTextScaler _interpolatePlatformScalers(
-  _SampledPlatformTextScaler lower,
-  _SampledPlatformTextScaler upper,
-  double t,
-) {
-  final ratios = <double>[
-    for (var i = 0; i < lower._ratios.length; i++)
-      lower._ratios[i] + (upper._ratios[i] - lower._ratios[i]) * t,
-  ];
-  return _SampledPlatformTextScaler(lower._probeSizes, ratios);
-}
-
 _SampledPlatformTextScaler _extrapolatePlatformScaler(
   _SampledPlatformTextScaler previous,
   _SampledPlatformTextScaler last,
@@ -333,42 +321,20 @@ List<SkeddoTextScaleMapping> _createSkeddoTextScaleMapping(
     }
     return mappings;
   }
+  // SKEDDO exposes only the first seven native positions as Custom choices.
+  // Do not compress a larger native profile into the seven-position control:
+  // System mode still uses the complete native profile independently, while
+  // Custom mode intentionally stops at native position seven.
   return List<SkeddoTextScaleMapping>.generate(7, (index) {
-    final coordinate = index * (nativeCount - 1) / 6;
-    final lower = coordinate.floor();
-    final upper = coordinate.ceil();
-    if (lower == upper) {
-      return SkeddoTextScaleMapping(
-        scale: profile.stops[lower].scale,
-        kind: SkeddoTextScaleMappingKind.native,
-        nativeIndex: lower,
-        // A missing platform curve is an explicit compatibility degradation,
-        // but it is still captured in the mapping so Custom can freeze it.
-        scaler:
-            profile.stops[lower].scaler ??
-            TextScaler.linear(profile.stops[lower].scale),
-      );
-    }
-    final lowerScaler = profile.stops[lower].scaler;
-    final upperScaler = profile.stops[upper].scaler;
+    final nativeStop = profile.stops[index];
     return SkeddoTextScaleMapping(
-      scale: profile.stops[lower].scale +
-          (profile.stops[upper].scale - profile.stops[lower].scale) *
-              (coordinate - lower),
-      kind: SkeddoTextScaleMappingKind.interpolated,
-      nativeIndex: null,
-      scaler: lowerScaler is _SampledPlatformTextScaler &&
-              upperScaler is _SampledPlatformTextScaler
-          ? _interpolatePlatformScalers(
-              lowerScaler,
-              upperScaler,
-              coordinate - lower,
-            )
-            : TextScaler.linear(
-                profile.stops[lower].scale +
-                    (profile.stops[upper].scale - profile.stops[lower].scale) *
-                        (coordinate - lower),
-              ),
+      scale: nativeStop.scale,
+      kind: SkeddoTextScaleMappingKind.native,
+      nativeIndex: index,
+      // A missing platform curve is an explicit compatibility degradation,
+      // but it is still captured in the mapping so Custom can freeze it.
+      scaler:
+          nativeStop.scaler ?? TextScaler.linear(nativeStop.scale),
     );
   });
 }

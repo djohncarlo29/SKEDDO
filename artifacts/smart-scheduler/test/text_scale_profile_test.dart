@@ -68,14 +68,19 @@ void main() {
     expect(
       appSkeddoTextScaleMappingNotifier.value
           .where((item) => item.kind == SkeddoTextScaleMappingKind.native),
-      hasLength(3),
-    );
-    expect(
-      appSkeddoTextScaleMappingNotifier.value
-          .where((item) => item.kind == SkeddoTextScaleMappingKind.interpolated),
-      hasLength(4),
+      hasLength(7),
     );
     expect(appSkeddoTextScaleStops, hasLength(7));
+    expect(
+      appSkeddoTextScaleStops,
+      <double>[0.88, 0.96, 1.04, 1.12, 1.24, 1.35, 1.46],
+    );
+    expect(appSystemTextScaleNotifier.value, 1.24);
+    expect(
+      skeddoTextScaleIndexForSystemScale(1.70),
+      6,
+      reason: 'System thumb caps visually at the seventh SKEDDO position',
+    );
   });
 
   test('Custom keeps its resolved scaler across native profile refresh', () async {
@@ -116,15 +121,15 @@ void main() {
       4: <double>[1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
       5: <double>[1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
       7: <double>[1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
-      9: <double>[1.0, 1.133333, 1.266667, 1.4, 1.533333, 1.666667, 1.8],
+      9: <double>[1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
       12: <double>[
         1.0,
-        1.183333,
-        1.366667,
-        1.55,
-        1.733333,
-        1.916667,
-        2.1,
+        1.1,
+        1.2,
+        1.3,
+        1.4,
+        1.5,
+        1.6,
       ],
     };
     for (final entry in expected.entries) {
@@ -181,25 +186,72 @@ void main() {
         );
       } else {
         expect(
-          mapping
-              .where((item) => item.kind == SkeddoTextScaleMappingKind.native)
-              .length,
-          count == 9 ? 3 : 2,
-          reason: '$count native stops',
+          mapping.every(
+            (item) => item.kind == SkeddoTextScaleMappingKind.native,
+          ),
+          isTrue,
+          reason: '$count native stops expose the first seven native positions',
         );
         expect(
-          mapping
-              .where(
-                (item) =>
-                    item.kind == SkeddoTextScaleMappingKind.interpolated,
-              )
-              .length,
-          count == 9 ? 4 : 5,
-          reason: '$count native stops',
+          mapping.every((item) => item.nativeIndex! < 7),
+          isTrue,
+          reason: '$count native stops never expose later Custom positions',
         );
       }
     }
   });
+
+  test(
+    'System keeps a native position beyond seven while the SKEDDO thumb caps',
+    () async {
+      final nativeStops = <double>[
+        0.88,
+        0.96,
+        1.04,
+        1.12,
+        1.24,
+        1.35,
+        1.46,
+        1.57,
+        1.70,
+        1.85,
+        2.00,
+        2.15,
+      ];
+      channel.setMockMethodCallHandler((call) async {
+        if (call.method != 'getProfile') return null;
+        return <String, Object>{
+          'currentScale': 2.00,
+          'stops': nativeStops,
+          'probeSizes': <double>[1.0, 2.0],
+          'curves': List<Object?>.generate(
+            nativeStops.length,
+            (index) => <double>[nativeStops[index], nativeStops[index]],
+          ),
+        };
+      });
+
+      await initializeDeviceTextScaleProfile();
+
+      expect(appNativeTextScaleProfileNotifier.value!.stops, hasLength(12));
+      expect(appSystemTextScaleNotifier.value, 2.00);
+      expect(appSkeddoTextScaleStops, <double>[
+        0.88,
+        0.96,
+        1.04,
+        1.12,
+        1.24,
+        1.35,
+        1.46,
+      ]);
+      expect(skeddoTextScaleIndexForSystemScale(2.00), 6);
+      expect(
+        appSkeddoTextScaleMappingNotifier.value
+            .every((item) => item.nativeIndex! <= 6),
+        isTrue,
+      );
+    },
+  );
 
   test('overlapping profile reads publish in request order', () async {
     var calls = 0;
