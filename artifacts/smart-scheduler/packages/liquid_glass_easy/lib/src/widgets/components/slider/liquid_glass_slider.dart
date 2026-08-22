@@ -755,8 +755,11 @@ class _LiquidGlassSliderTrackPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final tickHalfWidth = 1.0;
-    final tickTop = trackHeight / 2 - 5;
-    final tickBottom = trackHeight / 2 + 5;
+    // Preserve the original tick-to-track proportion (10 px ticks over a
+    // 6 px line) as the line is made thinner.
+    final tickHalfHeight = trackHeight * (5 / 6);
+    final tickTop = trackHeight / 2 - tickHalfHeight;
+    final tickBottom = trackHeight / 2 + tickHalfHeight;
     final tickCount = divisions > 0 ? divisions : 0;
     final tickRange = math.max(0.0, tickEndX - tickStartX);
 

@@ -32,7 +32,16 @@ class FloatingTabPill extends StatelessWidget {
     final unselectedColor = resolveThemeColor(kSecondaryLabel, context);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final headerColor = resolveThemeColor(kCardColor, context);
-    final barOpacity = 0.8;
+    // The existing default Liquid Glass blur is the 80% reference point:
+    // zero removes blur entirely, while values above 80% continue increasing
+    // it proportionally beyond the default.
+    const defaultSetting = 0.8;
+    final blurScale =
+        (appLiquidGlassOpacityNotifier.value / defaultSetting).clamp(
+          0.0,
+          double.infinity,
+        );
+    final defaultBlur = LiquidGlassTabBar.defaultStyle.appearance.blur;
     final bottomOffset = floatingTabBarBottomOffset(context);
     final barStyle = LiquidGlassTabBar.defaultStyle.copyWith(
       appearance: LiquidGlassTabBar.defaultStyle.appearance.copyWith(
@@ -40,6 +49,10 @@ class FloatingTabPill extends StatelessWidget {
         // keeps the bar denser while preserving the correct Light/Dark tone.
         color: headerColor.withValues(
           alpha: appLiquidGlassOpacityNotifier.value,
+        ),
+        blur: LiquidGlassBlur(
+          sigmaX: defaultBlur.sigmaX * blurScale,
+          sigmaY: defaultBlur.sigmaY * blurScale,
         ),
       ),
       shape: const LiquidGlassShape.continuousRoundedRectangle(

@@ -47,7 +47,7 @@ class LiquidGlassSliderLayout {
 
   const LiquidGlassSliderLayout({
     this.width = 280,
-    this.trackHeight = 6,
+    this.trackHeight = 4,
     this.thumbWidth = 37,
     this.thumbHeight = 24,
     this.liftedThumbWidth = 58,
