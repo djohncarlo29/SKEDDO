@@ -52,7 +52,8 @@ flutter:
 
   assets:
     - shorebird.yaml
-    - assets/liquid_glass_background.webp
+    - assets/liquid_glass_background_light.webp
+    - assets/liquid_glass_background_dark.webp
     - assets/fonts/
     - assets/icons/
     - assets/custom_icons/

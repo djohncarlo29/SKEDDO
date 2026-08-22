@@ -522,7 +522,13 @@ class _SKEDDOAppState extends State<SKEDDOApp> {
       if (!mounted) return;
       unawaited(
         precacheImage(
-          const AssetImage('assets/liquid_glass_background.webp'),
+          const AssetImage('assets/liquid_glass_background_light.webp'),
+          context,
+        ),
+      );
+      unawaited(
+        precacheImage(
+          const AssetImage('assets/liquid_glass_background_dark.webp'),
           context,
         ),
       );

@@ -844,6 +844,10 @@ class _LiquidGlassSection extends StatelessWidget {
     final shadowColor = resolveThemeColor(kCardShadowColor, context);
     final accent = resolveAccentColor(context);
     final inactive = resolveThemeColor(kTertiaryLabel, context);
+    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
+    final backgroundAsset = isDark
+        ? 'assets/liquid_glass_background_dark.webp'
+        : 'assets/liquid_glass_background_light.webp';
     final textScaler = MediaQuery.textScalerOf(context);
     // Keep this control aligned with the other solo settings rows at the
     // default size, while allowing the row to grow with Dynamic Type.
@@ -888,7 +892,7 @@ class _LiquidGlassSection extends StatelessWidget {
                     fit: StackFit.expand,
                     children: [
                       Image.asset(
-                        'assets/liquid_glass_background.webp',
+                        backgroundAsset,
                         fit: BoxFit.cover,
                       ),
                       const Center(child: FloatingTabBarGlassPreview()),
