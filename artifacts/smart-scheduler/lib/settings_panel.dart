@@ -288,7 +288,7 @@ class _SettingsPanelState extends State<SettingsPanel>
             ? 'Day first (D/M/Y)'
             : 'Month first (M/D/Y)';
         final liquidGlassOpacityLabel =
-            '${(appLiquidGlassOpacityNotifier.value * 100).round()}%';
+            '${(appLiquidGlassOpacityNotifier.value / kLiquidGlassMaximumOpacity * 100).round()}%';
 
         final headerHeight = widget.topInset + 101;
 
@@ -890,7 +890,10 @@ class _LiquidGlassSection extends StatelessWidget {
                         minWidth: sliderWidth,
                         maxWidth: sliderWidth,
                         child: LiquidGlassSlider(
-                            value: value,
+                            value: (value / kLiquidGlassMaximumOpacity).clamp(
+                              0.0,
+                              1.0,
+                            ),
                             minimumValue: 0,
                             maximumValue: 1,
                             // Extend the package's internal geometry by one
@@ -934,7 +937,8 @@ const LiquidGlassSliderLayout _liquidGlassSliderLayout =
     LiquidGlassSliderLayout(horizontalInset: _kLiquidGlassSliderInset);
 
 void _setLiquidGlassOpacity(double raw) {
-  final snapped = (raw * 10).round() / 10;
+  final normalized = (raw.clamp(0.0, 1.0) * 10).round() / 10;
+  final snapped = normalized * kLiquidGlassMaximumOpacity;
   if (snapped != appLiquidGlassOpacityNotifier.value) {
     appLiquidGlassOpacityNotifier.value = snapped;
     saveAppSetting('Liquid Glass', snapped.toString());

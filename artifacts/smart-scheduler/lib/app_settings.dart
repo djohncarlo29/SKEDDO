@@ -53,10 +53,16 @@ final ValueNotifier<String> appEventDurationNotifier = ValueNotifier<String>(
 final ValueNotifier<DateLocalePreference> appDateLocaleNotifier =
     ValueNotifier<DateLocalePreference>(DateLocalePreference.monthFirst);
 
+/// Maximum material opacity used by the Liquid Glass control.
+///
+/// The Appearance slider maps its user-facing 0–100% range to 0.0–0.8
+/// material opacity so the maximum remains translucent and glass-like.
+const double kLiquidGlassMaximumOpacity = 0.8;
+
 /// Opacity of the floating Liquid Glass tab bar material.
 /// The setting is quantized to tenths by the Appearance subscreen.
 final ValueNotifier<double> appLiquidGlassOpacityNotifier =
-    ValueNotifier<double>(0.8);
+    ValueNotifier<double>(kLiquidGlassMaximumOpacity);
 
 // ── SharedPreferences keys ────────────────────────────────────────────────────
 const _kThemeKey = 'app_theme';
@@ -116,8 +122,10 @@ Future<void> loadAppSettings() async {
 
   final liquidGlassOpacity = prefs.getDouble(_kLiquidGlassOpacityKey);
   if (liquidGlassOpacity != null) {
+    final normalized = (liquidGlassOpacity / kLiquidGlassMaximumOpacity)
+        .clamp(0.0, 1.0);
     appLiquidGlassOpacityNotifier.value =
-        (liquidGlassOpacity.clamp(0.0, 1.0) * 10).round() / 10;
+        (normalized * 10).round() / 10 * kLiquidGlassMaximumOpacity;
   }
   AIServices.setDateLocalePreference(appDateLocaleNotifier.value);
 }

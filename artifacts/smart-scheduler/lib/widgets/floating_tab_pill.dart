@@ -35,7 +35,7 @@ class FloatingTabPill extends StatelessWidget {
     // The existing default Liquid Glass blur is the 80% reference point:
     // zero removes blur entirely, while values above 80% continue increasing
     // it proportionally beyond the default.
-    const defaultSetting = 0.8;
+    const defaultSetting = kLiquidGlassMaximumOpacity;
     final blurScale =
         (appLiquidGlassOpacityNotifier.value / defaultSetting).clamp(
           0.0,
