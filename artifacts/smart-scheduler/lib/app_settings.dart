@@ -27,10 +27,11 @@ final ValueNotifier<bool> appTextSizeUsesSystemNotifier = ValueNotifier<bool>(
   true,
 );
 
-/// Custom SKEDDO text-size position. Seven positions mirror the standard
-/// Dynamic Type range; position 0 is the smallest and position 6 is the
-/// largest custom size.
-final ValueNotifier<int> appTextSizeIndexNotifier = ValueNotifier<int>(3);
+/// Custom SKEDDO text-size position. The seven positions are ordered around
+/// the phone's five standard text-size stops: position 0 is the smallest
+/// standard stop, position 1 is the phone's default, positions 2–4 are the
+/// remaining standard larger stops, and positions 5–6 extend the range.
+final ValueNotifier<int> appTextSizeIndexNotifier = ValueNotifier<int>(1);
 
 /// The unmodified OS text scale captured above SKEDDO's optional custom
 /// MediaQuery override. Settings uses this to keep the seven-position slider
@@ -39,17 +40,19 @@ final ValueNotifier<double> appSystemTextScaleNotifier = ValueNotifier<double>(
   1.0,
 );
 
-/// Seven standard Dynamic Type positions, expressed as scale factors relative
-/// to the platform's default body text size. System mode is never clamped to
-/// these values; they are only used for SKEDDO's custom mode.
+/// Seven SKEDDO text-size positions, expressed as scale factors relative to
+/// the platform's default body text size. The first five correspond to the
+/// phone's standard five-stop range (with the default at stop 2); the final
+/// two are intentional larger extensions. System mode is never clamped to
+/// these values.
 const List<double> kSkeddoTextScaleStops = <double>[
-  0.82,
   0.88,
-  0.94,
   1.00,
   1.12,
   1.24,
   1.35,
+  1.46,
+  1.57,
 ];
 
 double skeddoTextScaleForIndex(int index) =>
