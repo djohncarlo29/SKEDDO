@@ -9,6 +9,7 @@ import 'app_settings.dart';
 import 'app_theme.dart';
 import 'widgets/app_switch.dart';
 import 'widgets/fixed_size_icon.dart';
+import 'widgets/floating_tab_pill.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SettingsPanel — full-screen slide-in settings surface with sub-screen nav.
@@ -854,7 +855,50 @@ class _LiquidGlassSection extends StatelessWidget {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: DecoratedBox(
+        child: Column(
+          children: [
+            DecoratedBox(
+              decoration: ShapeDecoration(
+                color: cardBg,
+                shadows: resolveThemeShadows([
+                  BoxShadow(
+                    color: shadowColor,
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ], context),
+                shape: const BoundedContinuousRectangleBorder(
+                  borderRadius: BorderRadius.all(
+                    Radius.circular(kCardCornerRadius),
+                  ),
+                ),
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                height: math.max(154.0, textScaler.scale(154.0)),
+                child: ClipPath(
+                  clipper: ShapeBorderClipper(
+                    shape: const BoundedContinuousRectangleBorder(
+                      borderRadius: BorderRadius.all(
+                        Radius.circular(kCardCornerRadius),
+                      ),
+                    ),
+                  ),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.asset(
+                        'liquid_glass_background.webp',
+                        fit: BoxFit.cover,
+                      ),
+                      const Center(child: FloatingTabBarGlassPreview()),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            DecoratedBox(
           decoration: ShapeDecoration(
             color: cardBg,
             shadows: resolveThemeShadows([
@@ -923,6 +967,8 @@ class _LiquidGlassSection extends StatelessWidget {
               ),
             ),
           ),
+            ),
+          ],
         ),
       ),
     );

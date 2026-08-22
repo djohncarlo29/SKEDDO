@@ -31,56 +31,8 @@ class FloatingTabPill extends StatelessWidget {
         : resolveAccentColor(context);
     final unselectedColor = resolveThemeColor(kSecondaryLabel, context);
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final headerColor = resolveThemeColor(kCardColor, context);
-    // The default Liquid Glass blur is sigma 2/2. The first slider position
-    // starts at the former first nonzero tick (0.3/0.3), the penultimate
-    // position reaches 3/3, and the final position rises to 4/4.
-    final defaultBlur = LiquidGlassTabBar.defaultStyle.appearance.blur;
-    final blurProgress =
-        ((appLiquidGlassOpacityNotifier.value - kLiquidGlassMinimumOpacity) /
-                (kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity))
-            .clamp(0.0, 1.0);
-    final blurScale = blurProgress < 0.9
-        ? (0.3 + blurProgress * 3) / 2
-        : blurProgress < 1.0
-        ? (3.0 + (blurProgress - 0.9) * 10) / 2
-        : 2.0;
     final bottomOffset = floatingTabBarBottomOffset(context);
-    final barStyle = LiquidGlassTabBar.defaultStyle.copyWith(
-      appearance: LiquidGlassTabBar.defaultStyle.appearance.copyWith(
-        // Use the resolved header surface itself, not a white overlay. This
-        // keeps the bar denser while preserving the correct Light/Dark tone.
-        color: headerColor.withValues(
-          alpha: appLiquidGlassOpacityNotifier.value,
-        ),
-        blur: LiquidGlassBlur(
-          sigmaX: defaultBlur.sigmaX * blurScale,
-          sigmaY: defaultBlur.sigmaY * blurScale,
-        ),
-      ),
-      shape: const LiquidGlassShape.continuousRoundedRectangle(
-        // Match the shared bounded stadium geometry used by the rest of the
-        // app instead of deriving 25 px from this pill's 50 px height.
-        cornerRadius: kSquircleStadiumRadius,
-        // Keep the package's optical rim, but make it a quiet edge accent
-        // rather than a bright continuous stroke.
-        borderWidth: 0.45,
-        lightIntensity: 0.46,
-        lightDirection: 62,
-        borderType: OpticalBorder(
-          borderSaturation: 1.0,
-          ambientIntensity: 0.18,
-          borderSolidity: 0.28,
-          lightSpread: 0.12,
-        ),
-      ),
-      // The package default is intentionally colorful at the rim. Keep the
-      // bar's refraction and magnification, but make channel separation
-      // effectively imperceptible.
-      refraction: LiquidGlassTabBar.defaultStyle.refraction.copyWith(
-        chromaticAberration: 0.0002,
-      ),
-    );
+    final barStyle = _floatingTabBarStyle(context);
 
     return Semantics(
       container: true,
@@ -211,4 +163,112 @@ class FloatingTabPill extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A static, icon-only example of the same glass surface used by the
+/// Floating Tab Bar. This is used in Settings so the Liquid Glass opacity
+/// control previews the real navigation surface rather than a separate
+/// approximation.
+class FloatingTabBarGlassPreview extends StatelessWidget {
+  const FloatingTabBarGlassPreview({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
+    final width = MediaQuery.sizeOf(context).width;
+    final style = _floatingTabBarStyle(context);
+    final barWidth = (width - 64).clamp(150.0, 190.0);
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IgnorePointer(
+          child: LiquidGlassShadow(
+            blur: 16,
+            opacity: isDark ? 0 : 0.18,
+            offset: const Offset(0, 5),
+            cornerRadius: kSquircleStadiumRadius,
+            child: SizedBox(width: barWidth, height: 50),
+          ),
+        ),
+        LiquidGlassTabBar(
+          items: [
+            _previewItem(SFIcons.sf_trash),
+            _previewItem(SFIcons.sf_folder),
+            _previewItem(SFIcons.sf_arrow_uturn_backward),
+          ],
+          selectedIndex: 0,
+          onChanged: (_) {},
+          width: barWidth,
+          height: 50,
+          itemPadding: 4,
+          itemStyle: LiquidGlassTabItemStyle(
+            selectedColor: resolveThemeColor(kSecondaryLabel, context),
+            unselectedColor: resolveThemeColor(kSecondaryLabel, context),
+            iconSize: 20,
+            selectedFontWeight: FontWeight.w500,
+            unselectedFontWeight: FontWeight.w500,
+          ),
+          style: style,
+          pillStyle: const LiquidGlassTabPillStyle(
+            mode: LiquidGlassPillMode.none,
+            show: false,
+            animated: false,
+          ),
+        ),
+      ],
+    );
+  }
+
+  LiquidGlassTabBarItem _previewItem(IconData icon) {
+    return LiquidGlassTabBarItem(
+      iconBuilder: (context, glyph) => FixedSFIcon(
+        icon,
+        fontSize: glyph.size,
+        fontWeight: FontWeight.normal,
+        color: glyph.color,
+      ),
+    );
+  }
+}
+
+LiquidGlassStyle _floatingTabBarStyle(BuildContext context) {
+  final headerColor = resolveThemeColor(kCardColor, context);
+  final defaultBlur = LiquidGlassTabBar.defaultStyle.appearance.blur;
+  final blurProgress =
+      ((appLiquidGlassOpacityNotifier.value - kLiquidGlassMinimumOpacity) /
+              (kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity))
+          .clamp(0.0, 1.0);
+  final blurScale = blurProgress < 0.9
+      ? (0.3 + blurProgress * 3) / 2
+      : blurProgress < 1.0
+      ? (3.0 + (blurProgress - 0.9) * 10) / 2
+      : 2.0;
+
+  return LiquidGlassTabBar.defaultStyle.copyWith(
+    appearance: LiquidGlassTabBar.defaultStyle.appearance.copyWith(
+      color: headerColor.withValues(
+        alpha: appLiquidGlassOpacityNotifier.value,
+      ),
+      blur: LiquidGlassBlur(
+        sigmaX: defaultBlur.sigmaX * blurScale,
+        sigmaY: defaultBlur.sigmaY * blurScale,
+      ),
+    ),
+    shape: const LiquidGlassShape.continuousRoundedRectangle(
+      cornerRadius: kSquircleStadiumRadius,
+      borderWidth: 0.45,
+      lightIntensity: 0.46,
+      lightDirection: 62,
+      borderType: OpticalBorder(
+        borderSaturation: 1.0,
+        ambientIntensity: 0.18,
+        borderSolidity: 0.28,
+        lightSpread: 0.12,
+      ),
+    ),
+    refraction: LiquidGlassTabBar.defaultStyle.refraction.copyWith(
+      chromaticAberration: 0.0002,
+    ),
+  );
 }
