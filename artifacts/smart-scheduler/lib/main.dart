@@ -514,6 +514,22 @@ class SKEDDOApp extends StatefulWidget {
 
 class _SKEDDOAppState extends State<SKEDDOApp> {
   @override
+  void initState() {
+    super.initState();
+    // Load the Settings preview background while the app is starting so
+    // opening the Liquid Glass sub-screen does not wait on the asset decode.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(
+        precacheImage(
+          const AssetImage('assets/liquid_glass_background.webp'),
+          context,
+        ),
+      );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: Listenable.merge([

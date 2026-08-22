@@ -187,7 +187,6 @@ class _FloatingTabBarGlassPreviewState
   Widget build(BuildContext context) {
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
     final width = MediaQuery.sizeOf(context).width;
-    final style = _floatingTabBarStyle(context);
     final barWidth = (width - 64).clamp(150.0, 190.0);
 
     return LayoutBuilder(
@@ -230,32 +229,47 @@ class _FloatingTabBarGlassPreviewState
                           child: SizedBox(width: barWidth, height: 50),
                         ),
                       ),
-                      LiquidGlassTabBar(
-                        items: [
-                          _previewItem(SFIcons.sf_trash),
-                          _previewItem(SFIcons.sf_folder, size: 23),
-                          _previewItem(SFIcons.sf_arrow_uturn_left),
-                        ],
-                        selectedIndex: 0,
-                        onChanged: (_) {},
-                        width: barWidth,
-                        height: 50,
-                        itemPadding: 4,
-                        itemStyle: LiquidGlassTabItemStyle(
-                          selectedColor:
-                              resolveThemeColor(kSecondaryLabel, context),
-                          unselectedColor:
-                              resolveThemeColor(kSecondaryLabel, context),
-                          iconSize: 20,
-                          selectedFontWeight: FontWeight.w500,
-                          unselectedFontWeight: FontWeight.w500,
-                        ),
-                        style: style,
-                        pillStyle: const LiquidGlassTabPillStyle(
-                          mode: LiquidGlassPillMode.none,
-                          show: false,
-                          animated: false,
-                        ),
+                      // The Settings preview is a visual sample, not a second
+                      // navigation control. Ignore the tab bar's own hit
+                      // testing so taps cannot make a selection indicator
+                      // appear; the parent GestureDetector still owns the
+                      // preview's drag and double-tap gestures.
+                      ValueListenableBuilder<double>(
+                        valueListenable: appLiquidGlassOpacityNotifier,
+                        builder: (context, _, __) {
+                          // Re-resolve the glass appearance on every slider
+                          // update while this preview remains mounted.
+                          final style = _floatingTabBarStyle(context);
+                          return IgnorePointer(
+                            child: LiquidGlassTabBar(
+                              items: [
+                                _previewItem(SFIcons.sf_trash),
+                                _previewItem(SFIcons.sf_folder, size: 23),
+                                _previewItem(SFIcons.sf_arrow_uturn_left),
+                              ],
+                              selectedIndex: 0,
+                              onChanged: (_) {},
+                              width: barWidth,
+                              height: 50,
+                              itemPadding: 4,
+                              itemStyle: LiquidGlassTabItemStyle(
+                                selectedColor:
+                                    resolveThemeColor(kSecondaryLabel, context),
+                                unselectedColor:
+                                    resolveThemeColor(kSecondaryLabel, context),
+                                iconSize: 20,
+                                selectedFontWeight: FontWeight.w500,
+                                unselectedFontWeight: FontWeight.w500,
+                              ),
+                              style: style,
+                              pillStyle: const LiquidGlassTabPillStyle(
+                                mode: LiquidGlassPillMode.none,
+                                show: false,
+                                animated: false,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                       // Match the Floating Tab Bar's stable hairline: it is
                       // painted outside the glass capture so the rim remains

@@ -949,10 +949,11 @@ class _LiquidGlassSection extends StatelessWidget {
                             width: sliderWidth,
                             height: rowHeight,
                             layout: _liquidGlassSliderLayout,
-                            // Report only the final value on a drag release.
-                            // This lets the parent's snapped value retarget
-                            // the slider spring, including exact endpoints.
-                            isContinuous: false,
+                            // Publish every drag update so the preview and
+                            // the rest of the app track the slider in real
+                            // time. The endpoint callback still commits the
+                            // final snapped value after the drag settles.
+                            isContinuous: true,
                             divisions: 10,
                             activeColor: accent,
                             inactiveColor: inactive,
