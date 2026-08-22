@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
@@ -169,8 +171,17 @@ class FloatingTabPill extends StatelessWidget {
 /// Floating Tab Bar. This is used in Settings so the Liquid Glass opacity
 /// control previews the real navigation surface rather than a separate
 /// approximation.
-class FloatingTabBarGlassPreview extends StatelessWidget {
+class FloatingTabBarGlassPreview extends StatefulWidget {
   const FloatingTabBarGlassPreview({super.key});
+
+  @override
+  State<FloatingTabBarGlassPreview> createState() =>
+      _FloatingTabBarGlassPreviewState();
+}
+
+class _FloatingTabBarGlassPreviewState
+    extends State<FloatingTabBarGlassPreview> {
+  Offset _offset = Offset.zero;
 
   @override
   Widget build(BuildContext context) {
@@ -179,44 +190,81 @@ class FloatingTabBarGlassPreview extends StatelessWidget {
     final style = _floatingTabBarStyle(context);
     final barWidth = (width - 64).clamp(150.0, 190.0);
 
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        IgnorePointer(
-          child: LiquidGlassShadow(
-            blur: 16,
-            opacity: isDark ? 0 : 0.18,
-            offset: const Offset(0, 5),
-            cornerRadius: kSquircleStadiumRadius,
-            child: SizedBox(width: barWidth, height: 50),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxX = math.max(0.0, (constraints.maxWidth - barWidth) / 2);
+        final maxY = math.max(0.0, (constraints.maxHeight - 50) / 2);
+        final boundedOffset = Offset(
+          _offset.dx.clamp(-maxX, maxX),
+          _offset.dy.clamp(-maxY, maxY),
+        );
+
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onPanUpdate: (details) {
+            setState(() {
+              _offset = Offset(
+                (_offset.dx + details.delta.dx).clamp(-maxX, maxX),
+                (_offset.dy + details.delta.dy).clamp(-maxY, maxY),
+              );
+            });
+          },
+          onDoubleTap: () => setState(() => _offset = Offset.zero),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Transform.translate(
+                offset: boundedOffset,
+                child: Semantics(
+                  label: 'Liquid Glass preview',
+                  hint: 'Drag to move. Double-tap to center.',
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      IgnorePointer(
+                        child: LiquidGlassShadow(
+                          blur: 16,
+                          opacity: isDark ? 0 : 0.18,
+                          offset: const Offset(0, 5),
+                          cornerRadius: kSquircleStadiumRadius,
+                          child: SizedBox(width: barWidth, height: 50),
+                        ),
+                      ),
+                      LiquidGlassTabBar(
+                        items: [
+                          _previewItem(SFIcons.sf_trash),
+                          _previewItem(SFIcons.sf_folder, size: 23),
+                          _previewItem(SFIcons.sf_arrow_uturn_left),
+                        ],
+                        selectedIndex: 0,
+                        onChanged: (_) {},
+                        width: barWidth,
+                        height: 50,
+                        itemPadding: 4,
+                        itemStyle: LiquidGlassTabItemStyle(
+                          selectedColor:
+                              resolveThemeColor(kSecondaryLabel, context),
+                          unselectedColor:
+                              resolveThemeColor(kSecondaryLabel, context),
+                          iconSize: 20,
+                          selectedFontWeight: FontWeight.w500,
+                          unselectedFontWeight: FontWeight.w500,
+                        ),
+                        style: style,
+                        pillStyle: const LiquidGlassTabPillStyle(
+                          mode: LiquidGlassPillMode.none,
+                          show: false,
+                          animated: false,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-        LiquidGlassTabBar(
-          items: [
-            _previewItem(SFIcons.sf_trash),
-            _previewItem(SFIcons.sf_folder, size: 23),
-            _previewItem(SFIcons.sf_arrow_uturn_left),
-          ],
-          selectedIndex: 0,
-          onChanged: (_) {},
-          width: barWidth,
-          height: 50,
-          itemPadding: 4,
-          itemStyle: LiquidGlassTabItemStyle(
-            selectedColor: resolveThemeColor(kSecondaryLabel, context),
-            unselectedColor: resolveThemeColor(kSecondaryLabel, context),
-            iconSize: 20,
-            selectedFontWeight: FontWeight.w500,
-            unselectedFontWeight: FontWeight.w500,
-          ),
-          style: style,
-          pillStyle: const LiquidGlassTabPillStyle(
-            mode: LiquidGlassPillMode.none,
-            show: false,
-            animated: false,
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
