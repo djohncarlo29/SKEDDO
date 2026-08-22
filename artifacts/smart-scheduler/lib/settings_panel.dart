@@ -71,12 +71,14 @@ class _SettingsRoute {
   // standard text-option list.
   final bool isAccentColor;
   final bool isLiquidGlass;
+  final bool isTextSize;
   const _SettingsRoute({
     required this.title,
     required this.options,
     required this.defaultValue,
     this.isAccentColor = false,
     this.isLiquidGlass = false,
+    this.isTextSize = false,
   });
 }
 
@@ -106,8 +108,9 @@ const _kRoutes = <String, _SettingsRoute>{
   ),
   'Text Size': _SettingsRoute(
     title: 'Text Size',
-    options: ['Compact', 'Default', 'Large'],
-    defaultValue: 'Default',
+    options: [],
+    defaultValue: '',
+    isTextSize: true,
   ),
   'Liquid Glass': _SettingsRoute(
     title: 'Liquid Glass',
@@ -262,7 +265,9 @@ class _SettingsPanelState extends State<SettingsPanel>
       listenable: Listenable.merge([
         appAccentNotifier,
         appBrightnessNotifier,
-        appTextSizeNotifier,
+        appTextSizeUsesSystemNotifier,
+        appTextSizeIndexNotifier,
+        appSystemTextScaleNotifier,
         appStartOfWeekNotifier,
         appDefaultViewNotifier,
         appEventDurationNotifier,
@@ -281,7 +286,9 @@ class _SettingsPanelState extends State<SettingsPanel>
           Brightness.dark => 'Dark',
           _ => 'System',
         };
-        final textSizeLabel = appTextSizeNotifier.value;
+        final textSizeLabel = appTextSizeUsesSystemNotifier.value
+            ? 'System'
+            : '${appTextSizeIndexNotifier.value + 1} of 7';
         final startOfWeekLabel = appStartOfWeekNotifier.value;
         final defaultViewLabel = appDefaultViewNotifier.value;
         final eventDurationLabel = appEventDurationNotifier.value;
@@ -586,7 +593,7 @@ class _SubScreenState extends State<_SubScreen> {
         Brightness.dark => 'Dark',
         _ => 'System',
       },
-      'Text Size' => appTextSizeNotifier.value,
+      'Text Size' => appTextSizeUsesSystemNotifier.value ? 'System' : 'Custom',
       'Start of Week' => appStartOfWeekNotifier.value,
       'Default View' => appDefaultViewNotifier.value,
       'Default Event Duration' => appEventDurationNotifier.value,
@@ -610,7 +617,7 @@ class _SubScreenState extends State<_SubScreen> {
         };
         saveAppSetting('Theme', opt);
       case 'Text Size':
-        appTextSizeNotifier.value = opt;
+        appTextSizeUsesSystemNotifier.value = opt == 'System';
         saveAppSetting('Text Size', opt);
       case 'Start of Week':
         appStartOfWeekNotifier.value = opt;
@@ -648,6 +655,8 @@ class _SubScreenState extends State<_SubScreen> {
             _AccentColorSection(accentNotifier: widget.accentNotifier)
           else if (widget.route.isLiquidGlass)
             const _LiquidGlassSection()
+          else if (widget.route.isTextSize)
+            _TextSizeSection(accentColor: widget.accentColor)
           else
             _SubScreenSection(
               options: widget.route.options,
@@ -830,6 +839,159 @@ class _SubScreenSection extends StatelessWidget {
           cardBg: cardBg,
           shadowColor: shadowColor,
         ),
+      ),
+    );
+  }
+}
+
+// ── Text-size mode and seven-position custom slider ────────────────────────────
+class _TextSizeSection extends StatelessWidget {
+  final Color accentColor;
+
+  const _TextSizeSection({required this.accentColor});
+
+  @override
+  Widget build(BuildContext context) {
+    final cardBg = resolveThemeColor(kCardColor, context);
+    final shadowColor = resolveThemeColor(kCardShadowColor, context);
+
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        appTextSizeUsesSystemNotifier,
+        appTextSizeIndexNotifier,
+        appSystemTextScaleNotifier,
+      ]),
+      builder: (context, _) {
+        final usesSystem = appTextSizeUsesSystemNotifier.value;
+        final systemScaleIndex = skeddoTextScaleIndexForSystemScale(
+          appSystemTextScaleNotifier.value,
+        );
+        final customIndex = usesSystem
+            ? systemScaleIndex
+            : appTextSizeIndexNotifier.value;
+
+        void selectSystem() {
+          if (!appTextSizeUsesSystemNotifier.value) {
+            appTextSizeUsesSystemNotifier.value = true;
+            saveAppSetting('Text Size', 'System');
+          }
+        }
+
+        void selectCustom(double value) {
+          final index = value.round().clamp(0, 6);
+          appTextSizeIndexNotifier.value = index;
+          appTextSizeUsesSystemNotifier.value = false;
+          saveAppSetting('Text Size', 'Custom');
+        }
+
+        return SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: [
+                _SettingsCard(
+                  rows: [
+                    _OptionRow(
+                      title: 'System',
+                      selected: usesSystem,
+                      accentColor: accentColor,
+                      onTap: selectSystem,
+                    ),
+                  ],
+                  cardBg: cardBg,
+                  shadowColor: shadowColor,
+                ),
+                const SizedBox(height: 14),
+                _SettingsCard(
+                  rows: [
+                    _TextSizeSliderRow(
+                      index: customIndex,
+                      accentColor: accentColor,
+                      onChanged: selectCustom,
+                    ),
+                  ],
+                  cardBg: cardBg,
+                  shadowColor: shadowColor,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TextSizeSliderRow extends StatelessWidget {
+  final int index;
+  final Color accentColor;
+  final ValueChanged<double> onChanged;
+
+  const _TextSizeSliderRow({
+    required this.index,
+    required this.accentColor,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
+    final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 13, 16, 10),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Custom',
+                  style: TextStyle(
+                    fontFamily: kSFProText,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w400,
+                    color: primaryLabel,
+                  ),
+                ),
+              ),
+              Text(
+                '${index + 1} of 7',
+                style: TextStyle(
+                  fontFamily: kSFProText,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                  color: secondaryLabel,
+                ),
+              ),
+            ],
+          ),
+          CupertinoSlider(
+            value: index.toDouble(),
+            min: 0,
+            max: 6,
+            divisions: 6,
+            activeColor: accentColor,
+            onChanged: onChanged,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List<Widget>.generate(
+                7,
+                (tick) => DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: tick <= index
+                        ? accentColor
+                        : resolveThemeColor(kTertiaryLabel, context),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const SizedBox(width: 4, height: 4),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

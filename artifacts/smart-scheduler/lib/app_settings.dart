@@ -8,7 +8,8 @@ import 'ai/parsed_date.dart';
 // SettingsPanel and read by SKEDDOApp to rebuild CupertinoApp reactively.
 //
 //   appBrightnessNotifier    — null = follow system, light/dark = override.
-//   appTextSizeNotifier      — 'Compact' (0.85×), 'Default' (system), 'Large' (1.15×).
+//   appTextSizeUsesSystemNotifier — true when text follows the phone OS.
+//   appTextSizeIndexNotifier — custom SKEDDO text-size position (0–6).
 //   appStartOfWeekNotifier   — 'Sunday' | 'Monday' | 'Saturday'.
 //   appDefaultViewNotifier   — 'Day' | 'Week' | 'Month' | 'Year'.
 //   appEventDurationNotifier — '15 minutes' | '30 minutes' | '1 hour' | '2 hours'.
@@ -21,13 +22,51 @@ import 'ai/parsed_date.dart';
 final ValueNotifier<Brightness?> appBrightnessNotifier =
     ValueNotifier<Brightness?>(null);
 
-/// Text-size multiplier selection.
-/// 'Default' → respect the OS Dynamic Type / font-size setting.
-/// 'Compact' → clamp textScaler to 0.95×.
-/// 'Large'   → clamp textScaler to 1.05×.
-final ValueNotifier<String> appTextSizeNotifier = ValueNotifier<String>(
-  'Default',
+/// Whether SKEDDO follows the phone's current OS text size.
+final ValueNotifier<bool> appTextSizeUsesSystemNotifier = ValueNotifier<bool>(
+  true,
 );
+
+/// Custom SKEDDO text-size position. Seven positions mirror the standard
+/// Dynamic Type range; position 0 is the smallest and position 6 is the
+/// largest custom size.
+final ValueNotifier<int> appTextSizeIndexNotifier = ValueNotifier<int>(3);
+
+/// The unmodified OS text scale captured above SKEDDO's optional custom
+/// MediaQuery override. Settings uses this to keep the seven-position slider
+/// aligned with the phone while System mode is active.
+final ValueNotifier<double> appSystemTextScaleNotifier = ValueNotifier<double>(
+  1.0,
+);
+
+/// Seven standard Dynamic Type positions, expressed as scale factors relative
+/// to the platform's default body text size. System mode is never clamped to
+/// these values; they are only used for SKEDDO's custom mode.
+const List<double> kSkeddoTextScaleStops = <double>[
+  0.82,
+  0.88,
+  0.94,
+  1.00,
+  1.12,
+  1.24,
+  1.35,
+];
+
+double skeddoTextScaleForIndex(int index) =>
+    kSkeddoTextScaleStops[index.clamp(0, 6)];
+
+int skeddoTextScaleIndexForSystemScale(double scale) {
+  var closestIndex = 0;
+  var closestDistance = double.infinity;
+  for (var i = 0; i < kSkeddoTextScaleStops.length; i++) {
+    final distance = (kSkeddoTextScaleStops[i] - scale).abs();
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestIndex = i;
+    }
+  }
+  return closestIndex;
+}
 
 /// Accent-color swatch index into [kCategorySwatches] / [kAccentSwatches]
 /// (0–11).  Index 5 = Blue (kCatBlue / kAccentColor) — the app default.
@@ -70,6 +109,8 @@ final ValueNotifier<double> appLiquidGlassOpacityNotifier =
 // ── SharedPreferences keys ────────────────────────────────────────────────────
 const _kThemeKey = 'app_theme';
 const _kTextSizeKey = 'app_text_size';
+const _kTextSizeModeKey = 'app_text_size_mode';
+const _kTextSizeIndexKey = 'app_text_size_index';
 const _kAccentIndexKey = 'app_accent_index';
 const _kStartOfWeekKey = 'app_start_of_week';
 const _kDefaultViewKey = 'app_default_view';
@@ -93,9 +134,26 @@ Future<void> loadAppSettings() async {
     };
   }
 
-  // Text size
+  // Text size. New installs and missing mode data default to System.
+  final textSizeMode = prefs.getString(_kTextSizeModeKey);
+  if (textSizeMode != null) {
+    appTextSizeUsesSystemNotifier.value = textSizeMode != 'custom';
+  }
+  final textSizeIndex = prefs.getInt(_kTextSizeIndexKey);
+  if (textSizeIndex != null) {
+    appTextSizeIndexNotifier.value = textSizeIndex.clamp(0, 6);
+  }
+
+  // Migrate the previous three-option setting for existing installations.
   final textSize = prefs.getString(_kTextSizeKey);
-  if (textSize != null) appTextSizeNotifier.value = textSize;
+  if (textSizeMode == null && textSize != null) {
+    appTextSizeUsesSystemNotifier.value = textSize == 'Default';
+    appTextSizeIndexNotifier.value = switch (textSize) {
+      'Compact' => 1,
+      'Large' => 5,
+      _ => 3,
+    };
+  }
 
   // Accent color index
   final accentIndex = prefs.getInt(_kAccentIndexKey);
@@ -144,6 +202,11 @@ void saveAppSetting(String routeTitle, String value) {
         prefs.setString(_kThemeKey, value);
       case 'Text Size':
         prefs.setString(_kTextSizeKey, value);
+        prefs.setString(
+          _kTextSizeModeKey,
+          appTextSizeUsesSystemNotifier.value ? 'system' : 'custom',
+        );
+        prefs.setInt(_kTextSizeIndexKey, appTextSizeIndexNotifier.value);
       case 'Start of Week':
         prefs.setString(_kStartOfWeekKey, value);
       case 'Default View':

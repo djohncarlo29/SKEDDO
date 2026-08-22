@@ -540,13 +540,19 @@ class _SKEDDOAppState extends State<SKEDDOApp> {
     return ListenableBuilder(
       listenable: Listenable.merge([
         appBrightnessNotifier,
-        appTextSizeNotifier,
+        appTextSizeUsesSystemNotifier,
+        appTextSizeIndexNotifier,
         appAccentNotifier,
         appDateLocaleNotifier,
       ]),
       builder: (context, _) {
         final brightness = appBrightnessNotifier.value;
-        final textSize = appTextSizeNotifier.value;
+        final followsSystemTextSize = appTextSizeUsesSystemNotifier.value;
+        final customTextSizeIndex = appTextSizeIndexNotifier.value;
+        final systemTextScale = MediaQuery.textScalerOf(context).scale(16) / 16;
+        if (appSystemTextScaleNotifier.value != systemTextScale) {
+          appSystemTextScaleNotifier.value = systemTextScale;
+        }
         // The selected accent swatch (strongly typed CupertinoDynamicColor).
         final accentSwatch = kAccentSwatches[appAccentNotifier.value];
         final effectiveBrightness =
@@ -611,19 +617,12 @@ class _SKEDDOAppState extends State<SKEDDOApp> {
                 data: IconTheme.of(context).copyWith(applyTextScaling: false),
                 child: result,
               );
-              // Text-size override via MediaQuery clamping.
-              // 'Default' passes through the OS Dynamic Type / font-size setting.
-              // 'Compact' pins to 0.95×; 'Large' pins to 1.05×.
-              if (textSize == 'Compact') {
+              // System mode leaves the full platform text scaler untouched,
+              // including accessibility sizes above SKEDDO's seventh stop.
+              if (!followsSystemTextSize) {
                 result = MediaQuery.withClampedTextScaling(
-                  minScaleFactor: 0.95,
-                  maxScaleFactor: 0.95,
-                  child: result,
-                );
-              } else if (textSize == 'Large') {
-                result = MediaQuery.withClampedTextScaling(
-                  minScaleFactor: 1.05,
-                  maxScaleFactor: 1.05,
+                  minScaleFactor: skeddoTextScaleForIndex(customTextSizeIndex),
+                  maxScaleFactor: skeddoTextScaleForIndex(customTextSizeIndex),
                   child: result,
                 );
               }
