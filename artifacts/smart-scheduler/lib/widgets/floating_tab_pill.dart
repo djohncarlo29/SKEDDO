@@ -257,6 +257,26 @@ class _FloatingTabBarGlassPreviewState
                           animated: false,
                         ),
                       ),
+                      // Match the Floating Tab Bar's stable hairline: it is
+                      // painted outside the glass capture so the rim remains
+                      // crisp and does not refract with the background.
+                      IgnorePointer(
+                        child: SizedBox(
+                          width: barWidth,
+                          height: 50,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: const Color(0x26FFFFFF),
+                                width: 0.5,
+                              ),
+                              borderRadius: BorderRadius.circular(
+                                kSquircleStadiumRadius,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
