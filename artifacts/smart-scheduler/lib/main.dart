@@ -514,10 +514,11 @@ class SKEDDOApp extends StatefulWidget {
   State<SKEDDOApp> createState() => _SKEDDOAppState();
 }
 
-class _SKEDDOAppState extends State<SKEDDOApp> {
+class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Load the Settings preview background while the app is starting so
     // opening the Liquid Glass sub-screen does not wait on the asset decode.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -548,12 +549,29 @@ class _SKEDDOAppState extends State<SKEDDOApp> {
   }
 
   @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Android and iOS expose the current text-size setting through the
+      // native bridge. Re-read it after returning from Settings so the
+      // System thumb and captured scaler track the newly selected OS value.
+      unawaited(initializeDeviceTextScaleProfile());
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: Listenable.merge([
         appBrightnessNotifier,
         appTextSizeUsesSystemNotifier,
         appTextSizeIndexNotifier,
+        appSystemTextScaleNotifier,
         appPlatformTextScalersNotifier,
         appAccentNotifier,
         appDateLocaleNotifier,

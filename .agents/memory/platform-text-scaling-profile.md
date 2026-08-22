@@ -7,4 +7,4 @@ The platform is the source of truth for SKEDDO text-size positions. Android shou
 
 **Why:** A universal multiplier table can match a position label while still diverging from Android’s nonlinear accessibility scaling, especially at larger sizes.
 
-**How to apply:** Keep native profile discovery and curve sampling in the platform bridges. Treat linear values only as an explicit compatibility fallback for web or old binaries that expose no profile.
+**How to apply:** Keep native profile discovery and curve sampling in the platform bridges, refresh the profile when the app resumes from background, and treat linear values only as an explicit compatibility fallback for web or old binaries that expose no profile.
