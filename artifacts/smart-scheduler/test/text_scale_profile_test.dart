@@ -110,6 +110,97 @@ void main() {
     expect(appCustomTextScalerNotifier.value!.scale(20), selectedAt20);
   });
 
+  test('maps fewer than seven native stops without inserting middle stops',
+      () async {
+    final expected = <int, List<double>>{
+      4: <double>[1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
+      5: <double>[1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
+      7: <double>[1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
+      9: <double>[1.0, 1.133333, 1.266667, 1.4, 1.533333, 1.666667, 1.8],
+      12: <double>[
+        1.0,
+        1.183333,
+        1.366667,
+        1.55,
+        1.733333,
+        1.916667,
+        2.1,
+      ],
+    };
+    for (final entry in expected.entries) {
+      final count = entry.key;
+      final nativeStops = <double>[
+        for (var index = 0; index < count; index++) 1.0 + index * 0.1,
+      ];
+      channel.setMockMethodCallHandler((call) async {
+        if (call.method != 'getProfile') return null;
+        return <String, Object>{
+          'currentScale': nativeStops.last,
+          'stops': nativeStops,
+          'probeSizes': <double>[1.0, 2.0],
+          'curves': List<Object?>.filled(
+            count,
+            <double>[1.0, 1.0],
+          ),
+        };
+      });
+
+      await initializeDeviceTextScaleProfile();
+
+      final mapping = appSkeddoTextScaleMappingNotifier.value;
+      expect(mapping, hasLength(7));
+      for (var index = 0; index < entry.value.length; index++) {
+        expect(
+          mapping[index].scale,
+          closeTo(entry.value[index], 0.000001),
+          reason: '$count native stops, position $index',
+        );
+      }
+      if (count < 7) {
+        expect(
+          mapping
+              .take(count)
+              .every((item) => item.kind == SkeddoTextScaleMappingKind.native),
+          isTrue,
+          reason: '$count native stops',
+        );
+        expect(
+          mapping
+              .skip(count)
+              .every(
+                (item) => item.kind == SkeddoTextScaleMappingKind.extrapolated,
+              ),
+          isTrue,
+          reason: '$count native stops',
+        );
+      } else if (count == 7) {
+        expect(
+          mapping.every((item) => item.kind == SkeddoTextScaleMappingKind.native),
+          isTrue,
+          reason: '$count native stops',
+        );
+      } else {
+        expect(
+          mapping
+              .where((item) => item.kind == SkeddoTextScaleMappingKind.native)
+              .length,
+          count == 9 ? 3 : 2,
+          reason: '$count native stops',
+        );
+        expect(
+          mapping
+              .where(
+                (item) =>
+                    item.kind == SkeddoTextScaleMappingKind.interpolated,
+              )
+              .length,
+          count == 9 ? 4 : 5,
+          reason: '$count native stops',
+        );
+      }
+    }
+  });
+
   test('overlapping profile reads publish in request order', () async {
     var calls = 0;
     channel.setMockMethodCallHandler((call) async {

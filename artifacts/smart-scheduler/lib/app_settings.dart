@@ -170,6 +170,19 @@ _SampledPlatformTextScaler _interpolatePlatformScalers(
   return _SampledPlatformTextScaler(lower._probeSizes, ratios);
 }
 
+_SampledPlatformTextScaler _extrapolatePlatformScaler(
+  _SampledPlatformTextScaler previous,
+  _SampledPlatformTextScaler last,
+  int steps,
+) {
+  final ratios = <double>[
+    for (var i = 0; i < last._ratios.length; i++)
+      last._ratios[i] +
+          (last._ratios[i] - previous._ratios[i]) * steps,
+  ];
+  return _SampledPlatformTextScaler(last._probeSizes, ratios);
+}
+
 List<double> get appSkeddoTextScaleStops =>
     appSkeddoTextScaleStopsNotifier.value;
 
@@ -284,6 +297,41 @@ List<SkeddoTextScaleMapping> _createSkeddoTextScaleMapping(
         scaler: null,
       ),
     );
+  }
+  if (nativeCount < 7) {
+    final mappings = <SkeddoTextScaleMapping>[
+      for (var index = 0; index < nativeCount; index++)
+        SkeddoTextScaleMapping(
+          scale: profile.stops[index].scale,
+          kind: SkeddoTextScaleMappingKind.native,
+          nativeIndex: index,
+          scaler:
+              profile.stops[index].scaler ??
+              TextScaler.linear(profile.stops[index].scale),
+        ),
+    ];
+    final lastScale = profile.stops[nativeCount - 1].scale;
+    final previousScale = profile.stops[nativeCount - 2].scale;
+    final scaleStep = lastScale - previousScale;
+    final previousScaler = profile.stops[nativeCount - 2].scaler;
+    final lastScaler = profile.stops[nativeCount - 1].scaler;
+    for (var index = nativeCount; index < 7; index++) {
+      final steps = index - nativeCount + 1;
+      final scale = lastScale + scaleStep * steps;
+      final scaler = previousScaler is _SampledPlatformTextScaler &&
+              lastScaler is _SampledPlatformTextScaler
+          ? _extrapolatePlatformScaler(previousScaler, lastScaler, steps)
+          : TextScaler.linear(scale);
+      mappings.add(
+        SkeddoTextScaleMapping(
+          scale: scale,
+          kind: SkeddoTextScaleMappingKind.extrapolated,
+          nativeIndex: null,
+          scaler: scaler,
+        ),
+      );
+    }
+    return mappings;
   }
   return List<SkeddoTextScaleMapping>.generate(7, (index) {
     final coordinate = index * (nativeCount - 1) / 6;
