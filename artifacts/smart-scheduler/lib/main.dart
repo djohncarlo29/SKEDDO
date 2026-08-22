@@ -570,6 +570,17 @@ class _SKEDDOAppState extends State<SKEDDOApp> {
             appSystemTextScaleNotifier.value != systemTextScale) {
           appSystemTextScaleNotifier.value = systemTextScale;
         }
+        if (followsSystemTextSize && appHasNativeTextScaleProfile) {
+          // Keep the actual platform scaler, including Android's nonlinear
+          // accessibility curve, so selecting the matching Custom tick can
+          // reproduce System exactly. Do not refresh this while Custom mode is
+          // active; Custom must remain independent from later OS changes.
+          appCapturedSystemTextScaler = MediaQuery.textScalerOf(context);
+          appCapturedSystemTextScaleIndex =
+              skeddoTextScaleIndexForSystemScale(
+                appSystemTextScaleNotifier.value,
+              );
+        }
         // The selected accent swatch (strongly typed CupertinoDynamicColor).
         final accentSwatch = kAccentSwatches[appAccentNotifier.value];
         final effectiveBrightness =
@@ -637,11 +648,29 @@ class _SKEDDOAppState extends State<SKEDDOApp> {
               // System mode leaves the full platform text scaler untouched,
               // including accessibility sizes above SKEDDO's seventh stop.
               if (!followsSystemTextSize) {
-                result = MediaQuery.withClampedTextScaling(
-                  minScaleFactor: skeddoTextScaleForIndex(customTextSizeIndex),
-                  maxScaleFactor: skeddoTextScaleForIndex(customTextSizeIndex),
-                  child: result,
-                );
+                final capturedScaler = appCapturedSystemTextScaler;
+                final capturedIndex = appCapturedSystemTextScaleIndex;
+                if (capturedScaler != null &&
+                    capturedIndex == customTextSizeIndex) {
+                  // This is the exact scaler supplied by the OS for the
+                  // matching System position, not a linear approximation.
+                  result = MediaQuery(
+                    data: MediaQuery.of(
+                      context,
+                    ).copyWith(textScaler: capturedScaler),
+                    child: result,
+                  );
+                } else {
+                  result = MediaQuery.withClampedTextScaling(
+                    minScaleFactor: skeddoTextScaleForIndex(
+                      customTextSizeIndex,
+                    ),
+                    maxScaleFactor: skeddoTextScaleForIndex(
+                      customTextSizeIndex,
+                    ),
+                    child: result,
+                  );
+                }
               }
               // Brightness override: propagate through MediaQuery so that
               // CupertinoDynamicColor.resolve() returns the correct variant

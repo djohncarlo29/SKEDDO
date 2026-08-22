@@ -62,6 +62,15 @@ final ValueNotifier<List<double>> appTextScaleStopsNotifier =
 /// fallback for web and older binaries without this bridge.
 bool appHasNativeTextScaleProfile = false;
 
+/// The exact platform TextScaler captured while System mode is active.
+///
+/// Reusing this object for the matching custom position preserves Android's
+/// nonlinear accessibility curve instead of replacing it with a linear
+/// approximation. It is intentionally not refreshed while Custom mode is
+/// active, so Custom remains independent from later OS changes.
+TextScaler? appCapturedSystemTextScaler;
+int? appCapturedSystemTextScaleIndex;
+
 List<double> get appTextScaleStops => appTextScaleStopsNotifier.value;
 
 double skeddoTextScaleForIndex(int index) =>
