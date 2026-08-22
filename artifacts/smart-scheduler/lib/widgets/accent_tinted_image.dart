@@ -92,7 +92,12 @@ class _AccentImageCache {
     }
 
     final rgba = Uint8List.fromList(pixels.buffer.asUint8List());
-    final target = HSVColor.fromColor(accentColor);
+    final target = accentColor;
+    final targetRed = target.r;
+    final targetGreen = target.g;
+    final targetBlue = target.b;
+    final targetLuminance =
+        (0.2126 * targetRed) + (0.7152 * targetGreen) + (0.0722 * targetBlue);
 
     for (var i = 0; i < rgba.length; i += 4) {
       final red = rgba[i];
@@ -110,23 +115,20 @@ class _AccentImageCache {
           (blue - red) / 255 > 0.10;
       if (!isBlue || alpha == 0) continue;
 
-      final sourceColor = HSVColor.fromColor(
-        Color.fromARGB(alpha, red, green, blue),
-      );
-      final saturation =
-          (target.saturation * (sourceColor.saturation / 0.65).clamp(0.5, 1.0))
-              .clamp(0.0, 1.0);
-      final tinted = HSVColor.fromAHSV(
-        alpha / 255,
-        target.hue,
-        saturation,
-        sourceColor.value,
-      ).toColor();
-
-      final argb = tinted.toARGB32();
-      rgba[i] = (argb >> 16) & 0xff;
-      rgba[i + 1] = (argb >> 8) & 0xff;
-      rgba[i + 2] = argb & 0xff;
+      // Use the source blue only as a shading mask. HSV replacement keeps
+      // the blue pixels' original Value, which makes pale accents (Tan and
+      // Sand) too bright and lets blue-biased accents (Slate) remain visibly
+      // blue. Reconstructing the target colour at the source pixel's
+      // luminance preserves the artwork's depth without changing the
+      // selected swatch's visual identity.
+      final sourceLuminance =
+          (0.2126 * red / 255.0) +
+          (0.7152 * green / 255.0) +
+          (0.0722 * blue / 255.0);
+      final shade = (sourceLuminance / targetLuminance).clamp(0.0, 1.0);
+      rgba[i] = (targetRed * shade * 255.0).round().clamp(0, 255);
+      rgba[i + 1] = (targetGreen * shade * 255.0).round().clamp(0, 255);
+      rgba[i + 2] = (targetBlue * shade * 255.0).round().clamp(0, 255);
     }
 
     final result = await _decodePixels(rgba, source.width, source.height);
