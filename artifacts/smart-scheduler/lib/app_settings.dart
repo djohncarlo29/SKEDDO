@@ -258,8 +258,9 @@ Future<void> initializeDeviceTextScaleProfile() async {
 }
 
 /// Cheaply detect an OS text-size change without transferring the full native
-/// curve profile. This matters in Android split-screen/floating-window mode,
-/// where SKEDDO can remain resumed while the user changes Settings beside it.
+/// curve profile. This matters in Android split-screen/floating-window and iPad
+/// Split View/Slide Over, where SKEDDO can remain resumed while its host window's
+/// text-size traits change.
 Future<void> refreshDeviceTextScaleProfileIfChanged() async {
   try {
     final current = await _textScaleChannel.invokeMethod<num>(

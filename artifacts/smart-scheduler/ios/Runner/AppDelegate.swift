@@ -17,19 +17,35 @@ import UIKit
         binaryMessenger: controller.binaryMessenger
       )
       textScaleChannel.setMethodCallHandler { call, result in
-        guard call.method == "getProfile" else {
-          result(FlutterMethodNotImplemented)
-          return
-        }
         let categories: [UIContentSizeCategory] = [
           .extraSmall, .small, .medium, .large, .extraLarge,
           .extraExtraLarge, .extraExtraExtraLarge
         ]
-        let probeSizes: [Double] = stride(from: 1.0, through: 256.0, by: 0.25).map { $0 }
         let body = UIFontMetrics(forTextStyle: .body)
-        let base = body.scaledValue(for: 17, compatibleWith: UITraitCollection(
+        let largeTraits = UITraitCollection(
           preferredContentSizeCategory: .large
-        ))
+        )
+        let base = body.scaledValue(for: 17, compatibleWith: largeTraits)
+
+        if call.method == "getCurrentScale" {
+          // Use the Flutter host window's traits rather than UIKit's ambient
+          // current traits. On iPad, the host window's preferredContentSizeCategory
+          // can change while the app remains active in Split View or Slide Over.
+          // Keeping this endpoint to one scalar makes the live Dart poll cheap.
+          let windowTraits = self.window?.traitCollection
+          let currentTraits = windowTraits ?? UITraitCollection.current
+          let current = body.scaledValue(
+            for: 17,
+            compatibleWith: currentTraits
+          ) / base
+          result(current)
+          return
+        }
+        guard call.method == "getProfile" else {
+          result(FlutterMethodNotImplemented)
+          return
+        }
+        let probeSizes: [Double] = stride(from: 1.0, through: 256.0, by: 0.25).map { $0 }
         let stops = categories.map { category in
           body.scaledValue(
             for: 17,
@@ -42,7 +58,12 @@ import UIKit
             body.scaledValue(for: CGFloat(size), compatibleWith: traits) / CGFloat(size)
           }
         }
-        let current = body.scaledValue(for: 17) / base
+        let windowTraits = self.window?.traitCollection
+        let currentTraits = windowTraits ?? UITraitCollection.current
+        let current = body.scaledValue(
+          for: 17,
+          compatibleWith: currentTraits
+        ) / base
         result([
           "currentScale": current,
           "stops": stops,
