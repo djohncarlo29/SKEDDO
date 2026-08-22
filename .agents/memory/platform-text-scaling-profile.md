@@ -8,3 +8,9 @@ The platform is the source of truth for SKEDDO text-size positions. Android shou
 **Why:** A universal multiplier table can match a position label while still diverging from Android’s nonlinear accessibility scaling, especially at larger sizes.
 
 **How to apply:** Keep native profile discovery and curve sampling in the platform bridges, refresh on foreground return and poll the lightweight current scale while visible for split-screen/floating-window cases, and treat linear values only as an explicit compatibility fallback for web or old binaries that expose no profile.
+
+Profile reads and preference commits must be serialized. Lifecycle refreshes can overlap with the visibility poll, and slider/mode changes can enqueue several writes; publishing or writing out of order makes a newer user choice appear to revert.
+
+**Why:** Both native profile loading and SharedPreferences updates are asynchronous, so completion order is not guaranteed even when calls were made in the intended order.
+
+**How to apply:** Queue the complete profile operation (including the lightweight probe) and snapshot text-size mode/index when a setting is committed.

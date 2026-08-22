@@ -686,14 +686,16 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
                     child: result,
                   );
                 } else if (customTextSizeIndex <
-                    appPlatformTextScalersNotifier.value.length) {
+                        appPlatformTextScalersNotifier.value.length &&
+                    appPlatformTextScalersNotifier.value[customTextSizeIndex] !=
+                        null) {
                   // For every other Custom tick, use the platform-sampled
                   // curve rather than converting that tick to an arbitrary
                   // linear multiplier.
                   result = MediaQuery(
                     data: MediaQuery.of(context).copyWith(
                       textScaler: appPlatformTextScalersNotifier
-                          .value[customTextSizeIndex],
+                          .value[customTextSizeIndex]!,
                     ),
                     child: result,
                   );

@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -62,8 +60,8 @@ final ValueNotifier<List<double>> appTextScaleStopsNotifier =
 /// Text scalers sampled from the native platform profile, one per stop.
 /// This is separate from [appCapturedSystemTextScaler], which is the exact
 /// Flutter scaler for the currently active OS setting.
-final ValueNotifier<List<TextScaler>> appPlatformTextScalersNotifier =
-    ValueNotifier<List<TextScaler>>(<TextScaler>[]);
+final ValueNotifier<List<TextScaler?>> appPlatformTextScalersNotifier =
+    ValueNotifier<List<TextScaler?>>(<TextScaler?>[]);
 
 const _textScaleChannel = MethodChannel('com.smartscheduler/text_scale');
 
@@ -143,7 +141,12 @@ int skeddoTextScaleIndexForSystemScale(double scale) {
 /// iOS exposes its current Dynamic Type category plus native category scales.
 /// The returned profile is intentionally normalized to seven stops for the
 /// app, without changing the actual spacing between the platform stops.
-Future<void> initializeDeviceTextScaleProfile() async {
+Future<void> initializeDeviceTextScaleProfile() {
+  return _enqueueTextScaleProfileOperation(_loadDeviceTextScaleProfile);
+}
+
+Future<void> _loadDeviceTextScaleProfile() async {
+  final request = ++_textScaleProfileRequest;
   try {
     final raw = await _textScaleChannel.invokeMethod<Map<Object?, Object?>>(
       'getProfile',
@@ -155,37 +158,29 @@ Future<void> initializeDeviceTextScaleProfile() async {
         .map((value) => value.toDouble())
         .where((value) => value.isFinite && value > 0)
         .toList();
-    if (nativeStops.isEmpty) return;
+    if (nativeStops.length < 2) return;
+    for (var i = 1; i < nativeStops.length; i++) {
+      if (nativeStops[i] <= nativeStops[i - 1]) return;
+    }
 
     final rawProbeSizes = raw?['probeSizes'];
     final rawCurves = raw?['curves'];
     final probeSizes = rawProbeSizes is List
         ? rawProbeSizes
-              .whereType<num>()
-              .map((value) => value.toDouble())
-              .where((value) => value.isFinite && value > 0)
+              .map((value) => value is num ? value.toDouble() : double.nan)
               .toList()
         : <double>[];
-    final platformScalers = <TextScaler>[];
-    if (rawCurves is List && probeSizes.length > 1) {
-      for (final curve in rawCurves) {
-        if (curve is! List) continue;
-        final ratios = curve
-            .whereType<num>()
-            .map((value) => value.toDouble())
-            .where((value) => value.isFinite && value > 0)
-            .toList();
-        final count = math.min(probeSizes.length, ratios.length);
-        if (count > 1) {
-          platformScalers.add(
-            _SampledPlatformTextScaler(
-              List<double>.unmodifiable(probeSizes.take(count)),
-              List<double>.unmodifiable(ratios.take(count)),
-            ),
-          );
-        }
-      }
+    if (probeSizes.length < 2 ||
+        probeSizes.any((value) => !value.isFinite || value <= 0)) {
+      return;
     }
+    for (var i = 1; i < probeSizes.length; i++) {
+      if (probeSizes[i] <= probeSizes[i - 1]) return;
+    }
+    final platformScalers = <TextScaler?>[
+      for (var i = 0; i < nativeStops.length; i++)
+        _parsePlatformScaler(rawCurves, i, probeSizes),
+    ];
 
     // Keep each curve paired with its native stop while trimming. Otherwise
     // an OEM profile with more than seven stops could shift the nonlinear
@@ -198,14 +193,18 @@ Future<void> initializeDeviceTextScaleProfile() async {
         ),
     ];
     while (pairedStops.length > 7) {
-      // Remove only an outer extreme; never compress the platform's gaps.
-      final removeFirst =
-          pairedStops.first.scale.abs() > pairedStops.last.scale.abs();
-      if (removeFirst) {
-        pairedStops.removeAt(0);
-      } else {
-        pairedStops.removeLast();
+      // Remove the smallest interior gap first, preserving both platform
+      // extremes and keeping each curve attached to its native stop.
+      var removeAt = 1;
+      var smallestGap = double.infinity;
+      for (var i = 1; i < pairedStops.length - 1; i++) {
+        final gap = pairedStops[i + 1].scale - pairedStops[i - 1].scale;
+        if (gap < smallestGap) {
+          smallestGap = gap;
+          removeAt = i;
+        }
       }
+      pairedStops.removeAt(removeAt);
     }
     while (pairedStops.length < 7 &&
         pairedStops.length >= 2 &&
@@ -232,23 +231,18 @@ Future<void> initializeDeviceTextScaleProfile() async {
           : stops.last * 0.12;
       stops.add(stops.last + (gap > 0 ? gap : stops.last * 0.12));
     }
-    appTextScaleStopsNotifier.value = List<double>.unmodifiable(stops);
-    final retainedScalers = pairedStops
-        .map((item) => item.scaler)
-        .whereType<TextScaler>()
-        .toList();
-    if (retainedScalers.isNotEmpty) {
-      appPlatformTextScalersNotifier.value = List<TextScaler>.unmodifiable(
-        retainedScalers,
-      );
-    }
     final current = (raw?['currentScale'] as num?)?.toDouble();
-    if (current != null && current.isFinite) {
+    if (current != null &&
+        current.isFinite &&
+        request == _textScaleProfileRequest) {
+      appTextScaleStopsNotifier.value = List<double>.unmodifiable(stops);
+      appPlatformTextScalersNotifier.value =
+          List<TextScaler?>.unmodifiable(<TextScaler?>[
+            ...pairedStops.map((item) => item.scaler),
+            ...List<TextScaler?>.filled(7 - pairedStops.length, null),
+          ]);
       appHasNativeTextScaleProfile = true;
       appSystemTextScaleNotifier.value = current;
-      appTextSizeIndexNotifier.value = skeddoTextScaleIndexForSystemScale(
-        current,
-      );
     }
   } on PlatformException {
     // Flutter's MediaQuery scale remains the authoritative fallback.
@@ -257,25 +251,68 @@ Future<void> initializeDeviceTextScaleProfile() async {
   }
 }
 
+int _textScaleProfileRequest = 0;
+Future<void> _textScaleProfileQueue = Future<void>.value();
+
+/// Serialize the full profile read, including the lightweight current-scale
+/// probe. Lifecycle callbacks and the one-second poll can otherwise complete
+/// out of order and publish an older profile after a newer one.
+Future<void> _enqueueTextScaleProfileOperation(
+  Future<void> Function() operation,
+) {
+  final next = _textScaleProfileQueue.then<void>(
+    (_) => operation(),
+    onError: (Object _, StackTrace __) => operation(),
+  );
+  _textScaleProfileQueue = next.catchError((Object _, StackTrace __) {});
+  return next;
+}
+
+TextScaler? _parsePlatformScaler(
+  Object? rawCurves,
+  int index,
+  List<double> probeSizes,
+) {
+  if (rawCurves is! List ||
+      index >= rawCurves.length ||
+      probeSizes.length < 2) {
+    return null;
+  }
+  final curve = rawCurves[index];
+  if (curve is! List || curve.length < probeSizes.length) return null;
+  final ratios = <double>[];
+  for (var i = 0; i < probeSizes.length; i++) {
+    final value = curve[i];
+    if (value is! num || !value.isFinite || value <= 0) return null;
+    ratios.add(value.toDouble());
+  }
+  return _SampledPlatformTextScaler(
+    List<double>.unmodifiable(probeSizes),
+    List<double>.unmodifiable(ratios),
+  );
+}
+
 /// Cheaply detect an OS text-size change without transferring the full native
 /// curve profile. This matters in Android split-screen/floating-window and iPad
 /// Split View/Slide Over, where SKEDDO can remain resumed while its host window's
 /// text-size traits change.
 Future<void> refreshDeviceTextScaleProfileIfChanged() async {
-  try {
-    final current = await _textScaleChannel.invokeMethod<num>(
-      'getCurrentScale',
-    );
-    if (current != null &&
-        current.isFinite &&
-        current.toDouble() != appSystemTextScaleNotifier.value) {
-      await initializeDeviceTextScaleProfile();
+  return _enqueueTextScaleProfileOperation(() async {
+    try {
+      final current = await _textScaleChannel.invokeMethod<num>(
+        'getCurrentScale',
+      );
+      if (current != null &&
+          current.isFinite &&
+          current.toDouble() != appSystemTextScaleNotifier.value) {
+        await _loadDeviceTextScaleProfile();
+      }
+    } on PlatformException {
+      // The existing Flutter MediaQuery fallback remains authoritative.
+    } on MissingPluginException {
+      // Web and older binaries do not have the native profile channel.
     }
-  } on PlatformException {
-    // The existing Flutter MediaQuery fallback remains authoritative.
-  } on MissingPluginException {
-    // Web and older binaries do not have the native profile channel.
-  }
+  });
 }
 
 /// Accent-color swatch index into [kCategorySwatches] / [kAccentSwatches]
@@ -407,34 +444,41 @@ Future<void> loadAppSettings() async {
 
 /// Persist a single settings key.  All callers go through here so the key list
 /// stays in one place.
-void saveAppSetting(String routeTitle, String value) {
-  SharedPreferences.getInstance().then((prefs) {
+Future<void> saveAppSetting(String routeTitle, String value) {
+  final mode = appTextSizeUsesSystemNotifier.value ? 'system' : 'custom';
+  final index = appTextSizeIndexNotifier.value;
+  final next = _settingsWriteQueue.then<void>((_) async {
+    final prefs = await SharedPreferences.getInstance();
     switch (routeTitle) {
       case 'Theme':
-        prefs.setString(_kThemeKey, value);
+        await prefs.setString(_kThemeKey, value);
       case 'Text Size':
-        prefs.setString(_kTextSizeKey, value);
-        prefs.setString(
-          _kTextSizeModeKey,
-          appTextSizeUsesSystemNotifier.value ? 'system' : 'custom',
-        );
-        prefs.setInt(_kTextSizeIndexKey, appTextSizeIndexNotifier.value);
+        await prefs.setString(_kTextSizeKey, value);
+        await prefs.setString(_kTextSizeModeKey, mode);
+        await prefs.setInt(_kTextSizeIndexKey, index);
       case 'Start of Week':
-        prefs.setString(_kStartOfWeekKey, value);
+        await prefs.setString(_kStartOfWeekKey, value);
       case 'Default View':
-        prefs.setString(_kDefaultViewKey, value);
+        await prefs.setString(_kDefaultViewKey, value);
       case 'Default Event Duration':
-        prefs.setString(_kEventDurationKey, value);
+        await prefs.setString(_kEventDurationKey, value);
       case 'Date Format':
-        prefs.setString(_kDateLocaleKey, appDateLocaleNotifier.value.name);
+        await prefs.setString(
+          _kDateLocaleKey,
+          appDateLocaleNotifier.value.name,
+        );
       case 'Liquid Glass':
-        prefs.setDouble(
+        await prefs.setDouble(
           _kLiquidGlassOpacityKey,
           appLiquidGlassOpacityNotifier.value,
         );
     }
   });
+  _settingsWriteQueue = next.catchError((Object _, StackTrace __) {});
+  return next;
 }
+
+Future<void> _settingsWriteQueue = Future<void>.value();
 
 /// Persist the accent-color index.
 void saveAccentIndex(int index) {

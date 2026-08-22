@@ -28,7 +28,7 @@ class MainActivity : FlutterActivity() {
                     return@setMethodCallHandler
                 }
                 val current = resources.configuration.fontScale.toDouble()
-                val stops = nativeFontScaleStops(current)
+                val stops = nativeFontScaleStops()
                 val curves = stops.map { scale ->
                     textProbeSizes.map { size -> nativeScaleForSp(size, scale) }
                 }
@@ -45,7 +45,7 @@ class MainActivity : FlutterActivity() {
         offlineOcr = NativeOfflineOcrPlugin(this, flutterEngine.dartExecutor.binaryMessenger)
     }
 
-    private fun nativeFontScaleStops(current: Double): List<Double> {
+    private fun nativeFontScaleStops(): List<Double> {
         // Android's Settings app reads this framework resource. OEM overlays
         // can replace it, so this follows Pixel/Samsung/etc. rather than
         // shipping SKEDDO's own universal scale table.
@@ -66,15 +66,18 @@ class MainActivity : FlutterActivity() {
                         }
                         if (value.isFinite() && value > 0f) add(value.toDouble())
                     }
-                }
+                }.distinct().sorted()
+                // Resource overlays are outside the app's control. Normalize
+                // duplicate and out-of-order entries, but refuse a profile
+                // that has fewer than two meaningful positions.
                 if (stops.size >= 2) return stops
             } finally {
                 values.recycle()
             }
         }
-        // Old Android releases expose only the active value. Returning it is
-        // honest; Dart keeps its compatibility fallback for those binaries.
-        return listOf(max(current, 0.01))
+        // Old Android releases expose only the active value. Do not turn that
+        // single value into a fake seven-position native profile in Dart.
+        return emptyList()
     }
 
     private fun nativeScaleForSp(sp: Float, fontScale: Double): Double {

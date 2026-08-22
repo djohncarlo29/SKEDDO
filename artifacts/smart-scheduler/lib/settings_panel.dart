@@ -885,6 +885,12 @@ class _TextSizeSection extends StatelessWidget {
           saveAppSetting('Text Size', 'Custom');
         }
 
+        void previewCustom(double value) {
+          final index = value.round().clamp(0, 6);
+          appTextSizeIndexNotifier.value = index;
+          appTextSizeUsesSystemNotifier.value = false;
+        }
+
         return SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -899,7 +905,8 @@ class _TextSizeSection extends StatelessWidget {
                 _TextSizeSliderRow(
                   index: customIndex,
                   accentColor: accentColor,
-                  onChanged: selectCustom,
+                  onChanged: previewCustom,
+                  onChangeEnd: selectCustom,
                 ),
               ],
               cardBg: cardBg,
@@ -916,11 +923,13 @@ class _TextSizeSliderRow extends StatelessWidget {
   final int index;
   final Color accentColor;
   final ValueChanged<double> onChanged;
+  final ValueChanged<double> onChangeEnd;
 
   const _TextSizeSliderRow({
     required this.index,
     required this.accentColor,
     required this.onChanged,
+    required this.onChangeEnd,
   });
 
   @override
@@ -964,7 +973,7 @@ class _TextSizeSliderRow extends StatelessWidget {
                 inactiveColor: inactiveColor,
                 thumbColor: const Color(0xFFFDFDFD),
                 onChanged: (raw) => onChanged(raw * 6),
-                onChangeEnd: (raw) => onChanged(raw * 6),
+                onChangeEnd: (raw) => onChangeEnd(raw * 6),
               ),
             );
           },

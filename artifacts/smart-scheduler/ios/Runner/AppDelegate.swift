@@ -19,7 +19,10 @@ import UIKit
       textScaleChannel.setMethodCallHandler { call, result in
         let categories: [UIContentSizeCategory] = [
           .extraSmall, .small, .medium, .large, .extraLarge,
-          .extraExtraLarge, .extraExtraExtraLarge
+          .extraExtraLarge, .extraExtraExtraLarge,
+          .accessibilityMedium, .accessibilityLarge,
+          .accessibilityExtraLarge, .accessibilityExtraExtraLarge,
+          .accessibilityExtraExtraExtraLarge
         ]
         let body = UIFontMetrics(forTextStyle: .body)
         let largeTraits = UITraitCollection(
