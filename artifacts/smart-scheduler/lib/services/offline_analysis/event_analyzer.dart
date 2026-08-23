@@ -29,7 +29,8 @@ class DefaultEventAnalyzer implements EventAnalyzer {
           text: content.plainText,
           order: 0,
         )
-      else ...content.blocks,
+      else
+        ...content.blocks,
     ];
     // OCR engines normally return one block per line. Dates and times are
     // often split across multiple lines on invitations and screenshots, so
@@ -93,7 +94,7 @@ class DefaultEventAnalyzer implements EventAnalyzer {
           originalTimeText: parsed.rawInput,
           sourceFile: content.sourceName,
           sourcePage: block.pageIndex,
-          sourceSection: block.sectionIndex?.toString(),
+          sourceSection: _sourceSection(block),
           sourceText: text,
           boundingBox: block.boundingBox,
           extractionMethod: 'deterministic+minilm',
@@ -278,6 +279,19 @@ class DefaultEventAnalyzer implements EventAnalyzer {
     if (parsed.canonicalTime != null) score += .15;
     if (title.length >= 3) score += .1;
     return score.clamp(0, 1);
+  }
+
+  String? _sourceSection(ContentBlock block) {
+    final metadata = block.metadata;
+    final worksheet = metadata['worksheetName']?.toString();
+    if (worksheet != null && worksheet.isNotEmpty) {
+      return 'sheet $worksheet';
+    }
+    final slide = metadata['slideNumber']?.toString();
+    if (slide != null && slide.isNotEmpty) return 'slide $slide';
+    final part = metadata['part']?.toString();
+    if (part != null && part.isNotEmpty) return part;
+    return block.sectionIndex?.toString();
   }
 
   List<ExtractedEvent> _dedupe(List<ExtractedEvent> input) {

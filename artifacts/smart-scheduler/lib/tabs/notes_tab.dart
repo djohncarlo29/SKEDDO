@@ -857,7 +857,8 @@ class _NoteInputCardState extends State<_NoteInputCard>
         docBytes: (_imageBytes == null) ? _pickedFile?.bytes : null,
         filename: _pickedFile?.name,
         fileExt: _pickedFile?.extension,
-        onConfirm: _confirmAttachment,
+        mimeType: _imageBytes != null ? _pendingMime : null,
+        onAnalyze: _analyzeAttachmentFromViewer,
         onDismiss: _dismissAttachmentPreview,
       ),
     );
@@ -870,51 +871,35 @@ class _NoteInputCardState extends State<_NoteInputCard>
     _clearAttachment();
   }
 
-  void _confirmAttachment() {
-    _previewOverlay?.remove();
-    _previewOverlay = null;
-    if (_imageBytes != null) {
-      _analyzeImage(_imageBytes!, _pendingMime);
-    } else if (_pickedFile != null) {
-      final ext = (_pickedFile!.extension ?? '').toLowerCase();
-      final bytes = _pickedFile!.bytes;
-      if (bytes == null || bytes.isEmpty) {
-        setState(() => _extractionError = 'Could not read this file.');
-        return;
-      }
-
-      if (_kTextExts.contains(ext)) {
-        _analyzeFile(bytes, _pickedFile!.name, _mimeForDocumentExtension(ext));
-        return;
-      }
-
-      switch (ext) {
-        case 'pdf':
-          _analyzeFile(bytes, _pickedFile!.name, 'application/pdf');
-          return;
-        case 'docx':
-        case 'xlsx':
-        case 'pptx':
-        case 'odt':
-        case 'ods':
-        case 'odp':
-          _analyzeFile(
-            bytes,
-            _pickedFile!.name,
-            _mimeForDocumentExtension(ext),
-          );
-          return;
-        default:
-          if (_kLegacyOfficeExts.contains(ext)) {
-            _analyzeFile(bytes, _pickedFile!.name, null);
-          } else {
-            setState(
-              () => _extractionError =
-                  'This file format is not supported yet for AI analysis.',
-            );
-          }
-      }
+  Future<List<ExtractedEvent>> _analyzeAttachmentFromViewer(
+    Uint8List bytes,
+    String filename,
+    String? mimeType,
+  ) async {
+    final ext = filename.contains('.')
+        ? filename.split('.').last.toLowerCase()
+        : '';
+    if (_kTextExts.contains(ext) ||
+        ext == 'pdf' ||
+        ext == 'docx' ||
+        ext == 'xlsx' ||
+        ext == 'pptx') {
+      return EventExtractor.fromFile(
+        bytes: bytes,
+        filename: filename,
+        mimeType: mimeType,
+      );
     }
+    if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic'].contains(ext) ||
+        mimeType?.startsWith('image/') == true) {
+      return EventExtractor.fromImage(bytes, mimeType ?? 'image/jpeg');
+    }
+    if (_kLegacyOfficeExts.contains(ext)) {
+      return EventExtractor.fromLegacyOffice(bytes, filename);
+    }
+    throw const ExtractionException(
+      'This file format is not supported yet for AI analysis.',
+    );
   }
 
   Future<void> _analyzeFile(
@@ -1915,12 +1900,41 @@ class _ExtractionResultSheetState extends State<_ExtractionResultSheet> {
     _remaining = List.from(widget.events);
   }
 
-  void _addAndRemove(int index) {
+  Future<void> _addAndRemove(int index) async {
     final e = _remaining[index];
+    if (e.needsReview) {
+      final shouldAdd = await showCupertinoDialog<bool>(
+        context: context,
+        builder: (dialogContext) => CupertinoAlertDialog(
+          title: const Text('Review Suggested Event'),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'This event may need a quick check before it is added. '
+              'Interpretation confidence is ${_confidenceLabel(e.interpretationConfidence)}.',
+            ),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('Keep Reviewing'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+            ),
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              child: const Text('Confirm & Add'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+            ),
+          ],
+        ),
+      );
+      if (shouldAdd != true || !mounted) return;
+    }
     EventStore.instance.create(
       title: e.title,
       date: e.date,
       time: e.time,
+      endDate: e.endDate,
+      endTime: e.endTime,
       location: e.location,
     );
     setState(() => _remaining.removeAt(index));
@@ -2065,6 +2079,8 @@ class _EventRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final extraction = _confidenceLabel(event.extractionConfidence);
+    final interpretation = _confidenceLabel(event.interpretationConfidence);
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
       decoration: BoxDecoration(
@@ -2092,49 +2108,68 @@ class _EventRow extends StatelessWidget {
                     letterSpacing: kTracking16,
                   ),
                 ),
-                if (event.date != null || event.time != null) ...[
+                if (event.needsReview) ...[
+                  const SizedBox(height: 6),
+                  _ReviewBadge(
+                    text: 'Suggestion · interpretation $interpretation',
+                    color: CupertinoColors.systemOrange,
+                  ),
+                ],
+                if (event.date != null ||
+                    event.time != null ||
+                    event.endDate != null ||
+                    event.endTime != null) ...[
                   const SizedBox(height: 3),
-                  Text(
-                    [
+                  _DetailLine(
+                    icon: CupertinoIcons.calendar,
+                    text: [
                       if (event.date != null) event.date!,
                       if (event.time != null) event.time!,
+                      if (event.endDate != null && event.endDate != event.date)
+                        'until ${event.endDate}',
+                      if (event.endTime != null) 'ends ${event.endTime}',
                     ].join('  ·  '),
-                    style: const TextStyle(
-                      inherit: false,
-                      color: kSecondaryLabel,
-                      fontSize: 13,
-                      fontFamily: 'SFProText',
-                      fontWeight: FontWeight.w400,
-                      fontStyle: FontStyle.normal,
-                      letterSpacing: kTracking16,
-                    ),
                   ),
                 ],
                 if (event.location != null) ...[
                   const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      const Icon(
-                        CupertinoIcons.location_fill,
-                        size: 11,
-                        color: kTertiaryLabel,
-                      ),
-                      const SizedBox(width: 3),
-                      Expanded(
-                        child: Text(
-                          event.location!,
-                          style: const TextStyle(
-                            inherit: false,
-                            color: kTertiaryLabel,
-                            fontSize: 12,
-                            fontFamily: 'SFProText',
-                            fontWeight: FontWeight.w400,
-                            fontStyle: FontStyle.normal,
-                            letterSpacing: kTracking16,
-                          ),
-                        ),
-                      ),
-                    ],
+                  _DetailLine(
+                    icon: CupertinoIcons.location_fill,
+                    text: event.location!,
+                  ),
+                ],
+                if (event.timeZone != null) ...[
+                  const SizedBox(height: 2),
+                  _DetailLine(
+                    icon: CupertinoIcons.time,
+                    text: 'Time zone · ${event.timeZone}',
+                  ),
+                ],
+                const SizedBox(height: 8),
+                _ConfidenceSummary(
+                  extraction: extraction,
+                  interpretation: interpretation,
+                  extractionValue: event.extractionConfidence,
+                  interpretationValue: event.interpretationConfidence,
+                ),
+                if (event.sourceFile != null ||
+                    event.sourcePage != null ||
+                    event.sourceSection != null) ...[
+                  const SizedBox(height: 8),
+                  _SourceLine(event: event),
+                ],
+                if (event.sourceText?.trim().isNotEmpty == true) ...[
+                  const SizedBox(height: 6),
+                  _SourceTextPreview(text: event.sourceText!),
+                ],
+                for (final warning in event.warnings) ...[
+                  const SizedBox(height: 6),
+                  _WarningLine(
+                    text: warning,
+                    isOcr:
+                        event.extractionMethod?.toLowerCase().contains('ocr') ==
+                            true ||
+                        warning.toLowerCase().contains('ocr'),
                   ),
                 ],
               ],
@@ -2145,13 +2180,13 @@ class _EventRow extends StatelessWidget {
           GestureDetector(
             onTap: onAdd,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               decoration: BoxDecoration(
                 color: resolveAccentColor(context),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Text(
-                'Add',
+              child: Text(
+                event.needsReview ? 'Confirm' : 'Add',
                 style: TextStyle(
                   inherit: false,
                   color: CupertinoColors.white,
@@ -2181,6 +2216,191 @@ class _EventRow extends StatelessWidget {
       ),
     );
   }
+}
+
+String _confidenceLabel(double value) {
+  if (value >= .8) return 'High';
+  if (value >= .6) return 'Medium';
+  return 'Low';
+}
+
+class _ReviewBadge extends StatelessWidget {
+  final String text;
+  final Color color;
+  const _ReviewBadge({required this.text, required this.color});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(
+      color: color.withOpacity(.14),
+      borderRadius: BorderRadius.circular(7),
+    ),
+    child: Text(
+      text,
+      style: TextStyle(
+        inherit: false,
+        color: color,
+        fontSize: 11,
+        fontFamily: 'SFProText',
+        fontWeight: FontWeight.w600,
+        letterSpacing: kTracking16,
+      ),
+    ),
+  );
+}
+
+class _DetailLine extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _DetailLine({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Icon(icon, size: 11, color: kTertiaryLabel),
+      ),
+      const SizedBox(width: 4),
+      Expanded(
+        child: Text(
+          text,
+          style: const TextStyle(
+            inherit: false,
+            color: kSecondaryLabel,
+            fontSize: 12,
+            fontFamily: 'SFProText',
+            fontWeight: FontWeight.w400,
+            letterSpacing: kTracking16,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+class _ConfidenceSummary extends StatelessWidget {
+  final String extraction;
+  final String interpretation;
+  final double extractionValue;
+  final double interpretationValue;
+  const _ConfidenceSummary({
+    required this.extraction,
+    required this.interpretation,
+    required this.extractionValue,
+    required this.interpretationValue,
+  });
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 10,
+    runSpacing: 4,
+    children: [
+      _ReviewBadge(
+        text: 'Read ${_confidencePercent(extractionValue)} · $extraction',
+        color: _confidenceColor(extractionValue),
+      ),
+      _ReviewBadge(
+        text:
+            'Event meaning ${_confidencePercent(interpretationValue)} · $interpretation',
+        color: _confidenceColor(interpretationValue),
+      ),
+    ],
+  );
+}
+
+class _SourceLine extends StatelessWidget {
+  final ExtractedEvent event;
+  const _SourceLine({required this.event});
+
+  @override
+  Widget build(BuildContext context) {
+    final location = <String>[
+      if (event.sourceFile != null) event.sourceFile!,
+      if (event.sourcePage != null) 'page ${event.sourcePage! + 1}',
+      if (event.sourceSection != null) 'section ${event.sourceSection}',
+    ].join(' · ');
+    return _DetailLine(
+      icon: CupertinoIcons.doc_text,
+      text: 'Source · $location',
+    );
+  }
+}
+
+class _SourceTextPreview extends StatelessWidget {
+  final String text;
+  const _SourceTextPreview({required this.text});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(8),
+    decoration: BoxDecoration(
+      color: kModalButtonBackground,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Text(
+      '“${text.trim()}”',
+      maxLines: 4,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(
+        inherit: false,
+        color: kSecondaryLabel,
+        fontSize: 12,
+        fontFamily: 'SFProText',
+        fontWeight: FontWeight.w400,
+        fontStyle: FontStyle.italic,
+        letterSpacing: kTracking16,
+        height: kLineHeight,
+      ),
+    ),
+  );
+}
+
+class _WarningLine extends StatelessWidget {
+  final String text;
+  final bool isOcr;
+  const _WarningLine({required this.text, required this.isOcr});
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Padding(
+        padding: EdgeInsets.only(top: 1),
+        child: Icon(
+          CupertinoIcons.exclamationmark_triangle_fill,
+          size: 12,
+          color: CupertinoColors.systemOrange,
+        ),
+      ),
+      const SizedBox(width: 4),
+      Expanded(
+        child: Text(
+          '${isOcr ? 'OCR warning' : 'Source warning'} · $text',
+          style: const TextStyle(
+            inherit: false,
+            color: CupertinoColors.systemOrange,
+            fontSize: 11,
+            fontFamily: 'SFProText',
+            fontWeight: FontWeight.w500,
+            letterSpacing: kTracking16,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+String _confidencePercent(double value) =>
+    '${(value.clamp(0, 1) * 100).round()}%';
+
+Color _confidenceColor(double value) {
+  if (value >= .8) return CupertinoColors.systemGreen;
+  if (value >= .6) return CupertinoColors.systemOrange;
+  return CupertinoColors.systemRed;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2686,7 +2906,13 @@ class _AttachmentPreviewOverlay extends StatefulWidget {
   final Uint8List? docBytes; // raw PDF / doc bytes
   final String? filename;
   final String? fileExt;
-  final VoidCallback onConfirm;
+  final String? mimeType;
+  final Future<List<ExtractedEvent>> Function(
+    Uint8List bytes,
+    String filename,
+    String? mimeType,
+  )
+  onAnalyze;
   final VoidCallback onDismiss;
 
   const _AttachmentPreviewOverlay({
@@ -2694,7 +2920,8 @@ class _AttachmentPreviewOverlay extends StatefulWidget {
     this.docBytes,
     this.filename,
     this.fileExt,
-    required this.onConfirm,
+    this.mimeType,
+    required this.onAnalyze,
     required this.onDismiss,
   });
 
@@ -2717,10 +2944,68 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
   final _pdfNav = ValueNotifier<(int, int)>((1, 0));
   Uint8List? _docxPdfBytes;
   bool _docxConverting = false;
+  bool _isAnalyzing = false;
+  bool _analysisDialogOpen = false;
 
   // Natural pixel dimensions of an image attachment, decoded asynchronously
   // so the card can be sized to exactly the image's intrinsic aspect ratio.
   Size? _imgNatSize;
+
+  Future<void> _analyzeFromViewer() async {
+    if (_isAnalyzing) return;
+    final bytes = widget.imageBytes ?? widget.docBytes;
+    if (bytes == null || bytes.isEmpty) {
+      await _showAnalysisError('Could not read this attachment.');
+      return;
+    }
+    setState(() => _isAnalyzing = true);
+    try {
+      final events = await widget.onAnalyze(
+        bytes,
+        widget.filename ?? 'attachment',
+        widget.mimeType,
+      );
+      if (!mounted) return;
+      setState(() => _isAnalyzing = false);
+      await showCupertinoModalPopup<void>(
+        context: context,
+        builder: (_) => _ExtractionResultSheet(events: events),
+      );
+    } on ExtractionException catch (error) {
+      if (!mounted) return;
+      setState(() => _isAnalyzing = false);
+      await _showAnalysisError(error.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isAnalyzing = false);
+      await _showAnalysisError('Analysis failed. Please try again.');
+    }
+  }
+
+  Future<void> _showAnalysisError(String message) async {
+    if (!mounted || _analysisDialogOpen) return;
+    _analysisDialogOpen = true;
+    try {
+      await showCupertinoDialog<void>(
+        context: context,
+        builder: (dialogContext) => CupertinoAlertDialog(
+          title: const Text('Attachment Not Analyzed'),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(message),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('Dismiss'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      _analysisDialogOpen = false;
+    }
+  }
 
   void _onPdfPageChanged(int page, int total) {
     _pdfNav.value = (page, total);
@@ -3081,15 +3366,51 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
               child: Opacity(
                 opacity: t,
                 child: _PreviewCircleButton(
-                  icon: CupertinoIcons.checkmark,
+                  icon: _isAnalyzing
+                      ? CupertinoIcons.arrow_2_circlepath
+                      : CupertinoIcons.checkmark,
                   containerColor: resolveAccentColor(context),
                   iconColor: CupertinoColors.white,
                   isCheckmark: true,
                   tapDelay: const Duration(milliseconds: 130),
-                  onTap: widget.onConfirm,
+                  onTap: _analyzeFromViewer,
                 ),
               ),
             ),
+            if (_isAnalyzing)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Center(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: kModalBackground.withOpacity(.92),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 14,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CupertinoActivityIndicator(),
+                            SizedBox(width: 10),
+                            Text(
+                              'Analyzing attachment…',
+                              style: TextStyle(
+                                inherit: false,
+                                color: kPrimaryLabel,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         );
       },

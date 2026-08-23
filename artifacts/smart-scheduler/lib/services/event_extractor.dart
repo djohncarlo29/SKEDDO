@@ -10,14 +10,40 @@ class ExtractedEvent {
   final String title;
   final String? date;
   final String? time;
+  final String? endDate;
+  final String? endTime;
   final String? location;
+  final String? timeZone;
+  final String? sourceFile;
+  final int? sourcePage;
+  final String? sourceSection;
+  final String? sourceText;
+  final String? extractionMethod;
+  final double extractionConfidence;
+  final double interpretationConfidence;
+  final List<String> warnings;
+  final String? uid;
 
   const ExtractedEvent({
     required this.title,
     this.date,
     this.time,
+    this.endDate,
+    this.endTime,
     this.location,
+    this.timeZone,
+    this.sourceFile,
+    this.sourcePage,
+    this.sourceSection,
+    this.sourceText,
+    this.extractionMethod,
+    this.extractionConfidence = 0,
+    this.interpretationConfidence = 0,
+    this.warnings = const [],
+    this.uid,
   });
+
+  bool get needsReview => interpretationConfidence < .7;
 }
 
 /// Offline-only event extraction used by the Notes attachment flow.
@@ -42,11 +68,7 @@ class EventExtractor {
     required Uint8List bytes,
     required String filename,
     String? mimeType,
-  }) => _analyze(
-    sourceName: filename,
-    bytes: bytes,
-    mimeType: mimeType,
-  );
+  }) => _analyze(sourceName: filename, bytes: bytes, mimeType: mimeType);
 
   static Future<List<ExtractedEvent>> fromText(String text) => _analyze(
     sourceName: 'pasted.txt',
@@ -82,7 +104,19 @@ class EventExtractor {
         title: event.title,
         date: event.date,
         time: event.time,
+        endDate: event.endDate,
+        endTime: event.endTime,
         location: event.location,
+        timeZone: event.timeZone,
+        sourceFile: event.sourceFile,
+        sourcePage: event.sourcePage,
+        sourceSection: event.sourceSection,
+        sourceText: event.sourceText,
+        extractionMethod: event.extractionMethod,
+        extractionConfidence: event.extractionConfidence,
+        interpretationConfidence: event.interpretationConfidence,
+        warnings: event.warnings,
+        uid: event.uid,
       );
 
   static String _sourceNameForMime(String mimeType) {
