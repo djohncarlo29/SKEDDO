@@ -7,7 +7,6 @@ import 'ai/ai_services.dart';
 import 'ai/parsed_date.dart';
 import 'app_settings.dart';
 import 'app_theme.dart';
-import 'text_scale_diagnostics.dart';
 import 'widgets/app_switch.dart';
 import 'widgets/accent_tinted_image.dart';
 import 'widgets/fixed_size_icon.dart';
@@ -73,7 +72,6 @@ class _SettingsRoute {
   final bool isAccentColor;
   final bool isLiquidGlass;
   final bool isTextSize;
-  final bool isTextScaleDiagnostics;
   const _SettingsRoute({
     required this.title,
     required this.options,
@@ -81,7 +79,6 @@ class _SettingsRoute {
     this.isAccentColor = false,
     this.isLiquidGlass = false,
     this.isTextSize = false,
-    this.isTextScaleDiagnostics = false,
   });
 }
 
@@ -163,12 +160,6 @@ const _kRoutes = <String, _SettingsRoute>{
     title: 'About SKEDDO',
     options: ['Option A', 'Option B', 'Option C'],
     defaultValue: 'Option A',
-  ),
-  'Text Scale Diagnostics': _SettingsRoute(
-    title: 'Text Scale Diagnostics',
-    options: [],
-    defaultValue: '',
-    isTextScaleDiagnostics: true,
   ),
 };
 
@@ -552,11 +543,6 @@ class _MainSettingsContent extends StatelessWidget {
               trailing: const _ChevronTrailing(),
               onTap: () => _tap('About SKEDDO'),
             ),
-            _SettingsRow(
-              title: 'Text Scale Diagnostics',
-              trailing: const _ChevronTrailing(),
-              onTap: () => _tap('Text Scale Diagnostics'),
-            ),
           ],
         ),
 
@@ -671,8 +657,6 @@ class _SubScreenState extends State<_SubScreen> {
             const _LiquidGlassSection()
           else if (widget.route.isTextSize)
             _TextSizeSection(accentColor: widget.accentColor)
-          else if (widget.route.isTextScaleDiagnostics)
-            const TextScaleDiagnosticsSection()
           else
             _SubScreenSection(
               options: widget.route.options,
@@ -952,18 +936,10 @@ class _TextSizeSliderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final inactiveColor = resolveThemeColor(kTertiaryLabel, context);
-    final textScaler = MediaQuery.textScalerOf(context);
-    // Keep Text Size's custom control in the same 52 pt row as Liquid Glass,
-    // while allowing both controls to grow together for larger Dynamic Type.
-    final rowHeight = math.max(
-      _kSettingsRowHeight,
-      textScaler.scale(_kSettingsRowHeight),
-    );
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18),
       child: SizedBox(
-        height: rowHeight,
+        height: _kSettingsRowHeight,
         child: LayoutBuilder(
           builder: (context, constraints) {
             // Match Liquid Glass's tuned endpoint geometry exactly: the
@@ -982,7 +958,7 @@ class _TextSizeSliderRow extends StatelessWidget {
                 minimumValue: 0,
                 maximumValue: 1,
                 width: sliderWidth,
-                height: rowHeight,
+                height: _kSettingsRowHeight,
                 layout: _liquidGlassSliderLayout,
                 isContinuous: true,
                 divisions: 6,
