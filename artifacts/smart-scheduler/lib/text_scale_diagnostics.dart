@@ -27,15 +27,28 @@ class _TextScaleDiagnosticsSectionState
 
   Future<void> _refresh() async {
     try {
-      final payload = await fetchTextScaleDiagnosticProfile();
+      final payload = await fetchTextScaleDiagnosticProfile().timeout(
+        const Duration(seconds: 8),
+      );
       if (!mounted) return;
+      if (payload == null || _parseProfile(payload) == null) {
+        setState(() {
+          _payload = null;
+          _error =
+              'Android returned an incomplete text-scale profile. Check that this is the diagnostic APK and tap Refresh native profile.';
+        });
+        return;
+      }
       setState(() {
         _payload = payload;
         _error = null;
       });
     } catch (error) {
       if (!mounted) return;
-      setState(() => _error = '$error');
+      setState(() {
+        _payload = null;
+        _error = 'Native profile request failed or timed out: $error';
+      });
     }
   }
 

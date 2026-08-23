@@ -19,7 +19,7 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, textScaleChannel)
             .setMethodCallHandler { call, result ->
-                if (call.method != "getProfile") {
+                if (call.method != "getProfile" && call.method != "getDiagnosticProfile") {
                     if (call.method == "getCurrentScale") {
                         result.success(resources.configuration.fontScale.toDouble())
                     } else {
@@ -29,9 +29,15 @@ class MainActivity : FlutterActivity() {
                 }
                 val current = resources.configuration.fontScale.toDouble()
                 val stops = nativeFontScaleStops()
+                val diagnosticOnly = call.method == "getDiagnosticProfile"
+                val probeSizes = if (diagnosticOnly) {
+                    listOf(8f, 12f, 16f, 20f, 24f, 32f, 40f, 48f, 64f, 80f)
+                } else {
+                    textProbeSizes
+                }
                 val curves = stops.map { scale ->
                     val metrics = metricsForFontScale(scale)
-                    textProbeSizes.map { size -> nativeScaleForSp(size, metrics) }
+                    probeSizes.map { size -> nativeScaleForSp(size, metrics) }
                 }
                 val stopMetrics = stops.map { scale ->
                     metricsForDiagnostic(metricsForFontScale(scale))
@@ -40,7 +46,7 @@ class MainActivity : FlutterActivity() {
                     mapOf(
                         "currentScale" to current,
                         "stops" to stops,
-                        "probeSizes" to textProbeSizes,
+                        "probeSizes" to probeSizes,
                         "curves" to curves,
                         "activeMetrics" to metricsForDiagnostic(resources.displayMetrics),
                         "activeConfigurationFontScale" to resources.configuration.fontScale.toDouble(),
