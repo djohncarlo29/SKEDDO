@@ -7,4 +7,4 @@ Use `liquid_glass_widgets` 0.5.0 for the current Smart Scheduler toolchain. The 
 
 **Why:** The preview workflow uses Flutter 3.35.7; newer package releases either fail pub resolution or call framework APIs unavailable to its web compiler.
 
-**How to apply:** If the Flutter workflow is upgraded to 3.41 or later, reevaluate the pin and move to the requested 0.29.x release. Keep shared switches as bare `GlassSwitch` widgets and pass caller-provided accent/category color through `activeColor`.
+**How to apply:** If the Flutter workflow is upgraded to 3.41 or later, reevaluate the pin and move to the requested 0.29.x release. Keep shared switches as bare `GlassSwitch` widgets and pass caller-provided accent/category color through `activeColor`. For the current switch, preserve visual parity with the web preview by forcing its capture-based renderer instead of the device-dependent Impeller live-backdrop path; keep that override scoped to the switch because it trades GPU efficiency for consistency.

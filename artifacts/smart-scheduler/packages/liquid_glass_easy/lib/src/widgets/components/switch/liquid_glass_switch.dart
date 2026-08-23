@@ -640,6 +640,11 @@ class _LiquidGlassSwitchState extends State<LiquidGlassSwitch>
         // pill is solid again. The view still snapshots once on mount.
         realTimeCapture: false,
         useSync: true,
+        // Keep the switch on the capture-based renderer on every platform.
+        // This is the same renderer used by the web preview and gives the
+        // small optical thumb a consistent appearance on Android/iOS instead
+        // of relying on device-specific live-backdrop compositing.
+        useImpellerBackdrop: false,
         backgroundWidget: Stack(
           children: [
             // The track: a static capsule whose colour cross-fades over
