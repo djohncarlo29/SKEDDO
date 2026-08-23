@@ -65,7 +65,14 @@ class FloatingTabPill extends StatelessWidget {
               ),
             ),
           ),
-          LiquidGlassTabBar.withImpeller(
+          // The package adds MediaQuery.padding.bottom internally on its
+          // Impeller path. Remove that implicit inset and pass the complete
+          // shared offset explicitly, otherwise the glass capsule is lifted
+          // away from the directly positioned rim/shadow on Android.
+          MediaQuery.removePadding(
+            context: context,
+            removeBottom: true,
+            child: LiquidGlassTabBar.withImpeller(
             items: [
               _tabItem(SFIcons.sf_text_document, 'Notes'),
               _tabItem(SFIcons.sf_calendar, 'Calendar'),
@@ -121,6 +128,7 @@ class FloatingTabPill extends StatelessWidget {
                   chromaticAberration: 0.0002,
                 ),
               ),
+            ),
             ),
           ),
           // Keep the shared 15% hairline outside the glass capture so it stays
