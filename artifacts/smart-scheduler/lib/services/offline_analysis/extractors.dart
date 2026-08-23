@@ -732,12 +732,29 @@ class LocalContentExtractor implements ContentExtractor {
         .toList();
     final quality = _pdfQuality(text, bytes.length);
     final classification = _pdfClassification(text, raw, quality);
+    final pages = [
+      for (final page in pageBlocks)
+        if (page.text.trim().isNotEmpty)
+          ContentBlock(
+            kind: ContentBlockKind.page,
+            text: page.text.trim(),
+            pageIndex: page.index,
+            sectionIndex: page.index,
+            order: page.index,
+            metadata: {
+              'sourcePage': page.index,
+              'sourceSpanStart': 0,
+              'sourceSpanEnd': page.text.length,
+            },
+          ),
+    ];
     return _content(
       sourceName,
       DetectedFileType.pdf,
       bytes.length,
       text,
       _lines(text),
+      pages: pages,
       metadata: {
         'sourceName': sourceName,
         'format': 'pdf',
@@ -761,7 +778,7 @@ class LocalContentExtractor implements ContentExtractor {
     if (pageCount <= 1) return [(index: 0, text: raw)];
     final markers = RegExp(r'/Type\s*/Page\b').allMatches(raw).toList();
     return List.generate(pageCount, (index) {
-      final start = index == 0 ? 0 : markers[index - 1].end;
+      final start = markers[index].start;
       final end = index + 1 < markers.length
           ? markers[index].start
           : raw.length;
@@ -823,6 +840,12 @@ class LocalContentExtractor implements ContentExtractor {
         );
       }
       final data = entry.readBytes() ?? const <int>[];
+      if (data.length > maxArchiveExpandedBytes - expanded) {
+        throw const OfflineExtractionException(
+          AnalysisStatus.fileTooLarge,
+          'An archive entry exceeds the expanded-memory safety limit.',
+        );
+      }
       expanded += data.length;
       if (expanded > maxArchiveExpandedBytes) {
         throw const OfflineExtractionException(
@@ -894,6 +917,7 @@ class LocalContentExtractor implements ContentExtractor {
     int byteSize,
     String text,
     List<ContentBlock> blocks, {
+    List<ContentBlock> pages = const [],
     List<ExtractedTable> tables = const [],
     Map<String, String> metadata = const {},
     List<String> warnings = const [],
@@ -917,6 +941,22 @@ class LocalContentExtractor implements ContentExtractor {
               'sourceFile': sourceName,
               'sourceType': type.name,
               ...block.metadata,
+            },
+          ),
+      ],
+      pages: [
+        for (final page in pages)
+          ContentBlock(
+            kind: page.kind,
+            text: page.text,
+            pageIndex: page.pageIndex,
+            sectionIndex: page.sectionIndex,
+            boundingBox: page.boundingBox,
+            order: page.order,
+            metadata: {
+              'sourceFile': sourceName,
+              'sourceType': type.name,
+              ...page.metadata,
             },
           ),
       ],

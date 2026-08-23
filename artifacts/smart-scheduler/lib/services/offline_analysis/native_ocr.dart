@@ -69,8 +69,8 @@ class NativeOfflineOcrService implements OfflineOcrService {
         byteSize: bytes.length,
         plainText: blocks.map((block) => block.text).join('\n'),
         blocks: blocks,
-        pages: blocks,
-        sections: blocks,
+        pages: _groupPages(blocks),
+        sections: _groupSections(blocks),
         metadata: metadata,
         warnings: warnings,
         extractionConfidence: _confidence(response['confidence'], blocks),
@@ -95,6 +95,37 @@ class NativeOfflineOcrService implements OfflineOcrService {
       cancellation?.removeListener(cancel);
     }
   }
+
+  List<ContentBlock> _groupPages(List<ContentBlock> blocks) {
+    final byPage = <int, List<ContentBlock>>{};
+    for (final block in blocks) {
+      byPage.putIfAbsent(block.pageIndex ?? 0, () => []).add(block);
+    }
+    return [
+      for (final entry in byPage.entries)
+        ContentBlock(
+          kind: ContentBlockKind.page,
+          text: entry.value.map((block) => block.text).join('\n'),
+          pageIndex: entry.key,
+          order: entry.key,
+          metadata: {'sourcePage': entry.key},
+        ),
+    ];
+  }
+
+  List<ContentBlock> _groupSections(List<ContentBlock> blocks) => blocks
+      .map(
+        (block) => ContentBlock(
+          kind: block.kind,
+          text: block.text,
+          pageIndex: block.pageIndex,
+          sectionIndex: block.pageIndex,
+          boundingBox: block.boundingBox,
+          order: block.order,
+          metadata: {...block.metadata, 'sourceSection': block.pageIndex},
+        ),
+      )
+      .toList();
 
   List<ContentBlock> _blocks(Object? rawBlocks) {
     if (rawBlocks is! List) return const [];

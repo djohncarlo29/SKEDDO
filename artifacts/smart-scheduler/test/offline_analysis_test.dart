@@ -148,6 +148,66 @@ void main() {
     expect(result.status, AnalysisStatus.cancelled);
   });
 
+  test(
+    'bounded chunks retain page, section, and original span metadata',
+    () async {
+      final text = List.filled(1600, 'a').join();
+      final result =
+          await FileAnalysisCoordinator(
+            extractor: _StaticExtractor(
+              ExtractedContent(
+                sourceName: 'long.txt',
+                detectedType: DetectedFileType.plainText,
+                byteSize: text.length,
+                plainText: text,
+                blocks: [
+                  ContentBlock(
+                    kind: ContentBlockKind.paragraph,
+                    text: '$text August 28 at 9 AM',
+                    pageIndex: 3,
+                    sectionIndex: 7,
+                    order: 0,
+                  ),
+                ],
+                extractionConfidence: .9,
+              ),
+            ),
+          ).analyzeOffline(
+            sourceName: 'long.txt',
+            bytes: Uint8List.fromList(text.codeUnits),
+          );
+      expect(result.content, isNotNull);
+      // The event source span is always bounded to the chunk sent to MiniLM.
+      expect(result.events, isNotEmpty);
+      expect(result.events.first.sourcePage, 3);
+      expect(result.events.first.sourceSpanStart, greaterThanOrEqualTo(0));
+      expect(result.events.first.sourceSpanEnd, lessThanOrEqualTo(1618));
+    },
+  );
+
+  test('active archive cancellation is observed between entries', () async {
+    final archive = Archive();
+    for (var i = 0; i < 30; i++) {
+      archive.addFile(
+        ArchiveFile(
+          'entry-$i.txt',
+          32,
+          Uint8List.fromList('August 28 at 9 AM entry $i'.codeUnits),
+        ),
+      );
+    }
+    final token = AnalysisCancellationToken();
+    final result = await FileAnalysisCoordinator().analyzeOffline(
+      sourceName: 'many.zip',
+      bytes: Uint8List.fromList(ZipEncoder().encode(archive)),
+      cancellation: token,
+      onProgress: (stage, _) {
+        if (stage.startsWith('Processing document')) token.cancel();
+      },
+    );
+    expect(result.status, AnalysisStatus.cancelled);
+  });
+
   test('DOCX preserves paragraphs and table rows', () async {
     final bytes = officeZip({
       'word/document.xml': '''
@@ -440,4 +500,21 @@ void main() {
     );
     expect(corrupt.metadata['quality'], 'corrupt-or-unreadable');
   });
+}
+
+class _StaticExtractor implements ContentExtractor {
+  final ExtractedContent content;
+  const _StaticExtractor(this.content);
+
+  @override
+  bool supports(DetectedFileType type) => true;
+
+  @override
+  Future<ExtractedContent> extract({
+    required String sourceName,
+    required Uint8List bytes,
+    required DetectedFileType type,
+    AnalysisCancellationToken? cancellation,
+    AnalysisProgress? onProgress,
+  }) async => content;
 }

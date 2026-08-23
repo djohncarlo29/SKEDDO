@@ -210,6 +210,8 @@ class ExtractedEvent {
   final int? sourcePage;
   final String? sourceSection;
   final String? sourceText;
+  final int? sourceSpanStart;
+  final int? sourceSpanEnd;
   final BoundingBox? boundingBox;
   final String extractionMethod;
   final double extractionConfidence;
@@ -255,6 +257,8 @@ class ExtractedEvent {
     this.sourcePage,
     this.sourceSection,
     this.sourceText,
+    this.sourceSpanStart,
+    this.sourceSpanEnd,
     this.boundingBox,
     this.extractionMethod = 'deterministic',
     this.extractionConfidence = 0,

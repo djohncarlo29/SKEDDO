@@ -37,6 +37,8 @@ class ExtractedEvent {
   final int? sourcePage;
   final String? sourceSection;
   final String? sourceText;
+  final int? sourceSpanStart;
+  final int? sourceSpanEnd;
   final String? extractionMethod;
   final double extractionConfidence;
   final double interpretationConfidence;
@@ -74,6 +76,8 @@ class ExtractedEvent {
     this.sourcePage,
     this.sourceSection,
     this.sourceText,
+    this.sourceSpanStart,
+    this.sourceSpanEnd,
     this.extractionMethod,
     this.extractionConfidence = 0,
     this.interpretationConfidence = 0,
@@ -192,6 +196,8 @@ class EventExtractor {
         sourcePage: event.sourcePage,
         sourceSection: event.sourceSection,
         sourceText: event.sourceText,
+        sourceSpanStart: event.sourceSpanStart,
+        sourceSpanEnd: event.sourceSpanEnd,
         extractionMethod: event.extractionMethod,
         extractionConfidence: event.extractionConfidence,
         interpretationConfidence: event.interpretationConfidence,

@@ -7,6 +7,7 @@ import 'extractors.dart';
 import 'file_type_detector.dart';
 import 'models.dart';
 import 'preprocessor.dart';
+import 'package:flutter/foundation.dart' show compute;
 
 class FileAnalysisCoordinator {
   final ContentExtractor extractor;
@@ -92,7 +93,7 @@ class FileAnalysisCoordinator {
         );
       }
 
-      final extracted = await extractor.extract(
+      final extracted = await _extract(
         sourceName: sourceName,
         bytes: bytes,
         type: detected.type,
@@ -125,6 +126,15 @@ class FileAnalysisCoordinator {
       );
     } on AnalysisCancelled {
       return const AnalysisResult(status: AnalysisStatus.cancelled);
+    } on TimeoutException {
+      cancellation?.cancel();
+      return const AnalysisResult(
+        status: AnalysisStatus.timedOut,
+        failure: AnalysisFailure(
+          AnalysisStatus.timedOut,
+          'This document took too long to process safely.',
+        ),
+      );
     } on OfflineExtractionException catch (error) {
       return AnalysisResult(
         status: error.status,
@@ -141,4 +151,46 @@ class FileAnalysisCoordinator {
       );
     }
   }
+
+  Future<ExtractedContent> _extract({
+    required String sourceName,
+    required Uint8List bytes,
+    required DetectedFileType type,
+    required AnalysisCancellationToken? cancellation,
+    required AnalysisProgress? onProgress,
+  }) async {
+    // Native OCR must stay on the platform isolate. Pure parsing is moved off
+    // the UI isolate so large Office/text/archive inputs cannot monopolize it.
+    if (type == DetectedFileType.image || extractor is! LocalContentExtractor) {
+      return extractor.extract(
+        sourceName: sourceName,
+        bytes: bytes,
+        type: type,
+        cancellation: cancellation,
+        onProgress: onProgress,
+      );
+    }
+    cancellation?.throwIfCancelled();
+    onProgress?.call('Processing document in background', .2);
+    final extracted = await compute(_extractInBackground, {
+      'sourceName': sourceName,
+      'bytes': bytes,
+      'type': type.name,
+    }).timeout(const Duration(seconds: 45));
+    cancellation?.throwIfCancelled();
+    onProgress?.call('Document processed', .4);
+    return extracted;
+  }
+}
+
+Future<ExtractedContent> _extractInBackground(Map<String, Object?> input) {
+  final typeName = input['type'] as String;
+  final type = DetectedFileType.values.firstWhere(
+    (value) => value.name == typeName,
+  );
+  return LocalContentExtractor().extract(
+    sourceName: input['sourceName'] as String,
+    bytes: input['bytes'] as Uint8List,
+    type: type,
+  );
 }

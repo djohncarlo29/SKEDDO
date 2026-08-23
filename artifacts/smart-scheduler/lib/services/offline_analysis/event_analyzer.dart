@@ -132,7 +132,9 @@ class DefaultEventAnalyzer implements EventAnalyzer {
           sourceFile: content.sourceName,
           sourcePage: block.pageIndex,
           sourceSection: _sourceSection(block),
-          sourceText: text,
+          sourceText: block.metadata['sourceText'] as String? ?? text,
+          sourceSpanStart: block.metadata['sourceSpanStart'] as int? ?? 0,
+          sourceSpanEnd: block.metadata['sourceSpanEnd'] as int? ?? text.length,
           boundingBox: block.boundingBox,
           extractionMethod: 'deterministic+minilm',
           extractionConfidence: content.extractionConfidence,
@@ -382,7 +384,18 @@ List<Map<String, Object?>> _boundedTextChunks(
     final text = (input['text'] as String? ?? '').trim();
     if (text.isEmpty) continue;
     if (text.length <= maxChars) {
-      output.add({...input, 'text': text});
+      output.add({
+        ...input,
+        'text': text,
+        'metadata': {
+          ...(((input['metadata'] as Map?) ?? {}).cast<String, dynamic>()),
+          'sourceSpanStart': 0,
+          'sourceSpanEnd': text.length,
+          'chunkIndex': 0,
+          'chunkLength': text.length,
+          'sourceText': text,
+        },
+      });
       continue;
     }
     var start = 0;

@@ -44,14 +44,18 @@ const double kFloatingTabBarSafetyMargin = 12.0;
 
 /// The tab bar's bottom edge is constrained by two competing requirements:
 /// its 16 px design margin and the persistent system navigation/home-indicator
-/// inset. They are not additive. viewPadding intentionally excludes keyboard
-/// viewInsets so the bar does not move just because an editor is focused.
+/// inset. They are not additive. Persistent safe-area and gesture insets are
+/// compared rather than summed, and keyboard viewInsets are intentionally
+/// ignored so the bar does not move just because an editor is focused.
 double floatingTabBarBottomOffsetForInset(double systemBottomInset) =>
     math.max(kFloatingTabBarBottomSpacing, systemBottomInset);
 
 double floatingTabBarBottomOffset(BuildContext context) =>
     floatingTabBarBottomOffsetForInset(
-      MediaQuery.viewPaddingOf(context).bottom,
+      math.max(
+        MediaQuery.viewPaddingOf(context).bottom,
+        MediaQuery.systemGestureInsetsOf(context).bottom,
+      ),
     );
 
 /// Extra scroll-content clearance needed so the final item in a tab can be

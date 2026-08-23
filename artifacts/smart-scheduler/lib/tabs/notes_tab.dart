@@ -1611,7 +1611,6 @@ class _SaveEventButtonState extends State<_SaveEventButton>
 
   @override
   void dispose() {
-    _analysisCancellation?.cancel();
     _ctrl.dispose();
     super.dispose();
   }
