@@ -3,8 +3,8 @@ package com.smartscheduler.smart_scheduler
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import android.os.Build
-import kotlin.math.max
+import android.content.res.Configuration
+import android.util.TypedValue
 
 class MainActivity : FlutterActivity() {
     private val textScaleChannel = "com.smartscheduler/text_scale"
@@ -30,7 +30,8 @@ class MainActivity : FlutterActivity() {
                 val current = resources.configuration.fontScale.toDouble()
                 val stops = nativeFontScaleStops()
                 val curves = stops.map { scale ->
-                    textProbeSizes.map { size -> nativeScaleForSp(size, scale) }
+                    val metrics = metricsForFontScale(scale)
+                    textProbeSizes.map { size -> nativeScaleForSp(size, metrics) }
                 }
                 result.success(
                     mapOf(
@@ -81,15 +82,29 @@ class MainActivity : FlutterActivity() {
         return emptyList()
     }
 
-    private fun nativeScaleForSp(sp: Float, fontScale: Double): Double {
-        if (Build.VERSION.SDK_INT >= 35) {
-            val converter = android.content.res.FontScaleConverter.forScale(fontScale.toFloat())
-            if (converter != null) {
-                return (converter.convertSpToDp(sp) / sp).toDouble()
-            }
+    private fun metricsForFontScale(fontScale: Double): android.util.DisplayMetrics {
+        val stopConfiguration = Configuration(resources.configuration).apply {
+            this.fontScale = fontScale.toFloat()
         }
-        // Before Android 15 the public platform contract is linear.
-        return fontScale
+        return createConfigurationContext(stopConfiguration).resources.displayMetrics
+    }
+
+    private fun nativeScaleForSp(
+        sp: Float,
+        metrics: android.util.DisplayMetrics,
+    ): Double {
+        // Match FlutterJNI.getScaledFontSize exactly:
+        // TypedValue.applyDimension(COMPLEX_UNIT_SP, size, metrics) / density.
+        // The metrics come from a configuration context so Android constructs
+        // the same scaled metrics for this hypothetical native OS position,
+        // including nonlinear scaling on Android 14+.
+        return (
+            TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP,
+                sp,
+                metrics,
+            ) / metrics.density
+        ).toDouble() / sp
     }
 
     override fun onRequestPermissionsResult(

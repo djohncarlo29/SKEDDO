@@ -126,49 +126,43 @@ void main() {
     },
   );
 
-  test(
-    'System and Custom use the identical curve for every direct native stop',
-    () async {
-      final nativeStops = <double>[0.80, 1.00, 1.20, 1.40, 1.60];
-      final probeSizes = <double>[4.0, 16.0, 32.0, 64.0];
-      final curves = <Object?>[
-        <double>[0.76, 0.90, 1.02, 1.10],
-        <double>[0.80, 1.00, 1.12, 1.20],
-        <double>[0.88, 1.08, 1.20, 1.28],
-        <double>[0.94, 1.16, 1.28, 1.36],
-        <double>[1.00, 1.24, 1.36, 1.44],
-      ];
-      var activeStop = nativeStops.first;
-      channel.setMockMethodCallHandler((call) async {
-        if (call.method != 'getProfile') return null;
-        return <String, Object>{
-          'currentScale': activeStop,
-          'stops': nativeStops,
-          'probeSizes': probeSizes,
-          'curves': curves,
-        };
-      });
+  test('Custom direct mappings preserve every native curve', () async {
+    final nativeStops = <double>[0.80, 1.00, 1.20, 1.40, 1.60];
+    final probeSizes = <double>[4.0, 16.0, 32.0, 64.0];
+    final curves = <Object?>[
+      <double>[0.76, 0.90, 1.02, 1.10],
+      <double>[0.80, 1.00, 1.12, 1.20],
+      <double>[0.88, 1.08, 1.20, 1.28],
+      <double>[0.94, 1.16, 1.28, 1.36],
+      <double>[1.00, 1.24, 1.36, 1.44],
+    ];
+    channel.setMockMethodCallHandler((call) async {
+      if (call.method != 'getProfile') return null;
+      return <String, Object>{
+        'currentScale': 1.00,
+        'stops': nativeStops,
+        'probeSizes': probeSizes,
+        'curves': curves,
+      };
+    });
 
-      await initializeDeviceTextScaleProfile();
-      final profile = appNativeTextScaleProfileNotifier.value!;
-      final mapping = appSkeddoTextScaleMappingNotifier.value;
-      final sizes = <double>[6.0, 12.0, 20.0, 40.0, 80.0];
+    await initializeDeviceTextScaleProfile();
+    final mapping = appSkeddoTextScaleMappingNotifier.value;
+    final sizes = <double>[6.0, 12.0, 20.0, 40.0, 80.0];
 
-      for (var index = 0; index < nativeStops.length; index++) {
-        activeStop = nativeStops[index];
-        await initializeDeviceTextScaleProfile();
-        final systemCurve = resolveCurrentNativeSystemTextScaler()!;
-        final customCurve = mapping[index].scaler!;
-        for (final size in sizes) {
-          expect(
-            customCurve.scale(size),
-            closeTo(systemCurve.scale(size), 0.000001),
-            reason: 'native position ${index + 1}, font size $size',
-          );
-        }
+    for (var index = 0; index < nativeStops.length; index++) {
+      final customCurve = mapping[index].scaler!;
+      final nativeCurve =
+          appNativeTextScaleProfileNotifier.value!.stops[index].scaler!;
+      for (final size in sizes) {
+        expect(
+          customCurve.scale(size),
+          closeTo(nativeCurve.scale(size), 0.000001),
+          reason: 'native position ${index + 1}, font size $size',
+        );
       }
-    },
-  );
+    }
+  });
 
   test(
     'maps fewer than seven native stops without inserting middle stops',

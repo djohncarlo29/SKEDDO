@@ -122,37 +122,6 @@ const _textScaleChannel = MethodChannel('com.smartscheduler/text_scale');
 /// fallback for web and older binaries without this bridge.
 bool appHasNativeTextScaleProfile = false;
 
-/// The exact platform TextScaler captured while System mode is active.
-///
-/// Reusing this object for the matching custom position preserves Android's
-/// nonlinear accessibility curve instead of replacing it with a linear
-/// approximation. It is intentionally not refreshed while Custom mode is
-/// active, so Custom remains independent from later OS changes.
-TextScaler? appCapturedSystemTextScaler;
-int? appCapturedSystemTextScaleIndex;
-
-/// Returns the native curve for the currently active OS stop.
-///
-/// The native profile is authoritative on Android/iOS. System and Custom must
-/// therefore resolve a direct native position through the same curve rather
-/// than letting System use Flutter's separate linear compatibility value.
-TextScaler? resolveCurrentNativeSystemTextScaler() {
-  final profile = appNativeTextScaleProfileNotifier.value;
-  if (profile == null || profile.stops.isEmpty) return null;
-
-  final current = profile.currentScale;
-  var closestIndex = 0;
-  var closestDistance = double.infinity;
-  for (var index = 0; index < profile.stops.length; index++) {
-    final distance = (profile.stops[index].scale - current).abs();
-    if (distance < closestDistance) {
-      closestDistance = distance;
-      closestIndex = index;
-    }
-  }
-  return profile.stops[closestIndex].scaler;
-}
-
 class _SampledPlatformTextScaler extends TextScaler {
   final List<double> _probeSizes;
   final List<double> _ratios;
@@ -365,11 +334,7 @@ void selectCustomTextScaleIndex(int index) {
   final clamped = index.clamp(0, 6);
   appTextSizeIndexNotifier.value = clamped;
   appTextSizeUsesSystemNotifier.value = false;
-  appCustomTextScalerNotifier.value =
-      clamped == appCapturedSystemTextScaleIndex &&
-          appCapturedSystemTextScaler != null
-      ? appCapturedSystemTextScaler
-      : resolveSkeddoTextScale(clamped);
+  appCustomTextScalerNotifier.value = resolveSkeddoTextScale(clamped);
 }
 
 int _textScaleProfileRequest = 0;

@@ -15,15 +15,13 @@ Profile reads and preference commits must be serialized. Lifecycle refreshes can
 
 **How to apply:** Queue the complete profile operation (including the lightweight probe) and snapshot text-size mode/index when a setting is committed.
 
-System and Custom direct native positions must consume the same resolved native
-curve. Flutter's ambient System scaler is not a substitute on Android when
-nonlinear accessibility scaling is active; only use it as a compatibility
-fallback when no native curve is available.
+System must remain Flutter's ambient SystemTextScaler. Custom native positions
+must be generated independently with the exact Android operation Flutter's
+engine uses: TypedValue.applyDimension(SP, size, stop metrics) / density.
 
-**Why:** A native stop can have the same nominal multiplier while producing
-different rendered sizes at different font sizes if System and Custom use
-different scaler implementations.
+**Why:** Replacing System with a reconstructed curve makes the two modes agree
+by changing System, while still leaving exact engine equivalence unproven.
 
-**How to apply:** Resolve the active System stop from the complete native
-profile, including stops beyond the seven-position Custom control, while
-freezing the selected curve when Custom mode is entered.
+**How to apply:** Build per-stop configuration metrics for Custom, preserve the
+complete native profile and seven-position mapping rules, and validate each
+native stop against Flutter's live scaler while that OS stop is active.

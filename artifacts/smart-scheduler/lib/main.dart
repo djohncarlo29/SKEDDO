@@ -597,17 +597,6 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
             appSystemTextScaleNotifier.value != systemTextScale) {
           appSystemTextScaleNotifier.value = systemTextScale;
         }
-        if (followsSystemTextSize && appHasNativeTextScaleProfile) {
-          // Resolve System through the same complete native profile used by
-          // Custom. Flutter's exposed MediaQuery scaler is not equivalent to
-          // Android's native nonlinear curve at non-default stops.
-          appCapturedSystemTextScaler =
-              resolveCurrentNativeSystemTextScaler() ??
-              MediaQuery.textScalerOf(context);
-          appCapturedSystemTextScaleIndex = skeddoTextScaleIndexForSystemScale(
-            appSystemTextScaleNotifier.value,
-          );
-        }
         // The selected accent swatch (strongly typed CupertinoDynamicColor).
         final accentSwatch = kAccentSwatches[appAccentNotifier.value];
         final effectiveBrightness =
@@ -672,17 +661,15 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
                 data: IconTheme.of(context).copyWith(applyTextScaling: false),
                 child: result,
               );
-              // Both modes use one scaling-function source. System resolves
-              // the current native stop (including positions beyond seven);
-              // Custom uses its frozen selected mapping.
-              final activeScaler = followsSystemTextSize
-                  ? appCapturedSystemTextScaler
-                  : appCustomTextScalerNotifier.value;
-              if (activeScaler != null) {
+              // System mode intentionally leaves Flutter's ambient
+              // MediaQuery.textScaler untouched. Only Custom mode receives
+              // SKEDDO's frozen selected scaler.
+              if (!followsSystemTextSize &&
+                  appCustomTextScalerNotifier.value != null) {
                 result = MediaQuery(
                   data: MediaQuery.of(
                     context,
-                  ).copyWith(textScaler: activeScaler),
+                  ).copyWith(textScaler: appCustomTextScalerNotifier.value),
                   child: result,
                 );
               } else if (!followsSystemTextSize) {
