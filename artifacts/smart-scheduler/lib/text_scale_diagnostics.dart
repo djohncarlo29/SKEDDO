@@ -16,6 +16,7 @@ class _TextScaleDiagnosticsSectionState
     extends State<TextScaleDiagnosticsSection> {
   Map<Object?, Object?>? _payload;
   String? _error;
+  bool _isRefreshing = false;
   int _selectedPosition = 0;
   final Map<int, _DiagnosticSnapshot> _snapshots = <int, _DiagnosticSnapshot>{};
 
@@ -26,6 +27,11 @@ class _TextScaleDiagnosticsSectionState
   }
 
   Future<void> _refresh() async {
+    if (_isRefreshing) return;
+    setState(() {
+      _isRefreshing = true;
+      _error = null;
+    });
     try {
       final payload = await fetchTextScaleDiagnosticProfile().timeout(
         const Duration(seconds: 8),
@@ -35,19 +41,23 @@ class _TextScaleDiagnosticsSectionState
         setState(() {
           _payload = null;
           _error =
-              'Android returned an incomplete text-scale profile. Check that this is the diagnostic APK and tap Refresh native profile.';
+              payload?['diagnosticError'] as String? ??
+              'Android returned an incomplete text-scale profile.';
+          _isRefreshing = false;
         });
         return;
       }
       setState(() {
         _payload = payload;
         _error = null;
+        _isRefreshing = false;
       });
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _payload = null;
         _error = 'Native profile request failed or timed out: $error';
+        _isRefreshing = false;
       });
     }
   }
@@ -138,6 +148,16 @@ class _TextScaleDiagnosticsSectionState
                 text: 'Profile error: $_error',
                 color: labelColor,
               ),
+            const SizedBox(height: 8),
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: _isRefreshing ? null : _refresh,
+              child: Text(
+                _isRefreshing
+                    ? 'Refreshing native profile…'
+                    : 'Refresh native profile',
+              ),
+            ),
             if (profile == null && _error == null)
               _DiagnosticNotice(
                 text: 'Loading native profile…',
@@ -165,12 +185,6 @@ class _TextScaleDiagnosticsSectionState
                       'Set the phone to N${_selectedPosition + 1}, return here, and tap Capture.',
                   color: secondaryColor,
                 ),
-              const SizedBox(height: 14),
-              CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: _refresh,
-                child: const Text('Refresh native profile'),
-              ),
             ],
           ],
         ),

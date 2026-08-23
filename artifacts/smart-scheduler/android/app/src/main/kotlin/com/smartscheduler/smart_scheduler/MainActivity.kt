@@ -42,6 +42,16 @@ class MainActivity : FlutterActivity() {
                 val stopMetrics = stops.map { scale ->
                     metricsForDiagnostic(metricsForFontScale(scale))
                 }
+                val diagnosticError = if (diagnosticOnly && stops.size < 2) {
+                    "Android did not expose at least two config_fontSizeScale stops " +
+                        "(found ${stops.size}; resource id ${resources.getIdentifier(
+                            "config_fontSizeScale",
+                            "array",
+                            "android",
+                        )})."
+                } else {
+                    null
+                }
                 result.success(
                     mapOf(
                         "currentScale" to current,
@@ -51,6 +61,7 @@ class MainActivity : FlutterActivity() {
                         "activeMetrics" to metricsForDiagnostic(resources.displayMetrics),
                         "activeConfigurationFontScale" to resources.configuration.fontScale.toDouble(),
                         "stopMetrics" to stopMetrics,
+                        "diagnosticError" to diagnosticError,
                     )
                 )
             }
