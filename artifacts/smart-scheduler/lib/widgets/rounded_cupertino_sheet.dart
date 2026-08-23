@@ -3,7 +3,10 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import '../app_theme.dart'
-    show kModalSheetCornerRadius, systemSafeAreaBottomInset;
+    show
+        kModalSheetCornerRadius,
+        kUnifiedBottomPadding,
+        systemSafeAreaBottomInset;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // RoundedCupertinoSheet — a drop-in replacement for Flutter's built-in
@@ -139,7 +142,10 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
           child: SafeArea(
             top: false,
             bottom: true,
-            child: _RoundedSheetScope(child: builder(context)),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: kUnifiedBottomPadding),
+              child: _RoundedSheetScope(child: builder(context)),
+            ),
           ),
         ),
       ),

@@ -546,7 +546,11 @@ class _MainSettingsContent extends StatelessWidget {
           ],
         ),
 
-        SliverPadding(padding: EdgeInsets.only(bottom: bottomInset + 32)),
+        SliverPadding(
+          padding: EdgeInsets.only(
+            bottom: bottomInset + kUnifiedBottomPadding,
+          ),
+        ),
       ],
     );
   }
@@ -666,7 +670,9 @@ class _SubScreenState extends State<_SubScreen> {
             ),
 
           SliverPadding(
-            padding: EdgeInsets.only(bottom: widget.bottomInset + 32),
+            padding: EdgeInsets.only(
+              bottom: widget.bottomInset + kUnifiedBottomPadding,
+            ),
           ),
         ],
       ),

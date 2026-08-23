@@ -1687,7 +1687,7 @@ class _EmptyState extends StatelessWidget {
           style: TextStyle(
             inherit: false,
             color: resolveThemeColor(kSecondaryLabel, context),
-            fontSize: 17,
+            fontSize: kEmptyStateLabelFontSize,
             fontFamily: 'SFProText',
             fontWeight: FontWeight.w400,
             fontStyle: FontStyle.normal,

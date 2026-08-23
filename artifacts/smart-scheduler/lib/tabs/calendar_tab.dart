@@ -3132,8 +3132,13 @@ class _MonthView extends StatelessWidget {
                                     child: Text(
                                       'No Events',
                                       style: TextStyle(
+                                        inherit: false,
                                         fontFamily: kSFProText,
-                                        fontSize: 17,
+                                        fontWeight: FontWeight.w400,
+                                        fontStyle: FontStyle.normal,
+                                        letterSpacing: kTracking16,
+                                        height: kLineHeight,
+                                        fontSize: kEmptyStateLabelFontSize,
                                         color: secondaryC,
                                       ),
                                     ),

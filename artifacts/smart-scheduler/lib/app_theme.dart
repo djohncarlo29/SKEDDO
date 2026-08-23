@@ -41,6 +41,10 @@ const double kAddCategoryFloatingTabBarGap = 20.0;
 // gap. Reusing kFloatingTabBarVisualGap here compounds spacing at controls
 // that already have their own trailing padding.
 const double kFloatingTabBarSafetyMargin = 12.0;
+// Default authored bottom breathing room for panels, sheets, and stacked
+// modal content. Persistent device safe-area space is added separately.
+const double kUnifiedBottomPadding = 16.0;
+const double kEmptyStateLabelFontSize = 17.0;
 
 /// The tab bar's bottom edge is constrained by two competing requirements:
 /// its 16 px design margin and the persistent system navigation/home-indicator
