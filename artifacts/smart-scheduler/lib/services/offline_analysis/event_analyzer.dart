@@ -82,12 +82,27 @@ class DefaultEventAnalyzer implements EventAnalyzer {
       events.add(
         ExtractedEvent(
           title: title,
+          subtitle: _labelValue(text, 'subtitle'),
           date: parsed.canonicalDate,
           time: parsed.canonicalTime,
           endDate: parsed.endDateTime == null
               ? null
               : _date(parsed.endDateTime!),
           endTime: parsed.canonicalEndTime,
+          isAllDay: parsed.canonicalTime == null && parsed.isScheduled,
+          location: _labelValue(text, 'location'),
+          destination: _labelValue(text, 'destination'),
+          travelTime: _labelValue(text, 'travel time'),
+          travelMode: _labelValue(text, 'travel mode'),
+          repeat: parsed.recurrence,
+          repeatEndType: _labelValue(text, 'repeat ends') == null
+              ? null
+              : 'On Date',
+          repeatEndDate: _labelValue(text, 'repeat ends'),
+          alert: _labelValue(text, 'alert'),
+          secondAlert: _labelValue(text, 'second alert'),
+          url: _url(text),
+          notes: _labelValue(text, 'notes'),
           recurrence: parsed.recurrence,
           timeZone: parsed.timezone,
           originalDateText: temporal,
@@ -147,10 +162,18 @@ class DefaultEventAnalyzer implements EventAnalyzer {
         ExtractedEvent(
           title: summary,
           date: _date(start),
-          time: _time(start),
+          time: startRaw.contains('VALUE=DATE') ? null : _time(start),
           endDate: end == null ? null : _date(end),
-          endTime: end == null ? null : _time(end),
+          endTime: end == null || startRaw.contains('VALUE=DATE')
+              ? null
+              : _time(end),
+          isAllDay: startRaw.contains('VALUE=DATE'),
           location: fields['LOCATION'],
+          repeat: fields['RRULE'],
+          url: fields['URL'],
+          notes: fields['DESCRIPTION'],
+          alert: alarms.isEmpty ? null : alarms.first,
+          secondAlert: alarms.length < 2 ? null : alarms[1],
           recurrence: fields['RRULE'],
           timeZone: zone ?? fields['X-WR-TIMEZONE'],
           originalDateText: startRaw,
@@ -292,6 +315,24 @@ class DefaultEventAnalyzer implements EventAnalyzer {
     final part = metadata['part']?.toString();
     if (part != null && part.isNotEmpty) return part;
     return block.sectionIndex?.toString();
+  }
+
+  String? _labelValue(String text, String label) {
+    final match = RegExp(
+      '^\\s*${RegExp.escape(label)}\\s*:\\s*(.+)\$',
+      caseSensitive: false,
+      multiLine: true,
+    ).firstMatch(text);
+    return match?.group(1)?.trim();
+  }
+
+  String? _url(String text) {
+    final labeled = _labelValue(text, 'url');
+    if (labeled != null) return labeled;
+    return RegExp(
+      r'https?://[^\\s<>()]+',
+      caseSensitive: false,
+    ).firstMatch(text)?.group(0);
   }
 
   List<ExtractedEvent> _dedupe(List<ExtractedEvent> input) {

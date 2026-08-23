@@ -892,7 +892,11 @@ class _NoteInputCardState extends State<_NoteInputCard>
     }
     if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic'].contains(ext) ||
         mimeType?.startsWith('image/') == true) {
-      return EventExtractor.fromImage(bytes, mimeType ?? 'image/jpeg');
+      return EventExtractor.fromImage(
+        bytes,
+        mimeType ?? 'image/jpeg',
+        filename: filename,
+      );
     }
     if (_kLegacyOfficeExts.contains(ext)) {
       return EventExtractor.fromLegacyOffice(bytes, filename);
@@ -1931,11 +1935,30 @@ class _ExtractionResultSheetState extends State<_ExtractionResultSheet> {
     }
     EventStore.instance.create(
       title: e.title,
+      subtitle: e.subtitle,
       date: e.date,
       time: e.time,
       endDate: e.endDate,
       endTime: e.endTime,
+      isAllDay: e.isAllDay,
       location: e.location,
+      destination: e.destination,
+      travelTime: e.travelTime,
+      travelMode: e.travelMode,
+      repeat: e.repeat,
+      repeatEndType: e.repeatEndType,
+      repeatEndDate: e.repeatEndDate,
+      customRepeatConfig: e.customRepeatConfig,
+      alert: e.alert,
+      secondAlert: e.secondAlert,
+      reminderOption: e.reminderOption,
+      reminderDateTime: e.reminderDateTime,
+      reminderRepeat: e.reminderRepeat,
+      reminderCustomRepeatConfig: e.reminderCustomRepeatConfig,
+      url: e.url,
+      notes: e.notes,
+      attachmentPaths: e.attachmentPaths,
+      categoryId: e.categoryId ?? 'sys-uncategorized',
     );
     setState(() => _remaining.removeAt(index));
   }
@@ -2143,6 +2166,35 @@ class _EventRow extends StatelessWidget {
                   _DetailLine(
                     icon: CupertinoIcons.time,
                     text: 'Time zone · ${event.timeZone}',
+                  ),
+                ],
+                if (event.repeat != null) ...[
+                  const SizedBox(height: 2),
+                  _DetailLine(
+                    icon: CupertinoIcons.repeat,
+                    text: 'Repeat · ${event.repeat}',
+                  ),
+                ],
+                if (event.alert != null || event.secondAlert != null) ...[
+                  const SizedBox(height: 2),
+                  _DetailLine(
+                    icon: CupertinoIcons.bell,
+                    text: [
+                      if (event.alert != null) 'Alert · ${event.alert}',
+                      if (event.secondAlert != null)
+                        'Second alert · ${event.secondAlert}',
+                    ].join('  ·  '),
+                  ),
+                ],
+                if (event.url != null) ...[
+                  const SizedBox(height: 2),
+                  _DetailLine(icon: CupertinoIcons.link, text: event.url!),
+                ],
+                if (event.notes != null) ...[
+                  const SizedBox(height: 2),
+                  _DetailLine(
+                    icon: CupertinoIcons.text_alignleft,
+                    text: 'Notes · ${event.notes!}',
                   ),
                 ],
                 const SizedBox(height: 8),

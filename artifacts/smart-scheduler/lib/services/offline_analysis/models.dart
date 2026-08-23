@@ -178,11 +178,30 @@ class ExtractedContent {
 
 class ExtractedEvent {
   final String title;
+  final String? subtitle;
   final String? date;
   final String? time;
   final String? endDate;
   final String? endTime;
+  final bool isAllDay;
   final String? location;
+  final String? destination;
+  final String? travelTime;
+  final String? travelMode;
+  final String? repeat;
+  final String? repeatEndType;
+  final String? repeatEndDate;
+  final Map<String, dynamic>? customRepeatConfig;
+  final String? alert;
+  final String? secondAlert;
+  final String? reminderOption;
+  final String? reminderDateTime;
+  final String? reminderRepeat;
+  final Map<String, dynamic>? reminderCustomRepeatConfig;
+  final String? url;
+  final String? notes;
+  final List<String>? attachmentPaths;
+  final String? categoryId;
   final String? recurrence;
   final String? timeZone;
   final String? originalDateText;
@@ -204,11 +223,30 @@ class ExtractedEvent {
 
   const ExtractedEvent({
     required this.title,
+    this.subtitle,
     this.date,
     this.time,
     this.endDate,
     this.endTime,
+    this.isAllDay = false,
     this.location,
+    this.destination,
+    this.travelTime,
+    this.travelMode,
+    this.repeat,
+    this.repeatEndType,
+    this.repeatEndDate,
+    this.customRepeatConfig,
+    this.alert,
+    this.secondAlert,
+    this.reminderOption,
+    this.reminderDateTime,
+    this.reminderRepeat,
+    this.reminderCustomRepeatConfig,
+    this.url,
+    this.notes,
+    this.attachmentPaths,
+    this.categoryId,
     this.recurrence,
     this.timeZone,
     this.originalDateText,

@@ -8,11 +8,30 @@ import 'offline_analysis.dart' as offline;
 // independent from extraction details.
 class ExtractedEvent {
   final String title;
+  final String? subtitle;
   final String? date;
   final String? time;
   final String? endDate;
   final String? endTime;
+  final bool isAllDay;
   final String? location;
+  final String? destination;
+  final String? travelTime;
+  final String? travelMode;
+  final String? repeat;
+  final String? repeatEndType;
+  final String? repeatEndDate;
+  final Map<String, dynamic>? customRepeatConfig;
+  final String? alert;
+  final String? secondAlert;
+  final String? reminderOption;
+  final String? reminderDateTime;
+  final String? reminderRepeat;
+  final Map<String, dynamic>? reminderCustomRepeatConfig;
+  final String? url;
+  final String? notes;
+  final List<String>? attachmentPaths;
+  final String? categoryId;
   final String? timeZone;
   final String? sourceFile;
   final int? sourcePage;
@@ -26,11 +45,30 @@ class ExtractedEvent {
 
   const ExtractedEvent({
     required this.title,
+    this.subtitle,
     this.date,
     this.time,
     this.endDate,
     this.endTime,
+    this.isAllDay = false,
     this.location,
+    this.destination,
+    this.travelTime,
+    this.travelMode,
+    this.repeat,
+    this.repeatEndType,
+    this.repeatEndDate,
+    this.customRepeatConfig,
+    this.alert,
+    this.secondAlert,
+    this.reminderOption,
+    this.reminderDateTime,
+    this.reminderRepeat,
+    this.reminderCustomRepeatConfig,
+    this.url,
+    this.notes,
+    this.attachmentPaths,
+    this.categoryId,
     this.timeZone,
     this.sourceFile,
     this.sourcePage,
@@ -57,9 +95,10 @@ class EventExtractor {
 
   static Future<List<ExtractedEvent>> fromImage(
     Uint8List bytes,
-    String mimeType,
-  ) => _analyze(
-    sourceName: _sourceNameForMime(mimeType),
+    String mimeType, {
+    String? filename,
+  }) => _analyze(
+    sourceName: filename ?? _sourceNameForMime(mimeType),
     bytes: bytes,
     mimeType: mimeType,
   );
@@ -102,11 +141,30 @@ class EventExtractor {
   static ExtractedEvent _fromOfflineEvent(offline.ExtractedEvent event) =>
       ExtractedEvent(
         title: event.title,
+        subtitle: event.subtitle,
         date: event.date,
         time: event.time,
         endDate: event.endDate,
         endTime: event.endTime,
+        isAllDay: event.isAllDay,
         location: event.location,
+        destination: event.destination,
+        travelTime: event.travelTime,
+        travelMode: event.travelMode,
+        repeat: event.repeat,
+        repeatEndType: event.repeatEndType,
+        repeatEndDate: event.repeatEndDate,
+        customRepeatConfig: event.customRepeatConfig,
+        alert: event.alert,
+        secondAlert: event.secondAlert,
+        reminderOption: event.reminderOption,
+        reminderDateTime: event.reminderDateTime,
+        reminderRepeat: event.reminderRepeat,
+        reminderCustomRepeatConfig: event.reminderCustomRepeatConfig,
+        url: event.url,
+        notes: event.notes,
+        attachmentPaths: event.attachmentPaths,
+        categoryId: event.categoryId,
         timeZone: event.timeZone,
         sourceFile: event.sourceFile,
         sourcePage: event.sourcePage,
