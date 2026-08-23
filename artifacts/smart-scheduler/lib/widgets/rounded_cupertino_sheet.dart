@@ -2,7 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import '../app_theme.dart' show kModalSheetCornerRadius;
+import '../app_theme.dart'
+    show kModalSheetCornerRadius, systemSafeAreaBottomInset;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // RoundedCupertinoSheet — a drop-in replacement for Flutter's built-in
@@ -89,6 +90,7 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
   Widget buildContent(BuildContext context) {
     final double bottomPadding =
         MediaQuery.sizeOf(context).height * _kTopGapRatio;
+    final double safeBottom = systemSafeAreaBottomInset(context);
 
     // Build a single merged MediaQueryData that:
     //   (a) removes top and bottom padding — same as the original
@@ -124,7 +126,7 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
     // Sheet scrolling is also unaffected: 18 dp is Flutter's standard default.
     final MediaQueryData original = MediaQuery.of(context);
     final MediaQueryData mqData = original.copyWith(
-      padding: original.padding.copyWith(top: 0.0, bottom: 0.0),
+      padding: original.padding.copyWith(top: 0.0, bottom: safeBottom),
       gestureSettings: const DeviceGestureSettings(touchSlop: kTouchSlop),
     );
 
@@ -134,7 +136,11 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
         padding: EdgeInsets.only(bottom: bottomPadding),
         child: CupertinoUserInterfaceLevel(
           data: CupertinoUserInterfaceLevelData.elevated,
-          child: _RoundedSheetScope(child: builder(context)),
+          child: SafeArea(
+            top: false,
+            bottom: true,
+            child: _RoundedSheetScope(child: builder(context)),
+          ),
         ),
       ),
     );

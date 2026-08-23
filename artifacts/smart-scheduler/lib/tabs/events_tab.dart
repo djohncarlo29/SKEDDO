@@ -1303,7 +1303,7 @@ class _StorageFullBannerState extends State<_StorageFullBanner>
     final bg = isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7);
     final fg = isDark ? CupertinoColors.white : CupertinoColors.black;
     final sub = isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70);
-    final bottom = MediaQuery.of(context).padding.bottom;
+    final bottom = systemSafeAreaBottomInset(context);
 
     return Positioned(
       left: 0,

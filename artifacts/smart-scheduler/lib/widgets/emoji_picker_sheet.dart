@@ -1079,9 +1079,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
               ),
               slivers: [
                 SliverPadding(
-                  padding: EdgeInsets.only(
-                    bottom: MediaQuery.paddingOf(context).bottom,
-                  ),
+                  padding: EdgeInsets.zero,
                   sliver: SliverFillRemaining(
                     hasScrollBody: false,
                     child: Padding(

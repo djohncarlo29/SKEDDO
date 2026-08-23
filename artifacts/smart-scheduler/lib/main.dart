@@ -1890,7 +1890,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).padding.top;
-    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final bottomInset = systemSafeAreaBottomInset(context);
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
     final cardColor = resolveThemeColor(kCardColor, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);

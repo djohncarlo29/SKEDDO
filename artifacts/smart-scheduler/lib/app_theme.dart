@@ -58,6 +58,14 @@ double floatingTabBarBottomOffset(BuildContext context) =>
       ),
     );
 
+/// Persistent bottom space occupied by system navigation or the home
+/// indicator. This intentionally ignores keyboard [viewInsets] and does not
+/// impose the Floating Tab Bar's separate 16 px design margin.
+double systemSafeAreaBottomInset(BuildContext context) => math.max(
+      MediaQuery.viewPaddingOf(context).bottom,
+      MediaQuery.systemGestureInsetsOf(context).bottom,
+    );
+
 /// Extra scroll-content clearance needed so the final item in a tab can be
 /// scrolled fully above the floating pill rather than ending underneath it.
 double floatingTabBarContentBottomClearance(
