@@ -129,24 +129,26 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
     // Sheet scrolling is also unaffected: 18 dp is Flutter's standard default.
     final MediaQueryData original = MediaQuery.of(context);
     final MediaQueryData mqData = original.copyWith(
-      padding: original.padding.copyWith(top: 0.0, bottom: safeBottom),
+      // The route owns the persistent bottom inset below. Keep it out of the
+      // sheet's descendant MediaQuery so nested SafeAreas cannot add it a
+      // second time and make the inset dependent on page content.
+      padding: original.padding.copyWith(top: 0.0, bottom: 0.0),
       gestureSettings: const DeviceGestureSettings(touchSlop: kTouchSlop),
     );
 
     return MediaQuery(
       data: mqData,
       child: Padding(
-        padding: EdgeInsets.only(bottom: bottomPadding),
+        // Add the device's persistent safe space at the route boundary. This
+        // must be explicit rather than delegated to SafeArea: modal pages
+        // commonly paint a full-height surface, which otherwise reaches
+        // underneath Android's navigation bar or iOS's home-indicator area.
+        padding: EdgeInsets.only(
+          bottom: bottomPadding + safeBottom + kUnifiedBottomPadding,
+        ),
         child: CupertinoUserInterfaceLevel(
           data: CupertinoUserInterfaceLevelData.elevated,
-          child: SafeArea(
-            top: false,
-            bottom: true,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: kUnifiedBottomPadding),
-              child: _RoundedSheetScope(child: builder(context)),
-            ),
-          ),
+          child: _RoundedSheetScope(child: builder(context)),
         ),
       ),
     );
