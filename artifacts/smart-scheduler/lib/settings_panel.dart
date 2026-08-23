@@ -313,7 +313,6 @@ class _SettingsPanelState extends State<SettingsPanel>
                   // ── Main body — slides right (parallax) during sub-screen push ──
                   Positioned.fill(
                     top: headerHeight,
-                    bottom: widget.bottomInset,
                     child: SlideTransition(
                       position: _mainParallax,
                       child: _MainSettingsContent(
@@ -336,7 +335,6 @@ class _SettingsPanelState extends State<SettingsPanel>
                   if (_activeRoute != null)
                     Positioned.fill(
                       top: headerHeight,
-                      bottom: widget.bottomInset,
                       child: SlideTransition(
                         position: _subSlide,
                         child: _SubScreen(
@@ -549,7 +547,7 @@ class _MainSettingsContent extends StatelessWidget {
         ),
 
         SliverPadding(
-          padding: const EdgeInsets.only(bottom: kUnifiedBottomPadding),
+          padding: EdgeInsets.only(bottom: bottomInset + kUnifiedBottomPadding),
         ),
       ],
     );
@@ -670,7 +668,9 @@ class _SubScreenState extends State<_SubScreen> {
             ),
 
           SliverPadding(
-            padding: const EdgeInsets.only(bottom: kUnifiedBottomPadding),
+            padding: EdgeInsets.only(
+              bottom: widget.bottomInset + kUnifiedBottomPadding,
+            ),
           ),
         ],
       ),

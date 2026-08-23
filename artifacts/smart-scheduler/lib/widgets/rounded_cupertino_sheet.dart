@@ -4,8 +4,10 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import '../app_theme.dart'
     show
+        kBackgroundColor,
         kModalSheetCornerRadius,
         kUnifiedBottomPadding,
+        resolveThemeColor,
         systemSafeAreaBottomInset;
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -136,21 +138,40 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
       gestureSettings: const DeviceGestureSettings(touchSlop: kTouchSlop),
     );
 
-    return MediaQuery(
-      data: mqData,
-      child: Padding(
-        // Add the device's persistent safe space at the route boundary. This
-        // must be explicit rather than delegated to SafeArea: modal pages
-        // commonly paint a full-height surface, which otherwise reaches
-        // underneath Android's navigation bar or iOS's home-indicator area.
-        padding: EdgeInsets.only(
-          bottom: bottomPadding + safeBottom + kUnifiedBottomPadding,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Keep the sheet's own surface behind the system navigation area.
+        // Without this backing layer, the route's bottom gap is transparent
+        // and the page underneath the sheet becomes visible behind Android's
+        // navigation bar or iOS's home-indicator area.
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: bottomPadding + safeBottom + kUnifiedBottomPadding,
+          child: ColoredBox(
+            color: resolveThemeColor(kBackgroundColor, context),
+          ),
         ),
-        child: CupertinoUserInterfaceLevel(
-          data: CupertinoUserInterfaceLevelData.elevated,
-          child: _RoundedSheetScope(child: builder(context)),
+        Positioned.fill(
+          bottom: bottomPadding,
+          child: MediaQuery(
+            data: mqData,
+            child: Padding(
+              // Keep the authored sheet content above the persistent device
+              // safe area, while the backing surface above paints through it.
+              padding: EdgeInsets.only(
+                bottom: safeBottom + kUnifiedBottomPadding,
+              ),
+              child: CupertinoUserInterfaceLevel(
+                data: CupertinoUserInterfaceLevelData.elevated,
+                child: _RoundedSheetScope(child: builder(context)),
+              ),
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 
