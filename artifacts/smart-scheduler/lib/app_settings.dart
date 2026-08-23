@@ -117,6 +117,12 @@ final ValueNotifier<TextScaler?> appCustomTextScalerNotifier =
 
 const _textScaleChannel = MethodChannel('com.smartscheduler/text_scale');
 
+/// Diagnostic-only read of the complete native profile payload. This does not
+/// modify any text-size notifier or the ambient MediaQuery.
+Future<Map<Object?, Object?>?> fetchTextScaleDiagnosticProfile() {
+  return _textScaleChannel.invokeMethod<Map<Object?, Object?>>('getProfile');
+}
+
 /// Whether the native profile was loaded successfully. When true, the native
 /// currentScale is authoritative; Flutter's MediaQuery value is only a
 /// fallback for web and older binaries without this bridge.

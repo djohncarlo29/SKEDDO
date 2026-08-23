@@ -33,12 +33,18 @@ class MainActivity : FlutterActivity() {
                     val metrics = metricsForFontScale(scale)
                     textProbeSizes.map { size -> nativeScaleForSp(size, metrics) }
                 }
+                val stopMetrics = stops.map { scale ->
+                    metricsForDiagnostic(metricsForFontScale(scale))
+                }
                 result.success(
                     mapOf(
                         "currentScale" to current,
                         "stops" to stops,
                         "probeSizes" to textProbeSizes,
                         "curves" to curves,
+                        "activeMetrics" to metricsForDiagnostic(resources.displayMetrics),
+                        "activeConfigurationFontScale" to resources.configuration.fontScale.toDouble(),
+                        "stopMetrics" to stopMetrics,
                     )
                 )
             }
@@ -105,6 +111,18 @@ class MainActivity : FlutterActivity() {
                 metrics,
             ) / metrics.density
         ).toDouble() / sp
+    }
+
+    private fun metricsForDiagnostic(
+        metrics: android.util.DisplayMetrics,
+    ): Map<String, Any> {
+        return mapOf(
+            "density" to metrics.density.toDouble(),
+            "scaledDensity" to metrics.scaledDensity.toDouble(),
+            "densityDpi" to metrics.densityDpi,
+            "scaledDensityOverDensity" to
+                (metrics.scaledDensity / metrics.density).toDouble(),
+        )
     }
 
     override fun onRequestPermissionsResult(
