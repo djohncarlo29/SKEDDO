@@ -20,6 +20,7 @@ import '../services/offline_analysis.dart' as offline;
 import '../services/speech_service.dart';
 import '../widgets/action_panel.dart';
 import '../widgets/native_text_input.dart';
+import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/search_bar_widget.dart';
 import '../ai/search/search_service.dart';
 import '../services/event_store.dart' show EventStore;
@@ -1000,8 +1001,9 @@ class _NoteInputCardState extends State<_NoteInputCard>
   }
 
   void _showResultSheet(List<ExtractedEvent> events) {
-    showCupertinoModalPopup<void>(
+    showSafeCupertinoModalPopup<void>(
       context: context,
+      fullScreen: true,
       builder: (_) => _ExtractionResultSheet(events: events),
     );
   }
@@ -3048,8 +3050,9 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
         _isAnalyzing = false;
         _analysisCancellation = null;
       });
-      await showCupertinoModalPopup<void>(
+      await showSafeCupertinoModalPopup<void>(
         context: context,
+        fullScreen: true,
         builder: (_) => _ExtractionResultSheet(events: events),
       );
     } on ExtractionException catch (error) {
@@ -3073,7 +3076,7 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
     if (!mounted || _analysisDialogOpen) return;
     _analysisDialogOpen = true;
     try {
-      await showCupertinoDialog<void>(
+      await showSafeCupertinoDialog<void>(
         context: context,
         builder: (dialogContext) => CupertinoAlertDialog(
           title: const Text('Attachment Not Analyzed'),

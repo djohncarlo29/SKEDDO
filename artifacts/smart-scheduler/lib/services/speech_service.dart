@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/rounded_cupertino_sheet.dart';
 
 // Offline-only speech-to-text service. Recognition is performed by the
 // platform's native speech engine; no network or language-model API is used.
@@ -59,8 +60,10 @@ class SpeechService {
     }
 
     try {
-      final granted = await _methodChannel.invokeMethod<bool>('requestPermission') ?? false;
-      _available = granted &&
+      final granted =
+          await _methodChannel.invokeMethod<bool>('requestPermission') ?? false;
+      _available =
+          granted &&
           (await _methodChannel.invokeMethod<bool>('isAvailable') ?? false);
       return _available ? SttRequestResult.granted : SttRequestResult.denied;
     } on MissingPluginException {
@@ -80,7 +83,9 @@ class SpeechService {
     _sessionActive = true;
 
     try {
-      _eventSubscription = _eventChannel.receiveBroadcastStream().listen((event) {
+      _eventSubscription = _eventChannel.receiveBroadcastStream().listen((
+        event,
+      ) {
         if (!_sessionActive || event is! Map) return;
         final type = event['type']?.toString();
         final words = event['words']?.toString() ?? '';
@@ -136,7 +141,7 @@ class SpeechService {
 
 class MicPermissionSheet {
   static Future<bool> show(BuildContext context) async {
-    final result = await showCupertinoModalPopup<bool>(
+    final result = await showSafeCupertinoModalPopup<bool>(
       context: context,
       builder: (context) => CupertinoActionSheet(
         title: const Text('Microphone Access'),

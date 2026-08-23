@@ -76,6 +76,75 @@ Future<T?> showRoundedCupertinoSheet<T>({
   );
 }
 
+/// Shows a Cupertino popup while keeping the persistent system-navigation
+/// region owned by the popup instead of revealing the page underneath it.
+///
+/// [fullScreen] is used by custom preview surfaces that already lay themselves
+/// out across the available route. Standard action sheets remain bottom-aligned.
+Future<T?> showSafeCupertinoModalPopup<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool fullScreen = false,
+}) {
+  return showCupertinoModalPopup<T>(
+    context: context,
+    builder: (popupContext) => _SafePopupRouteSurface(
+      safeBottom: systemSafeAreaBottomInset(popupContext),
+      fullScreen: fullScreen,
+      child: builder(popupContext),
+    ),
+  );
+}
+
+/// Shows a Cupertino alert while covering the transparent system-navigation
+/// region with the modal surface color.
+Future<T?> showSafeCupertinoDialog<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+}) {
+  return showCupertinoDialog<T>(
+    context: context,
+    builder: (dialogContext) => _SafePopupRouteSurface(
+      safeBottom: systemSafeAreaBottomInset(dialogContext),
+      child: builder(dialogContext),
+    ),
+  );
+}
+
+class _SafePopupRouteSurface extends StatelessWidget {
+  const _SafePopupRouteSurface({
+    required this.safeBottom,
+    required this.child,
+    this.fullScreen = false,
+  });
+
+  final double safeBottom;
+  final Widget child;
+  final bool fullScreen;
+
+  @override
+  Widget build(BuildContext context) {
+    final surfaceColor = resolveThemeColor(kBackgroundColor, context);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (safeBottom > 0)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: safeBottom,
+            child: ColoredBox(color: surfaceColor),
+          ),
+        if (fullScreen)
+          Positioned.fill(child: child)
+        else
+          Align(alignment: Alignment.bottomCenter, child: child),
+      ],
+    );
+  }
+}
+
 /// Route for displaying an iOS sheet styled page with [kModalSheetCornerRadius] corners.
 /// See [showRoundedCupertinoSheet].
 class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
