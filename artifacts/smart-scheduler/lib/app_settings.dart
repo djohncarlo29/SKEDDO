@@ -106,10 +106,9 @@ final ValueNotifier<NativeTextScaleProfile?> appNativeTextScaleProfileNotifier =
 /// The independent seven-position UI mapping. Its entries reference the
 /// complete native profile or explicitly identify derived/fallback behavior.
 final ValueNotifier<List<SkeddoTextScaleMapping>>
-    appSkeddoTextScaleMappingNotifier =
-    ValueNotifier<List<SkeddoTextScaleMapping>>(
-      const <SkeddoTextScaleMapping>[],
-    );
+appSkeddoTextScaleMappingNotifier = ValueNotifier<List<SkeddoTextScaleMapping>>(
+  const <SkeddoTextScaleMapping>[],
+);
 
 /// Frozen scaler selected for the active Custom setting. Native profile
 /// refreshes never replace this value; only an explicit Custom selection does.
@@ -131,6 +130,28 @@ bool appHasNativeTextScaleProfile = false;
 /// active, so Custom remains independent from later OS changes.
 TextScaler? appCapturedSystemTextScaler;
 int? appCapturedSystemTextScaleIndex;
+
+/// Returns the native curve for the currently active OS stop.
+///
+/// The native profile is authoritative on Android/iOS. System and Custom must
+/// therefore resolve a direct native position through the same curve rather
+/// than letting System use Flutter's separate linear compatibility value.
+TextScaler? resolveCurrentNativeSystemTextScaler() {
+  final profile = appNativeTextScaleProfileNotifier.value;
+  if (profile == null || profile.stops.isEmpty) return null;
+
+  final current = profile.currentScale;
+  var closestIndex = 0;
+  var closestDistance = double.infinity;
+  for (var index = 0; index < profile.stops.length; index++) {
+    final distance = (profile.stops[index].scale - current).abs();
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestIndex = index;
+    }
+  }
+  return profile.stops[closestIndex].scaler;
+}
 
 class _SampledPlatformTextScaler extends TextScaler {
   final List<double> _probeSizes;
@@ -165,8 +186,7 @@ _SampledPlatformTextScaler _extrapolatePlatformScaler(
 ) {
   final ratios = <double>[
     for (var i = 0; i < last._ratios.length; i++)
-      last._ratios[i] +
-          (last._ratios[i] - previous._ratios[i]) * steps,
+      last._ratios[i] + (last._ratios[i] - previous._ratios[i]) * steps,
   ];
   return _SampledPlatformTextScaler(last._probeSizes, ratios);
 }
@@ -175,10 +195,7 @@ List<double> get appSkeddoTextScaleStops =>
     appSkeddoTextScaleStopsNotifier.value;
 
 double skeddoTextScaleForIndex(int index) =>
-    appSkeddoTextScaleStops[index.clamp(
-      0,
-      appSkeddoTextScaleStops.length - 1,
-    )];
+    appSkeddoTextScaleStops[index.clamp(0, appSkeddoTextScaleStops.length - 1)];
 
 int skeddoTextScaleIndexForSystemScale(double scale) {
   var closestIndex = 0;
@@ -237,10 +254,7 @@ Future<void> _loadDeviceTextScaleProfile() async {
     ];
     final nativeProfileStops = <NativeTextScaleStop>[
       for (var i = 0; i < nativeStops.length; i++)
-        NativeTextScaleStop(
-          scale: nativeStops[i],
-          scaler: nativeScalers[i],
-        ),
+        NativeTextScaleStop(scale: nativeStops[i], scaler: nativeScalers[i]),
     ];
     final current = (raw?['currentScale'] as num?)?.toDouble();
     if (current != null &&
@@ -306,7 +320,8 @@ List<SkeddoTextScaleMapping> _createSkeddoTextScaleMapping(
     for (var index = nativeCount; index < 7; index++) {
       final steps = index - nativeCount + 1;
       final scale = lastScale + scaleStep * steps;
-      final scaler = previousScaler is _SampledPlatformTextScaler &&
+      final scaler =
+          previousScaler is _SampledPlatformTextScaler &&
               lastScaler is _SampledPlatformTextScaler
           ? _extrapolatePlatformScaler(previousScaler, lastScaler, steps)
           : TextScaler.linear(scale);
@@ -333,8 +348,7 @@ List<SkeddoTextScaleMapping> _createSkeddoTextScaleMapping(
       nativeIndex: index,
       // A missing platform curve is an explicit compatibility degradation,
       // but it is still captured in the mapping so Custom can freeze it.
-      scaler:
-          nativeStop.scaler ?? TextScaler.linear(nativeStop.scale),
+      scaler: nativeStop.scaler ?? TextScaler.linear(nativeStop.scale),
     );
   });
 }

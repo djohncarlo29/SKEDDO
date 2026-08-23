@@ -598,11 +598,12 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
           appSystemTextScaleNotifier.value = systemTextScale;
         }
         if (followsSystemTextSize && appHasNativeTextScaleProfile) {
-          // Keep the actual platform scaler, including Android's nonlinear
-          // accessibility curve, so selecting the matching Custom tick can
-          // reproduce System exactly. Do not refresh this while Custom mode is
-          // active; Custom must remain independent from later OS changes.
-          appCapturedSystemTextScaler = MediaQuery.textScalerOf(context);
+          // Resolve System through the same complete native profile used by
+          // Custom. Flutter's exposed MediaQuery scaler is not equivalent to
+          // Android's native nonlinear curve at non-default stops.
+          appCapturedSystemTextScaler =
+              resolveCurrentNativeSystemTextScaler() ??
+              MediaQuery.textScalerOf(context);
           appCapturedSystemTextScaleIndex = skeddoTextScaleIndexForSystemScale(
             appSystemTextScaleNotifier.value,
           );
@@ -671,29 +672,29 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
                 data: IconTheme.of(context).copyWith(applyTextScaling: false),
                 child: result,
               );
-              // System mode leaves the full platform text scaler untouched,
-              // including accessibility sizes above SKEDDO's seventh stop.
-              if (!followsSystemTextSize) {
-                final customScaler = appCustomTextScalerNotifier.value;
-                if (customScaler != null) {
-                  result = MediaQuery(
-                    data: MediaQuery.of(
-                      context,
-                    ).copyWith(textScaler: customScaler),
-                    child: result,
-                  );
-                } else {
-                  final mapping = appSkeddoTextScaleMappingNotifier.value;
-                  final mappedScale =
-                      customTextSizeIndex < mapping.length
-                      ? mapping[customTextSizeIndex].scale
-                      : skeddoTextScaleForIndex(customTextSizeIndex);
-                  result = MediaQuery.withClampedTextScaling(
-                    minScaleFactor: mappedScale,
-                    maxScaleFactor: mappedScale,
-                    child: result,
-                  );
-                }
+              // Both modes use one scaling-function source. System resolves
+              // the current native stop (including positions beyond seven);
+              // Custom uses its frozen selected mapping.
+              final activeScaler = followsSystemTextSize
+                  ? appCapturedSystemTextScaler
+                  : appCustomTextScalerNotifier.value;
+              if (activeScaler != null) {
+                result = MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(textScaler: activeScaler),
+                  child: result,
+                );
+              } else if (!followsSystemTextSize) {
+                final mapping = appSkeddoTextScaleMappingNotifier.value;
+                final mappedScale = customTextSizeIndex < mapping.length
+                    ? mapping[customTextSizeIndex].scale
+                    : skeddoTextScaleForIndex(customTextSizeIndex);
+                result = MediaQuery.withClampedTextScaling(
+                  minScaleFactor: mappedScale,
+                  maxScaleFactor: mappedScale,
+                  child: result,
+                );
               }
               // Brightness override: propagate through MediaQuery so that
               // CupertinoDynamicColor.resolve() returns the correct variant

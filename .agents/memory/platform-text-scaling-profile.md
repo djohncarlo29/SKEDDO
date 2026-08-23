@@ -14,3 +14,16 @@ Profile reads and preference commits must be serialized. Lifecycle refreshes can
 **Why:** Both native profile loading and SharedPreferences updates are asynchronous, so completion order is not guaranteed even when calls were made in the intended order.
 
 **How to apply:** Queue the complete profile operation (including the lightweight probe) and snapshot text-size mode/index when a setting is committed.
+
+System and Custom direct native positions must consume the same resolved native
+curve. Flutter's ambient System scaler is not a substitute on Android when
+nonlinear accessibility scaling is active; only use it as a compatibility
+fallback when no native curve is available.
+
+**Why:** A native stop can have the same nominal multiplier while producing
+different rendered sizes at different font sizes if System and Custom use
+different scaler implementations.
+
+**How to apply:** Resolve the active System stop from the complete native
+profile, including stops beyond the seven-position Custom control, while
+freezing the selected curve when Custom mode is entered.

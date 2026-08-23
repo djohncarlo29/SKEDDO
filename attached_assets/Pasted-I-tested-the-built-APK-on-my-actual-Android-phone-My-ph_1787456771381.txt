@@ -1,0 +1,125 @@
+I tested the built APK on my actual Android phone. My phone has 5 native text-size positions, and I found that only the Default position matches:
+
+N1 ≠ C1
+
+N2 = C2 — N2 is Default on my phone.
+
+N3 ≠ C3
+
+N4 ≠ C4
+
+N5 ≠ C5
+
+---
+
+You gave me this audit:
+
+## Exact source of the discrepancy
+
+The mismatch is caused by comparing two different scaling models:
+
+### System path on Flutter
+
+On Android, the Flutter engine exposes the phone’s current text scale to Flutter as a single `textScaleFactor`. SKEDDO leaves that platform `MediaQuery.textScaler` untouched in System mode.
+
+Effectively, System mode behaves like:
+
+```text
+System(fontSize) = fontSize × Android fontScale
+```
+
+That is a linear scaler from Flutter’s perspective.
+
+### Custom path in SKEDDO
+
+The Android bridge independently generates curves using:
+
+```kotlin
+FontScaleConverter.forScale(fontScale)
+    .convertSpToDp(fontSize)
+```
+
+Those curves are sent to Dart as ratios across many probe sizes. Dart reconstructs them into `_SampledPlatformTextScaler`, then Custom mode applies that reconstructed nonlinear curve.
+
+Effectively:
+
+```text
+Custom(fontSize) = Android FontScaleConverter(fontScale, fontSize)
+```
+
+That is not generally the same function as Flutter’s System scaler.
+
+## Why N2 matches but the others do not
+
+Your result is the expected signature of this mismatch:
+
+```text
+N2 = 1.0 / Default
+```
+
+At the default scale, Android’s converter is effectively the identity/linear curve:
+
+```text
+Custom(fontSize) = fontSize
+System(fontSize) = fontSize
+```
+
+So N2 and C2 match at every tested font size.
+
+At N1 and N3–N5, Android’s `FontScaleConverter` applies size-dependent nonlinear behavior, while Flutter System mode continues using the single linear platform scale value. Therefore:
+
+```text
+System(fontSize) ≠ reconstructed Android curve(fontSize)
+```
+
+The difference becomes visible when comparing actual font sizes, especially as font sizes move away from the nominal reference size.
+
+## Complete path audit
+
+1. **Android OS setting**
+   - Android exposes the current `fontScale`.
+   - Android also exposes the framework’s native font-size stop array through `config_fontSizeScale`.
+
+2. **Native stop acquisition**
+   - SKEDDO reads every native stop.
+   - On Android API 35+, it generates each stop’s curve with `FontScaleConverter`.
+
+3. **Flutter bridge**
+   - The bridge sends:
+     - native stop values,
+     - probe sizes,
+     - converted curve values,
+     - current scale.
+   - The bridge payload itself is structurally correct.
+
+4. **Dart reconstruction**
+   - Dart stores the complete profile.
+   - It reconstructs each curve by linearly interpolating between the sampled probe points.
+   - With the current 0.25-size sampling interval, this reconstruction is not the primary discrepancy; it is approximating the Android curve that was intentionally acquired.
+
+5. **Custom TextScaler**
+   - Custom mode uses the reconstructed Android nonlinear curve.
+   - System mode uses Flutter’s original platform scaler.
+   - Those are different scalers on Android devices where nonlinear font scaling is active.
+
+---
+
+I want this fixed, not just documented as a limitation.
+
+For every direct native mapping, C1–C5 must reproduce the same actual text-scaling behavior as the corresponding System position N1–N5 across different font sizes—not merely have the same nominal scale value.
+
+Please change the implementation so System and Custom use an equivalent scaling function for the corresponding native stop. Do not simply tweak multipliers or probe values until they visually match.
+
+Keep the architecture we've already established:
+
+- Complete native profile is preserved.
+- SKEDDO has exactly 7 Custom positions.
+- If there are fewer than 7 native stops, additional positions are extrapolated outward.
+- If there are more than 7 native stops, Custom is limited to the first 7 native positions.
+- System can still use native positions beyond SKEDDO's 7th position.
+- Custom remains independent after the user switches to Custom.
+
+
+Only fix the System-vs-Custom scaling discrepancy I explained.
+
+After the change, test the 5 direct mappings at multiple font sizes and verify that N1=C1, N2=C2, N3=C3, N4=C4, and N5=C5 in actual scaling behavior.
