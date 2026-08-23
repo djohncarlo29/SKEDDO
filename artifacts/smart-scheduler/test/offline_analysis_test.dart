@@ -177,6 +177,29 @@ void main() {
     ]);
   });
 
+  test('DOCX preserves list numbering metadata', () async {
+    final bytes = officeZip({
+      'word/document.xml': '''
+        <w:document xmlns:w="urn:word">
+          <w:body>
+            <w:p>
+              <w:pPr><w:numPr><w:ilvl w:val="1"/><w:numId w:val="4"/></w:numPr></w:pPr>
+              <w:r><w:t>Nested item</w:t></w:r>
+            </w:p>
+          </w:body>
+        </w:document>
+      ''',
+    });
+    final result = await coordinator.analyzeOffline(
+      sourceName: 'list.docx',
+      bytes: bytes,
+    );
+    final block = result.content!.blocks.single;
+    expect(block.metadata['list'], 'true');
+    expect(block.metadata['listLevel'], '1');
+    expect(block.metadata['numberingId'], '4');
+  });
+
   test('DOCX preserves hyperlinks, headers, and section metadata', () async {
     final bytes = officeZip({
       'word/_rels/document.xml.rels': '''
@@ -311,6 +334,25 @@ void main() {
     expect(result.content?.metadata['sourceName'], 'deck.pptx');
   });
 
+  test('XLSX preserves hidden column ranges', () async {
+    final bytes = officeZip({
+      'xl/workbook.xml': '''
+        <workbook xmlns="urn:sheet"><sheets><sheet name="Hidden"/></sheets></workbook>
+      ''',
+      'xl/worksheets/sheet1.xml': '''
+        <worksheet xmlns="urn:sheet">
+          <cols><col min="2" max="5" hidden="1"/></cols>
+          <sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>
+        </worksheet>
+      ''',
+    });
+    final result = await coordinator.analyzeOffline(
+      sourceName: 'hidden.xlsx',
+      bytes: bytes,
+    );
+    expect(result.content!.tables.single.metadata['hiddenColumns'], ['2:5']);
+  });
+
   test('PPTX preserves titles, notes, and basic tables', () async {
     final bytes = officeZip({
       'ppt/slides/slide1.xml': '''
@@ -335,6 +377,24 @@ void main() {
     expect(result.content?.tables.single.rows, [
       ['Owner', 'Room A'],
     ]);
+  });
+
+  test('PPTX preserves paragraph and text-box metadata', () async {
+    final bytes = officeZip({
+      'ppt/slides/slide1.xml': '''
+        <p:sld xmlns:p="urn:pres" xmlns:a="urn:drawing">
+          <p:sp><p:txBody><a:p><a:r><a:t>First line</a:t></a:r></a:p></p:txBody></p:sp>
+          <p:sp><p:txBody><a:p><a:r><a:t>Second line</a:t></a:r></a:p></p:txBody></p:sp>
+        </p:sld>
+      ''',
+    });
+    final result = await coordinator.analyzeOffline(
+      sourceName: 'text-boxes.pptx',
+      bytes: bytes,
+    );
+    final metadata = result.content!.blocks.single.metadata;
+    expect(metadata['paragraphs'], ['First line', 'Second line']);
+    expect(metadata['textBoxes'], ['First line', 'Second line']);
   });
 
   test('PDF parser accepts hex text streams', () async {

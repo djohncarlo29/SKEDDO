@@ -131,13 +131,29 @@ class LocalContentExtractor implements ContentExtractor {
     var order = 0;
     var section = 0;
 
-    for (final entry in archive) {
-      if (!entry.isFile ||
-          (!entry.name.endsWith('word/document.xml') &&
-              !entry.name.startsWith('word/header') &&
-              !entry.name.startsWith('word/footer'))) {
-        continue;
-      }
+    final documentParts =
+        archive
+            .where(
+              (entry) =>
+                  entry.isFile &&
+                  (entry.name == 'word/document.xml' ||
+                      RegExp(
+                        r'^word/(header|footer)\d+\.xml$',
+                      ).hasMatch(entry.name)),
+            )
+            .toList()
+          ..sort((a, b) {
+            int rank(String name) {
+              if (name == 'word/document.xml') return 0;
+              if (name.startsWith('word/header')) return 1;
+              return 2;
+            }
+
+            final rankCompare = rank(a.name).compareTo(rank(b.name));
+            return rankCompare == 0 ? a.name.compareTo(b.name) : rankCompare;
+          });
+
+    for (final entry in documentParts) {
       final name = entry.name;
       final xml = _safeXml(entry.readBytes() ?? const <int>[]);
       if (xml == null) continue;
@@ -177,7 +193,19 @@ class LocalContentExtractor implements ContentExtractor {
               'part': name,
               'sourceSection': section,
               if (style != null) 'style': style,
-              if (isList) 'list': 'true',
+              if (isList) ...{
+                'list': 'true',
+                if (_elements(paragraph, 'ilvl').isNotEmpty)
+                  'listLevel': _attributeLocal(
+                    _elements(paragraph, 'ilvl').first,
+                    'val',
+                  ),
+                if (_elements(paragraph, 'numId').isNotEmpty)
+                  'numberingId': _attributeLocal(
+                    _elements(paragraph, 'numId').first,
+                    'val',
+                  ),
+              },
               if (hyperlinkIds.isNotEmpty)
                 'hyperlinks': {
                   for (final id in hyperlinkIds)
@@ -270,12 +298,10 @@ class LocalContentExtractor implements ContentExtractor {
       if (entry.name != 'xl/workbook.xml') continue;
       final xml = _safeXml(entry.readBytes() ?? const <int>[]);
       if (xml == null) continue;
-      worksheetNames.addAll(
-        _elements(
-          xml,
-          'sheet',
-        ).map((sheet) => sheet.getAttribute('name') ?? 'Sheet').toList(),
-      );
+      for (final sheet in _elements(xml, 'sheet')) {
+        final name = sheet.getAttribute('name') ?? 'Sheet';
+        worksheetNames.add(name);
+      }
     }
     if (sharedEntry != null) {
       final xml = _safeXml(sharedEntry.readBytes() ?? const <int>[]);
@@ -311,7 +337,10 @@ class LocalContentExtractor implements ContentExtractor {
           .toList();
       final hiddenColumns = _elements(xml, 'col')
           .where((column) => _attributeLocal(column, 'hidden') == '1')
-          .map((column) => _attributeLocal(column, 'min'))
+          .map(
+            (column) =>
+                '${_attributeLocal(column, 'min') ?? ''}:${_attributeLocal(column, 'max') ?? _attributeLocal(column, 'min') ?? ''}',
+          )
           .whereType<String>()
           .toList();
       final hyperlinkTargets = _xlsxHyperlinks(archive, entry.name);
@@ -373,6 +402,7 @@ class LocalContentExtractor implements ContentExtractor {
           metadata: {
             'part': entry.name,
             'worksheetName': worksheetName,
+            'worksheetIndex': worksheetIndex,
             'cellCoordinates': coordinates,
             'mergedRanges': mergedRanges,
             'hiddenRows': hiddenRows,
@@ -553,6 +583,14 @@ class LocalContentExtractor implements ContentExtractor {
           .join(' ')
           .trim();
       if (text.isEmpty) continue;
+      final paragraphs = _elements(
+        xml,
+        'p',
+      ).map(_elementText).where((value) => value.isNotEmpty).toList();
+      final textBoxes = _elements(
+        xml,
+        'sp',
+      ).map(_elementText).where((value) => value.isNotEmpty).toList();
       final slideNumber = int.tryParse(
         RegExp(r'slide(\d+)\.xml$').firstMatch(entry.name)?.group(1) ?? '',
       );
@@ -594,6 +632,8 @@ class LocalContentExtractor implements ContentExtractor {
           metadata: {
             'part': entry.name,
             'slideNumber': '${slideNumber ?? order}',
+            'paragraphs': paragraphs,
+            'textBoxes': textBoxes,
             if (slideTitle != null) 'title': slideTitle,
             if (notes != null) 'speakerNotes': notes,
           },
@@ -711,6 +751,17 @@ class LocalContentExtractor implements ContentExtractor {
         ...RegExp(
           r'<([0-9A-Fa-f\s]+)>\s*Tj',
         ).allMatches(pageRaw).map((m) => _decodePdfHex(m.group(1)!)),
+        ...RegExp(r'\[((?:.|\n)*?)\]\s*TJ')
+            .allMatches(pageRaw)
+            .expand(
+              (match) => RegExp(r'\(([^()]*)\)|<([0-9A-Fa-f\s]+)>')
+                  .allMatches(match.group(1)!)
+                  .map(
+                    (part) => part.group(1) != null
+                        ? _unescapePdfText(part.group(1)!)
+                        : _decodePdfHex(part.group(2)!),
+                  ),
+            ),
       ].join(' ');
       return (index: index, text: pageText);
     });
@@ -960,13 +1011,24 @@ class LocalContentExtractor implements ContentExtractor {
     final printable = text.runes.where((r) => r >= 32 && r < 127).length;
     final ratio = printable / text.runes.length;
     if (ratio < .8) return .3;
+    // A text layer made only of repeated one-character fragments is usually
+    // an unusable font-map extraction, not a meaningful document.
+    final tokens = text.split(RegExp(r'\s+')).where((t) => t.isNotEmpty);
+    final shortTokenRatio = tokens.isEmpty
+        ? 1.0
+        : tokens.where((token) => token.length <= 1).length / tokens.length;
+    if (shortTokenRatio > .65) return .3;
     if (text.length < bytes ~/ 500) return .45;
     return .78;
   }
 
   static String _pdfClassification(String text, String raw, double quality) {
+    final hasPdfHeader = raw.startsWith('%PDF-');
+    final hasEof = raw.contains('%%EOF');
+    final hasPageObject = RegExp(r'/Type\s*/Page\b').hasMatch(raw);
+    if (!hasPdfHeader || !hasEof) return 'corrupt-or-unreadable';
     if (text.trim().isEmpty) {
-      return raw.contains('%%EOF') ? 'image-only' : 'corrupt-or-unreadable';
+      return hasPageObject ? 'image-only' : 'corrupt-or-unreadable';
     }
     if (quality < .35) return 'scrambled';
     if (quality < .55) return 'partial';
