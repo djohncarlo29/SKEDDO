@@ -2,6 +2,7 @@ import '../../ai/ai_services.dart';
 import '../../ai/interfaces.dart';
 import '../../ai/parsed_date.dart';
 import '../../ai/date_parser/rule_based_date_parser.dart';
+import 'package:flutter/foundation.dart' show compute;
 import 'contracts.dart';
 import 'models.dart';
 
@@ -48,11 +49,32 @@ class DefaultEventAnalyzer implements EventAnalyzer {
         ),
       );
     }
-    final total = sourceBlocks.isEmpty ? 1 : sourceBlocks.length;
+    final chunkInputs = sourceBlocks
+        .map(
+          (block) => <String, Object?>{
+            'text': block.text,
+            'pageIndex': block.pageIndex,
+            'sectionIndex': block.sectionIndex,
+            'order': block.order,
+            'metadata': block.metadata,
+          },
+        )
+        .toList();
+    final chunkMaps = await compute(_boundedTextChunks, chunkInputs);
+    final total = chunkMaps.isEmpty ? 1 : chunkMaps.length;
 
-    for (var index = 0; index < sourceBlocks.length; index++) {
+    for (var index = 0; index < chunkMaps.length; index++) {
       cancellation?.throwIfCancelled();
-      final block = sourceBlocks[index];
+      final raw = chunkMaps[index];
+      final block = ContentBlock(
+        kind: ContentBlockKind.paragraph,
+        text: raw['text'] as String,
+        pageIndex: raw['pageIndex'] as int?,
+        sectionIndex: raw['sectionIndex'] as int?,
+        order: raw['order'] as int? ?? index,
+        metadata:
+            (raw['metadata'] as Map?)?.cast<String, dynamic>() ?? const {},
+      );
       final text = block.text.trim();
       if (text.isEmpty) continue;
       final temporal = _temporalFragment(text);
@@ -348,4 +370,46 @@ class DefaultEventAnalyzer implements EventAnalyzer {
 
   String _time(DateTime value) =>
       '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+}
+
+List<Map<String, Object?>> _boundedTextChunks(
+  List<Map<String, Object?>> inputs,
+) {
+  const maxChars = 1200;
+  const overlap = 120;
+  final output = <Map<String, Object?>>[];
+  for (final input in inputs) {
+    final text = (input['text'] as String? ?? '').trim();
+    if (text.isEmpty) continue;
+    if (text.length <= maxChars) {
+      output.add({...input, 'text': text});
+      continue;
+    }
+    var start = 0;
+    var chunkIndex = 0;
+    while (start < text.length) {
+      final end = (start + maxChars).clamp(0, text.length);
+      final chunk = text.substring(start, end).trim();
+      if (chunk.isNotEmpty) {
+        final metadata = ((input['metadata'] as Map?) ?? {})
+            .cast<String, dynamic>();
+        output.add({
+          ...input,
+          'text': chunk,
+          'order': (input['order'] as int? ?? 0) + chunkIndex,
+          'metadata': {
+            ...metadata,
+            'sourceSpanStart': start,
+            'sourceSpanEnd': end,
+            'chunkIndex': chunkIndex,
+            'chunkLength': text.length,
+          },
+        });
+      }
+      if (end == text.length) break;
+      start = end - overlap;
+      chunkIndex++;
+    }
+  }
+  return output;
 }

@@ -28,6 +28,17 @@ class NativeOfflineOcrPlugin(
 
     init {
         channel.setMethodCallHandler(this)
+        cleanupStaleTempFiles()
+    }
+
+    private fun cleanupStaleTempFiles() {
+        activity.cacheDir.listFiles()
+            ?.filter { it.name.startsWith("offline-ocr-") }
+            ?.forEach { file ->
+                if (file.lastModified() < System.currentTimeMillis() - 60 * 60 * 1000) {
+                    file.delete()
+                }
+            }
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {

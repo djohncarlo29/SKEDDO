@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'contracts.dart';
@@ -21,6 +22,49 @@ class FileAnalysisCoordinator {
        analyzer = analyzer ?? DefaultEventAnalyzer();
 
   Future<AnalysisResult> analyzeOffline({
+    required String sourceName,
+    required Uint8List bytes,
+    String? mimeType,
+    AnalysisCancellationToken? cancellation,
+    AnalysisProgress? onProgress,
+  }) async {
+    return _analyzeWithTimeout(
+      sourceName: sourceName,
+      bytes: bytes,
+      mimeType: mimeType,
+      cancellation: cancellation,
+      onProgress: onProgress,
+    );
+  }
+
+  Future<AnalysisResult> _analyzeWithTimeout({
+    required String sourceName,
+    required Uint8List bytes,
+    String? mimeType,
+    AnalysisCancellationToken? cancellation,
+    AnalysisProgress? onProgress,
+  }) async {
+    try {
+      return await _analyzeInternal(
+        sourceName: sourceName,
+        bytes: bytes,
+        mimeType: mimeType,
+        cancellation: cancellation,
+        onProgress: onProgress,
+      ).timeout(const Duration(seconds: 90));
+    } on TimeoutException {
+      cancellation?.cancel();
+      return const AnalysisResult(
+        status: AnalysisStatus.timedOut,
+        failure: AnalysisFailure(
+          AnalysisStatus.timedOut,
+          'Offline analysis took too long and was stopped safely.',
+        ),
+      );
+    }
+  }
+
+  Future<AnalysisResult> _analyzeInternal({
     required String sourceName,
     required Uint8List bytes,
     String? mimeType,

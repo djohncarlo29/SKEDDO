@@ -20,8 +20,29 @@ class OfflineExtractionException implements Exception {
 
 class LocalContentExtractor implements ContentExtractor {
   static const maxBytes = 50 * 1024 * 1024;
+  static const maxArchiveDepth = 2;
   static const maxArchiveEntries = 200;
   static const maxArchiveExpandedBytes = 100 * 1024 * 1024;
+
+  static int maxBytesFor(DetectedFileType type) => switch (type) {
+    DetectedFileType.image => 15 * 1024 * 1024,
+    DetectedFileType.pdf => 40 * 1024 * 1024,
+    DetectedFileType.docx ||
+    DetectedFileType.xlsx ||
+    DetectedFileType.pptx => 30 * 1024 * 1024,
+    DetectedFileType.zipArchive => 50 * 1024 * 1024,
+    DetectedFileType.plainText ||
+    DetectedFileType.markdown ||
+    DetectedFileType.json ||
+    DetectedFileType.xml ||
+    DetectedFileType.csv ||
+    DetectedFileType.html ||
+    DetectedFileType.log ||
+    DetectedFileType.ics ||
+    DetectedFileType.vcs ||
+    DetectedFileType.rtf => 10 * 1024 * 1024,
+    _ => maxBytes,
+  };
 
   @override
   bool supports(DetectedFileType type) => true;
@@ -35,10 +56,11 @@ class LocalContentExtractor implements ContentExtractor {
     AnalysisProgress? onProgress,
   }) async {
     cancellation?.throwIfCancelled();
-    if (bytes.length > maxBytes) {
+    final formatLimit = maxBytesFor(type);
+    if (bytes.length > formatLimit) {
       throw const OfflineExtractionException(
         AnalysisStatus.fileTooLarge,
-        'This file is larger than the offline analysis limit.',
+        'This file is larger than the offline limit for its format.',
       );
     }
     onProgress?.call('Reading document', .2);
@@ -771,8 +793,15 @@ class LocalContentExtractor implements ContentExtractor {
     String sourceName,
     Uint8List bytes,
     AnalysisCancellationToken? cancellation,
-    AnalysisProgress? onProgress,
-  ) {
+    AnalysisProgress? onProgress, [
+    int depth = 0,
+  ]) {
+    if (depth > maxArchiveDepth) {
+      throw const OfflineExtractionException(
+        AnalysisStatus.fileTooLarge,
+        'Archive nesting exceeds the offline safety limit.',
+      );
+    }
     final archive = _decodeZip(bytes);
     if (archive.length > maxArchiveEntries) {
       throw const OfflineExtractionException(
@@ -805,6 +834,18 @@ class LocalContentExtractor implements ContentExtractor {
         filename: name,
         bytes: Uint8List.fromList(data),
       ).type;
+      if (type == DetectedFileType.zipArchive) {
+        if (depth + 1 > maxArchiveDepth) {
+          throw const OfflineExtractionException(
+            AnalysisStatus.fileTooLarge,
+            'Archive nesting exceeds the offline safety limit.',
+          );
+        }
+        // Nested archives are intentionally not expanded recursively here.
+        // Counting and bounding them prevents archive bombs while keeping
+        // the parent archive usable.
+        continue;
+      }
       if (!_isTextLike(type)) continue;
       final text = utf8.decode(data, allowMalformed: true);
       if (text.trim().isEmpty) continue;

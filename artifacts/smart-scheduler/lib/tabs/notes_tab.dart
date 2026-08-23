@@ -16,6 +16,7 @@ import '../app_theme.dart';
 import '../widgets/fixed_size_icon.dart';
 import '../services/event_extractor.dart';
 import '../services/event_store.dart';
+import '../services/offline_analysis.dart' as offline;
 import '../services/speech_service.dart';
 import '../widgets/action_panel.dart';
 import '../widgets/native_text_input.dart';
@@ -875,6 +876,8 @@ class _NoteInputCardState extends State<_NoteInputCard>
     Uint8List bytes,
     String filename,
     String? mimeType,
+    offline.AnalysisCancellationToken cancellation,
+    offline.AnalysisProgress onProgress,
   ) async {
     final ext = filename.contains('.')
         ? filename.split('.').last.toLowerCase()
@@ -888,6 +891,8 @@ class _NoteInputCardState extends State<_NoteInputCard>
         bytes: bytes,
         filename: filename,
         mimeType: mimeType,
+        cancellation: cancellation,
+        onProgress: onProgress,
       );
     }
     if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic'].contains(ext) ||
@@ -896,6 +901,8 @@ class _NoteInputCardState extends State<_NoteInputCard>
         bytes,
         mimeType ?? 'image/jpeg',
         filename: filename,
+        cancellation: cancellation,
+        onProgress: onProgress,
       );
     }
     if (_kLegacyOfficeExts.contains(ext)) {
@@ -1604,6 +1611,7 @@ class _SaveEventButtonState extends State<_SaveEventButton>
 
   @override
   void dispose() {
+    _analysisCancellation?.cancel();
     _ctrl.dispose();
     super.dispose();
   }
@@ -2963,6 +2971,8 @@ class _AttachmentPreviewOverlay extends StatefulWidget {
     Uint8List bytes,
     String filename,
     String? mimeType,
+    offline.AnalysisCancellationToken cancellation,
+    offline.AnalysisProgress onProgress,
   )
   onAnalyze;
   final VoidCallback onDismiss;
@@ -2998,6 +3008,9 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
   bool _docxConverting = false;
   bool _isAnalyzing = false;
   bool _analysisDialogOpen = false;
+  offline.AnalysisCancellationToken? _analysisCancellation;
+  String _analysisStage = 'Preparing analysis';
+  double _analysisProgress = 0;
 
   // Natural pixel dimensions of an image attachment, decoded asynchronously
   // so the card can be sized to exactly the image's intrinsic aspect ratio.
@@ -3011,25 +3024,48 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
       return;
     }
     setState(() => _isAnalyzing = true);
+    final cancellation = offline.AnalysisCancellationToken();
+    setState(() {
+      _analysisCancellation = cancellation;
+      _analysisStage = 'Preparing analysis';
+      _analysisProgress = 0;
+    });
     try {
       final events = await widget.onAnalyze(
         bytes,
         widget.filename ?? 'attachment',
         widget.mimeType,
+        cancellation,
+        (stage, progress) {
+          if (!mounted) return;
+          setState(() {
+            _analysisStage = stage;
+            _analysisProgress = progress.clamp(0, 1);
+          });
+        },
       );
       if (!mounted) return;
-      setState(() => _isAnalyzing = false);
+      setState(() {
+        _isAnalyzing = false;
+        _analysisCancellation = null;
+      });
       await showCupertinoModalPopup<void>(
         context: context,
         builder: (_) => _ExtractionResultSheet(events: events),
       );
     } on ExtractionException catch (error) {
       if (!mounted) return;
-      setState(() => _isAnalyzing = false);
+      setState(() {
+        _isAnalyzing = false;
+        _analysisCancellation = null;
+      });
       await _showAnalysisError(error.message);
     } catch (_) {
       if (!mounted) return;
-      setState(() => _isAnalyzing = false);
+      setState(() {
+        _isAnalyzing = false;
+        _analysisCancellation = null;
+      });
       await _showAnalysisError('Analysis failed. Please try again.');
     }
   }
@@ -3431,33 +3467,65 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
             ),
             if (_isAnalyzing)
               Positioned.fill(
-                child: IgnorePointer(
-                  child: Center(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: kModalBackground.withOpacity(.92),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 14,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CupertinoActivityIndicator(),
-                            SizedBox(width: 10),
-                            Text(
-                              'Analyzing attachment…',
-                              style: TextStyle(
-                                inherit: false,
-                                color: kPrimaryLabel,
-                                fontSize: 14,
+                child: Center(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: kModalBackground.withOpacity(.94),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const CupertinoActivityIndicator(),
+                              const SizedBox(width: 10),
+                              Text(
+                                _analysisStage,
+                                style: const TextStyle(
+                                  inherit: false,
+                                  color: kPrimaryLabel,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: 190,
+                            height: 4,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: ColoredBox(
+                                      color: kTertiaryLabel.withOpacity(.2),
+                                    ),
+                                  ),
+                                  FractionallySizedBox(
+                                    widthFactor: _analysisProgress,
+                                    child: ColoredBox(
+                                      color: resolveAccentColor(context),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 2),
+                          CupertinoButton(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 2,
+                            ),
+                            onPressed: () => _analysisCancellation?.cancel(),
+                            child: const Text('Cancel'),
+                          ),
+                        ],
                       ),
                     ),
                   ),

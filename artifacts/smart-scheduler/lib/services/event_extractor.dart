@@ -97,22 +97,40 @@ class EventExtractor {
     Uint8List bytes,
     String mimeType, {
     String? filename,
+    offline.AnalysisCancellationToken? cancellation,
+    offline.AnalysisProgress? onProgress,
   }) => _analyze(
     sourceName: filename ?? _sourceNameForMime(mimeType),
     bytes: bytes,
     mimeType: mimeType,
+    cancellation: cancellation,
+    onProgress: onProgress,
   );
 
   static Future<List<ExtractedEvent>> fromFile({
     required Uint8List bytes,
     required String filename,
     String? mimeType,
-  }) => _analyze(sourceName: filename, bytes: bytes, mimeType: mimeType);
+    offline.AnalysisCancellationToken? cancellation,
+    offline.AnalysisProgress? onProgress,
+  }) => _analyze(
+    sourceName: filename,
+    bytes: bytes,
+    mimeType: mimeType,
+    cancellation: cancellation,
+    onProgress: onProgress,
+  );
 
-  static Future<List<ExtractedEvent>> fromText(String text) => _analyze(
+  static Future<List<ExtractedEvent>> fromText(
+    String text, {
+    offline.AnalysisCancellationToken? cancellation,
+    offline.AnalysisProgress? onProgress,
+  }) => _analyze(
     sourceName: 'pasted.txt',
     bytes: Uint8List.fromList(utf8.encode(text)),
     mimeType: 'text/plain',
+    cancellation: cancellation,
+    onProgress: onProgress,
   );
 
   static Future<List<ExtractedEvent>> fromLegacyOffice(
@@ -124,11 +142,15 @@ class EventExtractor {
     required String sourceName,
     required Uint8List bytes,
     String? mimeType,
+    offline.AnalysisCancellationToken? cancellation,
+    offline.AnalysisProgress? onProgress,
   }) async {
     final result = await _coordinator.analyzeOffline(
       sourceName: sourceName,
       bytes: bytes,
       mimeType: mimeType,
+      cancellation: cancellation,
+      onProgress: onProgress,
     );
     if (!result.isSuccess) {
       throw ExtractionException(
