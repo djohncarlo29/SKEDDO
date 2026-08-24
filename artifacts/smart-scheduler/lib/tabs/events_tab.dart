@@ -3628,7 +3628,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         ], context),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
             Container(
@@ -3661,9 +3661,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: cat.description.isEmpty
-                    ? MainAxisAlignment.center
-                    : MainAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Text(
                     cat.name,
@@ -3679,7 +3677,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     ),
                   ),
                   if (cat.description.isNotEmpty) ...[
-                    SizedBox(height: 8),
+                    SizedBox(height: 4),
                     Text(
                       cat.description,
                       style: TextStyle(
@@ -4048,7 +4046,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
         shape: BoundedContinuousRectangleBorder(
@@ -4101,7 +4099,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           Positioned(
             // Account for the retained +1.5px optical translation so the
             // visible circle-to-title gap is exactly 8pt.
-            top: 40.0,
+            top: 36.0,
             left: 0,
             child: Transform.translate(
               offset: const Offset(0, 1.5),
@@ -4130,7 +4128,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     bool suppressDarkModeOutline = false,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
         shape: BoundedContinuousRectangleBorder(
@@ -4195,7 +4193,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           Positioned(
             // Account for the retained +1.5px optical translation so the
             // visible circle-to-title gap is exactly 8pt.
-            top: 40.0,
+            top: 36.0,
             left: 0,
             child: Transform.translate(
               offset: const Offset(0, 1.5),
@@ -6411,7 +6409,7 @@ class _AnimatedCategoryGrid extends StatelessWidget {
     this.dragFullWidth = false,
   });
 
-  static const _rowHeight = 89.0;
+  static const _rowHeight = 76.0;
   static const _rowGap = 16.0;
   static const _colGap = 16.0;
   static const _duration = Duration(milliseconds: 280);
@@ -6554,7 +6552,7 @@ class _CategoryTile extends StatelessWidget {
     final surfaceColor = resolveThemeColor(kSbSurface, context);
     final shadows = resolveThemeShadows(kCardShadow, context);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
       decoration: ShapeDecoration(
         color: surfaceColor,
         shape: BoundedContinuousRectangleBorder(
@@ -6637,7 +6635,7 @@ class _CategoryTile extends StatelessWidget {
           Positioned(
             // Account for the retained +1.5px optical translation so the
             // visible circle-to-title gap is exactly 8pt.
-            top: 40.0,
+            top: 36.0,
             left: 0,
             child: Transform.translate(
               offset: const Offset(0, 1.5),
@@ -7103,7 +7101,7 @@ class _PinnedUserTile extends StatelessWidget {
     final resolvedSurface = resolveThemeColor(kSbSurface, context);
     final resolvedShadows = resolveThemeShadows(kCardShadow, context);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
       decoration: ShapeDecoration(
         color: resolvedSurface,
         shape: BoundedContinuousRectangleBorder(
@@ -7162,7 +7160,7 @@ class _PinnedUserTile extends StatelessWidget {
           Positioned(
             // Account for the retained +1.5px optical translation so the
             // visible circle-to-title gap is exactly 8pt.
-            top: 40.0,
+            top: 36.0,
             left: 0,
             child: Transform.translate(
               offset: const Offset(0, 1.5),
@@ -7259,8 +7257,8 @@ double _eventsCategoryListRowHeight(
     16,
     letterSpacing: kTracking16,
   );
-  const verticalPadding = 32.0; // 16 px top + 16 px bottom
-  const subtitleGap = 8.0;
+  const verticalPadding = 16.0; // 8 px top + 8 px bottom
+  const subtitleGap = 4.0;
   const iconHeight = 34.0;
   double measure(_FlatItem current) {
     final label = current.category?.name ?? current.group?.name;
@@ -7903,8 +7901,8 @@ class _CategoryRow extends StatelessWidget {
                 padding: EdgeInsets.only(
                   left: leftPad,
                   right: 16,
-                  top: 16,
-                  bottom: 16,
+                  top: 8,
+                  bottom: 8,
                 ),
                 child: Row(
                   children: [
@@ -7931,9 +7929,7 @@ class _CategoryRow extends StatelessWidget {
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: category.description.isEmpty
-                            ? MainAxisAlignment.center
-                            : MainAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           Text(
                             category.name,
@@ -7949,7 +7945,7 @@ class _CategoryRow extends StatelessWidget {
                             ),
                           ),
                           if (category.description.isNotEmpty) ...[
-                            SizedBox(height: 8),
+                            SizedBox(height: 4),
                             Text(
                               category.description,
                               style: TextStyle(
