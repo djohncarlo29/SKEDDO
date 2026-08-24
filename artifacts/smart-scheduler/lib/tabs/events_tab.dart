@@ -5978,11 +5978,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           ),
           SliverToBoxAdapter(
             child: SizedBox(
-              // The button already owns its original 28 px trailing inset;
+              // The button already owns its original 24 px trailing inset;
               // don't compound that spacing with the pill clearance.
               height: floatingTabBarContentBottomClearance(
                 context,
-                existingTrailingContentPadding: 28,
+                existingTrailingContentPadding: 24,
                 finalContentGap: kAddCategoryFloatingTabBarGap,
               ),
             ),
@@ -8107,7 +8107,7 @@ class _GroupRow extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
-                  vertical: 13,
+                 vertical: 16,
                 ),
                 child: Row(
                   children: [
