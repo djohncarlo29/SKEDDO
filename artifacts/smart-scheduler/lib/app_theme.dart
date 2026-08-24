@@ -66,9 +66,9 @@ double floatingTabBarBottomOffset(BuildContext context) =>
 /// indicator. This intentionally ignores keyboard [viewInsets] and does not
 /// impose the Floating Tab Bar's separate 16 px design margin.
 double systemSafeAreaBottomInset(BuildContext context) => math.max(
-      MediaQuery.viewPaddingOf(context).bottom,
-      MediaQuery.systemGestureInsetsOf(context).bottom,
-    );
+  MediaQuery.viewPaddingOf(context).bottom,
+  MediaQuery.systemGestureInsetsOf(context).bottom,
+);
 
 /// Extra scroll-content clearance needed so the final item in a tab can be
 /// scrolled fully above the floating pill rather than ending underneath it.
@@ -1587,9 +1587,13 @@ class SquircleStadiumBorder extends ContinuousRectangleBorder {
       _pathForRect(rect.deflate(side.width));
 }
 
-// ConcentricSquircleBorder — a bounded four-corner squircle whose radius is
-// derived from a parent curve plus an inset. This keeps nested surfaces on the
-// same corner centers instead of giving every card an unrelated radius.
+// ConcentricSquircleBorder — a bounded, parent-derived superellipse corner.
+//
+// The inset is intentionally part of the shape rather than a second arbitrary
+// radius: the child curve is kept on the parent's corner-center system and its
+// radius is reduced by the distance from that parent surface. The sampled
+// superellipse is closer to Apple's continuous corners than a circular
+// RoundedRectangle or a single cubic control point.
 class ConcentricSquircleBorder extends ContinuousRectangleBorder {
   final double radius;
   final double inset;
@@ -1600,53 +1604,80 @@ class ConcentricSquircleBorder extends ContinuousRectangleBorder {
     this.inset = 0,
   });
 
+  static const int _cornerSegments = 8;
+  static const double _superellipseExponent = 4.0;
+
+  double _superellipseCoordinate(double value) {
+    return math.pow(value.abs(), 2 / _superellipseExponent).toDouble();
+  }
+
+  void _addTopRightCorner(Path path, Rect rect, double cornerRadius) {
+    final centerX = rect.right - cornerRadius;
+    final centerY = rect.top + cornerRadius;
+    for (var i = 1; i <= _cornerSegments; i++) {
+      final t = (math.pi / 2) * i / _cornerSegments;
+      path.lineTo(
+        centerX + cornerRadius * _superellipseCoordinate(math.sin(t)),
+        centerY - cornerRadius * _superellipseCoordinate(math.cos(t)),
+      );
+    }
+  }
+
+  void _addBottomRightCorner(Path path, Rect rect, double cornerRadius) {
+    final centerX = rect.right - cornerRadius;
+    final centerY = rect.bottom - cornerRadius;
+    for (var i = 1; i <= _cornerSegments; i++) {
+      final t = (math.pi / 2) * i / _cornerSegments;
+      path.lineTo(
+        centerX + cornerRadius * _superellipseCoordinate(math.cos(t)),
+        centerY + cornerRadius * _superellipseCoordinate(math.sin(t)),
+      );
+    }
+  }
+
+  void _addBottomLeftCorner(Path path, Rect rect, double cornerRadius) {
+    final centerX = rect.left + cornerRadius;
+    final centerY = rect.bottom - cornerRadius;
+    for (var i = 1; i <= _cornerSegments; i++) {
+      final t = (math.pi / 2) * i / _cornerSegments;
+      path.lineTo(
+        centerX - cornerRadius * _superellipseCoordinate(math.sin(t)),
+        centerY + cornerRadius * _superellipseCoordinate(math.cos(t)),
+      );
+    }
+  }
+
+  void _addTopLeftCorner(Path path, Rect rect, double cornerRadius) {
+    final centerX = rect.left + cornerRadius;
+    final centerY = rect.top + cornerRadius;
+    for (var i = 1; i <= _cornerSegments; i++) {
+      final t = (math.pi / 2) * i / _cornerSegments;
+      path.lineTo(
+        centerX - cornerRadius * _superellipseCoordinate(math.cos(t)),
+        centerY - cornerRadius * _superellipseCoordinate(math.sin(t)),
+      );
+    }
+  }
+
   Path _pathForRect(Rect rect) {
     if (rect.isEmpty) return Path();
-    final effectiveRadius = math.min(
-      math.max(this.radius - inset, 0),
-      math.min(rect.width / 2, rect.height / 2),
+    final double effectiveRadius = math.min<double>(
+      math.max<double>(this.radius - inset, 0),
+      math.min<double>(rect.width / 2, rect.height / 2),
     );
-    final c = effectiveRadius * _kSharedSquircleCurveControl;
     final path = Path()..moveTo(rect.left + effectiveRadius, rect.top);
 
-    // Four corners share the parent's curve relationship; the sides remain
-    // straight, including on the taller sheet surfaces.
+    // The straight segments are retained between sampled superellipse
+    // quarters. This is what keeps the shape bounded on short buttons while
+    // preserving Apple's soft transition into the vertical sides on sheets.
     path.lineTo(rect.right - effectiveRadius, rect.top);
-    path.cubicTo(
-      rect.right - effectiveRadius + c,
-      rect.top,
-      rect.right,
-      rect.top + effectiveRadius - c,
-      rect.right,
-      rect.top + effectiveRadius,
-    );
+    _addTopRightCorner(path, rect, effectiveRadius);
     path.lineTo(rect.right, rect.bottom - effectiveRadius);
-    path.cubicTo(
-      rect.right,
-      rect.bottom - effectiveRadius + c,
-      rect.right - effectiveRadius + c,
-      rect.bottom,
-      rect.right - effectiveRadius,
-      rect.bottom,
-    );
+    _addBottomRightCorner(path, rect, effectiveRadius);
     path.lineTo(rect.left + effectiveRadius, rect.bottom);
-    path.cubicTo(
-      rect.left + effectiveRadius - c,
-      rect.bottom,
-      rect.left,
-      rect.bottom - effectiveRadius + c,
-      rect.left,
-      rect.bottom - effectiveRadius,
-    );
+    _addBottomLeftCorner(path, rect, effectiveRadius);
     path.lineTo(rect.left, rect.top + effectiveRadius);
-    path.cubicTo(
-      rect.left,
-      rect.top + effectiveRadius - c,
-      rect.left + effectiveRadius - c,
-      rect.top,
-      rect.left + effectiveRadius,
-      rect.top,
-    );
+    _addTopLeftCorner(path, rect, effectiveRadius);
     path.close();
     return path;
   }
@@ -1663,10 +1694,8 @@ class ConcentricSquircleBorder extends ContinuousRectangleBorder {
 // BoundedSquircleStadiumBorder is kept as a compatibility alias for existing
 // callers; new nested surfaces should use ConcentricSquircleBorder.
 class BoundedSquircleStadiumBorder extends ConcentricSquircleBorder {
-  const BoundedSquircleStadiumBorder({
-    super.side,
-    super.radius,
-  }) : super(inset: 0);
+  const BoundedSquircleStadiumBorder({super.side, super.radius})
+    : super(inset: 0);
 }
 
 // SplitChevronUpDown — a clean custom up/down picker glyph.  This is painted
@@ -2010,9 +2039,7 @@ class FrostedGlassCard extends StatelessWidget {
         shape: effectiveShape,
       ),
       child: ClipPath(
-        clipper: ShapeBorderClipper(
-          shape: effectiveShape,
-        ),
+        clipper: ShapeBorderClipper(shape: effectiveShape),
         child: Builder(
           builder: (context) {
             final glassSurface = ColoredBox(
