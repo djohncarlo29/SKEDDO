@@ -44,10 +44,10 @@ const kFloatingTabBarSurfaceColor = CupertinoDynamicColor.withBrightness(
 );
 // Shared visual gap used between the last content edge and the floating pill.
 // Events' category card → Add Category gap uses the same value.
-const double kFloatingTabBarVisualGap = 18.0;
-// The Add Category control gets a deliberate final 20 px breathing room above
+const double kFloatingTabBarVisualGap = 16.0;
+// The Add Category control gets a deliberate final 24 px breathing room above
 // the floating pill, independent of the category-to-control layout gap.
-const double kAddCategoryFloatingTabBarGap = 20.0;
+const double kAddCategoryFloatingTabBarGap = 24.0;
 // Keep the pill's final-item safety buffer independent from the Events layout
 // gap. Reusing kFloatingTabBarVisualGap here compounds spacing at controls
 // that already have their own trailing padding.

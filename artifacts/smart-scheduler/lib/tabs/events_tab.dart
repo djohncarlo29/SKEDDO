@@ -1233,7 +1233,7 @@ class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
           children: [
             searchBarRow,
             if (showSeparator) ...[
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
               Container(
                 height: 0.5,
                 color: resolveThemeColor(kSeparatorColor, ctx),
@@ -3628,7 +3628,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         ], context),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Row(
           children: [
             Container(
@@ -3657,7 +3657,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 ),
               ),
             ),
-            SizedBox(width: 13),
+                      SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -3679,7 +3679,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     ),
                   ),
                   if (cat.description.isNotEmpty) ...[
-                    SizedBox(height: 2),
+                    SizedBox(height: 8),
                     Text(
                       cat.description,
                       style: TextStyle(
@@ -3713,7 +3713,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     letterSpacing: kTracking16,
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 Icon(
                   CupertinoIcons.chevron_right,
                   color: secondaryLabel,
@@ -3746,7 +3746,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         ], context),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Row(
           children: [
             SizedBox(
@@ -3764,7 +3764,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 ),
               ),
             ),
-            SizedBox(width: 13),
+            SizedBox(width: 16),
             Expanded(
               child: Text(
                 group.name,
@@ -3796,7 +3796,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     letterSpacing: kTracking16,
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 SizedBox(
                   width: textScaler.scale(14),
                   child: Center(
@@ -4048,7 +4048,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     }
 
     return Container(
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.all(16),
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
         shape: BoundedContinuousRectangleBorder(
@@ -4128,7 +4128,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     bool suppressDarkModeOutline = false,
   }) {
     return Container(
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.all(16),
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
         shape: BoundedContinuousRectangleBorder(
@@ -5815,7 +5815,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
     // Shared search-bar row — used by both layout paths below.
     final searchBarRow = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Row(
         children: [
           Expanded(
@@ -5871,7 +5871,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             hits: _searchAll,
             suggestedQuery: _searchSuggestion,
             onSuggestionTap: _applySearchSuggestion,
-            eventTopPadding: 18,
+            eventTopPadding: 16,
             eventTileWrapper: _wrapSearchEventTile,
             eventTilePressWrapper: (child) => _TilePressScale(child: child),
           ),
@@ -5881,7 +5881,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 height: floatingTabBarContentBottomClearance(
                   context,
                   existingTrailingContentPadding: 32,
-                  finalContentGap: 20,
+                  finalContentGap: 24,
                 ),
               ),
             ),
@@ -5889,7 +5889,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         // ── Normal grid (also shown behind the overlay when off-screen) ───
         else ...[
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             sliver: SliverToBoxAdapter(
               child: _AnimatedCategoryGrid(
                 entries: gridItems,
@@ -5903,7 +5903,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
           SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(20, 16, 16, 16),
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 16),
               child: Text(
                 'CATEGORIES',
                 style: TextStyle(
@@ -5970,7 +5970,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               16,
               _buildFlatDisplayList().isEmpty ? 0.0 : kFloatingTabBarVisualGap,
               16,
-              28,
+              24,
             ),
             sliver: SliverToBoxAdapter(
               child: _AddCategoryButton(onCategorySaved: _handleNewCategory),
@@ -6206,7 +6206,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                   hits: _searchAll,
                   suggestedQuery: _searchSuggestion,
                   onSuggestionTap: _applySearchSuggestion,
-                  eventTopPadding: 18,
+                  eventTopPadding: 16,
                   eventTileWrapper: _wrapSearchEventTile,
                   eventTilePressWrapper: (child) =>
                       _TilePressScale(child: child),
@@ -6222,7 +6222,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     height: floatingTabBarContentBottomClearance(
                       context,
                       existingTrailingContentPadding: 32,
-                      finalContentGap: 20,
+                      finalContentGap: 24,
                     ),
                   ),
                 ),
@@ -6255,7 +6255,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             children: [
               // ── Fixed search header (immune to rubber-band) ────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: Row(
                   children: [
                     Expanded(
@@ -6274,7 +6274,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                   ],
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
               Container(
                 height: 0.5,
                 color: resolveThemeColor(kSeparatorColor, context),
@@ -6291,7 +6291,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                       onSuggestionTap: _applySearchSuggestion,
                       hidePrimaryCategoryName:
                           activeStandardDcvCategoryId != null,
-                      eventTopPadding: 18,
+                      eventTopPadding: 16,
                       eventTileWrapper: _wrapSearchEventTile,
                       eventTilePressWrapper: (child) =>
                           _TilePressScale(child: child),
@@ -6408,7 +6408,7 @@ class _AnimatedCategoryGrid extends StatelessWidget {
   });
 
   static const _rowHeight = 89.0;
-  static const _rowGap = 18.0;
+  static const _rowGap = 16.0;
   static const _colGap = 16.0;
   static const _duration = Duration(milliseconds: 280);
   static const _curve = Curves.easeInOutCubic;
@@ -6550,7 +6550,7 @@ class _CategoryTile extends StatelessWidget {
     final surfaceColor = resolveThemeColor(kSbSurface, context);
     final shadows = resolveThemeShadows(kCardShadow, context);
     return Container(
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.all(16),
       decoration: ShapeDecoration(
         color: surfaceColor,
         shape: BoundedContinuousRectangleBorder(
@@ -7097,7 +7097,7 @@ class _PinnedUserTile extends StatelessWidget {
     final resolvedSurface = resolveThemeColor(kSbSurface, context);
     final resolvedShadows = resolveThemeShadows(kCardShadow, context);
     return Container(
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.all(16),
       decoration: ShapeDecoration(
         color: resolvedSurface,
         shape: BoundedContinuousRectangleBorder(
@@ -7251,8 +7251,8 @@ double _eventsCategoryListRowHeight(
     16,
     letterSpacing: kTracking16,
   );
-  const verticalPadding = 26.0; // 13 px top + 13 px bottom
-  const subtitleGap = 2.0;
+  const verticalPadding = 32.0; // 16 px top + 16 px bottom
+  const subtitleGap = 8.0;
   const iconHeight = 34.0;
   double measure(_FlatItem current) {
     final label = current.category?.name ?? current.group?.name;
@@ -7267,13 +7267,13 @@ double _eventsCategoryListRowHeight(
     final trailingWidth =
         _eventsMeasuredTextWidth(trailingLabel, countStyle, scaler) +
         8 +
-        6 +
+        8 +
         scaler.scale(14) +
         16;
-    final leftPad = current.isGroupMember ? 36.0 : 16.0;
+    final leftPad = current.isGroupMember ? 32.0 : 16.0;
     final textWidth = max(
       80.0,
-      cardWidth - leftPad - iconHeight - 13 - trailingWidth,
+      cardWidth - leftPad - iconHeight - 16 - trailingWidth,
     );
     var textHeight = _eventsMeasuredTextHeight(
       label,
@@ -7875,7 +7875,7 @@ class _CategoryRow extends StatelessWidget {
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
 
     // Indent group member rows with extra left padding.
-    final leftPad = indented ? 36.0 : 16.0;
+    final leftPad = indented ? 32.0 : 16.0;
 
     return Column(
       children: [
@@ -7895,8 +7895,8 @@ class _CategoryRow extends StatelessWidget {
                 padding: EdgeInsets.only(
                   left: leftPad,
                   right: 16,
-                  top: 13,
-                  bottom: 13,
+                  top: 16,
+                  bottom: 16,
                 ),
                 child: Row(
                   children: [
@@ -7919,7 +7919,7 @@ class _CategoryRow extends StatelessWidget {
                         ),
                       ),
                     ),
-                    SizedBox(width: 13),
+                    SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -7941,7 +7941,7 @@ class _CategoryRow extends StatelessWidget {
                             ),
                           ),
                           if (category.description.isNotEmpty) ...[
-                            SizedBox(height: 2),
+                            SizedBox(height: 8),
                             Text(
                               category.description,
                               style: TextStyle(
@@ -7975,7 +7975,7 @@ class _CategoryRow extends StatelessWidget {
                             letterSpacing: kTracking16,
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         Icon(
                           CupertinoIcons.chevron_right,
                           color: secondaryLabel,
@@ -8127,7 +8127,7 @@ class _GroupRow extends StatelessWidget {
                         ),
                       ),
                     ),
-                    SizedBox(width: 13),
+                    SizedBox(width: 16),
                     Expanded(
                       child: Text(
                         group.name,
@@ -8160,7 +8160,7 @@ class _GroupRow extends StatelessWidget {
                             letterSpacing: kTracking16,
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         // Expand/collapse chevron — constrained to same 14px
                         // width as the category row's Icon(size:14) so the
                         // member-count text aligns with solo category rows.
@@ -8441,7 +8441,7 @@ class _AddCategoryButtonState extends State<_AddCategoryButton>
                     color: resolveAccentColor(context),
                     weight: 0.25,
                   ),
-                  SizedBox(width: 5),
+                  SizedBox(width: 8),
                   Text(
                     'Add Category',
                     style: TextStyle(
