@@ -343,7 +343,7 @@ class _FloatingTabBarGlassPreviewState
 }
 
 LiquidGlassStyle _floatingTabBarStyle(BuildContext context) {
-  final headerColor = resolveThemeColor(kCardColor, context);
+  final headerColor = resolveThemeColor(kFloatingTabBarSurfaceColor, context);
   final defaultBlur = LiquidGlassTabBar.defaultStyle.appearance.blur;
   final blurProgress =
       ((appLiquidGlassOpacityNotifier.value - kLiquidGlassMinimumOpacity) /

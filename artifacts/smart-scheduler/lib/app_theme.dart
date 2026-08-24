@@ -37,6 +37,10 @@ const kFloatingTabBarSelectedPillColor = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFFFFFFF),
   darkColor: Color(0xFF2C2C2E),
 );
+const kFloatingTabBarSurfaceColor = CupertinoDynamicColor.withBrightness(
+  color: Color(0xFFFAFAFC),
+  darkColor: Color(0xFF1C1C1E),
+);
 // Shared visual gap used between the last content edge and the floating pill.
 // Events' category card → Add Category gap uses the same value.
 const double kFloatingTabBarVisualGap = 18.0;
