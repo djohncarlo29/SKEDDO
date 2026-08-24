@@ -21,6 +21,8 @@ import '../../utils/liquid_glass_refresh_rate.dart';
 import '../../utils/liquid_glass_shape.dart';
 import '../../utils/liquid_glass_lens_motion.dart';
 import 'liquid_glass_nav_bar_motion_pill.dart';
+import 'liquid_glass_nav_bar_icon_row.dart';
+import 'liquid_glass_nav_bar_pill_clippers.dart';
 import '../liquid_glass_shadow.dart';
 
 /// Self-contained **animated** liquid-glass bottom nav bar — the iOS-26
@@ -1055,6 +1057,39 @@ class _LiquidGlassAnimatedNavBarState extends State<LiquidGlassAnimatedNavBar>
               ],
             ),
           ),
+          // The Impeller glass lens is composited after the captured icon
+          // shell. Repaint the selected cell above that lens so the active
+          // icon and label cannot be swallowed by the native glass surface.
+          // The clip keeps this foreground pass limited to the active pill;
+          // the existing shell still supplies the outside/unselected cells.
+          if (widget.showSelectionPill)
+            Positioned(
+              left: _barLeft,
+              bottom: _effBottomMargin,
+              width: layout.width,
+              height: layout.height,
+              child: IgnorePointer(
+                child: ClipPath(
+                  clipper: NavBarInsidePillClipper(
+                    pillRect: Rect.fromCenter(
+                      center: Offset(
+                        layout.padding + (pillFrac + 0.5) * cellW,
+                        layout.height / 2,
+                      ),
+                      width: liveSize.width,
+                      height: liveSize.height,
+                    ),
+                    pillRadius: liveSize.height / 2,
+                  ),
+                  child: NavBarIconRow(
+                    items: widget.items,
+                    layout: layout,
+                    itemStyle: widget.itemStyle,
+                    forceSelected: true,
+                  ),
+                ),
+              ),
+            ),
           // Unified gesture overlay: a quick tap on any cell selects it;
           // a press-and-hold lifts the pill to drag.
           Positioned(
@@ -1114,9 +1149,8 @@ class _LiquidGlassAnimatedNavBarState extends State<LiquidGlassAnimatedNavBar>
       ),
       // On Impeller the under-pill magnifier lens owns the magnification;
       // the glass pill on top must not compound it (m² in the middle).
-      refraction: _useImpeller
-          ? refraction.copyWith(magnification: 1)
-          : refraction,
+      refraction:
+          _useImpeller ? refraction.copyWith(magnification: 1) : refraction,
     );
   }
 
@@ -1124,7 +1158,8 @@ class _LiquidGlassAnimatedNavBarState extends State<LiquidGlassAnimatedNavBar>
   /// this end of the morph, stripped of everything visible — no rim, no
   /// glint. [base] mirrors the pill's own shape resolution ([fallbackRadius]
   /// is the capsule radius used when the host authored no shape).
-  LiquidGlassShape _magnifierShape(LiquidGlassShape? base, double fallbackRadius) {
+  LiquidGlassShape _magnifierShape(
+      LiquidGlassShape? base, double fallbackRadius) {
     final s = base;
     if (s == null) {
       return LiquidGlassShape(
