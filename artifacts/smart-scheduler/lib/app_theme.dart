@@ -42,6 +42,10 @@ const kFloatingTabBarSurfaceColor = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFFAFAFC),
   darkColor: Color(0xFF1C1C1E),
 );
+// Keep the tab bar and its active glass pill on the same restrained optical
+// color-separation setting. The package default is stronger, but the bar's
+// tuned appearance intentionally uses this barely-visible value.
+const double kFloatingTabBarChromaticAberration = 0.0002;
 // Shared visual gap used between the last content edge and the floating pill.
 // Events' category card → Add Category gap uses the same value.
 const double kFloatingTabBarVisualGap = 16.0;

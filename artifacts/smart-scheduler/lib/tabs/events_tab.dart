@@ -2079,7 +2079,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final row = gridIdx ~/ 2;
     final tileTopLeft = Offset(
       col * (tileWidth + _AnimatedCategoryGrid._colGap),
-      row * (_AnimatedCategoryGrid._rowHeight + _AnimatedCategoryGrid._rowGap),
+      row *
+          (_eventsGridTileRowHeight(context) + _AnimatedCategoryGrid._rowGap),
     );
     final localPos = box.globalToLocal(globalPos);
     // When dragging from the full-width (solitary last) tile the grab offset X
@@ -2127,7 +2128,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     if (key is _UserCategory) {
       final crossingDown =
           localPos.dy >
-          box.size.height + _AnimatedCategoryGrid._rowHeight * 0.5;
+          box.size.height + _eventsGridTileRowHeight(context) * 0.5;
       if (crossingDown && !_gridDragCrossingToList) {
         // ── First entry into list ─────────────────────────────────────────
         HapticFeedback.selectionClick();
@@ -2149,7 +2150,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           ).clamp(0, _listTopOrder.length);
           // Map the tile grab-Y to an equivalent list-row grab-Y so the row
           // ghost stays under the finger after the shape transition.
-          final grabY = grab.dy.clamp(0.0, _AnimatedCategoryGrid._rowHeight);
+          final grabY = grab.dy.clamp(0.0, _eventsGridTileRowHeight(context));
           final rowGrabY = grabY.clamp(0.0, rowHeight).toDouble();
           setState(() {
             _gridDragCrossingToList = true;
@@ -2181,14 +2182,14 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             _dragGridTileWidth ??
             (box.size.width - _AnimatedCategoryGrid._colGap) / 2;
         final cx = newTopLeft.dx + tw / 2;
-        final cy = newTopLeft.dy + _AnimatedCategoryGrid._rowHeight / 2;
+        final cy = newTopLeft.dy + _eventsGridTileRowHeight(context) / 2;
         final reCol = (cx / (tw + _AnimatedCategoryGrid._colGap)).round().clamp(
           0,
           1,
         );
         final reRow =
             (cy /
-                    (_AnimatedCategoryGrid._rowHeight +
+                    (_eventsGridTileRowHeight(context) +
                         _AnimatedCategoryGrid._rowGap))
                 .floor()
                 .clamp(0, 999);
@@ -2246,11 +2247,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         (box.size.width - _AnimatedCategoryGrid._colGap) / 2;
 
     final cx = newTopLeft.dx + tw / 2;
-    final cy = newTopLeft.dy + _AnimatedCategoryGrid._rowHeight / 2;
+    final cy = newTopLeft.dy + _eventsGridTileRowHeight(context) / 2;
     final col = (cx / (tw + _AnimatedCategoryGrid._colGap)).round().clamp(0, 1);
     final row =
         (cy /
-                (_AnimatedCategoryGrid._rowHeight +
+                (_eventsGridTileRowHeight(context) +
                     _AnimatedCategoryGrid._rowGap))
             .floor()
             .clamp(0, 999);
@@ -2507,18 +2508,19 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               (gridBox.size.width - _AnimatedCategoryGrid._colGap) / 2;
           // Centre-grab: treat the cat as entering the tile at its midpoint so
           // the ghost is always centred on the finger (no inherited list grab).
-          final grab = Offset(tileW / 2, _AnimatedCategoryGrid._rowHeight / 2);
+          final grab =
+              Offset(tileW / 2, _eventsGridTileRowHeight(context) / 2);
           final gridLocal = gridBox.globalToLocal(globalPos);
           final rawTopLeft = gridLocal - grab;
           // Slot from ghost centre (same formula as normal grid reorder).
           final cx = rawTopLeft.dx + tileW / 2;
-          final cy = rawTopLeft.dy + _AnimatedCategoryGrid._rowHeight / 2;
+          final cy = rawTopLeft.dy + _eventsGridTileRowHeight(context) / 2;
           final col = (cx / (tileW + _AnimatedCategoryGrid._colGap))
               .round()
               .clamp(0, 1);
           final row =
               (cy /
-                      (_AnimatedCategoryGrid._rowHeight +
+                      (_eventsGridTileRowHeight(context) +
                           _AnimatedCategoryGrid._rowGap))
                   .floor()
                   .clamp(0, 999);
@@ -2562,20 +2564,20 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               (gridBox.size.width - _AnimatedCategoryGrid._colGap) / 2;
           final grab =
               _dragGridGrabOffset ??
-              Offset(tileW / 2, _AnimatedCategoryGrid._rowHeight / 2);
+              Offset(tileW / 2, _eventsGridTileRowHeight(context) / 2);
           final gridLocal = gridBox.globalToLocal(globalPos);
           // Ghost top-left tracks the finger every frame (identical to a
           // normal grid drag — localPos − grab, fully continuous).
           final rawTopLeft = gridLocal - grab;
           // Slot from ghost centre — only mutates the data list when it changes.
           final cx = rawTopLeft.dx + tileW / 2;
-          final cy = rawTopLeft.dy + _AnimatedCategoryGrid._rowHeight / 2;
+          final cy = rawTopLeft.dy + _eventsGridTileRowHeight(context) / 2;
           final col = (cx / (tileW + _AnimatedCategoryGrid._colGap))
               .round()
               .clamp(0, 1);
           final row =
               (cy /
-                      (_AnimatedCategoryGrid._rowHeight +
+                      (_eventsGridTileRowHeight(context) +
                           _AnimatedCategoryGrid._rowGap))
                   .floor()
                   .clamp(0, 999);
@@ -3503,7 +3505,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 (gridBox != null
                     ? (gridBox.size.width - _AnimatedCategoryGrid._colGap) / 2
                     : 120.0));
-      const tileH = _AnimatedCategoryGrid._rowHeight;
+      final tileH = _eventsGridTileRowHeight(context);
       final tl = _dragGridTopLeft;
       final ghostLeft = (gridGlobal?.dx ?? 0) + (tl?.dx ?? 0);
       final ghostTop = (gridGlobal?.dy ?? 0) + (tl?.dy ?? 0);
@@ -3912,12 +3914,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           Positioned(
             left: globalPos.dx,
             top: globalPos.dy,
-            height: _AnimatedCategoryGrid._rowHeight,
+            height: _eventsGridTileRowHeight(context),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeInOut,
               width: tileWidth,
-              height: _AnimatedCategoryGrid._rowHeight,
+              height: _eventsGridTileRowHeight(context),
               child: Transform.scale(
                 scale: 1.05,
                 child: _buildGridDragGhost(key, suppressDarkModeOutline: true),
@@ -4059,7 +4061,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     }
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      padding: const EdgeInsets.fromLTRB(
+        _kGridTileInset,
+        _kGridTileInset,
+        _kGridTileInset,
+        _kGridTileInset,
+      ),
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
         shape: BoundedContinuousRectangleBorder(
@@ -4079,8 +4086,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             top: 0,
             left: 0,
             child: Container(
-              width: 35.5,
-              height: 35.5,
+               width: _kGridTileCircleSize,
+               height: _kGridTileCircleSize,
               decoration: BoxDecoration(
                 color: renderCategoryColor(color, context),
                 shape: BoxShape.circle,
@@ -4110,24 +4117,20 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             ),
           ),
           Positioned(
-            // The inner card is 16pt from the tile edges. Keep the existing
-            // optical translation, but position the text box from the bottom
-            // so its painted bottom edge lands exactly 16pt above the tile.
-            bottom: 1.5,
+            // Keep the circle-to-title relationship explicit: the title
+            // starts exactly 8pt below the circle, with no optical offset.
+            top: _kGridTileCircleSize + _kGridTileTitleGap,
             left: 0,
-            child: Transform.translate(
-              offset: const Offset(0, 1.5),
-              child: Text(
-                tile.label,
-                style: TextStyle(
-                  inherit: false,
-                  color: resolveThemeColor(kSecondaryLabel, context),
-                  fontSize: 17,
-                  fontFamily: kSFProText,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: kTracking17,
-                  height: kLineHeight,
-                ),
+            child: Text(
+              tile.label,
+              style: TextStyle(
+                inherit: false,
+                color: resolveThemeColor(kSecondaryLabel, context),
+                fontSize: 17,
+                fontFamily: kSFProText,
+                fontWeight: FontWeight.w600,
+                letterSpacing: kTracking17,
+                height: kLineHeight,
               ),
             ),
           ),
@@ -4142,7 +4145,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     bool suppressDarkModeOutline = false,
   }) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      padding: const EdgeInsets.fromLTRB(
+        _kGridTileInset,
+        _kGridTileInset,
+        _kGridTileInset,
+        _kGridTileInset,
+      ),
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
         shape: BoundedContinuousRectangleBorder(
@@ -4162,8 +4170,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             top: 0,
             left: 0,
             child: Container(
-              width: 35.5,
-              height: 35.5,
+               width: _kGridTileCircleSize,
+               height: _kGridTileCircleSize,
               decoration: BoxDecoration(
                 color: _categoryIconCircleColor(
                   cat.iconOrSvg,
@@ -4174,7 +4182,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               child: Center(
                 child: _renderCatIcon(
                   cat.iconOrSvg,
-                  35.5,
+                   _kGridTileCircleSize,
                   CupertinoColors.white,
                   emojiOffsetY: 1,
                   ctx: context,
@@ -4203,23 +4211,20 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             ),
           ),
           Positioned(
-            // Keep the existing optical translation while anchoring the
-            // painted title bottom exactly 16pt above the tile bottom.
-            bottom: 1.5,
+            // Keep the circle-to-title relationship explicit: the title
+            // starts exactly 8pt below the circle, with no optical offset.
+            top: _kGridTileCircleSize + _kGridTileTitleGap,
             left: 0,
-            child: Transform.translate(
-              offset: const Offset(0, 1.5),
-              child: Text(
-                cat.name,
-                style: TextStyle(
-                  inherit: false,
-                  color: resolveThemeColor(kSecondaryLabel, context),
-                  fontSize: 17,
-                  fontFamily: kSFProText,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: kTracking17,
-                  height: kLineHeight,
-                ),
+            child: Text(
+              cat.name,
+              style: TextStyle(
+                inherit: false,
+                color: resolveThemeColor(kSecondaryLabel, context),
+                fontSize: 17,
+                fontFamily: kSFProText,
+                fontWeight: FontWeight.w600,
+                letterSpacing: kTracking17,
+                height: kLineHeight,
               ),
             ),
           ),
@@ -6395,6 +6400,35 @@ class _GridEntry {
 // smoothly slides to its new row/column instead of snapping there on the
 // next frame. The outer AnimatedContainer height animates in lock-step so
 // content below the grid reflows smoothly too, rather than jumping.
+const _kGridTileInset = 16.0;
+const _kGridTileCircleSize = 35.5;
+const _kGridTileTitleGap = 8.0;
+
+double _eventsGridTileRowHeight(BuildContext context) {
+  final scaler = MediaQuery.textScalerOf(context);
+  final titlePainter = TextPainter(
+    text: TextSpan(
+      text: 'Completed',
+      style: TextStyle(
+        inherit: false,
+        fontSize: 17,
+        fontFamily: kSFProText,
+        fontWeight: FontWeight.w600,
+        height: kLineHeight,
+      ),
+    ),
+    textDirection: TextDirection.ltr,
+    textScaler: scaler,
+  )..layout();
+  // Keep these values as physical layout gaps. Text scaling grows the row
+  // around them instead of compressing the circle/title relationship.
+  return _kGridTileInset +
+      _kGridTileCircleSize +
+      _kGridTileTitleGap +
+      titlePainter.height +
+      _kGridTileInset;
+}
+
 class _AnimatedCategoryGrid extends StatelessWidget {
   final List<_GridEntry> entries;
 
@@ -6421,9 +6455,6 @@ class _AnimatedCategoryGrid extends StatelessWidget {
     this.dragFullWidth = false,
   });
 
-  // 16pt top + 35.5pt circle + 8pt circle/title gap + 22.1pt title
-  // line box + 16pt bottom.
-  static const _rowHeight = 97.6;
   static const _rowGap = 16.0;
   static const _colGap = 16.0;
   static const _duration = Duration(milliseconds: 280);
@@ -6431,10 +6462,11 @@ class _AnimatedCategoryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rowHeight = _eventsGridTileRowHeight(context);
     final rowCount = (entries.length / 2).ceil();
     final totalHeight = rowCount == 0
         ? 0.0
-        : rowCount * _rowHeight + (rowCount - 1) * _rowGap;
+        : rowCount * rowHeight + (rowCount - 1) * _rowGap;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -6455,7 +6487,7 @@ class _AnimatedCategoryGrid extends StatelessWidget {
         // because odd-1 is even), so no special-casing needed in dx.
         Offset logicalOffset(int i) => Offset(
           (i % 2) * (tileWidth + _colGap),
-          (i ~/ 2) * (_rowHeight + _rowGap),
+          (i ~/ 2) * (rowHeight + _rowGap),
         );
 
         // Width: full-width for the solitary last tile, half-width otherwise.
@@ -6480,7 +6512,7 @@ class _AnimatedCategoryGrid extends StatelessWidget {
                     left: logicalOffset(i).dx,
                     top: logicalOffset(i).dy,
                     width: logicalWidth(i),
-                    height: _rowHeight,
+                    height: rowHeight,
                     child: entries[i].child,
                   ),
               // ── Dragging tile: instant positioning ────────────────────────
@@ -6502,7 +6534,7 @@ class _AnimatedCategoryGrid extends StatelessWidget {
                       left: dragLocalTopLeft!.dx,
                       top: dragLocalTopLeft!.dy,
                       width: dragFullWidth ? constraints.maxWidth : tileWidth,
-                      height: _rowHeight,
+                       height: rowHeight,
                       child: entries[i].child,
                     ),
             ],
@@ -6566,7 +6598,12 @@ class _CategoryTile extends StatelessWidget {
     final surfaceColor = resolveThemeColor(kSbSurface, context);
     final shadows = resolveThemeShadows(kCardShadow, context);
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      padding: const EdgeInsets.fromLTRB(
+        _kGridTileInset,
+        _kGridTileInset,
+        _kGridTileInset,
+        _kGridTileInset,
+      ),
       decoration: ShapeDecoration(
         color: surfaceColor,
         shape: BoundedContinuousRectangleBorder(
@@ -6582,8 +6619,8 @@ class _CategoryTile extends StatelessWidget {
             top: 0,
             left: 0,
             child: Container(
-              width: 35.5,
-              height: 35.5,
+               width: _kGridTileCircleSize,
+               height: _kGridTileCircleSize,
               decoration: BoxDecoration(
                 color: renderCategoryColor(color, context),
                 shape: BoxShape.circle,
@@ -6647,24 +6684,21 @@ class _CategoryTile extends StatelessWidget {
             ),
           ),
           Positioned(
-            // Keep the existing optical translation while anchoring the
-            // painted title bottom exactly 16pt above the tile bottom.
-            bottom: 1.5,
+             // Keep the circle-to-title relationship explicit: the title
+             // starts exactly 8pt below the circle, with no optical offset.
+             top: _kGridTileCircleSize + _kGridTileTitleGap,
             left: 0,
-            child: Transform.translate(
-              offset: const Offset(0, 1.5),
-              child: Text(
-                data.label,
-                style: TextStyle(
-                  inherit: false,
-                  color: resolveThemeColor(kSecondaryLabel, context),
-                  fontSize: 17,
-                  fontFamily: kSFProText,
-                  fontWeight: FontWeight.w600,
-                  fontStyle: FontStyle.normal,
-                  letterSpacing: kTracking17,
-                  height: kLineHeight,
-                ),
+             child: Text(
+               data.label,
+               style: TextStyle(
+                 inherit: false,
+                 color: resolveThemeColor(kSecondaryLabel, context),
+                 fontSize: 17,
+                 fontFamily: kSFProText,
+                 fontWeight: FontWeight.w600,
+                 fontStyle: FontStyle.normal,
+                 letterSpacing: kTracking17,
+                 height: kLineHeight,
               ),
             ),
           ),
@@ -7115,7 +7149,12 @@ class _PinnedUserTile extends StatelessWidget {
     final resolvedSurface = resolveThemeColor(kSbSurface, context);
     final resolvedShadows = resolveThemeShadows(kCardShadow, context);
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      padding: const EdgeInsets.fromLTRB(
+        _kGridTileInset,
+        _kGridTileInset,
+        _kGridTileInset,
+        _kGridTileInset,
+      ),
       decoration: ShapeDecoration(
         color: resolvedSurface,
         shape: BoundedContinuousRectangleBorder(
@@ -7131,8 +7170,8 @@ class _PinnedUserTile extends StatelessWidget {
             top: 0,
             left: 0,
             child: Container(
-              width: 35.5,
-              height: 35.5,
+               width: _kGridTileCircleSize,
+               height: _kGridTileCircleSize,
               decoration: BoxDecoration(
                 color: _categoryIconCircleColor(
                   category.iconOrSvg,
@@ -7143,7 +7182,7 @@ class _PinnedUserTile extends StatelessWidget {
               child: Center(
                 child: _renderCatIcon(
                   category.iconOrSvg,
-                  35.5,
+                   _kGridTileCircleSize,
                   CupertinoColors.white,
                   emojiOffsetY: 1,
                 ),
@@ -7172,24 +7211,21 @@ class _PinnedUserTile extends StatelessWidget {
             ),
           ),
           Positioned(
-            // Keep the existing optical translation while anchoring the
-            // painted title bottom exactly 16pt above the tile bottom.
-            bottom: 1.5,
+            // Keep the circle-to-title relationship explicit: the title
+            // starts exactly 8pt below the circle, with no optical offset.
+            top: _kGridTileCircleSize + _kGridTileTitleGap,
             left: 0,
-            child: Transform.translate(
-              offset: const Offset(0, 1.5),
-              child: Text(
-                category.name,
-                style: TextStyle(
-                  inherit: false,
-                  color: resolveThemeColor(kSecondaryLabel, context),
-                  fontSize: 17,
-                  fontFamily: kSFProText,
-                  fontWeight: FontWeight.w600,
-                  fontStyle: FontStyle.normal,
-                  letterSpacing: kTracking17,
-                  height: kLineHeight,
-                ),
+            child: Text(
+              category.name,
+              style: TextStyle(
+                inherit: false,
+                color: resolveThemeColor(kSecondaryLabel, context),
+                fontSize: 17,
+                fontFamily: kSFProText,
+                fontWeight: FontWeight.w600,
+                fontStyle: FontStyle.normal,
+                letterSpacing: kTracking17,
+                height: kLineHeight,
               ),
             ),
           ),

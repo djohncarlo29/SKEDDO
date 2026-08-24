@@ -910,17 +910,26 @@ class _LiquidGlassAnimatedNavBarState extends State<LiquidGlassAnimatedNavBar>
         envelopeSize.height * (1 - dev),
       );
 
-      // How much of the pill still reads as glass. It sheds the rim, its
-      // shadow and its refraction on this, and keeps everything else —
-      // the travel, the lift, the squash — running underneath.
-      final double glassPresence = (1 - _handover).clamp(0.0, 1.0);
+      // A rest style with refraction is a persistent glass endpoint, like the
+      // package's default tab-pill example. Keep that lens alive after the
+      // travel settles; only the legacy inert rest style sheds its material
+      // into the plain static twin.
+      final bool persistentRestGlass =
+          widget.restStyle.refraction.distortion > 0 &&
+          widget.restStyle.refraction.distortionWidth > 0;
+      // Legacy inert pills shed the rim, shadow and refraction during the
+      // handover while keeping travel/lift/squash running underneath.
+      final double glassPresence = persistentRestGlass
+          ? 1.0
+          : (1 - _handover).clamp(0.0, 1.0);
 
       // The lens stays until there is nothing left in it to see: no glass,
       // no lift and no deformation. By then it is drawing a flat fill at
       // rest size — exactly what the plain pill draws — so handing over is
       // a swap of two identical pictures and needs no cross-fade, and the
       // plain pill never has to know about the motion.
-      final bool pillIsFlat = glassPresence <= 0 &&
+      final bool pillIsFlat = !persistentRestGlass &&
+          glassPresence <= 0 &&
           morphProgress <= 0 &&
           _liftX == 0 &&
           _liftY == 0 &&
