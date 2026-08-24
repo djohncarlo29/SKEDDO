@@ -3589,6 +3589,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 child: cat != null
                     ? _buildListDragGhost(
                         cat,
+                        indented: _draggingListGroupId != null,
                         suppressDarkModeOutline: _listDragCrossingToGrid,
                       )
                     : _buildListDragGroupHeaderGhost(grp!),
@@ -3606,9 +3607,15 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   /// shadow is not in scope for the Overlay).
   Widget _buildListDragGhost(
     _UserCategory cat, {
+    bool indented = false,
     bool suppressDarkModeOutline = false,
   }) {
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
+    // Group members keep the same leading inset while lifted.  The resting
+    // _CategoryRow uses 32 px here versus 16 px for solo categories; applying
+    // that inset to the overlay ghost prevents the card from jumping left
+    // when the drag begins.
+    final leftPadding = indented ? 32.0 : 16.0;
     return Container(
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
@@ -3628,7 +3635,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         ], context),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        padding: EdgeInsets.only(
+          left: leftPadding,
+          right: 16,
+          top: 16,
+          bottom: 16,
+        ),
         child: Row(
           children: [
             Container(
