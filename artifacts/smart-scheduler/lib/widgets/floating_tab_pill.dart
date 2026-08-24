@@ -32,10 +32,6 @@ class FloatingTabPill extends StatelessWidget {
     final selectedColor = selectedIndex == 2
         ? CupertinoDynamicColor.resolve(eventsAccent, context)
         : resolveAccentColor(context);
-    final selectedPillColor = resolveThemeColor(
-      kFloatingTabBarSelectedPillColor,
-      context,
-    );
     final unselectedColor = resolveThemeColor(kSecondaryLabel, context);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final bottomOffset = floatingTabBarBottomOffset(context);
@@ -116,12 +112,11 @@ class FloatingTabPill extends StatelessWidget {
                   shape: LiquidGlassShape.continuousRoundedRectangle(
                     cornerRadius: kSquircleStadiumRadius,
                   ),
-                  appearance: LiquidGlassAppearance(
-                     // Keep the raised glass endpoint on the same resolved
-                     // theme color as the settled rest pill. Leaving this
-                     // transparent lets the captured pre-change surface
-                     // show through during lift and handoff.
-                     color: selectedPillColor,
+                   appearance: LiquidGlassAppearance(
+                     // The raised endpoint must remain a transparent,
+                     // refracting glass lens. The resolved Light/Dark color
+                     // is owned by the settled rest endpoint above, so the
+                     // handoff does not turn the raised pill into a flat fill.
                     // This shadow belongs to the motion lens only. The package
                     // fades it with the lift/morph handoff, so the settled
                     // active pill remains clean and the moving pill gets depth.
