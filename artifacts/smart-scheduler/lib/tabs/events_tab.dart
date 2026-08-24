@@ -3628,7 +3628,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         ], context),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Row(
           children: [
             Container(
@@ -3657,42 +3657,49 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 ),
               ),
             ),
-                      SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Text(
-                    cat.name,
-                    style: TextStyle(
-                      inherit: false,
-                      color: resolveThemeColor(kPrimaryLabel, context),
-                      fontSize: 16,
-                      fontFamily: kSFProText,
-                      fontWeight: FontWeight.w400,
-                      fontStyle: FontStyle.normal,
-                      letterSpacing: kTracking16,
-                      height: kLineHeight,
-                    ),
-                  ),
-                  if (cat.description.isNotEmpty) ...[
-                    SizedBox(height: 4),
+              child: SizedBox(
+                height: double.infinity,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  // The row has a 16pt top and bottom inset. Keep the
+                  // title/subtitle separation fixed at 4pt.
+                  // the title/subtitle block between those edges so
+                  // wrapped and dragged rows use the same geometry.
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
                     Text(
-                      cat.description,
+                      cat.name,
                       style: TextStyle(
                         inherit: false,
-                        color: resolveThemeColor(kSecondaryLabel, context),
-                        fontSize: 13,
+                        color: resolveThemeColor(kPrimaryLabel, context),
+                        fontSize: 16,
                         fontFamily: kSFProText,
                         fontWeight: FontWeight.w400,
                         fontStyle: FontStyle.normal,
-                        letterSpacing: -0.08,
+                        letterSpacing: kTracking16,
                         height: kLineHeight,
                       ),
                     ),
+                    if (cat.description.isNotEmpty) ...[
+                      SizedBox(height: 4),
+                      Text(
+                        cat.description,
+                        style: TextStyle(
+                          inherit: false,
+                          color: resolveThemeColor(kSecondaryLabel, context),
+                          fontSize: 13,
+                          fontFamily: kSFProText,
+                          fontWeight: FontWeight.w400,
+                          fontStyle: FontStyle.normal,
+                          letterSpacing: -0.08,
+                          height: kLineHeight,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
             SizedBox(width: 8),
@@ -4046,7 +4053,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     }
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
         shape: BoundedContinuousRectangleBorder(
@@ -4063,7 +4070,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         clipBehavior: Clip.none,
         children: [
           Positioned(
-            top: -2,
+            top: 0,
             left: 0,
             child: Container(
               width: 35.5,
@@ -4076,7 +4083,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             ),
           ),
           Positioned(
-            top: -2,
+            top: 0,
             right: 0,
             child: SizedBox(
               height: 35.5,
@@ -4097,9 +4104,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             ),
           ),
           Positioned(
-            // Account for the retained +1.5px optical translation so the
-            // visible circle-to-title gap is exactly 8pt.
-            top: 36.0,
+            // The inner card is 16pt from the tile edges. Keep the existing
+            // optical translation, but position the text box from the bottom
+            // so its painted bottom edge lands exactly 16pt above the tile.
+            bottom: 1.5,
             left: 0,
             child: Transform.translate(
               offset: const Offset(0, 1.5),
@@ -4128,7 +4136,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     bool suppressDarkModeOutline = false,
   }) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
         shape: BoundedContinuousRectangleBorder(
@@ -4145,7 +4153,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         clipBehavior: Clip.none,
         children: [
           Positioned(
-            top: -2,
+            top: 0,
             left: 0,
             child: Container(
               width: 35.5,
@@ -4171,7 +4179,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             ),
           ),
           Positioned(
-            top: -2,
+            top: 0,
             right: 0,
             child: SizedBox(
               height: 35.5,
@@ -4191,9 +4199,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             ),
           ),
           Positioned(
-            // Account for the retained +1.5px optical translation so the
-            // visible circle-to-title gap is exactly 8pt.
-            top: 36.0,
+            // Keep the existing optical translation while anchoring the
+            // painted title bottom exactly 16pt above the tile bottom.
+            bottom: 1.5,
             left: 0,
             child: Transform.translate(
               offset: const Offset(0, 1.5),
@@ -6409,7 +6417,9 @@ class _AnimatedCategoryGrid extends StatelessWidget {
     this.dragFullWidth = false,
   });
 
-  static const _rowHeight = 76.0;
+  // 16pt top + 35.5pt circle + 8pt circle/title gap + 22.1pt title
+  // line box + 16pt bottom.
+  static const _rowHeight = 97.6;
   static const _rowGap = 16.0;
   static const _colGap = 16.0;
   static const _duration = Duration(milliseconds: 280);
@@ -6552,7 +6562,7 @@ class _CategoryTile extends StatelessWidget {
     final surfaceColor = resolveThemeColor(kSbSurface, context);
     final shadows = resolveThemeShadows(kCardShadow, context);
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: ShapeDecoration(
         color: surfaceColor,
         shape: BoundedContinuousRectangleBorder(
@@ -6565,7 +6575,7 @@ class _CategoryTile extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           Positioned(
-            top: -2,
+            top: 0,
             left: 0,
             child: Container(
               width: 35.5,
@@ -6611,7 +6621,7 @@ class _CategoryTile extends StatelessWidget {
             ),
           ),
           Positioned(
-            top: -2,
+            top: 0,
             right: 0,
             child: SizedBox(
               height: 35.5,
@@ -6633,9 +6643,9 @@ class _CategoryTile extends StatelessWidget {
             ),
           ),
           Positioned(
-            // Account for the retained +1.5px optical translation so the
-            // visible circle-to-title gap is exactly 8pt.
-            top: 36.0,
+            // Keep the existing optical translation while anchoring the
+            // painted title bottom exactly 16pt above the tile bottom.
+            bottom: 1.5,
             left: 0,
             child: Transform.translate(
               offset: const Offset(0, 1.5),
@@ -7101,7 +7111,7 @@ class _PinnedUserTile extends StatelessWidget {
     final resolvedSurface = resolveThemeColor(kSbSurface, context);
     final resolvedShadows = resolveThemeShadows(kCardShadow, context);
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: ShapeDecoration(
         color: resolvedSurface,
         shape: BoundedContinuousRectangleBorder(
@@ -7114,7 +7124,7 @@ class _PinnedUserTile extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           Positioned(
-            top: -2,
+            top: 0,
             left: 0,
             child: Container(
               width: 35.5,
@@ -7137,7 +7147,7 @@ class _PinnedUserTile extends StatelessWidget {
             ),
           ),
           Positioned(
-            top: -2,
+            top: 0,
             right: 0,
             child: SizedBox(
               height: 35.5,
@@ -7158,9 +7168,9 @@ class _PinnedUserTile extends StatelessWidget {
             ),
           ),
           Positioned(
-            // Account for the retained +1.5px optical translation so the
-            // visible circle-to-title gap is exactly 8pt.
-            top: 36.0,
+            // Keep the existing optical translation while anchoring the
+            // painted title bottom exactly 16pt above the tile bottom.
+            bottom: 1.5,
             left: 0,
             child: Transform.translate(
               offset: const Offset(0, 1.5),
@@ -7257,7 +7267,7 @@ double _eventsCategoryListRowHeight(
     16,
     letterSpacing: kTracking16,
   );
-  const verticalPadding = 16.0; // 8 px top + 8 px bottom
+  const verticalPadding = 32.0; // 16 px top + 16 px bottom
   const subtitleGap = 4.0;
   const iconHeight = 34.0;
   double measure(_FlatItem current) {
@@ -7901,8 +7911,8 @@ class _CategoryRow extends StatelessWidget {
                 padding: EdgeInsets.only(
                   left: leftPad,
                   right: 16,
-                  top: 8,
-                  bottom: 8,
+                  top: 16,
+                  bottom: 16,
                 ),
                 child: Row(
                   children: [
@@ -7927,40 +7937,43 @@ class _CategoryRow extends StatelessWidget {
                     ),
                     SizedBox(width: 16),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          Text(
-                            category.name,
-                            style: TextStyle(
-                              inherit: false,
-                              color: primaryLabel,
-                              fontSize: 16,
-                              fontFamily: kSFProText,
-                              fontWeight: FontWeight.w400,
-                              fontStyle: FontStyle.normal,
-                              letterSpacing: kTracking16,
-                              height: kLineHeight,
-                            ),
-                          ),
-                          if (category.description.isNotEmpty) ...[
-                            SizedBox(height: 4),
+                      child: SizedBox(
+                        height: double.infinity,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
                             Text(
-                              category.description,
+                              category.name,
                               style: TextStyle(
                                 inherit: false,
-                                color: secondaryLabel,
-                                fontSize: 13,
+                                color: primaryLabel,
+                                fontSize: 16,
                                 fontFamily: kSFProText,
                                 fontWeight: FontWeight.w400,
                                 fontStyle: FontStyle.normal,
-                                letterSpacing: -0.08,
+                                letterSpacing: kTracking16,
                                 height: kLineHeight,
                               ),
                             ),
+                            if (category.description.isNotEmpty) ...[
+                              SizedBox(height: 4),
+                              Text(
+                                category.description,
+                                style: TextStyle(
+                                  inherit: false,
+                                  color: secondaryLabel,
+                                  fontSize: 13,
+                                  fontFamily: kSFProText,
+                                  fontWeight: FontWeight.w400,
+                                  fontStyle: FontStyle.normal,
+                                  letterSpacing: -0.08,
+                                  height: kLineHeight,
+                                ),
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
                     SizedBox(width: 8),
@@ -8111,7 +8124,7 @@ class _GroupRow extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
-                 vertical: 16,
+                  vertical: 16,
                 ),
                 child: Row(
                   children: [
