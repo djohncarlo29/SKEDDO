@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../liquid_glass_tab_item.dart'
@@ -39,32 +41,58 @@ class LiquidGlassNavTabCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = style.colorFor(selected: selected);
     final double glass = underGlass.clamp(0.0, 1.0);
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          buildLiquidGlassNavGlyph(
+    final iconSize = style.iconSizeFor(underGlass: glass);
+    final label = item.hasLabel
+        ? buildLiquidGlassNavLabel(
             context,
             item,
             color: color,
-            size: style.iconSizeFor(underGlass: glass),
+            fontSize: style.labelFontSizeFor(underGlass: glass),
+            fontWeight: style.fontWeightFor(selected: selected),
             selected: selected,
             underGlass: glass > 0,
+          )
+        : null;
+
+    // The phone's text scaler is intentionally respected. The floating bar
+    // is a compact control, though, so a large system font must not make the
+    // label escape its cell/pill. FittedBox changes only the visual scale of
+    // this constrained label; its text and semantics remain intact.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableLabelHeight = math.max(
+          0.0,
+          constraints.maxHeight - iconSize - style.iconLabelGap,
+        );
+
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              buildLiquidGlassNavGlyph(
+                context,
+                item,
+                color: color,
+                size: iconSize,
+                selected: selected,
+                underGlass: glass > 0,
+              ),
+              if (label != null && availableLabelHeight > 0) ...[
+                SizedBox(height: style.iconLabelGap),
+                SizedBox(
+                  width: constraints.maxWidth,
+                  height: availableLabelHeight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.center,
+                    child: label,
+                  ),
+                ),
+              ],
+            ],
           ),
-          if (item.hasLabel) ...[
-            SizedBox(height: style.iconLabelGap),
-            buildLiquidGlassNavLabel(
-              context,
-              item,
-              color: color,
-              fontSize: style.labelFontSizeFor(underGlass: glass),
-              fontWeight: style.fontWeightFor(selected: selected),
-              selected: selected,
-              underGlass: glass > 0,
-            ),
-          ],
-        ],
-      ),
+        );
+      },
     );
   }
 }
