@@ -48,6 +48,14 @@ class LiquidGlassNavTabCell extends StatelessWidget {
     // custom profile when that mode is active.
     final textScaler = MediaQuery.textScalerOf(context);
     final iconSize = textScaler.scale(baseIconSize);
+    // Keep the label baseline shared by every tab while the moving glass
+    // layer enlarges the icon under the pill. Without a common slot, a
+    // larger icon makes its icon+label group taller and shifts that label
+    // down relative to its neighbors.
+    final iconSlotHeight = math.max(
+      iconSize,
+      textScaler.scale(style.iconSizeFor(underGlass: 1)),
+    );
     final label = item.hasLabel
         ? buildLiquidGlassNavLabel(
             context,
@@ -69,7 +77,7 @@ class LiquidGlassNavTabCell extends StatelessWidget {
       builder: (context, constraints) {
         final availableLabelHeight = math.max(
           0.0,
-          constraints.maxHeight - iconSize - style.iconLabelGap,
+          constraints.maxHeight - iconSlotHeight - style.iconLabelGap,
         );
         final labelFits = label != null &&
             (item.label == null ||
@@ -86,20 +94,29 @@ class LiquidGlassNavTabCell extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              buildLiquidGlassNavGlyph(
-                context,
-                item,
-                color: color,
-                size: iconSize,
-                selected: selected,
-                underGlass: glass > 0,
+              SizedBox(
+                width: iconSlotHeight,
+                height: iconSlotHeight,
+                child: Center(
+                  child: buildLiquidGlassNavGlyph(
+                    context,
+                    item,
+                    color: color,
+                    size: iconSize,
+                    selected: selected,
+                    underGlass: glass > 0,
+                  ),
+                ),
               ),
               if (labelFits && availableLabelHeight > 0) ...[
                 SizedBox(height: style.iconLabelGap),
                 SizedBox(
                   width: constraints.maxWidth,
                   height: availableLabelHeight,
-                  child: label,
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: label,
+                  ),
                 ),
               ],
             ],
