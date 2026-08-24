@@ -110,13 +110,12 @@ class LiquidGlassNavTabCell extends StatelessWidget {
               ),
               if (labelFits && availableLabelHeight > 0) ...[
                 SizedBox(height: style.iconLabelGap),
-                SizedBox(
-                  width: constraints.maxWidth,
-                  height: availableLabelHeight,
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: label,
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: constraints.maxWidth,
+                    maxHeight: availableLabelHeight,
                   ),
+                  child: label,
                 ),
               ],
             ],
