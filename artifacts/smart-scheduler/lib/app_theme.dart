@@ -1587,69 +1587,65 @@ class SquircleStadiumBorder extends ContinuousRectangleBorder {
       _pathForRect(rect.deflate(side.width));
 }
 
-// BoundedSquircleStadiumBorder — the shared stadium shape with both axes
-// constrained to the painted rectangle. Unlike SquircleStadiumBorder, it also
-// bounds the horizontal end radius, so the same shape is safe for every card
-// and control size.
-class BoundedSquircleStadiumBorder extends ContinuousRectangleBorder {
+// ConcentricSquircleBorder — a bounded four-corner squircle whose radius is
+// derived from a parent curve plus an inset. This keeps nested surfaces on the
+// same corner centers instead of giving every card an unrelated radius.
+class ConcentricSquircleBorder extends ContinuousRectangleBorder {
   final double radius;
+  final double inset;
 
-  const BoundedSquircleStadiumBorder({
+  const ConcentricSquircleBorder({
     super.side,
     this.radius = kSquircleStadiumRadius,
+    this.inset = 0,
   });
 
   Path _pathForRect(Rect rect) {
     if (rect.isEmpty) return Path();
-    final radius = math.min(
-      this.radius,
+    final effectiveRadius = math.min(
+      math.max(this.radius - inset, 0),
       math.min(rect.width / 2, rect.height / 2),
     );
-    final left = rect.left;
-    final top = rect.top;
-    final right = rect.right;
-    final bottom = rect.bottom;
-    final c = radius * _kSharedSquircleCurveControl;
-    final path = Path()..moveTo(left + radius, top);
+    final c = effectiveRadius * _kSharedSquircleCurveControl;
+    final path = Path()..moveTo(rect.left + effectiveRadius, rect.top);
 
-    // Four independent 24 px squircle corners, with straight edges between
-    // them. In particular, tall cards get vertical side segments rather than
-    // stretched stadium end-caps.
-    path.lineTo(right - radius, top);
+    // Four corners share the parent's curve relationship; the sides remain
+    // straight, including on the taller sheet surfaces.
+    path.lineTo(rect.right - effectiveRadius, rect.top);
     path.cubicTo(
-      right - radius + c,
-      top,
-      right,
-      top + radius - c,
-      right,
-      top + radius,
+      rect.right - effectiveRadius + c,
+      rect.top,
+      rect.right,
+      rect.top + effectiveRadius - c,
+      rect.right,
+      rect.top + effectiveRadius,
     );
-    path.lineTo(right, bottom - radius);
+    path.lineTo(rect.right, rect.bottom - effectiveRadius);
     path.cubicTo(
-      right,
-      bottom - radius + c,
-      right - radius + c,
-      bottom,
-      right - radius,
-      bottom,
+      rect.right,
+      rect.bottom - effectiveRadius + c,
+      rect.right - effectiveRadius + c,
+      rect.bottom,
+      rect.right - effectiveRadius,
+      rect.bottom,
     );
-    path.lineTo(left + radius, bottom);
+    path.lineTo(rect.left + effectiveRadius, rect.bottom);
     path.cubicTo(
-      left + radius - c,
-      bottom,
-      left,
-      bottom - radius + c,
-      left,
-      bottom - radius,
+      rect.left + effectiveRadius - c,
+      rect.bottom,
+      rect.left,
+      rect.bottom - effectiveRadius + c,
+      rect.left,
+      rect.bottom - effectiveRadius,
     );
-    path.lineTo(left, top + radius);
+    path.lineTo(rect.left, rect.top + effectiveRadius);
     path.cubicTo(
-      left,
-      top + radius - c,
-      left + radius - c,
-      top,
-      left + radius,
-      top,
+      rect.left,
+      rect.top + effectiveRadius - c,
+      rect.left + effectiveRadius - c,
+      rect.top,
+      rect.left + effectiveRadius,
+      rect.top,
     );
     path.close();
     return path;
@@ -1662,6 +1658,15 @@ class BoundedSquircleStadiumBorder extends ContinuousRectangleBorder {
   @override
   Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
       _pathForRect(rect.deflate(side.width));
+}
+
+// BoundedSquircleStadiumBorder is kept as a compatibility alias for existing
+// callers; new nested surfaces should use ConcentricSquircleBorder.
+class BoundedSquircleStadiumBorder extends ConcentricSquircleBorder {
+  const BoundedSquircleStadiumBorder({
+    super.side,
+    super.radius,
+  }) : super(inset: 0);
 }
 
 // SplitChevronUpDown — a clean custom up/down picker glyph.  This is painted

@@ -179,7 +179,7 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
         : null;
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
-      shape: const BoundedSquircleStadiumBorder(),
+      shape: const ConcentricSquircleBorder(inset: 6),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
     const buttonPadding = EdgeInsets.symmetric(vertical: 16);
@@ -204,7 +204,7 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
                 fillOpacity: 0.82,
                 shadowOpacity: 0.26,
                 border: sheetBorder,
-                shape: BoundedSquircleStadiumBorder(
+                shape: ConcentricSquircleBorder(
                   side: sheetBorder ?? BorderSide.none,
                 ),
                 child: Padding(
