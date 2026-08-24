@@ -136,20 +136,36 @@ class SmartDcvSearchResults extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (primary.isEmpty && overflow.isEmpty) {
-      return SearchNoResultsCentered(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (suggestedQuery?.trim().isNotEmpty == true) ...[
-              _SearchSuggestionBanner(
-                suggestion: suggestedQuery!,
-                onTap: onSuggestionTap,
-              ),
-              const SizedBox(height: 18),
-            ],
-            const SearchNoResults(),
-          ],
+      // Keep the empty state inside the same bouncing scroll surface as
+      // populated DCV results. AlwaysScrollable is intentional: it gives the
+      // placeholder the native rubber-band response even when it fits.
+      return CustomScrollView(
+        primary: false,
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
         ),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+        slivers: [
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: SearchNoResultsCentered(
+              bottomClearance: floatingTabBarContentBottomClearance(context),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (suggestedQuery?.trim().isNotEmpty == true) ...[
+                    _SearchSuggestionBanner(
+                      suggestion: suggestedQuery!,
+                      onTap: onSuggestionTap,
+                    ),
+                    const SizedBox(height: 18),
+                  ],
+                  const SearchNoResults(),
+                ],
+              ),
+            ),
+          ),
+        ],
       );
     }
 

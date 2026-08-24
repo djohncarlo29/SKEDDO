@@ -218,6 +218,7 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: micCircle,
                           shape: BoxShape.circle,
+                          boxShadow: resolveThemeShadows(kCardShadow, context),
                         ),
                         child: Icon(
                           CupertinoIcons.mic_fill,

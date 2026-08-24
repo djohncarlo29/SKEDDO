@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart' show DeviceGestureSettings, kTouchSlop;
 import 'squircle_glow.dart';
@@ -779,9 +781,13 @@ class SearchNoResults extends StatelessWidget {
 
 /// Centers search empty states inside the usable search content viewport.
 ///
-/// Search overlays remain mounted behind the keyboard on Android, so
-/// [MediaQuery.viewInsets] must be removed from the centering height rather
-/// than allowing the placeholder to center beneath the keyboard.
+/// Search overlays remain mounted behind the keyboard on Android, so the
+/// centering height must account for the larger of the keyboard obstruction and
+/// the closed-state floating-tab-bar clearance.
+///
+/// Using the larger value continuously is important during keyboard dismissal.
+/// Switching from zero clearance to the tab-bar clearance only when the inset
+/// reaches exactly zero produces one intermediate, incorrectly high position.
 class SearchNoResultsCentered extends StatelessWidget {
   final Widget child;
   final double bottomClearance;
@@ -800,17 +806,14 @@ class SearchNoResultsCentered extends StatelessWidget {
         if (!constraints.hasBoundedHeight) {
           return Center(child: child);
         }
-        // The floating tab bar is covered by the keyboard, so its clearance
-        // must not be taken out of the keyboard-visible search viewport.
-        // Keeping it for the keyboard-closed state preserves the existing
-        // centering above the tab bar.
-        final visibleBottomClearance = keyboardBottom > 0
-            ? 0.0
-            : bottomClearance;
-        final usableHeight =
-            (constraints.maxHeight - keyboardBottom - visibleBottomClearance)
-                .clamp(0.0, constraints.maxHeight)
-                .toDouble();
+        // While the keyboard is present it is the larger obstruction, so the
+        // tab bar does not steal additional space. As the keyboard dismisses,
+        // clearance transfers continuously to the tab bar without a binary
+        // layout jump at inset == 0.
+        final bottomObstruction = math.max(keyboardBottom, bottomClearance);
+        final usableHeight = (constraints.maxHeight - bottomObstruction)
+            .clamp(0.0, constraints.maxHeight)
+            .toDouble();
         return SizedBox(
           width: double.infinity,
           height: constraints.maxHeight,
