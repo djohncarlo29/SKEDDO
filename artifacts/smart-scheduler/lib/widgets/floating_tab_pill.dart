@@ -32,6 +32,13 @@ class FloatingTabPill extends StatelessWidget {
     final selectedColor = selectedIndex == 2
         ? CupertinoDynamicColor.resolve(eventsAccent, context)
         : resolveAccentColor(context);
+    // Keep the animated pill's rest endpoint in lock-step with the static
+    // active-pill surface. If this is omitted, liquid_glass_easy falls back to
+    // its shipped translucent gray during both the lift handoff and settle.
+    final selectedPillColor = resolveThemeColor(
+      kFloatingTabBarSelectedPillColor,
+      context,
+    );
     final unselectedColor = resolveThemeColor(kSecondaryLabel, context);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final bottomOffset = floatingTabBarBottomOffset(context);
@@ -101,10 +108,7 @@ class FloatingTabPill extends StatelessWidget {
               pillStyle: LiquidGlassTabPillStyle(
                 mode: LiquidGlassPillMode.impellerOnly,
                 animated: true,
-                color: resolveThemeColor(
-                  kFloatingTabBarSelectedPillColor,
-                  context,
-                ),
+                color: selectedPillColor,
                 shape: LiquidGlassShape.continuousRoundedRectangle(
                   cornerRadius: kSquircleStadiumRadius,
                 ),
