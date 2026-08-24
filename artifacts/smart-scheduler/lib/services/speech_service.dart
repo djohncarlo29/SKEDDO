@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../app_theme.dart';
 
 // Offline-only speech-to-text service. Recognition is performed by the
 // platform's native speech engine; no network or language-model API is used.
@@ -140,25 +141,178 @@ class SpeechService {
 
 class MicPermissionSheet {
   static Future<bool> show(BuildContext context) async {
-    final result = await showCupertinoModalPopup<bool>(
-      context: context,
-      builder: (context) => CupertinoActionSheet(
-        title: const Text('Microphone Access'),
-        message: const Text(
-          'Smart Scheduler needs microphone access to transcribe your voice into text.',
-        ),
-        actions: [
-          CupertinoActionSheetAction(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Continue'),
-          ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Not Now'),
-        ),
-      ),
+    final completer = Completer<bool>();
+    late final OverlayEntry entry;
+    final overlay = Overlay.of(context, rootOverlay: true);
+
+    void close(bool result) {
+      if (!completer.isCompleted) {
+        entry.remove();
+        completer.complete(result);
+      }
+    }
+
+    entry = OverlayEntry(
+      builder: (_) => _MicPermissionSheetOverlay(onResult: close),
     );
-    return result ?? false;
+    overlay.insert(entry);
+    return completer.future;
+  }
+}
+
+class _MicPermissionSheetOverlay extends StatelessWidget {
+  final void Function(bool) onResult;
+
+  const _MicPermissionSheetOverlay({required this.onResult});
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = resolveAccentColor(context);
+    final primary = resolveThemeColor(kPrimaryLabel, context);
+    final secondary = resolveThemeColor(kSecondaryLabel, context);
+    final micCircle = resolveThemeColor(kMicPermissionCircle, context);
+    final sheetBorder = CupertinoTheme.brightnessOf(context) == Brightness.dark
+        ? BorderSide(
+            color: resolveThemeColor(kTertiaryLabel, context),
+            width: 0.5,
+          )
+        : null;
+    final buttonDecor = ShapeDecoration(
+      color: resolveThemeColor(kModalButtonBackground, context),
+      shape: const SquircleStadiumBorder(),
+      shadows: resolveThemeShadows(kCardShadow, context),
+    );
+    const buttonPadding = EdgeInsets.symmetric(vertical: 16);
+
+    return Stack(
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => onResult(false),
+          child: const ColoredBox(
+            color: Color(0x44000000),
+            child: SizedBox.expand(),
+          ),
+        ),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: GelBloomCard(
+                scaleOrigin: Alignment.bottomCenter,
+                fillOpacity: 0.82,
+                shadowOpacity: 0.26,
+                border: sheetBorder,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: micCircle,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          CupertinoIcons.mic_fill,
+                          size: 28,
+                          color: secondary,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Microphone Access',
+                        style: TextStyle(
+                          inherit: false,
+                          fontSize: 18,
+                          fontFamily: 'SFProDisplay',
+                          fontWeight: FontWeight.w600,
+                          color: primary,
+                          letterSpacing: kTracking16,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Smart Scheduler needs microphone access to transcribe your voice into text.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          inherit: false,
+                          fontSize: 15,
+                          fontFamily: 'SFProText',
+                          fontWeight: FontWeight.w400,
+                          color: secondary,
+                          height: 1.5,
+                          letterSpacing: kTracking16,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      GelBloomButton(
+                        peakScale: 1.06,
+                        tapDelay: const Duration(milliseconds: 120),
+                        onTap: () => onResult(true),
+                        child: Container(
+                          width: double.infinity,
+                          clipBehavior: Clip.antiAlias,
+                          decoration: buttonDecor,
+                          child: Padding(
+                            padding: buttonPadding,
+                            child: Center(
+                              child: Text(
+                                'Continue',
+                                style: TextStyle(
+                                  inherit: false,
+                                  fontSize: 17,
+                                  fontFamily: 'SFProText',
+                                  fontWeight: FontWeight.w600,
+                                  color: accent,
+                                  letterSpacing: kTracking17,
+                                  height: kLineHeight,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      GelBloomButton(
+                        peakScale: 1.06,
+                        tapDelay: const Duration(milliseconds: 120),
+                        onTap: () => onResult(false),
+                        child: Container(
+                          width: double.infinity,
+                          clipBehavior: Clip.antiAlias,
+                          decoration: buttonDecor,
+                          child: Padding(
+                            padding: buttonPadding,
+                            child: Center(
+                              child: Text(
+                                'Not Now',
+                                style: TextStyle(
+                                  inherit: false,
+                                  fontSize: 17,
+                                  fontFamily: 'SFProText',
+                                  fontWeight: FontWeight.w500,
+                                  color: secondary,
+                                  letterSpacing: kTracking17,
+                                  height: kLineHeight,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
