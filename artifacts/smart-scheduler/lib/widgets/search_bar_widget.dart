@@ -819,7 +819,9 @@ class SearchNoResultsCentered extends StatelessWidget {
           height: constraints.maxHeight,
           child: Align(
             alignment: Alignment.topCenter,
-            child: SizedBox(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
               width: double.infinity,
               height: usableHeight,
               child: Center(child: child),
