@@ -474,11 +474,6 @@ const kPillColor = CupertinoDynamicColor.withBrightness(
 // when the painted control is physically shorter than 48 px.
 const double kSquircleStadiumRadius = 24.0;
 
-// Experimental master curve for the nested modal sheets. Kept separate from
-// the general control radius so this test does not change pills or buttons
-// elsewhere in the app.
-const double kConcentricSheetRadius = 30.0;
-
 // Shared cubic quarter used by both stadium controls and bounded card corners.
 const double _kSharedSquircleCurveControl = 0.64;
 
@@ -1696,11 +1691,72 @@ class ConcentricSquircleBorder extends ContinuousRectangleBorder {
       _pathForRect(rect.deflate(side.width));
 }
 
-// BoundedSquircleStadiumBorder is kept as a compatibility alias for existing
-// callers; new nested surfaces should use ConcentricSquircleBorder.
-class BoundedSquircleStadiumBorder extends ConcentricSquircleBorder {
-  const BoundedSquircleStadiumBorder({super.side, super.radius})
-    : super(inset: 0);
+// BoundedSquircleStadiumBorder — the independent, fixed-radius four-corner
+// shape used by the modal sheets. It deliberately does not derive geometry
+// from a parent surface.
+class BoundedSquircleStadiumBorder extends ContinuousRectangleBorder {
+  final double radius;
+
+  const BoundedSquircleStadiumBorder({
+    super.side,
+    this.radius = kSquircleStadiumRadius,
+  });
+
+  Path _pathForRect(Rect rect) {
+    if (rect.isEmpty) return Path();
+    final effectiveRadius = math.min(
+      this.radius,
+      math.min(rect.width / 2, rect.height / 2),
+    );
+    final c = effectiveRadius * _kSharedSquircleCurveControl;
+    final path = Path()..moveTo(rect.left + effectiveRadius, rect.top);
+    path.lineTo(rect.right - effectiveRadius, rect.top);
+    path.cubicTo(
+      rect.right - effectiveRadius + c,
+      rect.top,
+      rect.right,
+      rect.top + effectiveRadius - c,
+      rect.right,
+      rect.top + effectiveRadius,
+    );
+    path.lineTo(rect.right, rect.bottom - effectiveRadius);
+    path.cubicTo(
+      rect.right,
+      rect.bottom - effectiveRadius + c,
+      rect.right - effectiveRadius + c,
+      rect.bottom,
+      rect.right - effectiveRadius,
+      rect.bottom,
+    );
+    path.lineTo(rect.left + effectiveRadius, rect.bottom);
+    path.cubicTo(
+      rect.left + effectiveRadius - c,
+      rect.bottom,
+      rect.left,
+      rect.bottom - effectiveRadius + c,
+      rect.left,
+      rect.bottom - effectiveRadius,
+    );
+    path.lineTo(rect.left, rect.top + effectiveRadius);
+    path.cubicTo(
+      rect.left,
+      rect.top + effectiveRadius - c,
+      rect.left + effectiveRadius - c,
+      rect.top,
+      rect.left + effectiveRadius,
+      rect.top,
+    );
+    path.close();
+    return path;
+  }
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) =>
+      _pathForRect(rect);
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
+      _pathForRect(rect.deflate(side.width));
 }
 
 // SplitChevronUpDown — a clean custom up/down picker glyph.  This is painted

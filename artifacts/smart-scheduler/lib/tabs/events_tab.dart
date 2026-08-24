@@ -8240,10 +8240,7 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
     final secondary = resolveThemeColor(kSecondaryLabel, context);
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
-      shape: const ConcentricSquircleBorder(
-        radius: kConcentricSheetRadius,
-        inset: 6,
-      ),
+      shape: const BoundedSquircleStadiumBorder(),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
     final sheetBorder = CupertinoTheme.brightnessOf(context) == Brightness.dark
@@ -8306,8 +8303,7 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                 fillOpacity: 0.82,
                 shadowOpacity: 0.26,
                 border: sheetBorder,
-                shape: ConcentricSquircleBorder(
-                  radius: kConcentricSheetRadius,
+                shape: BoundedSquircleStadiumBorder(
                   side: sheetBorder ?? BorderSide.none,
                 ),
                 child: Padding(
