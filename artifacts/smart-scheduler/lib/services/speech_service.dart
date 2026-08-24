@@ -4,7 +4,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../widgets/rounded_cupertino_sheet.dart';
 
 // Offline-only speech-to-text service. Recognition is performed by the
 // platform's native speech engine; no network or language-model API is used.
@@ -141,7 +140,7 @@ class SpeechService {
 
 class MicPermissionSheet {
   static Future<bool> show(BuildContext context) async {
-    final result = await showSafeCupertinoModalPopup<bool>(
+    final result = await showCupertinoModalPopup<bool>(
       context: context,
       builder: (context) => CupertinoActionSheet(
         title: const Text('Microphone Access'),

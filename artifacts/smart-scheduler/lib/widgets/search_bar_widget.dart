@@ -800,8 +800,15 @@ class SearchNoResultsCentered extends StatelessWidget {
         if (!constraints.hasBoundedHeight) {
           return Center(child: child);
         }
+        // The floating tab bar is covered by the keyboard, so its clearance
+        // must not be taken out of the keyboard-visible search viewport.
+        // Keeping it for the keyboard-closed state preserves the existing
+        // centering above the tab bar.
+        final visibleBottomClearance = keyboardBottom > 0
+            ? 0.0
+            : bottomClearance;
         final usableHeight =
-            (constraints.maxHeight - keyboardBottom - bottomClearance)
+            (constraints.maxHeight - keyboardBottom - visibleBottomClearance)
                 .clamp(0.0, constraints.maxHeight)
                 .toDouble();
         return SizedBox(
