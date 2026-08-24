@@ -7,9 +7,7 @@ import 'package:flutter/services.dart' show HapticFeedback;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart'
-    show
-        GestureRecognizerFactoryWithHandlers,
-        ScaleGestureRecognizer;
+    show GestureRecognizerFactoryWithHandlers, ScaleGestureRecognizer;
 import 'package:flutter/material.dart'
     show ReorderableDragStartListener, ReorderableListView;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8242,7 +8240,10 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
     final secondary = resolveThemeColor(kSecondaryLabel, context);
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
-      shape: const ConcentricSquircleBorder(inset: 6),
+      shape: const ConcentricSquircleBorder(
+        radius: kConcentricSheetRadius,
+        inset: 6,
+      ),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
     final sheetBorder = CupertinoTheme.brightnessOf(context) == Brightness.dark
@@ -8306,6 +8307,7 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                 shadowOpacity: 0.26,
                 border: sheetBorder,
                 shape: ConcentricSquircleBorder(
+                  radius: kConcentricSheetRadius,
                   side: sheetBorder ?? BorderSide.none,
                 ),
                 child: Padding(

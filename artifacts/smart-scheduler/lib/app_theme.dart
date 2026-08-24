@@ -474,6 +474,11 @@ const kPillColor = CupertinoDynamicColor.withBrightness(
 // when the painted control is physically shorter than 48 px.
 const double kSquircleStadiumRadius = 24.0;
 
+// Experimental master curve for the nested modal sheets. Kept separate from
+// the general control radius so this test does not change pills or buttons
+// elsewhere in the app.
+const double kConcentricSheetRadius = 30.0;
+
 // Shared cubic quarter used by both stadium controls and bounded card corners.
 const double _kSharedSquircleCurveControl = 0.64;
 
