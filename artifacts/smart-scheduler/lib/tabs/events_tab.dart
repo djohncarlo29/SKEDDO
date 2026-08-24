@@ -4099,7 +4099,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             ),
           ),
           Positioned(
-            bottom: 0,
+            // Account for the retained +1.5px optical translation so the
+            // visible circle-to-title gap is exactly 8pt.
+            top: 40.0,
             left: 0,
             child: Transform.translate(
               offset: const Offset(0, 1.5),
@@ -4191,7 +4193,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             ),
           ),
           Positioned(
-            bottom: 0,
+            // Account for the retained +1.5px optical translation so the
+            // visible circle-to-title gap is exactly 8pt.
+            top: 40.0,
             left: 0,
             child: Transform.translate(
               offset: const Offset(0, 1.5),
@@ -6631,7 +6635,9 @@ class _CategoryTile extends StatelessWidget {
             ),
           ),
           Positioned(
-            bottom: 0,
+            // Account for the retained +1.5px optical translation so the
+            // visible circle-to-title gap is exactly 8pt.
+            top: 40.0,
             left: 0,
             child: Transform.translate(
               offset: const Offset(0, 1.5),
@@ -7154,7 +7160,9 @@ class _PinnedUserTile extends StatelessWidget {
             ),
           ),
           Positioned(
-            bottom: 0,
+            // Account for the retained +1.5px optical translation so the
+            // visible circle-to-title gap is exactly 8pt.
+            top: 40.0,
             left: 0,
             child: Transform.translate(
               offset: const Offset(0, 1.5),
