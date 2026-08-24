@@ -127,7 +127,7 @@ class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
           children: [
             searchBarRow,
             if (showSeparator) ...[
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
               Container(
                 height: 0.5,
                 color: resolveThemeColor(kSeparatorColor, ctx),
@@ -480,7 +480,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     // untouched and the scroll position is preserved.  At all other times it
     // lives inside the scroll view sliver.
     final searchBarRow = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Row(
         children: [
           Expanded(
@@ -526,7 +526,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                 floating: true,
                 delegate: _SearchHeaderDelegate(
                   searchBarRow: searchBarRow,
-                  extent: 76.5,
+                  extent: 74.5,
                   showSeparator: true,
                 ),
               )
@@ -543,7 +543,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                 hits: _searchHits,
                 suggestedQuery: _searchSuggestion,
                 onSuggestionTap: _applySearchSuggestion,
-                eventTopPadding: 18,
+                eventTopPadding: 16,
                 eventTileWrapper: (hit, child, previewBuilder) =>
                     wrapSearchEventTileWithActions(
                       hit: hit,
@@ -566,7 +566,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
               // is active (it is hidden by the overlay) so it is already
               // rendered at the correct position when the overlay fades out.
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 sliver: SliverToBoxAdapter(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -575,7 +575,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                         key: _noteInputKey,
                         controller: _noteController,
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 16),
                       const _SaveEventButton(),
                     ],
                   ),
@@ -627,7 +627,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                     pinned: true,
                     delegate: _SearchHeaderDelegate(
                       searchBarRow: searchBarRow,
-                      extent: 76.5,
+                      extent: 74.5,
                       showSeparator: true,
                     ),
                   ),
@@ -637,7 +637,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                       hits: _searchHits,
                       suggestedQuery: _searchSuggestion,
                       onSuggestionTap: _applySearchSuggestion,
-                      eventTopPadding: 18,
+                      eventTopPadding: 16,
                       eventTileWrapper: (hit, child, previewBuilder) =>
                           wrapSearchEventTileWithActions(
                             hit: hit,
@@ -1343,7 +1343,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 17, 8, 0),
+                padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1425,7 +1425,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                             if (hasText) widget.controller.clear();
                           },
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(10, 0, 5, 8),
+                            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                             child: AnimatedBuilder(
                               animation: _clearScaleCtrl,
                               builder: (context, _) => Transform.scale(
@@ -1460,7 +1460,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
               if (_extractionError != null && !_isAnalyzing)
                 _ErrorChip(message: _extractionError!),
               Padding(
-                padding: const EdgeInsets.fromLTRB(13, 0, 13, 12),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 child: Row(
                   children: [
                     GestureDetector(
@@ -1474,7 +1474,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                       },
                       onTap: _showAttachMenu,
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(0, 6, 10, 0),
+                        padding: const EdgeInsets.fromLTRB(0, 8, 8, 0),
                         child: AnimatedBuilder(
                           animation: _plusScaleCtrl,
                           builder: (context, _) => Opacity(
@@ -1502,7 +1502,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                               onTap: _onMicTap,
                               behavior: HitTestBehavior.opaque,
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(10, 6, 0, 0),
+                                padding: const EdgeInsets.fromLTRB(8, 8, 0, 0),
                                 child: AnimatedBuilder(
                                   animation: _pulseCtrl,
                                   builder: (_, __) => Opacity(
@@ -1525,7 +1525,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                           // Idle: dim mic, press highlight, tap to start.
                           : AnimatedTapIcon(
                               key: const ValueKey('mic-idle'),
-                              padding: const EdgeInsets.fromLTRB(10, 6, 0, 0),
+                              padding: const EdgeInsets.fromLTRB(8, 8, 0, 0),
                               onTap: _onMicTap,
                               onPressedChanged: (pressed) =>
                                   setState(() => _micPressed = pressed),
@@ -1716,7 +1716,7 @@ class _AttachmentImagePreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(13, 0, 13, 8),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(10),
         child: Stack(
@@ -1767,11 +1767,11 @@ class _AttachmentFileChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(13, 0, 13, 8),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             decoration: BoxDecoration(
               color: kModalButtonBackground,
               borderRadius: BorderRadius.circular(8),
@@ -1828,7 +1828,7 @@ class _AnalyzingIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(13, 0, 13, 10),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: const [
@@ -1862,7 +1862,7 @@ class _ErrorChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(13, 0, 13, 8),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2292,7 +2292,7 @@ class _ReviewBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
       color: color.withOpacity(.14),
       borderRadius: BorderRadius.circular(7),

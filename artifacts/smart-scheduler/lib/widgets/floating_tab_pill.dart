@@ -100,6 +100,10 @@ class FloatingTabPill extends StatelessWidget {
               pillStyle: LiquidGlassTabPillStyle(
                 mode: LiquidGlassPillMode.impellerOnly,
                 animated: true,
+                color: resolveThemeColor(
+                  kFloatingTabBarSelectedPillColor,
+                  context,
+                ),
                 shape: LiquidGlassShape.continuousRoundedRectangle(
                   cornerRadius: kSquircleStadiumRadius,
                 ),
@@ -124,17 +128,6 @@ class FloatingTabPill extends StatelessWidget {
                     distortionWidth: 12,
                     magnification: 1,
                     chromaticAberration: 0.0002,
-                  ),
-                ),
-                rest: LiquidGlassStyle(
-                  shape: LiquidGlassShape.continuousRoundedRectangle(
-                    cornerRadius: kSquircleStadiumRadius,
-                  ),
-                  appearance: LiquidGlassAppearance(
-                    color: resolveThemeColor(
-                      kFloatingTabBarSelectedPillColor,
-                      context,
-                    ),
                   ),
                 ),
               ),
