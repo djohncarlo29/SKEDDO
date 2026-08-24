@@ -1609,25 +1609,48 @@ class BoundedSquircleStadiumBorder extends ContinuousRectangleBorder {
     final top = rect.top;
     final right = rect.right;
     final bottom = rect.bottom;
-    final centerY = rect.center.dy;
-    final leftCenterX = left + radius;
-    final rightCenterX = right - radius;
     final c = radius * _kSharedSquircleCurveControl;
-    final path = Path()..moveTo(leftCenterX, top);
+    final path = Path()..moveTo(left + radius, top);
 
-    path.lineTo(rightCenterX, top);
-    path.cubicTo(rightCenterX + c, top, right, centerY - c, right, centerY);
+    // Four independent 24 px squircle corners, with straight edges between
+    // them. In particular, tall cards get vertical side segments rather than
+    // stretched stadium end-caps.
+    path.lineTo(right - radius, top);
+    path.cubicTo(
+      right - radius + c,
+      top,
+      right,
+      top + radius - c,
+      right,
+      top + radius,
+    );
+    path.lineTo(right, bottom - radius);
     path.cubicTo(
       right,
-      centerY + c,
-      rightCenterX + c,
+      bottom - radius + c,
+      right - radius + c,
       bottom,
-      rightCenterX,
+      right - radius,
       bottom,
     );
-    path.lineTo(leftCenterX, bottom);
-    path.cubicTo(leftCenterX - c, bottom, left, centerY + c, left, centerY);
-    path.cubicTo(left, centerY - c, leftCenterX - c, top, leftCenterX, top);
+    path.lineTo(left + radius, bottom);
+    path.cubicTo(
+      left + radius - c,
+      bottom,
+      left,
+      bottom - radius + c,
+      left,
+      bottom - radius,
+    );
+    path.lineTo(left, top + radius);
+    path.cubicTo(
+      left,
+      top + radius - c,
+      left + radius - c,
+      top,
+      left + radius,
+      top,
+    );
     path.close();
     return path;
   }
