@@ -32,6 +32,10 @@ class FloatingTabPill extends StatelessWidget {
     final selectedColor = selectedIndex == 2
         ? CupertinoDynamicColor.resolve(eventsAccent, context)
         : resolveAccentColor(context);
+    final selectedPillColor = resolveThemeColor(
+      kFloatingTabBarSelectedPillColor,
+      context,
+    );
     final unselectedColor = resolveThemeColor(kSecondaryLabel, context);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final bottomOffset = floatingTabBarBottomOffset(context);
@@ -89,7 +93,8 @@ class FloatingTabPill extends StatelessWidget {
                 selectedColor: selectedColor,
                 unselectedColor: unselectedColor,
                 iconSize: 22,
-                labelFontSize: 13,
+                labelFontSize: 12,
+                underGlassLabelFontSize: 12,
                 iconLabelGap: 2,
                 selectedFontWeight: FontWeight.w600,
                 unselectedFontWeight: FontWeight.w500,
@@ -112,6 +117,11 @@ class FloatingTabPill extends StatelessWidget {
                     cornerRadius: kSquircleStadiumRadius,
                   ),
                   appearance: LiquidGlassAppearance(
+                     // Keep the raised glass endpoint on the same resolved
+                     // theme color as the settled rest pill. Leaving this
+                     // transparent lets the captured pre-change surface
+                     // show through during lift and handoff.
+                     color: selectedPillColor,
                     // This shadow belongs to the motion lens only. The package
                     // fades it with the lift/morph handoff, so the settled
                     // active pill remains clean and the moving pill gets depth.
@@ -198,7 +208,8 @@ class _FloatingTabBarGlassPreviewState
   Widget build(BuildContext context) {
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
     final width = MediaQuery.sizeOf(context).width;
-    final barWidth = (width - 64).clamp(150.0, 190.0);
+    final barWidth =
+        (width - (kFloatingTabBarHorizontalMargin * 2)).clamp(150.0, 190.0);
 
     return LayoutBuilder(
       builder: (context, constraints) {
