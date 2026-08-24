@@ -73,62 +73,71 @@ class FloatingTabPill extends StatelessWidget {
             context: context,
             removeBottom: true,
             child: LiquidGlassTabBar.withImpeller(
-            items: [
-              _tabItem(SFIcons.sf_text_document, 'Notes'),
-              _tabItem(SFIcons.sf_calendar, 'Calendar'),
-              _tabItem(SFIcons.sf_list_bullet, 'Events'),
-            ],
-            selectedIndex: selectedIndex,
-            onChanged: onTabSelected,
-            width: (screenWidth - (kFloatingTabBarHorizontalMargin * 2)).clamp(
-              0.0,
-              double.infinity,
-            ),
-            height: kFloatingTabBarHeight,
-            margin: EdgeInsets.only(bottom: bottomOffset),
-            itemPadding: 4,
-            itemStyle: LiquidGlassTabItemStyle(
-              selectedColor: selectedColor,
-              unselectedColor: unselectedColor,
-              iconSize: 20,
-              labelFontSize: 11,
-              iconLabelGap: 3,
-              selectedFontWeight: FontWeight.w700,
-              unselectedFontWeight: FontWeight.w700,
-            ),
-            style: barStyle,
-            // The environmental shadows above own elevation. Keep the glass
-            // material itself shadow-free so its refraction remains clean.
-            pillStyle: LiquidGlassTabPillStyle(
-              mode: LiquidGlassPillMode.impellerOnly,
-              animated: true,
-              shape: LiquidGlassShape.continuousRoundedRectangle(
-                cornerRadius: kSquircleStadiumRadius,
+              items: [
+                _tabItem(SFIcons.sf_text_document, 'Notes'),
+                _tabItem(SFIcons.sf_calendar, 'Calendar'),
+                _tabItem(SFIcons.sf_list_bullet, 'Events'),
+              ],
+              selectedIndex: selectedIndex,
+              onChanged: onTabSelected,
+              width: (screenWidth - (kFloatingTabBarHorizontalMargin * 2))
+                  .clamp(0.0, double.infinity),
+              height: kFloatingTabBarHeight,
+              margin: EdgeInsets.only(bottom: bottomOffset),
+              itemPadding: 4,
+              itemStyle: LiquidGlassTabItemStyle(
+                selectedColor: selectedColor,
+                unselectedColor: unselectedColor,
+                iconSize: 22,
+                labelFontSize: 13,
+                iconLabelGap: 2,
+                selectedFontWeight: FontWeight.w600,
+                unselectedFontWeight: FontWeight.w500,
               ),
-              glassStyle: LiquidGlassStyle(
+              style: barStyle,
+              // The environmental shadows above own elevation. Keep the glass
+              // material itself shadow-free so its refraction remains clean.
+              pillStyle: LiquidGlassTabPillStyle(
+                mode: LiquidGlassPillMode.impellerOnly,
+                animated: true,
                 shape: LiquidGlassShape.continuousRoundedRectangle(
                   cornerRadius: kSquircleStadiumRadius,
                 ),
-                appearance: LiquidGlassAppearance(
-                  // This shadow belongs to the motion lens only. The package
-                  // fades it with the lift/morph handoff, so the settled
-                  // active pill remains clean and the moving pill gets depth.
-                  shadow: LiquidGlassShadow(
-                    blur: 6,
-                    opacity: isDark ? 0 : 0.22,
-                    offset: const Offset(0, 3),
+                glassStyle: LiquidGlassStyle(
+                  shape: LiquidGlassShape.continuousRoundedRectangle(
                     cornerRadius: kSquircleStadiumRadius,
-                    inset: 1,
+                  ),
+                  appearance: LiquidGlassAppearance(
+                    // This shadow belongs to the motion lens only. The package
+                    // fades it with the lift/morph handoff, so the settled
+                    // active pill remains clean and the moving pill gets depth.
+                    shadow: LiquidGlassShadow(
+                      blur: 6,
+                      opacity: isDark ? 0 : 0.22,
+                      offset: const Offset(0, 3),
+                      cornerRadius: kSquircleStadiumRadius,
+                      inset: 1,
+                    ),
+                  ),
+                  refraction: LiquidGlassRefraction(
+                    distortion: 0.04,
+                    distortionWidth: 12,
+                    magnification: 1,
+                    chromaticAberration: 0.0002,
                   ),
                 ),
-                refraction: LiquidGlassRefraction(
-                  distortion: 0.04,
-                  distortionWidth: 12,
-                  magnification: 1,
-                  chromaticAberration: 0.0002,
+                rest: LiquidGlassStyle(
+                  shape: LiquidGlassShape.continuousRoundedRectangle(
+                    cornerRadius: kSquircleStadiumRadius,
+                  ),
+                  appearance: LiquidGlassAppearance(
+                    color: resolveThemeColor(
+                      kFloatingTabBarSelectedPillColor,
+                      context,
+                    ),
+                  ),
                 ),
               ),
-            ),
             ),
           ),
           // Keep the shared 15% hairline outside the glass capture so it stays

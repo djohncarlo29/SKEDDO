@@ -27,10 +27,16 @@ const kCardColor = CupertinoDynamicColor.withBrightness(
 );
 // Floating AppShell tab pill geometry.  Keep these values in the shared theme
 // so its position and the content clearance stay in lock-step.
-const double kFloatingTabBarHorizontalMargin = 16.0;
+// iOS 26's floating tab bar keeps a generous side inset rather than stretching
+// nearly edge-to-edge. Keep the same inset for the bar, shadow, and hairline.
+const double kFloatingTabBarHorizontalMargin = 32.0;
 const double kFloatingTabBarBottomSpacing = 16.0;
 const double kFloatingTabBarHeight = 50.0;
 const double kFloatingTabBarTouchTargetHeight = 44.0;
+const kFloatingTabBarSelectedPillColor = CupertinoDynamicColor.withBrightness(
+  color: Color(0xFFFFFFFF),
+  darkColor: Color(0xFF2C2C2E),
+);
 // Shared visual gap used between the last content edge and the floating pill.
 // Events' category card → Add Category gap uses the same value.
 const double kFloatingTabBarVisualGap = 18.0;
