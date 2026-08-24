@@ -13024,7 +13024,7 @@ class _DcvDragRowTarget {
 class _DcvSectionLabel extends StatelessWidget {
   final String text;
 
-  /// True for the very first item: its 17.5 px top inset comes from the
+  /// True for the very first item: its 16 px top inset comes from the
   /// enclosing SliverPadding, matching the Settings Panel's first section.
   final bool isFirst;
 
@@ -13056,10 +13056,10 @@ class _DcvSectionLabel extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        // Settings geometry: 15 px between section cards, 10 px from the label
+        // 8pt-grid geometry: 16 px between section cards, 8 px from the label
         // to the card it introduces, and 16 px of label inset inside the 16 px
         // card/list inset (32 px from the viewport edge).
-        padding: EdgeInsets.only(left: 16, top: isFirst ? 0 : 15, bottom: 10),
+        padding: EdgeInsets.only(left: 16, top: isFirst ? 0 : 16, bottom: 8),
         child: Row(
           children: [
             Expanded(
@@ -13261,8 +13261,8 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
     return Padding(
       padding: EdgeInsets.only(
         left: 16,
-        top: widget.isFirst ? 0 : 15,
-        bottom: 10,
+        top: widget.isFirst ? 0 : 16,
+        bottom: 8,
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -13283,7 +13283,7 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
           // expanding across the whole header.  The small buffer keeps the
           // final glyph comfortable to tap without claiming the empty space.
           const editableTrailingBuffer = 8.0;
-          const chevronZoneWidth = 12.0 + 16.0 + 18.0;
+          const chevronZoneWidth = 8.0 + 16.0 + 18.0;
           final maxEditableWidth = max(
             1.0,
             constraints.maxWidth - chevronZoneWidth,
@@ -13343,7 +13343,7 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.only(left: 12, right: 16),
+                        padding: const EdgeInsets.only(left: 8, right: 16),
                         child: AnimatedRotation(
                           turns: widget.isCollapsed ? -0.25 : 0.0,
                           duration: const Duration(milliseconds: 280),
@@ -14719,10 +14719,10 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
           slivers: [
             SliverPadding(
-              // 17.5 px top mirrors the Settings Panel first-section inset;
+              // 16 px top follows the 8pt grid;
               // 16 px sides give each card its edge margin; bottom 16 px plus
               // each section's own 16 px bottom padding → 32 px total at end.
-              padding: const EdgeInsets.fromLTRB(16, 17.5, 16, 16),
+               padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
               sliver: SliverList.builder(
                 itemCount: displaySections.length,
                 itemBuilder: (context, sectionIdx) {
@@ -14764,7 +14764,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                                     },
                                     child: _DcvEditableSectionLabel(
                                       initialText: section.headerText!,
-                                      // isFirst controls top padding: 0 for
+                       // isFirst controls top padding: 0 for
                                       // the first section (SliverPadding
                                       // provides the DCV header gap).
                                       isFirst: true,
@@ -14794,7 +14794,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                                   )
                                 : _DcvSectionLabel(
                                     text: section.headerText!,
-                                    // isFirst controls top padding: 0 for first
+                                     // isFirst controls top padding: 0 for first
                                     // section (SliverPadding provides gap from
                                     // DCV header), also 0 for others (section
                                     // bottom padding provides inter-section gap).
@@ -14883,7 +14883,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         mainAxisSize: MainAxisSize.min,
         children: [
           RepaintBoundary(child: _buildIcon()),
-          SizedBox(height: 18),
+           SizedBox(height: 16),
           Text(
             widget.categoryType == 'Shopping List'
                 ? 'Add Shopping Items'
@@ -14900,7 +14900,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
               height: 1.15,
             ),
           ),
-          SizedBox(height: 6),
+           SizedBox(height: 8),
           Text(
             _emptyStateSubtitle,
             textAlign: TextAlign.center,
@@ -15355,12 +15355,12 @@ class _ScheduledEventCard extends StatelessWidget {
           Container(height: 0.5, color: separatorColor),
         _TilePressScale(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+             padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(right: 10),
+                   padding: const EdgeInsets.only(right: 8),
                   child: Container(
                     width: 8,
                     height: 8,
