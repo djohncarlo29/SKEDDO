@@ -41,7 +41,13 @@ class LiquidGlassNavTabCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = style.colorFor(selected: selected);
     final double glass = underGlass.clamp(0.0, 1.0);
-    final iconSize = style.iconSizeFor(underGlass: glass);
+    final baseIconSize = style.iconSizeFor(underGlass: glass);
+    // The app deliberately disables ambient text scaling for ordinary icons,
+    // but the tab bar is a text-and-icon control. Scale its glyph using the
+    // same nonlinear TextScaler curve as the labels, including SKEDDO's
+    // custom profile when that mode is active.
+    final textScaler = MediaQuery.textScalerOf(context);
+    final iconSize = textScaler.scale(baseIconSize);
     final label = item.hasLabel
         ? buildLiquidGlassNavLabel(
             context,
@@ -54,10 +60,11 @@ class LiquidGlassNavTabCell extends StatelessWidget {
           )
         : null;
 
-    // The phone's text scaler is intentionally respected. The floating bar
-    // is a compact control, though, so a large system font must not make the
-    // label escape its cell/pill. FittedBox changes only the visual scale of
-    // this constrained label; its text and semantics remain intact.
+    // The phone's text scaler is intentionally respected for both the glyph
+    // and label. The floating bar is a compact control, though, so a large
+    // system font must not make the label escape its cell/pill. FittedBox
+    // changes only the visual scale of this constrained label; its text and
+    // semantics remain intact.
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableLabelHeight = math.max(
