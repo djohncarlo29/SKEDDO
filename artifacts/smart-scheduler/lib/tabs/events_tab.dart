@@ -8242,11 +8242,7 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
     final secondary = resolveThemeColor(kSecondaryLabel, context);
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
-      // Keep the pill corners at the configured radius when a label wraps.
-      // The button should grow vertically, not stretch its corner geometry.
-      shape: const BoundedContinuousRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(kSquircleStadiumRadius)),
-      ),
+      shape: const BoundedSquircleStadiumBorder(),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
     final sheetBorder = CupertinoTheme.brightnessOf(context) == Brightness.dark
@@ -8309,6 +8305,9 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                 fillOpacity: 0.82,
                 shadowOpacity: 0.26,
                 border: sheetBorder,
+                shape: BoundedSquircleStadiumBorder(
+                  side: sheetBorder ?? BorderSide.none,
+                ),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
                   child: Column(
@@ -8345,14 +8344,14 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                         labelColor: primary,
                         onTap: () => onResult(_DeleteGroupChoice.only),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       button(
                         label: 'Delete Group and Categories',
                         labelColor: CupertinoColors.destructiveRed,
                         onTap: () =>
                             onResult(_DeleteGroupChoice.withCategories),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       button(
                         label: 'Cancel',
                         labelColor: primary,

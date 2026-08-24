@@ -179,7 +179,7 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
         : null;
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
-      shape: const SquircleStadiumBorder(),
+      shape: const BoundedSquircleStadiumBorder(),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
     const buttonPadding = EdgeInsets.symmetric(vertical: 16);
@@ -204,6 +204,9 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
                 fillOpacity: 0.82,
                 shadowOpacity: 0.26,
                 border: sheetBorder,
+                shape: BoundedSquircleStadiumBorder(
+                  side: sheetBorder ?? BorderSide.none,
+                ),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
                   child: Column(
@@ -266,7 +269,7 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
                                   inherit: false,
                                   fontSize: 17,
                                   fontFamily: 'SFProText',
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w500,
                                   color: accent,
                                   letterSpacing: kTracking17,
                                   height: kLineHeight,
@@ -276,7 +279,7 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       GelBloomButton(
                         peakScale: 1.06,
                         tapDelay: const Duration(milliseconds: 120),

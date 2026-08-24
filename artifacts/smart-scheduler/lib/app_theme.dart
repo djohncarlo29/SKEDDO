@@ -1587,6 +1587,60 @@ class SquircleStadiumBorder extends ContinuousRectangleBorder {
       _pathForRect(rect.deflate(side.width));
 }
 
+// BoundedSquircleStadiumBorder — the shared stadium shape with both axes
+// constrained to the painted rectangle. Unlike SquircleStadiumBorder, it also
+// bounds the horizontal end radius, so the same shape is safe for every card
+// and control size.
+class BoundedSquircleStadiumBorder extends ContinuousRectangleBorder {
+  final double radius;
+
+  const BoundedSquircleStadiumBorder({
+    super.side,
+    this.radius = kSquircleStadiumRadius,
+  });
+
+  Path _pathForRect(Rect rect) {
+    if (rect.isEmpty) return Path();
+    final radius = math.min(
+      this.radius,
+      math.min(rect.width / 2, rect.height / 2),
+    );
+    final left = rect.left;
+    final top = rect.top;
+    final right = rect.right;
+    final bottom = rect.bottom;
+    final centerY = rect.center.dy;
+    final leftCenterX = left + radius;
+    final rightCenterX = right - radius;
+    final c = radius * _kSharedSquircleCurveControl;
+    final path = Path()..moveTo(leftCenterX, top);
+
+    path.lineTo(rightCenterX, top);
+    path.cubicTo(rightCenterX + c, top, right, centerY - c, right, centerY);
+    path.cubicTo(
+      right,
+      centerY + c,
+      rightCenterX + c,
+      bottom,
+      rightCenterX,
+      bottom,
+    );
+    path.lineTo(leftCenterX, bottom);
+    path.cubicTo(leftCenterX - c, bottom, left, centerY + c, left, centerY);
+    path.cubicTo(left, centerY - c, leftCenterX - c, top, leftCenterX, top);
+    path.close();
+    return path;
+  }
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) =>
+      _pathForRect(rect);
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
+      _pathForRect(rect.deflate(side.width));
+}
+
 // SplitChevronUpDown — a clean custom up/down picker glyph.  This is painted
 // directly instead of clipping CupertinoIcons.chevron_up_chevron_down, because
 // midpoint clipping leaves anti-aliased fragments from the other chevron.
@@ -1854,6 +1908,7 @@ class FrostedGlassCard extends StatelessWidget {
     // cornerRadius and allows asymmetric squircle shapes (e.g. top-only).
     this.borderRadius,
     this.stadium = false,
+    this.shape,
   });
 
   /// Animation progress: 0.0 (invisible) → 1.0 (fully open).
@@ -1895,6 +1950,9 @@ class FrostedGlassCard extends StatelessWidget {
   /// as pills. Kept opt-in so taller cards retain continuous-corner geometry.
   final bool stadium;
 
+  /// Optional complete shape override for bounded stadium cards.
+  final ShapeBorder? shape;
+
   @override
   Widget build(BuildContext context) {
     final blur = blurSigma * progress;
@@ -1903,7 +1961,14 @@ class FrostedGlassCard extends StatelessWidget {
         ? 0.0
         : shadowOpacity * progress;
     final effectiveBR = borderRadius ?? BorderRadius.circular(cornerRadius);
-    final useStadium = stadium && borderRadius == null;
+    final effectiveShape =
+        shape ??
+        (stadium && borderRadius == null
+            ? SquircleStadiumBorder(side: border ?? BorderSide.none)
+            : BoundedContinuousRectangleBorder(
+                borderRadius: effectiveBR,
+                side: border ?? BorderSide.none,
+              ));
 
     return DecoratedBox(
       decoration: ShapeDecoration(
@@ -1914,21 +1979,11 @@ class FrostedGlassCard extends StatelessWidget {
             offset: const Offset(0, 8),
           ),
         ], context),
-        shape: useStadium
-            ? SquircleStadiumBorder(side: border ?? BorderSide.none)
-            : BoundedContinuousRectangleBorder(
-                borderRadius: effectiveBR,
-                side: border ?? BorderSide.none,
-              ),
+        shape: effectiveShape,
       ),
       child: ClipPath(
         clipper: ShapeBorderClipper(
-          shape: useStadium
-              ? SquircleStadiumBorder(side: border ?? BorderSide.none)
-              : BoundedContinuousRectangleBorder(
-                  borderRadius: effectiveBR,
-                  side: border ?? BorderSide.none,
-                ),
+          shape: effectiveShape,
         ),
         child: Builder(
           builder: (context) {
@@ -1980,6 +2035,7 @@ class GelBloomCard extends StatefulWidget {
     this.shadowOpacity = 0.26,
     this.cornerRadius = kCornerRadius,
     this.border,
+    this.shape,
   });
 
   final Widget child;
@@ -2000,6 +2056,7 @@ class GelBloomCard extends StatefulWidget {
   final double shadowOpacity;
   final double cornerRadius;
   final BorderSide? border;
+  final ShapeBorder? shape;
 
   @override
   State<GelBloomCard> createState() => _GelBloomCardState();
@@ -2047,6 +2104,7 @@ class _GelBloomCardState extends State<GelBloomCard>
             shadowOpacity: widget.shadowOpacity,
             cornerRadius: widget.cornerRadius,
             border: widget.border,
+            shape: widget.shape,
             child: child!,
           ),
         );
