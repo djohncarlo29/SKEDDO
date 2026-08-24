@@ -3654,18 +3654,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 shape: BoxShape.circle,
               ),
               child: Center(
-                child: Transform.translate(
-                  offset: const {'Unnamed', 'Uncategorized'}.contains(cat.name)
-                      ? Offset(0, -1)
-                      : Offset.zero,
-                  child: const {'Unnamed', 'Uncategorized'}.contains(cat.name)
-                      ? _ThickFolderIcon()
-                      : _renderCatIcon(
-                          cat.iconOrSvg,
-                          34,
-                          CupertinoColors.white,
-                          emojiOffsetY: 1,
-                        ),
+                child: _renderCatIcon(
+                  cat.iconOrSvg,
+                  34,
+                  CupertinoColors.white,
+                  emojiOffsetY: 1,
                 ),
               ),
             ),
@@ -4178,15 +4171,13 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 shape: BoxShape.circle,
               ),
               child: Center(
-                child: const {'Unnamed', 'Uncategorized'}.contains(cat.name)
-                    ? _ThickFolderIcon()
-                    : _renderCatIcon(
-                        cat.iconOrSvg,
-                        35.5,
-                        CupertinoColors.white,
-                        emojiOffsetY: 1,
-                        ctx: context,
-                      ),
+                child: _renderCatIcon(
+                  cat.iconOrSvg,
+                  35.5,
+                  CupertinoColors.white,
+                  emojiOffsetY: 1,
+                  ctx: context,
+                ),
               ),
             ),
           ),
