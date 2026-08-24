@@ -61,16 +61,26 @@ class LiquidGlassNavTabCell extends StatelessWidget {
         : null;
 
     // The phone's text scaler is intentionally respected for both the glyph
-    // and label. The floating bar is a compact control, though, so a large
-    // system font must not make the label escape its cell/pill. FittedBox
-    // changes only the visual scale of this constrained label; its text and
-    // semantics remain intact.
+    // and label. The floating bar is a compact control, though, so a label
+    // that no longer fits at its OS-requested size is removed instead of
+    // being shrunk or allowed to escape the pill. This leaves the scaled
+    // icon visible as the compact fallback.
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableLabelHeight = math.max(
           0.0,
           constraints.maxHeight - iconSize - style.iconLabelGap,
         );
+        final labelFits = label != null &&
+            (item.label == null ||
+                _labelFitsAtSystemScale(
+                  context,
+                  item.label!,
+                  style.labelFontSizeFor(underGlass: glass),
+                  style.fontWeightFor(selected: selected),
+                  constraints.maxWidth,
+                  availableLabelHeight,
+                ));
 
         return Center(
           child: Column(
@@ -84,16 +94,12 @@ class LiquidGlassNavTabCell extends StatelessWidget {
                 selected: selected,
                 underGlass: glass > 0,
               ),
-              if (label != null && availableLabelHeight > 0) ...[
+              if (labelFits && availableLabelHeight > 0) ...[
                 SizedBox(height: style.iconLabelGap),
                 SizedBox(
                   width: constraints.maxWidth,
                   height: availableLabelHeight,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.center,
-                    child: label,
-                  ),
+                  child: label,
                 ),
               ],
             ],
@@ -101,6 +107,34 @@ class LiquidGlassNavTabCell extends StatelessWidget {
         );
       },
     );
+  }
+
+  bool _labelFitsAtSystemScale(
+    BuildContext context,
+    String text,
+    double fontSize,
+    FontWeight fontWeight,
+    double maxWidth,
+    double maxHeight,
+  ) {
+    if (maxWidth <= 0 || maxHeight <= 0) return false;
+
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontSize: fontSize,
+          fontWeight: fontWeight,
+        ),
+      ),
+      textScaler: MediaQuery.textScalerOf(context),
+      textDirection: Directionality.of(context),
+      maxLines: 1,
+    )..layout(maxWidth: maxWidth);
+
+    return !painter.didExceedMaxLines &&
+        painter.width <= maxWidth &&
+        painter.height <= maxHeight;
   }
 }
 
