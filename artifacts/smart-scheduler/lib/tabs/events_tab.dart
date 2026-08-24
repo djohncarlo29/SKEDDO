@@ -3668,11 +3668,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 height: double.infinity,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  // The row has a 16pt top and bottom inset. Keep the
-                  // title/subtitle separation fixed at 4pt.
-                  // the title/subtitle block between those edges so
-                  // wrapped and dragged rows use the same geometry.
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  // Title-only rows center their title beside the icon.
+                  // Rows with descriptions keep the title/subtitle block
+                  // spread between the fixed 16pt top and bottom insets.
+                  mainAxisAlignment: cat.description.isEmpty
+                      ? MainAxisAlignment.center
+                      : MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       cat.name,
@@ -7944,7 +7945,9 @@ class _CategoryRow extends StatelessWidget {
                         height: double.infinity,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: category.description.isEmpty
+                              ? MainAxisAlignment.center
+                              : MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               category.name,
