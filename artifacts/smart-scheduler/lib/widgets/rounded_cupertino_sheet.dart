@@ -225,7 +225,19 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
                 // original context and let every sheet's SafeArea restore
                 // the status-bar padding that the route intentionally
                 // removed.
-                child: _RoundedSheetScope(child: Builder(builder: builder)),
+                child: ClipPath(
+                  // This clip must be attached to the actual sheet surface,
+                  // not the full-screen route transition. The route's top gap
+                  // means the visible sheet starts below y=0; clipping the
+                  // transition box leaves the visible top edge flat.
+                  clipper: ShapeBorderClipper(
+                    shape: const BoundedSquircleStadiumBorder(
+                      radius: kModalSheetCornerRadius,
+                      topOnly: true,
+                    ),
+                  ),
+                  child: _RoundedSheetScope(child: Builder(builder: builder)),
+                ),
               ),
             ),
           ),
