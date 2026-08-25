@@ -163,9 +163,6 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
 
   @override
   Widget buildContent(BuildContext context) {
-    final double safeBottom = systemSafeAreaBottomInset(context);
-    final double bottomPadding = unifiedBottomPaddingForInset(safeBottom);
-
     // Build a single merged MediaQueryData that:
     //   (a) removes top and bottom padding — same as the original
     //       MediaQuery.removePadding(removeTop: true, removeBottom: true) call,
@@ -211,46 +208,19 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
       fit: StackFit.expand,
       children: [
         Positioned.fill(
-          // The route translates this entire surface down by 8% when it is
-          // presented. Keep the painted modal surface full-height so the
-          // translated route never exposes a bottom strip.
-          child: ColoredBox(
-            color: resolveThemeColor(kModalBackground, context),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Only the usable page/content area is shortened. At rest,
-                // the route starts at 8% of the viewport, so a full-height
-                // content child would end 8% below the physical screen.
-                final double usableHeight =
-                    constraints.maxHeight * (1.0 - _kTopGapRatio);
-                return Align(
-                  alignment: Alignment.topCenter,
-                  child: SizedBox(
-                    width: constraints.maxWidth,
-                    height: usableHeight,
-                    child: MediaQuery(
-                      data: mqData,
-                      child: Padding(
-                        // This is inside the constrained content viewport,
-                        // not below the full-height surface. It leaves
-                        // max(16px, persistent inset) above the physical
-                        // screen bottom after the route's 8% translation.
-                        padding: EdgeInsets.only(bottom: bottomPadding),
-                        child: CupertinoUserInterfaceLevel(
-                          data: CupertinoUserInterfaceLevelData.elevated,
-                          // Build the page under the cleaned MediaQuery
-                          // above. Calling builder(context) here would pass
-                          // the route's original context and let every
-                          // sheet's SafeArea restore status-bar padding.
-                          child: _RoundedSheetScope(
-                            child: Builder(builder: builder),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
+          // Keep the page itself full-height. The route's 8% translation and
+          // viewport clip already define the usable visible area; shrinking
+          // this child or padding it here creates a persistent, opaque band
+          // and clips intermediate cards in every modal. Individual modal
+          // scroll views own their transparent final-content clearance.
+          child: MediaQuery(
+            data: mqData,
+            child: CupertinoUserInterfaceLevel(
+              data: CupertinoUserInterfaceLevelData.elevated,
+              // Build the page under the cleaned MediaQuery above. Calling
+              // builder(context) here would pass the route's original context
+              // and let every sheet's SafeArea restore status-bar padding.
+              child: _RoundedSheetScope(child: Builder(builder: builder)),
             ),
           ),
         ),
