@@ -117,12 +117,6 @@ class FloatingTabPill extends StatelessWidget {
                     cornerRadius: kSquircleStadiumRadius,
                   ),
                   appearance: LiquidGlassAppearance(
-                    // Make the lifted endpoint explicitly clear. Leaving
-                    // this unset uses liquid_glass_easy's default translucent
-                    // white, which gets interpolated through during lift and
-                    // return instead of transitioning from our configured
-                    // settled active-pill color.
-                    color: const Color(0x00000000),
                     // The raised endpoint must remain a transparent,
                     // refracting glass lens. The resolved Light/Dark color
                     // is owned by the settled rest endpoint above, so the
