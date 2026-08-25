@@ -223,6 +223,10 @@ class LiquidGlassAnimatedNavBar extends StatefulWidget {
   /// Fill tint of the moving glass pill.
   final Color pillColor;
 
+  /// Optional color used only during the material interpolation. The final
+  /// lifted frame continues to use [pillColor].
+  final Color? pillTransitionColor;
+
   /// Contact shadow around the **moving pill**. `null` (the default)
   /// draws none.
   ///
@@ -312,6 +316,7 @@ class LiquidGlassAnimatedNavBar extends StatefulWidget {
     this.pillEnableInnerRadiusTransparent = false,
     this.pillShape,
     this.pillColor = const Color(0x1CFFFFFF),
+    this.pillTransitionColor,
     // Inert at rest: the moving pill hands over to a non-refracting
     // static pill, so any glass left here would pop off at the swap.
     this.restStyle = const LiquidGlassStyle(
@@ -916,12 +921,11 @@ class _LiquidGlassAnimatedNavBarState extends State<LiquidGlassAnimatedNavBar>
       // into the plain static twin.
       final bool persistentRestGlass =
           widget.restStyle.refraction.distortion > 0 &&
-          widget.restStyle.refraction.distortionWidth > 0;
+              widget.restStyle.refraction.distortionWidth > 0;
       // Legacy inert pills shed the rim, shadow and refraction during the
       // handover while keeping travel/lift/squash running underneath.
-      final double glassPresence = persistentRestGlass
-          ? 1.0
-          : (1 - _handover).clamp(0.0, 1.0);
+      final double glassPresence =
+          persistentRestGlass ? 1.0 : (1 - _handover).clamp(0.0, 1.0);
 
       // The lens stays until there is nothing left in it to see: no glass,
       // no lift and no deformation. By then it is drawing a flat fill at
@@ -1037,6 +1041,7 @@ class _LiquidGlassAnimatedNavBarState extends State<LiquidGlassAnimatedNavBar>
                         restSize: pillRest,
                         activeSize: pillLifted,
                         style: _pillStyle(),
+                        transitionColor: widget.pillTransitionColor,
                         restStyle: widget.restStyle,
                         // The bar owns the model; the pill just draws it.
                         deviation: dev,

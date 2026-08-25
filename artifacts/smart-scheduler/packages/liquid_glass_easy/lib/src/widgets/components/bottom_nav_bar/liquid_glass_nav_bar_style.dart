@@ -101,8 +101,7 @@ class LiquidGlassTabItemStyle {
   /// it — same lerp as [iconSizeFor].
   double labelFontSizeFor({required double underGlass}) =>
       labelFontSize +
-      ((underGlassLabelFontSize ?? labelFontSize) - labelFontSize) *
-          underGlass;
+      ((underGlassLabelFontSize ?? labelFontSize) - labelFontSize) * underGlass;
 
   /// Resolves the label weight for a cell in [selected] state.
   FontWeight fontWeightFor({required bool selected}) =>
@@ -255,6 +254,11 @@ class LiquidGlassTabPillStyle {
   /// a `null` shape inside it falls back to [shape]. Glass [mode]s only.
   final LiquidGlassStyle? glassStyle;
 
+  /// Optional fill color used only while the glass pill is morphing between
+  /// its resting and lifted material states. The resting and lifted endpoints
+  /// continue to use their own authored appearance colors.
+  final Color? transitionColor;
+
   /// The **static rest pill**'s look as one [LiquidGlassStyle] — the
   /// non-refracting highlight shown when the glass pill is not moving
   /// (and the fill of the non-glass tiers). Its `appearance.color` is the
@@ -307,6 +311,7 @@ class LiquidGlassTabPillStyle {
     this.enableInnerRadiusTransparent = false,
     this.shape,
     this.glassStyle,
+    this.transitionColor,
     this.rest,
     this.travelStiffness = 280,
     this.travelDamping = 31.4,
@@ -345,6 +350,7 @@ class LiquidGlassTabPillStyle {
     bool? enableInnerRadiusTransparent,
     LiquidGlassShape? shape,
     LiquidGlassStyle? glassStyle,
+    Color? transitionColor,
     LiquidGlassStyle? rest,
     double? travelStiffness,
     double? travelDamping,
@@ -367,6 +373,7 @@ class LiquidGlassTabPillStyle {
           enableInnerRadiusTransparent ?? this.enableInnerRadiusTransparent,
       shape: shape ?? this.shape,
       glassStyle: glassStyle ?? this.glassStyle,
+      transitionColor: transitionColor ?? this.transitionColor,
       rest: rest ?? this.rest,
       travelStiffness: travelStiffness ?? this.travelStiffness,
       travelDamping: travelDamping ?? this.travelDamping,

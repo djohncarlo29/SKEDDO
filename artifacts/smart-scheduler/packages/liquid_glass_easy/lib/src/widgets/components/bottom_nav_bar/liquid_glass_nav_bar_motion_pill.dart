@@ -105,6 +105,11 @@ class LiquidGlassNavBarMotionPill extends StatefulWidget {
   /// Glass look at the fully lifted endpoint. Null keeps the tuned default.
   final LiquidGlassStyle? style;
 
+  /// Optional fill color used only for intermediate material frames. At
+  /// progress 0 and 1 the authored rest and active appearance colors are
+  /// preserved exactly.
+  final Color? transitionColor;
+
   /// Glass look at the resting endpoint. Every interpolated frame is still
   /// the same lens; this is not a separate cover or replacement widget.
   final LiquidGlassStyle restStyle;
@@ -188,6 +193,7 @@ class LiquidGlassNavBarMotionPill extends StatefulWidget {
     required this.activeSize,
     this.envelopeSize,
     this.style,
+    this.transitionColor,
     this.restStyle = const LiquidGlassStyle(),
     this.motion = const LiquidGlassLensMotionSpec(),
     this.deviation,
@@ -496,7 +502,12 @@ class _LiquidGlassNavBarMotionPillState
       // The rim rides `rim` on top of the lift, so it can be retired while
       // the pill is still large and still deformed.
       shape: _scaleRim(_lerpShape(restShape, activeShape, t), rim),
-      appearance: _lerpAppearance(rest.appearance, active.appearance, t),
+      appearance: _lerpAppearance(
+        rest.appearance,
+        active.appearance,
+        t,
+        transitionColor: widget.transitionColor,
+      ),
       // Refraction leaves on `presence`: the band narrows to nothing, so
       // what is behind the pill straightens out rather than snapping.
       refraction: _compensateRefractionWidth(
@@ -659,15 +670,20 @@ class _LiquidGlassNavBarMotionPillState
   static LiquidGlassAppearance _lerpAppearance(
     LiquidGlassAppearance from,
     LiquidGlassAppearance to,
-    double t,
-  ) {
+    double t, {
+    Color? transitionColor,
+  }) {
     return LiquidGlassAppearance(
       saturation: _lerpDouble(from.saturation, to.saturation, t),
       blur: LiquidGlassBlur(
         sigmaX: _lerpDouble(from.blur.sigmaX, to.blur.sigmaX, t),
         sigmaY: _lerpDouble(from.blur.sigmaY, to.blur.sigmaY, t),
       ),
-      color: Color.lerp(from.color, to.color, t)!,
+      color: t <= 0
+          ? from.color
+          : t >= 1
+              ? to.color
+              : transitionColor ?? Color.lerp(from.color, to.color, t)!,
       enableInnerRadiusTransparent: t < 0.5
           ? from.enableInnerRadiusTransparent
           : to.enableInnerRadiusTransparent,

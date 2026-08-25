@@ -109,6 +109,7 @@ class FloatingTabPill extends StatelessWidget {
                 mode: LiquidGlassPillMode.impellerOnly,
                 animated: true,
                 color: selectedPillColor.withValues(alpha: 0.18),
+                transitionColor: const Color(0x00000000),
                 shape: LiquidGlassShape.continuousRoundedRectangle(
                   cornerRadius: kSquircleStadiumRadius,
                 ),
@@ -225,8 +226,10 @@ class _FloatingTabBarGlassPreviewState
   Widget build(BuildContext context) {
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
     final width = MediaQuery.sizeOf(context).width;
-    final barWidth =
-        (width - (kFloatingTabBarHorizontalMargin * 2)).clamp(150.0, 190.0);
+    final barWidth = (width - (kFloatingTabBarHorizontalMargin * 2)).clamp(
+      150.0,
+      190.0,
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
