@@ -6657,7 +6657,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final turningOn = !_unscheduled;
     setState(() {
       _unscheduled = turningOn;
-      if (!turningOn) _allDay = false;
     });
     if (turningOn) {
       // Close any starts/ends picker; reminder picker stays (its section is

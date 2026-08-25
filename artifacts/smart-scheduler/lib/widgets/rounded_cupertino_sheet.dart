@@ -4,11 +4,11 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import '../app_theme.dart'
     show
+        kModalBackground,
         kBackgroundColor,
         BoundedSquircleStadiumBorder,
         kModalSheetCornerRadius,
         resolveThemeColor,
-        unifiedBottomPaddingForInset,
         systemSafeAreaBottomInset;
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -162,10 +162,7 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
 
   @override
   Widget buildContent(BuildContext context) {
-    final double bottomPadding =
-        MediaQuery.sizeOf(context).height * _kTopGapRatio;
     final double safeBottom = systemSafeAreaBottomInset(context);
-    final double unifiedBottom = unifiedBottomPaddingForInset(safeBottom);
 
     // Build a single merged MediaQueryData that:
     //   (a) removes top and bottom padding — same as the original
@@ -211,30 +208,25 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Keep the sheet's own surface behind the unified bottom spacing.
-        // Without this backing layer, the route's bottom gap is transparent
-        // and the page underneath the sheet becomes visible behind Android's
-        // navigation bar or iOS's home-indicator area.
+        // Keep the sheet's own surface behind the persistent system inset.
+        // There is intentionally no authored bottom gap here: the only space
+        // below the sheet is the device safe area.
         Positioned(
           left: 0,
           right: 0,
           bottom: 0,
-          height: bottomPadding + unifiedBottom,
+          height: safeBottom,
           child: ColoredBox(
             color: resolveThemeColor(kBackgroundColor, context),
           ),
         ),
         Positioned.fill(
-          bottom: bottomPadding,
           child: MediaQuery(
             data: mqData,
             child: Padding(
-              // Keep the authored sheet content above the persistent device
-              // safe area, while the backing surface above paints through it.
-              // The shared helper compares the design minimum with the
-              // persistent inset; keyboard viewInsets are intentionally
-              // excluded.
-              padding: EdgeInsets.only(bottom: unifiedBottom),
+              // Keep sheet content above the persistent device safe area.
+              // Keyboard viewInsets are intentionally excluded.
+              padding: EdgeInsets.only(bottom: safeBottom),
               child: CupertinoUserInterfaceLevel(
                 data: CupertinoUserInterfaceLevelData.elevated,
                 child: _RoundedSheetScope(child: builder(context)),
@@ -467,6 +459,7 @@ class _RoundedSheetTransition extends StatefulWidget {
           clipper: ShapeBorderClipper(
             shape: const BoundedSquircleStadiumBorder(
               radius: kModalSheetCornerRadius,
+              topOnly: true,
             ),
           ),
           child: contrastedChild,
@@ -535,6 +528,7 @@ class _RoundedSheetTransition extends StatefulWidget {
             clipper: ShapeBorderClipper(
                 shape: const BoundedSquircleStadiumBorder(
                   radius: kModalSheetCornerRadius,
+                  topOnly: true,
                 ),
             ),
             child: coveredChild,
@@ -682,6 +676,7 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
             clipper: ShapeBorderClipper(
                 shape: const BoundedSquircleStadiumBorder(
                   radius: kModalSheetCornerRadius,
+                  topOnly: true,
               ),
             ),
             child: dimmedChild,
@@ -704,6 +699,7 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
             clipper: ShapeBorderClipper(
               shape: const BoundedSquircleStadiumBorder(
                 radius: kModalSheetCornerRadius,
+                topOnly: true,
               ),
             ),
             child: widget.child,

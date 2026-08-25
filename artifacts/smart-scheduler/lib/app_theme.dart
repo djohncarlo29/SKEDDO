@@ -1726,10 +1726,12 @@ class ConcentricSquircleBorder extends ContinuousRectangleBorder {
 // from a parent surface.
 class BoundedSquircleStadiumBorder extends ContinuousRectangleBorder {
   final double radius;
+  final bool topOnly;
 
   const BoundedSquircleStadiumBorder({
     super.side,
     this.radius = kSquircleStadiumRadius,
+    this.topOnly = false,
   });
 
   Path _pathForRect(Rect rect) {
@@ -1738,6 +1740,7 @@ class BoundedSquircleStadiumBorder extends ContinuousRectangleBorder {
       this.radius,
       math.min(rect.width / 2, rect.height / 2),
     );
+    final bottomRadius = topOnly ? 0.0 : effectiveRadius;
     final c = effectiveRadius * _kSharedSquircleCurveControl;
     final path = Path()..moveTo(rect.left + effectiveRadius, rect.top);
     path.lineTo(rect.right - effectiveRadius, rect.top);
@@ -1749,24 +1752,32 @@ class BoundedSquircleStadiumBorder extends ContinuousRectangleBorder {
       rect.right,
       rect.top + effectiveRadius,
     );
-    path.lineTo(rect.right, rect.bottom - effectiveRadius);
-    path.cubicTo(
-      rect.right,
-      rect.bottom - effectiveRadius + c,
-      rect.right - effectiveRadius + c,
-      rect.bottom,
-      rect.right - effectiveRadius,
-      rect.bottom,
-    );
-    path.lineTo(rect.left + effectiveRadius, rect.bottom);
-    path.cubicTo(
-      rect.left + effectiveRadius - c,
-      rect.bottom,
-      rect.left,
-      rect.bottom - effectiveRadius + c,
-      rect.left,
-      rect.bottom - effectiveRadius,
-    );
+    path.lineTo(rect.right, rect.bottom - bottomRadius);
+    if (bottomRadius > 0) {
+      path.cubicTo(
+        rect.right,
+        rect.bottom - bottomRadius + c,
+        rect.right - bottomRadius + c,
+        rect.bottom,
+        rect.right - bottomRadius,
+        rect.bottom,
+      );
+    } else {
+      path.lineTo(rect.right, rect.bottom);
+    }
+    path.lineTo(rect.left + bottomRadius, rect.bottom);
+    if (bottomRadius > 0) {
+      path.cubicTo(
+        rect.left + bottomRadius - c,
+        rect.bottom,
+        rect.left,
+        rect.bottom - bottomRadius + c,
+        rect.left,
+        rect.bottom - bottomRadius,
+      );
+    } else {
+      path.lineTo(rect.left, rect.bottom);
+    }
     path.lineTo(rect.left, rect.top + effectiveRadius);
     path.cubicTo(
       rect.left,
