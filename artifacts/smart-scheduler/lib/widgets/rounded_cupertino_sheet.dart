@@ -162,12 +162,8 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
 
   @override
   Widget buildContent(BuildContext context) {
-    // Keep the sheet full-height. The 8% gap belongs below the sheet,
-    // matching the original Cupertino sheet geometry.
-    final double bottomPadding =
-        MediaQuery.sizeOf(context).height * _kTopGapRatio;
     final double safeBottom = systemSafeAreaBottomInset(context);
-    final double unifiedBottom = unifiedBottomPaddingForInset(safeBottom);
+    final double bottomPadding = unifiedBottomPaddingForInset(safeBottom);
 
     // Build a single merged MediaQueryData that:
     //   (a) removes top and bottom padding — same as the original
@@ -213,26 +209,15 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Paint through the reserved bottom area so the previous page cannot
-        // show through the sheet's system/navigation region.
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: bottomPadding + unifiedBottom,
-          child: ColoredBox(
-            color: resolveThemeColor(kBackgroundColor, context),
-          ),
-        ),
         Positioned.fill(
-          bottom: bottomPadding,
           child: MediaQuery(
             data: mqData,
             child: Padding(
               // Keep the authored 16pt minimum (or the real persistent
-              // inset) inside the sheet content boundary. It is separate
-              // from the larger transition gap below the sheet.
-              padding: EdgeInsets.only(bottom: unifiedBottom),
+              // inset) inside the sheet content boundary. This padding is
+              // inside the full-height sheet, so it cannot create a visible
+              // strip below the modal surface.
+              padding: EdgeInsets.only(bottom: bottomPadding),
               child: CupertinoUserInterfaceLevel(
                 data: CupertinoUserInterfaceLevelData.elevated,
                 // Build the page under the cleaned MediaQuery above.
