@@ -31,9 +31,13 @@ import 'widgets/floating_tab_pill.dart';
 //     results are correct from the sub-screen context.
 //
 // Spacing contract
-//   • Main list  : separator bottom → top of first section label = 17.5 pt
-//   • Sub-screen : separator bottom → top of first card group    = 18 pt
+//   • Main list and sub-screens use 16 pt edge gaps on the 8 pt grid.
 // ══════════════════════════════════════════════════════════════════════════════
+
+double _settingsGridInset(double inset) {
+  if (inset <= 0) return 0;
+  return (inset / 8).ceil() * 8.0;
+}
 
 // ── Accent-color swatch descriptor ────────────────────────────────────────────
 // Mirrors the 12 category swatches in kCategoryColors (app_theme.dart).
@@ -261,6 +265,11 @@ class _SettingsPanelState extends State<SettingsPanel>
   // ── Build ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    // Preserve the complete system-safe area while aligning the panel's edge
+    // spacing to the same 8 pt grid used by its rows and section gaps.
+    final topInset = _settingsGridInset(widget.topInset);
+    final bottomInset = _settingsGridInset(widget.bottomInset);
+
     return ListenableBuilder(
       listenable: Listenable.merge([
         appAccentNotifier,
@@ -301,7 +310,7 @@ class _SettingsPanelState extends State<SettingsPanel>
         final liquidGlassOpacityLabel =
             '${((appLiquidGlassOpacityNotifier.value - kLiquidGlassMinimumOpacity) / liquidGlassRange * 100).round()}%';
 
-        final headerHeight = widget.topInset + 101;
+        final headerHeight = topInset + 101;
 
         return ClipRect(
           child: ColoredBox(
@@ -316,7 +325,7 @@ class _SettingsPanelState extends State<SettingsPanel>
                     child: SlideTransition(
                       position: _mainParallax,
                       child: _MainSettingsContent(
-                        bottomInset: widget.bottomInset,
+                        bottomInset: bottomInset,
                         onPush: _push,
                         accentColor: accentColor,
                         accentSwatch: swatch,
@@ -338,7 +347,7 @@ class _SettingsPanelState extends State<SettingsPanel>
                       child: SlideTransition(
                         position: _subSlide,
                         child: _SubScreen(
-                          bottomInset: widget.bottomInset,
+                          bottomInset: bottomInset,
                           route: _activeRoute!,
                           accentColor: accentColor,
                           accentNotifier: appAccentNotifier,
@@ -361,7 +370,7 @@ class _SettingsPanelState extends State<SettingsPanel>
                         final isSubScreen =
                             _activeRoute != null && _navCtrl.value >= 0.5;
                         return _SettingsHeader(
-                          topInset: widget.topInset,
+                          topInset: topInset,
                           title: isSubScreen ? _activeRoute!.title : 'Settings',
                         );
                       },
