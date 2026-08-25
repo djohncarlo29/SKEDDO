@@ -75,3 +75,4 @@
 - [Flutter System scaler diagnostics](flutter-system-scaler-diagnostics.md) — native-profile tests do not measure Flutter's ambient nonlinear scaler; capture both paths with identical metrics on-device.
 - [Shared modal safe-area handling](shared-modal-safe-area.md) — persistent bottom system insets are applied once at shared sheet boundaries; Floating Tab Bar's design offset remains separate.
 - [Liquid Glass switch/tab timing](liquid-glass-switch-tab-timing.md) — switch lift/landing uses the active tab pill's spring family and settle gate.
+- [Settings Dynamic Type padding](settings-dynamic-type-padding.md) — apply 16px vertical insets around content-driven rows so Dynamic Type grows rows without squeezing breathing room.

@@ -422,8 +422,8 @@ class _MainSettingsContent extends StatelessWidget {
         parent: BouncingScrollPhysics(),
       ),
       slivers: [
-        // 17.5 pt from header separator bottom to first section label top.
-        const SliverToBoxAdapter(child: SizedBox(height: 17.5)),
+        // Keep the settings rhythm on the 8 pt grid.
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
         // ── Account ─────────────────────────────────────────────────────────
         _SettingsSection(
@@ -442,7 +442,7 @@ class _MainSettingsContent extends StatelessWidget {
           ],
         ),
 
-        const SliverToBoxAdapter(child: SizedBox(height: 15)),
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
         // ── Appearance ───────────────────────────────────────────────────────
         _SettingsSection(
@@ -474,7 +474,7 @@ class _MainSettingsContent extends StatelessWidget {
           ],
         ),
 
-        const SliverToBoxAdapter(child: SizedBox(height: 15)),
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
         // ── Calendar ─────────────────────────────────────────────────────────
         _SettingsSection(
@@ -503,7 +503,7 @@ class _MainSettingsContent extends StatelessWidget {
           ],
         ),
 
-        const SliverToBoxAdapter(child: SizedBox(height: 15)),
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
         // ── Notifications ────────────────────────────────────────────────────
         _SettingsSection(
@@ -522,7 +522,7 @@ class _MainSettingsContent extends StatelessWidget {
           ],
         ),
 
-        const SliverToBoxAdapter(child: SizedBox(height: 15)),
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
         // ── General ──────────────────────────────────────────────────────────
         _SettingsSection(
@@ -649,8 +649,8 @@ class _SubScreenState extends State<_SubScreen> {
           parent: BouncingScrollPhysics(),
         ),
         slivers: [
-          // 18 pt gap below the shared header separator.
-          const SliverToBoxAdapter(child: SizedBox(height: 18)),
+          // Keep the settings rhythm on the 8 pt grid.
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
           // Branch: accent-color picker vs. standard option list.
           if (widget.route.isAccentColor)
@@ -728,7 +728,7 @@ class _SettingsHeader extends StatelessWidget {
                     padding: const EdgeInsets.only(
                       left: 16,
                       right: 16,
-                      bottom: 10,
+                      bottom: 8,
                     ),
                     child: Align(
                       alignment: Alignment.bottomLeft,
@@ -779,10 +779,10 @@ class _SettingsSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Section header label — 10 pt gap to card gives visual breathing
+            // Section header label — 8 pt gap to card gives visual breathing
             // room between the uppercase label and the card below.
             Padding(
-              padding: const EdgeInsets.only(left: 16, bottom: 10),
+              padding: const EdgeInsets.only(left: 16, bottom: 8),
               child: Text(
                 label.toUpperCase(),
                 style: TextStyle(
@@ -941,7 +941,7 @@ class _TextSizeSliderRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final inactiveColor = resolveThemeColor(kTertiaryLabel, context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: SizedBox(
         height: _kSettingsRowHeight,
         child: LayoutBuilder(
@@ -1017,22 +1017,14 @@ class _LiquidGlassSection extends StatelessWidget {
                     offset: const Offset(0, 2),
                   ),
                 ], context),
-                shape: const BoundedContinuousRectangleBorder(
-                  borderRadius: BorderRadius.all(
-                    Radius.circular(kCardCornerRadius),
-                  ),
-                ),
+                shape: const BoundedSquircleStadiumBorder(),
               ),
               child: SizedBox(
                 width: double.infinity,
                 height: math.max(154.0, textScaler.scale(154.0)),
                 child: ClipPath(
                   clipper: ShapeBorderClipper(
-                    shape: const BoundedContinuousRectangleBorder(
-                      borderRadius: BorderRadius.all(
-                        Radius.circular(kCardCornerRadius),
-                      ),
-                    ),
+                    shape: const BoundedSquircleStadiumBorder(),
                   ),
                   child: Stack(
                     fit: StackFit.expand,
@@ -1047,7 +1039,7 @@ class _LiquidGlassSection extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             DecoratedBox(
               decoration: ShapeDecoration(
                 color: cardBg,
@@ -1058,12 +1050,12 @@ class _LiquidGlassSection extends StatelessWidget {
                     offset: const Offset(0, 2),
                   ),
                 ], context),
-                shape: const AdaptiveStadiumBorder(),
+                shape: const BoundedSquircleStadiumBorder(),
               ),
               child: SizedBox(
                 height: rowHeight,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: ValueListenableBuilder<double>(
                     valueListenable: appLiquidGlassOpacityNotifier,
                     builder: (context, value, _) {
@@ -1161,11 +1153,7 @@ class _SettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ShapeBorder shape = rows.length == 1
-        ? const SquircleStadiumBorder()
-        : BoundedContinuousRectangleBorder(
-            borderRadius: BorderRadius.circular(kCardCornerRadius),
-          );
+    const ShapeBorder shape = BoundedSquircleStadiumBorder();
     return DecoratedBox(
       decoration: ShapeDecoration(
         color: cardBg,
@@ -1202,7 +1190,7 @@ class _SettingsCard extends StatelessWidget {
 
 // ── Tappable settings row ─────────────────────────────────────────────────────
 const double _kSettingsRowHeight = 52.0;
-const double _kSettingsRowVerticalPadding = 10.0;
+const double _kSettingsRowVerticalPadding = 16.0;
 
 class _SettingsRow extends StatefulWidget {
   final String title;
@@ -1548,8 +1536,11 @@ class _AccentSwatchRowState extends State<_AccentSwatchRow> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 80),
         color: _pressed ? kActionPanelGroupBreak : const Color(0x00000000),
-        height: _kSettingsRowHeight,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        constraints: const BoxConstraints(minHeight: _kSettingsRowHeight),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: _kSettingsRowVerticalPadding,
+        ),
         alignment: Alignment.centerLeft,
         child: Row(
           children: [

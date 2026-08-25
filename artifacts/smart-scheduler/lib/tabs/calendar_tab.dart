@@ -8904,7 +8904,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 child: SizedBox(
                   width: double.infinity,
                   child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     child: Text('Add attachment\u2026', style: _kLabelStyle),
                   ),
                 ),

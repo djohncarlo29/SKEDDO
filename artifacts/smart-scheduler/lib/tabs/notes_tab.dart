@@ -3514,14 +3514,17 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
                               ),
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          CupertinoButton(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 2,
+                          const SizedBox(height: 8),
+                          GestureDetector(
+                            onTap: () => _analysisCancellation?.cancel(),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              decoration: const ShapeDecoration(
+                                shape: BoundedSquircleStadiumBorder(),
+                              ),
+                              alignment: Alignment.center,
+                              child: const Text('Cancel'),
                             ),
-                            onPressed: () => _analysisCancellation?.cancel(),
-                            child: const Text('Cancel'),
                           ),
                         ],
                       ),
