@@ -33,9 +33,10 @@ export 'liquid_glass_switch_track.dart';
 /// The behaviour it carries:
 ///
 ///  * **A two-state thumb.** A contracted solid pill (37×24) morphs into
-///    an expanded glass pill (58×38.33) the instant a touch lands
-///    (0.4 s, ζ 0.6 — bouncy), and back on release (0.6 s, ζ 0.7). One
-///    size + cover-fade morph, since both layers scale in lockstep.
+///    an expanded glass pill (58×38.33) the instant a touch lands, using
+///    the same lift and landing springs as the active tab pill. The material
+///    clears as the thumb settles, using the same settle boundary as the tab
+///    bar. One size + cover-fade morph keeps both layers in lockstep.
 ///  * **The thumb rides the finger 1:1**, relative to where it was at
 ///    touch-down, with a `sqrt(overrun)` rubber band past the two
 ///    resting positions, saturating at
@@ -242,14 +243,14 @@ class _LiquidGlassSwitchState extends State<LiquidGlassSwitch>
   static const double _tapTimeThreshold = 0.15; // seconds
   static const double _edgeToggleThreshold = 5; // px
 
-  // ── Springs, fitted so that they
-  // SETTLES within `duration` (ζ·ω ≈ ln(1/0.001)/D underdamped,
-  // ω·D ≈ 9.2 critically damped) — NOT ω = 2π/D, the "response"
-  // reading, which made every morph float about twice as long as the
-  // control's.
-  static const double _expandStiffness = 826, _expandDamping = 34.5; // .4 ζ.6
-  static const double _contractStiffness = 270, _contractDamping = 23; // .6 ζ.7
-  static const double _positionStiffness = 339, _positionDamping = 36.8; // .5 ζ1
+  // ── Springs shared with the active tab bar's lift/landing motion.
+  // Match the active tab bar's lift and landing springs.
+  static const double _expandStiffness = 250, _expandDamping = 19.0;
+  static const double _contractStiffness = 250, _contractDamping = 22.1;
+  static const double _positionStiffness = 339,
+      _positionDamping = 36.8; // .5 ζ1
+  static const double _settlePositionEpsilon = 0.0008;
+  static const double _settleVelocityEpsilon = 0.01;
 
   /// The one shape every **non-glass** surface wears: the track capsule, the
   /// shrunken copy of it behind the lens, and the solid rest pill. They are
@@ -405,7 +406,11 @@ class _LiquidGlassSwitchState extends State<LiquidGlassSwitch>
     );
     _morph = m;
     _morphVel = mv;
-    if ((_morph - _morphTarget).abs() < 0.001 && _morphVel.abs() < 0.01) {
+    // Use the same settle gate as the active tab bar, so the switch does not
+    // hand back to its clear/rest appearance while the lift still has a
+    // visible final pixel to travel.
+    if ((_morph - _morphTarget).abs() < _settlePositionEpsilon &&
+        _morphVel.abs() < _settleVelocityEpsilon) {
       _morph = _morphTarget;
       _morphVel = 0;
     } else {
