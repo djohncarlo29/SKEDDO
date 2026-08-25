@@ -165,6 +165,7 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
   Widget buildContent(BuildContext context) {
     final double safeBottom = systemSafeAreaBottomInset(context);
     final double bottomPadding = unifiedBottomPaddingForInset(safeBottom);
+    final double topGap = MediaQuery.heightOf(context) * _kTopGapRatio;
 
     // Build a single merged MediaQueryData that:
     //   (a) removes top and bottom padding — same as the original
@@ -214,11 +215,11 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
           child: MediaQuery(
             data: mqData,
             child: Padding(
-              // Match Settings and its subscreens: this padding is intentionally
-              // unpainted. The sheet surface paints behind it; the shared
-              // helper compares the authored minimum with the persistent
-              // system inset, and keyboard viewInsets remain excluded.
-              padding: EdgeInsets.only(bottom: bottomPadding),
+              // Reserve the same top gap as Flutter's Cupertino sheet route,
+              // so the transition's downward offset cannot push the bottom of
+              // the sheet beyond the viewport. The bottom padding is the
+              // shared, unpainted minimum/safe-area rule.
+              padding: EdgeInsets.only(top: topGap, bottom: bottomPadding),
               child: CupertinoUserInterfaceLevel(
                 data: CupertinoUserInterfaceLevelData.elevated,
                 child: _RoundedSheetScope(child: builder(context)),
