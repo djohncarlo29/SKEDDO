@@ -6,8 +6,8 @@ import '../app_theme.dart'
     show
         kBackgroundColor,
         kModalSheetCornerRadius,
-        kUnifiedBottomPadding,
         resolveThemeColor,
+        unifiedBottomPaddingForInset,
         systemSafeAreaBottomInset;
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -165,6 +165,7 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
     final double bottomPadding =
         MediaQuery.sizeOf(context).height * _kTopGapRatio;
     final double safeBottom = systemSafeAreaBottomInset(context);
+    final double unifiedBottom = unifiedBottomPaddingForInset(safeBottom);
 
     // Build a single merged MediaQueryData that:
     //   (a) removes top and bottom padding — same as the original
@@ -210,7 +211,7 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Keep the sheet's own surface behind the system navigation area.
+        // Keep the sheet's own surface behind the unified bottom spacing.
         // Without this backing layer, the route's bottom gap is transparent
         // and the page underneath the sheet becomes visible behind Android's
         // navigation bar or iOS's home-indicator area.
@@ -218,7 +219,7 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
           left: 0,
           right: 0,
           bottom: 0,
-          height: bottomPadding + safeBottom + kUnifiedBottomPadding,
+          height: bottomPadding + unifiedBottom,
           child: ColoredBox(
             color: resolveThemeColor(kBackgroundColor, context),
           ),
@@ -230,9 +231,10 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
             child: Padding(
               // Keep the authored sheet content above the persistent device
               // safe area, while the backing surface above paints through it.
-              padding: EdgeInsets.only(
-                bottom: safeBottom + kUnifiedBottomPadding,
-              ),
+              // The shared helper compares the design minimum with the
+              // persistent inset; keyboard viewInsets are intentionally
+              // excluded.
+              padding: EdgeInsets.only(bottom: unifiedBottom),
               child: CupertinoUserInterfaceLevel(
                 data: CupertinoUserInterfaceLevelData.elevated,
                 child: _RoundedSheetScope(child: builder(context)),
