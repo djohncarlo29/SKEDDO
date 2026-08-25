@@ -39,9 +39,8 @@ class FloatingTabPill extends StatelessWidget {
       kFloatingTabBarSelectedPillColor,
       context,
     );
-    // The settled selection is intentionally stronger than the bar surface,
-    // while the moving glass eases through the lifted tint instead of
-    // disappearing between the static and glass endpoints.
+    // The settled selection is intentionally strong. The moving glass eases
+    // through that same tint, then becomes clear at its fully lifted endpoint.
     final settledPillColor = selectedPillColor.withValues(alpha: 0.80);
     final transitionPillColor = selectedPillColor.withValues(alpha: 0.80);
     final unselectedColor = resolveThemeColor(kSecondaryLabel, context);
@@ -113,7 +112,10 @@ class FloatingTabPill extends StatelessWidget {
               pillStyle: LiquidGlassTabPillStyle(
                 mode: LiquidGlassPillMode.impellerOnly,
                 animated: true,
-                color: transitionPillColor,
+                // Keep the fully lifted glass lens clear. The transition-only
+                // tint carries the visible 80% handoff without tinting this
+                // settled lifted endpoint.
+                 color: const Color(0x00000000),
                 transitionColor: transitionPillColor,
                 shape: LiquidGlassShape.continuousRoundedRectangle(
                   cornerRadius: kSquircleStadiumRadius,
