@@ -6657,7 +6657,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final turningOn = !_unscheduled;
     setState(() {
       _unscheduled = turningOn;
-      if (turningOn) _allDay = false;
     });
     if (turningOn) {
       // Close any starts/ends picker; reminder picker stays (its section is
@@ -6670,7 +6669,13 @@ class _NewEventSheetState extends State<_NewEventSheet>
       }
       // Animate scheduled rows, Travel Time, Travel Mode, Repeat, and Alert
       // all out; animate the Reminder card in simultaneously.
-      _schedRowsCtrl.animateTo(0.0, curve: Curves.easeIn);
+      _schedRowsCtrl.animateTo(0.0, curve: Curves.easeIn).then((_) {
+        // All-day is hidden during the collapse. Reset it only after the
+        // scheduled rows are fully gone, so the switch never visibly turns
+        // off as it is being hidden.
+        if (!mounted || !_unscheduled || !_allDay) return;
+        setState(() => _allDay = false);
+      });
       _travelRowCtrl.animateTo(0.0, curve: Curves.easeIn);
       _travelModeCtrl.animateTo(0.0, curve: Curves.easeIn);
       _repeatCardCtrl.animateTo(0.0, curve: Curves.easeIn);
