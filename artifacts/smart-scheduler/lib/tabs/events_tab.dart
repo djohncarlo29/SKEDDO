@@ -8363,6 +8363,7 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                 shadowOpacity: 0.26,
                 border: sheetBorder,
                 shape: BoundedSquircleStadiumBorder(
+                  radius: kLargeModalSheetCornerRadius,
                   side: sheetBorder ?? BorderSide.none,
                 ),
                 child: Padding(

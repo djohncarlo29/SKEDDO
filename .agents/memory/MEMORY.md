@@ -77,3 +77,4 @@
 - [Liquid Glass switch/tab timing](liquid-glass-switch-tab-timing.md) — switch lift/landing uses the active tab pill's spring family and settle gate.
 - [Settings Dynamic Type padding](settings-dynamic-type-padding.md) — apply 16px vertical insets around content-driven rows so Dynamic Type grows rows without squeezing breathing room.
 - [Settled thumb row geometry](settled-thumb-row-geometry.md) — slider rows measure 16px from the resting thumb; lifted animation viewport overflows invisibly inside that padding.
+- [Large confirmation sheet radius](large-confirmation-sheet-radius.md) — microphone access and Delete Group overlays use the dedicated 40px bounded squircle; regular modal controls remain 24px.

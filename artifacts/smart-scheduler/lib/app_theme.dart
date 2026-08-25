@@ -501,6 +501,7 @@ const kPillColor = CupertinoDynamicColor.withBrightness(
 // Shared radius for every SquircleStadiumBorder.  The path clamps this only
 // when the painted control is physically shorter than 48 px.
 const double kSquircleStadiumRadius = 24.0;
+const double kLargeModalSheetCornerRadius = 40.0;
 
 // Shared cubic quarter used by both stadium controls and bounded card corners.
 const double _kSharedSquircleCurveControl = 0.64;
