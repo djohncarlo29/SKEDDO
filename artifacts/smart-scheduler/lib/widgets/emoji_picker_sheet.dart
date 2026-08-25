@@ -1,4 +1,5 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
+import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import '../app_theme.dart';
 import 'rounded_cupertino_sheet.dart';
@@ -1083,7 +1084,15 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                   sliver: SliverFillRemaining(
                     hasScrollBody: false,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        8,
+                        16,
+                        math.max(
+                          20,
+                          systemSafeAreaBottomInset(context),
+                        ),
+                      ),
                       child: Container(
                         decoration: ShapeDecoration(
                           color: kModalCard.resolveFrom(context),

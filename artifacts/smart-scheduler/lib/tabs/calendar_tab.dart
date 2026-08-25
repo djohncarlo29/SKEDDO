@@ -10185,7 +10185,15 @@ class _NewEventSheetState extends State<_NewEventSheet>
                       physics: const AlwaysScrollableScrollPhysics(
                         parent: BouncingScrollPhysics(),
                       ),
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        8,
+                        16,
+                        math.max(
+                          20,
+                          systemSafeAreaBottomInset(context),
+                        ),
+                      ),
                       child: Column(
                         children: [
                           // Card 1 — Title + Subtitle
@@ -11658,7 +11666,15 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
             // ── Scrollable content ─────────────────────────────────────
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  8,
+                  16,
+                  math.max(
+                    16,
+                    systemSafeAreaBottomInset(context),
+                  ),
+                ),
                 children: [
                   Column(
                     mainAxisSize: MainAxisSize.min,

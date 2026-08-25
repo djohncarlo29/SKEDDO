@@ -8790,7 +8790,15 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                     physics: const AlwaysScrollableScrollPhysics(
                       parent: BouncingScrollPhysics(),
                     ),
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      8,
+                      16,
+                      max(
+                        20,
+                        systemSafeAreaBottomInset(context),
+                      ),
+                    ),
                     child: Container(
                       decoration: ShapeDecoration(
                         color: resolveThemeColor(kModalCard, context),
@@ -11740,7 +11748,15 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   behavior: HitTestBehavior.opaque,
                   onTap: _dismissModalSheetFocus,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      8,
+                      16,
+                      max(
+                        20,
+                        systemSafeAreaBottomInset(context),
+                      ),
+                    ),
                     child: Column(
                       children: [
                         _buildIdentityCard(),
@@ -12678,7 +12694,15 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
             const SizedBox(height: 12),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  8,
+                  16,
+                  max(
+                    20,
+                    systemSafeAreaBottomInset(context),
+                  ),
+                ),
                 children: [
                   Container(
                     clipBehavior: Clip.antiAlias,
@@ -16617,7 +16641,15 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
             // ── Scrollable content ───────────────────────────────────────
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  8,
+                  16,
+                    max(
+                    16,
+                    systemSafeAreaBottomInset(context),
+                  ),
+                ),
                 children: [
                   // ── Card 1 ─────────────────────────────────────────────
                   Column(
