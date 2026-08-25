@@ -76,3 +76,4 @@
 - [Shared modal safe-area handling](shared-modal-safe-area.md) — persistent bottom system insets are applied once at shared sheet boundaries; Floating Tab Bar's design offset remains separate.
 - [Liquid Glass switch/tab timing](liquid-glass-switch-tab-timing.md) — switch lift/landing uses the active tab pill's spring family and settle gate.
 - [Settings Dynamic Type padding](settings-dynamic-type-padding.md) — apply 16px vertical insets around content-driven rows so Dynamic Type grows rows without squeezing breathing room.
+- [Settled thumb row geometry](settled-thumb-row-geometry.md) — slider rows measure 16px from the resting thumb; lifted animation viewport overflows invisibly inside that padding.
