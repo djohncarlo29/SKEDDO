@@ -206,19 +206,39 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
       fit: StackFit.expand,
       children: [
         Positioned.fill(
-          // Keep the page itself full-height. The route's 8% translation and
-          // viewport clip already define the usable visible area; shrinking
-          // this child or padding it here creates a persistent, opaque band
-          // and clips intermediate cards in every modal. Individual modal
-          // scroll views own their transparent final-content clearance.
-          child: MediaQuery(
-            data: mqData,
-            child: CupertinoUserInterfaceLevel(
-              data: CupertinoUserInterfaceLevelData.elevated,
-              // Build the page under the cleaned MediaQuery above. Calling
-              // builder(context) here would pass the route's original context
-              // and let every sheet's SafeArea restore status-bar padding.
-              child: _RoundedSheetScope(child: Builder(builder: builder)),
+          // Paint the modal surface through the physical bottom independently
+          // from the page viewport. This layer is translated with the route,
+          // so it covers the bottom without exposing a strip from the route
+          // underneath.
+          child: ColoredBox(
+            color: resolveThemeColor(kModalBackground, context),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // The route's resting position is 8% below the viewport.
+                // Give the page exactly the visible 92% so its bottom edge
+                // lands at the physical bottom after that translation.
+                final double visiblePageHeight =
+                    constraints.maxHeight * (1.0 - _kTopGapRatio);
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: SizedBox(
+                    width: constraints.maxWidth,
+                    height: visiblePageHeight,
+                    child: MediaQuery(
+                      data: mqData,
+                      child: CupertinoUserInterfaceLevel(
+                        data: CupertinoUserInterfaceLevelData.elevated,
+                        // Build the page under the cleaned MediaQuery above.
+                        // Calling builder(context) here would pass the
+                        // original route context and restore SafeArea padding.
+                        child: _RoundedSheetScope(
+                          child: Builder(builder: builder),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ),
