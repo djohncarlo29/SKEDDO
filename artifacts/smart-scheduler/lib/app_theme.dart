@@ -524,7 +524,7 @@ const double kCardCornerRadius = kSquircleStadiumRadius;
 // corner share one concentric relationship: the sheet radius is the button
 // radius plus the authored edge gap.
 const double kModalSheetButtonDiameter = 40.0;
-const double kModalSheetButtonEdgeGap = 8.0;
+const double kModalSheetButtonEdgeGap = 16.0;
 const double kModalSheetCornerRadius =
     (kModalSheetButtonDiameter / 2) + kModalSheetButtonEdgeGap;
 
