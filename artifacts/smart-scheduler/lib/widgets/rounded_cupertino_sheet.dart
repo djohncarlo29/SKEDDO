@@ -8,6 +8,7 @@ import '../app_theme.dart'
         BoundedSquircleStadiumBorder,
         kModalSheetCornerRadius,
         resolveThemeColor,
+        unifiedBottomPaddingForInset,
         systemSafeAreaBottomInset;
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -161,8 +162,12 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
 
   @override
   Widget buildContent(BuildContext context) {
+    // Keep the sheet full-height. The 8% gap belongs below the sheet,
+    // matching the original Cupertino sheet geometry.
+    final double bottomPadding =
+        MediaQuery.sizeOf(context).height * _kTopGapRatio;
     final double safeBottom = systemSafeAreaBottomInset(context);
-    final double topGap = MediaQuery.heightOf(context) * _kTopGapRatio;
+    final double unifiedBottom = unifiedBottomPaddingForInset(safeBottom);
 
     // Build a single merged MediaQueryData that:
     //   (a) removes top and bottom padding — same as the original
@@ -208,16 +213,26 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
     return Stack(
       fit: StackFit.expand,
       children: [
+        // Paint through the reserved bottom area so the previous page cannot
+        // show through the sheet's system/navigation region.
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: bottomPadding + unifiedBottom,
+          child: ColoredBox(
+            color: resolveThemeColor(kBackgroundColor, context),
+          ),
+        ),
         Positioned.fill(
+          bottom: bottomPadding,
           child: MediaQuery(
             data: mqData,
             child: Padding(
-              // Reserve the same top gap as Flutter's Cupertino sheet route,
-              // so the transition's downward offset cannot push the bottom of
-              // the sheet beyond the viewport. Modal routes own only the
-              // persistent system inset; the Floating Tab Bar's authored
-              // 16px minimum must not be added to modal content.
-              padding: EdgeInsets.only(top: topGap, bottom: safeBottom),
+              // Keep the authored 16pt minimum (or the real persistent
+              // inset) inside the sheet content boundary. It is separate
+              // from the larger transition gap below the sheet.
+              padding: EdgeInsets.only(bottom: unifiedBottom),
               child: CupertinoUserInterfaceLevel(
                 data: CupertinoUserInterfaceLevelData.elevated,
                 // Build the page under the cleaned MediaQuery above.
@@ -225,19 +240,7 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
                 // original context and let every sheet's SafeArea restore
                 // the status-bar padding that the route intentionally
                 // removed.
-                child: ClipPath(
-                  // This clip must be attached to the actual sheet surface,
-                  // not the full-screen route transition. The route's top gap
-                  // means the visible sheet starts below y=0; clipping the
-                  // transition box leaves the visible top edge flat.
-                  clipper: ShapeBorderClipper(
-                    shape: const BoundedSquircleStadiumBorder(
-                      radius: kModalSheetCornerRadius,
-                      topOnly: true,
-                    ),
-                  ),
-                  child: _RoundedSheetScope(child: Builder(builder: builder)),
-                ),
+                child: _RoundedSheetScope(child: Builder(builder: builder)),
               ),
             ),
           ),
