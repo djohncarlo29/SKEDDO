@@ -411,14 +411,13 @@ class _LiquidGlassAnimatedNavBarState extends State<LiquidGlassAnimatedNavBar>
   double _lift = 0;
   double _liftVel = 0;
 
-  static const double _kLiftStiffness = 250;
-
-  /// Damping ratio 0.6 across, 0.7 down (`ζ · 2√k`).
-  static const double _kLiftDampingX = 19.0;
-  static const double _kLiftDampingY = 22.1;
-
-  static const double _kMaterialStiffness = 1000;
-  static const double _kMaterialDamping = 63.3;
+  // The switch is the reference interaction: the active tab pill uses the
+  // same expand/contract springs so lifting and landing have identical
+  // timing and overshoot.
+  static const double _kExpandStiffness = 826;
+  static const double _kExpandDamping = 34.5;
+  static const double _kContractStiffness = 270;
+  static const double _kContractDamping = 23;
 
   /// The pill's acceleration squash/stretch — owned by the BAR, not by
   /// the glass pill.
@@ -687,8 +686,8 @@ class _LiquidGlassAnimatedNavBarState extends State<LiquidGlassAnimatedNavBar>
       _liftXVel,
       liftTarget,
       dt,
-      _kLiftStiffness,
-      _kLiftDampingX,
+      liftTarget > 0.5 ? _kExpandStiffness : _kContractStiffness,
+      liftTarget > 0.5 ? _kExpandDamping : _kContractDamping,
     );
     _liftX = xr.$1;
     _liftXVel = xr.$2;
@@ -697,8 +696,8 @@ class _LiquidGlassAnimatedNavBarState extends State<LiquidGlassAnimatedNavBar>
       _liftYVel,
       liftTarget,
       dt,
-      _kLiftStiffness,
-      _kLiftDampingY,
+      liftTarget > 0.5 ? _kExpandStiffness : _kContractStiffness,
+      liftTarget > 0.5 ? _kExpandDamping : _kContractDamping,
     );
     _liftY = yr.$1;
     _liftYVel = yr.$2;
@@ -707,8 +706,8 @@ class _LiquidGlassAnimatedNavBarState extends State<LiquidGlassAnimatedNavBar>
       _liftVel,
       liftTarget,
       dt,
-      _kMaterialStiffness,
-      _kMaterialDamping,
+      liftTarget > 0.5 ? _kExpandStiffness : _kContractStiffness,
+      liftTarget > 0.5 ? _kExpandDamping : _kContractDamping,
     );
     _lift = mr.$1;
     _liftVel = mr.$2;
@@ -820,7 +819,7 @@ class _LiquidGlassAnimatedNavBarState extends State<LiquidGlassAnimatedNavBar>
       stiffness: stiffness,
       damping: damping,
     );
-    if ((r.$1 - target).abs() < 0.0008 && r.$2.abs() < 0.01) {
+    if ((r.$1 - target).abs() < 0.001 && r.$2.abs() < 0.01) {
       return (target, 0.0);
     }
     return r;
