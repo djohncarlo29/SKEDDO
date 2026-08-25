@@ -928,8 +928,8 @@ class _LiquidGlassAnimatedNavBarState extends State<LiquidGlassAnimatedNavBar>
       // rest size — exactly what the plain pill draws — so handing over is
       // a swap of two identical pictures and needs no cross-fade, and the
       // plain pill never has to know about the motion.
-      final bool pillIsFlat = (persistentRestGlass && morphProgress <= 0 ||
-          !persistentRestGlass && glassPresence <= 0) &&
+      final bool pillIsFlat = !persistentRestGlass &&
+          glassPresence <= 0 &&
           morphProgress <= 0 &&
           _liftX == 0 &&
           _liftY == 0 &&
