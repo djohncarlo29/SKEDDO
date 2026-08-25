@@ -683,7 +683,18 @@ class _LiquidGlassNavBarMotionPillState
           ? from.color
           : t >= 1
               ? to.color
-              : transitionColor ?? Color.lerp(from.color, to.color, t)!,
+              : transitionColor == null
+                  ? Color.lerp(from.color, to.color, t)!
+                  : Color.lerp(
+                      transitionColor,
+                      to.color,
+                      // Keep a brief settled-to-lifted handoff, then let the
+                      // clear lifted lens take over before the spring peak.
+                      // Without this remap, transitionColor is held for every
+                      // frame below t=1, making the glass visible for only the
+                      // instant the lift spring touches its endpoint.
+                      ((t - 0.18) / 0.54).clamp(0.0, 1.0),
+                    )!,
       enableInnerRadiusTransparent: t < 0.5
           ? from.enableInnerRadiusTransparent
           : to.enableInnerRadiusTransparent,
