@@ -4,12 +4,10 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import '../app_theme.dart'
     show
-        kModalBackground,
         kBackgroundColor,
         BoundedSquircleStadiumBorder,
         kModalSheetCornerRadius,
         resolveThemeColor,
-        unifiedBottomPaddingForInset,
         systemSafeAreaBottomInset;
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -164,7 +162,6 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
   @override
   Widget buildContent(BuildContext context) {
     final double safeBottom = systemSafeAreaBottomInset(context);
-    final double bottomPadding = unifiedBottomPaddingForInset(safeBottom);
     final double topGap = MediaQuery.heightOf(context) * _kTopGapRatio;
 
     // Build a single merged MediaQueryData that:
@@ -217,12 +214,18 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
             child: Padding(
               // Reserve the same top gap as Flutter's Cupertino sheet route,
               // so the transition's downward offset cannot push the bottom of
-              // the sheet beyond the viewport. The bottom padding is the
-              // shared, unpainted minimum/safe-area rule.
-              padding: EdgeInsets.only(top: topGap, bottom: bottomPadding),
+              // the sheet beyond the viewport. Modal routes own only the
+              // persistent system inset; the Floating Tab Bar's authored
+              // 16px minimum must not be added to modal content.
+              padding: EdgeInsets.only(top: topGap, bottom: safeBottom),
               child: CupertinoUserInterfaceLevel(
                 data: CupertinoUserInterfaceLevelData.elevated,
-                child: _RoundedSheetScope(child: builder(context)),
+                // Build the page under the cleaned MediaQuery above.
+                // Calling builder(context) here would pass the route's
+                // original context and let every sheet's SafeArea restore
+                // the status-bar padding that the route intentionally
+                // removed.
+                child: _RoundedSheetScope(child: Builder(builder: builder)),
               ),
             ),
           ),
@@ -519,10 +522,10 @@ class _RoundedSheetTransition extends StatefulWidget {
           alignment: Alignment.topCenter,
           child: ClipPath(
             clipper: ShapeBorderClipper(
-                shape: const BoundedSquircleStadiumBorder(
-                  radius: kModalSheetCornerRadius,
-                  topOnly: true,
-                ),
+              shape: const BoundedSquircleStadiumBorder(
+                radius: kModalSheetCornerRadius,
+                topOnly: true,
+              ),
             ),
             child: coveredChild,
           ),
@@ -667,9 +670,9 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
           alignment: Alignment.topCenter,
           child: ClipPath(
             clipper: ShapeBorderClipper(
-                shape: const BoundedSquircleStadiumBorder(
-                  radius: kModalSheetCornerRadius,
-                  topOnly: true,
+              shape: const BoundedSquircleStadiumBorder(
+                radius: kModalSheetCornerRadius,
+                topOnly: true,
               ),
             ),
             child: dimmedChild,
