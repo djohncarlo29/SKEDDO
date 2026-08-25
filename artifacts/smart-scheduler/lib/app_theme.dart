@@ -67,8 +67,20 @@ const double kEmptyStateLabelFontSize = 17.0;
 /// inset. They are not additive. Persistent safe-area and gesture insets are
 /// compared rather than summed, and keyboard viewInsets are intentionally
 /// ignored so the bar does not move just because an editor is focused.
+/// Shared bottom padding rule for surfaces that should respect persistent
+/// system navigation without creating additive or colored safe-area bands.
+///
+/// The authored 16 px breathing room is the minimum. If a home indicator,
+/// gesture area, or Android navigation bar is larger, use that actual inset
+/// instead. Keyboard viewInsets are deliberately not part of this rule.
+double unifiedBottomPaddingForInset(double systemBottomInset) =>
+    math.max(kUnifiedBottomPadding, systemBottomInset);
+
+double unifiedBottomPadding(BuildContext context) =>
+    unifiedBottomPaddingForInset(systemSafeAreaBottomInset(context));
+
 double floatingTabBarBottomOffsetForInset(double systemBottomInset) =>
-    math.max(kFloatingTabBarBottomSpacing, systemBottomInset);
+    unifiedBottomPaddingForInset(systemBottomInset);
 
 double floatingTabBarBottomOffset(BuildContext context) =>
     floatingTabBarBottomOffsetForInset(

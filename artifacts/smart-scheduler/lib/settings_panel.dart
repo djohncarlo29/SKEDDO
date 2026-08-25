@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
@@ -265,10 +263,12 @@ class _SettingsPanelState extends State<SettingsPanel>
   // ── Build ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    // Preserve the complete system-safe area while aligning the panel's edge
-    // spacing to the same 8 pt grid used by its rows and section gaps.
+    // Keep top alignment on the settings grid, but use the shared Floating Tab
+    // Bar bottom rule for the content edge: 16 pt minimum, or the actual
+    // persistent system navigation inset when it is larger. Do not round or
+    // add another 16 pt here.
     final topInset = _settingsGridInset(widget.topInset);
-    final bottomInset = _settingsGridInset(widget.bottomInset);
+    final bottomInset = unifiedBottomPaddingForInset(widget.bottomInset);
 
     return ListenableBuilder(
       listenable: Listenable.merge([
@@ -555,9 +555,9 @@ class _MainSettingsContent extends StatelessWidget {
           ],
         ),
 
-        SliverPadding(
-          padding: EdgeInsets.only(bottom: bottomInset + kUnifiedBottomPadding),
-        ),
+        // SliverPadding is intentionally unpainted: this is transparent
+        // breathing room, not a colored safe-area strip.
+        SliverPadding(padding: EdgeInsets.only(bottom: bottomInset)),
       ],
     );
   }
@@ -676,9 +676,11 @@ class _SubScreenState extends State<_SubScreen> {
               onSelect: _onSelect,
             ),
 
+          // SliverPadding is intentionally unpainted: this is transparent
+          // breathing room, not a colored safe-area strip.
           SliverPadding(
             padding: EdgeInsets.only(
-              bottom: widget.bottomInset + kUnifiedBottomPadding,
+              bottom: unifiedBottomPaddingForInset(widget.bottomInset),
             ),
           ),
         ],
@@ -1051,14 +1053,6 @@ class _LiquidGlassSection extends StatelessWidget {
     final backgroundAsset = isDark
         ? 'assets/liquid_glass_background_dark.webp'
         : 'assets/liquid_glass_background_light.webp';
-    final textScaler = MediaQuery.textScalerOf(context);
-    // Keep this control aligned with the other solo settings rows at the
-    // default size, while allowing the row to grow with Dynamic Type.
-    final rowHeight = math.max(
-      _kSettingsRowHeight,
-      textScaler.scale(_kSettingsRowHeight),
-    );
-
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1078,7 +1072,7 @@ class _LiquidGlassSection extends StatelessWidget {
               ),
               child: SizedBox(
                 width: double.infinity,
-                height: math.max(154.0, textScaler.scale(154.0)),
+                height: 154,
                 child: ClipPath(
                   clipper: ShapeBorderClipper(
                     shape: const BoundedSquircleStadiumBorder(),
@@ -1109,62 +1103,65 @@ class _LiquidGlassSection extends StatelessWidget {
                 ], context),
                 shape: const BoundedSquircleStadiumBorder(),
               ),
-              child: SizedBox(
-                height: rowHeight,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: ValueListenableBuilder<double>(
-                    valueListenable: appLiquidGlassOpacityNotifier,
-                    builder: (context, value, _) {
-                      return LayoutBuilder(
-                        builder: (context, constraints) {
-                          // The slider sits inside the row's fixed 18 px
-                          // horizontal content inset.  Widen it only by the
-                          // difference between that inset and the required
-                          // settled-thumb edge inset, so the package's thumb
-                          // centers resolve to:
-                          //   rowLeft + 16 + thumbWidth / 2
-                          //   rowRight - 16 - thumbWidth / 2
-                          final sliderWidth =
-                              constraints.maxWidth +
-                              2 *
-                                  (_kLiquidGlassRowHorizontalPadding -
-                                      _kLiquidGlassSettledEdgeInset);
-                          return OverflowBox(
-                            alignment: Alignment.center,
-                            minWidth: sliderWidth,
-                            maxWidth: sliderWidth,
-                            child: LiquidGlassSlider(
-                              value:
-                                  ((value - kLiquidGlassMinimumOpacity) /
-                                          (kLiquidGlassMaximumOpacity -
-                                              kLiquidGlassMinimumOpacity))
-                                      .clamp(0.0, 1.0),
-                              minimumValue: 0,
-                              maximumValue: 1,
-                              // Extend the package's internal geometry by one
-                              // resting-thumb width and center it. Its built-in
-                              // half-thumb center offsets then place the 0.0
-                              // and 1.0 centers on the visible row edges.
-                              width: sliderWidth,
-                              height: rowHeight,
-                              layout: _liquidGlassSliderLayout,
-                              // Publish every drag update so the preview and
-                              // the rest of the app track the slider in real
-                              // time. The endpoint callback still commits the
-                              // final snapped value after the drag settles.
-                              isContinuous: true,
-                              divisions: 10,
-                              activeColor: accent,
-                              inactiveColor: inactive,
-                              thumbColor: const Color(0xFFFDFDFD),
-                              onChanged: _setLiquidGlassOpacity,
-                              onChangeEnd: _setLiquidGlassOpacity,
-                            ),
-                          );
-                        },
-                      );
-                    },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: SizedBox(
+                  height: _kSettingsRowHeight,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ValueListenableBuilder<double>(
+                      valueListenable: appLiquidGlassOpacityNotifier,
+                      builder: (context, value, _) {
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            // The slider sits inside the row's fixed 18 px
+                            // horizontal content inset.  Widen it only by the
+                            // difference between that inset and the required
+                            // settled-thumb edge inset, so the package's thumb
+                            // centers resolve to:
+                            //   rowLeft + 16 + thumbWidth / 2
+                            //   rowRight - 16 - thumbWidth / 2
+                            final sliderWidth =
+                                constraints.maxWidth +
+                                2 *
+                                    (_kLiquidGlassRowHorizontalPadding -
+                                        _kLiquidGlassSettledEdgeInset);
+                            return OverflowBox(
+                              alignment: Alignment.center,
+                              minWidth: sliderWidth,
+                              maxWidth: sliderWidth,
+                              child: LiquidGlassSlider(
+                                value:
+                                    ((value - kLiquidGlassMinimumOpacity) /
+                                            (kLiquidGlassMaximumOpacity -
+                                                kLiquidGlassMinimumOpacity))
+                                        .clamp(0.0, 1.0),
+                                minimumValue: 0,
+                                maximumValue: 1,
+                                // Extend the package's internal geometry by one
+                                // resting-thumb width and center it. Its built-in
+                                // half-thumb center offsets then place the 0.0
+                                // and 1.0 centers on the visible row edges.
+                                width: sliderWidth,
+                                height: _kSettingsRowHeight,
+                                layout: _liquidGlassSliderLayout,
+                                // Publish every drag update so the preview and
+                                // the rest of the app track the slider in real
+                                // time. The endpoint callback still commits the
+                                // final snapped value after the drag settles.
+                                isContinuous: true,
+                                divisions: 10,
+                                activeColor: accent,
+                                inactiveColor: inactive,
+                                thumbColor: const Color(0xFFFDFDFD),
+                                onChanged: _setLiquidGlassOpacity,
+                                onChangeEnd: _setLiquidGlassOpacity,
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
