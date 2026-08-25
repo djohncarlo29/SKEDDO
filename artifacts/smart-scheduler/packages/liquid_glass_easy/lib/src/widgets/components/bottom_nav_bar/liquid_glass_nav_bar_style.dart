@@ -426,7 +426,10 @@ class LiquidGlassTabPillStyle {
       refraction: const LiquidGlassRefraction(
         distortion: 0,
         distortionWidth: 0,
-        chromaticAberration: 0,
+        // Preserve the package's authored aberration through the settled
+        // endpoint. The CPU-painted rest pill does not sample it, but the
+        // value must remain continuous for the glass-to-rest handoff.
+        chromaticAberration: 0.002,
       ),
     );
   }

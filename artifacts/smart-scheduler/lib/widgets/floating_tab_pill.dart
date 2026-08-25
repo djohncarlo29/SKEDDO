@@ -113,8 +113,9 @@ class FloatingTabPill extends StatelessWidget {
                 mode: LiquidGlassPillMode.impellerOnly,
                 animated: true,
                 // Keep the fully lifted glass lens clear. The transition-only
-                // tint carries the visible 80% handoff without tinting this
-                // settled lifted endpoint.
+                // tint carries the visible handoff without tinting this
+                // settled lifted endpoint; the package aberration remains
+                // authored on the glass refraction itself.
                  color: const Color(0x00000000),
                 transitionColor: transitionPillColor,
                 shape: LiquidGlassShape.continuousRoundedRectangle(
@@ -125,10 +126,10 @@ class FloatingTabPill extends StatelessWidget {
                     cornerRadius: kSquircleStadiumRadius,
                   ),
                   appearance: LiquidGlassAppearance(
-                    // The raised endpoint must remain a transparent,
-                    // refracting glass lens. The resolved Light/Dark color
-                    // is owned by the settled rest endpoint above, so the
-                    // handoff does not turn the raised pill into a flat fill.
+                  // The raised endpoint must remain a transparent,
+                  // refracting glass lens. The resolved Light/Dark color
+                  // is owned by the settled rest endpoint above, so the
+                  // handoff does not turn the raised pill into a flat fill.
                     // This shadow belongs to the motion lens only. The package
                     // fades it with the lift/morph handoff, so the settled
                     // active pill remains clean and the moving pill gets depth.
@@ -147,24 +148,23 @@ class FloatingTabPill extends StatelessWidget {
                     chromaticAberration: kFloatingTabBarChromaticAberration,
                   ),
                 ),
-                // Keep the selected Light/Dark surface color as a gentle
-                // tint at rest, but do not hand the settled pill over to a
-                // flat fill. The package's default tab-pill example keeps
-                // this endpoint as a transparent, refracting lens.
+                 // Keep the selected Light/Dark surface color as a gentle
+                 // tint at rest. The package rest endpoint retains its
+                 // authored chromatic aberration for a continuous handoff,
+                 // while its zero distortion keeps the settled pill stable.
                 rest: LiquidGlassStyle(
                   shape: LiquidGlassShape.continuousRoundedRectangle(
                     cornerRadius: kSquircleStadiumRadius,
                   ),
                   appearance: LiquidGlassAppearance(color: settledPillColor),
-                  // An inert rest refraction makes the animated renderer
-                  // hand the settled selection back to the static pill,
-                  // which paints this authored tint directly. The lifted
-                  // endpoint remains the refracting glass style above.
+                  // Keep the package aberration authored at the settled
+                  // endpoint too. Distortion remains inert so the static
+                  // rest pill is still stable and does not bend the bar.
                   refraction: const LiquidGlassRefraction(
                     distortion: 0,
                     distortionWidth: 0,
                     magnification: 1,
-                    chromaticAberration: 0,
+                    chromaticAberration: kFloatingTabBarChromaticAberration,
                   ),
                 ),
               ),

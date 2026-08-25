@@ -21,8 +21,6 @@ import '../../utils/liquid_glass_refresh_rate.dart';
 import '../../utils/liquid_glass_shape.dart';
 import '../../utils/liquid_glass_lens_motion.dart';
 import 'liquid_glass_nav_bar_motion_pill.dart';
-import 'liquid_glass_nav_bar_icon_row.dart';
-import 'liquid_glass_nav_bar_pill_clippers.dart';
 import '../liquid_glass_shadow.dart';
 
 /// Self-contained **animated** liquid-glass bottom nav bar — the iOS-26
