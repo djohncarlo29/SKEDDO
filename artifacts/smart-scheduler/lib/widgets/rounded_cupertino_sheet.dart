@@ -163,11 +163,6 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
 
   @override
   Widget buildContent(BuildContext context) {
-    // The transition moves the sheet down by this amount once settled. Keep
-    // the sheet content viewport above that translated edge so its final
-    // bottom clearance remains visible and scrollable.
-    final double transitionBottomGap =
-        MediaQuery.sizeOf(context).height * _kTopGapRatio;
     final double safeBottom = systemSafeAreaBottomInset(context);
     final double bottomPadding = unifiedBottomPaddingForInset(safeBottom);
 
@@ -215,37 +210,47 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Continue the same modal surface through the transition gap. This
-        // is deliberately the modal background, not the app background:
-        // otherwise the gap becomes a visible persistent strip.
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: transitionBottomGap + bottomPadding,
+        Positioned.fill(
+          // The route translates this entire surface down by 8% when it is
+          // presented. Keep the painted modal surface full-height so the
+          // translated route never exposes a bottom strip.
           child: ColoredBox(
             color: resolveThemeColor(kModalBackground, context),
-          ),
-        ),
-        Positioned.fill(
-          bottom: transitionBottomGap,
-          child: MediaQuery(
-            data: mqData,
-            child: Padding(
-              // Keep the authored 16pt minimum (or the real persistent
-              // inset) inside the sheet content boundary. This padding is
-              // inside the full-height sheet, so it cannot create a visible
-              // strip below the modal surface.
-              padding: EdgeInsets.only(bottom: bottomPadding),
-              child: CupertinoUserInterfaceLevel(
-                data: CupertinoUserInterfaceLevelData.elevated,
-                // Build the page under the cleaned MediaQuery above.
-                // Calling builder(context) here would pass the route's
-                // original context and let every sheet's SafeArea restore
-                // the status-bar padding that the route intentionally
-                // removed.
-                child: _RoundedSheetScope(child: Builder(builder: builder)),
-              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Only the usable page/content area is shortened. At rest,
+                // the route starts at 8% of the viewport, so a full-height
+                // content child would end 8% below the physical screen.
+                final double usableHeight =
+                    constraints.maxHeight * (1.0 - _kTopGapRatio);
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: SizedBox(
+                    width: constraints.maxWidth,
+                    height: usableHeight,
+                    child: MediaQuery(
+                      data: mqData,
+                      child: Padding(
+                        // This is inside the constrained content viewport,
+                        // not below the full-height surface. It leaves
+                        // max(16px, persistent inset) above the physical
+                        // screen bottom after the route's 8% translation.
+                        padding: EdgeInsets.only(bottom: bottomPadding),
+                        child: CupertinoUserInterfaceLevel(
+                          data: CupertinoUserInterfaceLevelData.elevated,
+                          // Build the page under the cleaned MediaQuery
+                          // above. Calling builder(context) here would pass
+                          // the route's original context and let every
+                          // sheet's SafeArea restore status-bar padding.
+                          child: _RoundedSheetScope(
+                            child: Builder(builder: builder),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ),
