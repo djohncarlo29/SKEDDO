@@ -39,6 +39,11 @@ class FloatingTabPill extends StatelessWidget {
       kFloatingTabBarSelectedPillColor,
       context,
     );
+    // The settled selection is intentionally stronger than the bar surface,
+    // while the moving glass eases through the lifted tint instead of
+    // disappearing between the static and glass endpoints.
+    final settledPillColor = selectedPillColor.withValues(alpha: 0.30);
+    final transitionPillColor = selectedPillColor.withValues(alpha: 0.18);
     final unselectedColor = resolveThemeColor(kSecondaryLabel, context);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final bottomOffset = floatingTabBarBottomOffset(context);
@@ -108,8 +113,8 @@ class FloatingTabPill extends StatelessWidget {
               pillStyle: LiquidGlassTabPillStyle(
                 mode: LiquidGlassPillMode.impellerOnly,
                 animated: true,
-                color: selectedPillColor.withValues(alpha: 0.18),
-                transitionColor: const Color(0x00000000),
+                color: transitionPillColor,
+                transitionColor: transitionPillColor,
                 shape: LiquidGlassShape.continuousRoundedRectangle(
                   cornerRadius: kSquircleStadiumRadius,
                 ),
@@ -148,9 +153,7 @@ class FloatingTabPill extends StatelessWidget {
                   shape: LiquidGlassShape.continuousRoundedRectangle(
                     cornerRadius: kSquircleStadiumRadius,
                   ),
-                  appearance: LiquidGlassAppearance(
-                    color: selectedPillColor.withValues(alpha: 0.18),
-                  ),
+                  appearance: LiquidGlassAppearance(color: settledPillColor),
                   // An inert rest refraction makes the animated renderer
                   // hand the settled selection back to the static pill,
                   // which paints this authored tint directly. The lifted
