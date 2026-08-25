@@ -39,10 +39,10 @@ class FloatingTabPill extends StatelessWidget {
       kFloatingTabBarSelectedPillColor,
       context,
     );
-    // The settled selection is intentionally strong. The moving glass eases
+    // The settled selection uses a lighter tint. The moving glass eases
     // through that same tint, then becomes clear at its fully lifted endpoint.
-    final settledPillColor = selectedPillColor.withValues(alpha: 0.80);
-    final transitionPillColor = selectedPillColor.withValues(alpha: 0.80);
+    final settledPillColor = selectedPillColor.withValues(alpha: 0.60);
+    final transitionPillColor = selectedPillColor.withValues(alpha: 0.60);
     final unselectedColor = resolveThemeColor(kSecondaryLabel, context);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final bottomOffset = floatingTabBarBottomOffset(context);
