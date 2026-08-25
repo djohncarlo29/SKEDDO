@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../app_theme.dart'
     show
         kBackgroundColor,
+        kModalBackground,
         BoundedSquircleStadiumBorder,
         kModalSheetCornerRadius,
         resolveThemeColor,
@@ -162,6 +163,11 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
 
   @override
   Widget buildContent(BuildContext context) {
+    // The transition moves the sheet down by this amount once settled. Keep
+    // the sheet content viewport above that translated edge so its final
+    // bottom clearance remains visible and scrollable.
+    final double transitionBottomGap =
+        MediaQuery.sizeOf(context).height * _kTopGapRatio;
     final double safeBottom = systemSafeAreaBottomInset(context);
     final double bottomPadding = unifiedBottomPaddingForInset(safeBottom);
 
@@ -209,7 +215,20 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
     return Stack(
       fit: StackFit.expand,
       children: [
+        // Continue the same modal surface through the transition gap. This
+        // is deliberately the modal background, not the app background:
+        // otherwise the gap becomes a visible persistent strip.
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: transitionBottomGap + bottomPadding,
+          child: ColoredBox(
+            color: resolveThemeColor(kModalBackground, context),
+          ),
+        ),
         Positioned.fill(
+          bottom: transitionBottomGap,
           child: MediaQuery(
             data: mqData,
             child: Padding(
