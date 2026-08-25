@@ -520,11 +520,13 @@ const double kModalCardGap = 16.0;
 const double kCornerRadius = kSquircleStadiumRadius;
 const double kCardCornerRadius = kSquircleStadiumRadius;
 
-// Dedicated radius for the modal-sheet presentation (e.g. the Add Category
-// sheet). Smaller than kCornerRadius so a full-height sheet doesn't look
-// over-rounded — intentionally tighter than kCornerRadius without going
-// all the way down to the system's default 12px.
-const double kModalSheetCornerRadius = 80.0;
+// Modal-sheet header geometry. The circular action controls and the sheet
+// corner share one concentric relationship: the sheet radius is the button
+// radius plus the authored edge gap.
+const double kModalSheetButtonDiameter = 40.0;
+const double kModalSheetButtonEdgeGap = 8.0;
+const double kModalSheetCornerRadius =
+    (kModalSheetButtonDiameter / 2) + kModalSheetButtonEdgeGap;
 
 // ── SF Pro Dynamic Tracking ───────────────────────────────────────────────────
 const kTracking10 = 0.12;

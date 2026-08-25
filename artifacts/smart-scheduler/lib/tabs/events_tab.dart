@@ -8559,9 +8559,8 @@ class _NewGroupSheet extends StatefulWidget {
 }
 
 class _NewGroupSheetState extends State<_NewGroupSheet> {
-  static const double _kHeaderBtnSize = 40.0;
-  static const double _kHeaderEdge = 16.0;
-  static const double _kHeaderTopShift = 12.5;
+  static const double _kHeaderBtnSize = kModalSheetButtonDiameter;
+  static const double _kHeaderEdge = kModalSheetButtonEdgeGap;
 
   late final TextEditingController _nameCtrl = TextEditingController(
     text: widget.initial?.name ?? '',
@@ -8721,7 +8720,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
           child: Column(
             children: [
               // ── Header ───────────────────────────────────────────────────
-              SizedBox(height: _kHeaderTopShift),
+              SizedBox(height: _kHeaderEdge),
               RoundedCupertinoSheetHeader(
                 child: SizedBox(
                   height: _kHeaderBtnSize,
@@ -9052,9 +9051,8 @@ class _AddCategorySheet extends StatefulWidget {
 
 class _AddCategorySheetState extends State<_AddCategorySheet>
     with TickerProviderStateMixin {
-  static const double _kHeaderBtnSize = 40.0;
-  static const double _kHeaderEdge = 16.0;
-  static const double _kHeaderTopShift = 12.5;
+  static const double _kHeaderBtnSize = kModalSheetButtonDiameter;
+  static const double _kHeaderEdge = kModalSheetButtonEdgeGap;
 
   bool get _isSmart => widget.smartData != null;
 
@@ -11681,7 +11679,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
           child: Column(
             children: [
               // ── Header (layout unchanged from original) ───────────────────
-              SizedBox(height: _kHeaderTopShift),
+              SizedBox(height: _kHeaderEdge),
               RoundedCupertinoSheetHeader(
                 child: SizedBox(
                   height: _kHeaderBtnSize,
@@ -12436,9 +12434,8 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
   int? _draggingOriginalIndex;
   int? _dragGapIndex;
 
-  static const double _kHeaderEdge = 16.0;
-  static const double _kHeaderTopShift = 12.5;
-  static const double _kHeaderButtonSize = 40.0;
+  static const double _kHeaderEdge = kModalSheetButtonEdgeGap;
+  static const double _kHeaderButtonSize = kModalSheetButtonDiameter;
 
   @override
   void initState() {
@@ -12635,7 +12632,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
         bottom: false,
         child: Column(
           children: [
-            SizedBox(height: _kHeaderTopShift),
+            SizedBox(height: _kHeaderEdge),
             RoundedCupertinoSheetHeader(
               child: SizedBox(
                 height: _kHeaderButtonSize,

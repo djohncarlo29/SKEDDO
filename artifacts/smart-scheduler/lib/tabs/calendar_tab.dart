@@ -5664,9 +5664,8 @@ class _NewEventSheet extends StatefulWidget {
 
 class _NewEventSheetState extends State<_NewEventSheet>
     with TickerProviderStateMixin {
-  static const double _kHeaderBtnSize = 40.0;
-  static const double _kHeaderEdge = 16.0;
-  static const double _kHeaderTopShift = 12.5;
+  static const double _kHeaderBtnSize = kModalSheetButtonDiameter;
+  static const double _kHeaderEdge = kModalSheetButtonEdgeGap;
 
   final _titleCtrl = TextEditingController();
   final _subtitleCtrl = TextEditingController();
@@ -10111,7 +10110,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             child: Column(
               children: [
                 // ── Header ────────────────────────────────────────────────────
-                SizedBox(height: _kHeaderTopShift),
+                SizedBox(height: _kHeaderEdge),
                 RoundedCupertinoSheetHeader(
                   child: SizedBox(
                     height: _kHeaderBtnSize,

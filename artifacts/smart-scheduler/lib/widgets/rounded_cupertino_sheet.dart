@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../app_theme.dart'
     show
         kBackgroundColor,
+        BoundedSquircleStadiumBorder,
         kModalSheetCornerRadius,
         resolveThemeColor,
         unifiedBottomPaddingForInset,
@@ -145,7 +146,8 @@ class _SafePopupRouteSurface extends StatelessWidget {
   }
 }
 
-/// Route for displaying an iOS sheet styled page with [kModalSheetCornerRadius] corners.
+/// Route for displaying an iOS sheet styled page with
+/// [kModalSheetCornerRadius] corners.
 /// See [showRoundedCupertinoSheet].
 class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
     with _RoundedSheetRouteTransitionMixin<T> {
@@ -557,11 +559,9 @@ class _RoundedSheetTransition extends StatefulWidget {
           alignment: Alignment.topCenter,
           child: ClipPath(
             clipper: ShapeBorderClipper(
-              shape: const ContinuousRectangleBorder(
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(kModalSheetCornerRadius),
+                shape: const BoundedSquircleStadiumBorder(
+                  radius: kModalSheetCornerRadius,
                 ),
-              ),
             ),
             child: coveredChild,
           ),
@@ -706,10 +706,8 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
           alignment: Alignment.topCenter,
           child: ClipPath(
             clipper: ShapeBorderClipper(
-              shape: const ContinuousRectangleBorder(
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(kModalSheetCornerRadius),
-                ),
+                shape: const BoundedSquircleStadiumBorder(
+                  radius: kModalSheetCornerRadius,
               ),
             ),
             child: dimmedChild,
@@ -730,10 +728,8 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
           widget.linearTransition,
           ClipPath(
             clipper: ShapeBorderClipper(
-              shape: const ContinuousRectangleBorder(
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(kModalSheetCornerRadius),
-                ),
+              shape: const BoundedSquircleStadiumBorder(
+                radius: kModalSheetCornerRadius,
               ),
             ),
             child: widget.child,
