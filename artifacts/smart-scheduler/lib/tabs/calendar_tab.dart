@@ -6687,6 +6687,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
         _reminderPickerCtrl.value = 0.0;
         setState(() => _activePicker = '');
       }
+      // All-day must be OFF before the scheduled rows begin returning.
+      // This also handles an early Unscheduled-off tap before the collapse
+      // animation has fully settled.
+      if (_allDay) setState(() => _allDay = false);
       _schedRowsCtrl.animateTo(1.0, curve: Curves.easeOut);
       _travelRowCtrl.animateTo(1.0, curve: Curves.easeOut);
       if (_travelTime != 'None') {
