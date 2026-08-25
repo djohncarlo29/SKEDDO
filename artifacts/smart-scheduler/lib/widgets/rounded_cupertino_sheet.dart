@@ -25,8 +25,6 @@ import '../app_theme.dart'
 // reimplemented here using only public ModalRoute/PageRoute API.
 // ══════════════════════════════════════════════════════════════════════════════
 
-const double _kDeviceCornerRadiusSmoothingFactor = 0.9;
-const double _kRoundedDeviceCornersThreshold = 20.0;
 const double _kTopGapRatio = 0.08;
 
 final Animatable<Offset> _kBottomUpTween = Tween<Offset>(
@@ -423,22 +421,6 @@ class _RoundedSheetTransition extends StatefulWidget {
       parent: secondaryAnimation,
     );
 
-    final double deviceCornerRadius =
-        (MediaQuery.maybeViewPaddingOf(context)?.top ?? 0) *
-        _kDeviceCornerRadiusSmoothingFactor;
-    final bool roundedDeviceCorners =
-        deviceCornerRadius > _kRoundedDeviceCornersThreshold;
-
-    final Animatable<BorderRadiusGeometry> decorationTween =
-        Tween<BorderRadiusGeometry>(
-          begin: BorderRadius.vertical(
-            top: Radius.circular(roundedDeviceCorners ? deviceCornerRadius : 0),
-          ),
-          end: BorderRadius.circular(kModalSheetCornerRadius),
-        );
-
-    final Animation<BorderRadiusGeometry> radiusAnimation = curvedAnimation
-        .drive(decorationTween);
     final Animation<double> opacityAnimation = curvedAnimation.drive(
       _sheetOpacityTween(context),
     );
@@ -481,21 +463,13 @@ class _RoundedSheetTransition extends StatefulWidget {
         scale: scaleAnimation,
         filterQuality: FilterQuality.medium,
         alignment: Alignment.topCenter,
-        child: AnimatedBuilder(
-          animation: radiusAnimation,
+        child: ClipPath(
+          clipper: ShapeBorderClipper(
+            shape: const BoundedSquircleStadiumBorder(
+              radius: kModalSheetCornerRadius,
+            ),
+          ),
           child: contrastedChild,
-          builder: (BuildContext context, Widget? child) {
-            return ClipPath(
-              clipper: ShapeBorderClipper(
-                shape: ContinuousRectangleBorder(
-                  borderRadius: !secondaryAnimation.isDismissed
-                      ? radiusAnimation.value as BorderRadius
-                      : BorderRadius.zero,
-                ),
-              ),
-              child: child,
-            );
-          },
         ),
       ),
     );
