@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../app_theme.dart'
     show
         kBackgroundColor,
+        kModalBackground,
         BoundedSquircleStadiumBorder,
         kModalSheetCornerRadius,
         resolveThemeColor,
