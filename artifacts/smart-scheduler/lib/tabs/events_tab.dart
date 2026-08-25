@@ -8481,11 +8481,7 @@ class _AddCategoryButtonState extends State<_AddCategoryButton>
           clipBehavior: Clip.antiAlias,
           decoration: ShapeDecoration(
             color: resolveThemeColor(kSbSurface, context),
-            shape: const BoundedContinuousRectangleBorder(
-              borderRadius: BorderRadius.all(
-                Radius.circular(kSquircleStadiumRadius),
-              ),
-            ),
+            shape: const BoundedSquircleStadiumBorder(),
             shadows: cardShadows,
           ),
           child: Padding(

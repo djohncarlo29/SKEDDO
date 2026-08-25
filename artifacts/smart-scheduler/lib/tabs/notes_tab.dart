@@ -1640,11 +1640,7 @@ class _SaveEventButtonState extends State<_SaveEventButton>
           clipBehavior: Clip.antiAlias,
           decoration: ShapeDecoration(
             color: surfaceColor,
-            shape: const BoundedContinuousRectangleBorder(
-              borderRadius: BorderRadius.all(
-                Radius.circular(kSquircleStadiumRadius),
-              ),
-            ),
+            shape: const BoundedSquircleStadiumBorder(),
             shadows: cardShadows,
           ),
           child: Padding(

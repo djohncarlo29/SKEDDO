@@ -9382,14 +9382,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     onTap: _cancelImport,
                     child: Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       decoration: ShapeDecoration(
                         color: resolveThemeColor(kPillColor, context),
-                        shape: const BoundedContinuousRectangleBorder(
-                          borderRadius: BorderRadius.all(
-                            Radius.circular(kSquircleStadiumRadius),
-                          ),
-                        ),
+                        shape: const BoundedSquircleStadiumBorder(),
                       ),
                       alignment: Alignment.center,
                       child: Text(
