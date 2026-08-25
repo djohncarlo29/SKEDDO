@@ -918,6 +918,7 @@ class _TextSizeSection extends StatelessWidget {
                 ),
                 _TextSizeSliderRow(
                   index: customIndex,
+                  animateValue: usesSystem,
                   accentColor: accentColor,
                   onChanged: previewCustom,
                   onChangeEnd: selectCustom,
@@ -933,18 +934,62 @@ class _TextSizeSection extends StatelessWidget {
   }
 }
 
-class _TextSizeSliderRow extends StatelessWidget {
+class _TextSizeSliderRow extends StatefulWidget {
   final int index;
+  final bool animateValue;
   final Color accentColor;
   final ValueChanged<double> onChanged;
   final ValueChanged<double> onChangeEnd;
 
   const _TextSizeSliderRow({
     required this.index,
+    required this.animateValue,
     required this.accentColor,
     required this.onChanged,
     required this.onChangeEnd,
   });
+
+  @override
+  State<_TextSizeSliderRow> createState() => _TextSizeSliderRowState();
+}
+
+class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  );
+  late Animation<double> _indexAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _indexAnimation = AlwaysStoppedAnimation(widget.index.toDouble());
+  }
+
+  @override
+  void didUpdateWidget(_TextSizeSliderRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.animateValue && oldWidget.index != widget.index) {
+      final begin = _indexAnimation.value;
+      _indexAnimation =
+          Tween<double>(begin: begin, end: widget.index.toDouble()).animate(
+            CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+          );
+      _controller
+        ..stop()
+        ..value = 0
+        ..forward();
+    } else if (!_controller.isAnimating) {
+      _indexAnimation = AlwaysStoppedAnimation(widget.index.toDouble());
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -953,36 +998,39 @@ class _TextSizeSliderRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: SizedBox(
         height: _kSettingsRowHeight,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            // Match Liquid Glass's tuned endpoint geometry exactly: the
-            // settled thumb centers sit 16 px inside the visible card edge.
-            final sliderWidth =
-                constraints.maxWidth +
-                2 *
-                    (_kLiquidGlassRowHorizontalPadding -
-                        _kLiquidGlassSettledEdgeInset);
-            return OverflowBox(
-              alignment: Alignment.center,
-              minWidth: sliderWidth,
-              maxWidth: sliderWidth,
-              child: LiquidGlassSlider(
-                value: index / 6,
-                minimumValue: 0,
-                maximumValue: 1,
-                width: sliderWidth,
-                height: _kSettingsRowHeight,
-                layout: _liquidGlassSliderLayout,
-                isContinuous: true,
-                divisions: 6,
-                activeColor: accentColor,
-                inactiveColor: inactiveColor,
-                thumbColor: const Color(0xFFFDFDFD),
-                onChanged: (raw) => onChanged(raw * 6),
-                onChangeEnd: (raw) => onChangeEnd(raw * 6),
-              ),
-            );
-          },
+        child: AnimatedBuilder(
+          animation: _indexAnimation,
+          builder: (context, _) => LayoutBuilder(
+            builder: (context, constraints) {
+              // Match Liquid Glass's tuned endpoint geometry exactly: the
+              // settled thumb centers sit 16 px inside the visible card edge.
+              final sliderWidth =
+                  constraints.maxWidth +
+                  2 *
+                      (_kLiquidGlassRowHorizontalPadding -
+                          _kLiquidGlassSettledEdgeInset);
+              return OverflowBox(
+                alignment: Alignment.center,
+                minWidth: sliderWidth,
+                maxWidth: sliderWidth,
+                child: LiquidGlassSlider(
+                  value: _indexAnimation.value / 6,
+                  minimumValue: 0,
+                  maximumValue: 1,
+                  width: sliderWidth,
+                  height: _kSettingsRowHeight,
+                  layout: _liquidGlassSliderLayout,
+                  isContinuous: true,
+                  divisions: 6,
+                  activeColor: widget.accentColor,
+                  inactiveColor: inactiveColor,
+                  thumbColor: const Color(0xFFFDFDFD),
+                  onChanged: (raw) => widget.onChanged(raw * 6),
+                  onChangeEnd: (raw) => widget.onChangeEnd(raw * 6),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
