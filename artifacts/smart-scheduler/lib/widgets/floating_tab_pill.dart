@@ -151,11 +151,15 @@ class FloatingTabPill extends StatelessWidget {
                   appearance: LiquidGlassAppearance(
                     color: selectedPillColor.withValues(alpha: 0.18),
                   ),
+                  // An inert rest refraction makes the animated renderer
+                  // hand the settled selection back to the static pill,
+                  // which paints this authored tint directly. The lifted
+                  // endpoint remains the refracting glass style above.
                   refraction: const LiquidGlassRefraction(
-                    distortion: 0.04,
-                    distortionWidth: 12,
+                    distortion: 0,
+                    distortionWidth: 0,
                     magnification: 1,
-                    chromaticAberration: kFloatingTabBarChromaticAberration,
+                    chromaticAberration: 0,
                   ),
                 ),
               ),
