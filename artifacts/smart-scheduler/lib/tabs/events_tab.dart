@@ -8990,12 +8990,15 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                           _nameCtrl.clear();
                                           setState(() {});
                                         },
-                                        child: const Padding(
+                                        child: Padding(
                                           padding: EdgeInsets.only(left: 8),
                                           child: Icon(
                                             kSearchClearCircleIcon,
                                             color: kEmptyStateIcon,
-                                            size: 18,
+                                            size: scaledSearchIconSize(
+                                              context,
+                                              18,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -10155,12 +10158,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                           _titleCtrl.clear();
                           setState(() {});
                         },
-                        child: const Padding(
+                        child: Padding(
                           padding: EdgeInsets.only(left: 7, right: 12),
                           child: Icon(
                             kSearchClearCircleIcon,
                             color: kEmptyStateIcon,
-                            size: 18,
+                            size: scaledSearchIconSize(context, 18),
                           ),
                         ),
                       ),
@@ -10228,12 +10231,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                           });
                           setState(() {});
                         },
-                        child: const Padding(
+                        child: Padding(
                           padding: EdgeInsets.only(left: 7, right: 12),
                           child: Icon(
                             kSearchClearCircleIcon,
                             color: kEmptyStateIcon,
-                            size: 18,
+                            size: scaledSearchIconSize(context, 18),
                           ),
                         ),
                       ),
@@ -10308,9 +10311,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       // and the 28 px action button, so wrapped text was under-measured at
       // larger Dynamic Type sizes and could run into the card's end curves.
       final scaler = MediaQuery.textScalerOf(context);
+      final clearIconSize = scaledSearchIconSize(context, 17);
+      final clearSlotSize = max(28.0, clearIconSize);
       final inputWidth = max(
         80.0,
-        constraints.maxWidth - 16.0 - 12.0 - 10.0 - 28.0,
+        constraints.maxWidth - 16.0 - 12.0 - 10.0 - clearSlotSize,
       );
       final ruleText =
           _smartDescriptionCtrl.text.isEmpty
@@ -10437,20 +10442,20 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                       _smartDescriptionFocus.requestFocus();
                       setState(() {});
                     },
-                    child: const SizedBox(
-                      width: 28,
-                      height: 28,
+                    child: SizedBox(
+                      width: clearSlotSize,
+                      height: clearSlotSize,
                       child: Center(
                         child: Icon(
                           kSearchClearCircleIcon,
                           color: kEmptyStateIcon,
-                          size: 17,
+                          size: clearIconSize,
                         ),
                       ),
                     ),
                   )
                 else
-                  const SizedBox(width: 28, height: 28),
+                  SizedBox(width: clearSlotSize, height: clearSlotSize),
               ],
             ),
           ),
@@ -10544,9 +10549,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   /// clear button overlap while one fades out and the other fades in.
   Widget _buildLocationTrailingAction(TextEditingController ctrl) {
     final hasText = ctrl.text.isNotEmpty;
+    final clearIconSize = scaledSearchIconSize(context, 17);
+    final actionSize = max(28.0, clearIconSize);
     return SizedBox(
-      width: 28,
-      height: 28,
+      width: actionSize,
+      height: actionSize,
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 180),
         switchInCurve: Curves.easeOut,
@@ -10566,45 +10573,43 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             hasText
                 ? SizedBox(
                   key: const ValueKey('location-clear'),
-                  width: 28,
-                  height: 28,
+                  width: actionSize,
+                  height: actionSize,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () {
                       ctrl.clear();
                       setState(() {});
                     },
-                    child: const SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: Center(
-                        child: Icon(
-                          kSearchClearCircleIcon,
-                          color: kEmptyStateIcon,
-                          size: 17,
-                        ),
+                    child: Center(
+                      child: Icon(
+                        kSearchClearCircleIcon,
+                        color: kEmptyStateIcon,
+                        size: clearIconSize,
                       ),
                     ),
                   ),
                 )
                 : SizedBox(
                   key: const ValueKey('location-pin'),
-                  width: 28,
-                  height: 28,
+                  width: actionSize,
+                  height: actionSize,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () => _openMaps(ctrl.text),
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: _resolvedSelectedColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: _renderCatIcon(
-                        SFIcons.sf_mappin,
-                        28,
-                        CupertinoColors.white,
+                    child: Center(
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: _resolvedSelectedColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: _renderCatIcon(
+                          SFIcons.sf_mappin,
+                          28,
+                          CupertinoColors.white,
+                        ),
                       ),
                     ),
                   ),

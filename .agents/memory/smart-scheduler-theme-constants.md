@@ -66,3 +66,13 @@ authored distance between either search-bar edge and its edge icon.
 **How to apply:** use one shared horizontal inset token at the row edges and
 inside the trailing icon slot; do not compensate with a text-scaled gap or a
 fixed-width slot.
+
+Clear-search glyphs outside the main search bar should follow the same ambient
+text scaler; keep their containing row's authored right inset and grow the
+action slot only when the scaled glyph needs more room.
+
+**Why:** modal-sheet clear actions were still hard-coded at their compact icon
+size, so they diverged from the main search control at larger OS text sizes.
+
+**How to apply:** scale the glyph from its authored size at build time, remove
+const wrappers that prevent that, and preserve the existing row-edge padding.

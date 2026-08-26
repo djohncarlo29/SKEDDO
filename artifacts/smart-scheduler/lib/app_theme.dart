@@ -531,6 +531,11 @@ const double kSearchBarClearIconSize = 18.0;
 // 16 pt while the icons and text line respond to the ambient OS text scaler.
 const double kSearchBarHorizontalEdgePadding = 16.0;
 
+/// Scales search/clear glyphs with Dynamic Type while leaving their authored
+/// row edge padding independent from text scaling.
+double scaledSearchIconSize(BuildContext context, double authoredSize) =>
+    MediaQuery.textScalerOf(context).scale(authoredSize);
+
 /// The line box occupied by search text at the current OS text scale.
 double searchBarTextLineHeight(BuildContext context) =>
     MediaQuery.textScalerOf(context).scale(kSearchBarTextFontSize) *

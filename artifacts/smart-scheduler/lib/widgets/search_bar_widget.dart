@@ -656,7 +656,7 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
             child: Center(
               child: SearchWeightedIcon(
                 CupertinoIcons.xmark,
-                size: 20,
+                size: scaledSearchIconSize(context, 20),
                 color: primaryLabel,
                 weight: kGelBloomIconWeight,
               ),

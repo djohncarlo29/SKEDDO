@@ -6199,6 +6199,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     int? maxLinesOverride,
     EdgeInsets? paddingOverride,
   }) {
+    final clearIconSize = scaledSearchIconSize(context, 18);
     return Padding(
       padding:
           paddingOverride ??
@@ -6250,7 +6251,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
                           parent: AlwaysScrollableScrollPhysics(),
                         )
                         : null,
-                padding: const EdgeInsets.only(right: 28),
+                padding: EdgeInsets.only(
+                  right: math.max(28.0, clearIconSize),
+                ),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -6269,10 +6272,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     ctrl.clear();
                     setState(() {});
                   },
-                  child: const Icon(
+                  child: Icon(
                     kSearchClearCircleIcon,
                     color: kEmptyStateIcon,
-                    size: 18,
+                    size: clearIconSize,
                   ),
                 ),
               );
@@ -7914,9 +7917,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
     String prefix,
   ) {
     final hasText = ctrl.text.isNotEmpty;
+    final clearIconSize = scaledSearchIconSize(context, 17);
+    final actionSize = math.max(28.0, clearIconSize);
     return SizedBox(
-      width: 28,
-      height: 28,
+      width: actionSize,
+      height: actionSize,
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 180),
         switchInCurve: Curves.easeOut,
@@ -7936,42 +7941,44 @@ class _NewEventSheetState extends State<_NewEventSheet>
             hasText
                 ? SizedBox(
                   key: ValueKey('$prefix-clear'),
-                  width: 28,
-                  height: 28,
+                  width: actionSize,
+                  height: actionSize,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () {
                       ctrl.clear();
                       setState(() {});
                     },
-                    child: const Center(
+                    child: Center(
                       child: Icon(
                         kSearchClearCircleIcon,
                         color: kEmptyStateIcon,
-                        size: 17,
+                        size: clearIconSize,
                       ),
                     ),
                   ),
                 )
                 : SizedBox(
                   key: ValueKey('$prefix-pin'),
-                  width: 28,
-                  height: 28,
+                  width: actionSize,
+                  height: actionSize,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () => _openMaps(ctrl.text),
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: _resolvedCategoryColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: FixedSFIcon(
-                          SFIcons.sf_mappin,
-                          fontSize: 17,
-                          color: CupertinoColors.white,
+                    child: Center(
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: _resolvedCategoryColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: FixedSFIcon(
+                            SFIcons.sf_mappin,
+                            fontSize: 17,
+                            color: CupertinoColors.white,
+                          ),
                         ),
                       ),
                     ),
