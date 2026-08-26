@@ -372,10 +372,13 @@ class AppSearchBarState extends State<AppSearchBar>
     }
   }
 
-  Widget _micIconSlot({required double height, required Widget child}) {
+  Widget _searchActionIconSlot({
+    required double height,
+    required Widget child,
+  }) {
     // The trailing edge gap belongs to the shared action slot. Subtract it
-    // here so the microphone's actual right edge is exactly 16 pt from the
-    // search bar edge without moving the clear button.
+    // here so the action icon's actual right edge is exactly 16 pt from the
+    // search bar edge.
     return SizedBox(
       height: height,
       child: Align(
@@ -505,7 +508,7 @@ class AppSearchBarState extends State<AppSearchBar>
                               key: const ValueKey('search-mic-listen'),
                               onTap: _onMicTap,
                               behavior: HitTestBehavior.opaque,
-                              child: _micIconSlot(
+                              child: _searchActionIconSlot(
                                 height: textLineHeight,
                                 child: AnimatedBuilder(
                                   animation: _pulseCtrl,
@@ -533,11 +536,14 @@ class AppSearchBarState extends State<AppSearchBar>
                               key: const ValueKey('search-clear'),
                               onTap: () => widget.controller.clear(),
                               behavior: HitTestBehavior.opaque,
-                              child: Center(
-                                child: Icon(
-                                  kSearchClearCircleIcon,
-                                  size: 18,
-                                  color: emptyStateIcon,
+                               child: _searchActionIconSlot(
+                                 height: textLineHeight,
+                                 child: Icon(
+                                   kSearchClearCircleIcon,
+                                   size: textScaler.scale(
+                                     kSearchBarClearIconSize,
+                                   ),
+                                   color: emptyStateIcon,
                                 ),
                               ),
                             )
@@ -547,7 +553,7 @@ class AppSearchBarState extends State<AppSearchBar>
                               onTap: _onMicTap,
                               onPressedChanged: (pressed) =>
                                   setState(() => _micPressed = pressed),
-                               child: _micIconSlot(
+                               child: _searchActionIconSlot(
                                  height: textLineHeight,
                                  child: FixedSFIcon(
                                    SFIcons.sf_microphone_fill,

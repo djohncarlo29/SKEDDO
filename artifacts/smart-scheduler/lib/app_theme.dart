@@ -526,6 +526,7 @@ const double kSearchBarTextFontSize = 17.0;
 const double kSearchBarSideControlHeight = 40.0;
 const double kSearchBarSearchIconSize = 17.0;
 const double kSearchBarMicIconSize = 15.0;
+const double kSearchBarClearIconSize = 18.0;
 // The microphone glyph's visual box ends 16 pt before the search bar edge.
 const double kSearchBarMicRightPadding = 16.0;
 const double kSearchBarTrailingEdgeGap = 3.0;
