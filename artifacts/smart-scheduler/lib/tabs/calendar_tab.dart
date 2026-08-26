@@ -6121,7 +6121,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   // ── Card wrapper ──────────────────────────────────────────────────────────
 
-  Widget _card(List<Widget> rows, {bool stadium = false}) {
+  Widget _card(List<Widget> rows) {
     final cardColor = resolveThemeColor(kModalCard, context);
     final shadows = resolveThemeShadows(kCardShadow, context);
     final ShapeBorder shape = const BoundedSquircleStadiumBorder();
@@ -6151,10 +6151,31 @@ class _NewEventSheetState extends State<_NewEventSheet>
   }) {
     final cardColor = resolveThemeColor(kModalCard, context);
     final shadows = resolveThemeShadows(kCardShadow, context);
+    final resolvedRadius = radius.resolve(Directionality.of(context));
+    final effectiveRadius = [
+      resolvedRadius.topLeft.x,
+      resolvedRadius.topLeft.y,
+      resolvedRadius.topRight.x,
+      resolvedRadius.topRight.y,
+      resolvedRadius.bottomLeft.x,
+      resolvedRadius.bottomLeft.y,
+      resolvedRadius.bottomRight.x,
+      resolvedRadius.bottomRight.y,
+    ].reduce((a, b) => a > b ? a : b);
+    final hasTopCorners =
+        resolvedRadius.topLeft.x > 0 || resolvedRadius.topRight.x > 0;
+    final hasBottomCorners =
+        resolvedRadius.bottomLeft.x > 0 ||
+        resolvedRadius.bottomRight.x > 0;
+    final shape = BoundedSquircleStadiumBorder(
+      radius: effectiveRadius,
+      topOnly: !stadium && hasTopCorners && !hasBottomCorners,
+      bottomOnly: !stadium && hasBottomCorners && !hasTopCorners,
+    );
     return Container(
       decoration: ShapeDecoration(
         color: cardColor,
-        shape: const BoundedSquircleStadiumBorder(),
+        shape: shape,
         shadows: shadows,
       ),
       clipBehavior: Clip.antiAlias,
@@ -11094,10 +11115,31 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
   Widget _cardWithRadius(List<Widget> rows, BorderRadius radius) {
     final cardColor = resolveThemeColor(kModalCard, context);
     final shadows = resolveThemeShadows(kCardShadow, context);
+    final resolvedRadius = radius.resolve(Directionality.of(context));
+    final effectiveRadius = [
+      resolvedRadius.topLeft.x,
+      resolvedRadius.topLeft.y,
+      resolvedRadius.topRight.x,
+      resolvedRadius.topRight.y,
+      resolvedRadius.bottomLeft.x,
+      resolvedRadius.bottomLeft.y,
+      resolvedRadius.bottomRight.x,
+      resolvedRadius.bottomRight.y,
+    ].reduce((a, b) => a > b ? a : b);
+    final hasTopCorners =
+        resolvedRadius.topLeft.x > 0 || resolvedRadius.topRight.x > 0;
+    final hasBottomCorners =
+        resolvedRadius.bottomLeft.x > 0 ||
+        resolvedRadius.bottomRight.x > 0;
+    final shape = BoundedSquircleStadiumBorder(
+      radius: effectiveRadius,
+      topOnly: hasTopCorners && !hasBottomCorners,
+      bottomOnly: hasBottomCorners && !hasTopCorners,
+    );
     return Container(
       decoration: ShapeDecoration(
         color: cardColor,
-        shape: const BoundedSquircleStadiumBorder(),
+        shape: shape,
         shadows: shadows,
       ),
       clipBehavior: Clip.antiAlias,

@@ -1087,12 +1087,12 @@ class AdaptiveLabelPillRow extends StatelessWidget {
         horizontal: horizontalPadding,
         vertical: verticalPadding,
       ),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: pill.backgroundColor,
         // Keep the configured corner radius when Dynamic Type makes the pill
         // taller. A large capsule radius would change the shape as it wraps.
-        borderRadius: const BorderRadius.all(
-          Radius.circular(kSquircleStadiumRadius),
+        shape: const BoundedSquircleStadiumBorder(
+          radius: kSquircleStadiumRadius,
         ),
       ),
       child: Text(
