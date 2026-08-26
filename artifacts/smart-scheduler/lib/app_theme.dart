@@ -57,9 +57,14 @@ const double kAddCategoryFloatingTabBarGap = 24.0;
 // gap. Reusing kFloatingTabBarVisualGap here compounds spacing at controls
 // that already have their own trailing padding.
 const double kFloatingTabBarSafetyMargin = 12.0;
-// Default authored bottom breathing room for panels, sheets, and stacked
-// modal content. Persistent device safe-area space is added separately.
-const double kUnifiedBottomPadding = 16.0;
+// Shared fixed vertical inset used by compact controls and rows. Text inside
+// those controls may grow with the OS text scaler, but this authored breathing
+// room does not.
+const double kFixedVerticalPadding = 16.0;
+
+// Default authored bottom breathing room for panels, sheets, and stacked modal
+// content. Persistent device safe-area space is added separately.
+const double kUnifiedBottomPadding = kFixedVerticalPadding;
 const double kEmptyStateLabelFontSize = 17.0;
 
 /// The tab bar's bottom edge is constrained by two competing requirements:
@@ -508,9 +513,38 @@ const double kLargeModalSheetCornerRadius = 40.0;
 // Shared cubic quarter used by both stadium controls and bounded card corners.
 const double _kSharedSquircleCurveControl = 0.64;
 
-// The search bar is the one intentionally smaller stadium: 40 px tall with
-// 20 px corners.
+// The search bar is the one intentionally smaller stadium: 20 px corners.
 const double kSearchBarCornerRadius = 20.0;
+// Search-bar inner top and bottom insets stay fixed while only its text line
+// grows with the ambient OS text scaler.
+const double kSearchBarVerticalPadding = kFixedVerticalPadding;
+const double kSearchBarHostTopPadding = kFixedVerticalPadding;
+const double kSearchBarHeaderSeparatorGap = kFixedVerticalPadding;
+const double kSearchBarSeparatorHeight = 0.5;
+const double kSearchBarTextFontSize = 17.0;
+const double kSearchBarSideControlHeight = 40.0;
+
+/// The line box occupied by search text at the current OS text scale.
+double searchBarTextLineHeight(BuildContext context) =>
+    MediaQuery.textScalerOf(context).scale(kSearchBarTextFontSize) *
+    kLineHeight;
+
+/// The complete AppSearchBar height: fixed 16 pt above and below the text
+/// line, with no fixed outer height.
+double searchBarHeight(BuildContext context) =>
+    (kSearchBarVerticalPadding * 2) + searchBarTextLineHeight(context);
+
+/// Height of a host row before its optional separator.
+double searchBarHostRowHeight(BuildContext context) => math.max(
+  kSearchBarHostTopPadding + searchBarHeight(context),
+  kSearchBarHostTopPadding + kSearchBarSideControlHeight,
+);
+
+/// Height required by a pinned search header with its separator.
+double searchBarHeaderExtent(BuildContext context) =>
+    searchBarHostRowHeight(context) +
+    kSearchBarHeaderSeparatorGap +
+    kSearchBarSeparatorHeight;
 
 // Vertical breathing room between the standalone cards in event modal sheets.
 // Search-result event tiles use the same rhythm.

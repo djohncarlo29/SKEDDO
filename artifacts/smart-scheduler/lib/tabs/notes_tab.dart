@@ -11,7 +11,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pdfx/pdfx.dart';
-import '../widgets/squircle_glow.dart';
 import '../app_theme.dart';
 import '../widgets/fixed_size_icon.dart';
 import '../services/event_extractor.dart';
@@ -127,9 +126,9 @@ class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
           children: [
             searchBarRow,
             if (showSeparator) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: kSearchBarHeaderSeparatorGap),
               Container(
-                height: 0.5,
+                height: kSearchBarSeparatorHeight,
                 color: resolveThemeColor(kSeparatorColor, ctx),
               ),
             ],
@@ -479,12 +478,16 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     // untouched and the scroll position is preserved.  At all other times it
     // lives inside the scroll view sliver.
     final searchBarRow = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.fromLTRB(
+        16,
+        kSearchBarHostTopPadding,
+        16,
+        0,
+      ),
       child: Row(
         children: [
           Expanded(
             child: AppSearchBar(
-              useBoundedSquircle: true,
               key: _searchBarKey,
               controller: _searchController,
               onFocusChanged: _onSearchFocusChanged,
@@ -519,14 +522,16 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
             //   bar at the viewport top while the user types.
             // Normal            : SliverToBoxAdapter scrolls with content.
             if (_activatedFromOffScreen)
-              const SliverToBoxAdapter(child: SizedBox(height: 58.0))
+              SliverToBoxAdapter(
+                child: SizedBox(height: searchBarHostRowHeight(context)),
+              )
             else if (_searchFocused)
               SliverPersistentHeader(
                 pinned: true,
                 floating: true,
                 delegate: _SearchHeaderDelegate(
                   searchBarRow: searchBarRow,
-                  extent: 74.5,
+                  extent: searchBarHeaderExtent(context),
                   showSeparator: true,
                 ),
               )
@@ -629,7 +634,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                     pinned: true,
                     delegate: _SearchHeaderDelegate(
                       searchBarRow: searchBarRow,
-                      extent: 74.5,
+                      extent: searchBarHeaderExtent(context),
                       showSeparator: true,
                     ),
                   ),
@@ -717,17 +722,6 @@ class _NoteInputCardState extends State<_NoteInputCard>
       false; // guard: prevents double-fire from AnimatedSwitcher fade-out
   String _preListenText = '';
   int _sttSession = 0;
-
-  // Background correction timer — kept as inert state so
-  // the SquircleGlowBorder widget in the build tree compiles.  Re-enable by
-  // un-commenting the mutation sites in _onMicTap and restoring the two
-  // commented-out methods below.
-  Timer? _sttBoundaryTimer;
-  String _bgRaw = '';
-  String _bgFormatted = '';
-  bool _bgActive = false;
-  bool _glowActive = false;
-  int _bgLock = 0;
 
   late final AnimationController _pulseCtrl;
 
@@ -1062,63 +1056,6 @@ class _NoteInputCardState extends State<_NoteInputCard>
     return t;
   }
 
-  // ── Legacy REST correction methods — intentionally disabled
-  // Replaced by local speech recognition. Re-enable
-  // both methods (and the mutation sites in _onMicTap below) to restore the
-  // old two-step REST correction + AI glow flow.
-  //
-  // Future<void> _backgroundCorrect(String fullWords, int sessionId) async {
-  //   if (!mounted || _sttSession != sessionId || _bgActive) return;
-  //   final rawNew = fullWords.length > _bgRaw.length
-  //       ? fullWords.substring(_bgRaw.length).trim()
-  //       : '';
-  //   if (rawNew.isEmpty) return;
-  //   final lockId = ++_bgLock;
-  //   if (mounted) setState(() { _bgActive = true; _glowActive = true; });
-  //   final corrected =
-  //       await SpeechService.instance.applySmartPunctuation(rawNew);
-  //   if (!mounted || _sttSession != sessionId || _bgLock != lockId) {
-  //     if (mounted) setState(() { _bgActive = false; });
-  //     return;
-  //   }
-  //   _bgRaw = fullWords.trim();
-  //   _bgFormatted =
-  //       _bgFormatted.isEmpty ? corrected : '$_bgFormatted $corrected';
-  //   if (mounted) setState(() { _bgActive = false; });
-  // }
-  //
-  // Future<void> _finalizeDictation(String words, int sessionId) async {
-  //   final rawTail = words.length > _bgRaw.length
-  //       ? words.substring(_bgRaw.length).trim()
-  //       : '';
-  //   if (rawTail.isNotEmpty) {
-  //     final lockId = ++_bgLock;
-  //     if (mounted) setState(() { _bgActive = true; _glowActive = true; });
-  //     final tailCorrected =
-  //         await SpeechService.instance.applySmartPunctuation(rawTail);
-  //     if (!mounted || _sttSession != sessionId || _bgLock != lockId) {
-  //       if (mounted) {
-  //         setState(() { _bgActive = false; _glowActive = false; _micListening = false; });
-  //         await Future.delayed(const Duration(milliseconds: 250));
-  //         if (mounted) setState(() { _micBusy = false; });
-  //       }
-  //       return;
-  //     }
-  //     final full = _bgFormatted.isNotEmpty
-  //         ? '$_bgFormatted $tailCorrected'
-  //         : tailCorrected;
-  //     final sep = _preListenText.isEmpty ? '' : ' ';
-  //     widget.controller.text = '$_preListenText$sep$full';
-  //   } else if (_bgFormatted.isNotEmpty) {
-  //     final sep = _preListenText.isEmpty ? '' : ' ';
-  //     widget.controller.text = '$_preListenText$sep$_bgFormatted';
-  //   }
-  //   _bgRaw = ''; _bgFormatted = ''; _bgActive = false;
-  //   if (mounted) setState(() { _micListening = false; _glowActive = false; });
-  //   await Future.delayed(const Duration(milliseconds: 250));
-  //   if (mounted) setState(() { _micBusy = false; });
-  // }
-
   // ── Mic / speech-to-text ──────────────────────────────────────────────────
   Future<void> _onMicTap() async {
     // Guard: prevents the AnimatedSwitcher fade-out ghost tap from re-firing,
@@ -1131,8 +1068,6 @@ class _NoteInputCardState extends State<_NoteInputCard>
     // Tap while listening → cancel everything and return to idle.
     if (_micListening) {
       _sttSession++;
-      _sttBoundaryTimer?.cancel();
-      // Legacy background-formatting state remains inert.
       _pulseCtrl.stop();
       _pulseCtrl.value = 1.0;
       // Keep _micBusy = true until AnimatedSwitcher fade-out finishes (180ms)
@@ -1181,8 +1116,6 @@ class _NoteInputCardState extends State<_NoteInputCard>
       return;
     }
 
-    // Legacy background-formatting state remains inert.
-
     // Snapshot current text so partials are appended, not replaced.
     _preListenText = widget.controller.text;
     final sessionId = ++_sttSession;
@@ -1200,7 +1133,6 @@ class _NoteInputCardState extends State<_NoteInputCard>
 
     void endSession(String words) {
       if (!mounted || _sttSession != sessionId) return;
-      _sttBoundaryTimer?.cancel();
       _pulseCtrl.stop();
       _pulseCtrl.value = 1.0;
       // Commit the final local transcript with lightweight punctuation and
@@ -1213,32 +1145,16 @@ class _NoteInputCardState extends State<_NoteInputCard>
         _micListening = false;
         _micBusy = false;
       });
-      // Legacy two-step REST correction path:
-      // _bgRaw = ''; _bgFormatted = ''; _bgActive = false; _glowActive = false;
-      // setState(() { _micListening = false; });
-      // _finalizeDictation(words, sessionId);
     }
 
     await svc.startListening(
       onPartial: (words) {
         if (!mounted || _sttSession != sessionId) return;
         lastWords = words;
-        // Show raw text live; local speech recognition provides
-        // background correction step is needed.
+        // Show raw text live; local speech recognition provides the final
+        // transcript.
         final sep = _preListenText.isEmpty ? '' : ' ';
         widget.controller.text = '$_preListenText$sep$words';
-        // Background correction timer removed —
-        // in-stream formatting means no post-processing pause needed.
-        // _sttBoundaryTimer?.cancel();
-        // final rawNew = words.length > _bgRaw.length
-        //     ? words.substring(_bgRaw.length).trim()
-        //     : '';
-        // if (rawNew.isNotEmpty) {
-        //   _sttBoundaryTimer = Timer(
-        //     const Duration(milliseconds: 1800),
-        //     () => _backgroundCorrect(words, sessionId),
-        //   );
-        // }
       },
       onFinal: endSession,
       // Native recognizer stopped/errored without ever sending 'final' (e.g.
@@ -1294,7 +1210,6 @@ class _NoteInputCardState extends State<_NoteInputCard>
   @override
   void dispose() {
     widget.controller.removeListener(_onControllerChanged);
-    _sttBoundaryTimer?.cancel();
     _plusScaleCtrl.dispose();
     _clearScaleCtrl.dispose();
     _pulseCtrl.dispose();
@@ -1593,23 +1508,6 @@ class _NoteInputCardState extends State<_NoteInputCard>
               ),
             ),
           ),
-          // ── AI glow — inner-edge glow on the whole card ────────────────
-          // Shown while background correction is active (_bgActive). Uses
-          // SquircleGlowBorder so the path follows ContinuousRectangleBorder
-          // exactly — no corner gaps.  clipBehavior on the parent Container
-          // clips the glow to the squircle shape automatically.
-          if (_glowActive)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: SquircleGlowBorder(
-                  cornerRadius: kSbCornerRadius,
-                  outer: false,
-                  glowWidth: 7,
-                  blurSigma: 8,
-                  child: const SizedBox.expand(),
-                ),
-              ),
-            ),
         ],
       ),
     );

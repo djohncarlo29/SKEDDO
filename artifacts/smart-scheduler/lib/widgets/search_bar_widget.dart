@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart' show DeviceGestureSettings, kTouchSlop;
-import 'squircle_glow.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import '../app_theme.dart';
 import '../services/speech_service.dart';
@@ -160,7 +159,6 @@ class SearchWeightedIcon extends StatelessWidget {
 class AppSearchBar extends StatefulWidget {
   final TextEditingController controller;
   final ValueChanged<bool>? onFocusChanged;
-  final bool useBoundedSquircle;
   final String placeholder;
 
   /// Optional tint for caret, selection highlight, and selection handles.
@@ -172,7 +170,6 @@ class AppSearchBar extends StatefulWidget {
     super.key,
     required this.controller,
     this.onFocusChanged,
-    this.useBoundedSquircle = true,
     this.placeholder = 'Search',
     this.selectionTint,
   });
@@ -189,13 +186,6 @@ class AppSearchBarState extends State<AppSearchBar>
   int _sttSession = 0;
 
   String _preListenText = '';
-  Timer? _sttBoundaryTimer;
-  // Legacy background-formatting state remains inert.
-  String _bgRaw = '';
-  String _bgFormatted = '';
-  bool _bgActive = false;
-  bool _glowActive = false;
-  int _bgLock = 0;
 
   late final AnimationController _pulseCtrl;
   late final ValueNotifier<Color> _selectionColorNotifier;
@@ -220,7 +210,6 @@ class AppSearchBarState extends State<AppSearchBar>
 
   @override
   void dispose() {
-    _sttBoundaryTimer?.cancel();
     _pulseCtrl.dispose();
     _selectionColorNotifier.dispose();
     super.dispose();
@@ -251,8 +240,6 @@ class AppSearchBarState extends State<AppSearchBar>
   void cancelMic() {
     if (!_micListening && !_micBusy) return;
     _sttSession++;
-    _sttBoundaryTimer?.cancel();
-    // Legacy background-formatting state remains inert.
     _pulseCtrl.stop();
     _pulseCtrl.value = 1.0;
     setState(() {
@@ -261,51 +248,6 @@ class AppSearchBarState extends State<AppSearchBar>
     });
     SpeechService.instance.cancel();
   }
-
-  // ── Legacy REST finalization — intentionally disabled ──────────────────────
-  // Local speech recognition provides the final text. Re-enable
-  // these two methods (and the mutation sites in _onMicTap below) to restore
-  // the old two-step REST correction + AI glow flow.
-  //
-  // Future<void> _finalizeDictation(String words, int sessionId) async {
-  //   final rawTail = words.length > _bgRaw.length
-  //       ? words.substring(_bgRaw.length).trim()
-  //       : '';
-  //   if (rawTail.isNotEmpty) {
-  //     final lockId = ++_bgLock;
-  //     if (mounted) setState(() { _bgActive = true; _glowActive = true; });
-  //     final tailCorrected =
-  //         await SpeechService.instance.applySmartPunctuation(rawTail);
-  //     if (!mounted || _sttSession != sessionId || _bgLock != lockId) {
-  //       if (mounted) setState(() { _bgActive = false; _glowActive = false; _micListening = false; _micBusy = false; });
-  //       return;
-  //     }
-  //     final full = _bgFormatted.isNotEmpty
-  //         ? '$_bgFormatted $tailCorrected'
-  //         : tailCorrected;
-  //     widget.controller.text = full;
-  //   } else if (_bgFormatted.isNotEmpty) {
-  //     widget.controller.text = _bgFormatted;
-  //   }
-  //   _bgRaw = ''; _bgFormatted = ''; _bgActive = false;
-  //   if (mounted) setState(() { _micListening = false; _glowActive = false; });
-  //   await Future.delayed(const Duration(milliseconds: 250));
-  //   if (mounted) setState(() { _micBusy = false; });
-  // }
-  //
-  // Future<void> _backgroundCorrect(String words, int sessionId) async {
-  //   final newRaw = words.length > _bgRaw.length
-  //       ? words.substring(_bgRaw.length).trim()
-  //       : '';
-  //   if (newRaw.isEmpty) return;
-  //   final lockId = ++_bgLock;
-  //   if (mounted) setState(() { _bgActive = true; _glowActive = true; });
-  //   final corrected = await SpeechService.instance.applySmartPunctuation(newRaw);
-  //   if (!mounted || _sttSession != sessionId || _bgLock != lockId) return;
-  //   _bgRaw = words;
-  //   _bgFormatted = _bgFormatted.isEmpty ? corrected : '$_bgFormatted $corrected';
-  //   if (mounted) setState(() { _bgActive = false; });
-  // }
 
   Future<void> _onMicTap() async {
     // Guard: prevents the AnimatedSwitcher fade-out ghost tap from re-firing.
@@ -316,8 +258,6 @@ class AppSearchBarState extends State<AppSearchBar>
 
     if (_micListening) {
       _sttSession++;
-      _sttBoundaryTimer?.cancel();
-      // Legacy background-formatting state remains inert.
       _pulseCtrl.stop();
       _pulseCtrl.value = 1.0;
       // Keep _micBusy = true until AnimatedSwitcher fade-out finishes (200ms)
@@ -388,7 +328,6 @@ class AppSearchBarState extends State<AppSearchBar>
 
     void endSession(String words) {
       if (!mounted || _sttSession != sessionId) return;
-      _sttBoundaryTimer?.cancel();
       _pulseCtrl.stop();
       _pulseCtrl.value = 1.0;
       // Commit whatever was transcribed by local speech recognition
@@ -405,9 +344,6 @@ class AppSearchBarState extends State<AppSearchBar>
             _micBusy = false;
           });
       });
-      // Legacy two-step REST correction path:
-      // _bgRaw = ''; _bgFormatted = ''; _bgActive = false; _glowActive = false;
-      // _finalizeDictation(words.trim(), sessionId);
     }
 
     final started = await svc.startListening(
@@ -415,17 +351,6 @@ class AppSearchBarState extends State<AppSearchBar>
         if (!mounted || _sttSession != sessionId) return;
         lastWords = words;
         widget.controller.text = words;
-        // Background correction is disabled; no post-processing is needed.
-        // _sttBoundaryTimer?.cancel();
-        // final rawNew = words.length > _bgRaw.length
-        //     ? words.substring(_bgRaw.length).trim()
-        //     : '';
-        // if (rawNew.isNotEmpty) {
-        //   _sttBoundaryTimer = Timer(
-        //     const Duration(milliseconds: 1800),
-        //     () => _backgroundCorrect(words, sessionId),
-        //   );
-        // }
       },
       onFinal: endSession,
       // Native recognizer stopped/errored without ever sending 'final' (e.g.
@@ -455,153 +380,146 @@ class AppSearchBarState extends State<AppSearchBar>
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final emptyStateIcon = resolveThemeColor(kEmptyStateIcon, context);
     final selectionTint = widget.selectionTint ?? resolveAccentColor(context);
-    return SizedBox(
-      height: 40,
-      child: Stack(
-        // Clip.none allows the outer glow to bleed past the 40 px bounds.
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            height: 40,
-            clipBehavior: Clip.antiAlias,
-            decoration: ShapeDecoration(
-              color: surfaceColor,
-              shape: widget.useBoundedSquircle
-                  ? const BoundedSquircleStadiumBorder()
-                  : const SquircleStadiumBorder(
-                      radius: kSearchBarCornerRadius,
-                    ),
-              shadows: resolveThemeShadows(kCardShadow, context),
-            ),
-            child: Row(
-              children: [
-                SizedBox(width: 13),
-                SearchWeightedIcon(
-                  CupertinoIcons.search,
-                  size: 17,
-                  color: tertiaryLabel,
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: ClipRect(
-                    child: TapRegion(
-                      groupId: kSbGroupId,
-                      child: CupertinoTheme(
-                        data: CupertinoTheme.of(
-                          context,
-                        ).copyWith(primaryColor: selectionTint),
-                        child: DefaultSelectionStyle(
-                          selectionColor: selectionTint.withOpacity(0.20),
-                          child: NativeTextInput(
-                            controller: widget.controller,
-                            onFocusChanged: widget.onFocusChanged,
-                            placeholder: widget.placeholder,
-                            placeholderStyle: TextStyle(
-                              inherit: false,
-                              color: secondaryLabel,
-                              fontSize: 17,
-                              fontFamily: kSFProText,
-                              fontWeight: FontWeight.w400,
-                              fontStyle: FontStyle.normal,
-                              letterSpacing: kTracking16,
-                            ),
-                            style: TextStyle(
-                              inherit: false,
-                              fontSize: 17,
-                              color: primaryLabel,
-                              fontFamily: kSFProText,
-                              fontWeight: FontWeight.w400,
-                              fontStyle: FontStyle.normal,
-                              letterSpacing: kTracking16,
-                              height: kLineHeight,
-                            ),
-                            padding: const EdgeInsets.only(top: 0),
-                            cursorColor: selectionTint,
-                            selectionColor: selectionTint.withOpacity(0.20),
-                            selectionControls: _selectionControls,
+    final textLineHeight = searchBarTextLineHeight(context);
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: ShapeDecoration(
+        color: surfaceColor,
+        shape: const BoundedSquircleStadiumBorder(
+          radius: kSearchBarCornerRadius,
+        ),
+        shadows: resolveThemeShadows(kCardShadow, context),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: kSearchBarVerticalPadding,
+        ),
+        child: SizedBox(
+          height: textLineHeight,
+          child: Row(
+            children: [
+              const SizedBox(width: 13),
+              SearchWeightedIcon(
+                CupertinoIcons.search,
+                size: 17,
+                color: tertiaryLabel,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ClipRect(
+                  child: TapRegion(
+                    groupId: kSbGroupId,
+                    child: CupertinoTheme(
+                      data: CupertinoTheme.of(
+                        context,
+                      ).copyWith(primaryColor: selectionTint),
+                      child: DefaultSelectionStyle(
+                        selectionColor: selectionTint.withOpacity(0.20),
+                        child: NativeTextInput(
+                          controller: widget.controller,
+                          onFocusChanged: widget.onFocusChanged,
+                          placeholder: widget.placeholder,
+                          placeholderStyle: TextStyle(
+                            inherit: false,
+                            color: secondaryLabel,
+                            fontSize: kSearchBarTextFontSize,
+                            fontFamily: kSFProText,
+                            fontWeight: FontWeight.w400,
+                            fontStyle: FontStyle.normal,
+                            letterSpacing: kTracking16,
                           ),
+                          style: TextStyle(
+                            inherit: false,
+                            fontSize: kSearchBarTextFontSize,
+                            color: primaryLabel,
+                            fontFamily: kSFProText,
+                            fontWeight: FontWeight.w400,
+                            fontStyle: FontStyle.normal,
+                            letterSpacing: kTracking16,
+                            height: kLineHeight,
+                          ),
+                          padding: EdgeInsets.zero,
+                          cursorColor: selectionTint,
+                          selectionColor: selectionTint.withOpacity(0.20),
+                          selectionControls: _selectionControls,
                         ),
                       ),
                     ),
                   ),
                 ),
-                // Mic icon (idle) ↔ clear-circle (has text) — animated switcher
-                ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: widget.controller,
-                  builder: (context, value, child) {
-                    final bool hasText = value.text.isNotEmpty;
-                    return SizedBox(
-                      width: 31,
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        switchInCurve: Curves.easeOut,
-                        switchOutCurve: Curves.easeIn,
-                        transitionBuilder: (child, animation) {
-                          final scale = Tween<double>(begin: 0.5, end: 1.0)
-                              .animate(
-                                CurvedAnimation(
-                                  parent: animation,
-                                  curve: Curves.easeOut,
-                                ),
-                              );
-                          return FadeTransition(
-                            opacity: animation,
-                            child: ScaleTransition(scale: scale, child: child),
-                          );
-                        },
-                        child: _micListening
-                            // ── Listening: pulsing accent mic, tap to stop ──────────
-                            ? GestureDetector(
-                                key: const ValueKey('search-mic-listen'),
-                                onTap: _onMicTap,
-                                behavior: HitTestBehavior.opaque,
-                                child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    5,
-                                    8,
-                                    10,
-                                    8,
-                                  ),
-                                  child: AnimatedBuilder(
-                                    animation: _pulseCtrl,
-                                    builder: (_, __) => Opacity(
-                                      opacity: _pulseCtrl.value,
-                                      child: FixedSFIcon(
-                                        SFIcons.sf_microphone_fill,
-                                        fontSize: 15,
-                                        color: resolveAccentColor(context),
-                                        shadows: resolveThemeTextShadows([
-                                          Shadow(
-                                            color: resolveAccentColor(context),
-                                            blurRadius: 0.4,
-                                          ),
-                                        ], context),
-                                      ),
+              ),
+              // Mic icon (idle) ↔ clear-circle (has text) — animated switcher.
+              // The slot follows the text line; the bar's 16 pt insets are the
+              // only vertical spacing, so the outer height is never fixed.
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: widget.controller,
+                builder: (context, value, child) {
+                  final bool hasText = value.text.isNotEmpty;
+                  return SizedBox(
+                    width: 31,
+                    height: textLineHeight,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      transitionBuilder: (child, animation) {
+                        final scale = Tween<double>(begin: 0.5, end: 1.0)
+                            .animate(
+                              CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOut,
+                              ),
+                            );
+                        return FadeTransition(
+                          opacity: animation,
+                          child: ScaleTransition(scale: scale, child: child),
+                        );
+                      },
+                      child: _micListening
+                          ? GestureDetector(
+                              key: const ValueKey('search-mic-listen'),
+                              onTap: _onMicTap,
+                              behavior: HitTestBehavior.opaque,
+                              child: Center(
+                                child: AnimatedBuilder(
+                                  animation: _pulseCtrl,
+                                  builder: (_, __) => Opacity(
+                                    opacity: _pulseCtrl.value,
+                                    child: FixedSFIcon(
+                                      SFIcons.sf_microphone_fill,
+                                      fontSize: 15,
+                                      color: resolveAccentColor(context),
+                                      shadows: resolveThemeTextShadows([
+                                        Shadow(
+                                          color: resolveAccentColor(context),
+                                          blurRadius: 0.4,
+                                        ),
+                                      ], context),
                                     ),
                                   ),
                                 ),
-                              )
-                            // ── Has text: clear button ──────────────────────────────
-                            : hasText
-                            ? GestureDetector(
-                                key: const ValueKey('search-clear'),
-                                onTap: () => widget.controller.clear(),
-                                child: Padding(
-                                  padding: EdgeInsets.fromLTRB(5, 8, 10, 8),
-                                  child: Icon(
-                                    kSearchClearCircleIcon,
-                                    size: 18,
-                                    color: emptyStateIcon,
-                                  ),
+                              ),
+                            )
+                          : hasText
+                          ? GestureDetector(
+                              key: const ValueKey('search-clear'),
+                              onTap: () => widget.controller.clear(),
+                              behavior: HitTestBehavior.opaque,
+                              child: Center(
+                                child: Icon(
+                                  kSearchClearCircleIcon,
+                                  size: 18,
+                                  color: emptyStateIcon,
                                 ),
-                              )
-                            // ── Empty + idle: dim mic, tap to start ────────────
-                            : AnimatedTapIcon(
-                                key: const ValueKey('search-mic'),
-                                padding: const EdgeInsets.fromLTRB(5, 8, 10, 8),
-                                onTap: _onMicTap,
-                                onPressedChanged: (pressed) =>
-                                    setState(() => _micPressed = pressed),
+                              ),
+                            )
+                          : AnimatedTapIcon(
+                              key: const ValueKey('search-mic'),
+                              padding: EdgeInsets.zero,
+                              onTap: _onMicTap,
+                              onPressedChanged: (pressed) =>
+                                  setState(() => _micPressed = pressed),
+                              child: Center(
                                 child: FixedSFIcon(
                                   SFIcons.sf_microphone_fill,
                                   fontSize: 15,
@@ -618,34 +536,17 @@ class AppSearchBarState extends State<AppSearchBar>
                                   ], context),
                                 ),
                               ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(width: 3),
-              ],
-            ),
-          ), // Container
-          // ── AI glow — outer-edge glow around the search bar pill ────────
-          // Shown while background correction is active (_bgActive). Outer mode
-          // inverts the clip so blur bleeds outward past the pill border.
-          // Stack(clipBehavior: Clip.none) allows the overflow to paint.
-          if (_glowActive)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: SquircleGlowBorder(
-                  cornerRadius: kSearchBarCornerRadius,
-                  stadium: true,
-                  outer: true,
-                  glowWidth: 5,
-                  blurSigma: 6,
-                  child: const SizedBox.expand(),
-                ),
+                            ),
+                    ),
+                  );
+                },
               ),
-            ),
-        ],
+              const SizedBox(width: 3),
+            ],
+          ),
+        ),
       ),
-    ); // SizedBox + Stack
+    );
   }
 }
 

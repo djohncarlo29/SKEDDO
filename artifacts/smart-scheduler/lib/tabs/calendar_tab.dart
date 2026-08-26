@@ -1488,7 +1488,12 @@ class CalendarTabState extends State<CalendarTab>
   Widget _buildSearchOverlay() {
     final showResults = _searchFocused && _searchText.isNotEmpty;
     final searchBarRow = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+      padding: const EdgeInsets.fromLTRB(
+        16,
+        kSearchBarHostTopPadding,
+        16,
+        0,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -1524,7 +1529,7 @@ class CalendarTabState extends State<CalendarTab>
                 pinned: true,
                 delegate: _CalSearchHeaderDelegate(
                   searchBarRow: searchBarRow,
-                  extent: 76.5,
+                  extent: searchBarHeaderExtent(context),
                   showSeparator: true,
                 ),
               ),
@@ -2172,9 +2177,9 @@ class _CalSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
           children: [
             searchBarRow,
             if (showSeparator) ...[
-              const SizedBox(height: 18),
+              const SizedBox(height: kSearchBarHeaderSeparatorGap),
               Container(
-                height: 0.5,
+                height: kSearchBarSeparatorHeight,
                 color: resolveThemeColor(kSeparatorColor, ctx),
               ),
             ],

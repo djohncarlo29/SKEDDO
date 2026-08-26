@@ -41,3 +41,16 @@ controls, so dark-mode surfaces and icon contrast stay consistent across tabs.
 **How to apply:** shared non-modal circle-button defaults should use
 `kCardColor`; modal-sheet button defaults should use `kModalCard`; dynamic icon
 colors should be resolved at the widget build boundary.
+
+Fixed vertical breathing room is a shared layout token, not a search-only
+literal. Search bars use it for their inner top and bottom insets, while their
+text line height is measured from the ambient OS text scaler; settings rows and
+category/list rows that follow the same 16 pt rule should reuse the same token.
+
+**Why:** a fixed outer control height makes text scaling collide with the
+authored inset, and separate literals let pinned, overlay, and settings hosts
+drift apart.
+
+**How to apply:** keep the 16 pt token fixed, let only the text line grow, and
+derive any pinned-header or off-screen placeholder extent from the scaled line
+height rather than a hardcoded search-bar height.

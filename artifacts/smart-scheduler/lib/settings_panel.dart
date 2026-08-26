@@ -1243,7 +1243,7 @@ class _SettingsCard extends StatelessWidget {
 
 // ── Tappable settings row ─────────────────────────────────────────────────────
 const double _kSettingsRowHeight = 52.0;
-const double _kSettingsRowVerticalPadding = 16.0;
+const double _kSettingsRowVerticalPadding = kFixedVerticalPadding;
 
 class _SettingsRow extends StatefulWidget {
   final String title;

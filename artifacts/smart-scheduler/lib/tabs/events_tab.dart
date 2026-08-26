@@ -1246,9 +1246,9 @@ class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
           children: [
             searchBarRow,
             if (showSeparator) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: kSearchBarHeaderSeparatorGap),
               Container(
-                height: 0.5,
+                height: kSearchBarSeparatorHeight,
                 color: resolveThemeColor(kSeparatorColor, ctx),
               ),
             ],
@@ -5878,7 +5878,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
     // Shared search-bar row — used by both layout paths below.
     final searchBarRow = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.fromLTRB(
+        16,
+        kSearchBarHostTopPadding,
+        16,
+        0,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -5913,15 +5918,17 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         //   height placeholder keeps all content in position.
         // Inline search     : SliverPersistentHeader (pinned) locks bar.
         // Normal            : SliverToBoxAdapter scrolls with content.
-        if (_activatedFromOffScreen)
-          const SliverToBoxAdapter(child: SizedBox(height: 58.0))
+            if (_activatedFromOffScreen)
+              SliverToBoxAdapter(
+                child: SizedBox(height: searchBarHostRowHeight(context)),
+              )
         else if (_searchFocused)
           SliverPersistentHeader(
             pinned: true,
             floating: true,
             delegate: _SearchHeaderDelegate(
               searchBarRow: searchBarRow,
-              extent: 76.5,
+              extent: searchBarHeaderExtent(context),
               showSeparator: true,
             ),
           )
@@ -6265,7 +6272,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 pinned: true,
                 delegate: _SearchHeaderDelegate(
                   searchBarRow: searchBarRow,
-                  extent: 76.5,
+                  extent: searchBarHeaderExtent(context),
                   showSeparator: true,
                 ),
               ),
@@ -6323,7 +6330,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             children: [
               // ── Fixed search header (immune to rubber-band) ────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  16,
+                  kSearchBarHostTopPadding,
+                  16,
+                  0,
+                ),
                 child: Row(
                   children: [
                     Expanded(
@@ -6342,9 +6354,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: kSearchBarHeaderSeparatorGap),
               Container(
-                height: 0.5,
+                height: kSearchBarSeparatorHeight,
                 color: resolveThemeColor(kSeparatorColor, context),
               ),
               // ── Scrollable content area (rubber-band stays here) ───────
@@ -8215,10 +8227,10 @@ class _GroupRow extends StatelessWidget {
             ),
             child: _TilePressScale(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
+                 padding: const EdgeInsets.symmetric(
+                   horizontal: kFixedVerticalPadding,
+                   vertical: kFixedVerticalPadding,
+                 ),
                 child: Row(
                   children: [
                     // Stack icon — no colored container; icon is kSecondaryLabel.

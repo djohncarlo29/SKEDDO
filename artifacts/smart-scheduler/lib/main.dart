@@ -1557,10 +1557,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
   }
 
-  // Search bar sits at 18 px top padding + 40 px height = 58 px from content top.
-  // If the scroll offset already exceeds this, the bar has scrolled off-screen.
-  static const _kSearchBarVisibleThreshold = 58.0;
-
   /// Called by the header search icon.  Focuses whichever tab's search bar is
   /// active, and either animates or snaps the header depending on whether the
   /// search bar is currently visible in the viewport.
@@ -1587,7 +1583,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         !_isDCV &&
         (scrollCtrl == null ||
             !scrollCtrl.hasClients ||
-            scrollCtrl.offset < _kSearchBarVisibleThreshold);
+            scrollCtrl.offset < searchBarHostRowHeight(context));
 
     if (!visible) {
       // Search bar is off-screen. Collapse the header immediately, then let
@@ -2936,7 +2932,9 @@ class _MenuStroke extends StatelessWidget {
       height: height,
       decoration: ShapeDecoration(
         color: color,
-        shape: const SquircleStadiumBorder(),
+        shape: const BoundedSquircleStadiumBorder(
+          radius: kSquircleStadiumRadius,
+        ),
       ),
     );
   }
