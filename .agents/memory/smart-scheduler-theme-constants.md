@@ -54,3 +54,15 @@ drift apart.
 **How to apply:** keep the 16 pt token fixed, let only the text line grow, and
 derive any pinned-header or off-screen placeholder extent from the scaled line
 height rather than a hardcoded search-bar height.
+
+Search-bar horizontal edge insets are also fixed at 16 pt: keep the leading
+search-icon inset and the trailing mic/clear-icon inset outside the text scaler,
+and let the trailing slot grow with the scaled icon instead of constraining it
+to a fixed width.
+
+**Why:** Dynamic Type should resize the text and icons without changing the
+authored distance between either search-bar edge and its edge icon.
+
+**How to apply:** use one shared horizontal inset token at the row edges and
+inside the trailing icon slot; do not compensate with a text-scaled gap or a
+fixed-width slot.

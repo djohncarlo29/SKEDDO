@@ -527,9 +527,9 @@ const double kSearchBarSideControlHeight = 40.0;
 const double kSearchBarSearchIconSize = 17.0;
 const double kSearchBarMicIconSize = 15.0;
 const double kSearchBarClearIconSize = 18.0;
-// The microphone glyph's visual box ends 16 pt before the search bar edge.
-const double kSearchBarMicRightPadding = 16.0;
-const double kSearchBarTrailingEdgeGap = 3.0;
+// Edge insets are authored layout values, not text-sized values. They stay at
+// 16 pt while the icons and text line respond to the ambient OS text scaler.
+const double kSearchBarHorizontalEdgePadding = 16.0;
 
 /// The line box occupied by search text at the current OS text scale.
 double searchBarTextLineHeight(BuildContext context) =>

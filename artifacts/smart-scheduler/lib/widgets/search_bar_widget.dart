@@ -376,16 +376,13 @@ class AppSearchBarState extends State<AppSearchBar>
     required double height,
     required Widget child,
   }) {
-    // The trailing edge gap belongs to the shared action slot. Subtract it
-    // here so the action icon's actual right edge is exactly 16 pt from the
-    // search bar edge.
     return SizedBox(
       height: height,
       child: Align(
         alignment: Alignment.centerRight,
         child: Padding(
-          padding: EdgeInsets.only(
-            right: kSearchBarMicRightPadding - kSearchBarTrailingEdgeGap,
+          padding: const EdgeInsets.only(
+            right: kSearchBarHorizontalEdgePadding,
           ),
           child: child,
         ),
@@ -420,7 +417,7 @@ class AppSearchBarState extends State<AppSearchBar>
           height: textLineHeight,
           child: Row(
             children: [
-              const SizedBox(width: 16),
+              const SizedBox(width: kSearchBarHorizontalEdgePadding),
               SizedBox(
                 width: textScaler.scale(kSearchBarSearchIconSize),
                 height: textLineHeight,
@@ -484,7 +481,13 @@ class AppSearchBarState extends State<AppSearchBar>
                 builder: (context, value, child) {
                   final bool hasText = value.text.isNotEmpty;
                   return SizedBox(
-                    width: 31,
+                    // Reserve space for the largest trailing icon at the
+                    // current text scale plus the fixed edge inset. This
+                    // keeps the inset fixed without constraining a scaled
+                    // icon inside the old fixed-width slot.
+                    width:
+                        textScaler.scale(kSearchBarClearIconSize) +
+                        kSearchBarHorizontalEdgePadding,
                     height: textLineHeight,
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 200),
@@ -578,7 +581,6 @@ class AppSearchBarState extends State<AppSearchBar>
                   );
                 },
               ),
-              const SizedBox(width: kSearchBarTrailingEdgeGap),
             ],
           ),
         ),
