@@ -132,16 +132,18 @@ class _NewSectionIconPainter extends CustomPainter {
     canvas.translate(baseShrink / 2, topInset + 1.0 + baseShrink / 2);
     canvas.scale(scale, scale);
 
-    final fill = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-    final stroke = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.6
-      ..strokeCap = StrokeCap.round
-      ..isAntiAlias = true;
+    final fill =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.fill
+          ..isAntiAlias = true;
+    final stroke =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.6
+          ..strokeCap = StrokeCap.round
+          ..isAntiAlias = true;
 
     // Section heading bar — this base geometry is shared by both states.
     // New Section only adds the badge and its transparent punch below.
@@ -202,10 +204,11 @@ class _NewSectionIconPainter extends CustomPainter {
       // Double the transparent separation around the badge without changing
       // the badge or the shared list-icon geometry.
       const badgeGapRadius = 10.6;
-      final clear = Paint()
-        ..blendMode = BlendMode.clear
-        ..style = PaintingStyle.fill
-        ..isAntiAlias = true;
+      final clear =
+          Paint()
+            ..blendMode = BlendMode.clear
+            ..style = PaintingStyle.fill
+            ..isAntiAlias = true;
 
       // Clear a slightly larger circle first so the badge is detached from
       // the bar by a deliberate ring of transparent space.
@@ -215,11 +218,14 @@ class _NewSectionIconPainter extends CustomPainter {
 
       // The plus is a true negative-space knockout, not a second coloured
       // glyph.
-      final plus = Path()
-        ..addRect(Rect.fromCenter(center: badgeCenter, width: 2.2, height: 8.8))
-        ..addRect(
-          Rect.fromCenter(center: badgeCenter, width: 8.8, height: 2.2),
-        );
+      final plus =
+          Path()
+            ..addRect(
+              Rect.fromCenter(center: badgeCenter, width: 2.2, height: 8.8),
+            )
+            ..addRect(
+              Rect.fromCenter(center: badgeCenter, width: 8.8, height: 2.2),
+            );
       canvas.drawPath(plus, clear);
       canvas.restore();
     }
@@ -421,9 +427,8 @@ class ActionItem {
   }) {
     final textScaler = MediaQuery.textScalerOf(context);
     final textDirection = Directionality.maybeOf(context) ?? TextDirection.ltr;
-    final leftWidth = (chevronColumn || item.hasChevron || item.checkmark
-        ? 18.0 + 7.0
-        : 0);
+    final leftWidth =
+        (chevronColumn || item.hasChevron || item.checkmark ? 18.0 + 7.0 : 0);
     final rightWidth = item.iconBuilder != null ? 24.0 : item.iconSize + 8.0;
     final textWidth = math.max(1.0, panelWidth - 32.0 - leftWidth - rightWidth);
 
@@ -446,23 +451,23 @@ class ActionItem {
         letterSpacing: kTracking16,
       ),
     );
-    final contentHeight = item.subtitle == null
-        ? labelHeight
-        : labelHeight +
-              2.0 +
-              measure(
-                item.subtitle!,
-                TextStyle(
-                  inherit: false,
-                  fontSize: 13,
-                  fontFamily: kSFProText,
-                  fontWeight: FontWeight.w400,
-                  letterSpacing: -0.08,
-                ),
-              );
-    final minimumHeight = item.subtitle != null
-        ? rowHeightWithSubtitle
-        : rowHeight;
+    final contentHeight =
+        item.subtitle == null
+            ? labelHeight
+            : labelHeight +
+                2.0 +
+                measure(
+                  item.subtitle!,
+                  TextStyle(
+                    inherit: false,
+                    fontSize: 13,
+                    fontFamily: kSFProText,
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: -0.08,
+                  ),
+                );
+    final minimumHeight =
+        item.subtitle != null ? rowHeightWithSubtitle : rowHeight;
     // _ActionRow uses 10 px of vertical breathing room on each side.
     return math.max(minimumHeight, contentHeight + 20.0);
   }
@@ -480,15 +485,16 @@ class ActionItem {
     double h = 0;
     for (int i = 0; i < items.length; i++) {
       if (i > 0) h += items[i].groupBreakAbove ? groupBreakH : separatorH;
-      h += context == null
-          ? (items[i].subtitle != null ? rowHeightWithSubtitle : rowHeight)
-          : rowHeightForItem(
-              context,
-              items[i],
-              panelWidth: panelWidth,
-              chevronColumn: chevronColumn,
-              labelFontSize: labelFontSize,
-            );
+      h +=
+          context == null
+              ? (items[i].subtitle != null ? rowHeightWithSubtitle : rowHeight)
+              : rowHeightForItem(
+                context,
+                items[i],
+                panelWidth: panelWidth,
+                chevronColumn: chevronColumn,
+                labelFontSize: labelFontSize,
+              );
     }
     return h;
   }
@@ -571,9 +577,10 @@ class _ActionPanelState extends State<ActionPanel>
     milliseconds: (((600 - (count - 2) * 50).clamp(500, 700)) * 0.65).round(),
   );
 
-  Duration get _effectiveCloseDuration => widget.closeDurationOverrideMs != null
-      ? Duration(milliseconds: widget.closeDurationOverrideMs!)
-      : _closeDuration(widget.items.length);
+  Duration get _effectiveCloseDuration =>
+      widget.closeDurationOverrideMs != null
+          ? Duration(milliseconds: widget.closeDurationOverrideMs!)
+          : _closeDuration(widget.items.length);
 
   // The pill is deliberately gone in the first ~18% of the panel close.
   // Keep this proportional to the actual close duration so mini panels with
@@ -592,9 +599,10 @@ class _ActionPanelState extends State<ActionPanel>
     widget.isClosing.addListener(_onClosingChanged);
     _ctrl.animateTo(
       1.0,
-      duration: widget.openDurationOverrideMs != null
-          ? Duration(milliseconds: widget.openDurationOverrideMs!)
-          : _openDuration(widget.items.length),
+      duration:
+          widget.openDurationOverrideMs != null
+              ? Duration(milliseconds: widget.openDurationOverrideMs!)
+              : _openDuration(widget.items.length),
       curve: Curves.easeOut,
     );
     // Scrollable mode: after first layout, check if content actually overflows
@@ -739,11 +747,12 @@ class _ActionPanelState extends State<ActionPanel>
         // Mini panels inside modal sheets: BouncingScrollPhysics (rubberband).
         final scrollable = SingleChildScrollView(
           controller: _scrollCtrl,
-          physics: widget.bouncingScroll
-              ? const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                )
-              : const ClampingScrollPhysics(),
+          physics:
+              widget.bouncingScroll
+                  ? const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  )
+                  : const ClampingScrollPhysics(),
           child: column,
         );
 
@@ -763,12 +772,14 @@ class _ActionPanelState extends State<ActionPanel>
                 colors: [white, white],
               ).createShader(bounds);
             }
-            final topFrac = _showTopFade
-                ? (kPickerPanelFadeHeight / bounds.height).clamp(0.0, 0.45)
-                : 0.0;
-            final botFrac = _showBottomFade
-                ? (kPickerPanelFadeHeight / bounds.height).clamp(0.0, 0.45)
-                : 0.0;
+            final topFrac =
+                _showTopFade
+                    ? (kPickerPanelFadeHeight / bounds.height).clamp(0.0, 0.45)
+                    : 0.0;
+            final botFrac =
+                _showBottomFade
+                    ? (kPickerPanelFadeHeight / bounds.height).clamp(0.0, 0.45)
+                    : 0.0;
             // Multi-stop cubic-ish gradient — strong edge fade, quick transition
             // to solid so the pill text lands readable.
             final tf0 = topFrac * 0.30;
@@ -821,17 +832,15 @@ class _ActionPanelState extends State<ActionPanel>
                       // Mirrors on both show and hide: slides in from the right
                       // edge on appear, slides back out to the right on dismiss.
                       offset: _pillVisible ? Offset.zero : const Offset(3.0, 0),
-                      duration: _isClosingNow
-                          ? Duration.zero
-                          : _pillFadeDuration,
+                      duration:
+                          _isClosingNow ? Duration.zero : _pillFadeDuration,
                       curve: _pillVisible ? Curves.easeOut : Curves.easeIn,
                       child: AnimatedOpacity(
                         // Keep the picker scroll indicator subtly lighter
                         // while visible without changing its fade timing.
                         opacity: _pillVisible ? 0.80 : 0.0,
-                        duration: _isClosingNow
-                            ? Duration.zero
-                            : _pillFadeDuration,
+                        duration:
+                            _isClosingNow ? Duration.zero : _pillFadeDuration,
                         curve: _pillVisible ? Curves.easeOut : Curves.easeIn,
                         child: LayoutBuilder(
                           builder: (ctx, constraints) {
@@ -849,11 +858,12 @@ class _ActionPanelState extends State<ActionPanel>
                                 // Add overscroll distance to total so the pill
                                 // shrinks proportionally during rubber-band —
                                 // more virtual content = smaller thumb.
-                                final overscroll = pos.pixels < 0
-                                    ? -pos.pixels
-                                    : pos.pixels > pos.maxScrollExtent
-                                    ? pos.pixels - pos.maxScrollExtent
-                                    : 0.0;
+                                final overscroll =
+                                    pos.pixels < 0
+                                        ? -pos.pixels
+                                        : pos.pixels > pos.maxScrollExtent
+                                        ? pos.pixels - pos.maxScrollExtent
+                                        : 0.0;
                                 final total =
                                     pos.maxScrollExtent +
                                     pos.viewportDimension +
@@ -866,9 +876,10 @@ class _ActionPanelState extends State<ActionPanel>
                                 );
                                 // Unclamped ratio + clamped pillTop: pill tracks
                                 // the edge during overscroll rather than freezing.
-                                final ratio = pos.maxScrollExtent > 0
-                                    ? pos.pixels / pos.maxScrollExtent
-                                    : 0.0;
+                                final ratio =
+                                    pos.maxScrollExtent > 0
+                                        ? pos.pixels / pos.maxScrollExtent
+                                        : 0.0;
                                 final pillTop = (ratio * (trackH - pillH))
                                     .clamp(
                                       0.0,
@@ -921,33 +932,36 @@ class _ActionPanelState extends State<ActionPanel>
         // The Notes attachment panel uses the same translucent material density
         // as the Floating Tab Bar.  Keep the rows independent from this value
         // so their content animation never dims the glass surface itself.
-        final fillOpacity = widget.useLiquidGlass
-            ? 0.80
-            : (isDark && !widget.bouncingScroll ? 0.75 : 0.65);
+        final fillOpacity =
+            widget.useLiquidGlass
+                ? 0.80
+                : (isDark && !widget.bouncingScroll ? 0.75 : 0.65);
 
         // liquid_glass_easy intentionally paints no lens when its shader
         // cannot load. The web preview can run in a CPU-only renderer, so
         // keep the panel visible there with the proven frosted surface.
         // Native iOS/Android renderers continue through the real Liquid Glass
         // composition below.
-        final panelCard = widget.useLiquidGlass && !kIsWeb
-            ? _LiquidGlassActionPanelCard(
-                progress: gt,
-                fillOpacity: fillOpacity,
-                shadowOpacity: 0.18,
-                child: panelContent,
-              )
-            : FrostedGlassCard(
-                progress: gt,
-                fillOpacity: fillOpacity,
-                shadowOpacity: 0.22,
-                borderRadius: widget.borderRadius,
-                stadium: widget.items.length == 1,
-                border: isDark
-                    ? BorderSide(color: resolvedBorder, width: 0.5)
-                    : BorderSide.none,
-                child: panelContent,
-              );
+        final panelCard =
+            widget.useLiquidGlass && !kIsWeb
+                ? _LiquidGlassActionPanelCard(
+                  progress: gt,
+                  fillOpacity: fillOpacity,
+                  shadowOpacity: 0.18,
+                  child: panelContent,
+                )
+                : FrostedGlassCard(
+                  progress: gt,
+                  fillOpacity: fillOpacity,
+                  shadowOpacity: 0.22,
+                  borderRadius: widget.borderRadius,
+                  stadium: widget.items.length == 1,
+                  border:
+                      isDark
+                          ? BorderSide(color: resolvedBorder, width: 0.5)
+                          : BorderSide.none,
+                  child: panelContent,
+                );
 
         return Transform.scale(
           scale: panelScale,
@@ -962,9 +976,8 @@ class _ActionPanelState extends State<ActionPanel>
     // instantOnOpen: row renders at full progress from frame 0 during the open
     // phase so it appears to "stay in place" (shared-element feel).
     // During close (_isClosingNow) it fades out normally with the panel.
-    final t = (widget.items[i].instantOnOpen && !_isClosingNow)
-        ? 1.0
-        : _rowT(i);
+    final t =
+        (widget.items[i].instantOnOpen && !_isClosingNow) ? 1.0 : _rowT(i);
     // Starting from 0.76 gives each row a more pronounced easeOutBack pop.
     final scale = 0.76 + 0.24 * Curves.easeOutBack.transform(t);
     // Multiply t (open/close anim) by rowOpacity (content dim) so only row
@@ -1034,16 +1047,18 @@ class _ActionRowState extends State<_ActionRow> {
     final item = widget.item;
     final dest = item.isDestructive;
     // Checked items: primary colour when primaryCheckmark, accent otherwise.
-    final checkColor = item.primaryCheckmark
-        ? CupertinoDynamicColor.resolve(kPrimaryLabel, context)
-        : item.checkmarkColor ?? resolveAccentColor(context);
-    final textColor = item.labelColor != null
-        ? CupertinoDynamicColor.resolve(item.labelColor!, context)
-        : dest
-        ? CupertinoColors.destructiveRed
-        : item.checkmark
-        ? checkColor
-        : CupertinoDynamicColor.resolve(kPrimaryLabel, context);
+    final checkColor =
+        item.primaryCheckmark
+            ? CupertinoDynamicColor.resolve(kPrimaryLabel, context)
+            : item.checkmarkColor ?? resolveAccentColor(context);
+    final textColor =
+        item.labelColor != null
+            ? CupertinoDynamicColor.resolve(item.labelColor!, context)
+            : dest
+            ? CupertinoColors.destructiveRed
+            : item.checkmark
+            ? checkColor
+            : CupertinoDynamicColor.resolve(kPrimaryLabel, context);
 
     final labelStyle = TextStyle(
       inherit: false,
@@ -1062,89 +1077,91 @@ class _ActionRowState extends State<_ActionRow> {
           item.chevronOverride ??
           (item.checkmark
               ? _ActionPanelSFIcon(
-                  SFIcons.sf_checkmark,
-                  size: _chevW,
-                  color: checkColor,
-                  weight: FontWeight.w500,
-                  boxPadding: 3,
-                )
+                SFIcons.sf_checkmark,
+                size: _chevW,
+                color: checkColor,
+                weight: FontWeight.w500,
+                boxPadding: 3,
+              )
               : item.hasChevron
               ? _ActionPanelSFIcon(
-                  item.chevronDown
-                      ? SFIcons.sf_chevron_down
-                      : SFIcons.sf_chevron_right,
-                  size: _chevW,
-                  color: textColor,
-                  weight: FontWeight.w500,
-                  boxPadding: 0,
-                )
+                item.chevronDown
+                    ? SFIcons.sf_chevron_down
+                    : SFIcons.sf_chevron_right,
+                size: _chevW,
+                color: textColor,
+                weight: FontWeight.w500,
+                boxPadding: 0,
+              )
               : null),
     );
 
     final hasSubtitle = item.subtitle != null;
-    final rowH = hasSubtitle
-        ? ActionItem.rowHeightWithSubtitle
-        : ActionItem.rowHeight;
+    final rowH =
+        hasSubtitle ? ActionItem.rowHeightWithSubtitle : ActionItem.rowHeight;
 
     // Label + optional subtitle block.
-    final Widget labelBlock = hasSubtitle
-        ? Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(item.label, style: labelStyle),
-              SizedBox(height: 2),
-              Text(
-                item.subtitle!,
-                style: TextStyle(
-                  inherit: false,
-                  color: CupertinoDynamicColor.resolve(
-                    kSecondaryLabel,
-                    context,
+    final Widget labelBlock =
+        hasSubtitle
+            ? Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.label, style: labelStyle),
+                SizedBox(height: 2),
+                Text(
+                  item.subtitle!,
+                  style: TextStyle(
+                    inherit: false,
+                    color: CupertinoDynamicColor.resolve(
+                      kSecondaryLabel,
+                      context,
+                    ),
+                    fontSize: 13,
+                    fontFamily: kSFProText,
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: -0.08,
                   ),
-                  fontSize: 13,
-                  fontFamily: kSFProText,
-                  fontWeight: FontWeight.w400,
-                  letterSpacing: -0.08,
                 ),
-              ),
-            ],
-          )
-        : Text(item.label, style: labelStyle);
+              ],
+            )
+            : Text(item.label, style: labelStyle);
 
     // iconOffset is applied to both iconBuilder and default icon paths so
     // callers can nudge any icon (e.g. view-mode icons 8 px left) uniformly.
     final iconWidget = Transform.translate(
       offset: item.iconOffset,
-      child: item.iconBuilder != null
-          ? item.iconBuilder!(textColor)
-          : _ActionPanelSFIcon(
-              item.icon,
-              size: item.iconSize,
-              color: textColor,
-              weight: item.iconWeight,
-              boxPadding: 4,
-            ),
+      child:
+          item.iconBuilder != null
+              ? item.iconBuilder!(textColor)
+              : _ActionPanelSFIcon(
+                item.icon,
+                size: item.iconSize,
+                color: textColor,
+                weight: item.iconWeight,
+                boxPadding: 4,
+              ),
     );
 
     // In chevronColumn mode every row has a fixed-width glyph region on the
     // left so all label text starts at the same x-position.
     // In standard mode the chevron (if any) sits inline before the label.
-    final List<Widget> rowChildren = widget.chevronColumn
-        ? [
-            leftWidget,
-            const SizedBox(width: _chevGap),
-            Expanded(child: labelBlock),
-            iconWidget,
-          ]
-        : [
-            if (item.hasChevron || item.checkmark) ...[
+    final List<Widget> rowChildren =
+        widget.chevronColumn
+            ? [
               leftWidget,
               const SizedBox(width: _chevGap),
-            ],
-            Expanded(child: labelBlock),
-            iconWidget,
-          ];
+              Expanded(child: labelBlock),
+              iconWidget,
+            ]
+            : [
+              if (item.hasChevron || item.checkmark) ...[
+                leftWidget,
+                const SizedBox(width: _chevGap),
+              ],
+              Expanded(child: labelBlock),
+              iconWidget,
+            ];
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -1377,16 +1394,16 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
       sharedSpec == null
           ? 0.0
           : ActionItem.rowHeightForItem(
-              context,
-              ActionItem(
-                label: sharedSpec.label,
-                icon: sharedSpec.icon,
-                hasChevron: true,
-                subtitle: sharedSpec.subtitle,
-              ),
-              panelWidth: ExpandableActionMenu.panelW,
-              chevronColumn: widget.chevronColumn,
+            context,
+            ActionItem(
+              label: sharedSpec.label,
+              icon: sharedSpec.icon,
+              hasChevron: true,
+              subtitle: sharedSpec.subtitle,
             ),
+            panelWidth: ExpandableActionMenu.panelW,
+            chevronColumn: widget.chevronColumn,
+          ),
     );
     final items = widget.itemsBuilder(
       visibleTriggerId,
@@ -1419,13 +1436,14 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
                 tween: Tween<double>(end: _expanded ? 0.52 : 1.0),
                 duration: const Duration(milliseconds: 100),
                 curve: Curves.easeOut,
-                builder: (ctx, rowOp, _) => ActionPanel(
-                  items: items,
-                  isClosing: _origClosing,
-                  chevronColumn: widget.chevronColumn,
-                  closeDurationOverrideMs: widget.closeDurationOverrideMs,
-                  rowOpacity: rowOp,
-                ),
+                builder:
+                    (ctx, rowOp, _) => ActionPanel(
+                      items: items,
+                      isClosing: _origClosing,
+                      chevronColumn: widget.chevronColumn,
+                      closeDurationOverrideMs: widget.closeDurationOverrideMs,
+                      rowOpacity: rowOp,
+                    ),
               ),
             ),
           ),
@@ -1472,12 +1490,13 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
             height: triggerHeight,
             child: ValueListenableBuilder<bool>(
               valueListenable: _origClosing,
-              builder: (ctx, origClosing, child) => AnimatedOpacity(
-                opacity: origClosing ? 0.0 : 1.0,
-                duration: const Duration(milliseconds: 260),
-                curve: Curves.easeIn,
-                child: child,
-              ),
+              builder:
+                  (ctx, origClosing, child) => AnimatedOpacity(
+                    opacity: origClosing ? 0.0 : 1.0,
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeIn,
+                    child: child,
+                  ),
               child: _ExpandableRowSharedContent(
                 label: sharedSpec.label,
                 subtitle: sharedSpec.subtitle,
@@ -1486,9 +1505,8 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
                 iconOffset: sharedSpec.iconOffset,
                 rowHeight: sharedSpec.rowHeight,
                 chevronCtrl: _chevronCtrl,
-                onTap: _scalingBack
-                    ? () {}
-                    : () => _onTriggerTap(sharedSpec.id),
+                onTap:
+                    _scalingBack ? () {} : () => _onTriggerTap(sharedSpec.id),
               ),
             ),
           ),
@@ -1581,16 +1599,17 @@ class _ExpandableRowSharedContentState
                     width: _chevW,
                     child: AnimatedBuilder(
                       animation: widget.chevronCtrl,
-                      builder: (ctx, _) => Transform.rotate(
-                        angle: widget.chevronCtrl.value * (math.pi / 2),
-                        child: _ActionPanelSFIcon(
-                          SFIcons.sf_chevron_right,
-                          size: _chevW,
-                          color: textColor,
-                          weight: FontWeight.w500,
-                          boxPadding: 0,
-                        ),
-                      ),
+                      builder:
+                          (ctx, _) => Transform.rotate(
+                            angle: widget.chevronCtrl.value * (math.pi / 2),
+                            child: _ActionPanelSFIcon(
+                              SFIcons.sf_chevron_right,
+                              size: _chevW,
+                              color: textColor,
+                              weight: FontWeight.w500,
+                              boxPadding: 0,
+                            ),
+                          ),
                     ),
                   ),
                   const SizedBox(width: _chevGap),
@@ -1649,14 +1668,13 @@ class _LiquidGlassActionPanelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark =
-        CupertinoTheme.brightnessOf(context) == Brightness.dark;
+    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
     // Keep the bounded stadium-squircle geometry used by the rest of the app.
     // This is intentionally not derived from the panel's animated height.
     final radius = kSquircleStadiumRadius;
     final fill = (fillOpacity * progress).clamp(0.0, 1.0);
     final shadow = isDark ? 0.0 : shadowOpacity * progress;
-    final shape = LiquidGlassShape.continuousRoundedRectangle(
+    final shape = LiquidGlassShape.squircle(
       cornerRadius: radius,
       // Match the Floating Tab Bar's optical rim and edge-light response.
       borderWidth: 0.45,
@@ -1698,17 +1716,22 @@ class _LiquidGlassActionPanelCard extends StatelessWidget {
           // continuous panel silhouette so the optical surface cannot expose
           // square corners during the open/close scale animation.
           ClipPath(
-            clipper: SquircleClipper(radius),
+            clipper: ShapeBorderClipper(
+              shape: BoundedSquircleStadiumBorder(radius: radius),
+            ),
             child: LiquidGlassView(
               // The overlay is above the Notes card, so keep its capture live:
               // the lens must sample the input card and page behind the panel,
               // rather than rendering only the static fallback colour.
               backgroundWidget: ClipPath(
-                clipper: SquircleClipper(radius),
+                clipper: ShapeBorderClipper(
+                  shape: BoundedSquircleStadiumBorder(radius: radius),
+                ),
                 child: ColoredBox(
-                  color: resolveThemeColor(kCardColor, context).withValues(
-                    alpha: fill,
-                  ),
+                  color: resolveThemeColor(
+                    kCardColor,
+                    context,
+                  ).withValues(alpha: fill),
                 ),
               ),
               realTimeCapture: true,
@@ -1731,8 +1754,8 @@ class _LiquidGlassActionPanelCard extends StatelessWidget {
             child: IgnorePointer(
               child: DecoratedBox(
                 decoration: ShapeDecoration(
-                  shape: BoundedContinuousRectangleBorder(
-                    borderRadius: BorderRadius.circular(radius),
+                  shape: BoundedSquircleStadiumBorder(
+                    radius: radius,
                     side: const BorderSide(
                       color: Color(0x26FFFFFF),
                       width: 0.5,

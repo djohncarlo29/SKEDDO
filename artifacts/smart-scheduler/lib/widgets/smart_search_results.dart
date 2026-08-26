@@ -77,8 +77,10 @@ class SmartSearchResultsSliver extends StatelessWidget {
       ),
       sliver: SliverList.separated(
         itemCount: hits.length + (hasSuggestion ? 1 : 0),
-        separatorBuilder: (_, index) =>
-            SizedBox(height: hasSuggestion && index == 0 ? 8 : kModalCardGap),
+        separatorBuilder:
+            (_, index) => SizedBox(
+              height: hasSuggestion && index == 0 ? 8 : kModalCardGap,
+            ),
         itemBuilder: (ctx, i) {
           if (hasSuggestion && i == 0) {
             return _SearchSuggestionBanner(
@@ -198,14 +200,15 @@ class SmartDcvSearchResults extends StatelessWidget {
             ),
             sliver: SliverList.separated(
               itemCount: primary.length,
-              separatorBuilder: (_, __) =>
-                  const SizedBox(height: kModalCardGap),
-              itemBuilder: (ctx, i) => _SearchEventTile(
-                hit: primary[i],
-                showCategoryName: !hidePrimaryCategoryName,
-                eventTileWrapper: eventTileWrapper,
-                eventTilePressWrapper: eventTilePressWrapper,
-              ),
+              separatorBuilder:
+                  (_, __) => const SizedBox(height: kModalCardGap),
+              itemBuilder:
+                  (ctx, i) => _SearchEventTile(
+                    hit: primary[i],
+                    showCategoryName: !hidePrimaryCategoryName,
+                    eventTileWrapper: eventTileWrapper,
+                    eventTilePressWrapper: eventTilePressWrapper,
+                  ),
             ),
           ),
         ],
@@ -236,13 +239,14 @@ class SmartDcvSearchResults extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
             sliver: SliverList.separated(
               itemCount: overflow.length,
-              separatorBuilder: (_, __) =>
-                  const SizedBox(height: kModalCardGap),
-              itemBuilder: (ctx, i) => _SearchEventTile(
-                hit: overflow[i],
-                eventTileWrapper: eventTileWrapper,
-                eventTilePressWrapper: eventTilePressWrapper,
-              ),
+              separatorBuilder:
+                  (_, __) => const SizedBox(height: kModalCardGap),
+              itemBuilder:
+                  (ctx, i) => _SearchEventTile(
+                    hit: overflow[i],
+                    eventTileWrapper: eventTileWrapper,
+                    eventTilePressWrapper: eventTilePressWrapper,
+                  ),
             ),
           ),
         ],
@@ -405,9 +409,10 @@ class _SearchEventTile extends StatelessWidget {
     if (event.isAllDay) {
       time = 'ALL-DAY';
     } else if (event.time != null && event.time!.isNotEmpty) {
-      time = event.endTime != null && event.endTime!.isNotEmpty
-          ? '${event.time!} - ${event.endTime!}'
-          : event.time!;
+      time =
+          event.endTime != null && event.endTime!.isNotEmpty
+              ? '${event.time!} - ${event.endTime!}'
+              : event.time!;
     } else {
       time = null;
     }
@@ -419,9 +424,10 @@ class _SearchEventTile extends StatelessWidget {
   Widget _buildCard(BuildContext context) {
     final event = hit.event;
     final meta = CategoryRegistry.get(event.categoryId);
-    final catColor = meta != null
-        ? renderCategoryColor(meta.rawColor, context)
-        : resolveAccentColor(context);
+    final catColor =
+        meta != null
+            ? renderCategoryColor(meta.rawColor, context)
+            : resolveAccentColor(context);
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     final sub = _subtitle();
 
@@ -521,9 +527,7 @@ class _SearchEventTile extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
-        shape: BoundedContinuousRectangleBorder(
-          borderRadius: BorderRadius.circular(kSbCornerRadius),
-        ),
+        shape: const BoundedSquircleStadiumBorder(radius: kSbCornerRadius),
         shadows: resolveThemeShadows(kCardShadow, context),
       ),
       child: eventTilePressWrapper?.call(content) ?? content,

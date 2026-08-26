@@ -47,4 +47,17 @@ changing the shape of unrelated modal content.
 
 **How to apply:** make the category-card state drive the shape during animated
 row expansion/collapse; do not infer pill geometry solely from a one-child
-widget list, since grids and other tall cards may also contain one child.
+ widget list, since grids and other tall cards may also contain one child.
+
+Liquid Glass lenses accept the package's own `LiquidGlassShape`, not Flutter
+`ShapeBorder` instances. Use its native `squircle` mode and enforce the exact
+bounded app geometry with an outer `ShapeBorderClipper` using
+`BoundedSquircleStadiumBorder`.
+
+**Why:** passing the app border directly is not supported by the lens API, and
+leaving the package's `continuousRoundedRectangle` mode creates a visibly
+different corner profile.
+
+**How to apply:** for a Liquid Glass surface, pair
+`LiquidGlassShape.squircle` with an outer bounded clip; keep the package shape
+for shader rendering and the app border for the actual widget silhouette.

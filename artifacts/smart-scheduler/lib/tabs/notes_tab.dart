@@ -222,9 +222,8 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     _greyActive = true;
     _greyFadeIn = true;
     // Save where the user was so we can restore it when they cancel.
-    _savedScrollOffset = _scrollController.hasClients
-        ? _scrollController.offset
-        : 0;
+    _savedScrollOffset =
+        _scrollController.hasClients ? _scrollController.offset : 0;
     // Do NOT scroll to 0.  The SliverPersistentHeader is pinned so it stays
     // visible at the viewport top regardless of scroll offset.  The
     // SliverFillRemaining grey fill covers the rest of the viewport, making
@@ -545,15 +544,17 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                 suggestedQuery: _searchSuggestion,
                 onSuggestionTap: _applySearchSuggestion,
                 eventTopPadding: 16,
-                eventTileWrapper: (hit, child, previewBuilder) =>
-                    wrapSearchEventTileWithActions(
-                      hit: hit,
-                      child: child,
-                      previewBuilder: previewBuilder,
-                      onEdit: widget.onEditEvent == null
-                          ? null
-                          : () => widget.onEditEvent!(hit.event),
-                    ),
+                eventTileWrapper:
+                    (hit, child, previewBuilder) =>
+                        wrapSearchEventTileWithActions(
+                          hit: hit,
+                          child: child,
+                          previewBuilder: previewBuilder,
+                          onEdit:
+                              widget.onEditEvent == null
+                                  ? null
+                                  : () => widget.onEditEvent!(hit.event),
+                        ),
                 eventTilePressWrapper: wrapSearchEventTileWithPressScale,
               ),
               if (_searchHits.isNotEmpty)
@@ -639,15 +640,17 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                       suggestedQuery: _searchSuggestion,
                       onSuggestionTap: _applySearchSuggestion,
                       eventTopPadding: 16,
-                      eventTileWrapper: (hit, child, previewBuilder) =>
-                          wrapSearchEventTileWithActions(
-                            hit: hit,
-                            child: child,
-                            previewBuilder: previewBuilder,
-                            onEdit: widget.onEditEvent == null
-                                ? null
-                                : () => widget.onEditEvent!(hit.event),
-                          ),
+                      eventTileWrapper:
+                          (hit, child, previewBuilder) =>
+                              wrapSearchEventTileWithActions(
+                                hit: hit,
+                                child: child,
+                                previewBuilder: previewBuilder,
+                                onEdit:
+                                    widget.onEditEvent == null
+                                        ? null
+                                        : () => widget.onEditEvent!(hit.event),
+                              ),
                       eventTilePressWrapper: wrapSearchEventTileWithPressScale,
                     )
                   else
@@ -756,12 +759,13 @@ class _NoteInputCardState extends State<_NoteInputCard>
       ),
     ];
     _attachOverlay = OverlayEntry(
-      builder: (ctx) => ActionMenuOverlay(
-        buttonRect: Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height),
-        isClosing: _attachClosing,
-        onDismiss: _hideAttachMenu,
-        actions: items,
-      ),
+      builder:
+          (ctx) => ActionMenuOverlay(
+            buttonRect: Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height),
+            isClosing: _attachClosing,
+            onDismiss: _hideAttachMenu,
+            actions: items,
+          ),
     );
     Overlay.of(context).insert(_attachOverlay!);
     setState(() {});
@@ -801,11 +805,12 @@ class _NoteInputCardState extends State<_NoteInputCard>
       final bytes = await file.readAsBytes();
       if (!mounted) return;
       final ext = file.name.split('.').last.toLowerCase();
-      final mime = ext == 'png'
-          ? 'image/png'
-          : ext == 'webp'
-          ? 'image/webp'
-          : 'image/jpeg';
+      final mime =
+          ext == 'png'
+              ? 'image/png'
+              : ext == 'webp'
+              ? 'image/webp'
+              : 'image/jpeg';
       setState(() {
         _pickedImage = file;
         _pickedFile = null;
@@ -855,15 +860,16 @@ class _NoteInputCardState extends State<_NoteInputCard>
   void _showAttachmentPreview() {
     if (_previewOverlay != null) return;
     _previewOverlay = OverlayEntry(
-      builder: (_) => _AttachmentPreviewOverlay(
-        imageBytes: _imageBytes,
-        docBytes: (_imageBytes == null) ? _pickedFile?.bytes : null,
-        filename: _pickedFile?.name,
-        fileExt: _pickedFile?.extension,
-        mimeType: _imageBytes != null ? _pendingMime : null,
-        onAnalyze: _analyzeAttachmentFromViewer,
-        onDismiss: _dismissAttachmentPreview,
-      ),
+      builder:
+          (_) => _AttachmentPreviewOverlay(
+            imageBytes: _imageBytes,
+            docBytes: (_imageBytes == null) ? _pickedFile?.bytes : null,
+            filename: _pickedFile?.name,
+            fileExt: _pickedFile?.extension,
+            mimeType: _imageBytes != null ? _pendingMime : null,
+            onAnalyze: _analyzeAttachmentFromViewer,
+            onDismiss: _dismissAttachmentPreview,
+          ),
     );
     Overlay.of(context).insert(_previewOverlay!);
   }
@@ -881,9 +887,8 @@ class _NoteInputCardState extends State<_NoteInputCard>
     offline.AnalysisCancellationToken cancellation,
     offline.AnalysisProgress onProgress,
   ) async {
-    final ext = filename.contains('.')
-        ? filename.split('.').last.toLowerCase()
-        : '';
+    final ext =
+        filename.contains('.') ? filename.split('.').last.toLowerCase() : '';
     if (_kTextExts.contains(ext) ||
         ext == 'pdf' ||
         ext == 'docx' ||
@@ -1153,19 +1158,20 @@ class _NoteInputCardState extends State<_NoteInputCard>
       _micBusy = false;
       await showCupertinoDialog<void>(
         context: context,
-        builder: (ctx) => CupertinoAlertDialog(
-          title: const Text('Microphone Access Denied'),
-          content: const Text(
-            'To use voice input, enable microphone access in your device Settings.',
-          ),
-          actions: [
-            CupertinoDialogAction(
-              isDefaultAction: true,
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('OK'),
+        builder:
+            (ctx) => CupertinoAlertDialog(
+              title: const Text('Microphone Access Denied'),
+              content: const Text(
+                'To use voice input, enable microphone access in your device Settings.',
+              ),
+              actions: [
+                CupertinoDialogAction(
+                  isDefaultAction: true,
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
             ),
-          ],
-        ),
       );
       return;
     }
@@ -1372,8 +1378,10 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                     controller: widget.controller,
                                     placeholder: 'Type your schedule here...',
                                     multiline: true,
-                                    onFocusChanged: (focused) =>
-                                        setState(() => _noteFocused = focused),
+                                    onFocusChanged:
+                                        (focused) => setState(
+                                          () => _noteFocused = focused,
+                                        ),
                                     style: TextStyle(
                                       inherit: false,
                                       fontSize: 17,
@@ -1401,9 +1409,10 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                     widget.controller.text.isEmpty)
                                   GestureDetector(
                                     behavior: HitTestBehavior.translucent,
-                                    onTap: () => NativeTextInput.focus(
-                                      widget.controller,
-                                    ),
+                                    onTap:
+                                        () => NativeTextInput.focus(
+                                          widget.controller,
+                                        ),
                                   ),
                               ],
                             ),
@@ -1427,24 +1436,25 @@ class _NoteInputCardState extends State<_NoteInputCard>
                             padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                             child: AnimatedBuilder(
                               animation: _clearScaleCtrl,
-                              builder: (context, _) => Transform.scale(
-                                scale: 1.0 - (_clearScaleCtrl.value * 0.22),
-                                child: Opacity(
-                                  // Empty fields keep the same assigned
-                                  // colour, but at a deliberately quieter
-                                  // base opacity. A press still animates
-                                  // even though it has no clear action.
-                                  opacity:
-                                      (hasText ? 1.0 : 0.45) *
-                                      _clearOpacity.value,
-                                  child: Icon(
-                                    CupertinoIcons.clear,
-                                    size: 20,
-                                    weight: 300.0,
-                                    color: secondaryLabel,
+                              builder:
+                                  (context, _) => Transform.scale(
+                                    scale: 1.0 - (_clearScaleCtrl.value * 0.22),
+                                    child: Opacity(
+                                      // Empty fields keep the same assigned
+                                      // colour, but at a deliberately quieter
+                                      // base opacity. A press still animates
+                                      // even though it has no clear action.
+                                      opacity:
+                                          (hasText ? 1.0 : 0.45) *
+                                          _clearOpacity.value,
+                                      child: Icon(
+                                        CupertinoIcons.clear,
+                                        size: 20,
+                                        weight: 300.0,
+                                        color: secondaryLabel,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
                             ),
                           ),
                         );
@@ -1476,15 +1486,16 @@ class _NoteInputCardState extends State<_NoteInputCard>
                         padding: const EdgeInsets.fromLTRB(0, 8, 8, 0),
                         child: AnimatedBuilder(
                           animation: _plusScaleCtrl,
-                          builder: (context, _) => Opacity(
-                            opacity: _plusOpacity.value,
-                            child: Icon(
-                              CupertinoIcons.add,
-                              size: 24,
-                              weight: 300.0,
-                              color: secondaryLabel,
-                            ),
-                          ),
+                          builder:
+                              (context, _) => Opacity(
+                                opacity: _plusOpacity.value,
+                                child: Icon(
+                                  CupertinoIcons.add,
+                                  size: 24,
+                                  weight: 300.0,
+                                  color: secondaryLabel,
+                                ),
+                              ),
                         ),
                       ),
                     ),
@@ -1492,58 +1503,71 @@ class _NoteInputCardState extends State<_NoteInputCard>
                     // ── Mic button: idle / listening ─────────────────────────
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 180),
-                      transitionBuilder: (child, anim) =>
-                          FadeTransition(opacity: anim, child: child),
-                      child: _micListening
-                          // Listening: accent mic pulsing, tap to stop early.
-                          ? GestureDetector(
-                              key: const ValueKey('mic-listening'),
-                              onTap: _onMicTap,
-                              behavior: HitTestBehavior.opaque,
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(8, 8, 0, 0),
-                                child: AnimatedBuilder(
-                                  animation: _pulseCtrl,
-                                  builder: (_, __) => Opacity(
-                                    opacity: _pulseCtrl.value,
-                                    child: FixedSFIcon(
-                                      SFIcons.sf_microphone_fill,
-                                      fontSize: 17,
-                                      color: resolveAccentColor(context),
-                                      shadows: resolveThemeTextShadows([
-                                        Shadow(
-                                          color: resolveAccentColor(context),
-                                          blurRadius: 0.4,
+                      transitionBuilder:
+                          (child, anim) =>
+                              FadeTransition(opacity: anim, child: child),
+                      child:
+                          _micListening
+                              // Listening: accent mic pulsing, tap to stop early.
+                              ? GestureDetector(
+                                key: const ValueKey('mic-listening'),
+                                onTap: _onMicTap,
+                                behavior: HitTestBehavior.opaque,
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    8,
+                                    8,
+                                    0,
+                                    0,
+                                  ),
+                                  child: AnimatedBuilder(
+                                    animation: _pulseCtrl,
+                                    builder:
+                                        (_, __) => Opacity(
+                                          opacity: _pulseCtrl.value,
+                                          child: FixedSFIcon(
+                                            SFIcons.sf_microphone_fill,
+                                            fontSize: 17,
+                                            color: resolveAccentColor(context),
+                                            shadows: resolveThemeTextShadows([
+                                              Shadow(
+                                                color: resolveAccentColor(
+                                                  context,
+                                                ),
+                                                blurRadius: 0.4,
+                                              ),
+                                            ], context),
+                                          ),
                                         ),
-                                      ], context),
-                                    ),
                                   ),
                                 ),
+                              )
+                              // Idle: dim mic, press highlight, tap to start.
+                              : AnimatedTapIcon(
+                                key: const ValueKey('mic-idle'),
+                                padding: const EdgeInsets.fromLTRB(8, 8, 0, 0),
+                                onTap: _onMicTap,
+                                onPressedChanged:
+                                    (pressed) =>
+                                        setState(() => _micPressed = pressed),
+                                child: FixedSFIcon(
+                                  SFIcons.sf_microphone_fill,
+                                  fontSize: 17,
+                                  color:
+                                      _micPressed
+                                          ? secondaryLabel
+                                          : tertiaryLabel,
+                                  shadows: resolveThemeTextShadows([
+                                    Shadow(
+                                      color:
+                                          _micPressed
+                                              ? secondaryLabel
+                                              : tertiaryLabel,
+                                      blurRadius: 0.4,
+                                    ),
+                                  ], context),
+                                ),
                               ),
-                            )
-                          // Idle: dim mic, press highlight, tap to start.
-                          : AnimatedTapIcon(
-                              key: const ValueKey('mic-idle'),
-                              padding: const EdgeInsets.fromLTRB(8, 8, 0, 0),
-                              onTap: _onMicTap,
-                              onPressedChanged: (pressed) =>
-                                  setState(() => _micPressed = pressed),
-                              child: FixedSFIcon(
-                                SFIcons.sf_microphone_fill,
-                                fontSize: 17,
-                                color: _micPressed
-                                    ? secondaryLabel
-                                    : tertiaryLabel,
-                                shadows: resolveThemeTextShadows([
-                                  Shadow(
-                                    color: _micPressed
-                                        ? secondaryLabel
-                                        : tertiaryLabel,
-                                    blurRadius: 0.4,
-                                  ),
-                                ], context),
-                              ),
-                            ),
                     ),
                   ],
                 ),
@@ -1631,10 +1655,11 @@ class _SaveEventButtonState extends State<_SaveEventButton>
       },
       child: AnimatedBuilder(
         animation: _ctrl,
-        builder: (context, child) => Transform.scale(
-          scale: 1.0 - 0.04 * _ctrl.value,
-          child: Opacity(opacity: 1.0 - 0.35 * _ctrl.value, child: child!),
-        ),
+        builder:
+            (context, child) => Transform.scale(
+              scale: 1.0 - 0.04 * _ctrl.value,
+              child: Opacity(opacity: 1.0 - 0.35 * _ctrl.value, child: child!),
+            ),
         child: Container(
           clipBehavior: Clip.antiAlias,
           decoration: ShapeDecoration(
@@ -1712,8 +1737,10 @@ class _AttachmentImagePreview extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
+      child: ClipPath(
+        clipper: ShapeBorderClipper(
+          shape: const BoundedSquircleStadiumBorder(radius: 10),
+        ),
         child: Stack(
           children: [
             ConstrainedBox(
@@ -1767,9 +1794,9 @@ class _AttachmentFileChip extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            decoration: BoxDecoration(
+            decoration: const ShapeDecoration(
               color: kModalButtonBackground,
-              borderRadius: BorderRadius.circular(8),
+              shape: BoundedSquircleStadiumBorder(radius: 8),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1913,27 +1940,28 @@ class _ExtractionResultSheetState extends State<_ExtractionResultSheet> {
     if (e.needsReview) {
       final shouldAdd = await showCupertinoDialog<bool>(
         context: context,
-        builder: (dialogContext) => CupertinoAlertDialog(
-          title: const Text('Review Suggested Event'),
-          content: Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              'This event may need a quick check before it is added. '
-              'Interpretation confidence is ${_confidenceLabel(e.interpretationConfidence)}.',
+        builder:
+            (dialogContext) => CupertinoAlertDialog(
+              title: const Text('Review Suggested Event'),
+              content: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'This event may need a quick check before it is added. '
+                  'Interpretation confidence is ${_confidenceLabel(e.interpretationConfidence)}.',
+                ),
+              ),
+              actions: [
+                CupertinoDialogAction(
+                  child: const Text('Keep Reviewing'),
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                ),
+                CupertinoDialogAction(
+                  isDefaultAction: true,
+                  child: const Text('Confirm & Add'),
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                ),
+              ],
             ),
-          ),
-          actions: [
-            CupertinoDialogAction(
-              child: const Text('Keep Reviewing'),
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-            ),
-            CupertinoDialogAction(
-              isDefaultAction: true,
-              child: const Text('Confirm & Add'),
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-            ),
-          ],
-        ),
       );
       if (shouldAdd != true || !mounted) return;
     }
@@ -1983,10 +2011,11 @@ class _ExtractionResultSheetState extends State<_ExtractionResultSheet> {
     final mq = MediaQuery.of(context);
     return Container(
       constraints: BoxConstraints(maxHeight: mq.size.height * 0.75),
-      decoration: const BoxDecoration(
+      decoration: const ShapeDecoration(
         color: kModalBackground,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        shape: BoundedSquircleStadiumBorder(radius: 16, topOnly: true),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1996,9 +2025,9 @@ class _ExtractionResultSheetState extends State<_ExtractionResultSheet> {
             child: Container(
               width: 36,
               height: 4,
-              decoration: BoxDecoration(
+              decoration: const ShapeDecoration(
                 color: kModalHandleColor,
-                borderRadius: BorderRadius.circular(2),
+                shape: BoundedSquircleStadiumBorder(radius: 2),
               ),
             ),
           ),
@@ -2028,7 +2057,7 @@ class _ExtractionResultSheetState extends State<_ExtractionResultSheet> {
               child: Text(
                 widget.events.isEmpty
                     ? "We couldn't find any events in this image. "
-                          'Try a photo of a calendar, invite, or flyer.'
+                        'Try a photo of a calendar, invite, or flyer.'
                     : 'All events have been handled.',
                 style: const TextStyle(
                   inherit: false,
@@ -2049,11 +2078,12 @@ class _ExtractionResultSheetState extends State<_ExtractionResultSheet> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                 itemCount: _remaining.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (_, i) => _EventRow(
-                  event: _remaining[i],
-                  onAdd: () => _addAndRemove(i),
-                  onDismiss: () => _dismiss(i),
-                ),
+                itemBuilder:
+                    (_, i) => _EventRow(
+                      event: _remaining[i],
+                      onAdd: () => _addAndRemove(i),
+                      onDismiss: () => _dismiss(i),
+                    ),
               ),
             ),
           // Dismiss all
@@ -2065,9 +2095,9 @@ class _ExtractionResultSheetState extends State<_ExtractionResultSheet> {
                 onTap: () => Navigator.of(context).pop(),
                 child: Container(
                   height: 50,
-                  decoration: BoxDecoration(
+                  decoration: const ShapeDecoration(
                     color: kModalButtonBackground,
-                    borderRadius: BorderRadius.circular(12),
+                    shape: BoundedSquircleStadiumBorder(radius: 12),
                   ),
                   child: const Center(
                     child: Text(
@@ -2110,10 +2140,12 @@ class _EventRow extends StatelessWidget {
     final interpretation = _confidenceLabel(event.interpretationConfidence);
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
-      decoration: BoxDecoration(
+      decoration: const ShapeDecoration(
         color: kPreviewCardBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: kPreviewCardBorder),
+        shape: BoundedSquircleStadiumBorder(
+          radius: 12,
+          side: BorderSide(color: kPreviewCardBorder),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2237,9 +2269,9 @@ class _EventRow extends StatelessWidget {
             onTap: onAdd,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              decoration: BoxDecoration(
+              decoration: ShapeDecoration(
                 color: resolveAccentColor(context),
-                borderRadius: BorderRadius.circular(20),
+                shape: const BoundedSquircleStadiumBorder(radius: 20),
               ),
               child: Text(
                 event.needsReview ? 'Confirm' : 'Add',
@@ -2288,9 +2320,9 @@ class _ReviewBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    decoration: BoxDecoration(
+    decoration: ShapeDecoration(
       color: color.withOpacity(.14),
-      borderRadius: BorderRadius.circular(7),
+      shape: const BoundedSquircleStadiumBorder(radius: 7),
     ),
     child: Text(
       text,
@@ -2393,9 +2425,9 @@ class _SourceTextPreview extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     width: double.infinity,
     padding: const EdgeInsets.all(8),
-    decoration: BoxDecoration(
+    decoration: const ShapeDecoration(
       color: kModalButtonBackground,
-      borderRadius: BorderRadius.circular(8),
+      shape: BoundedSquircleStadiumBorder(radius: 8),
     ),
     child: Text(
       '“${text.trim()}”',
@@ -2600,10 +2632,11 @@ String _stripRtf(String rtf) {
 }
 
 /// Strip HTML/XML tags leaving inner text.
-String _stripTags(String html) => html
-    .replaceAll(RegExp(r'<[^>]+>'), ' ')
-    .replaceAll(RegExp(r'\s+'), ' ')
-    .trim();
+String _stripTags(String html) =>
+    html
+        .replaceAll(RegExp(r'<[^>]+>'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
 
 /// Extract readable text from a DOCX byte array.
 /// DOCX is a ZIP; we unpack word/document.xml and pull <w:t> text runs.
@@ -2715,11 +2748,12 @@ String _extractXlsxText(Uint8List bytes) {
           (e) => e.name.local == 'c',
         )) {
           final type = cell.getAttribute('t');
-          final value = cell.children
-              .whereType<XmlElement>()
-              .where((e) => e.name.local == 'v')
-              .map((e) => e.innerText)
-              .firstOrNull;
+          final value =
+              cell.children
+                  .whereType<XmlElement>()
+                  .where((e) => e.name.local == 'v')
+                  .map((e) => e.innerText)
+                  .firstOrNull;
           if (value == null) {
             values.add('');
           } else if (type == 's') {
@@ -2845,9 +2879,8 @@ _DocxParagraph _parsePara(XmlElement para, bool Function(XmlElement?) wBool) {
     final uVal = uEl?.getAttribute('w:val') ?? '';
     final underline = uEl != null && uVal != 'none' && uVal != '0';
     final szEl = rPr?.findElements('w:sz').firstOrNull;
-    final szRaw = szEl != null
-        ? int.tryParse(szEl.getAttribute('w:val') ?? '')
-        : null;
+    final szRaw =
+        szEl != null ? int.tryParse(szEl.getAttribute('w:val') ?? '') : null;
     final fontSize = szRaw != null ? (szRaw / 2.0).clamp(8.0, 72.0) : null;
     final colorVal = rPr
         ?.findElements('w:color')
@@ -3073,19 +3106,20 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
     try {
       await showSafeCupertinoDialog<void>(
         context: context,
-        builder: (dialogContext) => CupertinoAlertDialog(
-          title: const Text('Attachment Not Analyzed'),
-          content: Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(message),
-          ),
-          actions: [
-            CupertinoDialogAction(
-              child: const Text('Dismiss'),
-              onPressed: () => Navigator.of(dialogContext).pop(),
+        builder:
+            (dialogContext) => CupertinoAlertDialog(
+              title: const Text('Attachment Not Analyzed'),
+              content: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(message),
+              ),
+              actions: [
+                CupertinoDialogAction(
+                  child: const Text('Dismiss'),
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                ),
+              ],
             ),
-          ],
-        ),
       );
     } finally {
       _analysisDialogOpen = false;
@@ -3117,10 +3151,11 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
       final frame = await codec.getNextFrame();
       if (mounted) {
         setState(
-          () => _imgNatSize = Size(
-            frame.image.width.toDouble(),
-            frame.image.height.toDouble(),
-          ),
+          () =>
+              _imgNatSize = Size(
+                frame.image.width.toDouble(),
+                frame.image.height.toDouble(),
+              ),
         );
       }
       frame.image.dispose();
@@ -3233,14 +3268,14 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
     if (_kTextExts.contains(ext) && bytes != null) {
       try {
         final raw = utf8.decode(bytes, allowMalformed: true);
-        final cooked = ext == 'rtf'
-            ? _stripRtf(raw)
-            : (ext == 'html' || ext == 'htm')
-            ? _stripTags(raw)
-            : raw;
-        final trimmed = cooked.length > 20000
-            ? '${cooked.substring(0, 20000)}\n…'
-            : cooked;
+        final cooked =
+            ext == 'rtf'
+                ? _stripRtf(raw)
+                : (ext == 'html' || ext == 'htm')
+                ? _stripTags(raw)
+                : raw;
+        final trimmed =
+            cooked.length > 20000 ? '${cooked.substring(0, 20000)}\n…' : cooked;
         return _TextPreview(
           content: trimmed,
           monospace: _kMonoExts.contains(ext),
@@ -3316,11 +3351,9 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
                         // Reserve 60 px (16 gap + 44 button) for the PDF nav
                         // row when it's visible so the card never overflows.
                         const navH = 16.0 + 44.0;
-                        final cardMaxH =
-                            (bc.maxHeight - (_pdfTotal > 1 ? navH : 0.0)).clamp(
-                              0.0,
-                              double.infinity,
-                            );
+                        final cardMaxH = (bc.maxHeight -
+                                (_pdfTotal > 1 ? navH : 0.0))
+                            .clamp(0.0, double.infinity);
 
                         return Center(
                           child: Column(
@@ -3392,11 +3425,13 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
                                           icon: SFIcons.sf_chevron_right,
                                           flipHorizontal: true,
                                           verticalIconOffset: -2,
-                                          iconColor: _pdfPage > 1
-                                              ? kPrimaryLabel
-                                              : kTertiaryLabel,
-                                          onTap: () => _pdfKey.currentState
-                                              ?.navigate(-1),
+                                          iconColor:
+                                              _pdfPage > 1
+                                                  ? kPrimaryLabel
+                                                  : kTertiaryLabel,
+                                          onTap:
+                                              () => _pdfKey.currentState
+                                                  ?.navigate(-1),
                                         ),
                                       ),
                                       Positioned(
@@ -3405,11 +3440,13 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
                                         child: _PreviewCircleButton(
                                           icon: SFIcons.sf_chevron_right,
                                           verticalIconOffset: -2,
-                                          iconColor: _pdfPage < _pdfTotal
-                                              ? kPrimaryLabel
-                                              : kTertiaryLabel,
-                                          onTap: () =>
-                                              _pdfKey.currentState?.navigate(1),
+                                          iconColor:
+                                              _pdfPage < _pdfTotal
+                                                  ? kPrimaryLabel
+                                                  : kTertiaryLabel,
+                                          onTap:
+                                              () => _pdfKey.currentState
+                                                  ?.navigate(1),
                                         ),
                                       ),
                                     ],
@@ -3448,9 +3485,10 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
               child: Opacity(
                 opacity: t,
                 child: _PreviewCircleButton(
-                  icon: _isAnalyzing
-                      ? CupertinoIcons.arrow_2_circlepath
-                      : CupertinoIcons.checkmark,
+                  icon:
+                      _isAnalyzing
+                          ? CupertinoIcons.arrow_2_circlepath
+                          : CupertinoIcons.checkmark,
                   containerColor: resolveAccentColor(context),
                   iconColor: CupertinoColors.white,
                   isCheckmark: true,
@@ -3463,9 +3501,9 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
               Positioned.fill(
                 child: Center(
                   child: DecoratedBox(
-                    decoration: BoxDecoration(
+                    decoration: ShapeDecoration(
                       color: kModalBackground.withOpacity(.94),
-                      borderRadius: BorderRadius.circular(16),
+                      shape: const BoundedSquircleStadiumBorder(radius: 16),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
@@ -3491,8 +3529,12 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
                           SizedBox(
                             width: 190,
                             height: 4,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(2),
+                            child: ClipPath(
+                              clipper: ShapeBorderClipper(
+                                shape: const BoundedSquircleStadiumBorder(
+                                  radius: 2,
+                                ),
+                              ),
                               child: Stack(
                                 children: [
                                   Positioned.fill(
@@ -3684,15 +3726,16 @@ class _PdfPageViewState extends State<_PdfPageView> {
           child: SizedBox(
             width: displayW,
             height: displayH,
-            child: _loading
-                ? Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Image.memory(_pageBytes!, fit: BoxFit.fill),
-                      const CupertinoActivityIndicator(),
-                    ],
-                  )
-                : Image.memory(_pageBytes!, fit: BoxFit.fill),
+            child:
+                _loading
+                    ? Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Image.memory(_pageBytes!, fit: BoxFit.fill),
+                        const CupertinoActivityIndicator(),
+                      ],
+                    )
+                    : Image.memory(_pageBytes!, fit: BoxFit.fill),
           ),
         );
       },
@@ -3703,8 +3746,9 @@ class _PdfPageViewState extends State<_PdfPageView> {
 // ── Shared-radius squircle preview clipper ───────────────────────────────────
 class _PreviewSquircleClipper extends CustomClipper<Path> {
   @override
-  Path getClip(Size size) => const BoundedSquircleStadiumBorder()
-      .getOuterPath(Rect.fromLTWH(0, 0, size.width, size.height));
+  Path getClip(Size size) => const BoundedSquircleStadiumBorder().getOuterPath(
+    Rect.fromLTWH(0, 0, size.width, size.height),
+  );
 
   @override
   bool shouldReclip(_PreviewSquircleClipper old) => false;
@@ -3746,9 +3790,10 @@ class _PreviewCircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fontFamily = icon.fontPackage != null
-        ? 'packages/${icon.fontPackage}/${icon.fontFamily}'
-        : (icon.fontFamily ?? '');
+    final fontFamily =
+        icon.fontPackage != null
+            ? 'packages/${icon.fontPackage}/${icon.fontFamily}'
+            : (icon.fontFamily ?? '');
 
     final resolvedContainerColor = resolveThemeColor(containerColor, context);
     final resolvedIconColor = resolveThemeColor(iconColor, context);
@@ -3937,20 +3982,22 @@ class _DocxTextViewState extends State<_DocxTextView> {
   }
 
   Widget _buildParagraph(_DocxParagraph para) {
-    final basePt = para.headingLevel == 1
-        ? 22.0
-        : para.headingLevel == 2
-        ? 18.0
-        : para.headingLevel == 3
-        ? 15.0
-        : 13.0;
-    final bottomPad = para.headingLevel == 1
-        ? 10.0
-        : para.headingLevel == 2
-        ? 7.0
-        : para.headingLevel == 3
-        ? 5.0
-        : 3.0;
+    final basePt =
+        para.headingLevel == 1
+            ? 22.0
+            : para.headingLevel == 2
+            ? 18.0
+            : para.headingLevel == 3
+            ? 15.0
+            : 13.0;
+    final bottomPad =
+        para.headingLevel == 1
+            ? 10.0
+            : para.headingLevel == 2
+            ? 7.0
+            : para.headingLevel == 3
+            ? 5.0
+            : 3.0;
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomPad),
@@ -4099,40 +4146,45 @@ class _FileDocPreview extends StatelessWidget {
 
 pw.Widget _buildPdfPara(_DocxParagraph para) {
   if (para.isEmpty) return pw.SizedBox(height: 5);
-  final basePt = para.headingLevel == 1
-      ? 18.0
-      : para.headingLevel == 2
-      ? 14.0
-      : para.headingLevel == 3
-      ? 12.0
-      : 10.0;
-  final spans = para.runs.map((r) {
-    final fs = (r.fontSize ?? basePt).clamp(6.0, 72.0);
-    final font = r.bold && r.italic
-        ? pw.Font.helveticaBoldOblique()
-        : r.bold
-        ? pw.Font.helveticaBold()
-        : r.italic
-        ? pw.Font.helveticaOblique()
-        : pw.Font.helvetica();
-    return pw.TextSpan(
-      text: r.text,
-      style: pw.TextStyle(
-        font: font,
-        fontSize: fs,
-        color: r.color != null
-            ? PdfColor(
-                r.color!.red / 255,
-                r.color!.green / 255,
-                r.color!.blue / 255,
-              )
-            : PdfColors.black,
-        decoration: r.underline
-            ? pw.TextDecoration.underline
-            : pw.TextDecoration.none,
-      ),
-    );
-  }).toList();
+  final basePt =
+      para.headingLevel == 1
+          ? 18.0
+          : para.headingLevel == 2
+          ? 14.0
+          : para.headingLevel == 3
+          ? 12.0
+          : 10.0;
+  final spans =
+      para.runs.map((r) {
+        final fs = (r.fontSize ?? basePt).clamp(6.0, 72.0);
+        final font =
+            r.bold && r.italic
+                ? pw.Font.helveticaBoldOblique()
+                : r.bold
+                ? pw.Font.helveticaBold()
+                : r.italic
+                ? pw.Font.helveticaOblique()
+                : pw.Font.helvetica();
+        return pw.TextSpan(
+          text: r.text,
+          style: pw.TextStyle(
+            font: font,
+            fontSize: fs,
+            color:
+                r.color != null
+                    ? PdfColor(
+                      r.color!.red / 255,
+                      r.color!.green / 255,
+                      r.color!.blue / 255,
+                    )
+                    : PdfColors.black,
+            decoration:
+                r.underline
+                    ? pw.TextDecoration.underline
+                    : pw.TextDecoration.none,
+          ),
+        );
+      }).toList();
   final pdfAlign = switch (para.alignment) {
     TextAlign.center => pw.TextAlign.center,
     TextAlign.right => pw.TextAlign.right,
@@ -4141,10 +4193,7 @@ pw.Widget _buildPdfPara(_DocxParagraph para) {
   };
   return pw.Padding(
     padding: pw.EdgeInsets.only(bottom: para.headingLevel > 0 ? 6 : 2),
-    child: pw.RichText(
-      text: pw.TextSpan(children: spans),
-      textAlign: pdfAlign,
-    ),
+    child: pw.RichText(text: pw.TextSpan(children: spans), textAlign: pdfAlign),
   );
 }
 
@@ -4158,24 +4207,24 @@ pw.Widget _buildPdfTable(List<List<List<_DocxParagraph>>> rows) {
       columnWidths: {
         for (int i = 0; i < colCount; i++) i: const pw.FlexColumnWidth(),
       },
-      children: rows
-          .map(
-            (row) => pw.TableRow(
-              children: List.generate(colCount, (ci) {
-                final cellParas = ci < row.length
-                    ? row[ci]
-                    : <_DocxParagraph>[];
-                return pw.Padding(
-                  padding: const pw.EdgeInsets.all(4),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: cellParas.map(_buildPdfPara).toList(),
-                  ),
-                );
-              }),
-            ),
-          )
-          .toList(),
+      children:
+          rows
+              .map(
+                (row) => pw.TableRow(
+                  children: List.generate(colCount, (ci) {
+                    final cellParas =
+                        ci < row.length ? row[ci] : <_DocxParagraph>[];
+                    return pw.Padding(
+                      padding: const pw.EdgeInsets.all(4),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: cellParas.map(_buildPdfPara).toList(),
+                      ),
+                    );
+                  }),
+                ),
+              )
+              .toList(),
     ),
   );
 }

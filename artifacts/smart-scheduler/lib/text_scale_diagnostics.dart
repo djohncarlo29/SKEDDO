@@ -94,9 +94,10 @@ class _TextScaleDiagnosticsSectionState
         ),
     ];
     final metrics = _parseMetrics(payload['activeMetrics']);
-    final nativeMetrics = nativeIndex < profile.stopMetrics.length
-        ? profile.stopMetrics[nativeIndex]
-        : null;
+    final nativeMetrics =
+        nativeIndex < profile.stopMetrics.length
+            ? profile.stopMetrics[nativeIndex]
+            : null;
     setState(() {
       _snapshots[_selectedPosition] = _DiagnosticSnapshot(
         osPosition: _selectedPosition,
@@ -104,8 +105,8 @@ class _TextScaleDiagnosticsSectionState
         flutterTextScaleFactor: flutterTextScaleFactor,
         nativeStop: profile.stops[nativeIndex],
         nativeIndex: nativeIndex,
-        fontScale: (payload['activeConfigurationFontScale'] as num?)
-            ?.toDouble(),
+        fontScale:
+            (payload['activeConfigurationFontScale'] as num?)?.toDouble(),
         metrics: metrics,
         nativeMetrics: nativeMetrics,
         values: values,
@@ -198,9 +199,9 @@ class _TextScaleDiagnosticsSectionState
     Color labelColor,
   ) {
     return DecoratedBox(
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(kCardCornerRadius),
+        shape: const BoundedSquircleStadiumBorder(radius: kCardCornerRadius),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -242,9 +243,10 @@ class _TextScaleDiagnosticsSectionState
       curves.add(rawCurve.whereType<num>().map((e) => e.toDouble()).toList());
     }
     final rawStopMetrics = payload['stopMetrics'];
-    final stopMetrics = rawStopMetrics is List
-        ? rawStopMetrics.map(_parseMetrics).toList()
-        : <_DiagnosticMetrics?>[];
+    final stopMetrics =
+        rawStopMetrics is List
+            ? rawStopMetrics.map(_parseMetrics).toList()
+            : <_DiagnosticMetrics?>[];
     if (stops.isEmpty || probes.length < 2) return null;
     return _NativeProfile(
       stops: stops,
@@ -389,9 +391,9 @@ class _SnapshotCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final metrics = snapshot.metrics;
     return DecoratedBox(
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(kCardCornerRadius),
+        shape: const BoundedSquircleStadiumBorder(radius: kCardCornerRadius),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),

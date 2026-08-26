@@ -29,9 +29,10 @@ class FloatingTabPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
-    final selectedColor = selectedIndex == 2
-        ? CupertinoDynamicColor.resolve(eventsAccent, context)
-        : resolveAccentColor(context);
+    final selectedColor =
+        selectedIndex == 2
+            ? CupertinoDynamicColor.resolve(eventsAccent, context)
+            : resolveAccentColor(context);
     // Keep the animated pill's rest endpoint in lock-step with the static
     // active-pill surface. If this is omitted, liquid_glass_easy falls back to
     // its shipped translucent gray during both the lift handoff and settle.
@@ -116,20 +117,20 @@ class FloatingTabPill extends StatelessWidget {
                 // tint carries the visible handoff without tinting this
                 // settled lifted endpoint; the package aberration remains
                 // authored on the glass refraction itself.
-                 color: const Color(0x00000000),
+                color: const Color(0x00000000),
                 transitionColor: transitionPillColor,
-                shape: LiquidGlassShape.continuousRoundedRectangle(
+                shape: LiquidGlassShape.squircle(
                   cornerRadius: kSquircleStadiumRadius,
                 ),
                 glassStyle: LiquidGlassStyle(
-                  shape: LiquidGlassShape.continuousRoundedRectangle(
+                  shape: LiquidGlassShape.squircle(
                     cornerRadius: kSquircleStadiumRadius,
                   ),
                   appearance: LiquidGlassAppearance(
-                  // The raised endpoint must remain a transparent,
-                  // refracting glass lens. The resolved Light/Dark color
-                  // is owned by the settled rest endpoint above, so the
-                  // handoff does not turn the raised pill into a flat fill.
+                    // The raised endpoint must remain a transparent,
+                    // refracting glass lens. The resolved Light/Dark color
+                    // is owned by the settled rest endpoint above, so the
+                    // handoff does not turn the raised pill into a flat fill.
                     // This shadow belongs to the motion lens only. The package
                     // fades it with the lift/morph handoff, so the settled
                     // active pill remains clean and the moving pill gets depth.
@@ -148,12 +149,12 @@ class FloatingTabPill extends StatelessWidget {
                     chromaticAberration: kFloatingTabBarChromaticAberration,
                   ),
                 ),
-                 // Keep the selected Light/Dark surface color as a gentle
-                 // tint at rest. The package rest endpoint retains its
-                 // authored chromatic aberration for a continuous handoff,
-                 // while its zero distortion keeps the settled pill stable.
+                // Keep the selected Light/Dark surface color as a gentle
+                // tint at rest. The package rest endpoint retains its
+                // authored chromatic aberration for a continuous handoff,
+                // while its zero distortion keeps the settled pill stable.
                 rest: LiquidGlassStyle(
-                  shape: LiquidGlassShape.continuousRoundedRectangle(
+                  shape: LiquidGlassShape.squircle(
                     cornerRadius: kSquircleStadiumRadius,
                   ),
                   appearance: LiquidGlassAppearance(color: settledPillColor),
@@ -179,12 +180,11 @@ class FloatingTabPill extends StatelessWidget {
             height: kFloatingTabBarHeight,
             child: IgnorePointer(
               child: DecoratedBox(
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: const Color(0x26FFFFFF),
-                    width: 0.5,
+                decoration: const ShapeDecoration(
+                  shape: BoundedSquircleStadiumBorder(
+                    radius: kSquircleStadiumRadius,
+                    side: BorderSide(color: Color(0x26FFFFFF), width: 0.5),
                   ),
-                  borderRadius: BorderRadius.circular(kSquircleStadiumRadius),
                 ),
               ),
             ),
@@ -197,20 +197,22 @@ class FloatingTabPill extends StatelessWidget {
   LiquidGlassTabBarItem _tabItem(IconData icon, String label) {
     return LiquidGlassTabBarItem(
       label: label,
-      iconBuilder: (context, glyph) => FixedSFIcon(
-        icon,
-        fontSize: glyph.size,
-        fontWeight: glyph.selected ? FontWeight.w500 : FontWeight.normal,
-        color: glyph.color,
-      ),
-      labelBuilder: (context, tabLabel) => Text(
-        tabLabel.text ?? label,
-        style: tabLabel.textStyle.copyWith(
-          fontFamily: kSFProText,
-          letterSpacing: kTracking10,
-          height: kLineHeight,
-        ),
-      ),
+      iconBuilder:
+          (context, glyph) => FixedSFIcon(
+            icon,
+            fontSize: glyph.size,
+            fontWeight: glyph.selected ? FontWeight.w500 : FontWeight.normal,
+            color: glyph.color,
+          ),
+      labelBuilder:
+          (context, tabLabel) => Text(
+            tabLabel.text ?? label,
+            style: tabLabel.textStyle.copyWith(
+              fontFamily: kSFProText,
+              letterSpacing: kTracking10,
+              height: kLineHeight,
+            ),
+          ),
     );
   }
 }
@@ -339,13 +341,13 @@ class _FloatingTabBarGlassPreviewState
                             width: barWidth,
                             height: 50,
                             child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: const Color(0x26FFFFFF),
-                                  width: 0.5,
-                                ),
-                                borderRadius: BorderRadius.circular(
-                                  kSquircleStadiumRadius,
+                              decoration: const ShapeDecoration(
+                                shape: BoundedSquircleStadiumBorder(
+                                  radius: kSquircleStadiumRadius,
+                                  side: BorderSide(
+                                    color: Color(0x26FFFFFF),
+                                    width: 0.5,
+                                  ),
                                 ),
                               ),
                             ),
@@ -365,12 +367,13 @@ class _FloatingTabBarGlassPreviewState
 
   LiquidGlassTabBarItem _previewItem(IconData icon, {double size = 20}) {
     return LiquidGlassTabBarItem(
-      iconBuilder: (context, glyph) => FixedSFIcon(
-        icon,
-        fontSize: size,
-        fontWeight: FontWeight.normal,
-        color: glyph.color,
-      ),
+      iconBuilder:
+          (context, glyph) => FixedSFIcon(
+            icon,
+            fontSize: size,
+            fontWeight: FontWeight.normal,
+            color: glyph.color,
+          ),
     );
   }
 }
@@ -378,15 +381,16 @@ class _FloatingTabBarGlassPreviewState
 LiquidGlassStyle _floatingTabBarStyle(BuildContext context) {
   final headerColor = resolveThemeColor(kFloatingTabBarSurfaceColor, context);
   final defaultBlur = LiquidGlassTabBar.defaultStyle.appearance.blur;
-  final blurProgress =
-      ((appLiquidGlassOpacityNotifier.value - kLiquidGlassMinimumOpacity) /
-              (kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity))
-          .clamp(0.0, 1.0);
-  final blurScale = blurProgress < 0.9
-      ? (0.3 + blurProgress * 3) / 2
-      : blurProgress < 1.0
-      ? (3.0 + (blurProgress - 0.9) * 10) / 2
-      : 2.0;
+  final blurProgress = ((appLiquidGlassOpacityNotifier.value -
+              kLiquidGlassMinimumOpacity) /
+          (kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity))
+      .clamp(0.0, 1.0);
+  final blurScale =
+      blurProgress < 0.9
+          ? (0.3 + blurProgress * 3) / 2
+          : blurProgress < 1.0
+          ? (3.0 + (blurProgress - 0.9) * 10) / 2
+          : 2.0;
 
   return LiquidGlassTabBar.defaultStyle.copyWith(
     appearance: LiquidGlassTabBar.defaultStyle.appearance.copyWith(
@@ -396,7 +400,7 @@ LiquidGlassStyle _floatingTabBarStyle(BuildContext context) {
         sigmaY: defaultBlur.sigmaY * blurScale,
       ),
     ),
-    shape: const LiquidGlassShape.continuousRoundedRectangle(
+    shape: const LiquidGlassShape.squircle(
       cornerRadius: kSquircleStadiumRadius,
       borderWidth: 0.45,
       lightIntensity: 0.46,
