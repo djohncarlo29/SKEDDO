@@ -11330,212 +11330,113 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
 
   // ── Card 3: Location / Travel ─────────────────────────────────────────────
 
-  Widget _buildLocationSection() => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      // Location + Travel Time. Bottom radius collapses to 0 as Travel Mode
-      // slides in below, then restores when Travel Mode slides away.
-      AnimatedBuilder(
-        animation: _travelModeCtrl,
-        builder:
-            (ctx, _) => _cardWithRadius(
-              [
-                _locationRow(
-                  _startLocCtrl,
-                  'Starting Location',
-                  _startLocFocus,
-                ),
-                _sep(),
-                _locationRow(_destCtrl, 'Destination', _destFocus),
+  Widget _buildLocationSection() => AnimatedBuilder(
+    animation: _travelModeCtrl,
+    builder:
+        (ctx, _) => _card([
+          _locationRow(_startLocCtrl, 'Starting Location', _startLocFocus),
+          _sep(),
+          _locationRow(_destCtrl, 'Destination', _destFocus),
+          _sep(),
+          _pickerRow(
+            'Travel Time',
+            _travelTime,
+            items: _travelTimeItems(),
+          ),
+          // Travel Mode expands inside the same card as Travel Time.
+          SizeTransition(
+            sizeFactor: _travelModeCtrl,
+            axisAlignment: 1.0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 _sep(),
                 _pickerRow(
-                  'Travel Time',
-                  _travelTime,
-                  items: _travelTimeItems(),
+                  'Travel Mode',
+                  _travelMode,
+                  items: _travelModeItems(),
                 ),
               ],
-              BorderRadius.only(
-                topLeft: Radius.circular(kCardCornerRadius),
-                topRight: Radius.circular(kCardCornerRadius),
-                bottomLeft: Radius.circular(
-                  _travelModeCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-                bottomRight: Radius.circular(
-                  _travelModeCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-              ),
             ),
-      ),
-      // Travel Mode card — slides out from under Travel Time when TT ≠ 'None'.
-      SizeTransition(
-        sizeFactor: _travelModeCtrl,
-        axisAlignment: 1.0,
-        child: _cardWithRadius(
-          [
-            _sep(),
-            _pickerRow('Travel Mode', _travelMode, items: _travelModeItems()),
-          ],
-          const BorderRadius.only(
-            bottomLeft: Radius.circular(kCardCornerRadius),
-            bottomRight: Radius.circular(kCardCornerRadius),
           ),
-        ),
-      ),
-    ],
+        ]),
   );
 
   // ── Card 4: Repeat ────────────────────────────────────────────────────────
 
-  Widget _buildRepeatSection() => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      // Repeat. Bottom radius collapses as End Repeat slides in below.
-      AnimatedBuilder(
-        animation: _endRepeatCtrl,
-        builder:
-            (ctx, _) => _cardWithRadius(
-              [_pickerRow('Repeat', _repeat, items: _repeatItems())],
-              BorderRadius.only(
-                topLeft: Radius.circular(kCardCornerRadius),
-                topRight: Radius.circular(kCardCornerRadius),
-                bottomLeft: Radius.circular(
-                  _endRepeatCtrl.value > 0 ? 0.0 : kCardCornerRadius,
+  Widget _buildRepeatSection() => AnimatedBuilder(
+    animation: Listenable.merge([
+      _endRepeatCtrl,
+      _endDateCtrl,
+      _datePickerCtrl,
+    ]),
+    builder:
+        (ctx, _) => _card([
+          _pickerRow('Repeat', _repeat, items: _repeatItems()),
+          SizeTransition(
+            sizeFactor: _endRepeatCtrl,
+            axisAlignment: 1.0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _sep(),
+                _pickerRow(
+                  'End Repeat',
+                  _endRepeat,
+                  items: _endRepeatItems(),
                 ),
-                bottomRight: Radius.circular(
-                  _endRepeatCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-              ),
-              stadium: _endRepeatCtrl.value == 0.0,
-            ),
-      ),
-      // End Repeat card — slides in when Repeat is any 'Every…' option.
-      SizeTransition(
-        sizeFactor: _endRepeatCtrl,
-        axisAlignment: 1.0,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // End Repeat. Bottom radius collapses as End Date slides in.
-            AnimatedBuilder(
-              animation: _endDateCtrl,
-              builder:
-                  (ctx, _) => _cardWithRadius(
-                    [
+                SizeTransition(
+                  sizeFactor: _endDateCtrl,
+                  axisAlignment: 1.0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       _sep(),
-                      _pickerRow(
-                        'End Repeat',
-                        _endRepeat,
-                        items: _endRepeatItems(),
+                      _buildEndDateRow(),
+                      SizeTransition(
+                        sizeFactor: _datePickerCtrl,
+                        axisAlignment: 1.0,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [_sep(), _buildInlineMonthPicker()],
+                        ),
                       ),
                     ],
-                    BorderRadius.only(
-                      bottomLeft: Radius.circular(
-                        _endDateCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                      ),
-                      bottomRight: Radius.circular(
-                        _endDateCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                      ),
-                    ),
                   ),
+                ),
+              ],
             ),
-            // End Date card — slides in when End Repeat = 'On Date'.
-            SizeTransition(
-              sizeFactor: _endDateCtrl,
-              axisAlignment: 1.0,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // End Date. Bottom radius collapses as calendar slides in.
-                  AnimatedBuilder(
-                    animation: _datePickerCtrl,
-                    builder:
-                        (ctx, _) => _cardWithRadius(
-                          [_sep(), _buildEndDateRow()],
-                          BorderRadius.only(
-                            bottomLeft: Radius.circular(
-                              _datePickerCtrl.value > 0
-                                  ? 0.0
-                                  : kCardCornerRadius,
-                            ),
-                            bottomRight: Radius.circular(
-                              _datePickerCtrl.value > 0
-                                  ? 0.0
-                                  : kCardCornerRadius,
-                            ),
-                          ),
-                        ),
-                  ),
-                  // Inline month-view calendar — slides in when date pill tapped.
-                  SizeTransition(
-                    sizeFactor: _datePickerCtrl,
-                    axisAlignment: 1.0,
-                    child: _cardWithRadius(
-                      [_sep(), _buildInlineMonthPicker()],
-                      const BorderRadius.only(
-                        bottomLeft: Radius.circular(kCardCornerRadius),
-                        bottomRight: Radius.circular(kCardCornerRadius),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    ],
+          ),
+        ]),
   );
 
   // ── Card 5: Alerts ────────────────────────────────────────────────────────
 
-  Widget _buildAlertsSection() => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      // Alert. Bottom radius collapses as Second Alert slides in below.
-      AnimatedBuilder(
-        animation: _secondAlertCtrl,
-        builder:
-            (ctx, _) => _cardWithRadius(
-              [
+  Widget _buildAlertsSection() => AnimatedBuilder(
+    animation: _secondAlertCtrl,
+    builder:
+        (ctx, _) => _card([
+          _pickerRow(
+            'Alert',
+            _alertDisplayLabel(_alert),
+            items: _alertItems(),
+          ),
+          SizeTransition(
+            sizeFactor: _secondAlertCtrl,
+            axisAlignment: 1.0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _sep(),
                 _pickerRow(
-                  'Alert',
-                  _alertDisplayLabel(_alert),
-                  items: _alertItems(),
+                  'Second Alert',
+                  _alertDisplayLabel(_secondAlert),
+                  items: _secondAlertItems(),
                 ),
               ],
-              BorderRadius.only(
-                topLeft: Radius.circular(kCardCornerRadius),
-                topRight: Radius.circular(kCardCornerRadius),
-                bottomLeft: Radius.circular(
-                  _secondAlertCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-                bottomRight: Radius.circular(
-                  _secondAlertCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-              ),
-              stadium: _secondAlertCtrl.value == 0.0,
             ),
-      ),
-      // Second Alert — slides in when Alert ≠ 'None'.
-      SizeTransition(
-        sizeFactor: _secondAlertCtrl,
-        axisAlignment: 1.0,
-        child: _cardWithRadius(
-          [
-            _sep(),
-            _pickerRow(
-              'Second Alert',
-              _alertDisplayLabel(_secondAlert),
-              items: _secondAlertItems(),
-            ),
-          ],
-          const BorderRadius.only(
-            bottomLeft: Radius.circular(kCardCornerRadius),
-            bottomRight: Radius.circular(kCardCornerRadius),
           ),
-        ),
-      ),
-    ],
+        ]),
   );
 
   // ── Card 6: Color picker ──────────────────────────────────────────────────
@@ -14757,6 +14658,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                   scaleY: 1.3,
                   child: Text(
                     '$dayNum',
+                      textScaler: TextScaler.noScaling,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       inherit: false,
@@ -16233,8 +16135,9 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
   Widget _buildEverySubcard() => SizeTransition(
     sizeFactor: _everyPickerCtrl,
     axisAlignment: 1.0,
-    child: _cardWithRadius(
-      [
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
         _sep(),
         SizedBox(
           height: 216,
@@ -16304,10 +16207,6 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
           ),
         ),
       ],
-      const BorderRadius.only(
-        bottomLeft: Radius.circular(kCardCornerRadius),
-        bottomRight: Radius.circular(kCardCornerRadius),
-      ),
     ),
   );
 
@@ -16836,49 +16735,29 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      AnimatedBuilder(
-                        animation: _everyPickerCtrl,
-                        builder:
-                            (ctx, _) => _cardWithRadius(
-                              [
-                                _pickerRow(
-                                  'Frequency',
-                                  _frequency,
-                                  items: _makeItems(
-                                    _kFrequencyOptions,
-                                    _frequency,
-                                    (v) => setState(() => _frequency = v),
-                                    checkmarkColor: widget.accentColor,
-                                  ),
-                                ),
-                                _sep(),
-                                _pickerRow(
-                                  'Every',
-                                  _everyCount == 1
-                                      ? _everyUnit
-                                      : '$_everyCount $_everyUnit',
-                                  showChevron: false,
-                                  valueColor: widget.accentColor,
-                                  onTap: _toggleEveryPicker,
-                                ),
-                              ],
-                              BorderRadius.only(
-                                topLeft: Radius.circular(kCardCornerRadius),
-                                topRight: Radius.circular(kCardCornerRadius),
-                                bottomLeft: Radius.circular(
-                                  _everyPickerCtrl.value > 0
-                                      ? 0.0
-                                      : kCardCornerRadius,
-                                ),
-                                bottomRight: Radius.circular(
-                                  _everyPickerCtrl.value > 0
-                                      ? 0.0
-                                      : kCardCornerRadius,
-                                ),
-                              ),
-                            ),
-                      ),
-                      _buildEverySubcard(),
+                      _card([
+                        _pickerRow(
+                          'Frequency',
+                          _frequency,
+                          items: _makeItems(
+                            _kFrequencyOptions,
+                            _frequency,
+                            (v) => setState(() => _frequency = v),
+                            checkmarkColor: widget.accentColor,
+                          ),
+                        ),
+                        _sep(),
+                        _pickerRow(
+                          'Every',
+                          _everyCount == 1
+                              ? _everyUnit
+                              : '$_everyCount $_everyUnit',
+                          showChevron: false,
+                          valueColor: widget.accentColor,
+                          onTap: _toggleEveryPicker,
+                        ),
+                        _buildEverySubcard(),
+                      ]),
                       // Static context footer — always visible, updates live.
                       SizedBox(
                         width: double.infinity,

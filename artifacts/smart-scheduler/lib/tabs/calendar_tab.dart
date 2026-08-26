@@ -8029,66 +8029,51 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   // ── Location section (Card 3): Starting Location + Destination + Travel ───
 
-  Widget _buildLocationSection() => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      AnimatedBuilder(
-        animation: Listenable.merge([_travelModeCtrl, _travelRowCtrl]),
-        builder:
-            (ctx, _) => _cardWithRadius(
-              [
-                _locationRow(
-                  _locationTextCtrl,
-                  'Starting Location',
-                  _locationFocus,
-                  'start',
-                ),
+  Widget _buildLocationSection() => AnimatedBuilder(
+    animation: Listenable.merge([_travelModeCtrl, _travelRowCtrl]),
+    builder:
+        (ctx, _) => _card([
+          _locationRow(
+            _locationTextCtrl,
+            'Starting Location',
+            _locationFocus,
+            'start',
+          ),
+          _sep(),
+          _locationRow(_destCtrl, 'Destination', _destFocus, 'dest'),
+          // Travel Time row collapses when All-day is on.
+          SizeTransition(
+            sizeFactor: _travelRowCtrl,
+            axisAlignment: 1.0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 _sep(),
-                _locationRow(_destCtrl, 'Destination', _destFocus, 'dest'),
-                // Travel Time row collapses when All-day is on.
-                SizeTransition(
-                  sizeFactor: _travelRowCtrl,
-                  axisAlignment: 1.0,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _sep(),
-                      _pickerRow(
-                        'Travel Time',
-                        _travelTime,
-                        items: _travelTimeItems(),
-                      ),
-                    ],
-                  ),
+                _pickerRow(
+                  'Travel Time',
+                  _travelTime,
+                  items: _travelTimeItems(),
                 ),
               ],
-              BorderRadius.only(
-                topLeft: Radius.circular(kCardCornerRadius),
-                topRight: Radius.circular(kCardCornerRadius),
-                bottomLeft: Radius.circular(
-                  _travelModeCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-                bottomRight: Radius.circular(
-                  _travelModeCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-              ),
             ),
-      ),
-      SizeTransition(
-        sizeFactor: _travelModeCtrl,
-        axisAlignment: 1.0,
-        child: _cardWithRadius(
-          [
-            _sep(),
-            _pickerRow('Travel Mode', _travelMode, items: _travelModeItems()),
-          ],
-          const BorderRadius.only(
-            bottomLeft: Radius.circular(kCardCornerRadius),
-            bottomRight: Radius.circular(kCardCornerRadius),
           ),
-        ),
-      ),
-    ],
+          // Travel Mode stays in this same card as Travel Time.
+          SizeTransition(
+            sizeFactor: _travelModeCtrl,
+            axisAlignment: 1.0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _sep(),
+                _pickerRow(
+                  'Travel Mode',
+                  _travelMode,
+                  items: _travelModeItems(),
+                ),
+              ],
+            ),
+          ),
+        ]),
   );
 
   // ── Repeat helpers ────────────────────────────────────────────────────────
@@ -8724,98 +8709,50 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   // ── Repeat section (Card 4) ───────────────────────────────────────────────
 
-  Widget _buildRepeatSection() => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      AnimatedBuilder(
-        animation: _endRepeatCtrl,
-        builder:
-            (ctx, _) => _cardWithRadius(
-              [_pickerRow('Repeat', _repeat, items: _repeatItems())],
-              BorderRadius.only(
-                topLeft: Radius.circular(kCardCornerRadius),
-                topRight: Radius.circular(kCardCornerRadius),
-                bottomLeft: Radius.circular(
-                  _endRepeatCtrl.value > 0 ? 0.0 : kCardCornerRadius,
+  Widget _buildRepeatSection() => AnimatedBuilder(
+    animation: Listenable.merge([
+      _endRepeatCtrl,
+      _endDateCtrl,
+      _datePickerCtrl,
+    ]),
+    builder:
+        (ctx, _) => _card([
+          _pickerRow('Repeat', _repeat, items: _repeatItems()),
+          SizeTransition(
+            sizeFactor: _endRepeatCtrl,
+            axisAlignment: 1.0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _sep(),
+                _pickerRow(
+                  'End Repeat',
+                  _endRepeat,
+                  items: _endRepeatItems(),
                 ),
-                bottomRight: Radius.circular(
-                  _endRepeatCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-              ),
-              stadium: _endRepeatCtrl.value == 0.0,
-            ),
-      ),
-      SizeTransition(
-        sizeFactor: _endRepeatCtrl,
-        axisAlignment: 1.0,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedBuilder(
-              animation: _endDateCtrl,
-              builder:
-                  (ctx, _) => _cardWithRadius(
-                    [
+                SizeTransition(
+                  sizeFactor: _endDateCtrl,
+                  axisAlignment: 1.0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       _sep(),
-                      _pickerRow(
-                        'End Repeat',
-                        _endRepeat,
-                        items: _endRepeatItems(),
+                      _buildEndDateRow(),
+                      SizeTransition(
+                        sizeFactor: _datePickerCtrl,
+                        axisAlignment: 1.0,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [_sep(), _buildInlineMonthPicker()],
+                        ),
                       ),
                     ],
-                    BorderRadius.only(
-                      bottomLeft: Radius.circular(
-                        _endDateCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                      ),
-                      bottomRight: Radius.circular(
-                        _endDateCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                      ),
-                    ),
                   ),
+                ),
+              ],
             ),
-            SizeTransition(
-              sizeFactor: _endDateCtrl,
-              axisAlignment: 1.0,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AnimatedBuilder(
-                    animation: _datePickerCtrl,
-                    builder:
-                        (ctx, _) => _cardWithRadius(
-                          [_sep(), _buildEndDateRow()],
-                          BorderRadius.only(
-                            bottomLeft: Radius.circular(
-                              _datePickerCtrl.value > 0
-                                  ? 0.0
-                                  : kCardCornerRadius,
-                            ),
-                            bottomRight: Radius.circular(
-                              _datePickerCtrl.value > 0
-                                  ? 0.0
-                                  : kCardCornerRadius,
-                            ),
-                          ),
-                        ),
-                  ),
-                  SizeTransition(
-                    sizeFactor: _datePickerCtrl,
-                    axisAlignment: 1.0,
-                    child: _cardWithRadius(
-                      [_sep(), _buildInlineMonthPicker()],
-                      const BorderRadius.only(
-                        bottomLeft: Radius.circular(kCardCornerRadius),
-                        bottomRight: Radius.circular(kCardCornerRadius),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    ],
+          ),
+        ]),
   );
 
   // ── Alert helpers ─────────────────────────────────────────────────────────
@@ -9617,124 +9554,73 @@ class _NewEventSheetState extends State<_NewEventSheet>
   );
 
   /// The Reminder card — swaps in for the Alerts card when Unscheduled is ON.
-  Widget _buildReminderSection() => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      AnimatedBuilder(
-        animation: Listenable.merge([_reminderDateCtrl, _reminderPickerCtrl]),
-        builder:
-            (ctx, _) => _cardWithRadius(
-              [
+  Widget _buildReminderSection() => AnimatedBuilder(
+    animation: Listenable.merge([_reminderDateCtrl, _reminderPickerCtrl]),
+    builder:
+        (ctx, _) => _card([
+          _pickerRow(
+            'Reminder',
+            _reminder,
+            items: _reminderPickerItems(),
+          ),
+          SizeTransition(
+            sizeFactor: _reminderDateCtrl,
+            axisAlignment: 1.0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _sep(),
+                _buildReminderDateRow(),
+                // The date/time picker belongs directly to the Reminder Date
+                // row. Keep it above Repeat Reminder so the recurrence control
+                // never moves out from under the active picker.
+                SizeTransition(
+                  sizeFactor: _reminderPickerCtrl,
+                  axisAlignment: 1.0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [_sep(), _buildInlineDatePicker()],
+                  ),
+                ),
+                _sep(),
                 _pickerRow(
-                  'Reminder',
-                  _reminder,
-                  items: _reminderPickerItems(),
+                  'Repeat Reminder',
+                  _repeatReminder,
+                  items: _repeatReminderItems(),
                 ),
               ],
-              BorderRadius.only(
-                topLeft: Radius.circular(kCardCornerRadius),
-                topRight: Radius.circular(kCardCornerRadius),
-                bottomLeft: Radius.circular(
-                  _reminderDateCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-                bottomRight: Radius.circular(
-                  _reminderDateCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-              ),
-              stadium: _reminderDateCtrl.value == 0.0,
             ),
-      ),
-      SizeTransition(
-        sizeFactor: _reminderDateCtrl,
-        axisAlignment: 1.0,
-        child: AnimatedBuilder(
-          animation: _reminderPickerCtrl,
-          builder:
-              (ctx, _) => Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _cardWithRadius(
-                    [
-                      _sep(),
-                      _buildReminderDateRow(),
-                      // The date/time picker belongs directly to the Reminder
-                      // Date row. Keep it above Repeat Reminder so the recurrence
-                      // control never moves out from under the active picker.
-                      SizeTransition(
-                        sizeFactor: _reminderPickerCtrl,
-                        axisAlignment: 1.0,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [_sep(), _buildInlineDatePicker()],
-                        ),
-                      ),
-                      _sep(),
-                      _pickerRow(
-                        'Repeat Reminder',
-                        _repeatReminder,
-                        items: _repeatReminderItems(),
-                      ),
-                    ],
-                    const BorderRadius.only(
-                      bottomLeft: Radius.circular(kCardCornerRadius),
-                      bottomRight: Radius.circular(kCardCornerRadius),
-                    ),
-                  ),
-                ],
-              ),
-        ),
-      ),
-    ],
+          ),
+        ]),
   );
 
   // ── Alerts section (Card 6): Alert + Second Alert ─────────────────────────
 
-  Widget _buildAlertsSection() => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      AnimatedBuilder(
-        animation: _secondAlertCtrl,
-        builder:
-            (ctx, _) => _cardWithRadius(
-              [
+  Widget _buildAlertsSection() => AnimatedBuilder(
+    animation: _secondAlertCtrl,
+    builder:
+        (ctx, _) => _card([
+          _pickerRow(
+            'Alert',
+            _alertDisplayLabel(_alert),
+            items: _alertItems(),
+          ),
+          SizeTransition(
+            sizeFactor: _secondAlertCtrl,
+            axisAlignment: 1.0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _sep(),
                 _pickerRow(
-                  'Alert',
-                  _alertDisplayLabel(_alert),
-                  items: _alertItems(),
+                  'Second Alert',
+                  _alertDisplayLabel(_secondAlert),
+                  items: _secondAlertItems(),
                 ),
               ],
-              BorderRadius.only(
-                topLeft: Radius.circular(kCardCornerRadius),
-                topRight: Radius.circular(kCardCornerRadius),
-                bottomLeft: Radius.circular(
-                  _secondAlertCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-                bottomRight: Radius.circular(
-                  _secondAlertCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-              ),
-              stadium: _secondAlertCtrl.value == 0.0,
             ),
-      ),
-      SizeTransition(
-        sizeFactor: _secondAlertCtrl,
-        axisAlignment: 1.0,
-        child: _cardWithRadius(
-          [
-            _sep(),
-            _pickerRow(
-              'Second Alert',
-              _alertDisplayLabel(_secondAlert),
-              items: _secondAlertItems(),
-            ),
-          ],
-          const BorderRadius.only(
-            bottomLeft: Radius.circular(kCardCornerRadius),
-            bottomRight: Radius.circular(kCardCornerRadius),
           ),
-        ),
-      ),
-    ],
+        ]),
   );
 
   // ── Month-grid cell builder ────────────────────────────────────────────────
