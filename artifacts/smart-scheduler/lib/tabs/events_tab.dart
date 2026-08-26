@@ -8803,11 +8803,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                     child: Container(
                       decoration: ShapeDecoration(
                         color: resolveThemeColor(kModalCard, context),
-                        shape: BoundedContinuousRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            kCardCornerRadius,
-                          ),
-                        ),
+                        shape: const BoundedSquircleStadiumBorder(),
                         shadows: resolveThemeShadows(kCardShadow, context),
                       ),
                       clipBehavior: Clip.antiAlias,
@@ -9868,11 +9864,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   Widget _card(List<Widget> rows, {bool stadium = false}) {
     final cardColor = resolveThemeColor(kModalCard, context);
     final shadows = resolveThemeShadows(kCardShadow, context);
-    final ShapeBorder shape = stadium
-        ? const AdaptiveStadiumBorder()
-        : BoundedContinuousRectangleBorder(
-            borderRadius: BorderRadius.circular(kCardCornerRadius),
-          );
+    final ShapeBorder shape = const BoundedSquircleStadiumBorder();
     return Container(
       decoration: ShapeDecoration(
         color: cardColor,
@@ -10543,9 +10535,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     return Container(
       decoration: ShapeDecoration(
         color: cardColor,
-        shape: stadium
-            ? const SquircleStadiumBorder()
-            : BoundedContinuousRectangleBorder(borderRadius: radius),
+        shape: const BoundedSquircleStadiumBorder(),
         shadows: shadows,
       ),
       clipBehavior: Clip.antiAlias,
@@ -12565,9 +12555,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
           clipBehavior: Clip.antiAlias,
           decoration: ShapeDecoration(
             color: resolveThemeColor(kModalCard, context),
-            shape: BoundedContinuousRectangleBorder(
-              borderRadius: BorderRadius.circular(_kCornerRadius),
-            ),
+            shape: const BoundedSquircleStadiumBorder(),
             shadows: shadows,
           ),
           child: IgnorePointer(
@@ -12709,9 +12697,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                     clipBehavior: Clip.antiAlias,
                     decoration: ShapeDecoration(
                       color: resolveThemeColor(kModalCard, context),
-                      shape: BoundedContinuousRectangleBorder(
-                        borderRadius: BorderRadius.circular(kSbCornerRadius),
-                      ),
+                      shape: const BoundedSquircleStadiumBorder(),
                       shadows: resolveThemeShadows(kCardShadow, context),
                     ),
                     child: Listener(
@@ -15976,9 +15962,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     return Container(
       decoration: ShapeDecoration(
         color: cardColor,
-        shape: BoundedContinuousRectangleBorder(
-          borderRadius: BorderRadius.circular(kCardCornerRadius),
-        ),
+        shape: const BoundedSquircleStadiumBorder(),
         shadows: shadows,
       ),
       clipBehavior: Clip.antiAlias,
@@ -15992,7 +15976,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     return Container(
       decoration: ShapeDecoration(
         color: cardColor,
-        shape: BoundedContinuousRectangleBorder(borderRadius: radius),
+        shape: const BoundedSquircleStadiumBorder(),
         shadows: shadows,
       ),
       clipBehavior: Clip.antiAlias,

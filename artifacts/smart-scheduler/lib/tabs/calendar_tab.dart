@@ -6126,11 +6126,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
   Widget _card(List<Widget> rows, {bool stadium = false}) {
     final cardColor = resolveThemeColor(kModalCard, context);
     final shadows = resolveThemeShadows(kCardShadow, context);
-    final ShapeBorder shape = stadium
-        ? const SquircleStadiumBorder()
-        : BoundedContinuousRectangleBorder(
-            borderRadius: BorderRadius.circular(kCardCornerRadius),
-          );
+    final ShapeBorder shape = const BoundedSquircleStadiumBorder();
     return Container(
       decoration: ShapeDecoration(
         color: cardColor,
@@ -6160,9 +6156,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     return Container(
       decoration: ShapeDecoration(
         color: cardColor,
-        shape: stadium
-            ? const SquircleStadiumBorder()
-            : BoundedContinuousRectangleBorder(borderRadius: radius),
+        shape: const BoundedSquircleStadiumBorder(),
         shadows: shadows,
       ),
       clipBehavior: Clip.antiAlias,
@@ -11027,9 +11021,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     return Container(
       decoration: ShapeDecoration(
         color: cardColor,
-        shape: BoundedContinuousRectangleBorder(
-          borderRadius: BorderRadius.circular(kCardCornerRadius),
-        ),
+        shape: const BoundedSquircleStadiumBorder(),
         shadows: shadows,
       ),
       clipBehavior: Clip.antiAlias,
@@ -11043,7 +11035,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     return Container(
       decoration: ShapeDecoration(
         color: cardColor,
-        shape: BoundedContinuousRectangleBorder(borderRadius: radius),
+        shape: const BoundedSquircleStadiumBorder(),
         shadows: shadows,
       ),
       clipBehavior: Clip.antiAlias,

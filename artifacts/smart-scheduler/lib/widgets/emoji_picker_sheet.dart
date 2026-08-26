@@ -1096,11 +1096,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                       child: Container(
                         decoration: ShapeDecoration(
                           color: kModalCard.resolveFrom(context),
-                          shape: BoundedContinuousRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              kCardCornerRadius,
-                            ),
-                          ),
+                          shape: const BoundedSquircleStadiumBorder(),
                           shadows: resolveThemeShadows(kCardShadow, context),
                         ),
                         clipBehavior: Clip.antiAlias,
