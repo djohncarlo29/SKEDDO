@@ -9933,7 +9933,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             valueStyle: _kRowValueStyle,
             trailing: dimmedValue,
             leading: leading,
-            leadingWidth: leading == null ? 0 : 28,
+            leadingWidth: leading == null ? 0 : 32,
             trailingExtraWidth: 16,
           ),
         ),
@@ -10165,7 +10165,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   // ── Card 2: Category Type ─────────────────────────────────────────────────
 
   Widget _buildCategoryTypeCard() {
-    // Rounded-square icon — 28 px, fixed per category type (never reflects user icon).
+    // Rounded-square icon — 32 px, fixed per category type (never reflects user icon).
     final IconData _typeIcon;
     if (_categoryType == 'Shopping List') {
       _typeIcon = SFIcons.sf_carrot_fill;
@@ -10208,7 +10208,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         _categoryType,
         items: _categoryTypeItems(),
         leading: leadingIcon,
-        // The icon is 32 px tall; 8 px top/bottom insets preserve the
+        // The icon is 32 px square; 8 px top/bottom insets preserve the
         // established 48 px Category Type row height.
         verticalPadding: 8,
       ),
