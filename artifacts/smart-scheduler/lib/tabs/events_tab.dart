@@ -10174,7 +10174,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     } else {
       _typeIcon = SFIcons.sf_list_bullet;
     }
-    const double _iconSq = 28;
+    const double _iconSq = 32;
     final leadingIcon = Container(
       width: _iconSq,
       height: _iconSq,
@@ -10208,9 +10208,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         _categoryType,
         items: _categoryTypeItems(),
         leading: leadingIcon,
-        // The icon is 28 px tall; 10 px inset on each side gives this row
-        // the same 48 px height as the text-only picker rows.
-        verticalPadding: 10,
+        // The icon is 32 px tall; 8 px top/bottom insets preserve the
+        // established 48 px Category Type row height.
+        verticalPadding: 8,
       ),
     );
   }

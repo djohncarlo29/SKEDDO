@@ -9066,7 +9066,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     _AttachmentFile file, {
     VoidCallback? onRemove,
   }) {
-    const double sq = 32.5;
+    const double sq = 32.0;
     const double sqR = sq * 0.52; // ContinuousRectangleBorder squircle radius
 
     Widget icon;
@@ -9093,7 +9093,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
       behavior: HitTestBehavior.opaque,
       onTap: () {},
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        // The shared 32 px container has an even 8 px top and bottom inset.
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         child: Row(
           children: [
             icon,
