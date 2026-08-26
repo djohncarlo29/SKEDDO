@@ -515,9 +515,10 @@ const double _kSharedSquircleCurveControl = 0.64;
 
 // The search bar is the one intentionally smaller stadium: 20 px corners.
 const double kSearchBarCornerRadius = 20.0;
-// Search-bar inner top and bottom insets stay fixed while only its text line
-// grows with the ambient OS text scaler.
-const double kSearchBarVerticalPadding = kFixedVerticalPadding;
+// Search-bar inner top and bottom insets stay fixed at 8 pt while only its
+// text line grows with the ambient OS text scaler. This is intentionally
+// search-only; the shared kFixedVerticalPadding remains 16 pt elsewhere.
+const double kSearchBarVerticalPadding = 8.0;
 const double kSearchBarHostTopPadding = kFixedVerticalPadding;
 const double kSearchBarHeaderSeparatorGap = kFixedVerticalPadding;
 const double kSearchBarSeparatorHeight = 0.5;
@@ -529,7 +530,7 @@ double searchBarTextLineHeight(BuildContext context) =>
     MediaQuery.textScalerOf(context).scale(kSearchBarTextFontSize) *
     kLineHeight;
 
-/// The complete AppSearchBar height: fixed 16 pt above and below the text
+/// The complete AppSearchBar height: fixed 8 pt above and below the text
 /// line, with no fixed outer height.
 double searchBarHeight(BuildContext context) =>
     (kSearchBarVerticalPadding * 2) + searchBarTextLineHeight(context);
