@@ -9311,8 +9311,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             width: 270,
             decoration: ShapeDecoration(
               color: cardBg,
-              shape: BoundedContinuousRectangleBorder(
-                borderRadius: BorderRadius.circular(kCornerRadius),
+              shape: BoundedSquircleStadiumBorder(
                 side: isDark
                     ? BorderSide(
                         color: resolveThemeColor(kTertiaryLabel, context),
