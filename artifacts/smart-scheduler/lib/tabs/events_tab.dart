@@ -16494,14 +16494,10 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     }
   }
 
-  Widget _buildYearlyDaysCard() => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      AnimatedBuilder(
-        animation: _yearlyDaysCtrl,
-        builder:
-            (ctx, _) => _cardWithRadius(
-              [
+  Widget _buildYearlyDaysCard() => AnimatedBuilder(
+    animation: _yearlyDaysCtrl,
+    builder:
+        (ctx, _) => _card([
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: _toggleYearlyDays,
@@ -16537,100 +16533,96 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                     ),
                   ),
                 ),
-              ],
-              BorderRadius.only(
-                topLeft: Radius.circular(kCardCornerRadius),
-                topRight: Radius.circular(kCardCornerRadius),
-                bottomLeft: Radius.circular(
-                  _yearlyDaysCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-                bottomRight: Radius.circular(
-                  _yearlyDaysCtrl.value > 0 ? 0.0 : kCardCornerRadius,
-                ),
-              ),
-            ),
-      ),
-      SizeTransition(
-        sizeFactor: _yearlyDaysCtrl,
-        axisAlignment: 1.0,
-        child: _cardWithRadius(
-          [
-            _sep(),
-            SizedBox(
-              height: 216,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: CupertinoPicker(
-                      scrollController: _yearlyPositionCtrl,
-                      itemExtent: 32.0,
-                      backgroundColor: CupertinoColors.transparent,
-                      useMagnifier: true,
-                      magnification: 2.35 / 2.1,
-                      squeeze: 1.25,
-                      offAxisFraction: -0.45,
-                      selectionOverlay:
-                          const CupertinoPickerDefaultSelectionOverlay(
-                            capStartEdge: true,
-                            capEndEdge: false,
-                          ),
-                      onSelectedItemChanged:
-                          (i) => setState(() => _yearlyPositionIndex = i),
-                      children:
-                          _kPositions
-                              .map(
-                                (p) => Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(right: 20),
-                                    child: Text(p, style: _kPickerItemStyle),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                    ),
+                SizeTransition(
+                  sizeFactor: _yearlyDaysCtrl,
+                  axisAlignment: 1.0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _sep(),
+                      SizedBox(
+                        height: 216,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: CupertinoPicker(
+                                scrollController: _yearlyPositionCtrl,
+                                itemExtent: 32.0,
+                                backgroundColor: CupertinoColors.transparent,
+                                useMagnifier: true,
+                                magnification: 2.35 / 2.1,
+                                squeeze: 1.25,
+                                offAxisFraction: -0.45,
+                                selectionOverlay:
+                                    const CupertinoPickerDefaultSelectionOverlay(
+                                      capStartEdge: true,
+                                      capEndEdge: false,
+                                    ),
+                                onSelectedItemChanged:
+                                    (i) => setState(
+                                      () => _yearlyPositionIndex = i,
+                                    ),
+                                children:
+                                    _kPositions
+                                        .map(
+                                          (p) => Align(
+                                            alignment: Alignment.centerRight,
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(
+                                                right: 20,
+                                              ),
+                                              child: Text(
+                                                p,
+                                                style: _kPickerItemStyle,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                              ),
+                            ),
+                            Expanded(
+                              child: CupertinoPicker(
+                                scrollController: _yearlyDayCtrl,
+                                itemExtent: 32.0,
+                                backgroundColor: CupertinoColors.transparent,
+                                useMagnifier: true,
+                                magnification: 2.35 / 2.1,
+                                squeeze: 1.25,
+                                offAxisFraction: 0.45,
+                                selectionOverlay:
+                                    const CupertinoPickerDefaultSelectionOverlay(
+                                      capStartEdge: false,
+                                      capEndEdge: true,
+                                    ),
+                                onSelectedItemChanged:
+                                    (i) => setState(() => _yearlyDayIndex = i),
+                                children:
+                                    _kDays
+                                        .map(
+                                          (d) => Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(
+                                                left: 20,
+                                              ),
+                                              child: Text(
+                                                d,
+                                                style: _kPickerItemStyle,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    child: CupertinoPicker(
-                      scrollController: _yearlyDayCtrl,
-                      itemExtent: 32.0,
-                      backgroundColor: CupertinoColors.transparent,
-                      useMagnifier: true,
-                      magnification: 2.35 / 2.1,
-                      squeeze: 1.25,
-                      offAxisFraction: 0.45,
-                      selectionOverlay:
-                          const CupertinoPickerDefaultSelectionOverlay(
-                            capStartEdge: false,
-                            capEndEdge: true,
-                          ),
-                      onSelectedItemChanged:
-                          (i) => setState(() => _yearlyDayIndex = i),
-                      children:
-                          _kDays
-                              .map(
-                                (d) => Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(left: 20),
-                                    child: Text(d, style: _kPickerItemStyle),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          const BorderRadius.only(
-            bottomLeft: Radius.circular(kCardCornerRadius),
-            bottomRight: Radius.circular(kCardCornerRadius),
-          ),
-        ),
-      ),
-    ],
+                ),
+              ]),
   );
 
   // ── Label & dismiss ───────────────────────────────────────────────────────

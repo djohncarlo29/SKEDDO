@@ -78,3 +78,4 @@
 - [Settings Dynamic Type padding](settings-dynamic-type-padding.md) — apply 16px vertical insets around content-driven rows so Dynamic Type grows rows without squeezing breathing room.
 - [Settled thumb row geometry](settled-thumb-row-geometry.md) — slider rows measure 16px from the resting thumb; lifted animation viewport overflows invisibly inside that padding.
 - [Large confirmation sheet radius](large-confirmation-sheet-radius.md) — microphone access and Delete Group overlays use the dedicated 40px bounded squircle; regular modal controls remain 24px.
+- [Expandable modal card surfaces](expandable-modal-card-surfaces.md) — expandable row stacks must use one shared bounded squircle surface, never adjacent partial-radius cards.
