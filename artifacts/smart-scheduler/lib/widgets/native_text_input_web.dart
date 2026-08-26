@@ -82,7 +82,6 @@ class _NativeTextInputState extends State<NativeTextInput> {
     _element = widget.multiline
         ? html.TextAreaElement()
         : html.InputElement(type: 'text');
-    _configureElement();
     _setNativeText(widget.controller.text);
     _inputSub = _element.onInput.listen((_) => _syncTextFromNative());
     widget.controller.addListener(_syncTextToNative);
@@ -106,7 +105,6 @@ class _NativeTextInputState extends State<NativeTextInput> {
       widget.controller.addListener(_syncTextToNative);
       _setNativeText(widget.controller.text);
     }
-    _configureElement();
   }
 
   @override
@@ -118,14 +116,18 @@ class _NativeTextInputState extends State<NativeTextInput> {
     super.dispose();
   }
 
-  void _configureElement() {
+  void _configureElement(TextScaler textScaler) {
     final color = _cssColor(widget.style.color ?? kPrimaryLabel);
     final caret = _cssColor(widget.cursorColor);
     final selection = _cssColor(
       widget.selectionColor ?? widget.cursorColor,
       alpha: 0.28,
     );
-    final fontSize = widget.style.fontSize ?? 17;
+    // HtmlElementView does not receive Flutter's ambient TextScaler
+    // automatically. Apply the same scaler explicitly so the visible DOM
+    // input matches the Flutter placeholder ghost and the mobile field,
+    // including nonlinear accessibility sizes.
+    final fontSize = textScaler.scale(widget.style.fontSize ?? 17);
     final lineHeight = widget.style.height ?? 1.3;
 
     _element
@@ -235,6 +237,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
 
   @override
   Widget build(BuildContext context) {
+    _configureElement(MediaQuery.textScalerOf(context));
     // Keep HtmlElementView ALWAYS in the widget tree (never removed) so
     // Flutter never has to re-mount/re-attach the DOM element — that
     // re-attachment is what causes the one-frame blank flicker on close.
