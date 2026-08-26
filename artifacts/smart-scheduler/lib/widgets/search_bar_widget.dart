@@ -372,6 +372,24 @@ class AppSearchBarState extends State<AppSearchBar>
     }
   }
 
+  Widget _micIconSlot({required double height, required Widget child}) {
+    // The trailing edge gap belongs to the shared action slot. Subtract it
+    // here so the microphone's actual right edge is exactly 16 pt from the
+    // search bar edge without moving the clear button.
+    return SizedBox(
+      height: height,
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Padding(
+          padding: EdgeInsets.only(
+            right: kSearchBarMicRightPadding - kSearchBarTrailingEdgeGap,
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final surfaceColor = resolveThemeColor(kSbSurface, context);
@@ -380,6 +398,7 @@ class AppSearchBarState extends State<AppSearchBar>
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final emptyStateIcon = resolveThemeColor(kEmptyStateIcon, context);
     final selectionTint = widget.selectionTint ?? resolveAccentColor(context);
+    final textScaler = MediaQuery.textScalerOf(context);
     final textLineHeight = searchBarTextLineHeight(context);
     return Container(
       clipBehavior: Clip.antiAlias,
@@ -399,10 +418,16 @@ class AppSearchBarState extends State<AppSearchBar>
           child: Row(
             children: [
               const SizedBox(width: 13),
-              SearchWeightedIcon(
-                CupertinoIcons.search,
-                size: 17,
-                color: tertiaryLabel,
+              SizedBox(
+                width: textScaler.scale(kSearchBarSearchIconSize),
+                height: textLineHeight,
+                child: Center(
+                  child: SearchWeightedIcon(
+                    CupertinoIcons.search,
+                    size: textScaler.scale(kSearchBarSearchIconSize),
+                    color: tertiaryLabel,
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -480,14 +505,17 @@ class AppSearchBarState extends State<AppSearchBar>
                               key: const ValueKey('search-mic-listen'),
                               onTap: _onMicTap,
                               behavior: HitTestBehavior.opaque,
-                              child: Center(
+                              child: _micIconSlot(
+                                height: textLineHeight,
                                 child: AnimatedBuilder(
                                   animation: _pulseCtrl,
                                   builder: (_, __) => Opacity(
                                     opacity: _pulseCtrl.value,
                                     child: FixedSFIcon(
                                       SFIcons.sf_microphone_fill,
-                                      fontSize: 15,
+                                      fontSize: textScaler.scale(
+                                        kSearchBarMicIconSize,
+                                      ),
                                       color: resolveAccentColor(context),
                                       shadows: resolveThemeTextShadows([
                                         Shadow(
@@ -519,21 +547,24 @@ class AppSearchBarState extends State<AppSearchBar>
                               onTap: _onMicTap,
                               onPressedChanged: (pressed) =>
                                   setState(() => _micPressed = pressed),
-                              child: Center(
-                                child: FixedSFIcon(
-                                  SFIcons.sf_microphone_fill,
-                                  fontSize: 15,
-                                  color: _micPressed
-                                      ? secondaryLabel
-                                      : tertiaryLabel,
-                                  shadows: resolveThemeTextShadows([
-                                    Shadow(
-                                      color: _micPressed
-                                          ? secondaryLabel
-                                          : tertiaryLabel,
-                                      blurRadius: 0.4,
-                                    ),
-                                  ], context),
+                               child: _micIconSlot(
+                                 height: textLineHeight,
+                                 child: FixedSFIcon(
+                                   SFIcons.sf_microphone_fill,
+                                   fontSize: textScaler.scale(
+                                     kSearchBarMicIconSize,
+                                   ),
+                                   color: _micPressed
+                                       ? secondaryLabel
+                                       : tertiaryLabel,
+                                   shadows: resolveThemeTextShadows([
+                                     Shadow(
+                                       color: _micPressed
+                                           ? secondaryLabel
+                                           : tertiaryLabel,
+                                       blurRadius: 0.4,
+                                     ),
+                                   ], context),
                                 ),
                               ),
                             ),
@@ -541,7 +572,7 @@ class AppSearchBarState extends State<AppSearchBar>
                   );
                 },
               ),
-              const SizedBox(width: 3),
+              const SizedBox(width: kSearchBarTrailingEdgeGap),
             ],
           ),
         ),

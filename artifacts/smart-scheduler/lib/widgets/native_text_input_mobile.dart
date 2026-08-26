@@ -227,7 +227,9 @@ class _NativeTextInputState extends State<NativeTextInput> {
               ? TextInputType.multiline
               : TextInputType.text,
           textCapitalization: TextCapitalization.sentences,
-          textAlignVertical: widget.multiline ? TextAlignVertical.top : null,
+           textAlignVertical: widget.multiline
+               ? TextAlignVertical.top
+               : TextAlignVertical.center,
           padding: widget.padding,
           cursorColor: widget.cursorColor,
           selectionControls: widget.selectionControls,

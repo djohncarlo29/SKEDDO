@@ -524,6 +524,11 @@ const double kSearchBarHeaderSeparatorGap = kFixedVerticalPadding;
 const double kSearchBarSeparatorHeight = 0.5;
 const double kSearchBarTextFontSize = 17.0;
 const double kSearchBarSideControlHeight = 40.0;
+const double kSearchBarSearchIconSize = 17.0;
+const double kSearchBarMicIconSize = 15.0;
+// The microphone glyph's visual box ends 16 pt before the search bar edge.
+const double kSearchBarMicRightPadding = 16.0;
+const double kSearchBarTrailingEdgeGap = 3.0;
 
 /// The line box occupied by search text at the current OS text scale.
 double searchBarTextLineHeight(BuildContext context) =>
