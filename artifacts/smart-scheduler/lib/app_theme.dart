@@ -733,6 +733,38 @@ class MinGapLabelValueRow extends StatelessWidget {
     );
   }
 
+  Widget _animateLeadingPlacement(Widget leading, bool multiline) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      reverseDuration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      layoutBuilder:
+          (currentChild, previousChildren) => Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              ...previousChildren,
+              if (currentChild != null) currentChild,
+            ],
+          ),
+      transitionBuilder: (child, animation) {
+        final childMultiline =
+            (child.key is ValueKey<bool>) &&
+            (child.key as ValueKey<bool>).value;
+        final begin = Offset(0, childMultiline ? -0.25 : 0.25);
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: begin,
+            end: Offset.zero,
+          ).animate(animation),
+          child: child,
+        );
+      },
+      child: KeyedSubtree(key: ValueKey(multiline), child: leading),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -767,16 +799,34 @@ class MinGapLabelValueRow extends StatelessWidget {
             !fitsOnOneLine &&
             label == 'Travel Time' &&
             value == '1 hour, 30 minutes';
+        final isCategoryTypeSmartCategory =
+            label == 'Category Type' && value == 'Smart Category';
+        final availableForText =
+            constraints.maxWidth.isFinite
+                ? math.max(0.0, constraints.maxWidth - leadingTotal)
+                : double.infinity;
+        final smartCategoryCanKeepLabelSingleLine =
+            isCategoryTypeSmartCategory &&
+            !fitsOnOneLine &&
+            labelWidth +
+                    kLabelValueGap +
+                    trailingExtraWidth +
+                    _minimumReadableWidth(context, wrappedValue, valueStyle) <=
+                availableForText;
         final forceSharedWrap =
             !fitsOnOneLine &&
-            ((label == 'Category Type' &&
-                    (value == 'Shopping List' || value == 'Smart Category')) ||
+            ((label == 'Category Type' && value == 'Shopping List') ||
                 (label == 'Second Alert' &&
-                    value == '1 hour, 30 minutes before'));
+                    value == '1 hour, 30 minutes before') ||
+                (isCategoryTypeSmartCategory &&
+                    !smartCategoryCanKeepLabelSingleLine));
         final labelCanWrap =
             forceLabelOnlyWrap ||
             forceSharedWrap ||
-            (!fitsOnOneLine && !forceValueOnlyWrap && _hasMultipleWords(label));
+            (!fitsOnOneLine &&
+                !forceValueOnlyWrap &&
+                !smartCategoryCanKeepLabelSingleLine &&
+                _hasMultipleWords(label));
         final valueCanWrap =
             forceValueOnlyWrap ||
             forceSharedWrap ||
@@ -790,7 +840,10 @@ class MinGapLabelValueRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (leading != null) ...[
-                SizedBox(width: leadingWidth, child: leading),
+                SizedBox(
+                  width: leadingWidth,
+                  child: _animateLeadingPlacement(leading!, false),
+                ),
                 SizedBox(width: leadingGap),
               ],
               SizedBox(
@@ -970,12 +1023,29 @@ class MinGapLabelValueRow extends StatelessWidget {
           bestValueSlot = sharedValueSlot;
         }
 
+        final finalLabelMetrics = _wrappedMetrics(
+          context,
+          label,
+          labelStyle,
+          bestLabelSlot,
+        );
+        final finalValueMetrics = _wrappedMetrics(
+          context,
+          wrappedValue,
+          valueStyle,
+          math.max(0.0, bestValueSlot - trailingExtraWidth),
+        );
+        final leadingIsMultiline =
+            finalLabelMetrics.lineCount > 1 || finalValueMetrics.lineCount > 1;
         final row = Row(
           mainAxisSize: MainAxisSize.max,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             if (leading != null) ...[
-              SizedBox(width: leadingWidth, child: leading),
+              SizedBox(
+                width: leadingWidth,
+                child: _animateLeadingPlacement(leading!, leadingIsMultiline),
+              ),
               SizedBox(width: leadingGap),
             ],
             SizedBox(
@@ -2194,7 +2264,7 @@ class FrostedGlassCard extends StatelessWidget {
               side: border ?? BorderSide.none,
             )
             : BoundedContinuousRectangleBorder(
-                borderRadius: borderRadius!,
+              borderRadius: borderRadius!,
               side: border ?? BorderSide.none,
             ));
 

@@ -1488,12 +1488,7 @@ class CalendarTabState extends State<CalendarTab>
   Widget _buildSearchOverlay() {
     final showResults = _searchFocused && _searchText.isNotEmpty;
     final searchBarRow = Padding(
-      padding: const EdgeInsets.fromLTRB(
-        16,
-        kSearchBarHostTopPadding,
-        16,
-        0,
-      ),
+      padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
       child: Row(
         children: [
           Expanded(
@@ -4049,9 +4044,9 @@ class _WeekRowState extends State<_WeekRow> {
                     cellW + 36, // spans selDay centre to nextDay centre + caps
                 height: 36,
                 child: Container(
-                decoration: ShapeDecoration(
+                  decoration: ShapeDecoration(
                     color: resolveAccentColor(context).withOpacity(0.40),
-                  shape: const BoundedSquircleStadiumBorder(radius: 18),
+                    shape: const BoundedSquircleStadiumBorder(radius: 18),
                   ),
                 ),
               ),
@@ -6170,8 +6165,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final hasTopCorners =
         resolvedRadius.topLeft.x > 0 || resolvedRadius.topRight.x > 0;
     final hasBottomCorners =
-        resolvedRadius.bottomLeft.x > 0 ||
-        resolvedRadius.bottomRight.x > 0;
+        resolvedRadius.bottomLeft.x > 0 || resolvedRadius.bottomRight.x > 0;
     final shape = BoundedSquircleStadiumBorder(
       radius: effectiveRadius,
       topOnly: !stadium && hasTopCorners && !hasBottomCorners,
@@ -6251,9 +6245,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                           parent: AlwaysScrollableScrollPhysics(),
                         )
                         : null,
-                padding: EdgeInsets.only(
-                  right: math.max(28.0, clearIconSize),
-                ),
+                padding: EdgeInsets.only(right: math.max(28.0, clearIconSize)),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -8725,11 +8717,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
               mainAxisSize: MainAxisSize.min,
               children: [
                 _sep(),
-                _pickerRow(
-                  'End Repeat',
-                  _endRepeat,
-                  items: _endRepeatItems(),
-                ),
+                _pickerRow('End Repeat', _endRepeat, items: _endRepeatItems()),
                 SizeTransition(
                   sizeFactor: _endDateCtrl,
                   axisAlignment: 1.0,
@@ -9073,9 +9061,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     Widget icon;
     if (file.isImage && file.bytes != null) {
       icon = ClipPath(
-        clipper: ShapeBorderClipper(
-          shape: const BoundedSquircleStadiumBorder(radius: 6),
-        ),
+        clipper: ShapeBorderClipper(shape: const CircleBorder()),
         child: Container(
           width: sq,
           height: sq,
@@ -9170,7 +9156,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
       height: sq,
       decoration: ShapeDecoration(
         color: tileColor,
-        shape: const BoundedSquircleStadiumBorder(radius: 6),
+        shape: const CircleBorder(),
       ),
       alignment: Alignment.center,
       child: Text(
@@ -9558,11 +9544,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     animation: Listenable.merge([_reminderDateCtrl, _reminderPickerCtrl]),
     builder:
         (ctx, _) => _card([
-          _pickerRow(
-            'Reminder',
-            _reminder,
-            items: _reminderPickerItems(),
-          ),
+          _pickerRow('Reminder', _reminder, items: _reminderPickerItems()),
           SizeTransition(
             sizeFactor: _reminderDateCtrl,
             axisAlignment: 1.0,
@@ -9600,11 +9582,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     animation: _secondAlertCtrl,
     builder:
         (ctx, _) => _card([
-          _pickerRow(
-            'Alert',
-            _alertDisplayLabel(_alert),
-            items: _alertItems(),
-          ),
+          _pickerRow('Alert', _alertDisplayLabel(_alert), items: _alertItems()),
           SizeTransition(
             sizeFactor: _secondAlertCtrl,
             axisAlignment: 1.0,
@@ -11027,8 +11005,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     final hasTopCorners =
         resolvedRadius.topLeft.x > 0 || resolvedRadius.topRight.x > 0;
     final hasBottomCorners =
-        resolvedRadius.bottomLeft.x > 0 ||
-        resolvedRadius.bottomRight.x > 0;
+        resolvedRadius.bottomLeft.x > 0 || resolvedRadius.bottomRight.x > 0;
     final shape = BoundedSquircleStadiumBorder(
       radius: effectiveRadius,
       topOnly: hasTopCorners && !hasBottomCorners,
@@ -11446,130 +11423,125 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     animation: _yearlyDaysCtrl,
     builder:
         (ctx, _) => _card([
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _toggleYearlyDays,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    child: Row(
-                      children: [
-                        Text('Days of Week', style: _kRowLabelStyle),
-                        const Spacer(),
-                        SizedBox(
-                          width: 70 * 0.80,
-                          height: 30,
-                          child: OverflowBox(
-                            maxWidth: 70,
-                            maxHeight: 31,
-                            alignment: Alignment.center,
-                            child: Transform.scale(
-                              scale: 0.80,
-                              child: AppSwitch(
-                                value: _yearlyDaysEnabled,
-                                onChanged: (_) => _toggleYearlyDays(),
-                                color: widget.accentColor,
-                                height: 31,
-                              ),
-                            ),
-                          ),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _toggleYearlyDays,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  Text('Days of Week', style: _kRowLabelStyle),
+                  const Spacer(),
+                  SizedBox(
+                    width: 70 * 0.80,
+                    height: 30,
+                    child: OverflowBox(
+                      maxWidth: 70,
+                      maxHeight: 31,
+                      alignment: Alignment.center,
+                      child: Transform.scale(
+                        scale: 0.80,
+                        child: AppSwitch(
+                          value: _yearlyDaysEnabled,
+                          onChanged: (_) => _toggleYearlyDays(),
+                          color: widget.accentColor,
+                          height: 31,
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-                SizeTransition(
-                  sizeFactor: _yearlyDaysCtrl,
-                  axisAlignment: 1.0,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                ],
+              ),
+            ),
+          ),
+          SizeTransition(
+            sizeFactor: _yearlyDaysCtrl,
+            axisAlignment: 1.0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _sep(),
+                SizedBox(
+                  height: 216,
+                  child: Row(
                     children: [
-                      _sep(),
-                      SizedBox(
-                        height: 216,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: CupertinoPicker(
-                                scrollController: _yearlyPositionCtrl,
-                                itemExtent: 32.0,
-                                backgroundColor: CupertinoColors.transparent,
-                                useMagnifier: true,
-                                magnification: 2.35 / 2.1,
-                                squeeze: 1.25,
-                                offAxisFraction: -0.45,
-                                selectionOverlay:
-                                    const CupertinoPickerDefaultSelectionOverlay(
-                                      capStartEdge: true,
-                                      capEndEdge: false,
-                                    ),
-                                onSelectedItemChanged:
-                                    (i) => setState(
-                                      () => _yearlyPositionIndex = i,
-                                    ),
-                                children:
-                                    _kPositions
-                                        .map(
-                                          (p) => Align(
-                                            alignment: Alignment.centerRight,
-                                            child: Padding(
-                                              padding: const EdgeInsets.only(
-                                                right: 20,
-                                              ),
-                                              child: Text(
-                                                p,
-                                                style: _kPickerItemStyle,
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                        .toList(),
+                      Expanded(
+                        child: CupertinoPicker(
+                          scrollController: _yearlyPositionCtrl,
+                          itemExtent: 32.0,
+                          backgroundColor: CupertinoColors.transparent,
+                          useMagnifier: true,
+                          magnification: 2.35 / 2.1,
+                          squeeze: 1.25,
+                          offAxisFraction: -0.45,
+                          selectionOverlay:
+                              const CupertinoPickerDefaultSelectionOverlay(
+                                capStartEdge: true,
+                                capEndEdge: false,
                               ),
-                            ),
-                            Expanded(
-                              child: CupertinoPicker(
-                                scrollController: _yearlyDayCtrl,
-                                itemExtent: 32.0,
-                                backgroundColor: CupertinoColors.transparent,
-                                useMagnifier: true,
-                                magnification: 2.35 / 2.1,
-                                squeeze: 1.25,
-                                offAxisFraction: 0.45,
-                                selectionOverlay:
-                                    const CupertinoPickerDefaultSelectionOverlay(
-                                      capStartEdge: false,
-                                      capEndEdge: true,
+                          onSelectedItemChanged:
+                              (i) => setState(() => _yearlyPositionIndex = i),
+                          children:
+                              _kPositions
+                                  .map(
+                                    (p) => Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 20,
+                                        ),
+                                        child: Text(
+                                          p,
+                                          style: _kPickerItemStyle,
+                                        ),
+                                      ),
                                     ),
-                                onSelectedItemChanged:
-                                    (i) => setState(() => _yearlyDayIndex = i),
-                                children:
-                                    _kDays
-                                        .map(
-                                          (d) => Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: Padding(
-                                              padding: const EdgeInsets.only(
-                                                left: 20,
-                                              ),
-                                              child: Text(
-                                                d,
-                                                style: _kPickerItemStyle,
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                        .toList(),
+                                  )
+                                  .toList(),
+                        ),
+                      ),
+                      Expanded(
+                        child: CupertinoPicker(
+                          scrollController: _yearlyDayCtrl,
+                          itemExtent: 32.0,
+                          backgroundColor: CupertinoColors.transparent,
+                          useMagnifier: true,
+                          magnification: 2.35 / 2.1,
+                          squeeze: 1.25,
+                          offAxisFraction: 0.45,
+                          selectionOverlay:
+                              const CupertinoPickerDefaultSelectionOverlay(
+                                capStartEdge: false,
+                                capEndEdge: true,
                               ),
-                            ),
-                          ],
+                          onSelectedItemChanged:
+                              (i) => setState(() => _yearlyDayIndex = i),
+                          children:
+                              _kDays
+                                  .map(
+                                    (d) => Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 20,
+                                        ),
+                                        child: Text(
+                                          d,
+                                          style: _kPickerItemStyle,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ]),
+              ],
+            ),
+          ),
+        ]),
   );
 
   // ── Label & save ──────────────────────────────────────────────────────────
@@ -11676,28 +11648,28 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                         animation: _everyPickerCtrl,
                         builder:
                             (ctx, _) => _card([
-                                _pickerRow(
-                                  'Frequency',
+                              _pickerRow(
+                                'Frequency',
+                                _frequency,
+                                items: _makeItems(
+                                  _kFrequencyOptions,
                                   _frequency,
-                                  items: _makeItems(
-                                    _kFrequencyOptions,
-                                    _frequency,
-                                    (v) => setState(() => _frequency = v),
-                                    checkmarkColor: widget.accentColor,
-                                  ),
+                                  (v) => setState(() => _frequency = v),
+                                  checkmarkColor: widget.accentColor,
                                 ),
-                                _sep(),
-                                _pickerRow(
-                                  'Every',
-                                  _everyCount == 1
-                                      ? _everyUnit
-                                      : '$_everyCount $_everyUnit',
-                                  showChevron: false,
-                                  valueColor: widget.accentColor,
-                                  onTap: _toggleEveryPicker,
-                                ),
-                                _buildEverySubcard(),
-                              ]),
+                              ),
+                              _sep(),
+                              _pickerRow(
+                                'Every',
+                                _everyCount == 1
+                                    ? _everyUnit
+                                    : '$_everyCount $_everyUnit',
+                                showChevron: false,
+                                valueColor: widget.accentColor,
+                                onTap: _toggleEveryPicker,
+                              ),
+                              _buildEverySubcard(),
+                            ]),
                       ),
                       SizedBox(
                         width: double.infinity,
