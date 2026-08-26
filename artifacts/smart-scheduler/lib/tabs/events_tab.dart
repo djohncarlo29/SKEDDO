@@ -597,8 +597,8 @@ class _BlurHoleClipper extends CustomClipper<Path> {
     final screen = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
     // Use the same squircle shape as the card decoration.
-    final holePath = BoundedContinuousRectangleBorder(
-      borderRadius: BorderRadius.circular(_kCornerRadius),
+    final holePath = const BoundedSquircleStadiumBorder(
+      radius: _kCornerRadius,
     ).getOuterPath(hole);
     return Path.combine(PathOperation.difference, screen, holePath);
   }
@@ -882,8 +882,8 @@ class _DarkModeGhostOutline extends StatelessWidget {
     if (border == BorderSide.none) return child;
     return DecoratedBox(
       decoration: ShapeDecoration(
-        shape: BoundedContinuousRectangleBorder(
-          borderRadius: BorderRadius.circular(_kCornerRadius),
+        shape: BoundedSquircleStadiumBorder(
+          radius: _kCornerRadius,
           side: border,
         ),
       ),
@@ -2079,8 +2079,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final row = gridIdx ~/ 2;
     final tileTopLeft = Offset(
       col * (tileWidth + _AnimatedCategoryGrid._colGap),
-      row *
-          (_eventsGridTileRowHeight(context) + _AnimatedCategoryGrid._rowGap),
+      row * (_eventsGridTileRowHeight(context) + _AnimatedCategoryGrid._rowGap),
     );
     final localPos = box.globalToLocal(globalPos);
     // When dragging from the full-width (solitary last) tile the grab offset X
@@ -2508,8 +2507,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               (gridBox.size.width - _AnimatedCategoryGrid._colGap) / 2;
           // Centre-grab: treat the cat as entering the tile at its midpoint so
           // the ghost is always centred on the finger (no inherited list grab).
-          final grab =
-              Offset(tileW / 2, _eventsGridTileRowHeight(context) / 2);
+          final grab = Offset(tileW / 2, _eventsGridTileRowHeight(context) / 2);
           final gridLocal = gridBox.globalToLocal(globalPos);
           final rawTopLeft = gridLocal - grab;
           // Slot from ghost centre (same formula as normal grid reorder).
@@ -3621,8 +3619,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     return Container(
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
-        shape: BoundedContinuousRectangleBorder(
-          borderRadius: BorderRadius.circular(_kCornerRadius),
+        shape: BoundedSquircleStadiumBorder(
+          radius: _kCornerRadius,
           side: _darkModeGhostBorder(
             context,
             suppress: suppressDarkModeOutline,
@@ -3746,8 +3744,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     return Container(
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
-        shape: BoundedContinuousRectangleBorder(
-          borderRadius: BorderRadius.circular(_kCornerRadius),
+        shape: BoundedSquircleStadiumBorder(
+          radius: _kCornerRadius,
           side: _darkModeGhostBorder(context),
         ),
         shadows: resolveThemeShadows(const [
@@ -4069,8 +4067,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       ),
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
-        shape: BoundedContinuousRectangleBorder(
-          borderRadius: BorderRadius.circular(_kCornerRadius),
+        shape: BoundedSquircleStadiumBorder(
+          radius: _kCornerRadius,
           side: _darkModeGhostBorder(
             context,
             suppress: suppressDarkModeOutline,
@@ -4086,8 +4084,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             top: 0,
             left: 0,
             child: Container(
-               width: _kGridTileCircleSize,
-               height: _kGridTileCircleSize,
+              width: _kGridTileCircleSize,
+              height: _kGridTileCircleSize,
               decoration: BoxDecoration(
                 color: renderCategoryColor(color, context),
                 shape: BoxShape.circle,
@@ -4153,8 +4151,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       ),
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
-        shape: BoundedContinuousRectangleBorder(
-          borderRadius: BorderRadius.circular(_kCornerRadius),
+        shape: BoundedSquircleStadiumBorder(
+          radius: _kCornerRadius,
           side: _darkModeGhostBorder(
             context,
             suppress: suppressDarkModeOutline,
@@ -4170,8 +4168,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             top: 0,
             left: 0,
             child: Container(
-               width: _kGridTileCircleSize,
-               height: _kGridTileCircleSize,
+              width: _kGridTileCircleSize,
+              height: _kGridTileCircleSize,
               decoration: BoxDecoration(
                 color: _categoryIconCircleColor(
                   cat.iconOrSvg,
@@ -4182,7 +4180,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               child: Center(
                 child: _renderCatIcon(
                   cat.iconOrSvg,
-                   _kGridTileCircleSize,
+                  _kGridTileCircleSize,
                   CupertinoColors.white,
                   emojiOffsetY: 1,
                   ctx: context,
@@ -6534,7 +6532,7 @@ class _AnimatedCategoryGrid extends StatelessWidget {
                       left: dragLocalTopLeft!.dx,
                       top: dragLocalTopLeft!.dy,
                       width: dragFullWidth ? constraints.maxWidth : tileWidth,
-                       height: rowHeight,
+                      height: rowHeight,
                       child: entries[i].child,
                     ),
             ],
@@ -6606,9 +6604,7 @@ class _CategoryTile extends StatelessWidget {
       ),
       decoration: ShapeDecoration(
         color: surfaceColor,
-        shape: BoundedContinuousRectangleBorder(
-          borderRadius: BorderRadius.circular(_kCornerRadius),
-        ),
+        shape: BoundedSquircleStadiumBorder(radius: _kCornerRadius),
         shadows: shadows,
       ),
       child: Stack(
@@ -6619,8 +6615,8 @@ class _CategoryTile extends StatelessWidget {
             top: 0,
             left: 0,
             child: Container(
-               width: _kGridTileCircleSize,
-               height: _kGridTileCircleSize,
+              width: _kGridTileCircleSize,
+              height: _kGridTileCircleSize,
               decoration: BoxDecoration(
                 color: renderCategoryColor(color, context),
                 shape: BoxShape.circle,
@@ -6684,21 +6680,21 @@ class _CategoryTile extends StatelessWidget {
             ),
           ),
           Positioned(
-             // Keep the circle-to-title relationship explicit: the title
-             // starts exactly 8pt below the circle, with no optical offset.
-             top: _kGridTileCircleSize + _kGridTileTitleGap,
+            // Keep the circle-to-title relationship explicit: the title
+            // starts exactly 8pt below the circle, with no optical offset.
+            top: _kGridTileCircleSize + _kGridTileTitleGap,
             left: 0,
-             child: Text(
-               data.label,
-               style: TextStyle(
-                 inherit: false,
-                 color: resolveThemeColor(kSecondaryLabel, context),
-                 fontSize: 17,
-                 fontFamily: kSFProText,
-                 fontWeight: FontWeight.w600,
-                 fontStyle: FontStyle.normal,
-                 letterSpacing: kTracking17,
-                 height: kLineHeight,
+            child: Text(
+              data.label,
+              style: TextStyle(
+                inherit: false,
+                color: resolveThemeColor(kSecondaryLabel, context),
+                fontSize: 17,
+                fontFamily: kSFProText,
+                fontWeight: FontWeight.w600,
+                fontStyle: FontStyle.normal,
+                letterSpacing: kTracking17,
+                height: kLineHeight,
               ),
             ),
           ),
@@ -7157,9 +7153,7 @@ class _PinnedUserTile extends StatelessWidget {
       ),
       decoration: ShapeDecoration(
         color: resolvedSurface,
-        shape: BoundedContinuousRectangleBorder(
-          borderRadius: BorderRadius.circular(_kCornerRadius),
-        ),
+        shape: BoundedSquircleStadiumBorder(radius: _kCornerRadius),
         shadows: resolvedShadows,
       ),
       child: Stack(
@@ -7170,8 +7164,8 @@ class _PinnedUserTile extends StatelessWidget {
             top: 0,
             left: 0,
             child: Container(
-               width: _kGridTileCircleSize,
-               height: _kGridTileCircleSize,
+              width: _kGridTileCircleSize,
+              height: _kGridTileCircleSize,
               decoration: BoxDecoration(
                 color: _categoryIconCircleColor(
                   category.iconOrSvg,
@@ -7182,7 +7176,7 @@ class _PinnedUserTile extends StatelessWidget {
               child: Center(
                 child: _renderCatIcon(
                   category.iconOrSvg,
-                   _kGridTileCircleSize,
+                  _kGridTileCircleSize,
                   CupertinoColors.white,
                   emojiOffsetY: 1,
                 ),
@@ -7588,15 +7582,10 @@ class _CategoryCard extends StatelessWidget {
     );
     final resolvedSurface = resolveThemeColor(kSbSurface, context);
     final resolvedShadows = resolveThemeShadows(kCardShadow, context);
-    // The outer CATEGORIES surface uses a single stable shape. Its clip rect
-    // height changes as the accordion animates, but the requested corner
-    // radius is constant (24 px) and the outer card is always tall enough
-    // (minimum one full row) that BoundedContinuousRectangleBorder never has
-    // to constrain that radius vertically. Individual row shapes paint their
-    // own surfaces but rely on this outer clip for the shared outer boundary.
-    const outerCardShape = BoundedContinuousRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(24)),
-    );
+    // The outer CATEGORIES surface uses a single stable bounded-squircle shape.
+    // Its clip rect height changes as the accordion animates while individual
+    // row shapes paint their own surfaces inside the shared outer boundary.
+    const outerCardShape = BoundedSquircleStadiumBorder(radius: 24);
     return AnimatedContainer(
       duration: const Duration(milliseconds: _kAnimMs),
       curve: _kAnimCurve,
@@ -7919,13 +7908,16 @@ class _CategoryRow extends StatelessWidget {
     required bool isLast,
     required BuildContext context,
   }) {
-    final radius = Radius.circular(_kCornerRadius);
-    final borderRadius = BorderRadius.only(
-      topLeft: isFirst ? radius : Radius.zero,
-      topRight: isFirst ? radius : Radius.zero,
-      bottomLeft: isLast ? radius : Radius.zero,
-      bottomRight: isLast ? radius : Radius.zero,
-    );
+    final ShapeBorder rowShape;
+    if (isFirst && isLast) {
+      rowShape = const BoundedSquircleStadiumBorder();
+    } else if (isFirst) {
+      rowShape = const BoundedSquircleStadiumBorder(topOnly: true);
+    } else if (isLast) {
+      rowShape = const BoundedSquircleStadiumBorder(bottomOnly: true);
+    } else {
+      rowShape = const BoundedSquircleStadiumBorder(radius: 0);
+    }
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
@@ -7940,11 +7932,7 @@ class _CategoryRow extends StatelessWidget {
           child: Container(
             decoration: ShapeDecoration(
               color: resolveThemeColor(kSbSurface, context),
-              shape: BoundedContinuousRectangleBorder(
-                borderRadius: stadium
-                    ? BorderRadius.circular(1000.0)
-                    : borderRadius,
-              ),
+              shape: stadium ? const BoundedSquircleStadiumBorder() : rowShape,
             ),
             child: _TilePressScale(
               child: Padding(
@@ -8139,13 +8127,16 @@ class _GroupRow extends StatelessWidget {
     required bool isLast,
     required BuildContext context,
   }) {
-    final radius = Radius.circular(_kCornerRadius);
-    final borderRadius = BorderRadius.only(
-      topLeft: isFirst ? radius : Radius.zero,
-      topRight: isFirst ? radius : Radius.zero,
-      bottomLeft: isLast ? radius : Radius.zero,
-      bottomRight: isLast ? radius : Radius.zero,
-    );
+    final ShapeBorder rowShape;
+    if (isFirst && isLast) {
+      rowShape = const BoundedSquircleStadiumBorder();
+    } else if (isFirst) {
+      rowShape = const BoundedSquircleStadiumBorder(topOnly: true);
+    } else if (isLast) {
+      rowShape = const BoundedSquircleStadiumBorder(bottomOnly: true);
+    } else {
+      rowShape = const BoundedSquircleStadiumBorder(radius: 0);
+    }
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
@@ -8158,9 +8149,7 @@ class _GroupRow extends StatelessWidget {
           child: Container(
             decoration: ShapeDecoration(
               color: resolveThemeColor(kSbSurface, context),
-              shape: BoundedContinuousRectangleBorder(
-                borderRadius: borderRadius,
-              ),
+              shape: rowShape,
             ),
             child: _TilePressScale(
               child: Padding(
@@ -8795,10 +8784,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                       16,
                       8,
                       16,
-                      max(
-                        20,
-                        systemSafeAreaBottomInset(context),
-                      ),
+                      max(20, systemSafeAreaBottomInset(context)),
                     ),
                     child: Container(
                       decoration: ShapeDecoration(
@@ -11743,10 +11729,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                       16,
                       8,
                       16,
-                      max(
-                        20,
-                        systemSafeAreaBottomInset(context),
-                      ),
+                      max(20, systemSafeAreaBottomInset(context)),
                     ),
                     child: Column(
                       children: [
@@ -12687,10 +12670,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                   16,
                   8,
                   16,
-                  max(
-                    20,
-                    systemSafeAreaBottomInset(context),
-                  ),
+                  max(20, systemSafeAreaBottomInset(context)),
                 ),
                 children: [
                   Container(
@@ -14768,7 +14748,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
               // 16 px top follows the 8pt grid;
               // 16 px sides give each card its edge margin; bottom 16 px plus
               // each section's own 16 px bottom padding → 32 px total at end.
-               padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
               sliver: SliverList.builder(
                 itemCount: displaySections.length,
                 itemBuilder: (context, sectionIdx) {
@@ -14810,7 +14790,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                                     },
                                     child: _DcvEditableSectionLabel(
                                       initialText: section.headerText!,
-                       // isFirst controls top padding: 0 for
+                                      // isFirst controls top padding: 0 for
                                       // the first section (SliverPadding
                                       // provides the DCV header gap).
                                       isFirst: true,
@@ -14840,7 +14820,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                                   )
                                 : _DcvSectionLabel(
                                     text: section.headerText!,
-                                     // isFirst controls top padding: 0 for first
+                                    // isFirst controls top padding: 0 for first
                                     // section (SliverPadding provides gap from
                                     // DCV header), also 0 for others (section
                                     // bottom padding provides inter-section gap).
@@ -14867,10 +14847,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                                         kSbSurface,
                                         context,
                                       ),
-                                      shape: BoundedContinuousRectangleBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          _kCornerRadius,
-                                        ),
+                                      shape: BoundedSquircleStadiumBorder(
+                                        radius: _kCornerRadius,
                                       ),
                                       shadows: resolveThemeShadows(
                                         kCardShadow,
@@ -14929,7 +14907,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         mainAxisSize: MainAxisSize.min,
         children: [
           RepaintBoundary(child: _buildIcon()),
-           SizedBox(height: 16),
+          SizedBox(height: 16),
           Text(
             widget.categoryType == 'Shopping List'
                 ? 'Add Shopping Items'
@@ -14946,7 +14924,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
               height: 1.15,
             ),
           ),
-           SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             _emptyStateSubtitle,
             textAlign: TextAlign.center,
@@ -15401,12 +15379,12 @@ class _ScheduledEventCard extends StatelessWidget {
           Container(height: 0.5, color: separatorColor),
         _TilePressScale(
           child: Padding(
-             padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Padding(
-                   padding: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.only(right: 8),
                   child: Container(
                     width: 8,
                     height: 8,
@@ -15509,9 +15487,7 @@ class _ScheduledEventCard extends StatelessWidget {
     return Container(
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
-        shape: BoundedContinuousRectangleBorder(
-          borderRadius: BorderRadius.circular(_kCornerRadius),
-        ),
+        shape: BoundedSquircleStadiumBorder(radius: _kCornerRadius),
         shadows: shadows,
       ),
       child: _buildContent(context),
@@ -16630,10 +16606,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                   16,
                   8,
                   16,
-                    max(
-                    16,
-                    systemSafeAreaBottomInset(context),
-                  ),
+                  max(16, systemSafeAreaBottomInset(context)),
                 ),
                 children: [
                   // ── Card 1 ─────────────────────────────────────────────
