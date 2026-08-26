@@ -417,7 +417,7 @@ class AppSearchBarState extends State<AppSearchBar>
           height: textLineHeight,
           child: Row(
             children: [
-              const SizedBox(width: 13),
+              const SizedBox(width: 16),
               SizedBox(
                 width: textScaler.scale(kSearchBarSearchIconSize),
                 height: textLineHeight,
