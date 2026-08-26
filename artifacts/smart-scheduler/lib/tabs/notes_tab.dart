@@ -485,6 +485,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
         children: [
           Expanded(
             child: AppSearchBar(
+              useBoundedSquircle: true,
               key: _searchBarKey,
               controller: _searchController,
               onFocusChanged: _onSearchFocusChanged,
@@ -1332,9 +1333,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
         color: surfaceColor,
-        shape: BoundedContinuousRectangleBorder(
-          borderRadius: BorderRadius.circular(kSbCornerRadius),
-        ),
+        shape: const BoundedSquircleStadiumBorder(),
         shadows: cardShadows,
       ),
       child: Stack(
@@ -3336,10 +3335,7 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
                                 child: DecoratedBox(
                                   decoration: ShapeDecoration(
                                     color: kCardColor,
-                                    shape: BoundedContinuousRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        kSquircleStadiumRadius,
-                                      ),
+                                    shape: const BoundedSquircleStadiumBorder(
                                       side: const BorderSide(
                                         color: kAttachmentBorder,
                                         width: 0.5,
@@ -3707,9 +3703,8 @@ class _PdfPageViewState extends State<_PdfPageView> {
 // ── Shared-radius squircle preview clipper ───────────────────────────────────
 class _PreviewSquircleClipper extends CustomClipper<Path> {
   @override
-  Path getClip(Size size) => BoundedContinuousRectangleBorder(
-    borderRadius: BorderRadius.circular(kSquircleStadiumRadius),
-  ).getOuterPath(Rect.fromLTWH(0, 0, size.width, size.height));
+  Path getClip(Size size) => const BoundedSquircleStadiumBorder()
+      .getOuterPath(Rect.fromLTWH(0, 0, size.width, size.height));
 
   @override
   bool shouldReclip(_PreviewSquircleClipper old) => false;

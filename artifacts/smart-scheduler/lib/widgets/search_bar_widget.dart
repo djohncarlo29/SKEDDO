@@ -160,6 +160,7 @@ class SearchWeightedIcon extends StatelessWidget {
 class AppSearchBar extends StatefulWidget {
   final TextEditingController controller;
   final ValueChanged<bool>? onFocusChanged;
+  final bool useBoundedSquircle;
   final String placeholder;
 
   /// Optional tint for caret, selection highlight, and selection handles.
@@ -171,6 +172,7 @@ class AppSearchBar extends StatefulWidget {
     super.key,
     required this.controller,
     this.onFocusChanged,
+    this.useBoundedSquircle = true,
     this.placeholder = 'Search',
     this.selectionTint,
   });
@@ -464,9 +466,11 @@ class AppSearchBarState extends State<AppSearchBar>
             clipBehavior: Clip.antiAlias,
             decoration: ShapeDecoration(
               color: surfaceColor,
-              shape: const SquircleStadiumBorder(
-                radius: kSearchBarCornerRadius,
-              ),
+              shape: widget.useBoundedSquircle
+                  ? const BoundedSquircleStadiumBorder()
+                  : const SquircleStadiumBorder(
+                      radius: kSearchBarCornerRadius,
+                    ),
               shadows: resolveThemeShadows(kCardShadow, context),
             ),
             child: Row(
