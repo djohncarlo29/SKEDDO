@@ -10957,8 +10957,75 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     return math.max(32.0, linePainter.height * _kPickerMagnification + 4.0);
   }
 
+  TextStyle _pickerTextStyleThatFits(String text, double availableWidth) {
+    final baseStyle = _kPickerItemStyle;
+    final baseFontSize = baseStyle.fontSize ?? 16.0;
+    // The selected row is magnified by the wheel, so reserve that same amount
+    // of horizontal room before choosing the un-magnified text size.
+    final targetWidth = math.max(
+      1.0,
+      (availableWidth - _kPickerSelectionPillMargin) /
+          _kPickerMagnification,
+    );
+    final scaler = MediaQuery.textScalerOf(context);
+
+    double measuredWidth(double fontSize) {
+      final scale = fontSize / baseFontSize;
+      final style = baseStyle.copyWith(
+        fontSize: fontSize,
+        letterSpacing: baseStyle.letterSpacing == null
+            ? null
+            : baseStyle.letterSpacing! * scale,
+      );
+      final painter = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textDirection: Directionality.of(context),
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      return painter.width;
+    }
+
+    if (!availableWidth.isFinite ||
+        measuredWidth(baseFontSize) <= targetWidth) {
+      return baseStyle;
+    }
+
+    // Binary search keeps the authored size whenever it fits and only reduces
+    // it as much as the actual pill width requires.
+    var low = 1.0;
+    var high = baseFontSize;
+    for (var i = 0; i < 20; i++) {
+      final candidate = (low + high) / 2;
+      if (measuredWidth(candidate) <= targetWidth) {
+        low = candidate;
+      } else {
+        high = candidate;
+      }
+    }
+    final scale = low / baseFontSize;
+    return baseStyle.copyWith(
+      fontSize: low,
+      letterSpacing: baseStyle.letterSpacing == null
+          ? null
+          : baseStyle.letterSpacing! * scale,
+    );
+  }
+
   Widget _pickerText(String text, Alignment alignment) {
-    return Text(text, style: _kPickerItemStyle, maxLines: 1, softWrap: false);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : (MediaQuery.sizeOf(context).width - 32) / 2 - 20;
+        return Text(
+          text,
+          style: _pickerTextStyleThatFits(text, availableWidth),
+          maxLines: 1,
+          softWrap: false,
+        );
+      },
+    );
   }
 
   Widget _clipPicker(
