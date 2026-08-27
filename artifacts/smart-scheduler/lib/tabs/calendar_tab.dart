@@ -6655,8 +6655,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
         // so toggling All-day back off always starts fresh with 'None'.
         _travelTime = 'None';
         _travelMode = 'None';
-        // All-day default: no alert selected (user picks from all-day options).
-        _alert = 'None';
+        // All-day default: remind the user the night before and expose the
+        // optional second reminder. Choosing None in the Reminder picker
+        // remains the deliberate opt-out and collapses the second row.
+        _alert = 'Night before (9 PM)';
         _secondAlert = 'None';
       } else {
         // Restore sensible non-all-day defaults.
@@ -6665,10 +6667,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
       }
     });
     if (turningOn) {
-      // All-day ON → collapse Travel Time row, Travel Mode, and Second Alert.
+      // All-day ON → collapse Travel Time and Travel Mode. The default
+      // Reminder is active, so keep Second Reminder visible.
       _travelRowCtrl.animateTo(0.0, curve: Curves.easeIn);
       _travelModeCtrl.animateTo(0.0, curve: Curves.easeIn);
-      _secondAlertCtrl.animateTo(0.0, curve: Curves.easeIn);
+      _secondAlertCtrl.animateTo(1.0, curve: Curves.easeOut);
     } else {
       // All-day OFF → restore Travel Time row; Second Alert visible again
       // because alert is now 'At time of event' (not 'None').
