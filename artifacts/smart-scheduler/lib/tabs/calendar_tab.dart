@@ -10974,6 +10974,42 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
   TextStyle get _kDateCellStyle =>
       resolveThemeTextStyle(_kDateCellStyleBase, context);
 
+  static const double _kPickerMagnification = 2.35 / 2.1;
+
+  double get _pickerItemExtent {
+    final linePainter = TextPainter(
+      text: TextSpan(text: 'Wednesday', style: _kPickerItemStyle),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    return math.max(32.0, linePainter.height * _kPickerMagnification + 4.0);
+  }
+
+  Widget _pickerText(String text, Alignment alignment) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth =
+            constraints.hasBoundedWidth
+                ? constraints.maxWidth / _kPickerMagnification
+                : constraints.maxWidth;
+        return SizedBox(
+          width: availableWidth,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: alignment,
+            child: Text(
+              text,
+              style: _kPickerItemStyle,
+              maxLines: 1,
+              softWrap: false,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _card(List<Widget> rows) {
     final cardColor = resolveThemeColor(kModalCard, context);
     final shadows = resolveThemeShadows(kCardShadow, context);
@@ -11088,13 +11124,13 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
       children: [
         _sep(),
         SizedBox(
-          height: 216,
+          height: math.max(216.0, _pickerItemExtent * 5.5),
           child: Row(
             children: [
               Expanded(
                 child: CupertinoPicker(
                   scrollController: _everyCountCtrl,
-                  itemExtent: 32.0,
+                  itemExtent: _pickerItemExtent,
                   backgroundColor: CupertinoColors.transparent,
                   useMagnifier: true,
                   magnification: 2.35 / 2.1,
@@ -11113,7 +11149,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                       alignment: Alignment.centerRight,
                       child: Padding(
                         padding: const EdgeInsets.only(right: 20),
-                        child: Text('${i + 1}', style: _kPickerItemStyle),
+                        child: _pickerText('${i + 1}', Alignment.centerRight),
                       ),
                     ),
                   ),
@@ -11121,7 +11157,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
               ),
               Expanded(
                 child: CupertinoPicker(
-                  itemExtent: 32.0,
+                  itemExtent: _pickerItemExtent,
                   backgroundColor: CupertinoColors.transparent,
                   useMagnifier: true,
                   magnification: 2.35 / 2.1,
@@ -11138,7 +11174,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                       alignment: Alignment.centerLeft,
                       child: Padding(
                         padding: const EdgeInsets.only(left: 20),
-                        child: Text(_everyUnit, style: _kPickerItemStyle),
+                        child: _pickerText(_everyUnit, Alignment.centerLeft),
                       ),
                     ),
                   ],
@@ -11223,13 +11259,13 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
       ],
     ] else ...[
       SizedBox(
-        height: 216,
+        height: math.max(216.0, _pickerItemExtent * 5.5),
         child: Row(
           children: [
             Expanded(
               child: CupertinoPicker(
                 scrollController: _onThePositionCtrl,
-                itemExtent: 32.0,
+                itemExtent: _pickerItemExtent,
                 backgroundColor: CupertinoColors.transparent,
                 useMagnifier: true,
                 magnification: 2.35 / 2.1,
@@ -11248,7 +11284,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                             alignment: Alignment.centerRight,
                             child: Padding(
                               padding: const EdgeInsets.only(right: 20),
-                              child: Text(p, style: _kPickerItemStyle),
+                              child: _pickerText(p, Alignment.centerRight),
                             ),
                           ),
                         )
@@ -11258,7 +11294,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
             Expanded(
               child: CupertinoPicker(
                 scrollController: _onTheDayCtrl,
-                itemExtent: 32.0,
+                itemExtent: _pickerItemExtent,
                 backgroundColor: CupertinoColors.transparent,
                 useMagnifier: true,
                 magnification: 2.35 / 2.1,
@@ -11277,7 +11313,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                             alignment: Alignment.centerLeft,
                             child: Padding(
                               padding: const EdgeInsets.only(left: 20),
-                              child: Text(d, style: _kPickerItemStyle),
+                              child: _pickerText(d, Alignment.centerLeft),
                             ),
                           ),
                         )
@@ -11462,13 +11498,13 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
               children: [
                 _sep(),
                 SizedBox(
-                  height: 216,
+                  height: math.max(216.0, _pickerItemExtent * 5.5),
                   child: Row(
                     children: [
                       Expanded(
                         child: CupertinoPicker(
                           scrollController: _yearlyPositionCtrl,
-                          itemExtent: 32.0,
+                          itemExtent: _pickerItemExtent,
                           backgroundColor: CupertinoColors.transparent,
                           useMagnifier: true,
                           magnification: 2.35 / 2.1,
@@ -11490,9 +11526,9 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                                         padding: const EdgeInsets.only(
                                           right: 20,
                                         ),
-                                        child: Text(
+                                        child: _pickerText(
                                           p,
-                                          style: _kPickerItemStyle,
+                                          Alignment.centerRight,
                                         ),
                                       ),
                                     ),
@@ -11503,7 +11539,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                       Expanded(
                         child: CupertinoPicker(
                           scrollController: _yearlyDayCtrl,
-                          itemExtent: 32.0,
+                          itemExtent: _pickerItemExtent,
                           backgroundColor: CupertinoColors.transparent,
                           useMagnifier: true,
                           magnification: 2.35 / 2.1,
@@ -11525,9 +11561,9 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                                         padding: const EdgeInsets.only(
                                           left: 20,
                                         ),
-                                        child: Text(
+                                        child: _pickerText(
                                           d,
-                                          style: _kPickerItemStyle,
+                                          Alignment.centerLeft,
                                         ),
                                       ),
                                     ),
