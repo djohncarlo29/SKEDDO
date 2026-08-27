@@ -52,13 +52,9 @@ void _dismissModalSheetFocus() {
 BorderSide _darkModeGhostBorder(
   BuildContext context, {
   bool suppress = false,
-}) =>
-    !suppress && CupertinoTheme.brightnessOf(context) == Brightness.dark
-        ? BorderSide(
-          color: resolveThemeColor(kTertiaryLabel, context),
-          width: 0.5,
-        )
-        : BorderSide.none;
+}) => !suppress && CupertinoTheme.brightnessOf(context) == Brightness.dark
+    ? BorderSide(color: resolveThemeColor(kTertiaryLabel, context), width: 0.5)
+    : BorderSide.none;
 
 // ── Context footer constants ──────────────────────────────────────────────────
 // Two kinds of context footer exist:
@@ -154,8 +150,8 @@ class _TilePressScale extends StatelessWidget {
     if (press == null) return child;
     return AnimatedBuilder(
       animation: press,
-      builder:
-          (_, c) => Transform.scale(scale: 1.0 - 0.04 * press.value, child: c),
+      builder: (_, c) =>
+          Transform.scale(scale: 1.0 - 0.04 * press.value, child: c),
       child: child,
     );
   }
@@ -323,49 +319,41 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
     _overlayCtrl.value = 0;
 
     _entry = OverlayEntry(
-      builder:
-          (ctx) => _ContextMenuOverlay(
-            animation: _overlayCtrl,
-            isClosing: _isClosing,
-            originalOffset: offset,
-            originalSize: size,
-            previewBuilder: widget.previewBuilder,
-            isSmartCategory: widget.isSmartCategory,
-            isPinned: widget.isPinned,
-            onDismiss: _hide,
-            // The closing overlay (~420ms) paints an opaque floating copy of the
-            // row directly on top of the real one while it animates back down —
-            // so firing the action synchronously (as before) let the real row's
-            // pin/archive/delete animation run and finish *underneath* the
-            // overlay, invisible to the user. Deferring the callback to `then`
-            // (invoked from cleanup() once the overlay is actually gone) makes
-            // every action's animation play out fully visible.
-            isGroup: widget.isGroup,
-            onPin:
-                widget.onPin != null ? () => _hide(then: widget.onPin) : null,
-            onUnpin:
-                widget.onUnpin != null
-                    ? () => _hide(then: widget.onUnpin)
-                    : null,
-            onEdit:
-                widget.onEdit != null ? () => _hide(then: widget.onEdit) : null,
-            onArchive:
-                widget.onArchive != null
-                    ? () => _hide(then: widget.onArchive)
-                    : null,
-            onDelete:
-                widget.onDelete != null
-                    ? () => _hide(then: widget.onDelete)
-                    : null,
-            onEditGroup:
-                widget.onEditGroup != null
-                    ? () => _hide(then: widget.onEditGroup)
-                    : null,
-            onDeleteGroup:
-                widget.onDeleteGroup != null
-                    ? () => _hide(then: widget.onDeleteGroup)
-                    : null,
-          ),
+      builder: (ctx) => _ContextMenuOverlay(
+        animation: _overlayCtrl,
+        isClosing: _isClosing,
+        originalOffset: offset,
+        originalSize: size,
+        previewBuilder: widget.previewBuilder,
+        isSmartCategory: widget.isSmartCategory,
+        isPinned: widget.isPinned,
+        onDismiss: _hide,
+        // The closing overlay (~420ms) paints an opaque floating copy of the
+        // row directly on top of the real one while it animates back down —
+        // so firing the action synchronously (as before) let the real row's
+        // pin/archive/delete animation run and finish *underneath* the
+        // overlay, invisible to the user. Deferring the callback to `then`
+        // (invoked from cleanup() once the overlay is actually gone) makes
+        // every action's animation play out fully visible.
+        isGroup: widget.isGroup,
+        onPin: widget.onPin != null ? () => _hide(then: widget.onPin) : null,
+        onUnpin: widget.onUnpin != null
+            ? () => _hide(then: widget.onUnpin)
+            : null,
+        onEdit: widget.onEdit != null ? () => _hide(then: widget.onEdit) : null,
+        onArchive: widget.onArchive != null
+            ? () => _hide(then: widget.onArchive)
+            : null,
+        onDelete: widget.onDelete != null
+            ? () => _hide(then: widget.onDelete)
+            : null,
+        onEditGroup: widget.onEditGroup != null
+            ? () => _hide(then: widget.onEditGroup)
+            : null,
+        onDeleteGroup: widget.onDeleteGroup != null
+            ? () => _hide(then: widget.onDeleteGroup)
+            : null,
+      ),
     );
     Overlay.of(context).insert(_entry!);
 
@@ -573,18 +561,17 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
             scale: scale,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                boxShadow:
-                    _liftCtrl.value > 0.0
-                        ? resolveThemeShadows([
-                          BoxShadow(
-                            color: const Color(
-                              0xFF000000,
-                            ).withValues(alpha: shadowOpacity),
-                            blurRadius: shadowBlur,
-                            offset: shadowOffset,
-                          ),
-                        ], context)
-                        : const [],
+                boxShadow: _liftCtrl.value > 0.0
+                    ? resolveThemeShadows([
+                        BoxShadow(
+                          color: const Color(
+                            0xFF000000,
+                          ).withValues(alpha: shadowOpacity),
+                          blurRadius: shadowBlur,
+                          offset: shadowOffset,
+                        ),
+                      ], context)
+                    : const [],
               ),
               child: child,
             ),
@@ -607,8 +594,8 @@ class _BlurHoleClipper extends CustomClipper<Path> {
 
   @override
   Path getClip(Size size) {
-    final screen =
-        Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    final screen = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
     // Use the same squircle shape as the card decoration.
     final holePath = const BoundedSquircleStadiumBorder(
       radius: _kCornerRadius,
@@ -759,12 +746,11 @@ class _ContextMenuOverlay extends StatelessWidget {
     final spaceAbove = originalOffset.dy - safeTop;
     final spaceBelow = screenH - safeBtm - tileBottom;
 
-    var panelTop =
-        spaceAbove > spaceBelow
-            ? originalOffset.dy -
-                panelH -
-                12 // more room above → anchor above tile
-            : tileBottom + 12; // more room below → anchor below tile
+    var panelTop = spaceAbove > spaceBelow
+        ? originalOffset.dy -
+              panelH -
+              12 // more room above → anchor above tile
+        : tileBottom + 12; // more room below → anchor below tile
     panelTop = panelTop.clamp(safeTop, screenH - safeBtm - panelH);
 
     return AnimatedBuilder(
@@ -783,10 +769,9 @@ class _ContextMenuOverlay extends StatelessWidget {
         // On close : Curves.easeIn applied on top of the easeIn-curved animateTo,
         //            giving a "double-easeIn" that drops the blur far ahead of
         //            the linear cardOpacity — blur is the first thing to vanish.
-        final blurT =
-            closing
-                ? Curves.easeIn.transform(clampedT)
-                : Curves.easeOut.transform(clampedT);
+        final blurT = closing
+            ? Curves.easeIn.transform(clampedT)
+            : Curves.easeOut.transform(clampedT);
 
         // ── Card scale ───────────────────────────────────────────────────────
         // Coefficient 0.07: card is 7% bigger when open — noticeably but not
@@ -1050,12 +1035,10 @@ class _ActionPanelState extends State<_ActionPanel>
         final panelScale = 0.60 + 0.40 * Curves.easeOutBack.transform(pt);
 
         final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
-        final resolvedOutline = resolveThemeColor(
-          kTertiaryLabel,
-          context,
-        ).withValues(
-          alpha: resolveThemeColor(kTertiaryLabel, context).a * outlineT,
-        );
+        final resolvedOutline = resolveThemeColor(kTertiaryLabel, context)
+            .withValues(
+              alpha: resolveThemeColor(kTertiaryLabel, context).a * outlineT,
+            );
 
         return Transform.scale(
           scale: panelScale,
@@ -1067,10 +1050,9 @@ class _ActionPanelState extends State<_ActionPanel>
                 color: panelBg,
                 shape: BoundedSquircleStadiumBorder(
                   radius: _kCornerRadius,
-                  side:
-                      isDark
-                          ? BorderSide(color: resolvedOutline, width: 0.5)
-                          : BorderSide.none,
+                  side: isDark
+                      ? BorderSide(color: resolvedOutline, width: 0.5)
+                      : BorderSide.none,
                 ),
                 shadows: resolveThemeShadows([
                   BoxShadow(
@@ -1135,10 +1117,9 @@ class _ActionRowState extends State<_ActionRow> {
   @override
   Widget build(BuildContext context) {
     final dest = widget.action.isDestructive;
-    final textColor =
-        dest
-            ? CupertinoColors.destructiveRed
-            : CupertinoDynamicColor.resolve(kPrimaryLabel, context);
+    final textColor = dest
+        ? CupertinoColors.destructiveRed
+        : CupertinoDynamicColor.resolve(kPrimaryLabel, context);
     final pressColor = CupertinoDynamicColor.resolve(
       _kPanelPressHighlight,
       context,
@@ -1322,11 +1303,10 @@ class _StorageFullBannerState extends State<_StorageFullBanner>
       bottom: 0,
       child: AnimatedBuilder(
         animation: _slide,
-        builder:
-            (_, child) => Transform.translate(
-              offset: Offset(0, (1 - _slide.value) * 120),
-              child: child,
-            ),
+        builder: (_, child) => Transform.translate(
+          offset: Offset(0, (1 - _slide.value) * 120),
+          child: child,
+        ),
         child: GestureDetector(
           onTap: _dismiss,
           child: Container(
@@ -1718,8 +1698,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     // the list content, which can clamp the scroll offset upward and bring
     // the grid into view — this anchor prevents that clamp from carrying
     // forward into the per-frame compensation loop.
-    final scrollBase =
-        _scrollController.hasClients ? _scrollController.offset : 0.0;
+    final scrollBase = _scrollController.hasClients
+        ? _scrollController.offset
+        : 0.0;
 
     // Phase 1: collapse the list row (AnimatedAlign heightFactor 1 → 0).
     setState(() => _removingFromList.add(cat));
@@ -1829,14 +1810,13 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             (_userCategories
                     .firstWhere(
                       (c) => c.id == t,
-                      orElse:
-                          () => const _UserCategory(
-                            id: '',
-                            name: '',
-                            description: '',
-                            count: 0,
-                            archived: true,
-                          ),
+                      orElse: () => const _UserCategory(
+                        id: '',
+                        name: '',
+                        description: '',
+                        count: 0,
+                        archived: true,
+                      ),
                     )
                     .archived ==
                 false),
@@ -1878,8 +1858,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         // Re-insert member IDs at the position the group occupied,
         // keeping only IDs of categories that still exist.
         final catById = {for (final c in _userCategories) c.id: c};
-        final soloIds =
-            group.memberIds.where((id) => catById.containsKey(id)).toList();
+        final soloIds = group.memberIds
+            .where((id) => catById.containsKey(id))
+            .toList();
         _listTopOrder.insertAll(idx, soloIds);
       }
       _categoryGroups.remove(group);
@@ -1895,15 +1876,13 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final idx = _categoryGroups.indexOf(oldGroup);
     if (idx == -1) return;
     // Find members removed from the group and re-insert them as solo items.
-    final removedIds =
-        oldGroup.memberIds
-            .where((id) => !updated.memberIds.contains(id))
-            .toList();
+    final removedIds = oldGroup.memberIds
+        .where((id) => !updated.memberIds.contains(id))
+        .toList();
     // Find members added to the group and remove them from solo slots.
-    final addedIds =
-        updated.memberIds
-            .where((id) => !oldGroup.memberIds.contains(id))
-            .toList();
+    final addedIds = updated.memberIds
+        .where((id) => !oldGroup.memberIds.contains(id))
+        .toList();
 
     setState(() {
       _categoryGroups[idx] = updated;
@@ -1972,13 +1951,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final allSolo = _userCategories.where((c) => !c.archived).toList();
     showRoundedCupertinoSheet<void>(
       context: context,
-      pageBuilder:
-          (ctx) => _NewGroupSheet(
-            allCategories: allSolo,
-            existingGroups: _categoryGroups,
-            initialMemberIds: [cat1.id, cat2.id],
-            onSave: _createGroup,
-          ),
+      pageBuilder: (ctx) => _NewGroupSheet(
+        allCategories: allSolo,
+        existingGroups: _categoryGroups,
+        initialMemberIds: [cat1.id, cat2.id],
+        onSave: _createGroup,
+      ),
     );
   }
 
@@ -1987,14 +1965,13 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final allSolo = _userCategories.where((c) => !c.archived).toList();
     showRoundedCupertinoSheet<void>(
       context: context,
-      pageBuilder:
-          (ctx) => _NewGroupSheet(
-            allCategories: allSolo,
-            existingGroups: _categoryGroups,
-            initialMemberIds: group.memberIds,
-            initial: group,
-            onSave: (updated) => _updateGroup(group, updated),
-          ),
+      pageBuilder: (ctx) => _NewGroupSheet(
+        allCategories: allSolo,
+        existingGroups: _categoryGroups,
+        initialMemberIds: group.memberIds,
+        initial: group,
+        onSave: (updated) => _updateGroup(group, updated),
+      ),
     );
   }
 
@@ -2013,10 +1990,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   /// Deletes the group and its member categories using the same visible
   /// category-collapse animation as the existing Delete Category action.
   void _deleteGroupAndCategories(_CategoryGroup group) {
-    final categories =
-        _userCategories
-            .where((cat) => group.memberIds.contains(cat.id))
-            .toList();
+    final categories = _userCategories
+        .where((cat) => group.memberIds.contains(cat.id))
+        .toList();
     if (categories.isEmpty) {
       _ungroupGroup(group);
       return;
@@ -2107,17 +2083,15 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final isFullWidth =
         _gridCombinedOrder.length.isOdd &&
         gridIdx == _gridCombinedOrder.length - 1;
-    final grab =
-        isFullWidth
-            ? Offset(rawGrab.dx.clamp(0.0, tileWidth), rawGrab.dy)
-            : rawGrab;
-    final draggingSmartTile =
-        key is String
-            ? _liveSmartTiles.cast<_TileData?>().firstWhere(
-              (tile) => tile?.label == key.substring(6),
-              orElse: () => null,
-            )
-            : null;
+    final grab = isFullWidth
+        ? Offset(rawGrab.dx.clamp(0.0, tileWidth), rawGrab.dy)
+        : rawGrab;
+    final draggingSmartTile = key is String
+        ? _liveSmartTiles.cast<_TileData?>().firstWhere(
+            (tile) => tile?.label == key.substring(6),
+            orElse: () => null,
+          )
+        : null;
     setState(() {
       _draggingGridKey = key;
       _dragGridGrabOffset = grab;
@@ -2206,11 +2180,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           0,
           1,
         );
-        final reRow = (cy /
-                (_eventsGridTileRowHeight(context) +
-                    _AnimatedCategoryGrid._rowGap))
-            .floor()
-            .clamp(0, 999);
+        final reRow =
+            (cy /
+                    (_eventsGridTileRowHeight(context) +
+                        _AnimatedCategoryGrid._rowGap))
+                .floor()
+                .clamp(0, 999);
         final reSlot = (reRow * 2 + reCol).clamp(
           0,
           _gridCombinedOrder.length - 1,
@@ -2267,10 +2242,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final cx = newTopLeft.dx + tw / 2;
     final cy = newTopLeft.dy + _eventsGridTileRowHeight(context) / 2;
     final col = (cx / (tw + _AnimatedCategoryGrid._colGap)).round().clamp(0, 1);
-    final row = (cy /
-            (_eventsGridTileRowHeight(context) + _AnimatedCategoryGrid._rowGap))
-        .floor()
-        .clamp(0, 999);
+    final row =
+        (cy /
+                (_eventsGridTileRowHeight(context) +
+                    _AnimatedCategoryGrid._rowGap))
+            .floor()
+            .clamp(0, 999);
 
     final absoluteSlot = row * 2 + col;
 
@@ -2451,8 +2428,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     if (idx == -1) return;
     // Detect whether the dragged tile is currently a group member.
     final draggingItem = flatList[idx];
-    final memberGroupId =
-        draggingItem.isGroupMember ? draggingItem.groupId : null;
+    final memberGroupId = draggingItem.isGroupMember
+        ? draggingItem.groupId
+        : null;
     final slotTopY = _eventsCategoryListTopY(
       context,
       flatList,
@@ -2496,10 +2474,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final draggingIndex = flatListForGeometry.indexWhere(
       (item) => item.isCategory && item.category == cat,
     );
-    final draggingItem =
-        draggingIndex == -1
-            ? _FlatItem.solo(cat)
-            : flatListForGeometry[draggingIndex];
+    final draggingItem = draggingIndex == -1
+        ? _FlatItem.solo(cat)
+        : flatListForGeometry[draggingIndex];
     final rowHeight = _eventsCategoryListRowHeight(
       context,
       item: draggingItem,
@@ -2533,11 +2510,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           final col = (cx / (tileW + _AnimatedCategoryGrid._colGap))
               .round()
               .clamp(0, 1);
-          final row = (cy /
-                  (_eventsGridTileRowHeight(context) +
-                      _AnimatedCategoryGrid._rowGap))
-              .floor()
-              .clamp(0, 999);
+          final row =
+              (cy /
+                      (_eventsGridTileRowHeight(context) +
+                          _AnimatedCategoryGrid._rowGap))
+                  .floor()
+                  .clamp(0, 999);
           final slot = (row * 2 + col).clamp(0, _gridCombinedOrder.length);
           setState(() {
             _listDragCrossingToGrid = true;
@@ -2589,11 +2567,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           final col = (cx / (tileW + _AnimatedCategoryGrid._colGap))
               .round()
               .clamp(0, 1);
-          final row = (cy /
-                  (_eventsGridTileRowHeight(context) +
-                      _AnimatedCategoryGrid._rowGap))
-              .floor()
-              .clamp(0, 999);
+          final row =
+              (cy /
+                      (_eventsGridTileRowHeight(context) +
+                          _AnimatedCategoryGrid._rowGap))
+                  .floor()
+                  .clamp(0, 999);
           final newSlot = (row * 2 + col).clamp(
             0,
             _gridCombinedOrder.length - 1,
@@ -2659,10 +2638,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         // a group row, or between items).  Only cancel the glow if the finger
         // has moved a significant distance from where the glow was confirmed —
         // small wobble or the momentary slip when lifting should not break it.
-        final moved =
-            _confirmedGroupY != null
-                ? (rawTopY - _confirmedGroupY!).abs()
-                : 0.0;
+        final moved = _confirmedGroupY != null
+            ? (rawTopY - _confirmedGroupY!).abs()
+            : 0.0;
         if (moved > slotPitch * 1.5) {
           _groupDetectionTimer?.cancel();
           _groupDetectionTimer = null;
@@ -3014,10 +2992,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       // Reorder the member within the group's memberIds.
       final newIds = List<String>.from(group.memberIds);
       final fromPos = newIds.indexOf(cat.id);
-      int toPos =
-          targetItem.isGroupHeader
-              ? 0
-              : newIds.indexOf(targetItem.category!.id);
+      int toPos = targetItem.isGroupHeader
+          ? 0
+          : newIds.indexOf(targetItem.category!.id);
       if (fromPos != -1 && toPos != -1 && fromPos != toPos) {
         newIds.removeAt(fromPos);
         newIds.insert(toPos.clamp(0, newIds.length), cat.id);
@@ -3036,10 +3013,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       if (targetItem.isGroupHeader ||
           (targetItem.isGroupMember && targetItem.groupId != groupId)) {
         // Different group — start a dwell timer to join it.
-        final targetGroupId =
-            targetItem.isGroupHeader
-                ? targetItem.group!.id
-                : targetItem.groupId!;
+        final targetGroupId = targetItem.isGroupHeader
+            ? targetItem.group!.id
+            : targetItem.groupId!;
         if (_pendingMemberJoinGroupId != targetGroupId) {
           _memberJoinGroupDwellTimer?.cancel();
           _pendingMemberJoinGroupId = targetGroupId;
@@ -3128,10 +3104,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         // token, so fall back to their parent group header token.
         final insertToken =
             targetItem.isGroupMember && targetItem.groupId != null
-                ? 'grp-${targetItem.groupId}'
-                : _flatItemToToken(targetItem);
-        final insertPos =
-            insertToken != null ? _listTopOrder.indexOf(insertToken) : -1;
+            ? 'grp-${targetItem.groupId}'
+            : _flatItemToToken(targetItem);
+        final insertPos = insertToken != null
+            ? _listTopOrder.indexOf(insertToken)
+            : -1;
         if (insertPos != -1) {
           final at = targetIdx > currentIdx ? insertPos + 1 : insertPos;
           _listTopOrder.insert(at.clamp(0, _listTopOrder.length), cat.id);
@@ -3166,17 +3143,17 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final group = _categoryGroups[groupIdx];
 
     final targetMemberId = targetItem.category?.id;
-    final targetMemberPos =
-        targetMemberId != null ? group.memberIds.indexOf(targetMemberId) : -1;
+    final targetMemberPos = targetMemberId != null
+        ? group.memberIds.indexOf(targetMemberId)
+        : -1;
 
     setState(() {
       _listTopOrder.remove(cat.id);
       final newIds = List<String>.from(group.memberIds);
       if (targetMemberPos != -1) {
-        final insertAt =
-            targetIdx > currentIdx
-                ? (targetMemberPos + 1).clamp(0, newIds.length)
-                : targetMemberPos.clamp(0, newIds.length);
+        final insertAt = targetIdx > currentIdx
+            ? (targetMemberPos + 1).clamp(0, newIds.length)
+            : targetMemberPos.clamp(0, newIds.length);
         newIds.insert(insertAt, cat.id);
       } else {
         newIds.add(cat.id);
@@ -3220,8 +3197,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       _listTopOrder.remove(cat.id);
       _listDragOverlayEntry?.remove();
       _listDragOverlayEntry = null;
-      final scrollBase =
-          _scrollController.hasClients ? _scrollController.offset : 0.0;
+      final scrollBase = _scrollController.hasClients
+          ? _scrollController.offset
+          : 0.0;
       setState(() {
         _draggingListCat = null;
         _draggingGridKey = null;
@@ -3394,8 +3372,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final currentIdx = flatList.indexWhere(
       (item) => item.isGroupHeader && item.group?.id == group.id,
     );
-    final draggingItem =
-        currentIdx == -1 ? _FlatItem.groupHeader(group) : flatList[currentIdx];
+    final draggingItem = currentIdx == -1
+        ? _FlatItem.groupHeader(group)
+        : flatList[currentIdx];
     final rowHeight = _eventsCategoryListRowHeight(
       context,
       item: draggingItem,
@@ -3443,8 +3422,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             _listTopOrder.removeAt(grpPos);
             final adjustedTokIdx = _listTopOrder.indexOf(targetToken);
             if (adjustedTokIdx != -1) {
-              final at =
-                  targetIdx > currentIdx ? adjustedTokIdx + 1 : adjustedTokIdx;
+              final at = targetIdx > currentIdx
+                  ? adjustedTokIdx + 1
+                  : adjustedTokIdx;
               _listTopOrder.insert(at.clamp(0, _listTopOrder.length), grpToken);
             } else {
               _listTopOrder.add(grpToken);
@@ -3491,16 +3471,15 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final tileWidth = box.size.width;
     final globalTopY = stackGlobal.dy + (_dragListTopY ?? 0.0);
     final flatItems = _buildFlatDisplayList();
-    final ghostItem =
-        cat != null
-            ? flatItems.firstWhere(
-              (item) => item.isCategory && item.category == cat,
-              orElse: () => _FlatItem.solo(cat),
-            )
-            : flatItems.firstWhere(
-              (item) => item.isGroupHeader && item.group?.id == grp!.id,
-              orElse: () => _FlatItem.groupHeader(grp!),
-            );
+    final ghostItem = cat != null
+        ? flatItems.firstWhere(
+            (item) => item.isCategory && item.category == cat,
+            orElse: () => _FlatItem.solo(cat),
+          )
+        : flatItems.firstWhere(
+            (item) => item.isGroupHeader && item.group?.id == grp!.id,
+            orElse: () => _FlatItem.groupHeader(grp!),
+          );
     final ghostHeight = _eventsCategoryListRowHeight(
       context,
       item: ghostItem,
@@ -3512,13 +3491,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       final gridBox =
           _gridStackKey.currentContext?.findRenderObject() as RenderBox?;
       final gridGlobal = gridBox?.localToGlobal(Offset.zero);
-      final tileW =
-          _dragGridFullWidth
-              ? (gridBox?.size.width ?? tileWidth)
-              : (_dragGridTileWidth ??
-                  (gridBox != null
-                      ? (gridBox.size.width - _AnimatedCategoryGrid._colGap) / 2
-                      : 120.0));
+      final tileW = _dragGridFullWidth
+          ? (gridBox?.size.width ?? tileWidth)
+          : (_dragGridTileWidth ??
+                (gridBox != null
+                    ? (gridBox.size.width - _AnimatedCategoryGrid._colGap) / 2
+                    : 120.0));
       final tileH = _eventsGridTileRowHeight(context);
       final tl = _dragGridTopLeft;
       final ghostLeft = (gridGlobal?.dx ?? 0) + (tl?.dx ?? 0);
@@ -3584,35 +3562,33 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             child: Transform.scale(
               scale: inGroupMode ? 1.02 : 1.05,
               child: Container(
-                decoration:
-                    inGroupMode
-                        ? ShapeDecoration(
-                          shape: BoundedSquircleStadiumBorder(
-                            radius: _kCornerRadius,
+                decoration: inGroupMode
+                    ? ShapeDecoration(
+                        shape: BoundedSquircleStadiumBorder(
+                          radius: _kCornerRadius,
+                        ),
+                        // This is a deliberate grouping affordance, not an
+                        // elevation shadow, so it remains visible in Dark
+                        // Mode where normal card shadows are suppressed.
+                        shadows: [
+                          BoxShadow(
+                            color: renderCategoryColor(
+                              groupingColor,
+                              context,
+                            ).withValues(alpha: isDark ? 0.42 : 0.28),
+                            blurRadius: isDark ? 18 : 16,
+                            offset: const Offset(0, 4),
                           ),
-                          // This is a deliberate grouping affordance, not an
-                          // elevation shadow, so it remains visible in Dark
-                          // Mode where normal card shadows are suppressed.
-                          shadows: [
-                            BoxShadow(
-                              color: renderCategoryColor(
-                                groupingColor,
-                                context,
-                              ).withValues(alpha: isDark ? 0.42 : 0.28),
-                              blurRadius: isDark ? 18 : 16,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        )
-                        : null,
-                child:
-                    cat != null
-                        ? _buildListDragGhost(
-                          cat,
-                          indented: _draggingListGroupId != null,
-                          suppressDarkModeOutline: _listDragCrossingToGrid,
-                        )
-                        : _buildListDragGroupHeaderGhost(grp!),
+                        ],
+                      )
+                    : null,
+                child: cat != null
+                    ? _buildListDragGhost(
+                        cat,
+                        indented: _draggingListGroupId != null,
+                        suppressDarkModeOutline: _listDragCrossingToGrid,
+                      )
+                    : _buildListDragGroupHeaderGhost(grp!),
               ),
             ),
           ),
@@ -3691,10 +3667,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                   // Title-only rows center their title beside the icon.
                   // Rows with descriptions keep the title/subtitle block
                   // spread between the fixed 16pt top and bottom insets.
-                  mainAxisAlignment:
-                      cat.description.isEmpty
-                          ? MainAxisAlignment.center
-                          : MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: cat.description.isEmpty
+                      ? MainAxisAlignment.center
+                      : MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       cat.name,
@@ -3858,11 +3833,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final topLeft = _dragGridTopLeft;
     if (topLeft == null) return const SizedBox.shrink();
     final stackGlobal = box.localToGlobal(Offset.zero);
-    final tileWidth =
-        _dragGridFullWidth
-            ? box.size.width
-            : (_dragGridTileWidth ??
-                (box.size.width - _AnimatedCategoryGrid._colGap) / 2);
+    final tileWidth = _dragGridFullWidth
+        ? box.size.width
+        : (_dragGridTileWidth ??
+              (box.size.width - _AnimatedCategoryGrid._colGap) / 2);
     final globalPos = stackGlobal + topLeft;
 
     // ── Crossing down into list: row ghost follows finger freely ─────────────
@@ -3897,27 +3871,26 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               child: Transform.scale(
                 scale: inGroupMode ? 1.02 : 1.05,
                 child: Container(
-                  decoration:
-                      inGroupMode
-                          ? ShapeDecoration(
-                            shape: BoundedSquircleStadiumBorder(
-                              radius: _kCornerRadius,
+                  decoration: inGroupMode
+                      ? ShapeDecoration(
+                          shape: BoundedSquircleStadiumBorder(
+                            radius: _kCornerRadius,
+                          ),
+                          // Grouping glow is an intentional accent affordance,
+                          // not an elevation shadow; keep it visible in Dark
+                          // Mode where normal card shadows are suppressed.
+                          shadows: [
+                            BoxShadow(
+                              color: renderCategoryColor(
+                                (key as _UserCategory).color,
+                                context,
+                              ).withValues(alpha: isDark ? 0.42 : 0.28),
+                              blurRadius: isDark ? 18 : 16,
+                              offset: const Offset(0, 4),
                             ),
-                            // Grouping glow is an intentional accent affordance,
-                            // not an elevation shadow; keep it visible in Dark
-                            // Mode where normal card shadows are suppressed.
-                            shadows: [
-                              BoxShadow(
-                                color: renderCategoryColor(
-                                  (key as _UserCategory).color,
-                                  context,
-                                ).withValues(alpha: isDark ? 0.42 : 0.28),
-                                blurRadius: isDark ? 18 : 16,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          )
-                          : null,
+                          ],
+                        )
+                      : null,
                   child: _buildListDragGhost(key),
                 ),
               ),
@@ -3969,17 +3942,15 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     if (key is String) {
       final label = key.substring(6);
       final liveTiles = _liveSmartTiles;
-      final tile =
-          _draggingSmartTile?.label == label
-              ? _draggingSmartTile!
-              : liveTiles.firstWhere(
+      final tile = _draggingSmartTile?.label == label
+          ? _draggingSmartTile!
+          : liveTiles.firstWhere(
+              (t) => t.label == label,
+              orElse: () => _buildSmartTiles().firstWhere(
                 (t) => t.label == label,
-                orElse:
-                    () => _buildSmartTiles().firstWhere(
-                      (t) => t.label == label,
-                      orElse: () => _buildSmartTiles().first,
-                    ),
-              );
+                orElse: () => _buildSmartTiles().first,
+              ),
+            );
       final color = _smartCategoryColors[label] ?? resolveAccentColor(context);
       return _buildSmartTileGhostCard(
         tile,
@@ -4333,22 +4304,20 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       opacity: hidden ? 0.0 : 1.0,
       child: AnimatedScale(
         duration: Duration(milliseconds: isDeleting ? 200 : 180),
-        curve:
-            isNew
-                ? Curves
-                    .easeOutBack // pin: spring in
-                : (isArchiving || isDeleting)
-                ? Curves
-                    .easeInCubic // archive/delete: settle down, no bounce
-                : Curves.easeIn, // unpin: plain shrink
-        scale:
-            !hidden
-                ? 1.0
-                : isDeleting
-                ? 0.7
-                : isArchiving
-                ? 0.8
-                : 0.75,
+        curve: isNew
+            ? Curves
+                  .easeOutBack // pin: spring in
+            : (isArchiving || isDeleting)
+            ? Curves
+                  .easeInCubic // archive/delete: settle down, no bounce
+            : Curves.easeIn, // unpin: plain shrink
+        scale: !hidden
+            ? 1.0
+            : isDeleting
+            ? 0.7
+            : isArchiving
+            ? 0.8
+            : 0.75,
         child: tile,
       ),
     );
@@ -4358,16 +4327,13 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         tween: Tween(begin: 0.16, end: 0.0),
         duration: const Duration(milliseconds: 260),
         curve: Curves.easeOut,
-        builder:
-            (context, flashAlpha, child) => Container(
-              decoration: ShapeDecoration(
-                color: CupertinoColors.destructiveRed.withValues(
-                  alpha: flashAlpha,
-                ),
-                shape: BoundedSquircleStadiumBorder(radius: _kCornerRadius),
-              ),
-              child: child,
-            ),
+        builder: (context, flashAlpha, child) => Container(
+          decoration: ShapeDecoration(
+            color: CupertinoColors.destructiveRed.withValues(alpha: flashAlpha),
+            shape: BoundedSquircleStadiumBorder(radius: _kCornerRadius),
+          ),
+          child: child,
+        ),
         child: wrapped,
       );
     }
@@ -4457,11 +4423,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   void _editCategory(_UserCategory cat) {
     showRoundedCupertinoSheet<void>(
       context: context,
-      pageBuilder:
-          (context) => _AddCategorySheet(
-            initial: cat,
-            onSave: (updated) => _updateCategory(cat, updated),
-          ),
+      pageBuilder: (context) => _AddCategorySheet(
+        initial: cat,
+        onSave: (updated) => _updateCategory(cat, updated),
+      ),
     );
   }
 
@@ -4470,14 +4435,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   void _editSmartCategory(_TileData data) {
     showRoundedCupertinoSheet<void>(
       context: context,
-      pageBuilder:
-          (context) => _AddCategorySheet(
-            smartData: data,
-            smartColor:
-                _smartCategoryColors[data.label] ?? resolveAccentColor(context),
-            onSaveColor:
-                (color) => _updateSmartCategoryColor(data.label, color),
-          ),
+      pageBuilder: (context) => _AddCategorySheet(
+        smartData: data,
+        smartColor:
+            _smartCategoryColors[data.label] ?? resolveAccentColor(context),
+        onSaveColor: (color) => _updateSmartCategoryColor(data.label, color),
+      ),
     );
   }
 
@@ -4569,8 +4532,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     setState(() {
       final names = _dcvCustomSectionNames[label] ??= <String>[];
       names.add('');
-      final eventSections =
-          _dcvCustomSectionEventIds[label] ??= <List<String>>[];
+      final eventSections = _dcvCustomSectionEventIds[label] ??=
+          <List<String>>[];
       while (eventSections.length < names.length) {
         eventSections.add(<String>[]);
       }
@@ -4594,17 +4557,15 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     if (names == null || names.isEmpty) return;
     showRoundedCupertinoSheet<void>(
       context: context,
-      pageBuilder:
-          (_) => _EditDcvSectionsSheet(
-            sectionNames: [
-              for (final name in names)
-                name.trim().isEmpty ? 'New Section' : name.trim(),
-            ],
-            accentColor: accentColor,
-            onSave:
-                (order, editedNames) =>
-                    reorderDcvSections(label, order, editedNames: editedNames),
-          ),
+      pageBuilder: (_) => _EditDcvSectionsSheet(
+        sectionNames: [
+          for (final name in names)
+            name.trim().isEmpty ? 'New Section' : name.trim(),
+        ],
+        accentColor: accentColor,
+        onSave: (order, editedNames) =>
+            reorderDcvSections(label, order, editedNames: editedNames),
+      ),
     );
   }
 
@@ -4621,16 +4582,15 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     if (names == null) return;
     final sourceNames =
         editedNames != null && editedNames.length == names.length
-            ? <String>[for (final name in editedNames) name.trim()]
-            : List<String>.of(names);
+        ? <String>[for (final name in editedNames) name.trim()]
+        : List<String>.of(names);
 
     final eventIds = _dcvCustomSectionEventIds[label] ?? const <List<String>>[];
     final normalizedEventIds = List<List<String>>.generate(
       names.length,
-      (index) =>
-          index < eventIds.length
-              ? List<String>.of(eventIds[index])
-              : <String>[],
+      (index) => index < eventIds.length
+          ? List<String>.of(eventIds[index])
+          : <String>[],
     );
     // A newly-created event is initially assigned to the first visible
     // section by _CategoryDetailView.  That local assignment may not have
@@ -4641,8 +4601,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final assignedEventIds = {
       for (final section in normalizedEventIds) ...section,
     };
-    final unassignedVisibleEventIds =
-        visibleEventIds.where((id) => assignedEventIds.add(id)).toList();
+    final unassignedVisibleEventIds = visibleEventIds
+        .where((id) => assignedEventIds.add(id))
+        .toList();
     if (unassignedVisibleEventIds.isNotEmpty) {
       normalizedEventIds.first.addAll(unassignedVisibleEventIds);
     }
@@ -4750,18 +4711,16 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     if (categoryId == null) return const <String>[];
     const uncategorizedIds = {'sys-uncategorized', 'uncategorized', ''};
     final isUncategorized = uncategorizedIds.contains(categoryId);
-    final knownCategoryIds =
-        {
-          ..._userCategories,
-          ..._pinnedUserCategories,
-        }.map((category) => category.id).toSet();
+    final knownCategoryIds = {
+      ..._userCategories,
+      ..._pinnedUserCategories,
+    }.map((category) => category.id).toSet();
     return allEvents
         .where(
-          (event) =>
-              isUncategorized
-                  ? uncategorizedIds.contains(event.categoryId) ||
-                      !knownCategoryIds.contains(event.categoryId)
-                  : event.categoryId == categoryId,
+          (event) => isUncategorized
+              ? uncategorizedIds.contains(event.categoryId) ||
+                    !knownCategoryIds.contains(event.categoryId)
+              : event.categoryId == categoryId,
         )
         .map((event) => event.id)
         .toList();
@@ -4779,8 +4738,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
   void _reorderDcvSections(String label, List<List<String>> sectionEventIds) {
     setState(() {
-      _dcvCustomSectionEventIds[label] =
-          sectionEventIds.map(List<String>.of).toList();
+      _dcvCustomSectionEventIds[label] = sectionEventIds
+          .map(List<String>.of)
+          .toList();
     });
     _saveCategories();
   }
@@ -4885,8 +4845,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     _activatedFromOffScreen = true;
     _greyActive = true;
     _greyFadeIn = true;
-    _savedScrollOffset =
-        _scrollController.hasClients ? _scrollController.offset : 0;
+    _savedScrollOffset = _scrollController.hasClients
+        ? _scrollController.offset
+        : 0;
     // Do NOT scroll to 0.  The SliverPersistentHeader is pinned so it stays
     // visible at the viewport top regardless of scroll offset.  The
     // SliverFillRemaining grey fill covers the rest of the viewport, making
@@ -4945,10 +4906,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       final decoded = rawNames == null ? null : jsonDecode(rawNames);
       if (decoded is Map) {
         for (final entry in decoded.entries) {
-          names[entry.key.toString()] =
-              entry.value is List
-                  ? [for (final name in entry.value as List) name.toString()]
-                  : <String>[];
+          names[entry.key.toString()] = entry.value is List
+              ? [for (final name in entry.value as List) name.toString()]
+              : <String>[];
         }
       }
     } catch (_) {}
@@ -4956,15 +4916,14 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       final decoded = rawEventIds == null ? null : jsonDecode(rawEventIds);
       if (decoded is Map) {
         for (final entry in decoded.entries) {
-          eventIds[entry.key.toString()] =
-              entry.value is List
-                  ? [
-                    for (final section in entry.value as List)
-                      section is List
-                          ? [for (final id in section) id.toString()]
-                          : <String>[],
-                  ]
-                  : <List<String>>[];
+          eventIds[entry.key.toString()] = entry.value is List
+              ? [
+                  for (final section in entry.value as List)
+                    section is List
+                        ? [for (final id in section) id.toString()]
+                        : <String>[],
+                ]
+              : <List<String>>[];
         }
       }
     } catch (_) {}
@@ -5093,10 +5052,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 _kPrefsGridCombinedOrder,
                 _gridCombinedOrder
                     .map(
-                      (e) =>
-                          e is String
-                              ? 'smart_$e'
-                              : 'pinned_${(e as _UserCategory).id}',
+                      (e) => e is String
+                          ? 'smart_$e'
+                          : 'pinned_${(e as _UserCategory).id}',
                     )
                     .toList(),
               ),
@@ -5136,13 +5094,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
     late OverlayEntry entry;
     entry = OverlayEntry(
-      builder:
-          (ctx) => _StorageFullBanner(
-            onDismissed: () {
-              entry.remove();
-              if (mounted) setState(() => _saveBannerVisible = false);
-            },
-          ),
+      builder: (ctx) => _StorageFullBanner(
+        onDismissed: () {
+          entry.remove();
+          if (mounted) setState(() => _saveBannerVisible = false);
+        },
+      ),
     );
     Overlay.of(context).insert(entry);
   }
@@ -5200,11 +5157,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     key.toString(),
                     value is List
                         ? [
-                          for (final section in value)
-                            section is List
-                                ? section.map((id) => id.toString()).toList()
-                                : <String>[],
-                        ]
+                            for (final section in value)
+                              section is List
+                                  ? section.map((id) => id.toString()).toList()
+                                  : <String>[],
+                          ]
                         : <List<String>>[],
                   ),
                 ),
@@ -5504,16 +5461,15 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
     const uncatIds = {'sys-uncategorized', 'uncategorized', ''};
     final isUncategorized = uncatIds.contains(category.id);
-    final knownCategoryIds =
-        {
-          ..._userCategories,
-          ..._pinnedUserCategories,
-        }.map((category) => category.id).toSet();
+    final knownCategoryIds = {
+      ..._userCategories,
+      ..._pinnedUserCategories,
+    }.map((category) => category.id).toSet();
     return {
       for (final event in allEvents)
         if (isUncategorized
             ? (uncatIds.contains(event.categoryId) ||
-                !knownCategoryIds.contains(event.categoryId))
+                  !knownCategoryIds.contains(event.categoryId))
             : event.categoryId == category.id)
           event.id,
     };
@@ -5581,10 +5537,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       child: child,
       previewBuilder: previewBuilder,
       hit: hit,
-      onEdit:
-          widget.onEditEvent == null
-              ? null
-              : () => widget.onEditEvent!(hit.event),
+      onEdit: widget.onEditEvent == null
+          ? null
+          : () => widget.onEditEvent!(hit.event),
     );
   }
 
@@ -5746,18 +5701,17 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     // counted under 'sys-uncategorized' so the Uncategorized tile is correct.
     {
       const _uncatIds = {'sys-uncategorized', 'uncategorized', ''};
-      final knownCategoryIds =
-          {
-            ..._userCategories,
-            ..._pinnedUserCategories,
-          }.map((category) => category.id).toSet();
+      final knownCategoryIds = {
+        ..._userCategories,
+        ..._pinnedUserCategories,
+      }.map((category) => category.id).toSet();
       final counts = <String, int>{};
       for (final e in allEvents) {
         final id =
             (_uncatIds.contains(e.categoryId) ||
-                    !knownCategoryIds.contains(e.categoryId))
-                ? 'sys-uncategorized'
-                : e.categoryId;
+                !knownCategoryIds.contains(e.categoryId))
+            ? 'sys-uncategorized'
+            : e.categoryId;
         counts[id] = (counts[id] ?? 0) + 1;
       }
       // Smart user categories match events by rule (not by categoryId), so run
@@ -5765,14 +5719,13 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       for (final cat in [..._userCategories, ..._pinnedUserCategories]) {
         if (cat.categoryType == 'Smart Category' &&
             cat.smartDescription.isNotEmpty) {
-          counts[cat.id] =
-              AIServices.matcher
-                  .match(
-                    candidates: allEvents,
-                    rule: cat.smartDescription,
-                    now: now,
-                  )
-                  .length;
+          counts[cat.id] = AIServices.matcher
+              .match(
+                candidates: allEvents,
+                rule: cat.smartDescription,
+                now: now,
+              )
+              .length;
         }
       }
       _liveEventCounts = counts;
@@ -5811,20 +5764,19 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       allCount: baseEvents.length,
     );
     _liveSmartTiles = allSmartTiles;
-    final smartTiles =
-        _smartCategoryOrder.isNotEmpty
-            ? _smartCategoryOrder
-                .where((label) => !_archivedSmartCategories.contains(label))
-                .map(
-                  (label) => allSmartTiles.firstWhere(
-                    (t) => t.label == label,
-                    orElse: () => allSmartTiles.first,
-                  ),
-                )
-                .toList()
-            : allSmartTiles
-                .where((t) => !_archivedSmartCategories.contains(t.label))
-                .toList();
+    final smartTiles = _smartCategoryOrder.isNotEmpty
+        ? _smartCategoryOrder
+              .where((label) => !_archivedSmartCategories.contains(label))
+              .map(
+                (label) => allSmartTiles.firstWhere(
+                  (t) => t.label == label,
+                  orElse: () => allSmartTiles.first,
+                ),
+              )
+              .toList()
+        : allSmartTiles
+              .where((t) => !_archivedSmartCategories.contains(t.label))
+              .toList();
 
     // ── Grid: unified ordering across smart tiles and pinned user categories ─
     // _gridCombinedOrder is the single source of truth for cross-section slot
@@ -5859,13 +5811,13 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                       onEdit: () => _editSmartCategory(smartTileByLabel[item]!),
                       onArchive: () => _archiveSmartCategory(item),
                       reorderable: true,
-                      onReorderStart:
-                          (p) => _onGridReorderStart('smart_$item', p),
-                      onReorderUpdate:
-                          (p) => _onGridReorderUpdate('smart_$item', p),
+                      onReorderStart: (p) =>
+                          _onGridReorderStart('smart_$item', p),
+                      onReorderUpdate: (p) =>
+                          _onGridReorderUpdate('smart_$item', p),
                       onReorderEnd: () => _onGridReorderEnd('smart_$item'),
-                      onReorderCancel:
-                          () => _onGridReorderCancel('smart_$item'),
+                      onReorderCancel: () =>
+                          _onGridReorderCancel('smart_$item'),
                     ),
                   ),
                 ),
@@ -6087,11 +6039,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           // on screen.
           AnimatedBuilder(
             animation: widget.dcvSlideController,
-            builder:
-                (context, child) => IgnorePointer(
-                  ignoring: widget.dcvSlideController.value < 0.5,
-                  child: child,
-                ),
+            builder: (context, child) => IgnorePointer(
+              ignoring: widget.dcvSlideController.value < 0.5,
+              child: child,
+            ),
             child: SlideTransition(
               position: Tween<Offset>(
                 begin: const Offset(1.0, 0.0),
@@ -6099,16 +6050,15 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               ).animate(slideCurve),
               child: Builder(
                 builder: (_) {
-                  final cat =
-                      widget.activeDCV == null
-                          ? null
-                          : [
-                            ..._userCategories,
-                            ..._pinnedUserCategories,
-                          ].cast<_UserCategory?>().firstWhere(
-                            (c) => c?.name == widget.activeDCV,
-                            orElse: () => null,
-                          );
+                  final cat = widget.activeDCV == null
+                      ? null
+                      : [
+                          ..._userCategories,
+                          ..._pinnedUserCategories,
+                        ].cast<_UserCategory?>().firstWhere(
+                          (c) => c?.name == widget.activeDCV,
+                          orElse: () => null,
+                        );
                   // Compute filtered events for this DCV using the AI matcher.
                   final List<ScheduledEvent> dcvEvents;
                   final dcvLabel = widget.activeDCV;
@@ -6156,19 +6106,17 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                           '',
                         };
                         final isUncat = _uncatIds.contains(catId);
-                        final knownCategoryIds =
-                            {
-                              ..._userCategories,
-                              ..._pinnedUserCategories,
-                            }.map((category) => category.id).toSet();
-                        dcvEvents =
-                            allEvents.where((e) {
-                              if (isUncat) {
-                                return _uncatIds.contains(e.categoryId) ||
-                                    !knownCategoryIds.contains(e.categoryId);
-                              }
-                              return e.categoryId == catId;
-                            }).toList();
+                        final knownCategoryIds = {
+                          ..._userCategories,
+                          ..._pinnedUserCategories,
+                        }.map((category) => category.id).toSet();
+                        dcvEvents = allEvents.where((e) {
+                          if (isUncat) {
+                            return _uncatIds.contains(e.categoryId) ||
+                                !knownCategoryIds.contains(e.categoryId);
+                          }
+                          return e.categoryId == catId;
+                        }).toList();
                       }
                     }
                   }
@@ -6190,10 +6138,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     customSectionNames: List<String>.of(
                       _dcvCustomSectionNames[dcvLabel] ?? const <String>[],
                     ),
-                    customSectionEventIds:
-                        _dcvCustomSectionEventIds[dcvLabel]
-                            ?.map(List<String>.of)
-                            .toList(),
+                    customSectionEventIds: _dcvCustomSectionEventIds[dcvLabel]
+                        ?.map(List<String>.of)
+                        .toList(),
                     onCustomSectionRenamed: (index, title) {
                       if (dcvLabel != null) {
                         _renameDcvSection(dcvLabel, index, title);
@@ -6278,8 +6225,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                   onSuggestionTap: _applySearchSuggestion,
                   eventTopPadding: 16,
                   eventTileWrapper: _wrapSearchEventTile,
-                  eventTilePressWrapper:
-                      (child) => _TilePressScale(child: child),
+                  eventTilePressWrapper: (child) =>
+                      _TilePressScale(child: child),
                 )
               else
                 const SliverFillRemaining(
@@ -6368,8 +6315,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                           activeStandardDcvCategoryId != null,
                       eventTopPadding: 16,
                       eventTileWrapper: _wrapSearchEventTile,
-                      eventTilePressWrapper:
-                          (child) => _TilePressScale(child: child),
+                      eventTilePressWrapper: (child) =>
+                          _TilePressScale(child: child),
                     ),
                   ),
                 ),
@@ -6520,8 +6467,9 @@ class _AnimatedCategoryGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final rowHeight = _eventsGridTileRowHeight(context);
     final rowCount = (entries.length / 2).ceil();
-    final totalHeight =
-        rowCount == 0 ? 0.0 : rowCount * rowHeight + (rowCount - 1) * _rowGap;
+    final totalHeight = rowCount == 0
+        ? 0.0
+        : rowCount * rowHeight + (rowCount - 1) * _rowGap;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -6636,10 +6584,9 @@ class _CategoryTile extends StatelessWidget {
       // renderCategoryColor: if `color` is the kCatBlue sentinel (stored when
       // the category was created with the default accent), resolve it to the
       // live accent so the DCV header always reflects the current user setting.
-      onTap:
-          onTap != null
-              ? () => onTap(data.label, renderCategoryColor(color, context))
-              : null,
+      onTap: onTap != null
+          ? () => onTap(data.label, renderCategoryColor(color, context))
+          : null,
       reorderable: reorderable,
       onReorderStart: onReorderStart,
       onReorderUpdate: onReorderUpdate,
@@ -7184,13 +7131,12 @@ class _PinnedUserTile extends StatelessWidget {
       onEdit: onEdit,
       onArchive: onArchive,
       onDelete: onDelete,
-      onTap:
-          onTap != null
-              ? () => onTap(
-                category.name,
-                renderCategoryColor(category.color, context),
-              )
-              : null,
+      onTap: onTap != null
+          ? () => onTap(
+              category.name,
+              renderCategoryColor(category.color, context),
+            )
+          : null,
       onReorderStart: onReorderStart,
       onReorderUpdate: onReorderUpdate,
       onReorderEnd: onReorderEnd,
@@ -7370,10 +7316,9 @@ double _eventsCategoryListRowHeight(
     // Measure the same trailing label that the row actually renders. Using a
     // fixed "999" width here makes rows with counts such as 0 or 7 reserve
     // extra width, causing their subtitles to wrap earlier than the widget.
-    final trailingLabel =
-        current.isGroupHeader
-            ? '${current.group?.memberIds.length ?? 0}'
-            : '${liveEventCounts?[current.category!.id] ?? 0}';
+    final trailingLabel = current.isGroupHeader
+        ? '${current.group?.memberIds.length ?? 0}'
+        : '${liveEventCounts?[current.category!.id] ?? 0}';
     final trailingWidth =
         _eventsMeasuredTextWidth(trailingLabel, countStyle, scaler) +
         8 +
@@ -7692,10 +7637,9 @@ class _CategoryCard extends StatelessWidget {
     final isDeleting = cat != null && deletingCategories.contains(cat);
     final isGroupTarget = cat != null && cat == dragGroupTargetCat;
 
-    final topY =
-        isDragging && dragLocalTopY != null
-            ? dragLocalTopY!
-            : _slotTopY(idx, context);
+    final topY = isDragging && dragLocalTopY != null
+        ? dragLocalTopY!
+        : _slotTopY(idx, context);
 
     final itemHeight = _eventsCategoryListRowHeight(
       context,
@@ -7709,14 +7653,13 @@ class _CategoryCard extends StatelessWidget {
     // Accordion-transitioning members and lifecycle-collapsed rows are hidden;
     // the dragging placeholder is always treated as visible so neighbours keep
     // their correct isFirst/isLast assignment during the drag.
-    final visibleItems =
-        items
-            .where(
-              (it) =>
-                  !_isSlotHidden(it, context) ||
-                  (it.isCategory && it.category == draggingCat),
-            )
-            .toList();
+    final visibleItems = items
+        .where(
+          (it) =>
+              !_isSlotHidden(it, context) ||
+              (it.isCategory && it.category == draggingCat),
+        )
+        .toList();
     final visIdx = visibleItems.indexOf(item);
     final isFirst = visIdx == 0;
     final isLast = visIdx == visibleItems.length - 1;
@@ -7742,24 +7685,21 @@ class _CategoryCard extends StatelessWidget {
         glowColor: glowColor,
         onTap: onToggleExpand != null ? () => onToggleExpand!(group.id) : null,
         onEditGroup: onEditGroup != null ? () => onEditGroup!(group) : null,
-        onDeleteGroup:
-            onDeleteGroup != null ? () => onDeleteGroup!(group) : null,
-        onReorderStart:
-            onGroupHeaderReorderStart != null
-                ? (p) => onGroupHeaderReorderStart!(group, p)
-                : null,
-        onReorderUpdate:
-            onGroupHeaderReorderUpdate != null
-                ? (p) => onGroupHeaderReorderUpdate!(group, p)
-                : null,
-        onReorderEnd:
-            onGroupHeaderReorderEnd != null
-                ? () => onGroupHeaderReorderEnd!(group)
-                : null,
-        onReorderCancel:
-            onGroupHeaderReorderCancel != null
-                ? () => onGroupHeaderReorderCancel!(group)
-                : null,
+        onDeleteGroup: onDeleteGroup != null
+            ? () => onDeleteGroup!(group)
+            : null,
+        onReorderStart: onGroupHeaderReorderStart != null
+            ? (p) => onGroupHeaderReorderStart!(group, p)
+            : null,
+        onReorderUpdate: onGroupHeaderReorderUpdate != null
+            ? (p) => onGroupHeaderReorderUpdate!(group, p)
+            : null,
+        onReorderEnd: onGroupHeaderReorderEnd != null
+            ? () => onGroupHeaderReorderEnd!(group)
+            : null,
+        onReorderCancel: onGroupHeaderReorderCancel != null
+            ? () => onGroupHeaderReorderCancel!(group)
+            : null,
       );
     } else if (cat != null) {
       row = _CategoryRow(
@@ -7775,13 +7715,16 @@ class _CategoryCard extends StatelessWidget {
         onEdit: onEdit != null ? () => onEdit!(cat) : null,
         onArchive: onArchive != null ? () => onArchive!(cat) : null,
         onDelete: onDelete != null ? () => onDelete!(cat) : null,
-        onReorderStart:
-            onReorderStart != null ? (p) => onReorderStart!(cat, p) : null,
-        onReorderUpdate:
-            onReorderUpdate != null ? (p) => onReorderUpdate!(cat, p) : null,
+        onReorderStart: onReorderStart != null
+            ? (p) => onReorderStart!(cat, p)
+            : null,
+        onReorderUpdate: onReorderUpdate != null
+            ? (p) => onReorderUpdate!(cat, p)
+            : null,
         onReorderEnd: onReorderEnd != null ? () => onReorderEnd!(cat) : null,
-        onReorderCancel:
-            onReorderCancel != null ? () => onReorderCancel!(cat) : null,
+        onReorderCancel: onReorderCancel != null
+            ? () => onReorderCancel!(cat)
+            : null,
       );
     } else {
       row = const SizedBox.shrink();
@@ -7794,11 +7737,10 @@ class _CategoryCard extends StatelessWidget {
         tween: Tween(begin: 0.0, end: 1.0),
         duration: const Duration(milliseconds: 260),
         curve: Curves.easeOutBack,
-        builder:
-            (context, t, child) => Opacity(
-              opacity: t.clamp(0.0, 1.0),
-              child: Transform.scale(scale: 0.85 + 0.15 * t, child: child),
-            ),
+        builder: (context, t, child) => Opacity(
+          opacity: t.clamp(0.0, 1.0),
+          child: Transform.scale(scale: 0.85 + 0.15 * t, child: child),
+        ),
         child: row,
       );
     } else {
@@ -7823,11 +7765,10 @@ class _CategoryCard extends StatelessWidget {
           tween: Tween(begin: 0.16, end: 0.0),
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
-          builder:
-              (context, alpha, child) => ColoredBox(
-                color: CupertinoColors.destructiveRed.withValues(alpha: alpha),
-                child: child,
-              ),
+          builder: (context, alpha, child) => ColoredBox(
+            color: CupertinoColors.destructiveRed.withValues(alpha: alpha),
+            child: child,
+          ),
           child: content,
         );
       }
@@ -7841,22 +7782,19 @@ class _CategoryCard extends StatelessWidget {
     // If we used ValueKey(item), a solo↔member transition changes the key
     // (kind is part of _FlatItem.hashCode), disposing the _CategoryContextMenu
     // and killing the in-flight gesture — leaving the overlay ghost frozen.
-    final slotKey =
-        item.isGroupHeader
-            ? ValueKey('grp-${item.group!.id}')
-            : ValueKey(item.category!.id);
+    final slotKey = item.isGroupHeader
+        ? ValueKey('grp-${item.group!.id}')
+        : ValueKey(item.category!.id);
     return AnimatedPositioned(
       key: slotKey,
-      duration:
-          isDragging
-              ? Duration.zero
-              : Duration(milliseconds: isDeleting || isNew ? 230 : _kAnimMs),
-      curve:
-          isNew
-              ? Curves.easeOut
-              : isDeleting
-              ? Curves.easeInCubic
-              : _kAnimCurve,
+      duration: isDragging
+          ? Duration.zero
+          : Duration(milliseconds: isDeleting || isNew ? 230 : _kAnimMs),
+      curve: isNew
+          ? Curves.easeOut
+          : isDeleting
+          ? Curves.easeInCubic
+          : _kAnimCurve,
       top: topY,
       left: 0,
       right: 0,
@@ -7933,13 +7871,12 @@ class _CategoryRow extends StatelessWidget {
       onEdit: onEdit,
       onArchive: onArchive,
       onDelete: onDelete,
-      onTap:
-          onTap != null
-              ? () => onTap(
-                category.name,
-                renderCategoryColor(category.color, context),
-              )
-              : null,
+      onTap: onTap != null
+          ? () => onTap(
+              category.name,
+              renderCategoryColor(category.color, context),
+            )
+          : null,
       onReorderStart: onReorderStart,
       onReorderUpdate: onReorderUpdate,
       onReorderEnd: onReorderEnd,
@@ -7951,8 +7888,8 @@ class _CategoryRow extends StatelessWidget {
         isLast: isLast,
         context: context,
       ),
-      previewBuilder:
-          (ctx) => _buildRowContent(isFirst: true, isLast: true, context: ctx),
+      previewBuilder: (ctx) =>
+          _buildRowContent(isFirst: true, isLast: true, context: ctx),
     );
     if (isGroupTarget) {
       content = AnimatedContainer(
@@ -8037,10 +7974,9 @@ class _CategoryRow extends StatelessWidget {
                         height: double.infinity,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment:
-                              category.description.isEmpty
-                                  ? MainAxisAlignment.center
-                                  : MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: category.description.isEmpty
+                              ? MainAxisAlignment.center
+                              : MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               category.name,
@@ -8177,8 +8113,8 @@ class _GroupRow extends StatelessWidget {
         isLast: isLast,
         context: context,
       ),
-      previewBuilder:
-          (ctx) => _buildRowContent(isFirst: true, isLast: true, context: ctx),
+      previewBuilder: (ctx) =>
+          _buildRowContent(isFirst: true, isLast: true, context: ctx),
     );
     if (isCollapseTarget) {
       content = AnimatedContainer(
@@ -8334,9 +8270,8 @@ class _DeleteGroupSheet {
     }
 
     entry = OverlayEntry(
-      builder:
-          (_) =>
-              _DeleteGroupSheetOverlay(groupName: groupName, onResult: close),
+      builder: (_) =>
+          _DeleteGroupSheetOverlay(groupName: groupName, onResult: close),
     );
     overlay.insert(entry);
     return completer.future;
@@ -8361,13 +8296,12 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
       shape: const BoundedSquircleStadiumBorder(),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
-    final sheetBorder =
-        CupertinoTheme.brightnessOf(context) == Brightness.dark
-            ? BorderSide(
-              color: resolveThemeColor(kTertiaryLabel, context),
-              width: 0.5,
-            )
-            : null;
+    final sheetBorder = CupertinoTheme.brightnessOf(context) == Brightness.dark
+        ? BorderSide(
+            color: resolveThemeColor(kTertiaryLabel, context),
+            width: 0.5,
+          )
+        : null;
 
     Widget button({
       required String label,
@@ -8466,8 +8400,8 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                       button(
                         label: 'Delete Group and Categories',
                         labelColor: CupertinoColors.destructiveRed,
-                        onTap:
-                            () => onResult(_DeleteGroupChoice.withCategories),
+                        onTap: () =>
+                            onResult(_DeleteGroupChoice.withCategories),
                       ),
                       const SizedBox(height: 8),
                       button(
@@ -8516,8 +8450,8 @@ class _AddCategoryButtonState extends State<_AddCategoryButton>
   void _openAddCategorySheet() {
     showRoundedCupertinoSheet<void>(
       context: context,
-      pageBuilder:
-          (context) => _AddCategorySheet(onSave: widget.onCategorySaved),
+      pageBuilder: (context) =>
+          _AddCategorySheet(onSave: widget.onCategorySaved),
     );
   }
 
@@ -8528,18 +8462,16 @@ class _AddCategoryButtonState extends State<_AddCategoryButton>
     return GestureDetector(
       onTapDown: (_) => _ctrl.forward(),
       onTapCancel: () => _ctrl.reverse(),
-      onTap:
-          () => _ctrl.forward(from: 0).then((_) {
-            if (mounted) _ctrl.reverse();
-            _openAddCategorySheet();
-          }),
+      onTap: () => _ctrl.forward(from: 0).then((_) {
+        if (mounted) _ctrl.reverse();
+        _openAddCategorySheet();
+      }),
       child: AnimatedBuilder(
         animation: _ctrl,
-        builder:
-            (context, child) => Transform.scale(
-              scale: 1.0 - 0.04 * _ctrl.value,
-              child: Opacity(opacity: 1.0 - 0.35 * _ctrl.value, child: child!),
-            ),
+        builder: (context, child) => Transform.scale(
+          scale: 1.0 - 0.04 * _ctrl.value,
+          child: Opacity(opacity: 1.0 - 0.35 * _ctrl.value, child: child!),
+        ),
         child: Container(
           clipBehavior: Clip.antiAlias,
           decoration: ShapeDecoration(
@@ -8691,60 +8623,56 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
     // Each category gets a checkmark when selected.
     // Categories already in a DIFFERENT group are grayed out (not selectable).
     final String? editingGroupId = widget.initial?.id;
-    List<ActionItem> _buildItems() =>
-        widget.allCategories.map((cat) {
-          // Is this cat locked inside another group that we're not editing?
-          final lockedInOther = widget.existingGroups.any(
-            (g) => g.id != editingGroupId && g.memberIds.contains(cat.id),
-          );
-          return ActionItem(
-            label: cat.name,
-            icon: SFIcons.sf_circle,
-            iconBuilder:
-                (color) => Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: lockedInOther ? kTertiaryLabel : cat.color,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-            labelColor: lockedInOther ? kTertiaryLabel : null,
-            checkmark: _selectedIds.contains(cat.id),
-            checkmarkColor: cat.color,
-            onTap:
-                lockedInOther
-                    ? null
-                    : () {
-                      setState(() {
-                        if (_selectedIds.contains(cat.id)) {
-                          if (_selectedIds.length > 2) {
-                            _selectedIds.remove(cat.id);
-                          }
-                          // Silently ignore attempts to deselect below 2.
-                        } else {
-                          _selectedIds.add(cat.id);
-                        }
-                      });
-                      // Rebuild the overlay so checkmarks update live.
-                      _pickerEntry?.markNeedsBuild();
-                    },
-          );
-        }).toList();
+    List<ActionItem> _buildItems() => widget.allCategories.map((cat) {
+      // Is this cat locked inside another group that we're not editing?
+      final lockedInOther = widget.existingGroups.any(
+        (g) => g.id != editingGroupId && g.memberIds.contains(cat.id),
+      );
+      return ActionItem(
+        label: cat.name,
+        icon: SFIcons.sf_circle,
+        iconBuilder: (color) => Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            color: lockedInOther ? kTertiaryLabel : cat.color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        labelColor: lockedInOther ? kTertiaryLabel : null,
+        checkmark: _selectedIds.contains(cat.id),
+        checkmarkColor: cat.color,
+        onTap: lockedInOther
+            ? null
+            : () {
+                setState(() {
+                  if (_selectedIds.contains(cat.id)) {
+                    if (_selectedIds.length > 2) {
+                      _selectedIds.remove(cat.id);
+                    }
+                    // Silently ignore attempts to deselect below 2.
+                  } else {
+                    _selectedIds.add(cat.id);
+                  }
+                });
+                // Rebuild the overlay so checkmarks update live.
+                _pickerEntry?.markNeedsBuild();
+              },
+      );
+    }).toList();
 
     _pickerEntry = OverlayEntry(
-      builder:
-          (ctx) => ActionMenuOverlay(
-            buttonRect: Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height),
-            isClosing: _pickerIsClosing,
-            onDismiss: _dismissPicker,
-            actions: _buildItems(),
-            panelWidth: kPickerPanelWidth,
-            chevronColumn: true,
-            anchorToRight: true,
-            labelFontSize: 15,
-            bouncingScroll: true,
-          ),
+      builder: (ctx) => ActionMenuOverlay(
+        buttonRect: Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height),
+        isClosing: _pickerIsClosing,
+        onDismiss: _dismissPicker,
+        actions: _buildItems(),
+        panelWidth: kPickerPanelWidth,
+        chevronColumn: true,
+        anchorToRight: true,
+        labelFontSize: 15,
+        bouncingScroll: true,
+      ),
     );
     Overlay.of(context).insert(_pickerEntry!);
   }
@@ -8753,11 +8681,10 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty || _selectedIds.length < 2) return;
     // Preserve order: use allCategories order filtered to selected IDs.
-    final orderedIds =
-        widget.allCategories
-            .where((c) => _selectedIds.contains(c.id))
-            .map((c) => c.id)
-            .toList();
+    final orderedIds = widget.allCategories
+        .where((c) => _selectedIds.contains(c.id))
+        .map((c) => c.id)
+        .toList();
     widget.onSave(
       _CategoryGroup(
         id:
@@ -8831,13 +8758,12 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                               // previous blue surface during the transition.
                               key: ValueKey<bool>(canSave),
                               icon: CupertinoIcons.checkmark,
-                              containerColor:
-                                  canSave
-                                      ? resolveAccentColor(context)
-                                      : resolveThemeColor(
-                                        kDisabledActionSurface,
-                                        context,
-                                      ),
+                              containerColor: canSave
+                                  ? resolveAccentColor(context)
+                                  : resolveThemeColor(
+                                      kDisabledActionSurface,
+                                      context,
+                                    ),
                               iconColor: CupertinoColors.white,
                               tapDelay: const Duration(milliseconds: 130),
                               onTap: canSave ? _save : () {},
@@ -9016,69 +8942,68 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                           ),
                           // ── Row 2: Include picker ─────────────────────────
                           Builder(
-                            builder:
-                                (rowCtx) => GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTap: () => _showIncludePicker(rowCtx),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 14,
-                                    ),
-                                    child: MinGapLabelValueRow(
-                                      label: 'Include',
-                                      labelStyle: TextStyle(
-                                        inherit: false,
-                                        color: resolveThemeColor(
-                                          kPrimaryLabel,
-                                          rowCtx,
-                                        ),
-                                        fontSize: 17,
-                                        fontFamily: kSFProText,
-                                        fontWeight: FontWeight.w400,
-                                        letterSpacing: kTracking17,
-                                        height: kLineHeight,
-                                      ),
-                                      value: includeValue,
-                                      valueStyle: TextStyle(
-                                        inherit: false,
-                                        color: resolveThemeColor(
-                                          kSecondaryLabel,
-                                          rowCtx,
-                                        ),
-                                        fontSize: 15,
-                                        fontFamily: kSFProText,
-                                        fontWeight: FontWeight.w400,
-                                        letterSpacing: kTracking17,
-                                        height: kLineHeight,
-                                      ),
-                                      trailing: AnimatedBuilder(
-                                        animation: _nameCtrl,
-                                        builder:
-                                            (_, __) => ModalSheetPickerTrailing(
-                                              value: includeValue,
-                                              style: TextStyle(
-                                                inherit: false,
-                                                color: resolveThemeColor(
-                                                  kSecondaryLabel,
-                                                  rowCtx,
-                                                ),
-                                                fontSize: 15,
-                                                fontFamily: kSFProText,
-                                                fontWeight: FontWeight.w400,
-                                                letterSpacing: kTracking17,
-                                                height: kLineHeight,
-                                              ),
-                                              chevronColor: resolveThemeColor(
-                                                kSecondaryLabel,
-                                                rowCtx,
-                                              ),
-                                            ),
-                                      ),
-                                      trailingExtraWidth: 16,
-                                    ),
-                                  ),
+                            builder: (rowCtx) => GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _showIncludePicker(rowCtx),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
                                 ),
+                                child: MinGapLabelValueRow(
+                                  label: 'Include',
+                                  labelStyle: TextStyle(
+                                    inherit: false,
+                                    color: resolveThemeColor(
+                                      kPrimaryLabel,
+                                      rowCtx,
+                                    ),
+                                    fontSize: 17,
+                                    fontFamily: kSFProText,
+                                    fontWeight: FontWeight.w400,
+                                    letterSpacing: kTracking17,
+                                    height: kLineHeight,
+                                  ),
+                                  value: includeValue,
+                                  valueStyle: TextStyle(
+                                    inherit: false,
+                                    color: resolveThemeColor(
+                                      kSecondaryLabel,
+                                      rowCtx,
+                                    ),
+                                    fontSize: 15,
+                                    fontFamily: kSFProText,
+                                    fontWeight: FontWeight.w400,
+                                    letterSpacing: kTracking17,
+                                    height: kLineHeight,
+                                  ),
+                                  trailing: AnimatedBuilder(
+                                    animation: _nameCtrl,
+                                    builder: (_, __) =>
+                                        ModalSheetPickerTrailing(
+                                          value: includeValue,
+                                          style: TextStyle(
+                                            inherit: false,
+                                            color: resolveThemeColor(
+                                              kSecondaryLabel,
+                                              rowCtx,
+                                            ),
+                                            fontSize: 15,
+                                            fontFamily: kSFProText,
+                                            fontWeight: FontWeight.w400,
+                                            letterSpacing: kTracking17,
+                                            height: kLineHeight,
+                                          ),
+                                          chevronColor: resolveThemeColor(
+                                            kSecondaryLabel,
+                                            rowCtx,
+                                          ),
+                                        ),
+                                  ),
+                                  trailingExtraWidth: 16,
+                                ),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -9136,10 +9061,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     text: widget.smartData?.label ?? widget.initial?.name ?? '',
   );
   late final _descCtrl = TextEditingController(
-    text:
-        widget.smartData != null
-            ? (_kSmartCategoryDescriptions[widget.smartData!.label] ?? '')
-            : (widget.initial?.description ?? ''),
+    text: widget.smartData != null
+        ? (_kSmartCategoryDescriptions[widget.smartData!.label] ?? '')
+        : (widget.initial?.description ?? ''),
   );
   late final _smartDescriptionCtrl = TextEditingController(
     text: widget.initial?.smartDescription ?? '',
@@ -9242,10 +9166,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
 
   /// Render-time resolved color: follows the live accent when [_selectedColor]
   /// is the default blue swatch (kCatBlue == kAccentColor).
-  Color get _resolvedSelectedColor =>
-      _selectedColorFollowsAccent
-          ? resolveAccentColor(context)
-          : resolveThemeColor(_selectedColor, context);
+  Color get _resolvedSelectedColor => _selectedColorFollowsAccent
+      ? resolveAccentColor(context)
+      : resolveThemeColor(_selectedColor, context);
 
   // Always read the persisted icon from the category object.
   // New categories (widget.initial == null) default to sf_list_bullet.
@@ -9488,18 +9411,17 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       _openPickerLabel = rowLabel;
     });
     _pickerEntry = OverlayEntry(
-      builder:
-          (ctx) => ActionMenuOverlay(
-            buttonRect: Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height),
-            isClosing: _pickerIsClosing,
-            onDismiss: _dismissPickerOverlay,
-            actions: items,
-            panelWidth: kPickerPanelWidth,
-            chevronColumn: true, // reserves checkmark column on every row
-            anchorToRight: true, // right edge of panel aligns to right of row
-            labelFontSize: 15, // modal-sheet mini panels use 15 px
-            bouncingScroll: true, // modal-sheet mini panels retain rubberband
-          ),
+      builder: (ctx) => ActionMenuOverlay(
+        buttonRect: Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height),
+        isClosing: _pickerIsClosing,
+        onDismiss: _dismissPickerOverlay,
+        actions: items,
+        panelWidth: kPickerPanelWidth,
+        chevronColumn: true, // reserves checkmark column on every row
+        anchorToRight: true, // right edge of panel aligns to right of row
+        labelFontSize: 15, // modal-sheet mini panels use 15 px
+        bouncingScroll: true, // modal-sheet mini panels retain rubberband
+      ),
     );
     Overlay.of(context).insert(_pickerEntry!);
   }
@@ -9516,26 +9438,25 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     void Function(String) onSelect, {
     Set<String> groupBreakBefore = const {},
     Color? checkmarkColor,
-  }) =>
-      options
-          .map(
-            (label) => ActionItem(
-              label: label,
-              icon: SFIcons.sf_circle, // suppressed below
-              iconBuilder: (_) => const SizedBox.shrink(),
-              checkmark: label == current,
-              checkmarkColor: checkmarkColor,
-              groupBreakAbove: groupBreakBefore.contains(label),
-              onTap: () {
-                onSelect(label);
-                Future.delayed(
-                  const Duration(milliseconds: 80),
-                  _dismissPickerOverlay,
-                );
-              },
-            ),
-          )
-          .toList();
+  }) => options
+      .map(
+        (label) => ActionItem(
+          label: label,
+          icon: SFIcons.sf_circle, // suppressed below
+          iconBuilder: (_) => const SizedBox.shrink(),
+          checkmark: label == current,
+          checkmarkColor: checkmarkColor,
+          groupBreakAbove: groupBreakBefore.contains(label),
+          onTap: () {
+            onSelect(label);
+            Future.delayed(
+              const Duration(milliseconds: 80),
+              _dismissPickerOverlay,
+            );
+          },
+        ),
+      )
+      .toList();
 
   List<ActionItem> _categoryTypeItems() => _makeItems(
     ['Standard', 'Shopping List', 'Smart Category'],
@@ -9626,26 +9547,25 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     void Function(String base) onSelect, {
     Set<String> groupBreakBefore = const {},
     Color? checkmarkColor,
-  }) =>
-      visibleBase
-          .map(
-            (base) => ActionItem(
-              label: _alertDisplayLabel(base),
-              icon: SFIcons.sf_circle,
-              iconBuilder: (_) => const SizedBox.shrink(),
-              checkmark: base == current,
-              checkmarkColor: checkmarkColor,
-              groupBreakAbove: groupBreakBefore.contains(base),
-              onTap: () {
-                onSelect(base);
-                Future.delayed(
-                  const Duration(milliseconds: 80),
-                  _dismissPickerOverlay,
-                );
-              },
-            ),
-          )
-          .toList();
+  }) => visibleBase
+      .map(
+        (base) => ActionItem(
+          label: _alertDisplayLabel(base),
+          icon: SFIcons.sf_circle,
+          iconBuilder: (_) => const SizedBox.shrink(),
+          checkmark: base == current,
+          checkmarkColor: checkmarkColor,
+          groupBreakAbove: groupBreakBefore.contains(base),
+          onTap: () {
+            onSelect(base);
+            Future.delayed(
+              const Duration(milliseconds: 80),
+              _dismissPickerOverlay,
+            );
+          },
+        ),
+      )
+      .toList();
 
   static const _kAlertAllBase = [
     'None',
@@ -9709,11 +9629,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   // 'None' (−1) is always included. When Alert = 'None', no restriction.
   List<ActionItem> _secondAlertItems() {
     final alertMins = _kAlertMinutes[_alert] ?? -1;
-    final visible =
-        _kAlertAllBase.where((base) {
-          final mins = _kAlertMinutes[base] ?? -1;
-          return mins == -1 || alertMins == -1 || mins < alertMins;
-        }).toList();
+    final visible = _kAlertAllBase.where((base) {
+      final mins = _kAlertMinutes[base] ?? -1;
+      return mins == -1 || alertMins == -1 || mins < alertMins;
+    }).toList();
     return _buildAlertActionItems(
       visible,
       _secondAlert,
@@ -9780,29 +9699,28 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             'usr-${DateTime.now().millisecondsSinceEpoch}',
         name: name,
         description: _descCtrl.text.trim(),
-        smartDescription:
-            _categoryType == 'Smart Category'
-                ? _smartDescriptionCtrl.text.trim()
-                : '',
+        smartDescription: _categoryType == 'Smart Category'
+            ? _smartDescriptionCtrl.text.trim()
+            : '',
         count: widget.initial?.count ?? 0,
         color: _selectedColor,
-        icon:
-            _selectedIcon is IconData
-                ? _selectedIcon as IconData
-                : SFIcons.sf_list_bullet,
+        icon: _selectedIcon is IconData
+            ? _selectedIcon as IconData
+            : SFIcons.sf_list_bullet,
         svgAsset: _selectedIcon is String ? _selectedIcon as String : null,
         categoryType: _categoryType,
-        presetLocation:
-            _startLocCtrl.text.trim().isEmpty
-                ? null
-                : _startLocCtrl.text.trim(),
-        presetDestination:
-            _destCtrl.text.trim().isEmpty ? null : _destCtrl.text.trim(),
+        presetLocation: _startLocCtrl.text.trim().isEmpty
+            ? null
+            : _startLocCtrl.text.trim(),
+        presetDestination: _destCtrl.text.trim().isEmpty
+            ? null
+            : _destCtrl.text.trim(),
         presetTravelTime: _travelTime == 'None' ? null : _travelTime,
         presetTravelMode: _travelMode == 'None' ? null : _travelMode,
         presetRepeat: _repeat == 'Never' ? null : _repeat,
-        presetRepeatEndType:
-            (_repeat != 'Never' && _endRepeat != 'Never') ? _endRepeat : null,
+        presetRepeatEndType: (_repeat != 'Never' && _endRepeat != 'Never')
+            ? _endRepeat
+            : null,
         presetRepeatEndDate: presetRepeatEndDateStr,
         presetCustomRepeatConfig: presetCustomRepeatCfg,
         presetAlert: _alert == 'None' ? null : _alert,
@@ -9831,22 +9749,21 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   // calendar-type tiles (Today/Tomorrow/This Week/Next Week).
   Widget _smartPreviewIcon(_TileData data) {
     const white = CupertinoColors.white;
-    final icon =
-        data.isCalendar
-            ? SizedBox(
-              width: 38,
-              height: 38,
-              child: SvgPicture.asset(
-                'assets/icons/calendar_frame.svg',
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFFFFFFFF),
-                  BlendMode.srcIn,
-                ),
+    final icon = data.isCalendar
+        ? SizedBox(
+            width: 38,
+            height: 38,
+            child: SvgPicture.asset(
+              'assets/icons/calendar_frame.svg',
+              colorFilter: const ColorFilter.mode(
+                Color(0xFFFFFFFF),
+                BlendMode.srcIn,
               ),
-            )
-            : (data.icon! == SFIcons.sf_music_note
-                ? _BeamedNoteIcon(size: 38, color: white)
-                : Icon(data.icon!, color: white, size: 38));
+            ),
+          )
+        : (data.icon! == SFIcons.sf_music_note
+              ? _BeamedNoteIcon(size: 38, color: white)
+              : Icon(data.icon!, color: white, size: 38));
 
     if (data.day == null) return icon;
 
@@ -9993,40 +9910,37 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       ),
     );
     return Builder(
-      builder:
-          (ctx) => GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap:
-                items != null
-                    ? () => _showPickerOverlay(ctx, label, items)
-                    : null,
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: verticalPadding,
-              ),
-              child: MinGapLabelValueRow(
-                label: label,
-                labelStyle: _kRowLabelStyle,
-                value: value,
-                valueStyle: _kRowValueStyle,
-                trailing: dimmedValue,
-                leading: leading,
-                leadingWidth: leading == null ? 0 : 32,
-                trailingExtraWidth: 16,
-              ),
-            ),
+      builder: (ctx) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: items != null
+            ? () => _showPickerOverlay(ctx, label, items)
+            : null,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: verticalPadding,
           ),
+          child: MinGapLabelValueRow(
+            label: label,
+            labelStyle: _kRowLabelStyle,
+            value: value,
+            valueStyle: _kRowValueStyle,
+            trailing: dimmedValue,
+            leading: leading,
+            leadingWidth: leading == null ? 0 : 32,
+            trailingExtraWidth: 16,
+          ),
+        ),
+      ),
     );
   }
 
   // ── Card 1: Identity ──────────────────────────────────────────────────────
 
   Widget _buildIdentityCard() {
-    final previewColor =
-        _isEmojiIcon(_effectiveIcon)
-            ? _emojiCircleColor(_resolvedSelectedColor)
-            : _resolvedSelectedColor;
+    final previewColor = _isEmojiIcon(_effectiveIcon)
+        ? _emojiCircleColor(_resolvedSelectedColor)
+        : _resolvedSelectedColor;
 
     return _card([
       // Static blue circle icon centred above the fields.
@@ -10060,16 +9974,15 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                       painter: _CircleAddHighlightPainter(previewColor),
                     ),
                   Center(
-                    child:
-                        _isSmart
-                            ? _smartPreviewIcon(widget.smartData!)
-                            : _renderCatIcon(
-                              _effectiveIcon,
-                              64,
-                              CupertinoColors.white,
-                              emojiOffsetY: 2,
-                              ctx: context,
-                            ),
+                    child: _isSmart
+                        ? _smartPreviewIcon(widget.smartData!)
+                        : _renderCatIcon(
+                            _effectiveIcon,
+                            64,
+                            CupertinoColors.white,
+                            emojiOffsetY: 2,
+                            ctx: context,
+                          ),
                   ),
                 ],
               ),
@@ -10112,17 +10025,16 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 // tab and every other CupertinoTextField in the app.
                 placeholder: 'Category Title',
                 placeholderStyle: _kPlaceholderStyle,
-                style:
-                    _isSmart
-                        ? _kFieldStyle.copyWith(
-                          color: resolveThemeColor(kSecondaryLabel, context),
-                        )
-                        : _titleCtrl.text.isNotEmpty
-                        ? _kFieldStyle.copyWith(
-                          color: _resolvedSelectedColor,
-                          fontWeight: FontWeight.w600,
-                        )
-                        : _kFieldStyle,
+                style: _isSmart
+                    ? _kFieldStyle.copyWith(
+                        color: resolveThemeColor(kSecondaryLabel, context),
+                      )
+                    : _titleCtrl.text.isNotEmpty
+                    ? _kFieldStyle.copyWith(
+                        color: _resolvedSelectedColor,
+                        fontWeight: FontWeight.w600,
+                      )
+                    : _kFieldStyle,
                 textAlign: TextAlign.center,
                 cursorColor: _resolvedSelectedColor,
                 // 37 px on each side keeps text centred; no prefix/suffix slots.
@@ -10189,12 +10101,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 selectionControls: _selectionControls,
                 placeholder: 'Subtitle',
                 placeholderStyle: _kPlaceholderStyle,
-                style:
-                    _isSmart
-                        ? _kFieldStyle.copyWith(
-                          color: resolveThemeColor(kSecondaryLabel, context),
-                        )
-                        : _kFieldStyle,
+                style: _isSmart
+                    ? _kFieldStyle.copyWith(
+                        color: resolveThemeColor(kSecondaryLabel, context),
+                      )
+                    : _kFieldStyle,
                 textAlign: TextAlign.center,
                 cursorColor: _resolvedSelectedColor,
                 padding: const EdgeInsets.symmetric(
@@ -10275,18 +10186,17 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     );
     return AnimatedBuilder(
       animation: _smartCategoryCtrl,
-      builder:
-          (context, child) => _card([
-            child!,
-            SizeTransition(
-              sizeFactor: _smartCategoryCtrl,
-              axisAlignment: 1.0,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [_sep(), _buildSmartDescriptionRow()],
-              ),
-            ),
-          ]),
+      builder: (context, child) => _card([
+        child!,
+        SizeTransition(
+          sizeFactor: _smartCategoryCtrl,
+          axisAlignment: 1.0,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [_sep(), _buildSmartDescriptionRow()],
+          ),
+        ),
+      ]),
       child: _pickerRow(
         'Category Type',
         _categoryType,
@@ -10312,10 +10222,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         80.0,
         constraints.maxWidth - 16.0 - 12.0 - 10.0 - clearSlotSize,
       );
-      final ruleText =
-          _smartDescriptionCtrl.text.isEmpty
-              ? 'Describe what belongs here…'
-              : _smartDescriptionCtrl.text;
+      final ruleText = _smartDescriptionCtrl.text.isEmpty
+          ? 'Describe what belongs here…'
+          : _smartDescriptionCtrl.text;
       final contentHeight = _eventsMeasuredTextHeight(
         ruleText,
         _kPlaceholderStyle,
@@ -10553,62 +10462,59 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         duration: const Duration(milliseconds: 180),
         switchInCurve: Curves.easeOut,
         switchOutCurve: Curves.easeIn,
-        layoutBuilder:
-            (currentChild, previousChildren) => Stack(
-              alignment: Alignment.centerRight,
-              children: [
-                ...previousChildren,
-                if (currentChild != null) currentChild,
-              ],
-            ),
-        transitionBuilder:
-            (child, animation) =>
-                FadeTransition(opacity: animation, child: child),
-        child:
-            hasText
-                ? SizedBox(
-                  key: const ValueKey('location-clear'),
-                  width: actionSize,
-                  height: actionSize,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      ctrl.clear();
-                      setState(() {});
-                    },
-                    child: Center(
-                      child: Icon(
-                        kSearchClearCircleIcon,
-                        color: kEmptyStateIcon,
-                        size: clearIconSize,
-                      ),
+        layoutBuilder: (currentChild, previousChildren) => Stack(
+          alignment: Alignment.centerRight,
+          children: [
+            ...previousChildren,
+            if (currentChild != null) currentChild,
+          ],
+        ),
+        transitionBuilder: (child, animation) =>
+            FadeTransition(opacity: animation, child: child),
+        child: hasText
+            ? SizedBox(
+                key: const ValueKey('location-clear'),
+                width: actionSize,
+                height: actionSize,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    ctrl.clear();
+                    setState(() {});
+                  },
+                  child: Center(
+                    child: Icon(
+                      kSearchClearCircleIcon,
+                      color: kEmptyStateIcon,
+                      size: clearIconSize,
                     ),
                   ),
-                )
-                : SizedBox(
-                  key: const ValueKey('location-pin'),
-                  width: actionSize,
-                  height: actionSize,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => _openMaps(ctrl.text),
-                    child: Center(
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: _resolvedSelectedColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: _renderCatIcon(
-                          SFIcons.sf_mappin,
-                          28,
-                          CupertinoColors.white,
-                        ),
+                ),
+              )
+            : SizedBox(
+                key: const ValueKey('location-pin'),
+                width: actionSize,
+                height: actionSize,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _openMaps(ctrl.text),
+                  child: Center(
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: _resolvedSelectedColor,
+                        shape: BoxShape.circle,
+                      ),
+                      child: _renderCatIcon(
+                        SFIcons.sf_mappin,
+                        28,
+                        CupertinoColors.white,
                       ),
                     ),
                   ),
                 ),
+              ),
       ),
     );
   }
@@ -10672,11 +10578,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     if (v == 'Custom') {
       final result = await showRoundedCupertinoSheet<_CustomRepeatResult?>(
         context: context,
-        pageBuilder:
-            (ctx) => _CustomRepeatSheet(
-              accentColor: _resolvedSelectedColor,
-              config: _savedCustomConfig,
-            ),
+        pageBuilder: (ctx) => _CustomRepeatSheet(
+          accentColor: _resolvedSelectedColor,
+          config: _savedCustomConfig,
+        ),
       );
       if (result != null && mounted) {
         setState(() {
@@ -10763,10 +10668,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     _monthSlideCtrl.forward(from: 0).then((_) {
       if (!mounted) return;
       setState(() {
-        _calendarMonth =
-            next
-                ? DateTime(_calendarMonth.year, _calendarMonth.month + 1)
-                : DateTime(_calendarMonth.year, _calendarMonth.month - 1);
+        _calendarMonth = next
+            ? DateTime(_calendarMonth.year, _calendarMonth.month + 1)
+            : DateTime(_calendarMonth.year, _calendarMonth.month - 1);
         _calendarDragOffset = 0;
         _monthSlideTween = null;
       });
@@ -10830,10 +10734,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             // Accent while picker is open, primary when closed.
             // Safe to read _datePickerCtrl.value because this method is
             // called inside AnimatedBuilder(animation: _datePickerCtrl).
-            color:
-                _datePickerCtrl.value > 0
-                    ? _resolvedSelectedColor
-                    : resolveThemeColor(kPrimaryLabel, context),
+            color: _datePickerCtrl.value > 0
+                ? _resolvedSelectedColor
+                : resolveThemeColor(kPrimaryLabel, context),
             fontSize: 15,
             fontFamily: kSFProText,
             fontWeight: FontWeight.w500,
@@ -11021,10 +10924,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   '${_kMonthNames[month.month - 1]} ${month.year}',
                   style: TextStyle(
                     inherit: false,
-                    color:
-                        isCurrent
-                            ? _resolvedSelectedColor
-                            : resolveThemeColor(kPrimaryLabel, context),
+                    color: isCurrent
+                        ? _resolvedSelectedColor
+                        : resolveThemeColor(kPrimaryLabel, context),
                     fontSize: 16,
                     fontFamily: kSFProText,
                     fontWeight: FontWeight.w600,
@@ -11119,29 +11021,25 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
-            children:
-                _kDayLabels
-                    .map(
-                      (d) => Expanded(
-                        child: Center(
-                          child: Text(
-                            d,
-                            style: TextStyle(
-                              inherit: false,
-                              color: resolveThemeColor(
-                                kSecondaryLabel,
-                                context,
-                              ),
-                              fontSize: 11,
-                              fontFamily: kSFProText,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: kTracking17,
-                            ),
-                          ),
+            children: _kDayLabels
+                .map(
+                  (d) => Expanded(
+                    child: Center(
+                      child: Text(
+                        d,
+                        style: TextStyle(
+                          inherit: false,
+                          color: resolveThemeColor(kSecondaryLabel, context),
+                          fontSize: 11,
+                          fontFamily: kSFProText,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: kTracking17,
                         ),
                       ),
-                    )
-                    .toList(),
+                    ),
+                  ),
+                )
+                .toList(),
           ),
         ),
         const SizedBox(height: 2),
@@ -11168,154 +11066,154 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
           AnimatedSize(
             duration: const Duration(milliseconds: 280),
             curve: Curves.easeInOut,
-            child:
-                _calendarBarrelMode
-                    // ── CupertinoDatePicker barrel ────────────────────────────
-                    ? SizedBox(
-                      height: cupertinoDatePickerHeight(context),
-                      child: CupertinoTheme(
-                        data: CupertinoTheme.of(context).copyWith(
-                          primaryColor: _resolvedSelectedColor,
-                          textTheme: CupertinoTheme.of(
-                            context,
-                          ).textTheme.copyWith(
-                            dateTimePickerTextStyle: TextStyle(
-                              inherit: false,
-                              fontFamily: kSFProText,
-                              fontSize: cupertinoDatePickerFontSize(context),
-                              color: resolveThemeColor(kPrimaryLabel, context),
-                              letterSpacing: kTracking17,
+            child: _calendarBarrelMode
+                // ── CupertinoDatePicker barrel ────────────────────────────
+                ? SizedBox(
+                    height: cupertinoDatePickerHeight(context),
+                    child: CupertinoTheme(
+                      data: CupertinoTheme.of(context).copyWith(
+                        primaryColor: _resolvedSelectedColor,
+                        textTheme: CupertinoTheme.of(context).textTheme
+                            .copyWith(
+                              dateTimePickerTextStyle: TextStyle(
+                                inherit: false,
+                                fontFamily: kSFProText,
+                                fontSize: cupertinoDatePickerFontSize(context),
+                                color: resolveThemeColor(
+                                  kPrimaryLabel,
+                                  context,
+                                ),
+                                letterSpacing: kTracking17,
+                              ),
                             ),
-                          ),
-                        ),
-                        child: CupertinoDatePicker(
-                          itemExtent: cupertinoDatePickerItemExtent(context),
-                          mode: CupertinoDatePickerMode.date,
-                          initialDateTime: _endDate,
-                          minimumDate: DateTime(
-                            DateTime.now().year,
-                            DateTime.now().month,
-                            DateTime.now().day,
-                          ),
-                          onDateTimeChanged:
-                              (dt) => setState(() {
-                                _endDate = dt;
-                                _calendarMonth = DateTime(dt.year, dt.month);
-                              }),
-                        ),
                       ),
-                    )
-                    // ── 3-panel sliding month grid ────────────────────────────
-                    // Prev / current / next panels sit side-by-side. Each panel
-                    // shows its own header so nothing pops in when it lands as
-                    // centre; the centre slot also has the persistent header above
-                    // so it skips rendering one via showHeader: false.
-                    : GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onHorizontalDragStart: (_) {
-                        if (_monthSlideTween != null) return;
-                        setState(() => _calendarDragOffset = 0.0);
-                      },
-                      onHorizontalDragUpdate: (d) {
-                        if (_monthSlideTween != null) return;
-                        setState(() => _calendarDragOffset += d.delta.dx);
-                      },
-                      onHorizontalDragEnd: (d) {
-                        if (_monthSlideTween != null) return;
-                        final v = d.primaryVelocity ?? 0;
-                        if (v < -200 || _calendarDragOffset < -40) {
-                          _commitMonthSlide(next: true);
-                        } else if (v > 200 || _calendarDragOffset > 40) {
-                          _commitMonthSlide(next: false);
-                        } else {
-                          _snapBackMonthSlide();
-                        }
-                      },
-                      // LayoutBuilder provides the single-panel width so we can
-                      // compute absolute pixel offsets for each panel.
-                      child: LayoutBuilder(
-                        builder: (ctx, constraints) {
-                          _calPanelWidth = constraints.maxWidth;
-                          // Stack-based approach: each panel is Transform.translate'd
-                          // so it "orbits" around _calendarDragOffset without
-                          // affecting layout.  Stack size = single-panel size.
-                          // ClipRect hides the off-screen panels.
-                          // Prev + next panels are Positioned.fill + OverflowBox so
-                          // they never contribute to the Stack's intrinsic height —
-                          // only the current panel does, keeping the card exactly the
-                          // right height for the visible month.  ClipRect hides any
-                          // vertical overflow from adjacent months with more rows.
-                          return ClipRect(
-                            child: Stack(
-                              children: [
-                                // Prev panel — out of layout flow, can overflow vertically.
-                                Positioned.fill(
-                                  child: IgnorePointer(
-                                    child: OverflowBox(
-                                      alignment: Alignment.topLeft,
-                                      maxHeight: double.infinity,
-                                      child: Transform.translate(
-                                        offset: Offset(
-                                          -_calPanelWidth + _calendarDragOffset,
-                                          0,
-                                        ),
-                                        child: SizedBox(
-                                          width: _calPanelWidth,
-                                          child: _buildMonthPanel(
-                                            prevMonth,
-                                            today,
-                                            isCenter: false,
-                                            showHeader: false,
-                                          ),
+                      child: CupertinoDatePicker(
+                        itemExtent: cupertinoDatePickerItemExtent(context),
+                        mode: CupertinoDatePickerMode.date,
+                        initialDateTime: _endDate,
+                        minimumDate: DateTime(
+                          DateTime.now().year,
+                          DateTime.now().month,
+                          DateTime.now().day,
+                        ),
+                        onDateTimeChanged: (dt) => setState(() {
+                          _endDate = dt;
+                          _calendarMonth = DateTime(dt.year, dt.month);
+                        }),
+                      ),
+                    ),
+                  )
+                // ── 3-panel sliding month grid ────────────────────────────
+                // Prev / current / next panels sit side-by-side. Each panel
+                // shows its own header so nothing pops in when it lands as
+                // centre; the centre slot also has the persistent header above
+                // so it skips rendering one via showHeader: false.
+                : GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onHorizontalDragStart: (_) {
+                      if (_monthSlideTween != null) return;
+                      setState(() => _calendarDragOffset = 0.0);
+                    },
+                    onHorizontalDragUpdate: (d) {
+                      if (_monthSlideTween != null) return;
+                      setState(() => _calendarDragOffset += d.delta.dx);
+                    },
+                    onHorizontalDragEnd: (d) {
+                      if (_monthSlideTween != null) return;
+                      final v = d.primaryVelocity ?? 0;
+                      if (v < -200 || _calendarDragOffset < -40) {
+                        _commitMonthSlide(next: true);
+                      } else if (v > 200 || _calendarDragOffset > 40) {
+                        _commitMonthSlide(next: false);
+                      } else {
+                        _snapBackMonthSlide();
+                      }
+                    },
+                    // LayoutBuilder provides the single-panel width so we can
+                    // compute absolute pixel offsets for each panel.
+                    child: LayoutBuilder(
+                      builder: (ctx, constraints) {
+                        _calPanelWidth = constraints.maxWidth;
+                        // Stack-based approach: each panel is Transform.translate'd
+                        // so it "orbits" around _calendarDragOffset without
+                        // affecting layout.  Stack size = single-panel size.
+                        // ClipRect hides the off-screen panels.
+                        // Prev + next panels are Positioned.fill + OverflowBox so
+                        // they never contribute to the Stack's intrinsic height —
+                        // only the current panel does, keeping the card exactly the
+                        // right height for the visible month.  ClipRect hides any
+                        // vertical overflow from adjacent months with more rows.
+                        return ClipRect(
+                          child: Stack(
+                            children: [
+                              // Prev panel — out of layout flow, can overflow vertically.
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  child: OverflowBox(
+                                    alignment: Alignment.topLeft,
+                                    maxHeight: double.infinity,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        -_calPanelWidth + _calendarDragOffset,
+                                        0,
+                                      ),
+                                      child: SizedBox(
+                                        width: _calPanelWidth,
+                                        child: _buildMonthPanel(
+                                          prevMonth,
+                                          today,
+                                          isCenter: false,
+                                          showHeader: false,
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
-                                // Next panel — same approach.
-                                Positioned.fill(
-                                  child: IgnorePointer(
-                                    child: OverflowBox(
-                                      alignment: Alignment.topLeft,
-                                      maxHeight: double.infinity,
-                                      child: Transform.translate(
-                                        offset: Offset(
-                                          _calPanelWidth + _calendarDragOffset,
-                                          0,
-                                        ),
-                                        child: SizedBox(
-                                          width: _calPanelWidth,
-                                          child: _buildMonthPanel(
-                                            nextMonth,
-                                            today,
-                                            isCenter: false,
-                                            showHeader: false,
-                                          ),
+                              ),
+                              // Next panel — same approach.
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  child: OverflowBox(
+                                    alignment: Alignment.topLeft,
+                                    maxHeight: double.infinity,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        _calPanelWidth + _calendarDragOffset,
+                                        0,
+                                      ),
+                                      child: SizedBox(
+                                        width: _calPanelWidth,
+                                        child: _buildMonthPanel(
+                                          nextMonth,
+                                          today,
+                                          isCenter: false,
+                                          showHeader: false,
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
-                                // Current panel — non-positioned, determines Stack height.
-                                // Rendered last so it paints on top of any adjacent overflow.
-                                Transform.translate(
-                                  offset: Offset(_calendarDragOffset, 0),
-                                  child: SizedBox(
-                                    width: _calPanelWidth,
-                                    child: _buildMonthPanel(
-                                      _calendarMonth,
-                                      today,
-                                      isCenter: true,
-                                      showHeader: false,
-                                    ),
+                              ),
+                              // Current panel — non-positioned, determines Stack height.
+                              // Rendered last so it paints on top of any adjacent overflow.
+                              Transform.translate(
+                                offset: Offset(_calendarDragOffset, 0),
+                                child: SizedBox(
+                                  width: _calPanelWidth,
+                                  child: _buildMonthPanel(
+                                    _calendarMonth,
+                                    today,
+                                    isCenter: true,
+                                    showHeader: false,
                                   ),
                                 ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ), // GestureDetector
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ), // GestureDetector
           ), // AnimatedSize
         ], // Column children
       ), // Column
@@ -11326,30 +11224,25 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
 
   Widget _buildLocationSection() => AnimatedBuilder(
     animation: _travelModeCtrl,
-    builder:
-        (ctx, _) => _card([
-          _locationRow(_startLocCtrl, 'Starting Location', _startLocFocus),
-          _sep(),
-          _locationRow(_destCtrl, 'Destination', _destFocus),
-          _sep(),
-          _pickerRow('Travel Time', _travelTime, items: _travelTimeItems()),
-          // Travel Mode expands inside the same card as Travel Time.
-          SizeTransition(
-            sizeFactor: _travelModeCtrl,
-            axisAlignment: 1.0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _sep(),
-                _pickerRow(
-                  'Travel Mode',
-                  _travelMode,
-                  items: _travelModeItems(),
-                ),
-              ],
-            ),
-          ),
-        ]),
+    builder: (ctx, _) => _card([
+      _locationRow(_startLocCtrl, 'Starting Location', _startLocFocus),
+      _sep(),
+      _locationRow(_destCtrl, 'Destination', _destFocus),
+      _sep(),
+      _pickerRow('Travel Time', _travelTime, items: _travelTimeItems()),
+      // Travel Mode expands inside the same card as Travel Time.
+      SizeTransition(
+        sizeFactor: _travelModeCtrl,
+        axisAlignment: 1.0,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _sep(),
+            _pickerRow('Travel Mode', _travelMode, items: _travelModeItems()),
+          ],
+        ),
+      ),
+    ]),
   );
 
   // ── Card 4: Repeat ────────────────────────────────────────────────────────
@@ -11360,65 +11253,63 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       _endDateCtrl,
       _datePickerCtrl,
     ]),
-    builder:
-        (ctx, _) => _card([
-          _pickerRow('Repeat', _repeat, items: _repeatItems()),
-          SizeTransition(
-            sizeFactor: _endRepeatCtrl,
-            axisAlignment: 1.0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _sep(),
-                _pickerRow('End Repeat', _endRepeat, items: _endRepeatItems()),
-                SizeTransition(
-                  sizeFactor: _endDateCtrl,
-                  axisAlignment: 1.0,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _sep(),
-                      _buildEndDateRow(),
-                      SizeTransition(
-                        sizeFactor: _datePickerCtrl,
-                        axisAlignment: 1.0,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [_sep(), _buildInlineMonthPicker()],
-                        ),
-                      ),
-                    ],
+    builder: (ctx, _) => _card([
+      _pickerRow('Repeat', _repeat, items: _repeatItems()),
+      SizeTransition(
+        sizeFactor: _endRepeatCtrl,
+        axisAlignment: 1.0,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _sep(),
+            _pickerRow('End Repeat', _endRepeat, items: _endRepeatItems()),
+            SizeTransition(
+              sizeFactor: _endDateCtrl,
+              axisAlignment: 1.0,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _sep(),
+                  _buildEndDateRow(),
+                  SizeTransition(
+                    sizeFactor: _datePickerCtrl,
+                    axisAlignment: 1.0,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [_sep(), _buildInlineMonthPicker()],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ]),
+          ],
+        ),
+      ),
+    ]),
   );
 
   // ── Card 5: Alerts ────────────────────────────────────────────────────────
 
   Widget _buildAlertsSection() => AnimatedBuilder(
     animation: _secondAlertCtrl,
-    builder:
-        (ctx, _) => _card([
-          _pickerRow('Alert', _alertDisplayLabel(_alert), items: _alertItems()),
-          SizeTransition(
-            sizeFactor: _secondAlertCtrl,
-            axisAlignment: 1.0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _sep(),
-                _pickerRow(
-                  'Second Alert',
-                  _alertDisplayLabel(_secondAlert),
-                  items: _secondAlertItems(),
-                ),
-              ],
+    builder: (ctx, _) => _card([
+      _pickerRow('Alert', _alertDisplayLabel(_alert), items: _alertItems()),
+      SizeTransition(
+        sizeFactor: _secondAlertCtrl,
+        axisAlignment: 1.0,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _sep(),
+            _pickerRow(
+              'Second Alert',
+              _alertDisplayLabel(_secondAlert),
+              items: _secondAlertItems(),
             ),
-          ),
-        ]),
+          ],
+        ),
+      ),
+    ]),
   );
 
   // ── Card 6: Color picker ──────────────────────────────────────────────────
@@ -11427,10 +11318,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     // Resolve both colours to the current brightness before comparing so that
     // the ring correctly tracks the live accent even when _selectedColor is
     // still stored as kCatBlue (the default-accent sentinel value).
-    final resolvedC =
-        c is CupertinoDynamicColor
-            ? CupertinoDynamicColor.resolve(c, context)
-            : c;
+    final resolvedC = c is CupertinoDynamicColor
+        ? CupertinoDynamicColor.resolve(c, context)
+        : c;
     final selected = resolvedC.value == _resolvedSelectedColor.value;
     // Ring colour = empty-state icon colour at 50 % opacity — local only,
     // does not affect any other kEmptyStateIcon usage in the app.
@@ -11451,29 +11341,17 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       peakScale: 1.10,
       child: AspectRatio(
         aspectRatio: 1,
-        child:
-            selected
-                // Ring sits outside the circle. Values are doubled from the
-                // initial design: 1.0 outer + 4.0 ring + 4.0 gap each side.
-                ? Padding(
-                  padding: const EdgeInsets.all(1.0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: ringColor, width: 3.0),
-                    ),
-                    padding: const EdgeInsets.all(3.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: resolveThemeColor(c, context),
-                      ),
-                    ),
+        child: selected
+            // Ring sits outside the circle. Values are doubled from the
+            // initial design: 1.0 outer + 4.0 ring + 4.0 gap each side.
+            ? Padding(
+                padding: const EdgeInsets.all(1.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: ringColor, width: 3.0),
                   ),
-                )
-                // Unselected: plain circle with 4.5 px breathing room.
-                : Padding(
-                  padding: const EdgeInsets.all(4.5),
+                  padding: const EdgeInsets.all(3.0),
                   child: Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
@@ -11481,6 +11359,17 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     ),
                   ),
                 ),
+              )
+            // Unselected: plain circle with 4.5 px breathing room.
+            : Padding(
+                padding: const EdgeInsets.all(4.5),
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: resolveThemeColor(c, context),
+                  ),
+                ),
+              ),
       ),
     );
   }
@@ -11546,11 +11435,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         ScaleGestureRecognizer:
             GestureRecognizerFactoryWithHandlers<ScaleGestureRecognizer>(
               () => ScaleGestureRecognizer(debugOwner: this),
-              (r) =>
-                  r
-                    ..onStart = _onIconPinchStart
-                    ..onUpdate = _onIconPinchUpdate
-                    ..onEnd = (_) => _pinchHandled = false,
+              (r) => r
+                ..onStart = _onIconPinchStart
+                ..onUpdate = _onIconPinchUpdate
+                ..onEnd = (_) => _pinchHandled = false,
             ),
       },
       child: _card([
@@ -11591,38 +11479,32 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                         final isEmojiTile = icon == _kEmojiLightSvg;
                         // Selected when an emoji has been chosen (emoji tile) or
                         // the icon path matches the current selection (others).
-                        final selected =
-                            isEmojiTile
-                                ? _isEmojiIcon(_selectedIcon)
-                                : icon == _selectedIcon;
+                        final selected = isEmojiTile
+                            ? _isEmojiIcon(_selectedIcon)
+                            : icon == _selectedIcon;
 
                         // Emoji tile always shows the brightness-resolved generic
                         // emoji SVG — never the picked emoji character.  Other
                         // tiles always show their own SVG / IconData.
-                        final displayIcon =
-                            isEmojiTile
-                                ? _resolveIconSvg(_kEmojiLightSvg, brightness)
-                                : icon;
+                        final displayIcon = isEmojiTile
+                            ? _resolveIconSvg(_kEmojiLightSvg, brightness)
+                            : icon;
 
                         // Emoji tile: icon is always category colour (both modes).
                         //   Unselected → resolved pill-color container.
                         //   Selected   → 40 % category colour container.
                         // Other tiles: unselected → kPrimaryLabel icon, pill-color bg.
                         //              selected   → white icon, solid category colour bg.
-                        final iconColor =
-                            isEmojiTile
-                                ? _resolvedSelectedColor
-                                : (selected
-                                    ? CupertinoColors.white
-                                    : primaryLabel);
-                        final circleBg =
-                            isEmojiTile
-                                ? (selected
-                                    ? _resolvedSelectedColor.withOpacity(0.30)
-                                    : iconBackground)
-                                : (selected
-                                    ? _resolvedSelectedColor
-                                    : iconBackground);
+                        final iconColor = isEmojiTile
+                            ? _resolvedSelectedColor
+                            : (selected ? CupertinoColors.white : primaryLabel);
+                        final circleBg = isEmojiTile
+                            ? (selected
+                                  ? _resolvedSelectedColor.withOpacity(0.30)
+                                  : iconBackground)
+                            : (selected
+                                  ? _resolvedSelectedColor
+                                  : iconBackground);
 
                         return AnimatedPositioned(
                           key: ValueKey(i),
@@ -11660,12 +11542,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                               );
 
                               return GelBloomButton(
-                                onTap:
-                                    isEmojiTile
-                                        ? () => _openEmojiPicker(context)
-                                        : () => setState(
-                                          () => _selectedIcon = icon,
-                                        ),
+                                onTap: isEmojiTile
+                                    ? () => _openEmojiPicker(context)
+                                    : () =>
+                                          setState(() => _selectedIcon = icon),
                                 peakScale: 1.12,
                                 child: circle,
                               );
@@ -11689,10 +11569,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   void _openEmojiPicker(BuildContext context) {
     showRoundedCupertinoSheet<void>(
       context: context,
-      pageBuilder:
-          (_) => EmojiPickerSheet(
-            onEmojiSelected: (emoji) => setState(() => _selectedIcon = emoji),
-          ),
+      pageBuilder: (_) => EmojiPickerSheet(
+        onEmojiSelected: (emoji) => setState(() => _selectedIcon = emoji),
+      ),
     );
   }
 
@@ -11750,13 +11629,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                         right: _kHeaderEdge,
                         child: _ModalCircleButton(
                           icon: CupertinoIcons.checkmark,
-                          containerColor:
-                              _titleCtrl.text.trim().isEmpty
-                                  ? resolveThemeColor(
-                                    kDisabledActionSurface,
-                                    context,
-                                  )
-                                  : _resolvedSelectedColor,
+                          containerColor: _titleCtrl.text.trim().isEmpty
+                              ? resolveThemeColor(
+                                  kDisabledActionSurface,
+                                  context,
+                                )
+                              : _resolvedSelectedColor,
                           iconColor: CupertinoColors.white,
                           tapDelay: const Duration(milliseconds: 130),
                           onTap: _titleCtrl.text.trim().isEmpty ? () {} : _save,
@@ -11796,27 +11674,27 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                             alignment: Alignment.topCenter,
                             child:
                                 (_categoryType == 'Shopping List' ||
-                                        _categoryType == 'Smart Category')
-                                    ? SizedBox(
-                                      width: double.infinity,
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 8,
-                                          left: 16,
-                                        ),
-                                        child: Text(
-                                          _categoryType == 'Shopping List'
-                                              ? _kFooterGroceries
-                                              : _kFooterSmartCategory,
-                                          style: _kContextFooterStyle(context),
-                                          textAlign: TextAlign.left,
-                                        ),
+                                    _categoryType == 'Smart Category')
+                                ? SizedBox(
+                                    width: double.infinity,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: 8,
+                                        left: 16,
                                       ),
-                                    )
-                                    : const SizedBox(
-                                      width: double.infinity,
-                                      height: 0,
+                                      child: Text(
+                                        _categoryType == 'Shopping List'
+                                            ? _kFooterGroceries
+                                            : _kFooterSmartCategory,
+                                        style: _kContextFooterStyle(context),
+                                        textAlign: TextAlign.left,
+                                      ),
                                     ),
+                                  )
+                                : const SizedBox(
+                                    width: double.infinity,
+                                    height: 0,
+                                  ),
                           ),
                           SizeTransition(
                             sizeFactor: ReverseAnimation(_smartCategoryCtrl),
@@ -11953,18 +11831,17 @@ double _pickerSfGlyphSize(IconData icon) {
 }
 
 // Font weight for SF icons — shared by both picker and all render sites.
-FontWeight _pickerSfFontWeight(IconData icon) =>
-    icon == SFIcons.sf_tv
-        ? FontWeight.w600
-        : icon == SFIcons.sf_list_bullet
-        ? FontWeight.w600
-        : icon == SFIcons.sf_cart_fill
-        ? FontWeight.w500
-        : icon == SFIcons.sf_stethoscope
-        ? FontWeight.w500
-        : icon == SFIcons.sf_curlybraces
-        ? FontWeight.w500
-        : FontWeight.normal;
+FontWeight _pickerSfFontWeight(IconData icon) => icon == SFIcons.sf_tv
+    ? FontWeight.w600
+    : icon == SFIcons.sf_list_bullet
+    ? FontWeight.w600
+    : icon == SFIcons.sf_cart_fill
+    ? FontWeight.w500
+    : icon == SFIcons.sf_stethoscope
+    ? FontWeight.w500
+    : icon == SFIcons.sf_curlybraces
+    ? FontWeight.w500
+    : FontWeight.normal;
 
 // Renders a category icon scaled to [containerSize] (the circle/square diameter)
 // with the same per-icon size, weight, and positional offset used in the picker.
@@ -12001,10 +11878,9 @@ Widget _renderCatIcon(
     );
   }
   if (iconOrSvg is String) {
-    final String path =
-        ctx != null
-            ? _resolveIconSvg(iconOrSvg, CupertinoTheme.brightnessOf(ctx))
-            : iconOrSvg;
+    final String path = ctx != null
+        ? _resolveIconSvg(iconOrSvg, CupertinoTheme.brightnessOf(ctx))
+        : iconOrSvg;
     inner = SvgPicture.asset(
       path,
       width: iconSz,
@@ -12061,10 +11937,9 @@ Widget _buildDcvCatIcon(Object iconOrSvg, Color color, {BuildContext? ctx}) {
     );
   }
   if (iconOrSvg is String) {
-    final String path =
-        ctx != null
-            ? _resolveIconSvg(iconOrSvg, CupertinoTheme.brightnessOf(ctx))
-            : iconOrSvg;
+    final String path = ctx != null
+        ? _resolveIconSvg(iconOrSvg, CupertinoTheme.brightnessOf(ctx))
+        : iconOrSvg;
     inner = SvgPicture.asset(
       path,
       width: iconSz,
@@ -12136,28 +12011,26 @@ Widget _buildPickerIconRaw(Object iconOrSvg, Color color, {BuildContext? ctx}) {
     );
   }
   if (iconOrSvg is String) {
-    final double sz =
-        iconOrSvg.contains('Banknote')
-            ? 18
-            : iconOrSvg.contains('ShoppingBag')
-            ? 21 // before generic 'Bag'
-            : iconOrSvg.contains('Bag') && !iconOrSvg.contains('Shopping')
-            ? 21 // Bag.svg
-            : iconOrSvg.contains('Tent')
-            ? 20
-            : iconOrSvg.contains('PingPongBall')
-            ? 22
-            : iconOrSvg.contains('Compass')
-            ? 24
-            : iconOrSvg.contains('Wallet')
-            ? 18
-            : iconOrSvg.contains('Briefcase')
-            ? 18
-            : 20;
-    final String path =
-        ctx != null
-            ? _resolveIconSvg(iconOrSvg, CupertinoTheme.brightnessOf(ctx))
-            : iconOrSvg;
+    final double sz = iconOrSvg.contains('Banknote')
+        ? 18
+        : iconOrSvg.contains('ShoppingBag')
+        ? 21 // before generic 'Bag'
+        : iconOrSvg.contains('Bag') && !iconOrSvg.contains('Shopping')
+        ? 21 // Bag.svg
+        : iconOrSvg.contains('Tent')
+        ? 20
+        : iconOrSvg.contains('PingPongBall')
+        ? 22
+        : iconOrSvg.contains('Compass')
+        ? 24
+        : iconOrSvg.contains('Wallet')
+        ? 18
+        : iconOrSvg.contains('Briefcase')
+        ? 18
+        : 20;
+    final String path = ctx != null
+        ? _resolveIconSvg(iconOrSvg, CupertinoTheme.brightnessOf(ctx))
+        : iconOrSvg;
     return SvgPicture.asset(
       path,
       width: sz,
@@ -12276,10 +12149,9 @@ class _BeamedNotePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final fill =
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.fill;
+    final fill = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
     final w = size.width;
     final h = size.height;
 
@@ -12299,11 +12171,10 @@ class _BeamedNotePainter extends CustomPainter {
     drawHead(w * 0.69, h * 0.72); // right
 
     // Stems
-    final stem =
-        Paint()
-          ..color = color
-          ..strokeWidth = w * 0.09
-          ..strokeCap = StrokeCap.round;
+    final stem = Paint()
+      ..color = color
+      ..strokeWidth = w * 0.09
+      ..strokeCap = StrokeCap.round;
     canvas.drawLine(
       Offset(w * 0.40, h * 0.76),
       Offset(w * 0.40, h * 0.17),
@@ -12316,13 +12187,12 @@ class _BeamedNotePainter extends CustomPainter {
     );
 
     // Beam — filled parallelogram connecting both stem tops
-    final beam =
-        Path()
-          ..moveTo(w * 0.40, h * 0.17)
-          ..lineTo(w * 0.84, h * 0.07)
-          ..lineTo(w * 0.84, h * 0.24)
-          ..lineTo(w * 0.40, h * 0.34)
-          ..close();
+    final beam = Path()
+      ..moveTo(w * 0.40, h * 0.17)
+      ..lineTo(w * 0.84, h * 0.07)
+      ..lineTo(w * 0.84, h * 0.24)
+      ..lineTo(w * 0.40, h * 0.34)
+      ..close();
     canvas.drawPath(beam, fill);
   }
 
@@ -12352,18 +12222,16 @@ class _CircleAddHighlightPainter extends CustomPainter {
     // Resolve dynamic color to its concrete ARGB before checking.
     final argb = color.value;
     final isLight = _kLightColorValues.contains(argb);
-    final topOpacity =
-        isLight
-            ? const Color(0x18FFFFFF) // ~9 % — subtle for already-bright hues
-            : const Color(0x38FFFFFF); // ~22 % — standard for mid/dark hues
-    final paint =
-        Paint()
-          ..blendMode = BlendMode.plus
-          ..shader = LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [topOpacity, const Color(0x00FFFFFF)],
-          ).createShader(rect);
+    final topOpacity = isLight
+        ? const Color(0x18FFFFFF) // ~9 % — subtle for already-bright hues
+        : const Color(0x38FFFFFF); // ~22 % — standard for mid/dark hues
+    final paint = Paint()
+      ..blendMode = BlendMode.plus
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [topOpacity, const Color(0x00FFFFFF)],
+      ).createShader(rect);
     canvas.drawOval(rect, paint);
   }
 
@@ -12403,10 +12271,9 @@ class _ModalCircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fontFamily =
-        icon.fontPackage != null
-            ? 'packages/${icon.fontPackage}/${icon.fontFamily}'
-            : (icon.fontFamily ?? '');
+    final fontFamily = icon.fontPackage != null
+        ? 'packages/${icon.fontPackage}/${icon.fontFamily}'
+        : (icon.fontFamily ?? '');
 
     final resolvedContainerColor = resolveThemeColor(containerColor, context);
     final resolvedIconColor = resolveThemeColor(iconColor, context);
@@ -12743,24 +12610,22 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                       shadows: resolveThemeShadows(kCardShadow, context),
                     ),
                     child: Listener(
-                      onPointerMove:
-                          (details) => _updateDragGap(details.position.dy),
+                      onPointerMove: (details) =>
+                          _updateDragGap(details.position.dy),
                       child: ReorderableListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         buildDefaultDragHandles: false,
                         itemCount: _sectionOrder.length,
                         onReorder: _reorder,
-                        onReorderStart:
-                            (rowIndex) => setState(() {
-                              _draggingOriginalIndex = _sectionOrder[rowIndex];
-                              _dragGapIndex = rowIndex;
-                            }),
-                        onReorderEnd:
-                            (_) => setState(() {
-                              _draggingOriginalIndex = null;
-                              _dragGapIndex = null;
-                            }),
+                        onReorderStart: (rowIndex) => setState(() {
+                          _draggingOriginalIndex = _sectionOrder[rowIndex];
+                          _dragGapIndex = rowIndex;
+                        }),
+                        onReorderEnd: (_) => setState(() {
+                          _draggingOriginalIndex = null;
+                          _dragGapIndex = null;
+                        }),
                         proxyDecorator: _sectionReorderProxy,
                         itemBuilder: (context, rowIndex) {
                           final originalIndex = _sectionOrder[rowIndex];
@@ -12788,8 +12653,8 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                               (gapIndex == null
                                   ? stationaryIndex < stationaryOrder.length - 1
                                   : stationaryIndex <
-                                          stationaryOrder.length - 1 ||
-                                      gapIndex == stationaryOrder.length);
+                                            stationaryOrder.length - 1 ||
+                                        gapIndex == stationaryOrder.length);
                           return KeyedSubtree(
                             key: ValueKey(originalIndex),
                             child: Container(
@@ -12800,41 +12665,39 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                               child: AnimatedSize(
                                 duration: const Duration(milliseconds: 280),
                                 curve: Curves.easeInOut,
-                                child:
-                                    _deletingSections.contains(originalIndex)
-                                        ? const SizedBox(
-                                          width: double.infinity,
-                                          height: 0,
-                                        )
-                                        : _SwipeToRevealDelete(
-                                          iconSize: MediaQuery.textScalerOf(
-                                            context,
-                                          ).scale(17),
-                                          dismissOnTap: false,
-                                          onDelete:
-                                              () =>
-                                                  _deleteSection(originalIndex),
-                                          child: Column(
-                                            children: [
-                                              if (showSeparatorAbove)
-                                                Container(
-                                                  height: 0.5,
-                                                  color: separatorColor,
-                                                ),
-                                              _buildSectionRowSurface(
-                                                context,
-                                                originalIndex,
-                                                rowIndex: rowIndex,
-                                                handleColor: handleColor,
+                                child: _deletingSections.contains(originalIndex)
+                                    ? const SizedBox(
+                                        width: double.infinity,
+                                        height: 0,
+                                      )
+                                    : _SwipeToRevealDelete(
+                                        iconSize: MediaQuery.textScalerOf(
+                                          context,
+                                        ).scale(17),
+                                        dismissOnTap: false,
+                                        onDelete: () =>
+                                            _deleteSection(originalIndex),
+                                        child: Column(
+                                          children: [
+                                            if (showSeparatorAbove)
+                                              Container(
+                                                height: 0.5,
+                                                color: separatorColor,
                                               ),
-                                              if (showSeparatorBelow)
-                                                Container(
-                                                  height: 0.5,
-                                                  color: separatorColor,
-                                                ),
-                                            ],
-                                          ),
+                                            _buildSectionRowSurface(
+                                              context,
+                                              originalIndex,
+                                              rowIndex: rowIndex,
+                                              handleColor: handleColor,
+                                            ),
+                                            if (showSeparatorBelow)
+                                              Container(
+                                                height: 0.5,
+                                                color: separatorColor,
+                                              ),
+                                          ],
                                         ),
+                                      ),
                               ),
                             ),
                           );
@@ -12964,8 +12827,9 @@ class _SwipeToRevealDeleteState extends State<_SwipeToRevealDelete>
         velocity.sign != _dragStartOffset.sign;
     final velocityDirection = velocity == 0 ? 0 : velocity.sign;
     final currentDirection = current == 0 ? 0 : current.sign;
-    final direction =
-        currentDirection != 0 ? currentDirection : velocityDirection;
+    final direction = currentDirection != 0
+        ? currentDirection
+        : velocityDirection;
     final shouldClose = reversedByDistance || reversedByVelocity;
     final shouldReveal =
         !shouldClose &&
@@ -13295,8 +13159,9 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
       _handleColorNotifier.value = widget.accentColor;
     }
     if (!_focusNode.hasFocus && oldWidget.initialText != widget.initialText) {
-      _controller.text =
-          widget.initialText == 'New Section' ? '' : widget.initialText;
+      _controller.text = widget.initialText == 'New Section'
+          ? ''
+          : widget.initialText;
       _lastCommittedText = _controller.text;
     }
   }
@@ -13356,10 +13221,12 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final text =
-              _controller.text.isEmpty ? 'New Section' : _controller.text;
-          final measureStyle =
-              _controller.text.isEmpty ? placeholderStyle : labelStyle;
+          final text = _controller.text.isEmpty
+              ? 'New Section'
+              : _controller.text;
+          final measureStyle = _controller.text.isEmpty
+              ? placeholderStyle
+              : labelStyle;
           final painter = TextPainter(
             text: TextSpan(text: text, style: measureStyle),
             textDirection: Directionality.of(context),
@@ -13595,14 +13462,15 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   @override
   void initState() {
     super.initState();
-    _sortAnimCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 420),
-    )..addStatusListener((s) {
-      if (s == AnimationStatus.completed && mounted) {
-        setState(() => _sortAnimFromY.clear());
-      }
-    });
+    _sortAnimCtrl =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 420),
+        )..addStatusListener((s) {
+          if (s == AnimationStatus.completed && mounted) {
+            setState(() => _sortAnimFromY.clear());
+          }
+        });
     _items = List.of(widget.events);
     _sortItems();
     _sectionEventIds = _normaliseSectionEventIds(widget.customSectionEventIds);
@@ -13637,11 +13505,10 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     final sectionNamesChanged =
         old.customSectionNames.length != widget.customSectionNames.length ||
         !_sameStrings(old.customSectionNames, widget.customSectionNames);
-    final sectionIdsChanged =
-        !_sameNestedStrings(
-          old.customSectionEventIds,
-          widget.customSectionEventIds,
-        );
+    final sectionIdsChanged = !_sameNestedStrings(
+      old.customSectionEventIds,
+      widget.customSectionEventIds,
+    );
 
     if (eventsChanged ||
         sortChanged ||
@@ -13910,25 +13777,24 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
 
     final ghostEvent = _dragEvent!;
     _dragOverlay = OverlayEntry(
-      builder:
-          (ctx) => Positioned(
-            // Centre the ghost card vertically on the finger.
-            top: _dragGlobalY - 36,
-            left: 16,
-            right: 16,
-            child: IgnorePointer(
-              child: Transform.scale(
-                scale: 1.05,
-                child: _DarkModeGhostOutline(
-                  child: _ScheduledEventCard(
-                    event: ghostEvent,
-                    dotColor: _resolveEventDotColor(ctx, ghostEvent),
-                    elevatedShadow: true,
-                  ),
-                ),
+      builder: (ctx) => Positioned(
+        // Centre the ghost card vertically on the finger.
+        top: _dragGlobalY - 36,
+        left: 16,
+        right: 16,
+        child: IgnorePointer(
+          child: Transform.scale(
+            scale: 1.05,
+            child: _DarkModeGhostOutline(
+              child: _ScheduledEventCard(
+                event: ghostEvent,
+                dotColor: _resolveEventDotColor(ctx, ghostEvent),
+                elevatedShadow: true,
               ),
             ),
           ),
+        ),
+      ),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _dragOverlay != null) {
@@ -13942,10 +13808,9 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   /// Categories, date-based smart tiles, All Events, and search results.
   Color _resolveEventDotColor(BuildContext context, ScheduledEvent event) {
     const uncategorizedIds = {'', 'uncategorized', 'sys-uncategorized'};
-    final categoryId =
-        uncategorizedIds.contains(event.categoryId)
-            ? 'sys-uncategorized'
-            : event.categoryId;
+    final categoryId = uncategorizedIds.contains(event.categoryId)
+        ? 'sys-uncategorized'
+        : event.categoryId;
     final meta = CategoryRegistry.get(categoryId);
     return meta == null
         ? resolveAccentColor(context)
@@ -14019,8 +13884,9 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
           final bottom = top + box.size.height;
           if (globalPos.dy >= top && globalPos.dy <= bottom) {
             targetSection = i;
-            final sectionRows =
-                rowTargets.where((row) => row.sectionIndex == i).toList();
+            final sectionRows = rowTargets
+                .where((row) => row.sectionIndex == i)
+                .toList();
             if (sectionRows.isEmpty || globalPos.dy < sectionRows.first.top) {
               targetIndex = 0;
             } else {
@@ -14752,13 +14618,13 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
             isFirst: index == 0,
             isLast: index == total - 1,
             hasGapAbove: hasGapAbove,
-            onEdit:
-                widget.onEditEvent != null
-                    ? () => widget.onEditEvent!(event)
-                    : null,
+            onEdit: widget.onEditEvent != null
+                ? () => widget.onEditEvent!(event)
+                : null,
             reorderable: isReorderable,
-            onReorderStart:
-                isReorderable ? (gp) => _startReorder(event.id, gp) : null,
+            onReorderStart: isReorderable
+                ? (gp) => _startReorder(event.id, gp)
+                : null,
             onReorderUpdate: isReorderable ? _updateReorder : null,
             onReorderEnd: isReorderable ? _endReorder : null,
             onReorderCancel: isReorderable ? _endReorder : null,
@@ -14840,56 +14706,59 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                           if (section.headerText != null)
                             section.isEditable
                                 ? _SwipeToRevealDelete(
-                                  iconSize: MediaQuery.textScalerOf(
-                                    context,
-                                  ).scale(15),
-                                  deleteIconVerticalOffset: -4,
-                                  onDelete: () {
-                                    final index = section.customSectionIndex;
-                                    if (index != null) {
-                                      widget.onCustomSectionDeleted?.call(
-                                        index,
-                                      );
-                                    }
-                                  },
-                                  child: _DcvEditableSectionLabel(
-                                    initialText: section.headerText!,
-                                    // isFirst controls top padding: 0 for
-                                    // the first section (SliverPadding
-                                    // provides the DCV header gap).
-                                    isFirst: true,
-                                    isCollapsed: isCollapsed,
-                                    accentColor: widget.color,
-                                    onToggle: () => _toggleSection(sectionKey!),
-                                    onChanged: (title) {
+                                    iconSize: MediaQuery.textScalerOf(
+                                      context,
+                                    ).scale(15),
+                                    deleteIconVerticalOffset: -4,
+                                    onDelete: () {
                                       final index = section.customSectionIndex;
                                       if (index != null) {
-                                        widget.onCustomSectionEditingChanged
-                                            ?.call(index, title);
-                                      }
-                                    },
-                                    onSubmitted: (title) {
-                                      final index = section.customSectionIndex;
-                                      if (index != null) {
-                                        widget.onCustomSectionRenamed?.call(
+                                        widget.onCustomSectionDeleted?.call(
                                           index,
-                                          title,
                                         );
                                       }
                                     },
-                                  ),
-                                )
+                                    child: _DcvEditableSectionLabel(
+                                      initialText: section.headerText!,
+                                      // isFirst controls top padding: 0 for
+                                      // the first section (SliverPadding
+                                      // provides the DCV header gap).
+                                      isFirst: true,
+                                      isCollapsed: isCollapsed,
+                                      accentColor: widget.color,
+                                      onToggle: () =>
+                                          _toggleSection(sectionKey!),
+                                      onChanged: (title) {
+                                        final index =
+                                            section.customSectionIndex;
+                                        if (index != null) {
+                                          widget.onCustomSectionEditingChanged
+                                              ?.call(index, title);
+                                        }
+                                      },
+                                      onSubmitted: (title) {
+                                        final index =
+                                            section.customSectionIndex;
+                                        if (index != null) {
+                                          widget.onCustomSectionRenamed?.call(
+                                            index,
+                                            title,
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  )
                                 : _DcvSectionLabel(
-                                  text: section.headerText!,
-                                  // isFirst controls top padding: 0 for first
-                                  // section (SliverPadding provides gap from
-                                  // DCV header), also 0 for others (section
-                                  // bottom padding provides inter-section gap).
-                                  isFirst: true,
-                                  isCollapsed: isCollapsed,
-                                  accentColor: widget.color,
-                                  onTap: () => _toggleSection(sectionKey!),
-                                ),
+                                    text: section.headerText!,
+                                    // isFirst controls top padding: 0 for first
+                                    // section (SliverPadding provides gap from
+                                    // DCV header), also 0 for others (section
+                                    // bottom padding provides inter-section gap).
+                                    isFirst: true,
+                                    isCollapsed: isCollapsed,
+                                    accentColor: widget.color,
+                                    onTap: () => _toggleSection(sectionKey!),
+                                  ),
 
                           // ── Grouped event card (collapses as one unit) ─────
                           // AnimatedSize smoothly animates the group to zero
@@ -14897,46 +14766,45 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                           AnimatedSize(
                             duration: const Duration(milliseconds: 280),
                             curve: Curves.easeInOut,
-                            child:
-                                isCollapsed
-                                    ? const SizedBox.shrink()
-                                    : Container(
-                                      // clipBehavior clips children to the squircle
-                                      // shape so press highlights stay within bounds.
-                                      clipBehavior: Clip.antiAlias,
-                                      decoration: ShapeDecoration(
-                                        color: resolveThemeColor(
-                                          kSbSurface,
-                                          context,
-                                        ),
-                                        shape: BoundedSquircleStadiumBorder(
-                                          radius: _kCornerRadius,
-                                        ),
-                                        shadows: resolveThemeShadows(
-                                          kCardShadow,
-                                          context,
-                                        ),
+                            child: isCollapsed
+                                ? const SizedBox.shrink()
+                                : Container(
+                                    // clipBehavior clips children to the squircle
+                                    // shape so press highlights stay within bounds.
+                                    clipBehavior: Clip.antiAlias,
+                                    decoration: ShapeDecoration(
+                                      color: resolveThemeColor(
+                                        kSbSurface,
+                                        context,
                                       ),
-                                      child: Column(
-                                        children: [
-                                          for (
-                                            int ei = 0;
-                                            ei < section.events.length;
-                                            ei++
-                                          )
-                                            _buildEventRow(
-                                              context,
-                                              section.events[ei],
-                                              ei,
-                                              section.events.length,
-                                              isReorderable,
-                                              previousEventById[section
-                                                  .events[ei]
-                                                  .id],
-                                            ),
-                                        ],
+                                      shape: BoundedSquircleStadiumBorder(
+                                        radius: _kCornerRadius,
+                                      ),
+                                      shadows: resolveThemeShadows(
+                                        kCardShadow,
+                                        context,
                                       ),
                                     ),
+                                    child: Column(
+                                      children: [
+                                        for (
+                                          int ei = 0;
+                                          ei < section.events.length;
+                                          ei++
+                                        )
+                                          _buildEventRow(
+                                            context,
+                                            section.events[ei],
+                                            ei,
+                                            section.events.length,
+                                            isReorderable,
+                                            previousEventById[section
+                                                .events[ei]
+                                                .id],
+                                          ),
+                                      ],
+                                    ),
+                                  ),
                           ),
                         ],
                       ),
@@ -15133,24 +15001,21 @@ class _EventContextMenuState extends State<_EventContextMenu>
     _isClosing.value = false;
     _overlayCtrl.value = 0;
     _entry = OverlayEntry(
-      builder:
-          (ctx) => _ContextMenuOverlay(
-            animation: _overlayCtrl,
-            isClosing: _isClosing,
-            originalOffset: offset,
-            originalSize: size,
-            previewBuilder: widget.previewBuilder,
-            isSmartCategory: false,
-            isPinned: false,
-            isEvent: true,
-            onDismiss: _hide,
-            onEdit:
-                widget.onEdit != null ? () => _hide(then: widget.onEdit) : null,
-            onDelete:
-                widget.onDelete != null
-                    ? () => _hide(then: widget.onDelete)
-                    : null,
-          ),
+      builder: (ctx) => _ContextMenuOverlay(
+        animation: _overlayCtrl,
+        isClosing: _isClosing,
+        originalOffset: offset,
+        originalSize: size,
+        previewBuilder: widget.previewBuilder,
+        isSmartCategory: false,
+        isPinned: false,
+        isEvent: true,
+        onDismiss: _hide,
+        onEdit: widget.onEdit != null ? () => _hide(then: widget.onEdit) : null,
+        onDelete: widget.onDelete != null
+            ? () => _hide(then: widget.onDelete)
+            : null,
+      ),
     );
     Overlay.of(context).insert(_entry!);
     _overlayCtrl.animateWith(
@@ -15296,11 +15161,8 @@ class _EventContextMenuState extends State<_EventContextMenu>
       onTapCancel: _onTapCancel,
       child: AnimatedBuilder(
         animation: _liftCtrl,
-        builder:
-            (context, child) => Transform.scale(
-              scale: 1.0 + 0.05 * _liftCtrl.value,
-              child: child,
-            ),
+        builder: (context, child) =>
+            Transform.scale(scale: 1.0 + 0.05 * _liftCtrl.value, child: child),
         // _TilePress broadcasts _pressCtrl so _TilePressScale inside
         // _buildCard shrinks the card content on press / long-press.
         child: _TilePress(press: _pressCtrl, child: widget.child),
@@ -15421,10 +15283,9 @@ class _ScheduledEventCard extends StatelessWidget {
     if (event.isAllDay) {
       timeStr = 'ALL-DAY';
     } else if (event.time != null) {
-      timeStr =
-          event.endTime != null
-              ? '${event.time!} - ${event.endTime!}'
-              : event.time!;
+      timeStr = event.endTime != null
+          ? '${event.time!} - ${event.endTime!}'
+          : event.time!;
     } else {
       timeStr = null;
     }
@@ -15544,16 +15405,15 @@ class _ScheduledEventCard extends StatelessWidget {
   /// rendered outside the grouped-card container (e.g. standalone usage).
   Widget _buildCard(BuildContext context) {
     // Lifted ghost uses a larger shadow to simulate elevation.
-    final shadows =
-        elevatedShadow
-            ? resolveThemeShadows(const [
-              BoxShadow(
-                color: Color(0x3A000000),
-                blurRadius: 18,
-                offset: Offset(0, 6),
-              ),
-            ], context)
-            : resolveThemeShadows(kCardShadow, context);
+    final shadows = elevatedShadow
+        ? resolveThemeShadows(const [
+            BoxShadow(
+              color: Color(0x3A000000),
+              blurRadius: 18,
+              offset: Offset(0, 6),
+            ),
+          ], context)
+        : resolveThemeShadows(kCardShadow, context);
     return Container(
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
@@ -15658,6 +15518,34 @@ class _CustomRepeatResult {
   const _CustomRepeatResult(this.label, this.config);
 }
 
+const double _kPickerSelectionPillMargin = 9.0;
+
+class _PickerSelectionPillClipper extends CustomClipper<Rect> {
+  const _PickerSelectionPillClipper({
+    required this.capStartEdge,
+    required this.capEndEdge,
+  });
+
+  final bool capStartEdge;
+  final bool capEndEdge;
+
+  @override
+  Rect getClip(Size size) {
+    return Rect.fromLTRB(
+      capStartEdge ? _kPickerSelectionPillMargin : 0,
+      0,
+      size.width - (capEndEdge ? _kPickerSelectionPillMargin : 0),
+      size.height,
+    );
+  }
+
+  @override
+  bool shouldReclip(_PickerSelectionPillClipper oldClipper) {
+    return capStartEdge != oldClipper.capStartEdge ||
+        capEndEdge != oldClipper.capEndEdge;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _CustomRepeatSheet extends StatefulWidget {
@@ -15698,10 +15586,9 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
   };
 
   // Returns the correct singular/plural unit for the current state.
-  String get _everyUnit =>
-      _everyCount == 1
-          ? _kFrequencyUnit[_frequency]!
-          : _kFrequencyUnitPlural[_frequency]!;
+  String get _everyUnit => _everyCount == 1
+      ? _kFrequencyUnit[_frequency]!
+      : _kFrequencyUnitPlural[_frequency]!;
 
   // ── Weekly day-selection state ────────────────────────────────────────────
   static const List<String> _kDays = [
@@ -15796,8 +15683,9 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
   // Static context footer — always visible below Card 1, reflects live state.
   String get _footerText {
     final unit = _everyUnit.toLowerCase();
-    final every =
-        _everyCount == 1 ? 'every $unit' : 'every $_everyCount ${unit}';
+    final every = _everyCount == 1
+        ? 'every $unit'
+        : 'every $_everyCount ${unit}';
     if (_frequency == 'Weekly' && _selectedDays.isNotEmpty) {
       return 'Event will occur $every on ${_joinDays(_orderedSelectedDays)}.';
     }
@@ -15816,10 +15704,9 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     if (_frequency == 'Yearly') {
       final sortedMonths = _selectedMonths.toList()..sort();
       final monthNames = sortedMonths.map((i) => _kMonthsFull[i - 1]).toList();
-      final String base =
-          monthNames.isEmpty
-              ? 'Event will occur $every'
-              : 'Event will occur $every in ${_joinDays(monthNames)}';
+      final String base = monthNames.isEmpty
+          ? 'Event will occur $every'
+          : 'Event will occur $every in ${_joinDays(monthNames)}';
       if (_yearlyDaysEnabled) {
         final pos = _kPositions[_yearlyPositionIndex];
         final day = _kDays[_yearlyDayIndex];
@@ -15933,18 +15820,17 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
       _openPickerLabel = rowLabel;
     });
     _pickerEntry = OverlayEntry(
-      builder:
-          (ctx) => ActionMenuOverlay(
-            buttonRect: Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height),
-            isClosing: _pickerIsClosing,
-            onDismiss: _dismissPickerOverlay,
-            actions: items,
-            panelWidth: kPickerPanelWidth,
-            chevronColumn: true,
-            anchorToRight: true,
-            labelFontSize: 15,
-            bouncingScroll: true, // modal-sheet mini panels retain rubberband
-          ),
+      builder: (ctx) => ActionMenuOverlay(
+        buttonRect: Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height),
+        isClosing: _pickerIsClosing,
+        onDismiss: _dismissPickerOverlay,
+        actions: items,
+        panelWidth: kPickerPanelWidth,
+        chevronColumn: true,
+        anchorToRight: true,
+        labelFontSize: 15,
+        bouncingScroll: true, // modal-sheet mini panels retain rubberband
+      ),
     );
     Overlay.of(context).insert(_pickerEntry!);
   }
@@ -15954,25 +15840,24 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     String current,
     void Function(String) onSelect, {
     Color? checkmarkColor,
-  }) =>
-      options
-          .map(
-            (label) => ActionItem(
-              label: label,
-              icon: SFIcons.sf_circle,
-              iconBuilder: (_) => const SizedBox.shrink(),
-              checkmark: label == current,
-              checkmarkColor: checkmarkColor,
-              onTap: () {
-                onSelect(label);
-                Future.delayed(
-                  const Duration(milliseconds: 80),
-                  _dismissPickerOverlay,
-                );
-              },
-            ),
-          )
-          .toList();
+  }) => options
+      .map(
+        (label) => ActionItem(
+          label: label,
+          icon: SFIcons.sf_circle,
+          iconBuilder: (_) => const SizedBox.shrink(),
+          checkmark: label == current,
+          checkmarkColor: checkmarkColor,
+          onTap: () {
+            onSelect(label);
+            Future.delayed(
+              const Duration(milliseconds: 80),
+              _dismissPickerOverlay,
+            );
+          },
+        ),
+      )
+      .toList();
 
   // ── Local card / row helpers (match parent sheet's visual language) ────────
 
@@ -16018,26 +15903,20 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
   }
 
   Widget _pickerText(String text, Alignment alignment) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableWidth =
-            constraints.hasBoundedWidth
-                ? constraints.maxWidth / _kPickerMagnification
-                : constraints.maxWidth;
-        return SizedBox(
-          width: availableWidth,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: alignment,
-            child: Text(
-              text,
-              style: _kPickerItemStyle,
-              maxLines: 1,
-              softWrap: false,
-            ),
-          ),
-        );
-      },
+    return Text(text, style: _kPickerItemStyle, maxLines: 1, softWrap: false);
+  }
+
+  Widget _clipPicker(
+    Widget picker, {
+    required bool capStartEdge,
+    required bool capEndEdge,
+  }) {
+    return ClipRect(
+      clipper: _PickerSelectionPillClipper(
+        capStartEdge: capStartEdge,
+        capEndEdge: capEndEdge,
+      ),
+      child: picker,
     );
   }
 
@@ -16106,44 +15985,41 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     VoidCallback? onTap,
   }) {
     final isOpen = items != null && _openPickerLabel == label;
-    final TextStyle valueStyle =
-        valueColor != null
-            ? _kRowValueStyle.copyWith(
-              color: valueColor,
-              fontWeight: FontWeight.w600,
-            )
-            : _kRowValueStyle;
+    final TextStyle valueStyle = valueColor != null
+        ? _kRowValueStyle.copyWith(
+            color: valueColor,
+            fontWeight: FontWeight.w600,
+          )
+        : _kRowValueStyle;
     // Keep the value/chevron in the same fixed trailing slot as the parent
     // event sheet and every other modal-sheet picker row.
     return Builder(
-      builder:
-          (ctx) => GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap:
-                items != null
-                    ? () => _showPickerOverlay(ctx, label, items)
-                    : onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: MinGapLabelValueRow(
-                label: label,
-                labelStyle: _kRowLabelStyle,
+      builder: (ctx) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: items != null
+            ? () => _showPickerOverlay(ctx, label, items)
+            : onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: MinGapLabelValueRow(
+            label: label,
+            labelStyle: _kRowLabelStyle,
+            value: value,
+            valueStyle: valueStyle,
+            trailing: AnimatedOpacity(
+              opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
+              duration: const Duration(milliseconds: 150),
+              child: ModalSheetPickerTrailing(
                 value: value,
-                valueStyle: valueStyle,
-                trailing: AnimatedOpacity(
-                  opacity: isOpen ? kPickerRowOpenDimOpacity : 1.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: ModalSheetPickerTrailing(
-                    value: value,
-                    style: valueStyle,
-                    chevronColor: resolveThemeColor(kSecondaryLabel, context),
-                    showChevron: showChevron,
-                  ),
-                ),
-                trailingExtraWidth: showChevron ? 16 : 0,
+                style: valueStyle,
+                chevronColor: resolveThemeColor(kSecondaryLabel, context),
+                showChevron: showChevron,
               ),
             ),
+            trailingExtraWidth: showChevron ? 16 : 0,
           ),
+        ),
+      ),
     );
   }
 
@@ -16166,58 +16042,66 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
               // Left barrel: numbers 1–999 — right-aligned toward the dividing line.
               // capEndEdge:false so the selection pill merges with the right barrel.
               Expanded(
-                child: CupertinoPicker(
-                  scrollController: _everyCountCtrl,
-                  itemExtent: _pickerItemExtent,
-                  backgroundColor: CupertinoColors.transparent,
-                  useMagnifier: true,
-                  magnification: 2.35 / 2.1,
-                  squeeze: 1.25,
-                  offAxisFraction: -0.45,
-                  selectionOverlay:
-                      const CupertinoPickerDefaultSelectionOverlay(
-                        capStartEdge: true,
-                        capEndEdge: false,
-                      ),
-                  onSelectedItemChanged:
-                      (i) => setState(() => _everyCount = i + 1),
-                  children: List.generate(
-                    999,
-                    (i) => Align(
-                      alignment: Alignment.centerRight,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 20),
-                        child: _pickerText('${i + 1}', Alignment.centerRight),
+                child: _clipPicker(
+                  CupertinoPicker(
+                    scrollController: _everyCountCtrl,
+                    itemExtent: _pickerItemExtent,
+                    backgroundColor: CupertinoColors.transparent,
+                    useMagnifier: true,
+                    magnification: 2.35 / 2.1,
+                    squeeze: 1.25,
+                    offAxisFraction: -0.45,
+                    selectionOverlay:
+                        const CupertinoPickerDefaultSelectionOverlay(
+                          capStartEdge: true,
+                          capEndEdge: false,
+                        ),
+                    onSelectedItemChanged: (i) =>
+                        setState(() => _everyCount = i + 1),
+                    children: List.generate(
+                      999,
+                      (i) => Align(
+                        alignment: Alignment.centerRight,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 20),
+                          child: _pickerText('${i + 1}', Alignment.centerRight),
+                        ),
                       ),
                     ),
                   ),
+                  capStartEdge: true,
+                  capEndEdge: false,
                 ),
               ),
               // Right barrel: unit word — left-aligned toward the dividing line.
               // capStartEdge:false so the selection pill continues from the left barrel.
               Expanded(
-                child: CupertinoPicker(
-                  itemExtent: _pickerItemExtent,
-                  backgroundColor: CupertinoColors.transparent,
-                  useMagnifier: true,
-                  magnification: 2.35 / 2.1,
-                  squeeze: 1.25,
-                  offAxisFraction: 0.45,
-                  selectionOverlay:
-                      const CupertinoPickerDefaultSelectionOverlay(
-                        capStartEdge: false,
-                        capEndEdge: true,
+                child: _clipPicker(
+                  CupertinoPicker(
+                    itemExtent: _pickerItemExtent,
+                    backgroundColor: CupertinoColors.transparent,
+                    useMagnifier: true,
+                    magnification: 2.35 / 2.1,
+                    squeeze: 1.25,
+                    offAxisFraction: 0.45,
+                    selectionOverlay:
+                        const CupertinoPickerDefaultSelectionOverlay(
+                          capStartEdge: false,
+                          capEndEdge: true,
+                        ),
+                    onSelectedItemChanged: (_) {},
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 20),
+                          child: _pickerText(_everyUnit, Alignment.centerLeft),
+                        ),
                       ),
-                  onSelectedItemChanged: (_) {},
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 20),
-                        child: _pickerText(_everyUnit, Alignment.centerLeft),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  capStartEdge: false,
+                  capEndEdge: true,
                 ),
               ),
             ],
@@ -16233,14 +16117,13 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     final selected = _selectedDays.contains(day);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap:
-          () => setState(() {
-            if (selected) {
-              _selectedDays.remove(day);
-            } else {
-              _selectedDays.add(day);
-            }
-          }),
+      onTap: () => setState(() {
+        if (selected) {
+          _selectedDays.remove(day);
+        } else {
+          _selectedDays.add(day);
+        }
+      }),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
@@ -16304,61 +16187,69 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
         child: Row(
           children: [
             Expanded(
-              child: CupertinoPicker(
-                scrollController: _onThePositionCtrl,
-                itemExtent: _pickerItemExtent,
-                backgroundColor: CupertinoColors.transparent,
-                useMagnifier: true,
-                magnification: 2.35 / 2.1,
-                squeeze: 1.25,
-                offAxisFraction: -0.45,
-                selectionOverlay: const CupertinoPickerDefaultSelectionOverlay(
-                  capStartEdge: true,
-                  capEndEdge: false,
-                ),
-                onSelectedItemChanged:
-                    (i) => setState(() => _onThePositionIndex = i),
-                children:
-                    _kPositions
-                        .map(
-                          (p) => Align(
-                            alignment: Alignment.centerRight,
-                            child: Padding(
-                              padding: const EdgeInsets.only(right: 20),
-                              child: _pickerText(p, Alignment.centerRight),
-                            ),
+              child: _clipPicker(
+                CupertinoPicker(
+                  scrollController: _onThePositionCtrl,
+                  itemExtent: _pickerItemExtent,
+                  backgroundColor: CupertinoColors.transparent,
+                  useMagnifier: true,
+                  magnification: 2.35 / 2.1,
+                  squeeze: 1.25,
+                  offAxisFraction: -0.45,
+                  selectionOverlay:
+                      const CupertinoPickerDefaultSelectionOverlay(
+                        capStartEdge: true,
+                        capEndEdge: false,
+                      ),
+                  onSelectedItemChanged: (i) =>
+                      setState(() => _onThePositionIndex = i),
+                  children: _kPositions
+                      .map(
+                        (p) => Align(
+                          alignment: Alignment.centerRight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 20),
+                            child: _pickerText(p, Alignment.centerRight),
                           ),
-                        )
-                        .toList(),
+                        ),
+                      )
+                      .toList(),
+                ),
+                capStartEdge: true,
+                capEndEdge: false,
               ),
             ),
             Expanded(
-              child: CupertinoPicker(
-                scrollController: _onTheDayCtrl,
-                itemExtent: _pickerItemExtent,
-                backgroundColor: CupertinoColors.transparent,
-                useMagnifier: true,
-                magnification: 2.35 / 2.1,
-                squeeze: 1.25,
-                offAxisFraction: 0.45,
-                selectionOverlay: const CupertinoPickerDefaultSelectionOverlay(
-                  capStartEdge: false,
-                  capEndEdge: true,
-                ),
-                onSelectedItemChanged:
-                    (i) => setState(() => _onTheDayIndex = i),
-                children:
-                    _kDays
-                        .map(
-                          (d) => Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
-                              padding: const EdgeInsets.only(left: 20),
-                              child: _pickerText(d, Alignment.centerLeft),
-                            ),
+              child: _clipPicker(
+                CupertinoPicker(
+                  scrollController: _onTheDayCtrl,
+                  itemExtent: _pickerItemExtent,
+                  backgroundColor: CupertinoColors.transparent,
+                  useMagnifier: true,
+                  magnification: 2.35 / 2.1,
+                  squeeze: 1.25,
+                  offAxisFraction: 0.45,
+                  selectionOverlay:
+                      const CupertinoPickerDefaultSelectionOverlay(
+                        capStartEdge: false,
+                        capEndEdge: true,
+                      ),
+                  onSelectedItemChanged: (i) =>
+                      setState(() => _onTheDayIndex = i),
+                  children: _kDays
+                      .map(
+                        (d) => Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 20),
+                            child: _pickerText(d, Alignment.centerLeft),
                           ),
-                        )
-                        .toList(),
+                        ),
+                      )
+                      .toList(),
+                ),
+                capStartEdge: false,
+                capEndEdge: true,
               ),
             ),
           ],
@@ -16411,13 +16302,12 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     final selected = _selectedDates.contains(n);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap:
-          () => setState(() {
-            if (selected)
-              _selectedDates.remove(n);
-            else
-              _selectedDates.add(n);
-          }),
+      onTap: () => setState(() {
+        if (selected)
+          _selectedDates.remove(n);
+        else
+          _selectedDates.add(n);
+      }),
       child: SizedBox(
         height: 44,
         child: ColoredBox(
@@ -16426,10 +16316,9 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
             child: Text(
               '$n',
               style: _kDateCellStyle.copyWith(
-                color:
-                    selected
-                        ? CupertinoColors.white
-                        : resolveThemeColor(kPrimaryLabel, context),
+                color: selected
+                    ? CupertinoColors.white
+                    : resolveThemeColor(kPrimaryLabel, context),
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -16445,13 +16334,12 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     final selected = _selectedMonths.contains(monthIndex);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap:
-          () => setState(() {
-            if (selected)
-              _selectedMonths.remove(monthIndex);
-            else
-              _selectedMonths.add(monthIndex);
-          }),
+      onTap: () => setState(() {
+        if (selected)
+          _selectedMonths.remove(monthIndex);
+        else
+          _selectedMonths.add(monthIndex);
+      }),
       child: SizedBox(
         height: 44,
         child: ColoredBox(
@@ -16461,10 +16349,9 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
               _kMonths[monthIndex - 1],
               style: _kDateCellStyle.copyWith(
                 fontSize: 16,
-                color:
-                    selected
-                        ? CupertinoColors.white
-                        : resolveThemeColor(kPrimaryLabel, context),
+                color: selected
+                    ? CupertinoColors.white
+                    : resolveThemeColor(kPrimaryLabel, context),
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -16513,128 +16400,123 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
 
   Widget _buildYearlyDaysCard() => AnimatedBuilder(
     animation: _yearlyDaysCtrl,
-    builder:
-        (ctx, _) => _card([
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _toggleYearlyDays,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    builder: (ctx, _) => _card([
+      GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _toggleYearlyDays,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              Text('Days of Week', style: _kRowLabelStyle),
+              const Spacer(),
+              // height: 30 matches pill height so switch rows == date rows
+              SizedBox(
+                width: 70 * 0.80,
+                height: 30,
+                child: OverflowBox(
+                  maxWidth: 70,
+                  maxHeight: 31,
+                  alignment: Alignment.center,
+                  child: Transform.scale(
+                    scale: 0.80,
+                    child: AppSwitch(
+                      value: _yearlyDaysEnabled,
+                      onChanged: (_) => _toggleYearlyDays(),
+                      color: widget.accentColor,
+                      height: 31,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      SizeTransition(
+        sizeFactor: _yearlyDaysCtrl,
+        axisAlignment: 1.0,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _sep(),
+            SizedBox(
+              height: max(216.0, _pickerItemExtent * 5.5),
               child: Row(
                 children: [
-                  Text('Days of Week', style: _kRowLabelStyle),
-                  const Spacer(),
-                  // height: 30 matches pill height so switch rows == date rows
-                  SizedBox(
-                    width: 70 * 0.80,
-                    height: 30,
-                    child: OverflowBox(
-                      maxWidth: 70,
-                      maxHeight: 31,
-                      alignment: Alignment.center,
-                      child: Transform.scale(
-                        scale: 0.80,
-                        child: AppSwitch(
-                          value: _yearlyDaysEnabled,
-                          onChanged: (_) => _toggleYearlyDays(),
-                          color: widget.accentColor,
-                          height: 31,
-                        ),
+                  Expanded(
+                    child: _clipPicker(
+                      CupertinoPicker(
+                        scrollController: _yearlyPositionCtrl,
+                        itemExtent: _pickerItemExtent,
+                        backgroundColor: CupertinoColors.transparent,
+                        useMagnifier: true,
+                        magnification: 2.35 / 2.1,
+                        squeeze: 1.25,
+                        offAxisFraction: -0.45,
+                        selectionOverlay:
+                            const CupertinoPickerDefaultSelectionOverlay(
+                              capStartEdge: true,
+                              capEndEdge: false,
+                            ),
+                        onSelectedItemChanged: (i) =>
+                            setState(() => _yearlyPositionIndex = i),
+                        children: _kPositions
+                            .map(
+                              (p) => Align(
+                                alignment: Alignment.centerRight,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 20),
+                                  child: _pickerText(p, Alignment.centerRight),
+                                ),
+                              ),
+                            )
+                            .toList(),
                       ),
+                      capStartEdge: true,
+                      capEndEdge: false,
+                    ),
+                  ),
+                  Expanded(
+                    child: _clipPicker(
+                      CupertinoPicker(
+                        scrollController: _yearlyDayCtrl,
+                        itemExtent: _pickerItemExtent,
+                        backgroundColor: CupertinoColors.transparent,
+                        useMagnifier: true,
+                        magnification: 2.35 / 2.1,
+                        squeeze: 1.25,
+                        offAxisFraction: 0.45,
+                        selectionOverlay:
+                            const CupertinoPickerDefaultSelectionOverlay(
+                              capStartEdge: false,
+                              capEndEdge: true,
+                            ),
+                        onSelectedItemChanged: (i) =>
+                            setState(() => _yearlyDayIndex = i),
+                        children: _kDays
+                            .map(
+                              (d) => Align(
+                                alignment: Alignment.centerLeft,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 20),
+                                  child: _pickerText(d, Alignment.centerLeft),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                      capStartEdge: false,
+                      capEndEdge: true,
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-          SizeTransition(
-            sizeFactor: _yearlyDaysCtrl,
-            axisAlignment: 1.0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _sep(),
-                SizedBox(
-                  height: max(216.0, _pickerItemExtent * 5.5),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: CupertinoPicker(
-                          scrollController: _yearlyPositionCtrl,
-                          itemExtent: _pickerItemExtent,
-                          backgroundColor: CupertinoColors.transparent,
-                          useMagnifier: true,
-                          magnification: 2.35 / 2.1,
-                          squeeze: 1.25,
-                          offAxisFraction: -0.45,
-                          selectionOverlay:
-                              const CupertinoPickerDefaultSelectionOverlay(
-                                capStartEdge: true,
-                                capEndEdge: false,
-                              ),
-                          onSelectedItemChanged:
-                              (i) => setState(() => _yearlyPositionIndex = i),
-                          children:
-                              _kPositions
-                                  .map(
-                                    (p) => Align(
-                                      alignment: Alignment.centerRight,
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(
-                                          right: 20,
-                                        ),
-                                        child: _pickerText(
-                                          p,
-                                          Alignment.centerRight,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                        ),
-                      ),
-                      Expanded(
-                        child: CupertinoPicker(
-                          scrollController: _yearlyDayCtrl,
-                          itemExtent: _pickerItemExtent,
-                          backgroundColor: CupertinoColors.transparent,
-                          useMagnifier: true,
-                          magnification: 2.35 / 2.1,
-                          squeeze: 1.25,
-                          offAxisFraction: 0.45,
-                          selectionOverlay:
-                              const CupertinoPickerDefaultSelectionOverlay(
-                                capStartEdge: false,
-                                capEndEdge: true,
-                              ),
-                          onSelectedItemChanged:
-                              (i) => setState(() => _yearlyDayIndex = i),
-                          children:
-                              _kDays
-                                  .map(
-                                    (d) => Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(
-                                          left: 20,
-                                        ),
-                                        child: _pickerText(
-                                          d,
-                                          Alignment.centerLeft,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ]),
+          ],
+        ),
+      ),
+    ]),
   );
 
   // ── Label & dismiss ───────────────────────────────────────────────────────
