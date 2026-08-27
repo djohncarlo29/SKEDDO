@@ -6637,6 +6637,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
   // ── All-day / Unscheduled toggles ─────────────────────────────────────────
 
   void _toggleAllDay() {
+    // Close any open picker menu before its labels and option set change.
+    if (_pickerMenuOpen) {
+      _dismissPickerOverlay();
+    }
     // Close any open time picker first so the pill resets correctly.
     if (_activePicker.endsWith('_time')) {
       _ctrlFor(_activePicker).animateTo(0.0, curve: Curves.easeIn).then((_) {
@@ -9546,7 +9550,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
   Widget _buildAlertsSection() => AnimatedBuilder(
     animation: _secondAlertCtrl,
     builder: (ctx, _) => _card([
-      _pickerRow('Alert', _alertDisplayLabel(_alert), items: _alertItems()),
+      _pickerRow(
+        _allDay ? 'Reminder' : 'Alert',
+        _alertDisplayLabel(_alert),
+        items: _alertItems(),
+      ),
       SizeTransition(
         sizeFactor: _secondAlertCtrl,
         axisAlignment: 1.0,
@@ -9555,7 +9563,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           children: [
             _sep(),
             _pickerRow(
-              'Second Alert',
+              _allDay ? 'Second Reminder' : 'Second Alert',
               _alertDisplayLabel(_secondAlert),
               items: _secondAlertItems(),
             ),
