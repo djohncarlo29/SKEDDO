@@ -15519,6 +15519,7 @@ class _CustomRepeatResult {
 }
 
 const double _kPickerSelectionPillMargin = 9.0;
+const double _kPickerSelectionPillTextInset = 4.0;
 
 class _PickerSelectionPillClipper extends CustomClipper<Rect> {
   const _PickerSelectionPillClipper({
@@ -15905,11 +15906,14 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
   TextStyle _pickerTextStyleThatFits(String text, double availableWidth) {
     final baseStyle = _kPickerItemStyle;
     final baseFontSize = baseStyle.fontSize ?? 16.0;
-    // The selected row is magnified by the wheel, so reserve that same amount
-    // of horizontal room before choosing the un-magnified text size.
+    // Keep the text inside the pill edge rather than letting a tight option
+    // touch it. The selected row is magnified by the wheel, so reserve that
+    // same amount of horizontal room before choosing the un-magnified size.
     final targetWidth = max(
       1.0,
-      (availableWidth - _kPickerSelectionPillMargin) /
+      (availableWidth -
+              _kPickerSelectionPillMargin -
+              _kPickerSelectionPillTextInset) /
           _kPickerMagnification,
     );
     final scaler = MediaQuery.textScalerOf(context);
