@@ -6427,35 +6427,23 @@ class _NewEventSheetState extends State<_NewEventSheet>
   Widget _buildDateRow(String label, DateTime dt, String target) {
     final dateOpen = _activePicker == target;
     final timeOpen = _activePicker == '${target}_time';
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: AdaptiveLabelPillRow(
-        label: label,
-        labelStyle: _kLabelStyle,
-        onLabelTap: () => _togglePicker(target),
-        pills: [
-          AdaptivePillSpec(
-            text: _fmtDate(dt),
-            backgroundColor: _resolvedPillColor,
-            style: TextStyle(
-              inherit: false,
-              color: dateOpen
-                  ? _resolvedCategoryColor
-                  : resolveThemeColor(kPrimaryLabel, context),
-              fontSize: 15,
-              fontFamily: kSFProText,
-              fontWeight: FontWeight.w500,
-              letterSpacing: kTracking17,
-            ),
-            onTap: () => _togglePicker(target),
-          ),
-          if (!_allDay)
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: AdaptiveLabelPillRow(
+          label: label,
+          labelStyle: _kLabelStyle,
+          onLabelTap: () => _togglePicker(target),
+          pills: [
             AdaptivePillSpec(
-              text: _fmtTime(dt),
+              text: _fmtDate(dt),
               backgroundColor: _resolvedPillColor,
               style: TextStyle(
                 inherit: false,
-                color: timeOpen
+                color: dateOpen
                     ? _resolvedCategoryColor
                     : resolveThemeColor(kPrimaryLabel, context),
                 fontSize: 15,
@@ -6463,9 +6451,26 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 fontWeight: FontWeight.w500,
                 letterSpacing: kTracking17,
               ),
-              onTap: () => _togglePicker('${target}_time'),
+              onTap: () => _togglePicker(target),
             ),
-        ],
+            if (!_allDay)
+              AdaptivePillSpec(
+                text: _fmtTime(dt),
+                backgroundColor: _resolvedPillColor,
+                style: TextStyle(
+                  inherit: false,
+                  color: timeOpen
+                      ? _resolvedCategoryColor
+                      : resolveThemeColor(kPrimaryLabel, context),
+                  fontSize: 15,
+                  fontFamily: kSFProText,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: kTracking17,
+                ),
+                onTap: () => _togglePicker('${target}_time'),
+              ),
+          ],
+        ),
       ),
     );
   }
