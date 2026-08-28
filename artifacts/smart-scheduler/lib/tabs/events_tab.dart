@@ -8838,7 +8838,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                                   0,
                                                 ),
                                             child: Text(
-                                              'Group Name',
+                                              'Title',
                                               style: TextStyle(
                                                 inherit: false,
                                                 color: resolveThemeColor(
@@ -10028,7 +10028,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 // renders the full Cupertino floating-bubble toolbar (Select All,
                 // Look Up, Share, etc.) regardless of platform — matching the Notes
                 // tab and every other CupertinoTextField in the app.
-                placeholder: 'Category Title',
+                placeholder: 'Title',
                 placeholderStyle: _kPlaceholderStyle,
                 style: _isSmart
                     ? _kFieldStyle.copyWith(
@@ -12511,6 +12511,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
   }
 
   Widget _sectionDragHandle(int rowIndex, Color handleColor) {
+    final handleSize = MediaQuery.textScalerOf(context).scale(21);
     return ReorderableDragStartListener(
       index: rowIndex,
       child: SizedBox(
@@ -12518,7 +12519,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
         child: Center(
           child: Icon(
             CupertinoIcons.line_horizontal_3,
-            size: 21,
+            size: handleSize,
             color: handleColor,
           ),
         ),
