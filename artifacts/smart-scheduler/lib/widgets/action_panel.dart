@@ -1619,7 +1619,11 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
         if (sharedSpec != null)
           Positioned(
             left: widget.panelLeft + 16,
-            top: widget.panelTop + sharedSpec.rowTop,
+            // Keep the shared trigger row aligned with the row inside the
+            // main panel after that panel has been scrolled. Without this,
+            // the nested panel follows the live scroll offset while the
+            // trigger copy stays at its original, unscrolled position.
+            top: widget.panelTop + sharedSpec.rowTop - _mainScrollOffset.value,
             width: ExpandableActionMenu.panelW - 32,
             height: triggerHeight,
             child: ValueListenableBuilder<bool>(
