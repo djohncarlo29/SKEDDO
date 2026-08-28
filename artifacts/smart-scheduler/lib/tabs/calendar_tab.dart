@@ -9166,6 +9166,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           letterSpacing: 0.3,
           height: 1.2,
         ),
+        textScaler: TextScaler.noScaling,
         maxLines: 1,
         overflow: TextOverflow.clip,
       ),
