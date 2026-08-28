@@ -1803,13 +1803,16 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
         // dissolves together with the panels' bloom-back animation.
         if (sharedSpec != null)
           Positioned(
-            left: widget.panelLeft + 16,
+            // _ExpandableRowSharedContent now uses the same _ActionRow as the
+            // parent panel, so give it the full panel bounds and let _ActionRow
+            // apply the shared 16 px horizontal inset exactly once.
+            left: widget.panelLeft,
             // Keep the shared trigger row aligned with the row inside the
             // main panel after that panel has been scrolled. Without this,
             // the nested panel follows the live scroll offset while the
             // trigger copy stays at its original, unscrolled position.
             top: widget.panelTop + sharedSpec.rowTop - _mainScrollOffset.value,
-            width: widget.panelWidth - _actionPanelHorizontalInset * 2,
+            width: widget.panelWidth,
             height: triggerHeight,
             child: ValueListenableBuilder<bool>(
               valueListenable: _origClosing,
@@ -1868,131 +1871,44 @@ class _ExpandableRowSharedContent extends StatefulWidget {
 
 class _ExpandableRowSharedContentState
     extends State<_ExpandableRowSharedContent> {
-  bool _pressed = false;
-
   static const double _chevW = _actionPanelCheckmarkBaseSize;
 
   @override
   Widget build(BuildContext context) {
     final textColor = CupertinoDynamicColor.resolve(kPrimaryLabel, context);
-    final labelStyle = TextStyle(
-      inherit: false,
-      color: textColor,
-      fontSize: 16,
-      fontFamily: kSFProText,
-      fontWeight: FontWeight.w400,
-      fontStyle: FontStyle.normal,
-      letterSpacing: kTracking16,
-    );
-    final subtitleStyle = TextStyle(
-      inherit: false,
-      color: CupertinoDynamicColor.resolve(kSecondaryLabel, context),
-      fontSize: 13,
-      fontFamily: kSFProText,
-      fontWeight: FontWeight.w400,
-      fontStyle: FontStyle.normal,
-      letterSpacing: -0.08,
-    );
     final leadingColumnWidth = _actionPanelLeadingColumnWidth(context);
-    final Widget iconWidget;
-    if (widget.iconBuilder != null) {
-      final scaler = MediaQuery.textScalerOf(context);
-      final scaledBase = scaler.scale(_actionPanelCustomIconBaseSize);
-      final iconScale = scaledBase / _actionPanelCustomIconBaseSize;
-      final iconBox = math.max(_actionPanelCustomIconBaseSize, scaledBase);
-      iconWidget = SizedBox(
-        width: iconBox,
-        height: iconBox,
-        child: Align(
-          alignment: Alignment.centerRight,
-          child: Transform.scale(
-            alignment: Alignment.centerRight,
-            scale: iconScale,
-            child: Transform.translate(
-              offset: widget.iconOffset,
-              child: widget.iconBuilder!(textColor),
-            ),
-          ),
-        ),
-      );
-    } else {
-      iconWidget = Transform.translate(
-        offset: widget.iconOffset,
-        child: _ActionPanelSFIcon(
-          widget.icon,
-          size: 20,
-          color: textColor,
-          weight: FontWeight.w500,
-          boxPadding: 4,
-          scaleWithText: true,
-        ),
-      );
-    }
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapCancel: () => setState(() => _pressed = false),
-      onTap: () {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      child: AnimatedScale(
-        scale: _pressed ? 0.96 : 1.0,
-        duration: const Duration(milliseconds: 100),
-        curve: Curves.easeOut,
-        child: AnimatedOpacity(
-          opacity: _pressed ? 0.60 : 1.0,
-          duration: const Duration(milliseconds: 100),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: widget.rowHeight),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Animated chevron: › rotates to ∨ as the sub-panel opens.
-                  SizedBox(
-                    width: leadingColumnWidth,
-                    child: AnimatedBuilder(
-                      animation: widget.chevronCtrl,
-                      builder: (ctx, _) => Transform.rotate(
-                        angle: widget.chevronCtrl.value * (math.pi / 2),
-                        child: _ActionPanelSFIcon(
-                          SFIcons.sf_chevron_right,
-                          size: _chevW,
-                          color: textColor,
-                          weight: FontWeight.w500,
-                          boxPadding: _actionPanelLeadingGlyphBoxPadding,
-                          scaleWithText: true,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: _actionPanelCheckmarkOptionGap),
-                  // Label + subtitle
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(widget.label, style: labelStyle),
-                        if (widget.subtitle != null) ...[
-                          const SizedBox(height: 2),
-                          Text(widget.subtitle!, style: subtitleStyle),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: _actionPanelLabelTrailingIconGap),
-                  // Right icon
-                  iconWidget,
-                ],
+    // Reuse the exact parent-row renderer instead of duplicating its layout
+    // here. This keeps the shared trigger's label, chevron, and right icon on
+    // the same vertical coordinate as the row it replaces, including custom
+    // icons such as Manage Sections.
+    return _ActionRow(
+      item: ActionItem(
+        label: widget.label,
+        icon: widget.icon,
+        hasChevron: true,
+        subtitle: widget.subtitle,
+        iconBuilder: widget.iconBuilder,
+        iconOffset: widget.iconOffset,
+        chevronOverride: SizedBox(
+          width: leadingColumnWidth,
+          child: AnimatedBuilder(
+            animation: widget.chevronCtrl,
+            builder: (ctx, _) => Transform.rotate(
+              angle: widget.chevronCtrl.value * (math.pi / 2),
+              child: _ActionPanelSFIcon(
+                SFIcons.sf_chevron_right,
+                size: _chevW,
+                color: textColor,
+                weight: FontWeight.w500,
+                boxPadding: _actionPanelLeadingGlyphBoxPadding,
+                scaleWithText: true,
               ),
             ),
           ),
         ),
+        onTap: widget.onTap,
       ),
+      chevronColumn: true,
     );
   }
 }
