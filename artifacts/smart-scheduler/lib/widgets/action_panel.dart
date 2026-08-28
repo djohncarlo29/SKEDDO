@@ -38,7 +38,7 @@ class _ActionPanelSFIcon extends StatelessWidget {
     final boxSize = math.max(
       size + boxPadding * 2,
       scaleWithText ? fontSize + boxPadding * 2 : 0,
-    );
+    ).toDouble();
     return SizedBox(
       width: boxSize,
       height: boxSize,
