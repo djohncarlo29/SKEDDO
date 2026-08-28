@@ -80,3 +80,4 @@
 - [Settled thumb row geometry](settled-thumb-row-geometry.md) — slider rows measure 16px from the resting thumb; lifted animation viewport overflows invisibly inside that padding.
 - [Large confirmation sheet radius](large-confirmation-sheet-radius.md) — microphone access and Delete Group overlays use the dedicated 40px bounded squircle; regular modal controls remain 24px.
 - [Expandable modal card surfaces](expandable-modal-card-surfaces.md) — expandable row stacks must use one shared bounded squircle surface, never adjacent partial-radius cards.
+- [Action-panel scroll fallback](action-panel-scroll-fallback.md) — expandable menus must cap main/sub-panels and anchor drill-downs to the live main-panel scroll offset.

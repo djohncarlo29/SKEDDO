@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' show max, min;
 import 'dart:ui' as ui;
 
 import 'package:flutter/cupertino.dart';
@@ -39,6 +40,7 @@ import 'settings_panel.dart';
 class _DcvMenuContent extends StatefulWidget {
   final double panelTop;
   final double panelLeft;
+  final double maxHeight;
   final ValueNotifier<bool> isClosing;
   final VoidCallback onDismiss;
   final bool isSmartCategory;
@@ -62,6 +64,7 @@ class _DcvMenuContent extends StatefulWidget {
   const _DcvMenuContent({
     required this.panelTop,
     required this.panelLeft,
+    required this.maxHeight,
     required this.isClosing,
     required this.onDismiss,
     required this.isSmartCategory,
@@ -385,6 +388,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       itemsBuilder: _origItems,
       expandableActions: expandableActions,
       closeDurationOverrideMs: _fastClosing ? 240 : null,
+      maxHeight: widget.maxHeight,
     );
   }
 }
@@ -984,10 +988,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final btnRect = Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height);
     final spaceAbove = btnRect.top - safeTop;
     final spaceBelow = screenH - safeBtm - btnRect.bottom;
-    var panelTop = spaceAbove > spaceBelow
-        ? btnRect.top - fullH - 8
-        : btnRect.bottom + 8;
-    panelTop = panelTop.clamp(safeTop, screenH - safeBtm - fullH);
+    const panelGap = 8.0;
+    final aboveRoom = max(1.0, spaceAbove - panelGap);
+    final belowRoom = max(1.0, spaceBelow - panelGap);
+    final goAbove = aboveRoom > belowRoom;
+    final availableRoom = goAbove ? aboveRoom : belowRoom;
+    final visiblePanelHeight = min(fullH, availableRoom);
+    final panelTop = goAbove
+        ? btnRect.top - panelGap - visiblePanelHeight
+        : btnRect.bottom + panelGap;
     var panelLeft = btnRect.left;
     panelLeft = panelLeft.clamp(16.0, screenW - panelW - 16.0);
 
@@ -995,6 +1004,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       builder: (ctx) => _DcvMenuContent(
         panelTop: panelTop,
         panelLeft: panelLeft,
+        maxHeight: availableRoom,
         isClosing: _dcvMenuClosing,
         onDismiss: () => _hideDcvMenu(),
         onDismissThen: (afterClosed) => _hideDcvMenu(

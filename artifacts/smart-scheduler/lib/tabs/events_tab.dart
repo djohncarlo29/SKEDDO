@@ -743,15 +743,15 @@ class _ContextMenuOverlay extends StatelessWidget {
     final panelH = actions.length * 52.0 + max(0, actions.length - 1) * 0.5;
 
     final tileBottom = originalOffset.dy + originalSize.height;
-    final spaceAbove = originalOffset.dy - safeTop;
-    final spaceBelow = screenH - safeBtm - tileBottom;
-
-    var panelTop = spaceAbove > spaceBelow
-        ? originalOffset.dy -
-              panelH -
-              12 // more room above → anchor above tile
-        : tileBottom + 12; // more room below → anchor below tile
-    panelTop = panelTop.clamp(safeTop, screenH - safeBtm - panelH);
+    const panelGap = 12.0;
+    final spaceAbove = max(1.0, originalOffset.dy - safeTop - panelGap);
+    final spaceBelow = max(1.0, screenH - safeBtm - tileBottom - panelGap);
+    final goAbove = spaceAbove > spaceBelow;
+    final availableRoom = goAbove ? spaceAbove : spaceBelow;
+    final visiblePanelH = min(panelH, availableRoom);
+    final panelTop = goAbove
+        ? originalOffset.dy - panelGap - visiblePanelH
+        : tileBottom + panelGap;
 
     return AnimatedBuilder(
       // Rebuild on every animation tick AND whenever isClosing flips so the
@@ -862,7 +862,11 @@ class _ContextMenuOverlay extends StatelessWidget {
               left: panelLeft,
               top: panelTop,
               width: panelW,
-              child: ActionPanel(items: actions, isClosing: isClosing),
+              child: ActionPanel(
+                items: actions,
+                isClosing: isClosing,
+                maxHeight: panelH > availableRoom ? availableRoom : null,
+              ),
             ),
           ],
         );
@@ -939,10 +943,12 @@ const _kPanelPressHighlight = CupertinoDynamicColor.withBrightness(
 class _ActionPanel extends StatefulWidget {
   final List<_MenuAction> actions;
   final ValueNotifier<bool> isClosing;
+  final double? maxHeight;
 
   const _ActionPanel({
     required this.actions,
     required this.isClosing,
+    this.maxHeight,
     super.key,
   });
 
@@ -953,6 +959,11 @@ class _ActionPanel extends StatefulWidget {
 class _ActionPanelState extends State<_ActionPanel>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
+  final _scrollCtrl = ScrollController();
+  Timer? _pillHideTimer;
+  bool _showTopFade = false;
+  bool _showBottomFade = true;
+  bool _pillVisible = false;
 
   @override
   void initState() {
@@ -966,10 +977,22 @@ class _ActionPanelState extends State<_ActionPanel>
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeOut,
     );
+    if (widget.maxHeight != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scrollCtrl.hasClients) {
+          final hasOverflow = _scrollCtrl.position.maxScrollExtent > 1.0;
+          if (_showBottomFade != hasOverflow) {
+            setState(() => _showBottomFade = hasOverflow);
+          }
+        }
+      });
+    }
   }
 
   void _onClosingChanged() {
     if (widget.isClosing.value && mounted) {
+      _pillHideTimer?.cancel();
+      if (_pillVisible) setState(() => _pillVisible = false);
       _ctrl.animateTo(
         0.0,
         duration: const Duration(milliseconds: 160),
@@ -978,10 +1001,31 @@ class _ActionPanelState extends State<_ActionPanel>
     }
   }
 
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (widget.isClosing.value) return false;
+    final metrics = notification.metrics;
+    final showTop = metrics.pixels > 1.0;
+    final showBottom = metrics.pixels < metrics.maxScrollExtent - 1.0;
+    if (showTop != _showTopFade || showBottom != _showBottomFade) {
+      setState(() {
+        _showTopFade = showTop;
+        _showBottomFade = showBottom;
+      });
+    }
+    if (!_pillVisible) setState(() => _pillVisible = true);
+    _pillHideTimer?.cancel();
+    _pillHideTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) setState(() => _pillVisible = false);
+    });
+    return false;
+  }
+
   @override
   void dispose() {
     widget.isClosing.removeListener(_onClosingChanged);
+    _pillHideTimer?.cancel();
     _ctrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
@@ -1039,6 +1083,153 @@ class _ActionPanelState extends State<_ActionPanel>
             .withValues(
               alpha: resolveThemeColor(kTertiaryLabel, context).a * outlineT,
             );
+        final column = Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (int i = 0; i < widget.actions.length; i++) ...[
+              if (i > 0) _buildSeparator(i, panelSeparator),
+              _buildRow(i),
+            ],
+          ],
+        );
+        final fullContent = SingleChildScrollView(
+          controller: _scrollCtrl,
+          physics: const ClampingScrollPhysics(),
+          child: column,
+        );
+        Widget panelContent = column;
+        if (widget.maxHeight != null) {
+          Shader fadeShader(Rect bounds) {
+            const white = Color(0xFFFFFFFF);
+            const transparent = Color(0x00FFFFFF);
+            if (bounds.height == 0) {
+              return const LinearGradient(
+                colors: [white, white],
+              ).createShader(bounds);
+            }
+            final topFrac = _showTopFade
+                ? (kPickerPanelFadeHeight / bounds.height).clamp(0.0, 0.45)
+                : 0.0;
+            final bottomFrac = _showBottomFade
+                ? (kPickerPanelFadeHeight / bounds.height).clamp(0.0, 0.45)
+                : 0.0;
+            final tf0 = topFrac * 0.30;
+            final tf1 = topFrac * 0.65;
+            final bf0 = 1.0 - bottomFrac * 0.65;
+            final bf1 = 1.0 - bottomFrac * 0.30;
+            return LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                _showTopFade ? transparent : white,
+                _showTopFade ? const Color(0x06FFFFFF) : white,
+                _showTopFade ? const Color(0x38FFFFFF) : white,
+                white,
+                white,
+                _showBottomFade ? const Color(0x38FFFFFF) : white,
+                _showBottomFade ? const Color(0x06FFFFFF) : white,
+                _showBottomFade ? transparent : white,
+              ],
+              stops: [0.0, tf0, tf1, topFrac, 1.0 - bottomFrac, bf0, bf1, 1.0],
+            ).createShader(bounds);
+          }
+
+          panelContent = NotificationListener<ScrollNotification>(
+            onNotification: _onScrollNotification,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: widget.maxHeight!),
+              child: Stack(
+                children: [
+                  ShaderMask(
+                    blendMode: BlendMode.dstIn,
+                    shaderCallback: fadeShader,
+                    child: fullContent,
+                  ),
+                  Positioned(
+                    right: 3,
+                    top: 10,
+                    bottom: 10,
+                    width: 2.5,
+                    child: AnimatedSlide(
+                      offset: _pillVisible ? Offset.zero : const Offset(3.0, 0),
+                      duration: widget.isClosing.value
+                          ? Duration.zero
+                          : const Duration(milliseconds: 100),
+                      curve: _pillVisible ? Curves.easeOut : Curves.easeIn,
+                      child: AnimatedOpacity(
+                        opacity: _pillVisible ? 0.80 : 0.0,
+                        duration: widget.isClosing.value
+                            ? Duration.zero
+                            : const Duration(milliseconds: 100),
+                        child: LayoutBuilder(
+                          builder: (ctx, constraints) {
+                            final trackH = constraints.maxHeight;
+                            return AnimatedBuilder(
+                              animation: _scrollCtrl,
+                              builder: (ctx, _) {
+                                if (!_scrollCtrl.hasClients || trackH <= 0) {
+                                  return const SizedBox.shrink();
+                                }
+                                final position = _scrollCtrl.position;
+                                if (position.maxScrollExtent < 1.0) {
+                                  return const SizedBox.shrink();
+                                }
+                                final total =
+                                    position.maxScrollExtent +
+                                    position.viewportDimension;
+                                final thumbFraction =
+                                    (position.viewportDimension / total).clamp(
+                                      0.0,
+                                      1.0,
+                                    );
+                                final thumbH = (thumbFraction * trackH).clamp(
+                                  20.0,
+                                  trackH,
+                                );
+                                final ratio = position.maxScrollExtent > 0
+                                    ? position.pixels / position.maxScrollExtent
+                                    : 0.0;
+                                final thumbTop = (ratio * (trackH - thumbH))
+                                    .clamp(
+                                      0.0,
+                                      (trackH - thumbH).clamp(
+                                        0.0,
+                                        double.infinity,
+                                      ),
+                                    );
+                                return Stack(
+                                  children: [
+                                    Positioned(
+                                      top: thumbTop,
+                                      left: 0,
+                                      right: 0,
+                                      height: thumbH,
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          color: CupertinoDynamicColor.resolve(
+                                            kTertiaryLabel,
+                                            ctx,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            1.25,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
 
         return Transform.scale(
           scale: panelScale,
@@ -1063,15 +1254,7 @@ class _ActionPanelState extends State<_ActionPanel>
                 ], context),
               ),
               clipBehavior: Clip.antiAlias,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (int i = 0; i < widget.actions.length; i++) ...[
-                    if (i > 0) _buildSeparator(i, panelSeparator),
-                    _buildRow(i),
-                  ],
-                ],
-              ),
+              child: panelContent,
             ),
           ),
         );

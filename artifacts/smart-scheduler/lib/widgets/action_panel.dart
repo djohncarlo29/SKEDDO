@@ -60,12 +60,18 @@ class _ActionPanelSFIcon extends StatelessWidget {
 
 const double _actionPanelCheckmarkBaseSize = 18.0;
 const double _actionPanelCheckmarkOptionGap = 16.0;
+const double _actionPanelLeadingGlyphBoxPadding = 3.0;
 
 double _actionPanelLeadingColumnWidth(BuildContext context) {
+  // The leading slot is sized to the complete glyph footprint, including the
+  // optical inset used by _ActionPanelSFIcon. This is intentionally derived
+  // from the text scaler: the slot grows with the glyph, while the row's
+  // outer 16 px padding and following 16 px label gap do not.
   final scaledCheckmarkSize = MediaQuery.textScalerOf(
     context,
   ).scale(_actionPanelCheckmarkBaseSize - 2);
-  return math.max(_actionPanelCheckmarkBaseSize, scaledCheckmarkSize);
+  return math.max(_actionPanelCheckmarkBaseSize, scaledCheckmarkSize) +
+      _actionPanelLeadingGlyphBoxPadding * 2;
 }
 
 // The "New Section" action icon: a solid heading bar with a plus badge above
@@ -546,6 +552,9 @@ class ActionPanel extends StatefulWidget {
   // False (default) → ClampingScrollPhysics, used for all outer tab panels.
   // Set true for mini panels inside modal sheets.
   final bool bouncingScroll;
+  // Optional live scroll offset for expandable menus that position a
+  // connected sub-panel relative to a row inside this panel.
+  final ValueNotifier<double>? scrollOffsetNotifier;
   // Uses the liquid-glass lens surface for this panel only. The default stays
   // on FrostedGlassCard because the shared action-panel API serves other menus.
   final bool useLiquidGlass;
@@ -562,6 +571,7 @@ class ActionPanel extends StatefulWidget {
     this.maxHeight,
     this.labelFontSize = 16,
     this.bouncingScroll = false,
+    this.scrollOffsetNotifier,
     this.useLiquidGlass = false,
   });
 
@@ -657,6 +667,7 @@ class _ActionPanelState extends State<ActionPanel>
     // final overscroll notification.  The dismissal owns the pill lifecycle.
     if (_isClosingNow || widget.isClosing.value) return false;
     final pos = n.metrics;
+    widget.scrollOffsetNotifier?.value = pos.pixels;
     final newTop = pos.pixels > 1.0;
     final newBot = pos.pixels < pos.maxScrollExtent - 1.0;
     if (newTop != _showTopFade || newBot != _showBottomFade) {
@@ -1046,8 +1057,10 @@ class _ActionRow extends StatefulWidget {
 class _ActionRowState extends State<_ActionRow> {
   bool _pressed = false;
 
-  // Fixed width reserved for the chevron icon in chevronColumn mode.
-  // Matches the action-item icon size (20 px) so all labels share one indent.
+  // The leading slot is dynamic with OS text size, but its outer edge is
+  // always anchored by the row's fixed 16 px horizontal inset.  It is shared
+  // by chevrons and checkmarks so the parent trigger and nested options keep
+  // the same label geometry while the nested panel is opening.
   static const double _chevW = _actionPanelCheckmarkBaseSize;
   static const double _chevGap = 7.0;
 
@@ -1083,29 +1096,32 @@ class _ActionRowState extends State<_ActionRow> {
         : _chevW;
     final leftWidget = SizedBox(
       width: leadingColumnWidth,
-      child:
-          item.chevronOverride ??
-          (item.checkmark
-              ? _ActionPanelSFIcon(
-                  SFIcons.sf_checkmark,
-                  size: _chevW,
-                  color: checkColor,
-                  weight: FontWeight.w500,
-                  boxPadding: 3,
-                  scaleWithText: true,
-                )
-              : item.hasChevron
-              ? _ActionPanelSFIcon(
-                  item.chevronDown
-                      ? SFIcons.sf_chevron_down
-                      : SFIcons.sf_chevron_right,
-                  size: _chevW,
-                  color: textColor,
-                  weight: FontWeight.w500,
-                  boxPadding: 0,
-                  scaleWithText: true,
-                )
-              : null),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child:
+            item.chevronOverride ??
+            (item.checkmark
+                ? _ActionPanelSFIcon(
+                    SFIcons.sf_checkmark,
+                    size: _chevW,
+                    color: checkColor,
+                    weight: FontWeight.w500,
+                    boxPadding: _actionPanelLeadingGlyphBoxPadding,
+                    scaleWithText: true,
+                  )
+                : item.hasChevron
+                ? _ActionPanelSFIcon(
+                    item.chevronDown
+                        ? SFIcons.sf_chevron_down
+                        : SFIcons.sf_chevron_right,
+                    size: _chevW,
+                    color: textColor,
+                    weight: FontWeight.w500,
+                    boxPadding: _actionPanelLeadingGlyphBoxPadding,
+                    scaleWithText: true,
+                  )
+                : null),
+      ),
     );
 
     final hasSubtitle = item.subtitle != null;
@@ -1155,8 +1171,9 @@ class _ActionRowState extends State<_ActionRow> {
             ),
     );
 
-    // In chevronColumn mode every row has a fixed-width glyph region on the
-    // left so all label text starts at the same x-position.
+    // In chevronColumn mode every row shares a text-scale-aware glyph region.
+    // Its left edge is fixed by the row inset, while its width and therefore
+    // the label position grow with the scaled checkmark footprint.
     // In standard mode the chevron (if any) sits inline before the label.
     final List<Widget> rowChildren = widget.chevronColumn
         ? [
@@ -1277,6 +1294,10 @@ class ExpandableActionMenu extends StatefulWidget {
   // Optional fast close for transitions into another surface, such as a
   // modal sheet opened from one of the main-panel rows.
   final int? closeDurationOverrideMs;
+  // Maximum height for the main panel. When omitted, the menu derives a safe
+  // viewport height from panelTop so every expandable menu has the same
+  // scroll fallback as ActionMenuOverlay.
+  final double? maxHeight;
 
   /// Standard panel width used throughout the app.
   static const double panelW = 240.0;
@@ -1290,6 +1311,7 @@ class ExpandableActionMenu extends StatefulWidget {
     required this.itemsBuilder,
     required this.expandableActions,
     this.closeDurationOverrideMs,
+    this.maxHeight,
     this.chevronColumn = false,
   });
 
@@ -1309,6 +1331,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
   // Two independent closing notifiers so each panel can animate out on its own.
   final _origClosing = ValueNotifier<bool>(false);
   final _expandedClosing = ValueNotifier<bool>(false);
+  final _mainScrollOffset = ValueNotifier<double>(0.0);
 
   // Drives the trigger-row chevron: 0 = pointing right (›), 1 = pointing down (∨).
   late final AnimationController _chevronCtrl;
@@ -1327,6 +1350,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
   void initState() {
     super.initState();
     widget.isClosing.addListener(_onOuterClosing);
+    _mainScrollOffset.addListener(_onMainScrollChanged);
     _chevronCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 220),
@@ -1336,10 +1360,16 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
   @override
   void dispose() {
     widget.isClosing.removeListener(_onOuterClosing);
+    _mainScrollOffset.removeListener(_onMainScrollChanged);
+    _mainScrollOffset.dispose();
     _origClosing.dispose();
     _expandedClosing.dispose();
     _chevronCtrl.dispose();
     super.dispose();
+  }
+
+  void _onMainScrollChanged() {
+    if (mounted) setState(() {});
   }
 
   // Route an outer close signal (barrier tap, parent dismissal) to whichever
@@ -1393,6 +1423,13 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
   @override
   Widget build(BuildContext context) {
     final activeSpec = _specForId(_expandedTriggerId);
+    final mediaQuery = MediaQuery.of(context);
+    final safeBottom = mediaQuery.padding.bottom + 16.0;
+    final availableMainHeight = math.max(
+      1.0,
+      mediaQuery.size.height - safeBottom - widget.panelTop,
+    );
+    final mainMaxHeight = widget.maxHeight ?? availableMainHeight;
     // During close, expose the closing row id to the main-panel builder rather
     // than a global "scaling back" state.  That lets callers hide only the row
     // whose shared element is currently on top; sibling expandable rows remain
@@ -1421,6 +1458,27 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
       _scalingBack,
       _onTriggerTap,
     );
+    final subPanelItems = activeSpec == null
+        ? null
+        : [
+            ActionItem(
+              label: activeSpec.label,
+              icon: activeSpec.icon,
+              hasChevron: true,
+              subtitle: activeSpec.subtitle,
+              iconBuilder: activeSpec.iconBuilder,
+              iconOffset: activeSpec.iconOffset,
+              instantOnOpen: true,
+              contentOpacity: 0.0,
+            ),
+            ...activeSpec.subItems,
+          ];
+    final subPanelTop = activeSpec == null
+        ? 0.0
+        : widget.panelTop + activeSpec.rowTop - _mainScrollOffset.value;
+    final subPanelMaxHeight = activeSpec == null
+        ? null
+        : math.max(1.0, mediaQuery.size.height - safeBottom - subPanelTop);
     return Stack(
       alignment: Alignment.bottomLeft,
       children: [
@@ -1453,6 +1511,8 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
                   chevronColumn: widget.chevronColumn,
                   closeDurationOverrideMs: widget.closeDurationOverrideMs,
                   rowOpacity: rowOp,
+                  maxHeight: mainMaxHeight,
+                  scrollOffsetNotifier: _mainScrollOffset,
                 ),
               ),
             ),
@@ -1465,26 +1525,15 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
         if (activeSpec != null)
           Positioned(
             left: widget.panelLeft,
-            top: widget.panelTop + activeSpec.rowTop,
+            top: subPanelTop,
             width: ExpandableActionMenu.panelW,
             child: ActionPanel(
-              items: [
-                ActionItem(
-                  label: activeSpec.label,
-                  icon: activeSpec.icon,
-                  hasChevron: true,
-                  subtitle: activeSpec.subtitle,
-                  iconBuilder: activeSpec.iconBuilder,
-                  iconOffset: activeSpec.iconOffset,
-                  instantOnOpen: true,
-                  contentOpacity: 0.0,
-                ),
-                ...activeSpec.subItems,
-              ],
+              items: subPanelItems!,
               isClosing: _expandedClosing,
               chevronColumn: widget.chevronColumn,
               closeDurationOverrideMs: widget.closeDurationOverrideMs,
               openDurationOverrideMs: 280,
+              maxHeight: subPanelMaxHeight,
             ),
           ),
 
@@ -1616,7 +1665,7 @@ class _ExpandableRowSharedContentState
                           size: _chevW,
                           color: textColor,
                           weight: FontWeight.w500,
-                          boxPadding: 0,
+                          boxPadding: _actionPanelLeadingGlyphBoxPadding,
                           scaleWithText: true,
                         ),
                       ),
