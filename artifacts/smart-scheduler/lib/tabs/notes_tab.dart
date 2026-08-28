@@ -1219,6 +1219,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
   }
 
   double _noteInputHeight(BuildContext context, Color placeholderColor) {
+    final clearIconSize = MediaQuery.textScalerOf(context).scale(20);
     final placeholderStyle = TextStyle(
       inherit: false,
       color: placeholderColor,
@@ -1230,7 +1231,8 @@ class _NoteInputCardState extends State<_NoteInputCard>
       height: kLineHeight,
     );
     // Card width minus the outer row insets and the clear-button column.
-    final inputWidth = MediaQuery.sizeOf(context).width - 91.0;
+    // The 16 px trailing inset is fixed; only the icon width scales.
+    final inputWidth = MediaQuery.sizeOf(context).width - 72.0 - clearIconSize;
     final painter = TextPainter(
       text: TextSpan(
         text: 'Type your schedule here...',
@@ -1245,6 +1247,10 @@ class _NoteInputCardState extends State<_NoteInputCard>
 
   @override
   Widget build(BuildContext context) {
+    final textScaler = MediaQuery.textScalerOf(context);
+    final plusIconSize = textScaler.scale(24);
+    final clearIconSize = textScaler.scale(20);
+    final micIconSize = textScaler.scale(17);
     final surfaceColor = resolveThemeColor(kSbSurface, context);
     final cardShadows = resolveThemeShadows(kCardShadow, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
@@ -1364,7 +1370,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                           _clearOpacity.value,
                                       child: Icon(
                                         CupertinoIcons.clear,
-                                        size: 20,
+                                        size: clearIconSize,
                                         weight: 300.0,
                                         color: secondaryLabel,
                                       ),
@@ -1406,7 +1412,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                 opacity: _plusOpacity.value,
                                 child: Icon(
                                   CupertinoIcons.add,
-                                  size: 24,
+                                  size: plusIconSize,
                                   weight: 300.0,
                                   color: secondaryLabel,
                                 ),
@@ -1442,7 +1448,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                           opacity: _pulseCtrl.value,
                                           child: FixedSFIcon(
                                             SFIcons.sf_microphone_fill,
-                                            fontSize: 17,
+                                            fontSize: micIconSize,
                                             color: resolveAccentColor(context),
                                             shadows: resolveThemeTextShadows([
                                               Shadow(
@@ -1467,7 +1473,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                         setState(() => _micPressed = pressed),
                                 child: FixedSFIcon(
                                   SFIcons.sf_microphone_fill,
-                                  fontSize: 17,
+                                  fontSize: micIconSize,
                                   color:
                                       _micPressed
                                           ? secondaryLabel
