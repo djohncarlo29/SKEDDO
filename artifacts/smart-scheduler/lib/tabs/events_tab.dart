@@ -12516,11 +12516,15 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
       index: rowIndex,
       child: SizedBox(
         width: 52,
-        child: Center(
-          child: Icon(
-            CupertinoIcons.line_horizontal_3,
-            size: handleSize,
-            color: handleColor,
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Icon(
+              CupertinoIcons.line_horizontal_3,
+              size: handleSize,
+              color: handleColor,
+            ),
           ),
         ),
       ),
