@@ -10373,7 +10373,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     child: SizedBox(
                       width: clearSlotSize,
                       height: clearSlotSize,
-                      child: Center(
+                      child: Align(
+                        alignment: Alignment.centerRight,
                         child: Icon(
                           kSearchClearCircleIcon,
                           color: kEmptyStateIcon,
@@ -10523,7 +10524,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => _openMaps(ctrl.text),
-                  child: Center(
+                  child: Align(
+                    alignment: Alignment.centerRight,
                     child: Container(
                       width: mapPinSize,
                       height: mapPinSize,

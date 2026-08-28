@@ -7951,7 +7951,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     ctrl.clear();
                     setState(() {});
                   },
-                  child: Center(
+                  child: Align(
+                    alignment: Alignment.centerRight,
                     child: Icon(
                       kSearchClearCircleIcon,
                       color: kEmptyStateIcon,
@@ -7967,7 +7968,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => _openMaps(ctrl.text),
-                  child: Center(
+                  child: Align(
+                    alignment: Alignment.centerRight,
                     child: Container(
                       width: mapPinSize,
                       height: mapPinSize,
@@ -9047,8 +9049,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
     _AttachmentFile file, {
     VoidCallback? onRemove,
   }) {
-    const double sq = 32.0;
-    const double sqR = sq * 0.52; // ContinuousRectangleBorder squircle radius
+    final textScaler = MediaQuery.textScalerOf(context);
+    final double sq = textScaler.scale(32.0);
+    final double sqR = sq * 0.52; // ContinuousRectangleBorder squircle radius
     final clearIconSize = scaledSearchIconSize(context, 18);
 
     Widget icon;
@@ -9136,6 +9139,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     double sqR, {
     required BuildContext context,
   }) {
+    final textScaler = MediaQuery.textScalerOf(context);
     final tileColor = resolveThemeColor(
       const CupertinoDynamicColor.withBrightness(
         color: Color(0xFFEAEAEA),
@@ -9156,7 +9160,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
         style: TextStyle(
           inherit: false,
           color: resolveThemeColor(kSecondaryLabel, context),
-          fontSize: 10,
+          fontSize: textScaler.scale(10),
           fontFamily: kSFProText,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.3,
