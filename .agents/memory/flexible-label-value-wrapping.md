@@ -9,6 +9,10 @@ label-preserved, value-preserved, and shared-wrap alternatives using measured
 wrapped heights: minimize the row's maximum block height first, then total text
 height.
 
+Words must never be allowed to split at a character boundary. Reject any
+side-by-side allocation narrower than either block's widest word; if no valid
+allocation remains, stack the value below the label and let the row grow.
+
 **Why:** Reserving the value's remaining width after a preferred or fixed label
 can make a short label force a long value into an unnecessary extra line.
 

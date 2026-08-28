@@ -640,6 +640,11 @@ class _WrappedTextMetrics {
 /// minimums and chooses the allocation with the shortest resulting row. This
 /// is intentionally a shared layout decision: a label may wrap to keep the
 /// value from becoming needlessly tall, and vice versa.
+///
+/// If even the widest word from each block cannot fit beside the other block,
+/// the row becomes a small two-line stack. This is preferable to letting the
+/// paragraph engine split a word such as "Category" or "Uncategorized" at a
+/// character boundary when Dynamic Type is very large.
 class MinGapLabelValueRow extends StatelessWidget {
   const MinGapLabelValueRow({
     super.key,
@@ -786,6 +791,62 @@ class MinGapLabelValueRow extends StatelessWidget {
         final availableForText = constraints.maxWidth.isFinite
             ? math.max(0.0, constraints.maxWidth - leadingTotal)
             : double.infinity;
+        final minimumLabelWidth = _minimumReadableWidth(
+          context,
+          label,
+          labelStyle,
+        );
+        final minimumValueTextWidth = _minimumReadableWidth(
+          context,
+          wrappedValue,
+          valueStyle,
+        );
+        final minimumValueSlot = trailingExtraWidth + minimumValueTextWidth;
+
+        // A compact two-column row is only valid when both columns can keep
+        // their widest word intact. If that is impossible, stack the value
+        // below the label and give both blocks the full text width.
+        final compactAvailableAfterGap = math.max(
+          0.0,
+          availableForText - kLabelValueGap,
+        );
+        final requiresStackedLayout =
+            constraints.maxWidth.isFinite &&
+            !fitsOnOneLine &&
+            (compactAvailableAfterGap < minimumLabelWidth + minimumValueSlot ||
+                _longestWordWidth(context, label, labelStyle) >
+                    availableForText + kTextLayoutEpsilon ||
+                _longestWordWidth(context, wrappedValue, valueStyle) >
+                    availableForText - trailingExtraWidth + kTextLayoutEpsilon);
+
+        if (requiresStackedLayout) {
+          final stackedRow = Row(
+            mainAxisSize: MainAxisSize.max,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (leading != null) ...[
+                SizedBox(width: leadingWidth, child: leading!),
+                SizedBox(width: leadingGap),
+              ],
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(label, style: labelStyle, softWrap: true),
+                    const SizedBox(height: 3),
+                    trailing,
+                  ],
+                ),
+              ),
+            ],
+          );
+          return _animateRowHeight(
+            stackedRow,
+            alignment: leading == null ? Alignment.topCenter : Alignment.center,
+          );
+        }
+
         final categoryTypeCanKeepLabelSingleLine =
             (isCategoryTypeShoppingList || isCategoryTypeSmartCategory) &&
             !fitsOnOneLine &&
@@ -906,7 +967,15 @@ class MinGapLabelValueRow extends StatelessWidget {
             valueStyle,
             math.max(0.0, valueSlot - trailingExtraWidth),
           );
-          if ((!labelCanWrap && labelMetrics.lineCount > 1) ||
+          final labelWordsFit =
+              labelSlot + kTextLayoutEpsilon >=
+              _longestWordWidth(context, label, labelStyle);
+          final valueWordsFit =
+              valueSlot - trailingExtraWidth + kTextLayoutEpsilon >=
+              _longestWordWidth(context, wrappedValue, valueStyle);
+          if (!labelWordsFit ||
+              !valueWordsFit ||
+              (!labelCanWrap && labelMetrics.lineCount > 1) ||
               (!valueCanWrap && valueMetrics.lineCount > 1) ||
               (labelCanWrap && labelMetrics.lineCount < 2) ||
               (valueCanWrap && valueMetrics.lineCount < 2)) {
