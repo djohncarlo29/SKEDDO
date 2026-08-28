@@ -887,8 +887,9 @@ class _ActionPanelState extends State<ActionPanel>
           ],
         );
 
-        // Outer tab panels: ClampingScrollPhysics (no rubberband).
-        // Mini panels inside modal sheets: BouncingScrollPhysics (rubberband).
+        // Full-size and mini action panels both use the native rubberband once
+        // their content is clipped into a scrollable viewport.  Callers that
+        // render a fixed-height panel never enter this scrollable path.
         final scrollable = SingleChildScrollView(
           controller: _scrollCtrl,
           physics: widget.bouncingScroll
@@ -1734,6 +1735,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
                   closeDurationOverrideMs: widget.closeDurationOverrideMs,
                   rowOpacity: rowOp,
                   maxHeight: mainMaxHeight,
+                  bouncingScroll: true,
                   scrollOffsetNotifier: _mainScrollOffset,
                 ),
               ),
@@ -1756,6 +1758,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
               closeDurationOverrideMs: widget.closeDurationOverrideMs,
               openDurationOverrideMs: 280,
               maxHeight: subPanelMaxHeight,
+              bouncingScroll: true,
               pinnedTopItemCount: 1,
               pinSeparatorAfterTop: true,
             ),
@@ -1858,6 +1861,40 @@ class _ExpandableRowSharedContentState
       letterSpacing: -0.08,
     );
     final leadingColumnWidth = _actionPanelLeadingColumnWidth(context);
+    final Widget iconWidget;
+    if (widget.iconBuilder != null) {
+      final scaler = MediaQuery.textScalerOf(context);
+      final scaledBase = scaler.scale(_actionPanelCustomIconBaseSize);
+      final iconScale = scaledBase / _actionPanelCustomIconBaseSize;
+      final iconBox = math.max(_actionPanelCustomIconBaseSize, scaledBase);
+      iconWidget = SizedBox(
+        width: iconBox,
+        height: iconBox,
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: Transform.scale(
+            alignment: Alignment.centerRight,
+            scale: iconScale,
+            child: Transform.translate(
+              offset: widget.iconOffset,
+              child: widget.iconBuilder!(textColor),
+            ),
+          ),
+        ),
+      );
+    } else {
+      iconWidget = Transform.translate(
+        offset: widget.iconOffset,
+        child: _ActionPanelSFIcon(
+          widget.icon,
+          size: 20,
+          color: textColor,
+          weight: FontWeight.w500,
+          boxPadding: 4,
+          scaleWithText: true,
+        ),
+      );
+    }
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -1914,19 +1951,9 @@ class _ExpandableRowSharedContentState
                       ],
                     ),
                   ),
+                  const SizedBox(width: _actionPanelLabelTrailingIconGap),
                   // Right icon
-                  Transform.translate(
-                    offset: widget.iconOffset,
-                    child:
-                        widget.iconBuilder?.call(textColor) ??
-                        _ActionPanelSFIcon(
-                          widget.icon,
-                          size: 20,
-                          color: textColor,
-                          weight: FontWeight.w500,
-                          boxPadding: 4,
-                        ),
-                  ),
+                  iconWidget,
                 ],
               ),
             ),
@@ -2097,7 +2124,7 @@ class ActionMenuOverlay extends StatelessWidget {
     this.panelWidth = 240.0,
     this.anchorToRight = false,
     this.labelFontSize = 16,
-    this.bouncingScroll = false,
+    this.bouncingScroll = true,
     this.useLiquidGlass = false,
     this.isPickerMiniPanel = false,
   });
