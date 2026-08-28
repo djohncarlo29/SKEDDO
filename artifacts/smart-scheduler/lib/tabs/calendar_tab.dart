@@ -11763,14 +11763,21 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                           _buildEverySubcard(),
                         ]),
                       ),
-                      SizedBox(
-                        width: double.infinity,
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 8, left: 16),
-                          child: Text(
-                            _footerText,
-                            style: _kContextFooterStyle,
-                            textAlign: TextAlign.left,
+                      // Context footer — animate its boundary so cards below
+                      // follow multiline growth instead of snapping.
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOutCubic,
+                        alignment: Alignment.topCenter,
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 8, left: 16),
+                            child: Text(
+                              _footerText,
+                              style: _kContextFooterStyle,
+                              textAlign: TextAlign.left,
+                            ),
                           ),
                         ),
                       ),

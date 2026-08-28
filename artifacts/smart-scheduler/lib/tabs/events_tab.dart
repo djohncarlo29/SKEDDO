@@ -9894,6 +9894,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     String value, {
     List<ActionItem>? items,
     Widget? leading,
+    double leadingSize = 32,
     double verticalPadding = 14,
   }) {
     // Whether THIS row's panel is currently open (or closing).
@@ -9927,7 +9928,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             valueStyle: _kRowValueStyle,
             trailing: dimmedValue,
             leading: leading,
-            leadingWidth: leading == null ? 0 : 32,
+            leadingWidth: leading == null ? 0 : leadingSize,
+            leadingHeight: leading == null ? 0 : leadingSize,
             trailingExtraWidth: 16,
           ),
         ),
@@ -10165,7 +10167,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   // ── Card 2: Category Type ─────────────────────────────────────────────────
 
   Widget _buildCategoryTypeCard() {
-    // Circular icon — 32 px, fixed per category type (never reflects user icon).
+    // Keep the Category Type circle and glyph on the same active OS text-size
+    // curve as the row text. TextScaler.scale() preserves the platform's
+    // nonlinear accessibility behavior instead of applying a flat multiplier.
+    final textScaler = MediaQuery.textScalerOf(context);
+    final iconSq = textScaler.scale(32);
     final IconData _typeIcon;
     if (_categoryType == 'Shopping List') {
       _typeIcon = SFIcons.sf_carrot_fill;
@@ -10174,10 +10180,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     } else {
       _typeIcon = SFIcons.sf_list_bullet;
     }
-    const double _iconSq = 32;
     final leadingIcon = Container(
-      width: _iconSq,
-      height: _iconSq,
+      width: iconSq,
+      height: iconSq,
       decoration: ShapeDecoration(
         color: _resolvedSelectedColor,
         shape: const CircleBorder(),
@@ -10185,7 +10190,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       child: Center(
         child: FixedSFIcon(
           _typeIcon,
-          fontSize: _categoryType == 'Smart Category' ? 17.5 : 14.5,
+          fontSize: textScaler.scale(
+            _categoryType == 'Smart Category' ? 17.5 : 14.5,
+          ),
           color: CupertinoColors.white,
         ),
       ),
@@ -10208,8 +10215,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         _categoryType,
         items: _categoryTypeItems(),
         leading: leadingIcon,
-        // The icon is 32 px square; 8 px top/bottom insets preserve the
-        // established 48 px Category Type row height.
+        leadingSize: iconSq,
+        // The icon starts at 32 px square; 8 px top/bottom insets preserve the
+        // established 48 px Category Type row height at the default text size.
         verticalPadding: 8,
       ),
     );
@@ -15949,7 +15957,8 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
       return painter.width;
     }
 
-    if (!availableWidth.isFinite || measuredWidth(baseFontSize) <= targetWidth) {
+    if (!availableWidth.isFinite ||
+        measuredWidth(baseFontSize) <= targetWidth) {
       return baseStyle;
     }
 
@@ -16728,15 +16737,22 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                         ),
                         _buildEverySubcard(),
                       ]),
-                      // Static context footer — always visible, updates live.
-                      SizedBox(
-                        width: double.infinity,
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 8, left: 16),
-                          child: Text(
-                            _footerText,
-                            style: _kContextFooterStyle(context),
-                            textAlign: TextAlign.left,
+                      // Context footer — its height can grow as the selected
+                      // repeat details wrap to additional lines. Animate the
+                      // boundary so all following cards settle into place.
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOutCubic,
+                        alignment: Alignment.topCenter,
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 8, left: 16),
+                            child: Text(
+                              _footerText,
+                              style: _kContextFooterStyle(context),
+                              textAlign: TextAlign.left,
+                            ),
                           ),
                         ),
                       ),
