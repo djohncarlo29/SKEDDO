@@ -34,6 +34,12 @@ const double kFloatingTabBarHorizontalMargin = 24.0;
 const double kFloatingTabBarBottomSpacing = 16.0;
 const double kFloatingTabBarHeight = 50.0;
 const double kFloatingTabBarTouchTargetHeight = 44.0;
+// The floating bar is a deliberately compact navigation control. Keep its
+// content on a bounded scaler so extreme OS text sizes cannot change the
+// geometry that the glass pill, reveal clip, and gesture region share. The
+// rest of the app continues to use the full OS scaler.
+const double kFloatingTabBarMinimumTextScale = 0.85;
+const double kFloatingTabBarMaximumTextScale = 1.15;
 const kFloatingTabBarSelectedPillColor = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFFFFFFF),
   darkColor: Color(0xFF2C2C2E),

@@ -47,15 +47,6 @@ class LiquidGlassNavTabCell extends StatelessWidget {
     // same nonlinear TextScaler curve as the labels, including SKEDDO's
     // custom profile when that mode is active.
     final textScaler = MediaQuery.textScalerOf(context);
-    final iconSize = textScaler.scale(baseIconSize);
-    // Keep the label baseline shared by every tab while the moving glass
-    // layer enlarges the icon under the pill. Without a common slot, a
-    // larger icon makes its icon+label group taller and shifts that label
-    // down relative to its neighbors.
-    final iconSlotHeight = math.max(
-      iconSize,
-      textScaler.scale(style.iconSizeFor(underGlass: 1)),
-    );
     final label = item.hasLabel
         ? buildLiquidGlassNavLabel(
             context,
@@ -75,6 +66,29 @@ class LiquidGlassNavTabCell extends StatelessWidget {
     // icon visible as the compact fallback.
     return LayoutBuilder(
       builder: (context, constraints) {
+        final maxCellHeight = constraints.maxHeight.isFinite
+            ? math.max(0.0, constraints.maxHeight)
+            : double.infinity;
+        final requestedIconSize = math.max(
+          0.0,
+          textScaler.scale(baseIconSize),
+        );
+        final requestedIconSlotHeight = math.max(
+          requestedIconSize,
+          math.max(
+            0.0,
+            textScaler.scale(style.iconSizeFor(underGlass: 1)),
+          ),
+        );
+        // The cell is part of a fixed-height navigation control. At extreme
+        // text scales, never let the icon slot escape the cell: the pill and
+        // its reveal clip must continue to use the same compact geometry.
+        final iconSlotHeight = maxCellHeight.isFinite
+            ? requestedIconSlotHeight.clamp(0.0, maxCellHeight).toDouble()
+            : requestedIconSlotHeight;
+        final iconSize = maxCellHeight.isFinite
+            ? requestedIconSize.clamp(0.0, maxCellHeight).toDouble()
+            : requestedIconSize;
         final availableLabelHeight = math.max(
           0.0,
           constraints.maxHeight - iconSlotHeight - style.iconLabelGap,
@@ -98,13 +112,16 @@ class LiquidGlassNavTabCell extends StatelessWidget {
                 width: iconSlotHeight,
                 height: iconSlotHeight,
                 child: Center(
-                  child: buildLiquidGlassNavGlyph(
-                    context,
-                    item,
-                    color: color,
-                    size: iconSize,
-                    selected: selected,
-                    underGlass: glass > 0,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: buildLiquidGlassNavGlyph(
+                      context,
+                      item,
+                      color: color,
+                      size: iconSize,
+                      selected: selected,
+                      underGlass: glass > 0,
+                    ),
                   ),
                 ),
               ),
@@ -115,7 +132,7 @@ class LiquidGlassNavTabCell extends StatelessWidget {
                     maxWidth: constraints.maxWidth,
                     maxHeight: availableLabelHeight,
                   ),
-                  child: label,
+                  child: FittedBox(fit: BoxFit.scaleDown, child: label),
                 ),
               ],
             ],

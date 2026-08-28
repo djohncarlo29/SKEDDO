@@ -84,7 +84,10 @@ class FloatingTabPill extends StatelessWidget {
           MediaQuery.removePadding(
             context: context,
             removeBottom: true,
-            child: LiquidGlassTabBar.withImpeller(
+            child: MediaQuery.withClampedTextScaling(
+              minScaleFactor: kFloatingTabBarMinimumTextScale,
+              maxScaleFactor: kFloatingTabBarMaximumTextScale,
+              child: LiquidGlassTabBar.withImpeller(
               items: [
                 _tabItem(SFIcons.sf_text_document, 'Notes'),
                 _tabItem(SFIcons.sf_calendar, 'Calendar'),
@@ -168,6 +171,7 @@ class FloatingTabPill extends StatelessWidget {
                     chromaticAberration: kFloatingTabBarChromaticAberration,
                   ),
                 ),
+              ),
               ),
             ),
           ),
