@@ -12772,7 +12772,8 @@ class _SwipeToRevealDelete extends StatefulWidget {
 
 class _SwipeToRevealDeleteState extends State<_SwipeToRevealDelete>
     with SingleTickerProviderStateMixin {
-  static const _kActionWidth = 52.0;
+  static const _kActionInset = 16.0;
+  static const _kContentGap = 32.0;
   static const _kAnimationDuration = Duration(milliseconds: 220);
   static const _kRubberBandResistance = 0.15;
   static const _kReverseCloseDistance = 8.0;
@@ -12784,6 +12785,10 @@ class _SwipeToRevealDeleteState extends State<_SwipeToRevealDelete>
   double _animationEnd = 0.0;
   double _dragStartOffset = 0.0;
   double _dragDistance = 0.0;
+
+  // The reveal distance includes the scaled glyph plus the fixed 32pt gap.
+  // This keeps the gap stable when the OS text size changes.
+  double get _actionWidth => _kContentGap + widget.iconSize;
 
   double get _renderOffset {
     if (!_settleController.isAnimating) return _offset;
@@ -12834,13 +12839,12 @@ class _SwipeToRevealDeleteState extends State<_SwipeToRevealDelete>
   }
 
   double _rubberBand(double rawOffset) {
-    if (rawOffset > _kActionWidth) {
-      return _kActionWidth +
-          (rawOffset - _kActionWidth) * _kRubberBandResistance;
+    if (rawOffset > _actionWidth) {
+      return _actionWidth + (rawOffset - _actionWidth) * _kRubberBandResistance;
     }
-    if (rawOffset < -_kActionWidth) {
-      return -_kActionWidth +
-          (rawOffset + _kActionWidth) * _kRubberBandResistance;
+    if (rawOffset < -_actionWidth) {
+      return -_actionWidth +
+          (rawOffset + _actionWidth) * _kRubberBandResistance;
     }
     return rawOffset;
   }
@@ -12848,7 +12852,7 @@ class _SwipeToRevealDeleteState extends State<_SwipeToRevealDelete>
   void _onDragEnd(DragEndDetails details) {
     final velocity = details.primaryVelocity ?? 0.0;
     final current = _offset;
-    final startedRevealed = _dragStartOffset.abs() >= _kActionWidth * 0.5;
+    final startedRevealed = _dragStartOffset.abs() >= _actionWidth * 0.5;
     final reversedByDistance =
         startedRevealed &&
         _dragDistance.abs() >= _kReverseCloseDistance &&
@@ -12865,8 +12869,8 @@ class _SwipeToRevealDeleteState extends State<_SwipeToRevealDelete>
     final shouldClose = reversedByDistance || reversedByVelocity;
     final shouldReveal =
         !shouldClose &&
-        (current.abs() >= _kActionWidth * 0.5 || velocity.abs() >= 300);
-    _animateTo(shouldReveal && direction != 0 ? direction * _kActionWidth : 0);
+        (current.abs() >= _actionWidth * 0.5 || velocity.abs() >= 300);
+    _animateTo(shouldReveal && direction != 0 ? direction * _actionWidth : 0);
     if (shouldReveal && direction != 0) {
       _openState = this;
     }
@@ -12903,11 +12907,11 @@ class _SwipeToRevealDeleteState extends State<_SwipeToRevealDelete>
     // Start the icon outside the viewport and translate it by the same amount
     // as the header.  The old implementation left it fixed in the reveal slot,
     // so it popped directly into place instead of following the swipe.
-    final iconTravel = rowOffset - (left ? _kActionWidth : -_kActionWidth);
+    final iconTravel = rowOffset - (left ? _actionWidth : -_actionWidth);
     return Align(
       alignment: left ? Alignment.centerLeft : Alignment.centerRight,
       child: SizedBox(
-        width: _kActionWidth,
+        width: _actionWidth,
         height: double.infinity,
         child: Semantics(
           button: true,
@@ -12915,13 +12919,24 @@ class _SwipeToRevealDeleteState extends State<_SwipeToRevealDelete>
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: widget.onDelete,
-            child: Center(
-              child: Transform.translate(
-                offset: Offset(iconTravel, widget.deleteIconVerticalOffset),
-                child: FixedSFIcon(
-                  SFIcons.sf_trash,
-                  fontSize: widget.iconSize,
-                  color: CupertinoColors.destructiveRed,
+            child: Padding(
+              // Anchor the glyph to the revealed edge rather than centering
+              // it.  The row itself is already inset 16pt from the viewport,
+              // so this fixed 16pt action inset places the glyph 32pt from
+              // the phone edge at every OS text-size setting.
+              padding: EdgeInsets.only(
+                left: left ? _kActionInset : 0,
+                right: left ? 0 : _kActionInset,
+              ),
+              child: Align(
+                alignment: left ? Alignment.centerLeft : Alignment.centerRight,
+                child: Transform.translate(
+                  offset: Offset(iconTravel, widget.deleteIconVerticalOffset),
+                  child: FixedSFIcon(
+                    SFIcons.sf_trash,
+                    fontSize: widget.iconSize,
+                    color: CupertinoColors.destructiveRed,
+                  ),
                 ),
               ),
             ),
