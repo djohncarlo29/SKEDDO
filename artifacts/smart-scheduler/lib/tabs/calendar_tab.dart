@@ -5589,6 +5589,9 @@ class _AttachmentFile {
   // (i.e. loaded from an existing event during editing). The save handler
   // reuses this path instead of writing a new copy.
   final String? path;
+  // Fallback source path supplied by file_picker when it cannot provide bytes.
+  // This is copied into the app-owned attachment directory during save.
+  final String? sourcePath;
 
   const _AttachmentFile({
     required this.name,
@@ -5596,6 +5599,7 @@ class _AttachmentFile {
     this.bytes,
     this.isImage = false,
     this.path,
+    this.sourcePath,
   });
 }
 
@@ -6877,11 +6881,17 @@ class _NewEventSheetState extends State<_NewEventSheet>
             // Already persisted on disk — reuse the existing path without
             // writing a duplicate copy.
             paths.add(a.path!);
-          } else if (a.bytes != null && a.bytes!.isNotEmpty) {
-            final ts = DateTime.now().millisecondsSinceEpoch;
+          } else if (a.bytes != null || a.sourcePath != null) {
+            final ts = DateTime.now().microsecondsSinceEpoch;
             final safeName = a.name.replaceAll(RegExp(r'[^\w.\-]'), '_');
             final file = File('${attachDir.path}/${ts}_$safeName');
-            await file.writeAsBytes(a.bytes!, flush: true);
+            if (a.bytes != null) {
+              await file.writeAsBytes(a.bytes!, flush: true);
+            } else {
+              final source = File(a.sourcePath!);
+              if (!await source.exists()) continue;
+              await source.copy(file.path);
+            }
             paths.add(file.path);
           }
         }
@@ -9225,8 +9235,12 @@ class _NewEventSheetState extends State<_NewEventSheet>
         _AttachmentFile(
           name: pf.name,
           ext: ext,
-          bytes: isImg ? pf.bytes : null,
+          // Keep the original bytes for every file type. Previously this was
+          // intentionally limited to images, which left document/audio/video
+          // rows with no data to persist when the event was saved.
+          bytes: pf.bytes,
           isImage: isImg,
+          sourcePath: pf.path,
         ),
       );
       setState(() => _importRemaining = files.length - (i + 1));

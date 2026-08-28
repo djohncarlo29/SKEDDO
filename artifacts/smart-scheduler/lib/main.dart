@@ -206,6 +206,21 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
     return top;
   }
 
+  double _rowHeight(BuildContext context, String targetLabel) {
+    final items = _origItems(null, false, (_) {});
+    for (final item in items) {
+      if (item.label == targetLabel) {
+        return ActionItem.rowHeightForItem(
+          context,
+          item,
+          panelWidth: widget.panelWidth,
+          chevronColumn: true,
+        );
+      }
+    }
+    return ActionItem.rowHeight;
+  }
+
   double _sortByTop(BuildContext context) => _rowTop(context, 'Sort By');
 
   double _manageSectionsTop(BuildContext context) =>
@@ -251,7 +266,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       icon: SFIcons.sf_checkmark_circle,
       onTap: () {},
     ),
-    if (widget.sectionsEnabled)
+    if (widget.sectionsEnabled && _sortBy == 'Manual')
       _manageSections
           ? ActionItem(
               label: 'Manage Sections',
@@ -358,11 +373,11 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
   @override
   Widget build(BuildContext context) {
     final expandableActions = <ExpandableActionSpec>[
-      if (widget.sectionsEnabled && _manageSections)
+      if (widget.sectionsEnabled && _sortBy == 'Manual' && _manageSections)
         ExpandableActionSpec(
           id: 'manageSections',
           rowTop: _manageSectionsTop(context),
-          rowHeight: ActionItem.rowHeight,
+          rowHeight: _rowHeight(context, 'Manage Sections'),
           label: 'Manage Sections',
           subtitle: null,
           icon: SFIcons.sf_list_bullet,
@@ -373,7 +388,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       ExpandableActionSpec(
         id: 'sortBy',
         rowTop: _sortByTop(context),
-        rowHeight: ActionItem.rowHeightWithSubtitle,
+        rowHeight: _rowHeight(context, 'Sort By'),
         label: 'Sort By',
         subtitle: _sortBy,
         icon: SFIcons.sf_arrow_up_arrow_down,
@@ -935,8 +950,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
     final isSmartCategory = _kSmartCategoryLabels.contains(_dcvCategory);
     final sectionsEnabled = _dcvSectionsEnabled(_dcvCategory);
+    final initialSortBy = _dcvSortByMap[_dcvCategory] ?? 'Manual';
     final manageSections =
-        _eventsTabKey.currentState?.dcvHasSections(_dcvCategory) ?? false;
+        initialSortBy == 'Manual' &&
+        (_eventsTabKey.currentState?.dcvHasSections(_dcvCategory) ?? false);
+    final showSectionAction = sectionsEnabled && initialSortBy == 'Manual';
 
     // Pre-compute panel origin based on the FULL item set so the position
     // stays stable even when Sort By expands (removing rows below it).
@@ -959,7 +977,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         label: 'Select Events',
         icon: SFIcons.sf_checkmark_circle,
       ),
-      if (sectionsEnabled)
+      if (showSectionAction)
         ActionItem(
           label: manageSections ? 'Manage Sections' : 'New Section',
           icon: SFIcons.sf_list_bullet,
@@ -1027,7 +1045,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         isSmartCategory: isSmartCategory,
         sectionsEnabled: sectionsEnabled,
         initialManageSections: manageSections,
-        initialSortBy: _dcvSortByMap[_dcvCategory] ?? 'Manual',
+        initialSortBy: initialSortBy,
         onSortChanged: (s) {
           final cat = _dcvCategory;
           if (cat != null && mounted) {

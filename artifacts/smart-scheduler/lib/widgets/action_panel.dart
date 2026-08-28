@@ -705,9 +705,11 @@ class _ActionPanelState extends State<ActionPanel>
 
   // Scroll state — only active when widget.maxHeight != null.
   final _scrollCtrl = ScrollController();
+  bool _canScroll = false;
+  bool _scrollabilityCheckScheduled = false;
   bool _showTopFade = false;
   bool _showBottomFade =
-      true; // assume overflow until first scroll notification
+      false; // enabled after the first layout confirms hidden content
 
   // Scroll pill indicator — appears on scroll, auto-hides after 1.5 s.
   Timer? _pillHideTimer;
@@ -779,6 +781,30 @@ class _ActionPanelState extends State<ActionPanel>
     }
   }
 
+  void _scheduleScrollabilityCheck() {
+    if (widget.maxHeight == null || _scrollabilityCheckScheduled) return;
+    _scrollabilityCheckScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollabilityCheckScheduled = false;
+      if (!mounted || !_scrollCtrl.hasClients) return;
+      final canScroll = _scrollCtrl.position.maxScrollExtent > 1.0;
+      if (_canScroll == canScroll && _showBottomFade == canScroll) {
+        return;
+      }
+      setState(() {
+        _canScroll = canScroll;
+        _showBottomFade = canScroll;
+      });
+    });
+  }
+
+  ScrollPhysics get _effectiveScrollPhysics {
+    if (!_canScroll) return const NeverScrollableScrollPhysics();
+    return widget.bouncingScroll
+        ? const BouncingScrollPhysics()
+        : const ClampingScrollPhysics();
+  }
+
   // Called by NotificationListener inside the scrollable content.
   // Updates top/bottom fade visibility and shows the scroll pill.
   bool _onScrollNotification(ScrollNotification n) {
@@ -811,6 +837,18 @@ class _ActionPanelState extends State<ActionPanel>
     _ctrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant ActionPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.maxHeight != widget.maxHeight ||
+        oldWidget.items.length != widget.items.length) {
+      _canScroll = false;
+      _showTopFade = false;
+      _showBottomFade = false;
+      _scheduleScrollabilityCheck();
+    }
   }
 
   // ── Derived progress ──────────────────────────────────────────────────────
@@ -851,6 +889,7 @@ class _ActionPanelState extends State<ActionPanel>
 
   @override
   Widget build(BuildContext context) {
+    _scheduleScrollabilityCheck();
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (context, _) {
@@ -892,11 +931,7 @@ class _ActionPanelState extends State<ActionPanel>
         // render a fixed-height panel never enter this scrollable path.
         final scrollable = SingleChildScrollView(
           controller: _scrollCtrl,
-          physics: widget.bouncingScroll
-              ? const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                )
-              : const ClampingScrollPhysics(),
+          physics: _effectiveScrollPhysics,
           child: column,
         );
 
@@ -949,11 +984,7 @@ class _ActionPanelState extends State<ActionPanel>
               );
         final bodyScrollable = SingleChildScrollView(
           controller: _scrollCtrl,
-          physics: widget.bouncingScroll
-              ? const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                )
-              : const ClampingScrollPhysics(),
+          physics: _effectiveScrollPhysics,
           child: bodyColumn,
         );
 
@@ -1129,7 +1160,9 @@ class _ActionPanelState extends State<ActionPanel>
             child: scrollViewport,
           );
         } else {
-          panelContent = scrollable;
+          // A panel with no height cap is fully visible by definition. Keep
+          // it out of a scroll view so a short action menu cannot rubberband.
+          panelContent = column;
         }
 
         final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
