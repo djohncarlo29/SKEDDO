@@ -57,6 +57,16 @@ class _ActionPanelSFIcon extends StatelessWidget {
   }
 }
 
+const double _actionPanelCheckmarkBaseSize = 18.0;
+const double _actionPanelCheckmarkOptionGap = 16.0;
+
+double _actionPanelLeadingColumnWidth(BuildContext context) {
+  final scaledCheckmarkSize = MediaQuery.textScalerOf(
+    context,
+  ).scale(_actionPanelCheckmarkBaseSize - 2);
+  return math.max(_actionPanelCheckmarkBaseSize, scaledCheckmarkSize);
+}
+
 // The "New Section" action icon: a solid heading bar with a plus badge above
 // two bulleted list rows.  It is drawn as vectors rather than using the
 // reference raster so it stays crisp at the action-panel's native scale.
@@ -437,8 +447,10 @@ class ActionItem {
   }) {
     final textScaler = MediaQuery.textScalerOf(context);
     final textDirection = Directionality.maybeOf(context) ?? TextDirection.ltr;
-    final leftWidth =
-        (chevronColumn || item.hasChevron || item.checkmark ? 18.0 + 7.0 : 0);
+    final leftWidth = chevronColumn
+        ? _actionPanelLeadingColumnWidth(context) +
+            _actionPanelCheckmarkOptionGap
+        : (item.hasChevron || item.checkmark ? 18.0 + 7.0 : 0);
     final rightWidth = item.iconBuilder != null ? 24.0 : item.iconSize + 8.0;
     final textWidth = math.max(1.0, panelWidth - 32.0 - leftWidth - rightWidth);
 
@@ -1049,7 +1061,7 @@ class _ActionRowState extends State<_ActionRow> {
 
   // Fixed width reserved for the chevron icon in chevronColumn mode.
   // Matches the action-item icon size (20 px) so all labels share one indent.
-  static const double _chevW = 18.0;
+  static const double _chevW = _actionPanelCheckmarkBaseSize;
   static const double _chevGap = 7.0;
 
   @override
@@ -1081,8 +1093,11 @@ class _ActionRowState extends State<_ActionRow> {
     );
 
     // Left column priority: chevronOverride > checkmark > chevron > empty.
+    final leadingColumnWidth = widget.chevronColumn
+        ? _actionPanelLeadingColumnWidth(context)
+        : _chevW;
     final leftWidget = SizedBox(
-      width: _chevW,
+      width: leadingColumnWidth,
       child:
           item.chevronOverride ??
           (item.checkmark
@@ -1162,7 +1177,7 @@ class _ActionRowState extends State<_ActionRow> {
         widget.chevronColumn
             ? [
               leftWidget,
-              const SizedBox(width: _chevGap),
+              const SizedBox(width: _actionPanelCheckmarkOptionGap),
               Expanded(child: labelBlock),
               iconWidget,
             ]
