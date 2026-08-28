@@ -612,6 +612,9 @@ double cupertinoDatePickerFontSize(BuildContext context) {
 // scaling makes labels/value text wrap within their own areas instead of
 // allowing the two columns to touch.
 const double kLabelValueGap = 25.0;
+// Give a preserved single-line label a fractional-pixel cushion so the
+// measured width and the render paragraph do not disagree at a line break.
+const double kTextLayoutEpsilon = 0.5;
 
 // Flutter's line breaker can treat punctuation such as "/" as a valid break
 // point. Chevron values should instead break only between words, so protect
@@ -792,9 +795,11 @@ class MinGapLabelValueRow extends StatelessWidget {
         // fallback preference: "Category Type" / "Standard" and "Default
         // Event Duration" / "1 hour" or "2 hours" wrap the label only;
         // "Travel Time" / "1 hour, 30 minutes" keeps the label on one line
-        // and wraps only the value; "Category Type" / "Shopping List" or
-        // "Smart Category" and "Second Alert" / "1 hour, 30 minutes before"
-        // wrap both blocks.
+        // and wraps only the value. "Category Type" / "Shopping List" and
+        // "Smart Category" do the same while the label can fit beside a
+        // readable wrapped value; they wrap both blocks only when preserving
+        // the label would bypass the required gap. "Second Alert" /
+        // "1 hour, 30 minutes before" wraps both blocks.
         final forceLabelOnlyWrap =
             !fitsOnOneLine &&
             ((label == 'Category Type' && value == 'Standard') ||
@@ -804,33 +809,35 @@ class MinGapLabelValueRow extends StatelessWidget {
             !fitsOnOneLine &&
             label == 'Travel Time' &&
             value == '1 hour, 30 minutes';
+        final isCategoryTypeShoppingList =
+            label == 'Category Type' && value == 'Shopping List';
         final isCategoryTypeSmartCategory =
             label == 'Category Type' && value == 'Smart Category';
+        final singleLineLabelSlot = labelWidth + kTextLayoutEpsilon;
         final availableForText =
             constraints.maxWidth.isFinite
                 ? math.max(0.0, constraints.maxWidth - leadingTotal)
                 : double.infinity;
-        final smartCategoryCanKeepLabelSingleLine =
-            isCategoryTypeSmartCategory &&
+        final categoryTypeCanKeepLabelSingleLine =
+            (isCategoryTypeShoppingList || isCategoryTypeSmartCategory) &&
             !fitsOnOneLine &&
-            labelWidth +
+            singleLineLabelSlot +
                     kLabelValueGap +
                     trailingExtraWidth +
                     _minimumReadableWidth(context, wrappedValue, valueStyle) <=
                 availableForText;
         final forceSharedWrap =
             !fitsOnOneLine &&
-            ((label == 'Category Type' && value == 'Shopping List') ||
+            (((isCategoryTypeShoppingList || isCategoryTypeSmartCategory) &&
+                    !categoryTypeCanKeepLabelSingleLine) ||
                 (label == 'Second Alert' &&
-                    value == '1 hour, 30 minutes before') ||
-                (isCategoryTypeSmartCategory &&
-                    !smartCategoryCanKeepLabelSingleLine));
+                    value == '1 hour, 30 minutes before'));
         final labelCanWrap =
             forceLabelOnlyWrap ||
             forceSharedWrap ||
             (!fitsOnOneLine &&
                 !forceValueOnlyWrap &&
-                !smartCategoryCanKeepLabelSingleLine &&
+                !categoryTypeCanKeepLabelSingleLine &&
                 _hasMultipleWords(label));
         final valueCanWrap =
             forceValueOnlyWrap ||
@@ -990,7 +997,9 @@ class MinGapLabelValueRow extends StatelessWidget {
         final preferredLabelSlot =
             labelCanWrap
                 ? math.max(minLabelSlot, (labelWidth + minLabelSlot) / 2.0)
-                : labelWidth;
+                : (categoryTypeCanKeepLabelSingleLine
+                    ? singleLineLabelSlot
+                    : labelWidth);
         final preferredValueSlot =
             valueCanWrap
                 ? math.max(minValueSlot, (valueWidth + minValueSlot) / 2.0)
@@ -1004,7 +1013,11 @@ class MinGapLabelValueRow extends StatelessWidget {
 
         // Also compare the two one-sided choices. The required-wrap guard
         // above keeps only the valid one when exactly one block can wrap.
-        considerAllocation(labelWidth);
+        considerAllocation(
+          categoryTypeCanKeepLabelSingleLine
+              ? singleLineLabelSlot
+              : labelWidth,
+        );
         considerAllocation(availableAfterGap - valueWidth);
 
         // If neither one-sided choice is short enough, compare shared-wrap

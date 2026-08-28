@@ -15,3 +15,11 @@ can make a short label force a long value into an unnecessary extra line.
 **How to apply:** Reuse the shared row layout for picker and settings rows; do
 not restore a label-priority or value-priority width heuristic, and do not make
 shared wrapping the default when a one-sided candidate is shorter.
+
+Category Type with Shopping List follows the Smart Category exception: preserve
+the label on one line while the value can take the wrapped side without
+bypassing the minimum gap; shared wrapping is only the fallback when that
+allocation is not possible.
+
+**Why:** These category values are long enough to trigger Dynamic Type wrapping,
+but the label remains readable and should not wrap prematurely.

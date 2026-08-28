@@ -7909,8 +7909,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
     String prefix,
   ) {
     final hasText = ctrl.text.isNotEmpty;
+    final mapPinSize = MediaQuery.textScalerOf(context).scale(28);
     final clearIconSize = scaledSearchIconSize(context, 17);
-    final actionSize = math.max(28.0, clearIconSize);
+    final actionSize = math.max(mapPinSize, clearIconSize);
     return SizedBox(
       width: actionSize,
       height: actionSize,
@@ -7956,8 +7957,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
                   onTap: () => _openMaps(ctrl.text),
                   child: Center(
                     child: Container(
-                      width: 28,
-                      height: 28,
+                      width: mapPinSize,
+                      height: mapPinSize,
                       decoration: BoxDecoration(
                         color: _resolvedCategoryColor,
                         shape: BoxShape.circle,
@@ -7965,7 +7966,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                       child: Center(
                         child: FixedSFIcon(
                           SFIcons.sf_mappin,
-                          fontSize: 17,
+                          fontSize: mapPinSize * (17 / 28),
                           color: CupertinoColors.white,
                         ),
                       ),
@@ -9036,6 +9037,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
   }) {
     const double sq = 32.0;
     const double sqR = sq * 0.52; // ContinuousRectangleBorder squircle radius
+    final clearIconSize = scaledSearchIconSize(context, 18);
 
     Widget icon;
     if (file.isImage && file.bytes != null) {
@@ -9081,12 +9083,12 @@ class _NewEventSheetState extends State<_NewEventSheet>
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: onRemove,
-              child: const Padding(
-                padding: EdgeInsets.only(left: 4),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 4),
                 child: Icon(
                   kSearchClearCircleIcon,
                   color: kEmptyStateIcon,
-                  size: 18,
+                  size: clearIconSize,
                 ),
               ),
             ),

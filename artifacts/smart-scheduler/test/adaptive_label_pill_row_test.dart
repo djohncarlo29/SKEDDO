@@ -54,4 +54,49 @@ void main() {
       expect(find.byType(Column), findsNothing);
     },
   );
+
+  testWidgets(
+    'keeps Category Type single-line before shared wrapping Shopping List',
+    (tester) async {
+      final labelStyle = TextStyle(
+        fontSize: 17,
+        fontFamily: kSFProText,
+        letterSpacing: kTracking17,
+        height: kLineHeight,
+      );
+      final valueStyle = TextStyle(
+        fontSize: 15,
+        fontFamily: kSFProText,
+        fontWeight: FontWeight.w500,
+        letterSpacing: kTracking17,
+      );
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(1.5)),
+          child: CupertinoApp(
+            home: CupertinoPageScaffold(
+              child: SizedBox(
+                width: 550,
+                child: MinGapLabelValueRow(
+                  label: 'Category Type',
+                  labelStyle: labelStyle,
+                  value: 'Shopping List',
+                  valueStyle: valueStyle,
+                  trailing: Text('Shopping List', style: valueStyle),
+                  alignTrailing: false,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final labelSize = tester.getSize(find.text('Category Type'));
+      final valueSize = tester.getSize(find.text('Shopping List'));
+      expect(labelSize.height, lessThan(50));
+      expect(valueSize.height, greaterThan(30));
+    },
+  );
 }

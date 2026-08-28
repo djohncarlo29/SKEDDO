@@ -10466,8 +10466,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   /// clear button overlap while one fades out and the other fades in.
   Widget _buildLocationTrailingAction(TextEditingController ctrl) {
     final hasText = ctrl.text.isNotEmpty;
+    final mapPinSize = MediaQuery.textScalerOf(context).scale(28);
     final clearIconSize = scaledSearchIconSize(context, 17);
-    final actionSize = max(28.0, clearIconSize);
+    final actionSize = max(mapPinSize, clearIconSize);
     return SizedBox(
       width: actionSize,
       height: actionSize,
@@ -10513,15 +10514,15 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   onTap: () => _openMaps(ctrl.text),
                   child: Center(
                     child: Container(
-                      width: 28,
-                      height: 28,
+                      width: mapPinSize,
+                      height: mapPinSize,
                       decoration: BoxDecoration(
                         color: _resolvedSelectedColor,
                         shape: BoxShape.circle,
                       ),
                       child: _renderCatIcon(
                         SFIcons.sf_mappin,
-                        28,
+                        mapPinSize,
                         CupertinoColors.white,
                       ),
                     ),
