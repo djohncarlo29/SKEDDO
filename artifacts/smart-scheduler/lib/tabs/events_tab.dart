@@ -737,10 +737,17 @@ class _ContextMenuOverlay extends StatelessWidget {
 
     // Action panel — centred horizontally, placed on whichever side of the
     // pressed tile has more available space.
-    const panelW = 240.0;
-    final panelLeft = (screenW - panelW) / 2;
     final actions = _actions();
-    final panelH = actions.length * 52.0 + max(0, actions.length - 1) * 0.5;
+    final panelW = min(
+      ActionItem.panelWidthForItems(actions, context: context, minWidth: 240.0),
+      max(1.0, screenW - 32.0),
+    );
+    final panelLeft = (screenW - panelW) / 2;
+    final panelH = ActionItem.panelHeightForItems(
+      actions,
+      context: context,
+      panelWidth: panelW,
+    );
 
     final tileBottom = originalOffset.dy + originalSize.height;
     const panelGap = 12.0;
@@ -8855,6 +8862,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
         anchorToRight: true,
         labelFontSize: 15,
         bouncingScroll: true,
+        isPickerMiniPanel: true,
       ),
     );
     Overlay.of(context).insert(_pickerEntry!);
@@ -9608,6 +9616,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         anchorToRight: true, // right edge of panel aligns to right of row
         labelFontSize: 15, // modal-sheet mini panels use 15 px
         bouncingScroll: true, // modal-sheet mini panels retain rubberband
+        isPickerMiniPanel: true,
       ),
     );
     Overlay.of(context).insert(_pickerEntry!);
@@ -16061,6 +16070,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
         anchorToRight: true,
         labelFontSize: 15,
         bouncingScroll: true, // modal-sheet mini panels retain rubberband
+        isPickerMiniPanel: true,
       ),
     );
     Overlay.of(context).insert(_pickerEntry!);

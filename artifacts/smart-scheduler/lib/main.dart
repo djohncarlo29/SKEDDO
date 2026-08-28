@@ -40,6 +40,7 @@ import 'settings_panel.dart';
 class _DcvMenuContent extends StatefulWidget {
   final double panelTop;
   final double panelLeft;
+  final double panelWidth;
   final double maxHeight;
   final ValueNotifier<bool> isClosing;
   final VoidCallback onDismiss;
@@ -64,6 +65,7 @@ class _DcvMenuContent extends StatefulWidget {
   const _DcvMenuContent({
     required this.panelTop,
     required this.panelLeft,
+    required this.panelWidth,
     required this.maxHeight,
     required this.isClosing,
     required this.onDismiss,
@@ -197,7 +199,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       top += ActionItem.rowHeightForItem(
         context,
         item,
-        panelWidth: ExpandableActionMenu.panelW,
+        panelWidth: widget.panelWidth,
         chevronColumn: true,
       );
     }
@@ -382,6 +384,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
     return ExpandableActionMenu(
       panelTop: widget.panelTop,
       panelLeft: widget.panelLeft,
+      panelWidth: widget.panelWidth,
       isClosing: widget.isClosing,
       onDismiss: widget.onDismiss,
       chevronColumn: true,
@@ -942,7 +945,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final screenW = mq.size.width;
     final safeTop = mq.padding.top + 16.0;
     final safeBtm = mq.padding.bottom + 16.0;
-    const panelW = 240.0;
+    const basePanelW = ExpandableActionMenu.panelW;
     final fullItems = <ActionItem>[
       const ActionItem(label: 'View as List', icon: SFIcons.sf_list_bullet),
       const ActionItem(
@@ -979,6 +982,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           isDestructive: true,
         ),
     ];
+    final panelW = min(
+      ActionItem.panelWidthForItems(
+        fullItems,
+        context: context,
+        minWidth: basePanelW,
+        chevronColumn: true,
+      ),
+      max(1.0, screenW - 32.0),
+    );
     final fullH = ActionItem.panelHeightForItems(
       fullItems,
       context: context,
@@ -1004,6 +1016,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       builder: (ctx) => _DcvMenuContent(
         panelTop: panelTop,
         panelLeft: panelLeft,
+        panelWidth: panelW,
         maxHeight: availableRoom,
         isClosing: _dcvMenuClosing,
         onDismiss: () => _hideDcvMenu(),

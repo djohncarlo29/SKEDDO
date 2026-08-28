@@ -61,6 +61,9 @@ class _ActionPanelSFIcon extends StatelessWidget {
 const double _actionPanelCheckmarkBaseSize = 18.0;
 const double _actionPanelCheckmarkOptionGap = 16.0;
 const double _actionPanelLeadingGlyphBoxPadding = 3.0;
+const double _actionPanelHorizontalInset = 16.0;
+const double _actionPanelLabelTrailingIconGap = 16.0;
+const double _actionPanelCustomIconBaseSize = 24.0;
 
 double _actionPanelLeadingColumnWidth(BuildContext context) {
   // The leading slot is sized to the complete glyph footprint, including the
@@ -72,6 +75,23 @@ double _actionPanelLeadingColumnWidth(BuildContext context) {
   ).scale(_actionPanelCheckmarkBaseSize - 2);
   return math.max(_actionPanelCheckmarkBaseSize, scaledCheckmarkSize) +
       _actionPanelLeadingGlyphBoxPadding * 2;
+}
+
+double _actionPanelRightIconWidth(BuildContext context, ActionItem item) {
+  final scaler = MediaQuery.textScalerOf(context);
+  if (item.iconBuilder != null) {
+    // Custom action-panel icons are authored in a 24 px box. Keep that box
+    // wide enough for the scaled version while preserving the base footprint
+    // at the smaller accessibility stops.
+    return math.max(
+      _actionPanelCustomIconBaseSize,
+      scaler.scale(_actionPanelCustomIconBaseSize),
+    );
+  }
+
+  // _ActionPanelSFIcon uses (iconSize - 2) for the glyph and adds 4 px of
+  // internal padding on both sides.
+  return math.max(item.iconSize, scaler.scale(item.iconSize - 2.0)) + 8.0;
 }
 
 // The "New Section" action icon: a solid heading bar with a plus badge above
@@ -445,6 +465,7 @@ class ActionItem {
     required double panelWidth,
     bool chevronColumn = false,
     double labelFontSize = 16,
+    bool enforceTrailingIconSpacing = true,
   }) {
     final textScaler = MediaQuery.textScalerOf(context);
     final textDirection = Directionality.maybeOf(context) ?? TextDirection.ltr;
@@ -452,8 +473,18 @@ class ActionItem {
         ? _actionPanelLeadingColumnWidth(context) +
               _actionPanelCheckmarkOptionGap
         : (item.hasChevron || item.checkmark ? 18.0 + 7.0 : 0);
-    final rightWidth = item.iconBuilder != null ? 24.0 : item.iconSize + 8.0;
-    final textWidth = math.max(1.0, panelWidth - 32.0 - leftWidth - rightWidth);
+    final rightWidth = _actionPanelRightIconWidth(context, item);
+    final trailingGap = enforceTrailingIconSpacing
+        ? _actionPanelLabelTrailingIconGap
+        : 0.0;
+    final textWidth = math.max(
+      1.0,
+      panelWidth -
+          _actionPanelHorizontalInset * 2 -
+          leftWidth -
+          trailingGap -
+          rightWidth,
+    );
 
     double measure(String text, TextStyle style) {
       final painter = TextPainter(
@@ -503,6 +534,7 @@ class ActionItem {
     double panelWidth = 240.0,
     bool chevronColumn = false,
     double labelFontSize = 16,
+    bool enforceTrailingIconSpacing = true,
   }) {
     if (items.isEmpty) return 0;
     double h = 0;
@@ -516,9 +548,83 @@ class ActionItem {
               panelWidth: panelWidth,
               chevronColumn: chevronColumn,
               labelFontSize: labelFontSize,
+              enforceTrailingIconSpacing: enforceTrailingIconSpacing,
             );
     }
     return h;
+  }
+
+  /// Returns the smallest width that preserves the standard row geometry.
+  ///
+  /// Normal labels remain free to wrap within the caller's width. A panel only
+  /// grows when a single unbreakable label/subtitle word is wider than the
+  /// available label column, so the word is never clipped into the trailing
+  /// icon or the fixed gap.
+  static double panelWidthForItems(
+    List<ActionItem> items, {
+    required BuildContext context,
+    double minWidth = 240.0,
+    bool chevronColumn = false,
+    double labelFontSize = 16,
+    bool enforceTrailingIconSpacing = true,
+  }) {
+    final textScaler = MediaQuery.textScalerOf(context);
+    final textDirection = Directionality.maybeOf(context) ?? TextDirection.ltr;
+    var width = minWidth;
+
+    double longestWordWidth(String text, TextStyle style) {
+      var result = 0.0;
+      for (final word in text.split(RegExp(r'\s+'))) {
+        if (word.isEmpty) continue;
+        final painter = TextPainter(
+          text: TextSpan(text: word, style: style),
+          textDirection: textDirection,
+          textScaler: textScaler,
+        )..layout();
+        result = math.max(result, painter.width);
+      }
+      return result;
+    }
+
+    for (final item in items) {
+      final leftWidth = chevronColumn
+          ? _actionPanelLeadingColumnWidth(context) +
+                _actionPanelCheckmarkOptionGap
+          : (item.hasChevron || item.checkmark ? 18.0 + 7.0 : 0.0);
+      final trailingGap = enforceTrailingIconSpacing
+          ? _actionPanelLabelTrailingIconGap
+          : 0.0;
+      final rightWidth = _actionPanelRightIconWidth(context, item);
+      final labelStyle = TextStyle(
+        inherit: false,
+        fontSize: labelFontSize,
+        fontFamily: kSFProText,
+        fontWeight: FontWeight.w400,
+        letterSpacing: kTracking16,
+      );
+      final subtitleStyle = TextStyle(
+        inherit: false,
+        fontSize: 13,
+        fontFamily: kSFProText,
+        fontWeight: FontWeight.w400,
+        letterSpacing: -0.08,
+      );
+      final longestWord = math.max(
+        longestWordWidth(item.label, labelStyle),
+        item.subtitle == null
+            ? 0.0
+            : longestWordWidth(item.subtitle!, subtitleStyle),
+      );
+      width = math.max(
+        width,
+        _actionPanelHorizontalInset * 2 +
+            leftWidth +
+            trailingGap +
+            rightWidth +
+            longestWord,
+      );
+    }
+    return width;
   }
 }
 
@@ -565,6 +671,9 @@ class ActionPanel extends StatefulWidget {
   // Uses the liquid-glass lens surface for this panel only. The default stays
   // on FrostedGlassCard because the shared action-panel API serves other menus.
   final bool useLiquidGlass;
+  // Standard action panels keep a fixed 16 px label-to-trailing-icon gap.
+  // Modal picker mini-panels opt out to preserve their compact legacy layout.
+  final bool enforceTrailingIconSpacing;
 
   const ActionPanel({
     super.key,
@@ -582,6 +691,7 @@ class ActionPanel extends StatefulWidget {
     this.pinnedTopItemCount = 0,
     this.pinSeparatorAfterTop = false,
     this.useLiquidGlass = false,
+    this.enforceTrailingIconSpacing = true,
   });
 
   @override
@@ -804,6 +914,8 @@ class _ActionPanelState extends State<ActionPanel>
                     panelWidth: 240.0,
                     chevronColumn: widget.chevronColumn,
                     labelFontSize: widget.labelFontSize,
+                    enforceTrailingIconSpacing:
+                        widget.enforceTrailingIconSpacing,
                   ) +
                   (hasPinnedSeparator
                       ? (widget.items[pinnedCount].groupBreakAbove
@@ -1083,6 +1195,7 @@ class _ActionPanelState extends State<ActionPanel>
           item: widget.items[i],
           chevronColumn: widget.chevronColumn,
           labelFontSize: widget.labelFontSize,
+          enforceTrailingIconSpacing: widget.enforceTrailingIconSpacing,
         ),
       ),
     );
@@ -1117,10 +1230,12 @@ class _ActionRow extends StatefulWidget {
   final ActionItem item;
   final bool chevronColumn;
   final double labelFontSize;
+  final bool enforceTrailingIconSpacing;
   const _ActionRow({
     required this.item,
     required this.chevronColumn,
     this.labelFontSize = 16,
+    this.enforceTrailingIconSpacing = true,
   });
 
   @override
@@ -1229,20 +1344,43 @@ class _ActionRowState extends State<_ActionRow> {
         : Text(item.label, style: labelStyle);
 
     // iconOffset is applied to both iconBuilder and default icon paths so
-    // callers can nudge any icon (e.g. view-mode icons 8 px left) uniformly.
-    final iconWidget = Transform.translate(
-      offset: item.iconOffset,
-      child: item.iconBuilder != null
-          ? item.iconBuilder!(textColor)
-          : _ActionPanelSFIcon(
-              item.icon,
-              size: item.iconSize,
-              color: textColor,
-              weight: item.iconWeight,
-              boxPadding: 4,
-              scaleWithText: item.icon == SFIcons.sf_checkmark_circle,
+    // callers can nudge any icon uniformly. Right-side icons use the same
+    // platform text scaler as their labels. Custom icons are authored in a
+    // 24 px box, so scale both their paint and their reserved layout box.
+    final Widget iconWidget;
+    if (item.iconBuilder != null) {
+      final scaler = MediaQuery.textScalerOf(context);
+      final scaledBase = scaler.scale(_actionPanelCustomIconBaseSize);
+      final iconScale = scaledBase / _actionPanelCustomIconBaseSize;
+      final iconBox = _actionPanelRightIconWidth(context, item);
+      iconWidget = SizedBox(
+        width: iconBox,
+        height: iconBox,
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: Transform.scale(
+            alignment: Alignment.centerRight,
+            scale: iconScale,
+            child: Transform.translate(
+              offset: item.iconOffset,
+              child: item.iconBuilder!(textColor),
             ),
-    );
+          ),
+        ),
+      );
+    } else {
+      iconWidget = Transform.translate(
+        offset: item.iconOffset,
+        child: _ActionPanelSFIcon(
+          item.icon,
+          size: item.iconSize,
+          color: textColor,
+          weight: item.iconWeight,
+          boxPadding: 4,
+          scaleWithText: true,
+        ),
+      );
+    }
 
     // In chevronColumn mode every row shares a text-scale-aware glyph region.
     // Its left edge is fixed by the row inset, while its width and therefore
@@ -1253,6 +1391,8 @@ class _ActionRowState extends State<_ActionRow> {
             leftWidget,
             const SizedBox(width: _actionPanelCheckmarkOptionGap),
             Expanded(child: labelBlock),
+            if (widget.enforceTrailingIconSpacing)
+              const SizedBox(width: _actionPanelLabelTrailingIconGap),
             iconWidget,
           ]
         : [
@@ -1261,6 +1401,8 @@ class _ActionRowState extends State<_ActionRow> {
               const SizedBox(width: _chevGap),
             ],
             Expanded(child: labelBlock),
+            if (widget.enforceTrailingIconSpacing)
+              const SizedBox(width: _actionPanelLabelTrailingIconGap),
             iconWidget,
           ];
 
@@ -1282,7 +1424,10 @@ class _ActionRowState extends State<_ActionRow> {
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: rowH),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(
+                horizontal: _actionPanelHorizontalInset,
+                vertical: 10,
+              ),
               child: Opacity(
                 opacity: item.contentOpacity,
                 child: Row(
@@ -1371,6 +1516,9 @@ class ExpandableActionMenu extends StatefulWidget {
   // viewport height from panelTop so every expandable menu has the same
   // scroll fallback as ActionMenuOverlay.
   final double? maxHeight;
+  // Standard expandable menus use 240 px unless their caller widens them for
+  // an unbreakable word.
+  final double panelWidth;
 
   /// Standard panel width used throughout the app.
   static const double panelW = 240.0;
@@ -1385,6 +1533,7 @@ class ExpandableActionMenu extends StatefulWidget {
     required this.expandableActions,
     this.closeDurationOverrideMs,
     this.maxHeight,
+    this.panelWidth = panelW,
     this.chevronColumn = false,
   });
 
@@ -1522,7 +1671,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
                 hasChevron: true,
                 subtitle: sharedSpec.subtitle,
               ),
-              panelWidth: ExpandableActionMenu.panelW,
+              panelWidth: widget.panelWidth,
               chevronColumn: widget.chevronColumn,
             ),
     );
@@ -1566,7 +1715,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
         Positioned(
           left: widget.panelLeft,
           top: widget.panelTop,
-          width: ExpandableActionMenu.panelW,
+          width: widget.panelWidth,
           child: AnimatedScale(
             scale: _expanded ? 0.96 : 1.0,
             alignment: Alignment.topLeft,
@@ -1599,7 +1748,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
           Positioned(
             left: widget.panelLeft,
             top: subPanelTop,
-            width: ExpandableActionMenu.panelW,
+            width: widget.panelWidth,
             child: ActionPanel(
               items: subPanelItems!,
               isClosing: _expandedClosing,
@@ -1624,7 +1773,7 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
             // the nested panel follows the live scroll offset while the
             // trigger copy stays at its original, unscrolled position.
             top: widget.panelTop + sharedSpec.rowTop - _mainScrollOffset.value,
-            width: ExpandableActionMenu.panelW - 32,
+            width: widget.panelWidth - _actionPanelHorizontalInset * 2,
             height: triggerHeight,
             child: ValueListenableBuilder<bool>(
               valueListenable: _origClosing,
@@ -1934,6 +2083,9 @@ class ActionMenuOverlay extends StatelessWidget {
   // mini panels inside modal sheets.
   final bool bouncingScroll;
   final bool useLiquidGlass;
+  // Modal sheet picker-row panels intentionally retain their compact legacy
+  // spacing. All other action panels use the standard trailing-icon geometry.
+  final bool isPickerMiniPanel;
 
   const ActionMenuOverlay({
     super.key,
@@ -1947,6 +2099,7 @@ class ActionMenuOverlay extends StatelessWidget {
     this.labelFontSize = 16,
     this.bouncingScroll = false,
     this.useLiquidGlass = false,
+    this.isPickerMiniPanel = false,
   });
 
   @override
@@ -1957,7 +2110,19 @@ class ActionMenuOverlay extends StatelessWidget {
     final safeTop = mq.padding.top + 16.0;
     final safeBtm = mq.padding.bottom + 16.0;
 
-    final panelW = panelWidth;
+    final maxPanelW = math.max(1.0, screenW - _actionPanelHorizontalInset * 2);
+    final requestedPanelW = isPickerMiniPanel
+        ? panelWidth
+        : ActionItem.panelWidthForItems(
+            actions,
+            context: context,
+            minWidth: panelWidth,
+            chevronColumn: chevronColumn,
+            labelFontSize: labelFontSize,
+          );
+    final panelW = isPickerMiniPanel
+        ? requestedPanelW
+        : math.min(requestedPanelW, maxPanelW);
     final panelH = ActionItem.panelHeightForItems(
       actions,
       context: context,
@@ -2017,6 +2182,7 @@ class ActionMenuOverlay extends StatelessWidget {
             labelFontSize: labelFontSize,
             bouncingScroll: bouncingScroll,
             useLiquidGlass: useLiquidGlass,
+            enforceTrailingIconSpacing: !isPickerMiniPanel,
           ),
         ),
       ],

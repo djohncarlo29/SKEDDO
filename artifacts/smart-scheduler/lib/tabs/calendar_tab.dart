@@ -7468,6 +7468,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
         anchorToRight: true,
         labelFontSize: 15,
         bouncingScroll: true,
+        isPickerMiniPanel: true,
       ),
     );
     Overlay.of(context).insert(_pickerEntry!);
@@ -10890,6 +10891,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
         anchorToRight: true,
         labelFontSize: 15,
         bouncingScroll: true,
+        isPickerMiniPanel: true,
       ),
     );
     Overlay.of(context).insert(_pickerEntry!);
