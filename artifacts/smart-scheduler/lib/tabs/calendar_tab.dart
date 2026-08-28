@@ -7493,7 +7493,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final TextStyle valueStyle = valueColor != null
         ? _kRowValueStyle.copyWith(
             color: valueColor,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
           )
         : _kRowValueStyle;
     return Builder(
@@ -11292,7 +11292,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                 SFIcons.sf_checkmark,
                 fontSize: MediaQuery.textScalerOf(context).scale(17),
                 color: widget.accentColor,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
           ],
         ),
@@ -11431,7 +11431,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                 SFIcons.sf_checkmark,
                 fontSize: MediaQuery.textScalerOf(context).scale(17),
                 color: widget.accentColor,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
           ],
         ),

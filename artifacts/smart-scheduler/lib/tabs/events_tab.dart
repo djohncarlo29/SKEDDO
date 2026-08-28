@@ -16086,7 +16086,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     final TextStyle valueStyle = valueColor != null
         ? _kRowValueStyle.copyWith(
             color: valueColor,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
           )
         : _kRowValueStyle;
     // Keep the value/chevron in the same fixed trailing slot as the parent
@@ -16239,7 +16239,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                 SFIcons.sf_checkmark,
                 fontSize: MediaQuery.textScalerOf(context).scale(17),
                 color: widget.accentColor,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
           ],
         ),
@@ -16378,7 +16378,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                 SFIcons.sf_checkmark,
                 fontSize: MediaQuery.textScalerOf(context).scale(17),
                 color: widget.accentColor,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
           ],
         ),
