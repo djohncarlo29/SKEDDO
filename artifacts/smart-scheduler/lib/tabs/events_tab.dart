@@ -16235,7 +16235,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
             if (selected)
               FixedSFIcon(
                 SFIcons.sf_checkmark,
-                fontSize: 17,
+                fontSize: MediaQuery.textScalerOf(context).scale(17),
                 color: widget.accentColor,
                 fontWeight: FontWeight.w600,
               ),
@@ -16374,7 +16374,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
             if (selected)
               FixedSFIcon(
                 SFIcons.sf_checkmark,
-                fontSize: 17,
+                fontSize: MediaQuery.textScalerOf(context).scale(17),
                 color: widget.accentColor,
                 fontWeight: FontWeight.w600,
               ),

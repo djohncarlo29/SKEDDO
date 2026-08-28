@@ -11285,7 +11285,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
             if (selected)
               FixedSFIcon(
                 SFIcons.sf_checkmark,
-                fontSize: 17,
+                fontSize: MediaQuery.textScalerOf(context).scale(17),
                 color: widget.accentColor,
                 fontWeight: FontWeight.w600,
               ),
@@ -11424,7 +11424,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
             if (selected)
               FixedSFIcon(
                 SFIcons.sf_checkmark,
-                fontSize: 17,
+                fontSize: MediaQuery.textScalerOf(context).scale(17),
                 color: widget.accentColor,
                 fontWeight: FontWeight.w600,
               ),

@@ -18,6 +18,7 @@ class _ActionPanelSFIcon extends StatelessWidget {
   final Color color;
   final FontWeight weight;
   final double boxPadding;
+  final bool scaleWithText;
 
   const _ActionPanelSFIcon(
     this.icon, {
@@ -25,20 +26,29 @@ class _ActionPanelSFIcon extends StatelessWidget {
     required this.color,
     this.weight = FontWeight.w500,
     this.boxPadding = 0,
+    this.scaleWithText = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final boxSize = size + boxPadding * 2;
+    final fontSize =
+        scaleWithText
+            ? MediaQuery.textScalerOf(context).scale(size - 2)
+            : size - 2;
+    final boxSize = math.max(
+      size + boxPadding * 2,
+      scaleWithText ? fontSize + boxPadding * 2 : 0,
+    );
     return SizedBox(
       width: boxSize,
       height: boxSize,
       child: Center(
         child: FixedSFIcon(
           icon,
-          // Keep the layout box unchanged while making every action-panel
-          // SF Symbol two pixels smaller.
-          fontSize: size - 2,
+          // Keep the authored two-pixel inset at the base size. Checkmarks
+          // opt into OS scaling while the row's outer 16 px padding remains
+          // outside this widget.
+          fontSize: fontSize,
           fontWeight: weight,
           color: color,
         ),
@@ -1082,6 +1092,7 @@ class _ActionRowState extends State<_ActionRow> {
                 color: checkColor,
                 weight: FontWeight.w500,
                 boxPadding: 3,
+                scaleWithText: true,
               )
               : item.hasChevron
               ? _ActionPanelSFIcon(
@@ -1140,6 +1151,7 @@ class _ActionRowState extends State<_ActionRow> {
                 color: textColor,
                 weight: item.iconWeight,
                 boxPadding: 4,
+                scaleWithText: item.icon == SFIcons.sf_checkmark_circle,
               ),
     );
 
