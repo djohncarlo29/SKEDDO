@@ -555,6 +555,13 @@ class ActionPanel extends StatefulWidget {
   // Optional live scroll offset for expandable menus that position a
   // connected sub-panel relative to a row inside this panel.
   final ValueNotifier<double>? scrollOffsetNotifier;
+  // Keeps the first items fixed above the scrollable body. This is used by
+  // expandable sub-panels so their trigger row remains visible while only the
+  // options below it move.
+  final int pinnedTopItemCount;
+  // When true, the separator/group gap above the first scrollable item stays
+  // with the pinned header instead of scrolling away with the options.
+  final bool pinSeparatorAfterTop;
   // Uses the liquid-glass lens surface for this panel only. The default stays
   // on FrostedGlassCard because the shared action-panel API serves other menus.
   final bool useLiquidGlass;
@@ -572,6 +579,8 @@ class ActionPanel extends StatefulWidget {
     this.labelFontSize = 16,
     this.bouncingScroll = false,
     this.scrollOffsetNotifier,
+    this.pinnedTopItemCount = 0,
+    this.pinSeparatorAfterTop = false,
     this.useLiquidGlass = false,
   });
 
@@ -780,6 +789,61 @@ class _ActionPanelState extends State<ActionPanel>
           child: column,
         );
 
+        final pinnedCount = widget.maxHeight == null
+            ? 0
+            : widget.pinnedTopItemCount.clamp(0, widget.items.length).toInt();
+        final hasPinnedSeparator =
+            pinnedCount > 0 &&
+            widget.pinSeparatorAfterTop &&
+            pinnedCount < widget.items.length;
+        final pinnedHeight = pinnedCount == 0
+            ? 0.0
+            : ActionItem.panelHeightForItems(
+                    widget.items.sublist(0, pinnedCount),
+                    context: context,
+                    panelWidth: 240.0,
+                    chevronColumn: widget.chevronColumn,
+                    labelFontSize: widget.labelFontSize,
+                  ) +
+                  (hasPinnedSeparator
+                      ? (widget.items[pinnedCount].groupBreakAbove
+                            ? ActionItem.groupBreakH
+                            : ActionItem.separatorH)
+                      : 0.0);
+
+        final pinnedContent = pinnedCount == 0
+            ? null
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (int i = 0; i < pinnedCount; i++) ...[
+                    if (i > 0) _buildSeparator(i),
+                    _buildRow(i),
+                  ],
+                  if (hasPinnedSeparator) _buildSeparator(pinnedCount),
+                ],
+              );
+        final bodyColumn = pinnedCount == 0
+            ? column
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (int i = pinnedCount; i < widget.items.length; i++) ...[
+                    if (i > pinnedCount) _buildSeparator(i),
+                    _buildRow(i),
+                  ],
+                ],
+              );
+        final bodyScrollable = SingleChildScrollView(
+          controller: _scrollCtrl,
+          physics: widget.bouncingScroll
+              ? const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                )
+              : const ClampingScrollPhysics(),
+          child: bodyColumn,
+        );
+
         // When maxHeight is set, clip the content and add a ShaderMask that
         // fades the rendered pixels at the scroll edges — this works correctly
         // on frosted-glass because it masks the actual child output rather than
@@ -825,122 +889,131 @@ class _ActionPanelState extends State<ActionPanel>
             ).createShader(bounds);
           }
 
-          panelContent = NotificationListener<ScrollNotification>(
+          Widget scrollBody({
+            required Widget child,
+          }) => NotificationListener<ScrollNotification>(
             onNotification: _onScrollNotification,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: widget.maxHeight!),
-              child: Stack(
-                children: [
-                  // ── Faded scroll content ────────────────────────────────
-                  ShaderMask(
-                    blendMode: BlendMode.dstIn,
-                    shaderCallback: shaderCb,
-                    child: scrollable,
-                  ),
-                  // ── iOS-style scroll indicator pill ─────────────────────
-                  // • Visible only while scrolling; auto-hides after 1.5 s.
-                  // • On hide: slides right off the panel edge + fades out.
-                  //   On show: instant position snap + fade-in only.
-                  // • Inset 10 px from top & bottom so it never touches the
-                  //   squircle card corners.
-                  // • During rubber-band overscroll the pill tracks the edge
-                  //   (pillTop clamped rather than ratio clamped).
-                  Positioned(
-                    right: 3,
-                    top: 10,
-                    bottom: 10,
-                    width: 2.5,
-                    child: AnimatedSlide(
-                      // Mirrors on both show and hide: slides in from the right
-                      // edge on appear, slides back out to the right on dismiss.
-                      offset: _pillVisible ? Offset.zero : const Offset(3.0, 0),
+            child: Stack(
+              children: [
+                // ── Faded scroll content ────────────────────────────────
+                ShaderMask(
+                  blendMode: BlendMode.dstIn,
+                  shaderCallback: shaderCb,
+                  child: child,
+                ),
+                // ── iOS-style scroll indicator pill ─────────────────────
+                // • Visible only while scrolling; auto-hides after 1.5 s.
+                // • The track belongs only to the moving options area when
+                //   a pinned header is present.
+                Positioned(
+                  right: 3,
+                  top: 10,
+                  bottom: 10,
+                  width: 2.5,
+                  child: AnimatedSlide(
+                    offset: _pillVisible ? Offset.zero : const Offset(3.0, 0),
+                    duration: _isClosingNow ? Duration.zero : _pillFadeDuration,
+                    curve: _pillVisible ? Curves.easeOut : Curves.easeIn,
+                    child: AnimatedOpacity(
+                      opacity: _pillVisible ? 0.80 : 0.0,
                       duration: _isClosingNow
                           ? Duration.zero
                           : _pillFadeDuration,
                       curve: _pillVisible ? Curves.easeOut : Curves.easeIn,
-                      child: AnimatedOpacity(
-                        // Keep the picker scroll indicator subtly lighter
-                        // while visible without changing its fade timing.
-                        opacity: _pillVisible ? 0.80 : 0.0,
-                        duration: _isClosingNow
-                            ? Duration.zero
-                            : _pillFadeDuration,
-                        curve: _pillVisible ? Curves.easeOut : Curves.easeIn,
-                        child: LayoutBuilder(
-                          builder: (ctx, constraints) {
-                            final trackH = constraints.maxHeight;
-                            return AnimatedBuilder(
-                              animation: _scrollCtrl,
-                              builder: (ctx, _) {
-                                if (!_scrollCtrl.hasClients || trackH <= 0) {
-                                  return const SizedBox.shrink();
-                                }
-                                final pos = _scrollCtrl.position;
-                                if (pos.maxScrollExtent < 1.0) {
-                                  return const SizedBox.shrink();
-                                }
-                                // Add overscroll distance to total so the pill
-                                // shrinks proportionally during rubber-band —
-                                // more virtual content = smaller thumb.
-                                final overscroll = pos.pixels < 0
-                                    ? -pos.pixels
-                                    : pos.pixels > pos.maxScrollExtent
-                                    ? pos.pixels - pos.maxScrollExtent
-                                    : 0.0;
-                                final total =
-                                    pos.maxScrollExtent +
-                                    pos.viewportDimension +
-                                    overscroll;
-                                final fraction = (pos.viewportDimension / total)
-                                    .clamp(0.0, 1.0);
-                                final pillH = (fraction * trackH).clamp(
-                                  20.0,
-                                  trackH,
-                                );
-                                // Unclamped ratio + clamped pillTop: pill tracks
-                                // the edge during overscroll rather than freezing.
-                                final ratio = pos.maxScrollExtent > 0
-                                    ? pos.pixels / pos.maxScrollExtent
-                                    : 0.0;
-                                final pillTop = (ratio * (trackH - pillH))
-                                    .clamp(
-                                      0.0,
-                                      (trackH - pillH).clamp(
-                                        0.0,
-                                        double.infinity,
-                                      ),
-                                    );
-                                return Stack(
-                                  children: [
-                                    Positioned(
-                                      top: pillTop,
-                                      left: 0,
-                                      right: 0,
-                                      height: pillH,
-                                      child: DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          color: CupertinoDynamicColor.resolve(
-                                            kTertiaryLabel,
-                                            ctx,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            1.25,
-                                          ),
+                      child: LayoutBuilder(
+                        builder: (ctx, constraints) {
+                          final trackH = constraints.maxHeight;
+                          return AnimatedBuilder(
+                            animation: _scrollCtrl,
+                            builder: (ctx, _) {
+                              if (!_scrollCtrl.hasClients || trackH <= 0) {
+                                return const SizedBox.shrink();
+                              }
+                              final pos = _scrollCtrl.position;
+                              if (pos.maxScrollExtent < 1.0) {
+                                return const SizedBox.shrink();
+                              }
+                              final overscroll = pos.pixels < 0
+                                  ? -pos.pixels
+                                  : pos.pixels > pos.maxScrollExtent
+                                  ? pos.pixels - pos.maxScrollExtent
+                                  : 0.0;
+                              final total =
+                                  pos.maxScrollExtent +
+                                  pos.viewportDimension +
+                                  overscroll;
+                              final fraction = (pos.viewportDimension / total)
+                                  .clamp(0.0, 1.0);
+                              final pillH = (fraction * trackH).clamp(
+                                20.0,
+                                trackH,
+                              );
+                              final ratio = pos.maxScrollExtent > 0
+                                  ? pos.pixels / pos.maxScrollExtent
+                                  : 0.0;
+                              final pillTop = (ratio * (trackH - pillH)).clamp(
+                                0.0,
+                                (trackH - pillH).clamp(0.0, double.infinity),
+                              );
+                              return Stack(
+                                children: [
+                                  Positioned(
+                                    top: pillTop,
+                                    left: 0,
+                                    right: 0,
+                                    height: pillH,
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        color: CupertinoDynamicColor.resolve(
+                                          kTertiaryLabel,
+                                          ctx,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          1.25,
                                         ),
                                       ),
                                     ),
-                                  ],
-                                );
-                              },
-                            );
-                          },
-                        ),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          );
+
+          final scrollViewport = pinnedContent == null
+              ? scrollBody(child: scrollable)
+              : LayoutBuilder(
+                  builder: (ctx, constraints) {
+                    final availableHeight = constraints.hasBoundedHeight
+                        ? constraints.maxHeight
+                        : widget.maxHeight!;
+                    final bodyMaxHeight = math.max(
+                      1.0,
+                      availableHeight - pinnedHeight,
+                    );
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        pinnedContent,
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxHeight: bodyMaxHeight),
+                          child: scrollBody(child: bodyScrollable),
+                        ),
+                      ],
+                    );
+                  },
+                );
+
+          panelContent = ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: widget.maxHeight!),
+            child: scrollViewport,
           );
         } else {
           panelContent = scrollable;
@@ -1534,6 +1607,8 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
               closeDurationOverrideMs: widget.closeDurationOverrideMs,
               openDurationOverrideMs: 280,
               maxHeight: subPanelMaxHeight,
+              pinnedTopItemCount: 1,
+              pinSeparatorAfterTop: true,
             ),
           ),
 
