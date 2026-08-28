@@ -8947,7 +8947,8 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                               onTap: () => _showIncludePicker(rowCtx),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
+                                  horizontal:
+                                      kModalSheetPickerRowHorizontalInset,
                                   vertical: 14,
                                 ),
                                 child: MinGapLabelValueRow(
@@ -9000,7 +9001,10 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                           ),
                                         ),
                                   ),
-                                  trailingExtraWidth: 16,
+                                  trailingExtraWidth:
+                                      modalSheetPickerTrailingExtraWidth(
+                                        rowCtx,
+                                      ),
                                 ),
                               ),
                             ),
@@ -9918,7 +9922,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             : null,
         child: Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: 16,
+            horizontal: kModalSheetPickerRowHorizontalInset,
             vertical: verticalPadding,
           ),
           child: MinGapLabelValueRow(
@@ -9929,7 +9933,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             trailing: dimmedValue,
             leading: leading,
             leadingWidth: leading == null ? 0 : leadingSize,
-            trailingExtraWidth: 16,
+            trailingExtraWidth: modalSheetPickerTrailingExtraWidth(ctx),
           ),
         ),
       ),
@@ -16092,7 +16096,10 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
             ? () => _showPickerOverlay(ctx, label, items)
             : onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(
+            horizontal: kModalSheetPickerRowHorizontalInset,
+            vertical: 14,
+          ),
           child: MinGapLabelValueRow(
             label: label,
             labelStyle: _kRowLabelStyle,
@@ -16108,7 +16115,10 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                 showChevron: showChevron,
               ),
             ),
-            trailingExtraWidth: showChevron ? 16 : 0,
+            trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
+              ctx,
+              showChevron: showChevron,
+            ),
           ),
         ),
       ),

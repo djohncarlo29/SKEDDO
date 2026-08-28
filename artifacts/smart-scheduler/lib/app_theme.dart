@@ -614,6 +614,29 @@ const double kLabelValueGap = 25.0;
 // measured width and the render paragraph do not disagree at a line break.
 const double kTextLayoutEpsilon = 0.5;
 
+// Modal-sheet picker rows sit 16 pt inside the card edge. This is authored
+// layout padding, so it stays fixed while the chevron itself follows Dynamic
+// Type through the active text scaler. The inset belongs to the row boundary,
+// not the trailing widget; otherwise the row's existing horizontal padding and
+// the chevron's padding would add up to 32 pt.
+const double kModalSheetPickerRowHorizontalInset = 16.0;
+const double kModalSheetPickerChevronSize = 12.0;
+const double kModalSheetPickerChevronGap = 4.0;
+
+double modalSheetPickerTrailingExtraWidth(
+  BuildContext context, {
+  bool showChevron = true,
+  bool hasValuePrefix = false,
+}) {
+  if (!showChevron) return 0.0;
+  final scaledChevronWidth = MediaQuery.textScalerOf(
+    context,
+  ).scale(kModalSheetPickerChevronSize);
+  return (hasValuePrefix ? 16.0 : 0.0) +
+      scaledChevronWidth +
+      kModalSheetPickerChevronGap;
+}
+
 // Flutter's line breaker can treat punctuation such as "/" as a valid break
 // point. Chevron values should instead break only between words, so protect
 // each whitespace-delimited token with invisible word joiners. The joiners do
@@ -2043,6 +2066,9 @@ class ModalSheetPickerTrailing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scaledChevronWidth = MediaQuery.textScalerOf(
+      context,
+    ).scale(kModalSheetPickerChevronSize);
     return Row(
       mainAxisSize: MainAxisSize.max,
       mainAxisAlignment: MainAxisAlignment.end,
@@ -2061,8 +2087,11 @@ class ModalSheetPickerTrailing extends StatelessWidget {
           ),
         ),
         if (showChevron) ...[
-          const SizedBox(width: 4),
-          SizedBox(width: 12, child: SplitChevronUpDown(color: chevronColor)),
+          const SizedBox(width: kModalSheetPickerChevronGap),
+          SizedBox(
+            width: scaledChevronWidth,
+            child: SplitChevronUpDown(color: chevronColor),
+          ),
         ],
       ],
     );

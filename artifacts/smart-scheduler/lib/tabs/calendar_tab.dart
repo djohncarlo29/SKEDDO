@@ -7503,7 +7503,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
             ? () => _showPickerOverlay(ctx, label, items)
             : onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(
+            horizontal: kModalSheetPickerRowHorizontalInset,
+            vertical: 14,
+          ),
           child: MinGapLabelValueRow(
             label: label,
             labelStyle: _kLabelStyle,
@@ -7519,7 +7522,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 showChevron: showChevron,
               ),
             ),
-            trailingExtraWidth: showChevron ? 16 : 0,
+            trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
+              ctx,
+              showChevron: showChevron,
+            ),
           ),
         ),
       ),
@@ -7554,14 +7560,20 @@ class _NewEventSheetState extends State<_NewEventSheet>
         behavior: HitTestBehavior.opaque,
         onTap: () => _showPickerOverlay(ctx, 'Category', _categoryItems()),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(
+            horizontal: kModalSheetPickerRowHorizontalInset,
+            vertical: 14,
+          ),
           child: MinGapLabelValueRow(
             label: 'Category',
             labelStyle: _kLabelStyle,
             value: _categoryName,
             valueStyle: _kRowValueStyle,
             trailing: valueWidget,
-            trailingExtraWidth: 32,
+            trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
+              ctx,
+              hasValuePrefix: true,
+            ),
           ),
         ),
       ),
@@ -11142,7 +11154,10 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
             ? () => _showPickerOverlay(ctx, label, items)
             : onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(
+            horizontal: kModalSheetPickerRowHorizontalInset,
+            vertical: 14,
+          ),
           child: MinGapLabelValueRow(
             label: label,
             labelStyle: _kRowLabelStyle,
@@ -11158,7 +11173,10 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                 showChevron: showChevron,
               ),
             ),
-            trailingExtraWidth: showChevron ? 16 : 0,
+            trailingExtraWidth: modalSheetPickerTrailingExtraWidth(
+              ctx,
+              showChevron: showChevron,
+            ),
           ),
         ),
       ),
