@@ -185,12 +185,12 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
     var top = 0.0;
     for (var i = 0; i < items.length; i++) {
       final item = items[i];
-      if (item.label == targetLabel) return top;
       if (i > 0) {
         top += item.groupBreakAbove
             ? ActionItem.groupBreakH
             : ActionItem.separatorH;
       }
+      if (item.label == targetLabel) return top;
       top += ActionItem.rowHeightForItem(
         context,
         item,
