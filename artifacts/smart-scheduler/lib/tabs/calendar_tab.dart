@@ -7898,7 +7898,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
         ),
       ),
       Padding(
-        padding: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.only(right: kModalRowHorizontalInset),
         child: _buildLocationTrailingAction(ctrl, trailKeyPrefix),
       ),
     ],

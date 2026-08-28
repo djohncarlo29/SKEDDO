@@ -62,6 +62,11 @@ const double kFloatingTabBarSafetyMargin = 12.0;
 // room does not.
 const double kFixedVerticalPadding = 16.0;
 
+// Shared authored horizontal inset for controls aligned to the trailing edge
+// of modal rows. Keep this outside scaled content so Dynamic Type changes the
+// control's size without changing its distance from the row edge.
+const double kModalRowHorizontalInset = 16.0;
+
 // Default authored bottom breathing room for panels, sheets, and stacked modal
 // content. Persistent device safe-area space is added separately.
 const double kUnifiedBottomPadding = kFixedVerticalPadding;

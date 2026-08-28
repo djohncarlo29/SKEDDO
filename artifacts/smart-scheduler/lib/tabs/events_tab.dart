@@ -10066,7 +10066,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                           setState(() {});
                         },
                         child: Padding(
-                          padding: EdgeInsets.only(left: 7, right: 12),
+                          padding: const EdgeInsets.only(
+                            left: 7,
+                            right: kModalRowHorizontalInset,
+                          ),
                           child: Icon(
                             kSearchClearCircleIcon,
                             color: kEmptyStateIcon,
@@ -10138,7 +10141,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                           setState(() {});
                         },
                         child: Padding(
-                          padding: EdgeInsets.only(left: 7, right: 12),
+                          padding: const EdgeInsets.only(
+                            left: 7,
+                            right: kModalRowHorizontalInset,
+                          ),
                           child: Icon(
                             kSearchClearCircleIcon,
                             color: kEmptyStateIcon,
@@ -10212,7 +10218,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   Widget _buildSmartDescriptionRow() => LayoutBuilder(
     builder: (context, constraints) {
       // Measure against the actual field width inside the row.  The previous
-      // screen-width estimate omitted the 16/12 row insets, the 10 px gap,
+      // screen-width estimate omitted the 16/16 row insets, the 10 px gap,
       // and the 28 px action button, so wrapped text was under-measured at
       // larger Dynamic Type sizes and could run into the card's end curves.
       final scaler = MediaQuery.textScalerOf(context);
@@ -10220,7 +10226,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       final clearSlotSize = max(28.0, clearIconSize);
       final inputWidth = max(
         80.0,
-        constraints.maxWidth - 16.0 - 12.0 - 10.0 - clearSlotSize,
+        constraints.maxWidth -
+            kModalRowHorizontalInset -
+            kModalRowHorizontalInset -
+            10.0 -
+            clearSlotSize,
       );
       final ruleText = _smartDescriptionCtrl.text.isEmpty
           ? 'Describe what belongs here…'
@@ -10244,7 +10254,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         child: SizedBox(
           height: rowHeight,
           child: Padding(
-            padding: const EdgeInsets.only(left: 16, right: 12),
+            padding: const EdgeInsets.only(
+              left: kModalRowHorizontalInset,
+              right: kModalRowHorizontalInset,
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -10443,7 +10456,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         ),
       ),
       Padding(
-        padding: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.only(right: kModalRowHorizontalInset),
         child: _buildLocationTrailingAction(ctrl),
       ),
     ],

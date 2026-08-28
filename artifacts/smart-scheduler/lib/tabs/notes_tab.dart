@@ -2037,7 +2037,12 @@ class _EventRow extends StatelessWidget {
     final extraction = _confidenceLabel(event.extractionConfidence);
     final interpretation = _confidenceLabel(event.interpretationConfidence);
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+      padding: const EdgeInsets.fromLTRB(
+        12,
+        12,
+        kModalRowHorizontalInset,
+        12,
+      ),
       decoration: const ShapeDecoration(
         color: kPreviewCardBackground,
         shape: BoundedSquircleStadiumBorder(
