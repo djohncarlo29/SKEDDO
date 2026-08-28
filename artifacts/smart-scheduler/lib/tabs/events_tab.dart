@@ -9929,7 +9929,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             trailing: dimmedValue,
             leading: leading,
             leadingWidth: leading == null ? 0 : leadingSize,
-            leadingHeight: leading == null ? 0 : leadingSize,
             trailingExtraWidth: 16,
           ),
         ),

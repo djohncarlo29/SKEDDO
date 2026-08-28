@@ -651,7 +651,6 @@ class MinGapLabelValueRow extends StatelessWidget {
     this.trailingExtraWidth = 16.0,
     this.leading,
     this.leadingWidth = 0.0,
-    this.leadingHeight = 32.0,
     this.leadingGap = 12.0,
     this.alignTrailing = true,
   });
@@ -664,7 +663,6 @@ class MinGapLabelValueRow extends StatelessWidget {
   final double trailingExtraWidth;
   final Widget? leading;
   final double leadingWidth;
-  final double leadingHeight;
   final double leadingGap;
   final bool alignTrailing;
 
@@ -730,56 +728,17 @@ class MinGapLabelValueRow extends StatelessWidget {
     );
   }
 
-  Widget _animateRowHeight(Widget row) {
+  Widget _animateRowHeight(
+    Widget row, {
+    Alignment alignment = Alignment.topCenter,
+  }) {
     return AnimatedSize(
       duration: const Duration(milliseconds: 220),
       reverseDuration: const Duration(milliseconds: 220),
       curve: Curves.easeInOut,
-      alignment: Alignment.topCenter,
+      alignment: alignment,
       clipBehavior: Clip.none,
       child: row,
-    );
-  }
-
-  Widget _animateLeadingPlacement(
-    Widget leading,
-    double verticalOffset,
-    bool multiline,
-  ) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0, end: verticalOffset),
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeInOut,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 220),
-        reverseDuration: const Duration(milliseconds: 220),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        layoutBuilder: (currentChild, previousChildren) => Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
-          children: [
-            ...previousChildren,
-            if (currentChild != null) currentChild,
-          ],
-        ),
-        transitionBuilder: (child, animation) {
-          final childMultiline =
-              (child.key is ValueKey<bool>) &&
-              (child.key as ValueKey<bool>).value;
-          final begin = Offset(0, childMultiline ? -0.25 : 0.25);
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: begin,
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
-          );
-        },
-        child: KeyedSubtree(key: ValueKey(multiline), child: leading),
-      ),
-      builder: (context, offset, child) =>
-          Transform.translate(offset: Offset(0, offset), child: child),
     );
   }
 
@@ -861,10 +820,7 @@ class MinGapLabelValueRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (leading != null) ...[
-                SizedBox(
-                  width: leadingWidth,
-                  child: _animateLeadingPlacement(leading!, 0, false),
-                ),
+                SizedBox(width: leadingWidth, child: leading!),
                 SizedBox(width: leadingGap),
               ],
               SizedBox(
@@ -878,7 +834,10 @@ class MinGapLabelValueRow extends StatelessWidget {
               SizedBox(width: valueWidth, child: trailing),
             ],
           );
-          return _animateRowHeight(row);
+          return _animateRowHeight(
+            row,
+            alignment: leading == null ? Alignment.topCenter : Alignment.center,
+          );
         }
 
         // Both sides are flexible once the one-line layout no longer fits.
@@ -1059,28 +1018,12 @@ class MinGapLabelValueRow extends StatelessWidget {
           valueStyle,
           math.max(0.0, bestValueSlot - trailingExtraWidth),
         );
-        final leadingIsMultiline =
-            finalLabelMetrics.lineCount > 1 || finalValueMetrics.lineCount > 1;
-        final rowHeight = math.max(
-          leading == null ? 0.0 : leadingHeight,
-          math.max(finalLabelMetrics.height, finalValueMetrics.height),
-        );
-        final leadingVerticalOffset = leading == null
-            ? 0.0
-            : math.max(0.0, (rowHeight - leadingHeight) / 2.0);
         final row = Row(
           mainAxisSize: MainAxisSize.max,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             if (leading != null) ...[
-              SizedBox(
-                width: leadingWidth,
-                child: _animateLeadingPlacement(
-                  leading!,
-                  leadingVerticalOffset,
-                  leadingIsMultiline,
-                ),
-              ),
+              SizedBox(width: leadingWidth, child: leading!),
               SizedBox(width: leadingGap),
             ],
             SizedBox(
@@ -1101,7 +1044,12 @@ class MinGapLabelValueRow extends StatelessWidget {
             SizedBox(width: bestValueSlot, child: trailing),
           ],
         );
-        if (!alignTrailing) return _animateRowHeight(row);
+        if (!alignTrailing) {
+          return _animateRowHeight(
+            row,
+            alignment: leading == null ? Alignment.topCenter : Alignment.center,
+          );
+        }
 
         return _animateRowHeight(
           Row(
@@ -1109,6 +1057,7 @@ class MinGapLabelValueRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [Expanded(child: row)],
           ),
+          alignment: leading == null ? Alignment.topCenter : Alignment.center,
         );
       },
     );
