@@ -11165,7 +11165,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     final TextStyle valueStyle = valueColor != null
         ? _kRowValueStyle.copyWith(
             color: valueColor,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
           )
         : _kRowValueStyle;
     return Builder(

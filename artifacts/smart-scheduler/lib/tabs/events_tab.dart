@@ -16655,7 +16655,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     final TextStyle valueStyle = valueColor != null
         ? _kRowValueStyle.copyWith(
             color: valueColor,
-            fontWeight: FontWeight.w400,
+            fontWeight: FontWeight.w500,
           )
         : _kRowValueStyle;
     // Keep the value/chevron in the same fixed trailing slot as the parent
