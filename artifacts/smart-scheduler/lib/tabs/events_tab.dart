@@ -5981,7 +5981,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           _GridEntry(
             key: 'smart_$item',
             title: item,
-            allowsFullWidthTitle: false,
+            // Built-in Smart Categories are permanently pinned in the grid,
+            // so they follow the same pair-level accommodation rules as
+            // user-created pinned categories.
+            allowsFullWidthTitle: true,
             // Smart tiles only support Archive (no Delete/Pin) — fade+scale
             // down softly, mirroring the list/grid archive treatment.
             // When dragging, the ghost is in the Overlay — hide placeholder.
@@ -6641,6 +6644,7 @@ TextStyle _eventsGridTitleStyle() => TextStyle(
   fontSize: 17,
   fontFamily: kSFProText,
   fontWeight: FontWeight.w600,
+  letterSpacing: kTracking17,
   height: kLineHeight,
 );
 
@@ -7015,6 +7019,7 @@ class _CategoryTile extends StatelessWidget {
             // starts exactly 8pt below the circle, with no optical offset.
             top: _kGridTileCircleSize + _kGridTileTitleGap,
             left: 0,
+            right: 0,
             child: Text(
               data.label,
               style: TextStyle(
@@ -7027,6 +7032,7 @@ class _CategoryTile extends StatelessWidget {
                 letterSpacing: kTracking17,
                 height: kLineHeight,
               ),
+              softWrap: true,
             ),
           ),
         ],
