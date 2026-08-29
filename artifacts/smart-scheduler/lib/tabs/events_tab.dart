@@ -68,13 +68,6 @@ BorderSide _darkModeGhostBorder(
 //   selection.  Not yet used; pattern will match dynamic footer, minus the
 //   conditional wrapper.
 //
-// Shared style for both kinds:
-TextStyle _kContextFooterStyle(BuildContext context) => TextStyle(
-  fontSize: 13,
-  height: 1.35,
-  color: resolveThemeColor(kSecondaryLabel, context),
-);
-
 // ── Dynamic context footers ───────────────────────────────────────────────────
 // Each entry: plain String constant consumed by a `if (condition)` block in
 // the sheet column.  AnimatedSize/SizeTransition handles their appearance.
@@ -12261,7 +12254,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                                         _categoryType == 'Shopping List'
                                             ? _kFooterGroceries
                                             : _kFooterSmartCategory,
-                                        style: _kContextFooterStyle(context),
+                                        style: modalSheetContextFooterStyle(
+                                          context,
+                                        ),
                                         textAlign: TextAlign.left,
                                       ),
                                     ),
@@ -16653,10 +16648,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
   }) {
     final isOpen = items != null && _openPickerLabel == label;
     final TextStyle valueStyle = valueColor != null
-        ? _kRowValueStyle.copyWith(
-            color: valueColor,
-            fontWeight: FontWeight.w500,
-          )
+        ? modalSheetAccentValueStyle(context, valueColor)
         : _kRowValueStyle;
     // Keep the value/chevron in the same fixed trailing slot as the parent
     // event sheet and every other modal-sheet picker row.
@@ -17330,7 +17322,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                             padding: const EdgeInsets.only(top: 8, left: 16),
                             child: Text(
                               _footerText,
-                              style: _kContextFooterStyle(context),
+                              style: modalSheetContextFooterStyle(context),
                               textAlign: TextAlign.left,
                             ),
                           ),

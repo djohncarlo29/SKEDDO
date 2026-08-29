@@ -230,6 +230,37 @@ TextStyle resolveThemeTextStyle(TextStyle style, BuildContext context) =>
     ? style
     : style.copyWith(color: resolveThemeColor(style.color!, context));
 
+const double kModalSheetContextFooterFontSize = 13.0;
+
+/// Shared typography for explanatory context text below modal-sheet cards.
+TextStyle modalSheetContextFooterStyle(BuildContext context) =>
+    resolveThemeTextStyle(
+      TextStyle(
+        inherit: false,
+        color: kSecondaryLabel,
+        fontSize: kModalSheetContextFooterFontSize,
+        fontFamily: kSFProText,
+        fontWeight: FontWeight.w400,
+        letterSpacing: kTracking17,
+        height: kLineHeight,
+      ),
+      context,
+    );
+
+/// Shared typography for accent-coloured values in modal-sheet picker rows.
+TextStyle modalSheetAccentValueStyle(
+  BuildContext context,
+  Color color,
+) => TextStyle(
+  inherit: false,
+  color: resolveThemeColor(color, context),
+  fontSize: 15,
+  fontFamily: kSFProText,
+  fontWeight: FontWeight.w500,
+  letterSpacing: kTracking17,
+  height: kLineHeight,
+);
+
 /// Resolves semantic colours inside a custom shadow list.
 List<BoxShadow> resolveThemeShadows(
   List<BoxShadow> shadows,

@@ -6101,16 +6101,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
     letterSpacing: kTracking17,
   );
 
-  static final _kContextFooterStyleBase = TextStyle(
-    inherit: false,
-    color: kSecondaryLabel,
-    fontSize: 13,
-    fontFamily: kSFProText,
-    fontWeight: FontWeight.w400,
-    letterSpacing: kTracking17,
-    height: kLineHeight,
-  );
-
   TextStyle get _kLabelStyle =>
       resolveThemeTextStyle(_kLabelStyleBase, context);
   TextStyle get _kPlaceholderStyle =>
@@ -6120,9 +6110,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
       resolveThemeTextStyle(_kRowValueStyleBase, context);
   TextStyle get _kPickerItemStyle =>
       resolveThemeTextStyle(_kPickerItemStyleBase, context);
-  TextStyle get _kContextFooterStyle =>
-      resolveThemeTextStyle(_kContextFooterStyleBase, context);
-
   Color get _resolvedPillColor => resolveThemeColor(kPillColor, context);
 
   // ── Card wrapper ──────────────────────────────────────────────────────────
@@ -10966,16 +10953,6 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     letterSpacing: kTracking17,
   );
 
-  static final _kContextFooterStyleBase = TextStyle(
-    inherit: false,
-    color: kSecondaryLabel,
-    fontSize: 13,
-    fontFamily: kSFProText,
-    fontWeight: FontWeight.w400,
-    letterSpacing: kTracking17,
-    height: kLineHeight,
-  );
-
   static final _kDateCellStyleBase = TextStyle(
     inherit: false,
     color: kPrimaryLabel,
@@ -10992,8 +10969,6 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
       resolveThemeTextStyle(_kRowValueStyleBase, context);
   TextStyle get _kPickerItemStyle =>
       resolveThemeTextStyle(_kPickerItemStyleBase, context);
-  TextStyle get _kContextFooterStyle =>
-      resolveThemeTextStyle(_kContextFooterStyleBase, context);
   TextStyle get _kDateCellStyle =>
       resolveThemeTextStyle(_kDateCellStyleBase, context);
 
@@ -11163,10 +11138,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
   }) {
     final isOpen = items != null && _openPickerLabel == label;
     final TextStyle valueStyle = valueColor != null
-        ? _kRowValueStyle.copyWith(
-            color: valueColor,
-            fontWeight: FontWeight.w500,
-          )
+        ? modalSheetAccentValueStyle(context, valueColor)
         : _kRowValueStyle;
     return Builder(
       builder: (ctx) => GestureDetector(
@@ -11814,7 +11786,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                             padding: const EdgeInsets.only(top: 8, left: 16),
                             child: Text(
                               _footerText,
-                              style: _kContextFooterStyle,
+                              style: modalSheetContextFooterStyle(context),
                               textAlign: TextAlign.left,
                             ),
                           ),
