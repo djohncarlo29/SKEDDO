@@ -15,6 +15,7 @@
 - [Context menu overlay covers animation](context-menu-overlay-covers-animation.md) — the 420ms closing overlay paints over the real row; defer all action callbacks via _hide(then:) so they fire after overlay removal.
 - [TweenAnimationBuilder key type mismatch](tween-animation-builder-key-type-mismatch.md) — switching between TweenAnimationBuilder and any Animated* widget at the same key tears down the element; keep flag set for full animation duration.
 - [Drag-reorder long-press disambiguation](drag-reorder-long-press-disambiguation.md) — use onLongPressStart+MoveUpdate+End/Cancel with a 150ms grace timer to separate "hold still→menu" from "hold+move→reorder".
+- [Pinned grid lift geometry](pinned-grid-lift-geometry.md) — capture the tile’s actual width/height at lift; target-slot width changes wait until release and settling.
 - [Stack AnimatedPositioned drag-reorder](stack-animated-positioned-drag-reorder.md) — dragging tile uses Duration.zero in AnimatedPositioned; siblings use normal duration and animate as the data list is mutated live.
 - [Flutter drag element teardown](flutter-drag-element-teardown.md) — changing child widget structure on drag-start tears down GestureDetector state; keep tree structurally identical, mutate properties only.
 - [Grid reorder drag offset accumulation](grid-reorder-drag-offset-bug.md) — drag start must index from _gridCombinedOrder, not section-local lists; only _gridCombinedOrder is updated per drag frame.

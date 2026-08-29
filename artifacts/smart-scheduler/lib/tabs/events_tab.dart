@@ -1864,9 +1864,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   Object? _draggingGridKey;
   Offset? _dragGridTopLeft; // tile top-left in grid-Stack-local coords
   Offset? _dragGridGrabOffset; // pointer offset within tile at grab time
-  double? _dragGridTileWidth; // captured tileWidth at drag start
+  double? _dragGridTileWidth; // captured resting tile width at drag start
+  double? _dragGridTileHeight; // captured resting tile height at drag start
   bool _dragGridFullWidth =
-      false; // true while targeting the solitary final slot
+      false; // captured resting width; stays fixed until release
   OverlayEntry? _gridDragOverlayEntry;
   // Capture the exact live smart tile at drag start. The drag ghost lives in
   // the root Overlay, outside the grid build that produced the tile, so it
@@ -2245,10 +2246,30 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
   // ── Grid drag-reorder (unified: smart tiles + pinned user tiles) ──────────
 
+  /// Rebuild the same layout specification used by [_AnimatedCategoryGrid].
+  ///
+  /// A drag must capture the geometry that is actually on screen, rather than
+  /// assuming every entry is one half of the grid.  In particular, a solitary
+  /// last tile and a pair whose title cannot fit are both full-width.
+  List<_GridLayoutSpec> _currentGridLayoutSpecs() {
+    final knownSmartLabels = <String>{
+      for (final tile in _liveSmartTiles) tile.label,
+      for (final tile in _buildSmartTiles()) tile.label,
+    };
+    return [
+      for (final item in _gridCombinedOrder)
+        if (item is String &&
+            !_archivedSmartCategories.contains(item) &&
+            knownSmartLabels.contains(item))
+          _GridLayoutSpec(title: item, allowsFullWidthTitle: true)
+        else if (item is _UserCategory && !item.archived)
+          _GridLayoutSpec(title: item.name, allowsFullWidthTitle: true),
+    ];
+  }
+
   void _onGridReorderStart(Object key, Offset globalPos) {
     final box = _gridStackKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.attached) return;
-    final tileWidth = (box.size.width - _AnimatedCategoryGrid._colGap) / 2;
 
     // Look up the tile's visual slot directly from _gridCombinedOrder, which is
     // always up-to-date.  Section-local lists (_smartCategoryOrder for smart
@@ -2260,23 +2281,19 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final gridIdx = _gridCombinedOrder.indexOf(lookupKey);
     if (gridIdx == -1) return;
 
-    final col = gridIdx % 2;
-    final row = gridIdx ~/ 2;
-    final tileTopLeft = Offset(
-      col * (tileWidth + _AnimatedCategoryGrid._colGap),
-      row * (_eventsGridTileRowHeight(context) + _AnimatedCategoryGrid._rowGap),
+    final geometries = _eventsGridItemGeometry(
+      context,
+      _currentGridLayoutSpecs(),
+      box.size.width,
     );
+    if (gridIdx >= geometries.length) return;
+    final geometry = geometries[gridIdx];
+    final tileTopLeft = Offset(geometry.left, geometry.top);
     final localPos = box.globalToLocal(globalPos);
-    // When dragging from the full-width (solitary last) tile the grab offset X
-    // can be up to maxWidth, but the ghost is always tileWidth wide.  Clamp dx
-    // so the ghost always appears under the finger rather than to its right.
+    // Preserve the exact grab point inside the tile.  Do not clamp the X
+    // offset: a full-width tile is allowed to keep a grab point anywhere
+    // across its full card.
     final rawGrab = localPos - tileTopLeft;
-    final isFullWidth =
-        _gridCombinedOrder.length.isOdd &&
-        gridIdx == _gridCombinedOrder.length - 1;
-    final grab = isFullWidth
-        ? Offset(rawGrab.dx.clamp(0.0, tileWidth), rawGrab.dy)
-        : rawGrab;
     final draggingSmartTile = key is String
         ? _liveSmartTiles.cast<_TileData?>().firstWhere(
             (tile) => tile?.label == key.substring(6),
@@ -2285,10 +2302,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         : null;
     setState(() {
       _draggingGridKey = key;
-      _dragGridGrabOffset = grab;
+      _dragGridGrabOffset = rawGrab;
       _dragGridTopLeft = tileTopLeft;
-      _dragGridTileWidth = tileWidth;
-      _dragGridFullWidth = isFullWidth;
+      _dragGridTileWidth = geometry.width;
+      _dragGridTileHeight = geometry.height;
+      _dragGridFullWidth =
+          geometry.width >= box.size.width - _kGridGeometryEpsilon;
       _draggingSmartTile = draggingSmartTile;
     });
     // Insert drag ghost into the global Overlay (above all scroll content).
@@ -2426,13 +2445,19 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       }
     }
 
-    final tw =
-        _dragGridTileWidth ??
-        (box.size.width - _AnimatedCategoryGrid._colGap) / 2;
+    // Slot detection uses the grid's half-width column pitch, while the
+    // ghost centre uses its captured resting width/height.  The captured
+    // geometry is never changed while the pointer is down.
+    final slotWidth = (box.size.width - _AnimatedCategoryGrid._colGap) / 2;
+    final ghostWidth = _dragGridTileWidth ?? slotWidth;
+    final ghostHeight =
+        _dragGridTileHeight ?? _eventsGridTileRowHeight(context);
 
-    final cx = newTopLeft.dx + tw / 2;
-    final cy = newTopLeft.dy + _eventsGridTileRowHeight(context) / 2;
-    final col = (cx / (tw + _AnimatedCategoryGrid._colGap)).round().clamp(0, 1);
+    final cx = newTopLeft.dx + ghostWidth / 2;
+    final cy = newTopLeft.dy + ghostHeight / 2;
+    final col = (cx / (slotWidth + _AnimatedCategoryGrid._colGap))
+        .round()
+        .clamp(0, 1);
     final row =
         (cy /
                 (_eventsGridTileRowHeight(context) +
@@ -2451,11 +2476,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       final Object item = key is String ? key.substring(6) : key as Object;
       final currentIdx = _gridCombinedOrder.indexOf(item);
       final targetIdx = absoluteSlot.clamp(0, totalCount - 1);
-      _dragGridFullWidth = totalCount.isOdd && targetIdx == totalCount - 1;
-      _dragGridTopLeft = Offset(
-        _dragGridFullWidth ? 0.0 : newTopLeft.dx,
-        newTopLeft.dy,
-      );
+      // Keep the lifted card at the geometry captured on pointer-down.  The
+      // final slot's width is applied only after release, when the normal
+      // AnimatedPositioned tiles settle into the reordered layout.
+      _dragGridTopLeft = newTopLeft;
       if (currentIdx != -1 && targetIdx != currentIdx) {
         _gridCombinedOrder
           ..removeAt(currentIdx)
@@ -2514,6 +2538,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         _dragGridTopLeft = null;
         _dragGridGrabOffset = null;
         _dragGridTileWidth = null;
+        _dragGridTileHeight = null;
         _dragGridFullWidth = false;
         _draggingSmartTile = null;
         _gridDragCrossingToList = false;
@@ -2577,6 +2602,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       _dragGridTopLeft = null;
       _dragGridGrabOffset = null;
       _dragGridTileWidth = null;
+      _dragGridTileHeight = null;
       _dragGridFullWidth = false;
       _draggingSmartTile = null;
     });
@@ -2597,6 +2623,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       _dragGridTopLeft = null;
       _dragGridGrabOffset = null;
       _dragGridTileWidth = null;
+      _dragGridTileHeight = null;
       _gridDragCrossingToList = false;
       _crossListTargetIdx = null;
       _crossListGhostGlobalTop = null;
@@ -2712,14 +2739,22 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             _listDragCrossingToGrid = true;
             _crossGridTargetSlot = slot;
             _gridCombinedOrder.insert(slot, cat);
+            final insertedIndex = _gridCombinedOrder.indexOf(cat);
+            final insertedGeometries = _eventsGridItemGeometry(
+              context,
+              _currentGridLayoutSpecs(),
+              gridBox.size.width,
+            );
+            final insertedGeometry = insertedGeometries[insertedIndex];
             _draggingGridKey = cat;
-            _dragGridTileWidth = tileW;
+            _dragGridTileWidth = insertedGeometry.width;
+            _dragGridTileHeight = insertedGeometry.height;
             _dragGridGrabOffset = grab; // ← centre-grab for smooth tracking
             _dragGridFullWidth =
-                _gridCombinedOrder.length.isOdd &&
-                slot == _gridCombinedOrder.length - 1;
+                insertedGeometry.width >=
+                gridBox.size.width - _kGridGeometryEpsilon;
             _dragGridTopLeft = Offset(
-              _dragGridFullWidth ? 0.0 : rawTopLeft.dx,
+              rawTopLeft.dx,
               rawTopLeft.dy,
             ); // ← raw finger position, not slot
           });
@@ -2735,6 +2770,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           _draggingGridKey = null;
           _dragGridTopLeft = null;
           _dragGridTileWidth = null;
+          _dragGridTileHeight = null;
         });
         // fall through to normal list reorder
       }
@@ -2744,6 +2780,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             _gridStackKey.currentContext?.findRenderObject() as RenderBox?;
         if (gridBox != null) {
           final tileW =
+              _dragGridTileWidth ??
               (gridBox.size.width - _AnimatedCategoryGrid._colGap) / 2;
           final grab =
               _dragGridGrabOffset ??
@@ -2753,9 +2790,13 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           // normal grid drag — localPos − grab, fully continuous).
           final rawTopLeft = gridLocal - grab;
           // Slot from ghost centre — only mutates the data list when it changes.
+          final tileH =
+              _dragGridTileHeight ?? _eventsGridTileRowHeight(context);
+          final slotWidth =
+              (gridBox.size.width - _AnimatedCategoryGrid._colGap) / 2;
           final cx = rawTopLeft.dx + tileW / 2;
-          final cy = rawTopLeft.dy + _eventsGridTileRowHeight(context) / 2;
-          final col = (cx / (tileW + _AnimatedCategoryGrid._colGap))
+          final cy = rawTopLeft.dy + tileH / 2;
+          final col = (cx / (slotWidth + _AnimatedCategoryGrid._colGap))
               .round()
               .clamp(0, 1);
           final row =
@@ -2776,13 +2817,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           }
           // Always update ghost position so it follows the finger smoothly.
           setState(() {
-            _dragGridFullWidth =
-                _gridCombinedOrder.length.isOdd &&
-                newSlot == _gridCombinedOrder.length - 1;
-            _dragGridTopLeft = Offset(
-              _dragGridFullWidth ? 0.0 : rawTopLeft.dx,
-              rawTopLeft.dy,
-            );
+            // Keep the geometry selected when the category first enters the
+            // grid.  A destination width change waits for release.
+            _dragGridTopLeft = rawTopLeft;
           });
         }
         _listDragOverlayEntry?.markNeedsBuild();
@@ -3397,6 +3434,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         _dragGridTopLeft = null;
         _dragGridGrabOffset = null;
         _dragGridTileWidth = null;
+        _dragGridTileHeight = null;
         _dragGridFullWidth = false;
         _dragListTopY = null;
         _dragListGrabOffsetY = null;
@@ -3520,6 +3558,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       _dragGridTopLeft = null;
       _dragGridGrabOffset = null;
       _dragGridTileWidth = null;
+      _dragGridTileHeight = null;
       _dragGridFullWidth = false;
       _draggingSmartTile = null;
     });
@@ -4024,10 +4063,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     final topLeft = _dragGridTopLeft;
     if (topLeft == null) return const SizedBox.shrink();
     final stackGlobal = box.localToGlobal(Offset.zero);
-    final tileWidth = _dragGridFullWidth
-        ? box.size.width
-        : (_dragGridTileWidth ??
-              (box.size.width - _AnimatedCategoryGrid._colGap) / 2);
+    final tileWidth =
+        _dragGridTileWidth ??
+        (box.size.width - _AnimatedCategoryGrid._colGap) / 2;
+    final tileHeight = _dragGridTileHeight ?? _eventsGridTileRowHeight(context);
     final globalPos = stackGlobal + topLeft;
 
     // ── Crossing down into list: row ghost follows finger freely ─────────────
@@ -4092,25 +4131,20 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     }
 
     // Position follows the raw finger (no animation — AnimatedPositioned on a
-    // per-frame value causes 200 ms of permanent lag).  Only the WIDTH is
-    // animated so the grow/shrink when crossing the odd full-width slot feels
-    // smooth while the card itself stays 1:1 with the finger.
+    // per-frame value causes permanent lag). The captured width and height are
+    // intentionally not animated here. The destination geometry is applied
+    // only after release by the normal grid layout.
     return IgnorePointer(
       child: Stack(
         children: [
           Positioned(
             left: globalPos.dx,
             top: globalPos.dy,
-            height: _eventsGridTileRowHeight(context),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
-              width: tileWidth,
-              height: _eventsGridTileRowHeight(context),
-              child: Transform.scale(
-                scale: 1.05,
-                child: _buildGridDragGhost(key, suppressDarkModeOutline: true),
-              ),
+            width: tileWidth,
+            height: tileHeight,
+            child: Transform.scale(
+              scale: 1.05,
+              child: _buildGridDragGhost(key, suppressDarkModeOutline: true),
             ),
           ),
         ],
@@ -6114,7 +6148,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 gridStackKey: _gridStackKey,
                 draggingKey: _draggingGridKey,
                 dragLocalTopLeft: _dragGridTopLeft,
-                dragFullWidth: _dragGridFullWidth,
+                dragTileWidth: _dragGridTileWidth,
+                dragTileHeight: _dragGridTileHeight,
               ),
             ),
           ),
@@ -6638,6 +6673,7 @@ class _GridItemGeometry {
 const _kGridTileInset = 16.0;
 const _kGridTileCircleSize = 35.5;
 const _kGridTileTitleGap = 8.0;
+const _kGridGeometryEpsilon = 0.5;
 
 TextStyle _eventsGridTitleStyle() => TextStyle(
   inherit: false,
@@ -6651,10 +6687,7 @@ TextStyle _eventsGridTitleStyle() => TextStyle(
 double _eventsGridTileRowHeight(BuildContext context) {
   final scaler = MediaQuery.textScalerOf(context);
   final titlePainter = TextPainter(
-    text: TextSpan(
-      text: 'Completed',
-      style: _eventsGridTitleStyle(),
-    ),
+    text: TextSpan(text: 'Completed', style: _eventsGridTitleStyle()),
     textDirection: TextDirection.ltr,
     textScaler: scaler,
   )..layout();
@@ -6667,10 +6700,7 @@ double _eventsGridTileRowHeight(BuildContext context) {
       _kGridTileInset;
 }
 
-double _eventsGridTitleWidth(
-  BuildContext context,
-  String title,
-) {
+double _eventsGridTitleWidth(BuildContext context, String title) {
   final painter = TextPainter(
     text: TextSpan(text: title, style: _eventsGridTitleStyle()),
     textDirection: TextDirection.ltr,
@@ -6722,7 +6752,7 @@ List<_GridItemGeometry> _eventsGridItemGeometry(
   // Pair decisions are made before either tile is positioned. If one pinned
   // title cannot fit its half-width tile with the required right inset, both
   // members of that pair become full-width rows.
-  for (var i = 0; i < specs.length; ) {
+  for (var i = 0; i < specs.length;) {
     final second = i + 1 < specs.length ? i + 1 : null;
     final pairNeedsFullWidth =
         second == null ||
@@ -6788,17 +6818,19 @@ class _AnimatedCategoryGrid extends StatelessWidget {
   /// Top-left of the dragged tile in Stack-local coordinates (null when idle).
   final Offset? dragLocalTopLeft;
 
-  /// Whether the lifted tile is currently targeting the solitary final slot.
-  /// This is separate from the resting layout so the tile can expand while
-  /// still being dragged, including when it entered the grid from the list.
-  final bool dragFullWidth;
+  /// Captured resting geometry for the lifted tile. These values remain fixed
+  /// while the pointer is down; the normal layout applies the destination
+  /// geometry after release.
+  final double? dragTileWidth;
+  final double? dragTileHeight;
 
   const _AnimatedCategoryGrid({
     required this.entries,
     this.gridStackKey,
     this.draggingKey,
     this.dragLocalTopLeft,
-    this.dragFullWidth = false,
+    this.dragTileWidth,
+    this.dragTileHeight,
   });
 
   static const _rowGap = 16.0;
@@ -6810,17 +6842,13 @@ class _AnimatedCategoryGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final geometries = _eventsGridItemGeometry(
-          context,
-          [
-            for (final entry in entries)
-              _GridLayoutSpec(
-                title: entry.title,
-                allowsFullWidthTitle: entry.allowsFullWidthTitle,
-              ),
-          ],
-          constraints.maxWidth,
-        );
+        final geometries = _eventsGridItemGeometry(context, [
+          for (final entry in entries)
+            _GridLayoutSpec(
+              title: entry.title,
+              allowsFullWidthTitle: entry.allowsFullWidthTitle,
+            ),
+        ], constraints.maxWidth);
         final totalHeight = geometries.isEmpty
             ? 0.0
             : geometries.last.top + geometries.last.height;
@@ -6853,8 +6881,9 @@ class _AnimatedCategoryGrid extends StatelessWidget {
               // IMPORTANT: child must be structurally identical to the
               // non-dragging branch so Flutter updates rather than tears down
               // the element (and its GestureDetector) on drag start.
-              // The dragging ghost (in the Overlay) always renders at tileWidth
-              // so the ghost is half-wide regardless of the tile's resting state.
+              // The dragging tile and its Overlay ghost both retain the
+              // geometry captured at pointer-down. A destination width change
+              // is applied by the normal branch after release.
               if (draggingKey != null && dragLocalTopLeft != null)
                 for (int i = 0; i < entries.length; i++)
                   if (entries[i].key == draggingKey)
@@ -6864,10 +6893,8 @@ class _AnimatedCategoryGrid extends StatelessWidget {
                       curve: Curves.linear,
                       left: dragLocalTopLeft!.dx,
                       top: dragLocalTopLeft!.dy,
-                      width: dragFullWidth
-                          ? constraints.maxWidth
-                          : geometries[i].width,
-                      height: geometries[i].height,
+                      width: dragTileWidth ?? geometries[i].width,
+                      height: dragTileHeight ?? geometries[i].height,
                       child: entries[i].child,
                     ),
             ],
