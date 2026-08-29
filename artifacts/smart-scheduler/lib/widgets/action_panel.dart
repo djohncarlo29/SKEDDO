@@ -742,6 +742,11 @@ class _ActionPanelState extends State<ActionPanel>
   void initState() {
     super.initState();
     _ctrl = AnimationController(vsync: this);
+    // Scroll notifications describe the gesture, but with bouncing physics
+    // the final snap-back to the exact edge can complete after the last
+    // notification that changed the fade flags.  Listen to the position too
+    // so the edge mask always reflects the settled scroll offset.
+    _scrollCtrl.addListener(_onScrollPositionChanged);
     widget.isClosing.addListener(_onClosingChanged);
     _ctrl.animateTo(
       1.0,
@@ -798,6 +803,32 @@ class _ActionPanelState extends State<ActionPanel>
     });
   }
 
+  void _onScrollPositionChanged() {
+    if (!mounted || _isClosingNow || widget.isClosing.value) return;
+    if (!_scrollCtrl.hasClients) return;
+    final position = _scrollCtrl.position;
+    widget.scrollOffsetNotifier?.value = position.pixels;
+    _syncScrollEdgeFades(position);
+  }
+
+  void _syncScrollEdgeFades(ScrollMetrics metrics) {
+    final canScroll = metrics.maxScrollExtent > 1.0;
+    final newTop = canScroll && metrics.pixels > 1.0;
+    final newBottom =
+        canScroll && metrics.pixels < metrics.maxScrollExtent - 1.0;
+    if (_canScroll == canScroll &&
+        _showTopFade == newTop &&
+        _showBottomFade == newBottom) {
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _canScroll = canScroll;
+      _showTopFade = newTop;
+      _showBottomFade = newBottom;
+    });
+  }
+
   ScrollPhysics get _effectiveScrollPhysics {
     if (!_canScroll) return const NeverScrollableScrollPhysics();
     return widget.bouncingScroll
@@ -813,14 +844,7 @@ class _ActionPanelState extends State<ActionPanel>
     if (_isClosingNow || widget.isClosing.value) return false;
     final pos = n.metrics;
     widget.scrollOffsetNotifier?.value = pos.pixels;
-    final newTop = pos.pixels > 1.0;
-    final newBot = pos.pixels < pos.maxScrollExtent - 1.0;
-    if (newTop != _showTopFade || newBot != _showBottomFade) {
-      setState(() {
-        _showTopFade = newTop;
-        _showBottomFade = newBot;
-      });
-    }
+    _syncScrollEdgeFades(pos);
     // Show pill on any scroll interaction; schedule auto-hide after 1.5 s.
     if (!_pillVisible) setState(() => _pillVisible = true);
     _pillHideTimer?.cancel();
@@ -833,6 +857,7 @@ class _ActionPanelState extends State<ActionPanel>
   @override
   void dispose() {
     widget.isClosing.removeListener(_onClosingChanged);
+    _scrollCtrl.removeListener(_onScrollPositionChanged);
     _pillHideTimer?.cancel();
     _ctrl.dispose();
     _scrollCtrl.dispose();
