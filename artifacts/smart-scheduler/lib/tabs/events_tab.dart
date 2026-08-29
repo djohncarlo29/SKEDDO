@@ -4016,6 +4016,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     bool suppressDarkModeOutline = false,
   }) {
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
+    // Keep the lifted ghost's complete icon unit in lockstep with the settled
+    // _CategoryRow.  The row scales its circle from the active OS text scaler;
+    // using a fixed 34 px here made the ghost visibly shrink at larger Dynamic
+    // Type sizes and made its glyph-to-circle ratio differ while dragging.
+    final circleSize = _eventsScaledCategoryIconSize(context, 34.0);
     // Group members keep the same leading inset while lifted.  The resting
     // _CategoryRow uses 32 px here versus 16 px for solo categories; applying
     // that inset to the overlay ghost prevents the card from jumping left
@@ -4049,8 +4054,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         child: Row(
           children: [
             Container(
-              width: 34,
-              height: 34,
+              width: circleSize,
+              height: circleSize,
               decoration: BoxDecoration(
                 color: _categoryIconCircleColor(
                   cat.iconOrSvg,
@@ -4061,9 +4066,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               child: Center(
                 child: _renderCatIcon(
                   cat.iconOrSvg,
-                  34,
+                  circleSize,
                   CupertinoColors.white,
                   emojiOffsetY: 1,
+                  ctx: context,
                 ),
               ),
             ),
@@ -4146,6 +4152,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   /// Ghost rendered in the Overlay while a group header is being dragged.
   Widget _buildListDragGroupHeaderGhost(_CategoryGroup group) {
     final textScaler = MediaQuery.textScalerOf(context);
+    // Match _GroupRow's scaled icon unit.  The group header participates in
+    // the same category list geometry, so its lifted copy must grow with the
+    // OS text scale instead of retaining the authored 34 px size.
+    final groupIconSize = _eventsScaledCategoryIconSize(context, 34.0);
+    final groupIconScale = groupIconSize / 34.0;
     return Container(
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
@@ -4166,14 +4177,14 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         child: Row(
           children: [
             SizedBox(
-              width: 34,
-              height: 34,
+              width: groupIconSize,
+              height: groupIconSize,
               child: Center(
                 child: Transform.translate(
                   offset: const Offset(0, -1),
                   child: FixedSFIcon(
                     SFIcons.sf_rectangle_stack,
-                    fontSize: 22,
+                    fontSize: 22 * groupIconScale,
                     color: resolveThemeColor(kSecondaryLabel, context),
                     fontWeight: FontWeight.w500,
                   ),
