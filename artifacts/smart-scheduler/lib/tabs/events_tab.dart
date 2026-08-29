@@ -4119,7 +4119,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 ),
               ),
             ),
-            SizedBox(width: 8),
+            const SizedBox(width: _eventsCategoryTextTrailingGap),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -4207,7 +4207,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 ),
               ),
             ),
-            SizedBox(width: 8),
+            const SizedBox(width: _eventsCategoryTextTrailingGap),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -7914,6 +7914,92 @@ double _eventsMeasuredTextWidth(
 /// Measure the actual visible labels. The Stack can use a different height for
 /// each slot; title-only rows stay compact while wrapped titles/subtitles grow
 /// only their own row.
+const double _eventsCategoryTextTrailingGap = 16.0;
+const double _eventsCategoryIconTextGap = 16.0;
+const double _eventsCategoryStackedContentGap = 8.0;
+
+/// Keep each whitespace-delimited word together in category rows.
+///
+/// The invisible word joiners also prevent Flutter from treating punctuation
+/// inside a word (for example, a slash or hyphen) as a character-level break.
+String _eventsCategoryNoWordBreakText(String text) {
+  return text.splitMapJoin(
+    RegExp(r'\s+'),
+    onMatch: (match) => match.group(0)!,
+    onNonMatch: (word) => word.runes.map(String.fromCharCode).join('\u2060'),
+  );
+}
+
+double _eventsCategoryLongestWordWidth(
+  String text,
+  TextStyle style,
+  TextScaler scaler,
+) {
+  var widest = 0.0;
+  for (final word in text.split(RegExp(r'\s+'))) {
+    if (word.isEmpty) continue;
+    widest = max(
+      widest,
+      _eventsMeasuredTextWidth(
+        _eventsCategoryNoWordBreakText(word),
+        style,
+        scaler,
+      ),
+    );
+  }
+  return widest;
+}
+
+double _eventsCategoryTrailingWidth(
+  String trailingLabel,
+  TextStyle countStyle,
+  TextScaler scaler,
+) {
+  return _eventsMeasuredTextWidth(trailingLabel, countStyle, scaler) +
+      8 +
+      scaler.scale(14);
+}
+
+/// The available width of the text column in the normal icon/text/trailing
+/// arrangement. The final 16 is the row's authored trailing edge inset.
+double _eventsCategorySideBySideTextWidth({
+  required double cardWidth,
+  required double leftPad,
+  required double iconSize,
+  required double trailingWidth,
+}) {
+  return max(
+    0.0,
+    cardWidth -
+        leftPad -
+        iconSize -
+        _eventsCategoryIconTextGap -
+        _eventsCategoryTextTrailingGap -
+        trailingWidth -
+        16,
+  );
+}
+
+bool _eventsCategoryNeedsStackedText({
+  required String title,
+  required String subtitle,
+  required TextStyle titleStyle,
+  required TextStyle subtitleStyle,
+  required TextScaler scaler,
+  required double textWidth,
+}) {
+  final titleWordWidth = _eventsCategoryLongestWordWidth(
+    title,
+    titleStyle,
+    scaler,
+  );
+  final subtitleWordWidth = subtitle.isEmpty
+      ? 0.0
+      : _eventsCategoryLongestWordWidth(subtitle, subtitleStyle, scaler);
+  return titleWordWidth > textWidth + kTextLayoutEpsilon ||
+      subtitleWordWidth > textWidth + kTextLayoutEpsilon;
+}
+
 double _eventsCategoryListRowHeight(
   BuildContext context, {
   Iterable<_FlatItem>? items,
@@ -7950,32 +8036,74 @@ double _eventsCategoryListRowHeight(
     final trailingLabel = current.isGroupHeader
         ? '${current.group?.memberIds.length ?? 0}'
         : '${liveEventCounts?[current.category!.id] ?? 0}';
-    final trailingWidth =
-        _eventsMeasuredTextWidth(trailingLabel, countStyle, scaler) +
-        8 +
-        8 +
-        scaler.scale(14) +
-        16;
-    final leftPad = current.isGroupMember ? 32.0 : 16.0;
-    final textWidth = max(
-      80.0,
-      cardWidth - leftPad - iconHeight - 16 - trailingWidth,
-    );
-    var textHeight = _eventsMeasuredTextHeight(
-      label,
-      current.isGroupHeader ? groupTitleStyle : categoryTitleStyle,
+    final trailingWidth = _eventsCategoryTrailingWidth(
+      trailingLabel,
+      countStyle,
       scaler,
-      textWidth,
     );
-    final description = current.category?.description;
-    if (description != null && description.isNotEmpty) {
+    final leftPad = current.isGroupMember ? 32.0 : 16.0;
+    final sideBySideTextWidth = _eventsCategorySideBySideTextWidth(
+      cardWidth: cardWidth,
+      leftPad: leftPad,
+      iconSize: iconHeight,
+      trailingWidth: trailingWidth,
+    );
+    final titleStyle = current.isGroupHeader
+        ? groupTitleStyle
+        : categoryTitleStyle;
+    final titleText = _eventsCategoryNoWordBreakText(label);
+    final descriptionText = _eventsCategoryNoWordBreakText(
+      current.category?.description ?? '',
+    );
+    final needsStackedText =
+        !current.isGroupHeader &&
+        _eventsCategoryNeedsStackedText(
+          title: label,
+          subtitle: current.category?.description ?? '',
+          titleStyle: titleStyle,
+          subtitleStyle: subtitleStyle,
+          scaler: scaler,
+          textWidth: sideBySideTextWidth,
+        );
+
+    if (needsStackedText) {
+      final fullTextWidth = max(0.0, cardWidth - leftPad - 16);
+      var textHeight = _eventsMeasuredTextHeight(
+        titleText,
+        titleStyle,
+        scaler,
+        fullTextWidth,
+      );
+      if (descriptionText.isNotEmpty) {
+        textHeight +=
+            subtitleGap +
+            _eventsMeasuredTextHeight(
+              descriptionText,
+              subtitleStyle,
+              scaler,
+              fullTextWidth,
+            );
+      }
+      return max(
+        64.0,
+        32.0 + iconHeight + _eventsCategoryStackedContentGap + textHeight,
+      );
+    }
+
+    var textHeight = _eventsMeasuredTextHeight(
+      titleText,
+      titleStyle,
+      scaler,
+      sideBySideTextWidth,
+    );
+    if (descriptionText.isNotEmpty) {
       textHeight +=
           subtitleGap +
           _eventsMeasuredTextHeight(
-            description,
+            descriptionText,
             subtitleStyle,
             scaler,
-            textWidth,
+            sideBySideTextWidth,
           );
     }
     return max(64.0, max(iconHeight, textHeight) + verticalPadding);
@@ -8558,9 +8686,158 @@ class _CategoryRow extends StatelessWidget {
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
     final circleSize = _eventsScaledCategoryIconSize(context, 34.0);
+    final textScaler = MediaQuery.textScalerOf(context);
+    final titleStyle = TextStyle(
+      inherit: false,
+      color: primaryLabel,
+      fontSize: 16,
+      fontFamily: kSFProText,
+      fontWeight: FontWeight.w400,
+      fontStyle: FontStyle.normal,
+      letterSpacing: kTracking16,
+      height: kLineHeight,
+    );
+    final subtitleStyle = TextStyle(
+      inherit: false,
+      color: secondaryLabel,
+      fontSize: 13,
+      fontFamily: kSFProText,
+      fontWeight: FontWeight.w400,
+      fontStyle: FontStyle.normal,
+      letterSpacing: -0.08,
+      height: kLineHeight,
+    );
+    final countStyle = TextStyle(
+      inherit: false,
+      color: secondaryLabel,
+      fontSize: 16,
+      fontFamily: kSFProText,
+      fontWeight: FontWeight.w400,
+      fontStyle: FontStyle.normal,
+      letterSpacing: kTracking16,
+    );
+    final trailingLabel = '$liveCount';
+    final trailingWidth = _eventsCategoryTrailingWidth(
+      trailingLabel,
+      countStyle,
+      textScaler,
+    );
 
     // Indent group member rows with extra left padding.
     final leftPad = indented ? 32.0 : 16.0;
+
+    Widget categoryIcon() => Container(
+      width: circleSize,
+      height: circleSize,
+      decoration: BoxDecoration(
+        color: _categoryIconCircleColor(
+          category.iconOrSvg,
+          renderCategoryColor(category.color, context),
+        ),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: _renderCatIcon(
+          category.iconOrSvg,
+          circleSize,
+          CupertinoColors.white,
+          emojiOffsetY: 1,
+        ),
+      ),
+    );
+
+    Widget trailingCount() => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('$liveCount', style: countStyle),
+        const SizedBox(width: 8),
+        Icon(
+          CupertinoIcons.chevron_right,
+          color: secondaryLabel,
+          size: textScaler.scale(14),
+        ),
+      ],
+    );
+
+    final cardWidth = max(0.0, MediaQuery.sizeOf(context).width - 32.0);
+    final textWidth = _eventsCategorySideBySideTextWidth(
+      cardWidth: cardWidth,
+      leftPad: leftPad,
+      iconSize: circleSize,
+      trailingWidth: trailingWidth,
+    );
+    final needsStackedText = _eventsCategoryNeedsStackedText(
+      title: category.name,
+      subtitle: category.description,
+      titleStyle: titleStyle,
+      subtitleStyle: subtitleStyle,
+      scaler: textScaler,
+      textWidth: textWidth,
+    );
+    final titleText = _eventsCategoryNoWordBreakText(category.name);
+    final subtitleText = _eventsCategoryNoWordBreakText(category.description);
+
+    final Widget rowBody = needsStackedText
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: circleSize,
+                child: Row(
+                  children: [categoryIcon(), const Spacer(), trailingCount()],
+                ),
+              ),
+              const SizedBox(height: _eventsCategoryStackedContentGap),
+              Text(
+                titleText,
+                style: titleStyle,
+                softWrap: true,
+                overflow: TextOverflow.visible,
+              ),
+              if (subtitleText.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  subtitleText,
+                  style: subtitleStyle,
+                  softWrap: true,
+                  overflow: TextOverflow.visible,
+                ),
+              ],
+            ],
+          )
+        : Row(
+            children: [
+              categoryIcon(),
+              const SizedBox(width: _eventsCategoryIconTextGap),
+              Expanded(
+                child: SizedBox(
+                  height: double.infinity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: category.description.isEmpty
+                        ? MainAxisAlignment.center
+                        : MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(titleText, style: titleStyle, softWrap: true),
+                      if (subtitleText.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitleText,
+                          style: subtitleStyle,
+                          softWrap: true,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              // Authored 16pt minimum gap. This is intentionally not scaled
+              // with Dynamic Type; only the text and chevron scale.
+              const SizedBox(width: _eventsCategoryTextTrailingGap),
+              trailingCount(),
+            ],
+          );
 
     return Column(
       children: [
@@ -8579,96 +8856,7 @@ class _CategoryRow extends StatelessWidget {
                   top: 16,
                   bottom: 16,
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: circleSize,
-                      height: circleSize,
-                      decoration: BoxDecoration(
-                        color: _categoryIconCircleColor(
-                          category.iconOrSvg,
-                          renderCategoryColor(category.color, context),
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: _renderCatIcon(
-                          category.iconOrSvg,
-                          circleSize,
-                          CupertinoColors.white,
-                          emojiOffsetY: 1,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: SizedBox(
-                        height: double.infinity,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: category.description.isEmpty
-                              ? MainAxisAlignment.center
-                              : MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              category.name,
-                              style: TextStyle(
-                                inherit: false,
-                                color: primaryLabel,
-                                fontSize: 16,
-                                fontFamily: kSFProText,
-                                fontWeight: FontWeight.w400,
-                                fontStyle: FontStyle.normal,
-                                letterSpacing: kTracking16,
-                                height: kLineHeight,
-                              ),
-                            ),
-                            if (category.description.isNotEmpty) ...[
-                              SizedBox(height: 4),
-                              Text(
-                                category.description,
-                                style: TextStyle(
-                                  inherit: false,
-                                  color: secondaryLabel,
-                                  fontSize: 13,
-                                  fontFamily: kSFProText,
-                                  fontWeight: FontWeight.w400,
-                                  fontStyle: FontStyle.normal,
-                                  letterSpacing: -0.08,
-                                  height: kLineHeight,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '$liveCount',
-                          style: TextStyle(
-                            inherit: false,
-                            color: secondaryLabel,
-                            fontSize: 16,
-                            fontFamily: kSFProText,
-                            fontWeight: FontWeight.w400,
-                            fontStyle: FontStyle.normal,
-                            letterSpacing: kTracking16,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          CupertinoIcons.chevron_right,
-                          color: secondaryLabel,
-                          size: MediaQuery.textScalerOf(context).scale(14),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                child: rowBody,
               ),
             ),
           ),
@@ -8830,7 +9018,7 @@ class _GroupRow extends StatelessWidget {
                         ),
                       ),
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: _eventsCategoryTextTrailingGap),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
