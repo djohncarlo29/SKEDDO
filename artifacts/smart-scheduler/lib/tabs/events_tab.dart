@@ -7564,6 +7564,11 @@ class _PinnedUserTile extends StatelessWidget {
                     fontStyle: FontStyle.normal,
                     letterSpacing: -0.3,
                   ),
+                  // Match built-in Smart Category tiles. The grid count is a
+                  // fixed visual badge and must not grow with Dynamic Type;
+                  // otherwise pinned user-category numbers render larger than
+                  // the corresponding built-in numbers.
+                  textScaler: TextScaler.noScaling,
                 ),
               ),
             ),
