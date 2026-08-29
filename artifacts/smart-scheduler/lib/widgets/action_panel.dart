@@ -1704,6 +1704,8 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
                 icon: sharedSpec.icon,
                 hasChevron: true,
                 subtitle: sharedSpec.subtitle,
+                iconBuilder: sharedSpec.iconBuilder,
+                iconOffset: sharedSpec.iconOffset,
               ),
               panelWidth: widget.panelWidth,
               chevronColumn: widget.chevronColumn,
