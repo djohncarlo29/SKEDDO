@@ -11783,7 +11783,11 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                         child: SizedBox(
                           width: double.infinity,
                           child: Padding(
-                            padding: const EdgeInsets.only(top: 8, left: 16),
+                            padding: const EdgeInsets.only(
+                              top: 8,
+                              left: kModalSheetContextFooterHorizontalInset,
+                              right: kModalSheetContextFooterHorizontalInset,
+                            ),
                             child: Text(
                               _footerText,
                               style: modalSheetContextFooterStyle(context),

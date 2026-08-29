@@ -231,6 +231,7 @@ TextStyle resolveThemeTextStyle(TextStyle style, BuildContext context) =>
     : style.copyWith(color: resolveThemeColor(style.color!, context));
 
 const double kModalSheetContextFooterFontSize = 13.0;
+const double kModalSheetContextFooterHorizontalInset = 16.0;
 
 /// Shared typography for explanatory context text below modal-sheet cards.
 TextStyle modalSheetContextFooterStyle(BuildContext context) =>

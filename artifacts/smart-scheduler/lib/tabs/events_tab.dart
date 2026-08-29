@@ -12248,7 +12248,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                                     child: Padding(
                                       padding: const EdgeInsets.only(
                                         top: 8,
-                                        left: 16,
+                                        left:
+                                            kModalSheetContextFooterHorizontalInset,
+                                        right:
+                                            kModalSheetContextFooterHorizontalInset,
                                       ),
                                       child: Text(
                                         _categoryType == 'Shopping List'
@@ -17319,7 +17322,11 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                         child: SizedBox(
                           width: double.infinity,
                           child: Padding(
-                            padding: const EdgeInsets.only(top: 8, left: 16),
+                            padding: const EdgeInsets.only(
+                              top: 8,
+                              left: kModalSheetContextFooterHorizontalInset,
+                              right: kModalSheetContextFooterHorizontalInset,
+                            ),
                             child: Text(
                               _footerText,
                               style: modalSheetContextFooterStyle(context),
