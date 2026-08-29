@@ -3995,9 +3995,14 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     ? _buildListDragGhost(
                         cat,
                         indented: _draggingListGroupId != null,
+                        cardWidth: tileWidth,
                         suppressDarkModeOutline: _listDragCrossingToGrid,
                       )
-                    : _buildListDragGroupHeaderGhost(grp!),
+                    : _buildListDragGroupHeaderGhost(
+                        grp!,
+                        isExpanded: _expandedGroupIds.contains(grp.id),
+                        cardWidth: tileWidth,
+                      ),
               ),
             ),
           ),
@@ -4013,19 +4018,17 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   Widget _buildListDragGhost(
     _UserCategory cat, {
     bool indented = false,
+    required double cardWidth,
     bool suppressDarkModeOutline = false,
   }) {
-    final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     // Keep the lifted ghost's complete icon unit in lockstep with the settled
     // _CategoryRow.  The row scales its circle from the active OS text scaler;
     // using a fixed 34 px here made the ghost visibly shrink at larger Dynamic
     // Type sizes and made its glyph-to-circle ratio differ while dragging.
-    final circleSize = _eventsScaledCategoryIconSize(context, 34.0);
     // Group members keep the same leading inset while lifted.  The resting
     // _CategoryRow uses 32 px here versus 16 px for solo categories; applying
     // that inset to the overlay ghost prevents the card from jumping left
     // when the drag begins.
-    final leftPadding = indented ? 32.0 : 16.0;
     return Container(
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
@@ -4046,117 +4049,31 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       ),
       child: Padding(
         padding: EdgeInsets.only(
-          left: leftPadding,
+          left: indented ? 32.0 : 16.0,
           right: 16,
           top: 16,
           bottom: 16,
         ),
-        child: Row(
-          children: [
-            Container(
-              width: circleSize,
-              height: circleSize,
-              decoration: BoxDecoration(
-                color: _categoryIconCircleColor(
-                  cat.iconOrSvg,
-                  renderCategoryColor(cat.color, context),
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: _renderCatIcon(
-                  cat.iconOrSvg,
-                  circleSize,
-                  CupertinoColors.white,
-                  emojiOffsetY: 1,
-                  ctx: context,
-                ),
-              ),
-            ),
-            SizedBox(width: 16),
-            Expanded(
-              child: SizedBox(
-                height: double.infinity,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  // Title-only rows center their title beside the icon.
-                  // Rows with descriptions keep the title/subtitle block
-                  // spread between the fixed 16pt top and bottom insets.
-                  mainAxisAlignment: cat.description.isEmpty
-                      ? MainAxisAlignment.center
-                      : MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      cat.name,
-                      style: TextStyle(
-                        inherit: false,
-                        color: resolveThemeColor(kPrimaryLabel, context),
-                        fontSize: 16,
-                        fontFamily: kSFProText,
-                        fontWeight: FontWeight.w400,
-                        fontStyle: FontStyle.normal,
-                        letterSpacing: kTracking16,
-                        height: kLineHeight,
-                      ),
-                    ),
-                    if (cat.description.isNotEmpty) ...[
-                      SizedBox(height: 4),
-                      Text(
-                        cat.description,
-                        style: TextStyle(
-                          inherit: false,
-                          color: resolveThemeColor(kSecondaryLabel, context),
-                          fontSize: 13,
-                          fontFamily: kSFProText,
-                          fontWeight: FontWeight.w400,
-                          fontStyle: FontStyle.normal,
-                          letterSpacing: -0.08,
-                          height: kLineHeight,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: _eventsCategoryTextTrailingGap),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${_liveEventCounts[cat.id] ?? 0}',
-                  style: TextStyle(
-                    inherit: false,
-                    color: secondaryLabel,
-                    fontSize: 16,
-                    fontFamily: kSFProText,
-                    fontWeight: FontWeight.w400,
-                    fontStyle: FontStyle.normal,
-                    letterSpacing: kTracking16,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  CupertinoIcons.chevron_right,
-                  color: secondaryLabel,
-                  size: MediaQuery.textScalerOf(context).scale(14),
-                ),
-              ],
-            ),
-          ],
+        child: _buildCategoryListRowBody(
+          context,
+          category: cat,
+          liveCount: _liveEventCounts[cat.id] ?? 0,
+          indented: indented,
+          cardWidth: cardWidth,
         ),
       ),
     );
   }
 
   /// Ghost rendered in the Overlay while a group header is being dragged.
-  Widget _buildListDragGroupHeaderGhost(_CategoryGroup group) {
-    final textScaler = MediaQuery.textScalerOf(context);
+  Widget _buildListDragGroupHeaderGhost(
+    _CategoryGroup group, {
+    required bool isExpanded,
+    required double cardWidth,
+  }) {
     // Match _GroupRow's scaled icon unit.  The group header participates in
     // the same category list geometry, so its lifted copy must grow with the
     // OS text scale instead of retaining the authored 34 px size.
-    final groupIconSize = _eventsScaledCategoryIconSize(context, 34.0);
-    final groupIconScale = groupIconSize / 34.0;
     return Container(
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
@@ -4174,70 +4091,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: Row(
-          children: [
-            SizedBox(
-              width: groupIconSize,
-              height: groupIconSize,
-              child: Center(
-                child: Transform.translate(
-                  offset: const Offset(0, -1),
-                  child: FixedSFIcon(
-                    SFIcons.sf_rectangle_stack,
-                    fontSize: 22 * groupIconScale,
-                    color: resolveThemeColor(kSecondaryLabel, context),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                group.name,
-                style: TextStyle(
-                  inherit: false,
-                  color: resolveThemeColor(kPrimaryLabel, context),
-                  fontSize: 16,
-                  fontFamily: kSFProText,
-                  fontWeight: FontWeight.w600,
-                  fontStyle: FontStyle.normal,
-                  letterSpacing: kTracking16,
-                  height: kLineHeight,
-                ),
-              ),
-            ),
-            const SizedBox(width: _eventsCategoryTextTrailingGap),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${group.memberIds.length}',
-                  style: TextStyle(
-                    inherit: false,
-                    color: resolveThemeColor(kSecondaryLabel, context),
-                    fontSize: 16,
-                    fontFamily: kSFProText,
-                    fontWeight: FontWeight.w400,
-                    fontStyle: FontStyle.normal,
-                    letterSpacing: kTracking16,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: textScaler.scale(14),
-                  child: Center(
-                    child: FixedSFIcon(
-                      SFIcons.sf_chevron_right,
-                      fontSize: textScaler.scale(13),
-                      color: resolveAccentColor(context),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+        child: _buildGroupListRowBody(
+          context,
+          group: group,
+          isExpanded: isExpanded,
+          cardWidth: cardWidth,
         ),
       ),
     );
@@ -4311,7 +4169,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                           ],
                         )
                       : null,
-                  child: _buildListDragGhost(key),
+                  child: _buildListDragGhost(key, cardWidth: rowW),
                 ),
               ),
             ),
@@ -8055,16 +7913,21 @@ double _eventsCategoryListRowHeight(
     final descriptionText = _eventsCategoryNoWordBreakText(
       current.category?.description ?? '',
     );
-    final needsStackedText =
-        !current.isGroupHeader &&
-        _eventsCategoryNeedsStackedText(
-          title: label,
-          subtitle: current.category?.description ?? '',
-          titleStyle: titleStyle,
-          subtitleStyle: subtitleStyle,
-          scaler: scaler,
-          textWidth: sideBySideTextWidth,
-        );
+    final needsStackedText = current.isGroupHeader
+        ? _eventsGroupNeedsStackedText(
+            title: label,
+            titleStyle: titleStyle,
+            scaler: scaler,
+            textWidth: sideBySideTextWidth,
+          )
+        : _eventsCategoryNeedsStackedText(
+            title: label,
+            subtitle: current.category?.description ?? '',
+            titleStyle: titleStyle,
+            subtitleStyle: subtitleStyle,
+            scaler: scaler,
+            textWidth: sideBySideTextWidth,
+          );
 
     if (needsStackedText) {
       final fullTextWidth = max(0.0, cardWidth - leftPad - 16);
@@ -8120,6 +7983,16 @@ double _eventsCategoryListRowHeight(
   return tallest;
 }
 
+bool _eventsGroupNeedsStackedText({
+  required String title,
+  required TextStyle titleStyle,
+  required TextScaler scaler,
+  required double textWidth,
+}) {
+  return _eventsCategoryLongestWordWidth(title, titleStyle, scaler) >
+      textWidth + kTextLayoutEpsilon;
+}
+
 double _eventsCategoryListTopY(
   BuildContext context,
   List<_FlatItem> items,
@@ -8157,6 +8030,301 @@ int _eventsCategoryListIndexAtY(
     if (y < top) return i;
   }
   return items.length;
+}
+
+/// Shared visual body for a category list row and its lifted reorder ghost.
+///
+/// Keeping this in one place is important: the fallback decision must not
+/// change when a row moves into the global overlay during a drag.
+Widget _buildCategoryListRowBody(
+  BuildContext context, {
+  required _UserCategory category,
+  required int liveCount,
+  required bool indented,
+  required double cardWidth,
+}) {
+  final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
+  final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
+  final circleSize = _eventsScaledCategoryIconSize(context, 34.0);
+  final textScaler = MediaQuery.textScalerOf(context);
+  final titleStyle = TextStyle(
+    inherit: false,
+    color: primaryLabel,
+    fontSize: 16,
+    fontFamily: kSFProText,
+    fontWeight: FontWeight.w400,
+    fontStyle: FontStyle.normal,
+    letterSpacing: kTracking16,
+    height: kLineHeight,
+  );
+  final subtitleStyle = TextStyle(
+    inherit: false,
+    color: secondaryLabel,
+    fontSize: 13,
+    fontFamily: kSFProText,
+    fontWeight: FontWeight.w400,
+    fontStyle: FontStyle.normal,
+    letterSpacing: -0.08,
+    height: kLineHeight,
+  );
+  final countStyle = TextStyle(
+    inherit: false,
+    color: secondaryLabel,
+    fontSize: 16,
+    fontFamily: kSFProText,
+    fontWeight: FontWeight.w400,
+    fontStyle: FontStyle.normal,
+    letterSpacing: kTracking16,
+  );
+  final leftPad = indented ? 32.0 : 16.0;
+  final trailingWidth = _eventsCategoryTrailingWidth(
+    '$liveCount',
+    countStyle,
+    textScaler,
+  );
+  final textWidth = _eventsCategorySideBySideTextWidth(
+    cardWidth: cardWidth,
+    leftPad: leftPad,
+    iconSize: circleSize,
+    trailingWidth: trailingWidth,
+  );
+  final needsStackedText = _eventsCategoryNeedsStackedText(
+    title: category.name,
+    subtitle: category.description,
+    titleStyle: titleStyle,
+    subtitleStyle: subtitleStyle,
+    scaler: textScaler,
+    textWidth: textWidth,
+  );
+  final titleText = _eventsCategoryNoWordBreakText(category.name);
+  final subtitleText = _eventsCategoryNoWordBreakText(category.description);
+
+  Widget categoryIcon() => Container(
+    width: circleSize,
+    height: circleSize,
+    decoration: BoxDecoration(
+      color: _categoryIconCircleColor(
+        category.iconOrSvg,
+        renderCategoryColor(category.color, context),
+      ),
+      shape: BoxShape.circle,
+    ),
+    child: Center(
+      child: _renderCatIcon(
+        category.iconOrSvg,
+        circleSize,
+        CupertinoColors.white,
+        emojiOffsetY: 1,
+      ),
+    ),
+  );
+
+  Widget trailingCount() => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text('$liveCount', style: countStyle),
+      const SizedBox(width: 8),
+      Icon(
+        CupertinoIcons.chevron_right,
+        color: secondaryLabel,
+        size: textScaler.scale(14),
+      ),
+    ],
+  );
+
+  if (needsStackedText) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: circleSize,
+          child: Row(
+            children: [categoryIcon(), const Spacer(), trailingCount()],
+          ),
+        ),
+        const SizedBox(height: _eventsCategoryStackedContentGap),
+        Text(
+          titleText,
+          style: titleStyle,
+          softWrap: true,
+          overflow: TextOverflow.visible,
+        ),
+        if (subtitleText.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            subtitleText,
+            style: subtitleStyle,
+            softWrap: true,
+            overflow: TextOverflow.visible,
+          ),
+        ],
+      ],
+    );
+  }
+
+  return Row(
+    children: [
+      categoryIcon(),
+      const SizedBox(width: _eventsCategoryIconTextGap),
+      Expanded(
+        child: SizedBox(
+          height: double.infinity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: category.description.isEmpty
+                ? MainAxisAlignment.center
+                : MainAxisAlignment.spaceBetween,
+            children: [
+              Text(titleText, style: titleStyle, softWrap: true),
+              if (subtitleText.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(subtitleText, style: subtitleStyle, softWrap: true),
+              ],
+            ],
+          ),
+        ),
+      ),
+      // Authored 16pt minimum gap. This intentionally stays fixed while
+      // Dynamic Type scales the text and chevron.
+      const SizedBox(width: _eventsCategoryTextTrailingGap),
+      trailingCount(),
+    ],
+  );
+}
+
+/// Shared visual body for a group header and its lifted reorder ghost.
+///
+/// A long group name uses the same two-level fallback as category rows: the
+/// icon/count controls stay on the first line and the title gets the full
+/// second-line width. Keeping this decision and geometry shared prevents the
+/// overlay ghost from reverting to a cramped single-line layout.
+Widget _buildGroupListRowBody(
+  BuildContext context, {
+  required _CategoryGroup group,
+  required bool isExpanded,
+  required double cardWidth,
+}) {
+  final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
+  final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
+  final textScaler = MediaQuery.textScalerOf(context);
+  final groupTitleStyle = TextStyle(
+    inherit: false,
+    color: primaryLabel,
+    fontSize: 16,
+    fontFamily: kSFProText,
+    fontWeight: FontWeight.w600,
+    fontStyle: FontStyle.normal,
+    letterSpacing: kTracking16,
+    height: kLineHeight,
+  );
+  final countStyle = TextStyle(
+    inherit: false,
+    color: secondaryLabel,
+    fontSize: 16,
+    fontFamily: kSFProText,
+    fontWeight: FontWeight.w400,
+    fontStyle: FontStyle.normal,
+    letterSpacing: kTracking16,
+  );
+  final groupIconSize = _eventsScaledCategoryIconSize(context, 34.0);
+  final groupIconScale = groupIconSize / 34.0;
+  final countLabel = '${group.memberIds.length}';
+  final trailingWidth = _eventsCategoryTrailingWidth(
+    countLabel,
+    countStyle,
+    textScaler,
+  );
+  final textWidth = _eventsCategorySideBySideTextWidth(
+    cardWidth: cardWidth,
+    leftPad: 16.0,
+    iconSize: groupIconSize,
+    trailingWidth: trailingWidth,
+  );
+  final needsStackedText = _eventsGroupNeedsStackedText(
+    title: group.name,
+    titleStyle: groupTitleStyle,
+    scaler: textScaler,
+    textWidth: textWidth,
+  );
+  final titleText = _eventsCategoryNoWordBreakText(group.name);
+
+  Widget groupIcon() => SizedBox(
+    width: groupIconSize,
+    height: groupIconSize,
+    child: Center(
+      child: Transform.translate(
+        offset: const Offset(0, -1),
+        child: FixedSFIcon(
+          SFIcons.sf_rectangle_stack,
+          fontSize: 22 * groupIconScale,
+          color: secondaryLabel,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    ),
+  );
+
+  Widget trailingCount() => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(countLabel, style: countStyle),
+      const SizedBox(width: 8),
+      SizedBox(
+        width: textScaler.scale(14),
+        child: Center(
+          child: AnimatedRotation(
+            turns: isExpanded ? 0.25 : 0.0,
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeInOutCubic,
+            child: FixedSFIcon(
+              SFIcons.sf_chevron_right,
+              fontSize: textScaler.scale(13),
+              color: resolveAccentColor(context),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
+
+  if (needsStackedText) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: groupIconSize,
+          child: Row(children: [groupIcon(), const Spacer(), trailingCount()]),
+        ),
+        const SizedBox(height: _eventsCategoryStackedContentGap),
+        Text(
+          titleText,
+          style: groupTitleStyle,
+          softWrap: true,
+          overflow: TextOverflow.visible,
+        ),
+      ],
+    );
+  }
+
+  return Row(
+    children: [
+      groupIcon(),
+      const SizedBox(width: _eventsCategoryIconTextGap),
+      Expanded(
+        child: Text(
+          titleText,
+          style: groupTitleStyle,
+          softWrap: true,
+          overflow: TextOverflow.visible,
+        ),
+      ),
+      const SizedBox(width: _eventsCategoryTextTrailingGap),
+      trailingCount(),
+    ],
+  );
 }
 
 // ── Category list card (clips all rows to the squircle shape) ─────────────────
@@ -8682,162 +8850,16 @@ class _CategoryRow extends StatelessWidget {
     } else {
       rowShape = const BoundedSquircleStadiumBorder(radius: 0);
     }
-    final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
-    final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
-    final circleSize = _eventsScaledCategoryIconSize(context, 34.0);
-    final textScaler = MediaQuery.textScalerOf(context);
-    final titleStyle = TextStyle(
-      inherit: false,
-      color: primaryLabel,
-      fontSize: 16,
-      fontFamily: kSFProText,
-      fontWeight: FontWeight.w400,
-      fontStyle: FontStyle.normal,
-      letterSpacing: kTracking16,
-      height: kLineHeight,
-    );
-    final subtitleStyle = TextStyle(
-      inherit: false,
-      color: secondaryLabel,
-      fontSize: 13,
-      fontFamily: kSFProText,
-      fontWeight: FontWeight.w400,
-      fontStyle: FontStyle.normal,
-      letterSpacing: -0.08,
-      height: kLineHeight,
-    );
-    final countStyle = TextStyle(
-      inherit: false,
-      color: secondaryLabel,
-      fontSize: 16,
-      fontFamily: kSFProText,
-      fontWeight: FontWeight.w400,
-      fontStyle: FontStyle.normal,
-      letterSpacing: kTracking16,
-    );
-    final trailingLabel = '$liveCount';
-    final trailingWidth = _eventsCategoryTrailingWidth(
-      trailingLabel,
-      countStyle,
-      textScaler,
-    );
-
-    // Indent group member rows with extra left padding.
-    final leftPad = indented ? 32.0 : 16.0;
-
-    Widget categoryIcon() => Container(
-      width: circleSize,
-      height: circleSize,
-      decoration: BoxDecoration(
-        color: _categoryIconCircleColor(
-          category.iconOrSvg,
-          renderCategoryColor(category.color, context),
-        ),
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: _renderCatIcon(
-          category.iconOrSvg,
-          circleSize,
-          CupertinoColors.white,
-          emojiOffsetY: 1,
-        ),
-      ),
-    );
-
-    Widget trailingCount() => Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('$liveCount', style: countStyle),
-        const SizedBox(width: 8),
-        Icon(
-          CupertinoIcons.chevron_right,
-          color: secondaryLabel,
-          size: textScaler.scale(14),
-        ),
-      ],
-    );
-
     final cardWidth = max(0.0, MediaQuery.sizeOf(context).width - 32.0);
-    final textWidth = _eventsCategorySideBySideTextWidth(
+    final leftPad = indented ? 32.0 : 16.0;
+    final rowBody = _buildCategoryListRowBody(
+      context,
+      category: category,
+      liveCount: liveCount,
+      indented: indented,
       cardWidth: cardWidth,
-      leftPad: leftPad,
-      iconSize: circleSize,
-      trailingWidth: trailingWidth,
     );
-    final needsStackedText = _eventsCategoryNeedsStackedText(
-      title: category.name,
-      subtitle: category.description,
-      titleStyle: titleStyle,
-      subtitleStyle: subtitleStyle,
-      scaler: textScaler,
-      textWidth: textWidth,
-    );
-    final titleText = _eventsCategoryNoWordBreakText(category.name);
-    final subtitleText = _eventsCategoryNoWordBreakText(category.description);
-
-    final Widget rowBody = needsStackedText
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                height: circleSize,
-                child: Row(
-                  children: [categoryIcon(), const Spacer(), trailingCount()],
-                ),
-              ),
-              const SizedBox(height: _eventsCategoryStackedContentGap),
-              Text(
-                titleText,
-                style: titleStyle,
-                softWrap: true,
-                overflow: TextOverflow.visible,
-              ),
-              if (subtitleText.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  subtitleText,
-                  style: subtitleStyle,
-                  softWrap: true,
-                  overflow: TextOverflow.visible,
-                ),
-              ],
-            ],
-          )
-        : Row(
-            children: [
-              categoryIcon(),
-              const SizedBox(width: _eventsCategoryIconTextGap),
-              Expanded(
-                child: SizedBox(
-                  height: double.infinity,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: category.description.isEmpty
-                        ? MainAxisAlignment.center
-                        : MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(titleText, style: titleStyle, softWrap: true),
-                      if (subtitleText.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitleText,
-                          style: subtitleStyle,
-                          softWrap: true,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              // Authored 16pt minimum gap. This is intentionally not scaled
-              // with Dynamic Type; only the text and chevron scale.
-              const SizedBox(width: _eventsCategoryTextTrailingGap),
-              trailingCount(),
-            ],
-          );
 
     return Column(
       children: [
@@ -8962,12 +8984,8 @@ class _GroupRow extends StatelessWidget {
     } else {
       rowShape = const BoundedSquircleStadiumBorder(radius: 0);
     }
-    final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
-    final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
-    final textScaler = MediaQuery.textScalerOf(context);
-    final groupIconSize = _eventsScaledCategoryIconSize(context, 34.0);
-    final groupIconScale = groupIconSize / 34.0;
+    final cardWidth = max(0.0, MediaQuery.sizeOf(context).width - 32.0);
 
     return Column(
       children: [
@@ -8984,80 +9002,11 @@ class _GroupRow extends StatelessWidget {
                   horizontal: kFixedVerticalPadding,
                   vertical: kFixedVerticalPadding,
                 ),
-                child: Row(
-                  children: [
-                    // Stack icon — no colored container; icon is kSecondaryLabel.
-                    SizedBox(
-                      width: groupIconSize,
-                      height: groupIconSize,
-                      child: Center(
-                        child: Transform.translate(
-                          offset: const Offset(0, -1),
-                          child: FixedSFIcon(
-                            SFIcons.sf_rectangle_stack,
-                            fontSize: 22 * groupIconScale,
-                            color: secondaryLabel,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        group.name,
-                        style: TextStyle(
-                          inherit: false,
-                          color: primaryLabel,
-                          fontSize: 16,
-                          fontFamily: kSFProText,
-                          fontWeight: FontWeight.w600,
-                          fontStyle: FontStyle.normal,
-                          letterSpacing: kTracking16,
-                          height: kLineHeight,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: _eventsCategoryTextTrailingGap),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Member count (replaces event count for groups)
-                        Text(
-                          '${group.memberIds.length}',
-                          style: TextStyle(
-                            inherit: false,
-                            color: secondaryLabel,
-                            fontSize: 16,
-                            fontFamily: kSFProText,
-                            fontWeight: FontWeight.w400,
-                            fontStyle: FontStyle.normal,
-                            letterSpacing: kTracking16,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Expand/collapse chevron — constrained to same 14px
-                        // width as the category row's Icon(size:14) so the
-                        // member-count text aligns with solo category rows.
-                        SizedBox(
-                          width: textScaler.scale(14),
-                          child: Center(
-                            child: AnimatedRotation(
-                              turns: isExpanded ? 0.25 : 0.0,
-                              duration: const Duration(milliseconds: 260),
-                              curve: Curves.easeInOutCubic,
-                              child: FixedSFIcon(
-                                SFIcons.sf_chevron_right,
-                                fontSize: textScaler.scale(13),
-                                color: resolveAccentColor(context),
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                child: _buildGroupListRowBody(
+                  context,
+                  group: group,
+                  isExpanded: isExpanded,
+                  cardWidth: cardWidth,
                 ),
               ),
             ),
