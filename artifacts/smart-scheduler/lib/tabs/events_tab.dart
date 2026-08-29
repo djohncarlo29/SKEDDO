@@ -2267,6 +2267,183 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     ];
   }
 
+  /// Returns the model entries that are actually rendered in the pinned grid.
+  ///
+  /// [_gridCombinedOrder] can briefly contain archived/stale entries while a
+  /// category is being removed.  Keeping this filtered list beside the layout
+  /// specs makes the model index and the visual geometry index impossible to
+  /// accidentally desynchronise during a drag.
+  List<Object> _currentVisibleGridOrder() {
+    final knownSmartLabels = <String>{
+      for (final tile in _liveSmartTiles) tile.label,
+      for (final tile in _buildSmartTiles()) tile.label,
+    };
+    return [
+      for (final item in _gridCombinedOrder)
+        if (item is String &&
+            !_archivedSmartCategories.contains(item) &&
+            knownSmartLabels.contains(item))
+          item
+        else if (item is _UserCategory && !item.archived)
+          item,
+    ];
+  }
+
+  Object _gridModelKey(Object dragKey) =>
+      dragKey is String ? dragKey.substring(6) : dragKey;
+
+  bool _isVisibleGridModelKey(Object item) {
+    if (item is String) {
+      return !_archivedSmartCategories.contains(item) &&
+          _currentVisibleGridOrder().contains(item);
+    }
+    return item is _UserCategory && !item.archived;
+  }
+
+  /// Replaces only the visible part of the unified order.
+  ///
+  /// This is mostly defensive: archived entries normally disappear before a
+  /// drag starts, but preserving them in place means a concurrent archive or
+  /// delete animation cannot corrupt the user's saved ordering.
+  void _applyReorderedVisibleGrid(List<Object> newVisibleOrder) {
+    var vi = 0;
+    for (var i = 0; i < _gridCombinedOrder.length; i++) {
+      if (_isVisibleGridModelKey(_gridCombinedOrder[i])) {
+        _gridCombinedOrder[i] = newVisibleOrder[vi++];
+      }
+    }
+  }
+
+  bool _sameGridOrder(List<Object> first, List<Object> second) {
+    if (first.length != second.length) return false;
+    for (var i = 0; i < first.length; i++) {
+      if (first[i] != second[i]) return false;
+    }
+    return true;
+  }
+
+  /// Finds the insertion position for a dragged tile from the grid's measured
+  /// rectangles.
+  ///
+  /// The old implementation converted the pointer to `row * 2 + column`.
+  /// That only works while every row is a two-column, fixed-height row.  The
+  /// grid now has pair rows, full-width rows, and independently wrapped title
+  /// heights, so the target must be expressed as an insertion boundary:
+  ///
+  ///   pair row       x < first centre → before first
+  ///                  x < second centre → before second
+  ///                  otherwise → after second
+  ///   single row     y < centre → before, otherwise → after
+  ///   row gap        nearest preceding/following row boundary
+  ///
+  /// The returned value is an index into the list *after* the dragged item is
+  /// removed, which avoids the usual off-by-one when dragging downwards.
+  int _gridInsertionIndexForPointer({
+    required Object dragKey,
+    required Offset ghostCenter,
+    required double availableWidth,
+  }) {
+    final order = _currentVisibleGridOrder();
+    final draggedItem = _gridModelKey(dragKey);
+    final draggedIndex = order.indexOf(draggedItem);
+    if (draggedIndex == -1) return 0;
+
+    final specs = _currentGridLayoutSpecs();
+    final geometries = _eventsGridItemGeometry(context, specs, availableWidth);
+    if (geometries.isEmpty) return 0;
+
+    int beforeRawIndex(int rawIndex) {
+      var result = 0;
+      for (var i = 0; i < rawIndex; i++) {
+        if (i != draggedIndex) result++;
+      }
+      return result;
+    }
+
+    int afterRawIndex(int rawIndex) {
+      var result = 0;
+      for (var i = 0; i <= rawIndex && i < geometries.length; i++) {
+        if (i != draggedIndex) result++;
+      }
+      return result;
+    }
+
+    final rows = <List<int>>[];
+    for (var i = 0; i < geometries.length; i++) {
+      final top = geometries[i].top;
+      List<int>? row;
+      for (final candidate in rows) {
+        if ((geometries[candidate.first].top - top).abs() <=
+            _kGridGeometryEpsilon) {
+          row = candidate;
+          break;
+        }
+      }
+      if (row != null) {
+        row.add(i);
+      } else {
+        rows.add([i]);
+      }
+    }
+
+    for (final row in rows) {
+      row.sort((a, b) => geometries[a].left.compareTo(geometries[b].left));
+    }
+
+    // The pointer is inside a rendered row. Use its actual bounds, not a
+    // nominal row pitch. This is what makes wrapped titles and full-width
+    // cards behave like the tiles the user can see.
+    for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      final rowItems = rows[rowIndex];
+      final first = geometries[rowItems.first];
+      final last = geometries[rowItems.last];
+      if (ghostCenter.dy < first.top ||
+          ghostCenter.dy > last.top + last.height) {
+        continue;
+      }
+
+      if (rowItems.length == 1) {
+        final rawIndex = rowItems.first;
+        final geometry = geometries[rawIndex];
+        return ghostCenter.dy < geometry.top + geometry.height / 2
+            ? beforeRawIndex(rawIndex)
+            : afterRawIndex(rawIndex);
+      }
+
+      // A pair row has a shared measured height. Its centres form two stable
+      // horizontal insertion zones, including the case where the dragged
+      // tile occupies one side of the pair.
+      final firstGeometry = geometries[rowItems.first];
+      final secondGeometry = geometries[rowItems.last];
+      final firstCenterX = firstGeometry.left + firstGeometry.width / 2;
+      final secondCenterX = secondGeometry.left + secondGeometry.width / 2;
+      if (ghostCenter.dx < firstCenterX) {
+        return beforeRawIndex(rowItems.first);
+      }
+      if (ghostCenter.dx < secondCenterX) {
+        return beforeRawIndex(rowItems.last);
+      }
+      return afterRawIndex(rowItems.last);
+    }
+
+    // The pointer is in the gap between rows (or just outside the grid).
+    // Split each real measured gap at its midpoint so a slow vertical drag
+    // does not jump unpredictably because one neighbour happens to be tall.
+    if (ghostCenter.dy < geometries.first.top) return 0;
+    for (var i = 0; i < rows.length - 1; i++) {
+      final current = geometries[rows[i].last];
+      final next = geometries[rows[i + 1].first];
+      final gapMidpoint = (current.top + current.height + next.top) / 2;
+      if (ghostCenter.dy < gapMidpoint) {
+        return afterRawIndex(rows[i].last);
+      }
+      if (ghostCenter.dy < next.top) {
+        return beforeRawIndex(rows[i + 1].first);
+      }
+    }
+    return order.length - 1;
+  }
+
   void _onGridReorderStart(Object key, Offset globalPos) {
     final box = _gridStackKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.attached) return;
@@ -2277,8 +2454,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     // drag-reorder — only _gridCombinedOrder is mutated live — so using them
     // here would produce stale indices that drift further apart after each
     // reorder session.
-    final Object lookupKey = key is String ? key.substring(6) : key;
-    final gridIdx = _gridCombinedOrder.indexOf(lookupKey);
+    final Object lookupKey = _gridModelKey(key);
+    final visibleOrder = _currentVisibleGridOrder();
+    final gridIdx = visibleOrder.indexOf(lookupKey);
     if (gridIdx == -1) return;
 
     final geometries = _eventsGridItemGeometry(
@@ -2329,9 +2507,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     // grid.  Crossing is confirmed when the ghost centre drops more than half a
     // tile height below the grid stack's bottom edge.
     if (key is _UserCategory) {
+      final capturedGhostHeight =
+          _dragGridTileHeight ?? _eventsGridTileRowHeight(context);
       final crossingDown =
-          localPos.dy >
-          box.size.height + _eventsGridTileRowHeight(context) * 0.5;
+          localPos.dy > box.size.height + capturedGhostHeight * 0.5;
       if (crossingDown && !_gridDragCrossingToList) {
         // ── First entry into list ─────────────────────────────────────────
         HapticFeedback.selectionClick();
@@ -2353,7 +2532,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           ).clamp(0, _listTopOrder.length);
           // Map the tile grab-Y to an equivalent list-row grab-Y so the row
           // ghost stays under the finger after the shape transition.
-          final grabY = grab.dy.clamp(0.0, _eventsGridTileRowHeight(context));
+          final grabY = grab.dy.clamp(0.0, capturedGhostHeight);
           final rowGrabY = grabY.clamp(0.0, rowHeight).toDouble();
           setState(() {
             _gridDragCrossingToList = true;
@@ -2385,20 +2564,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             _dragGridTileWidth ??
             (box.size.width - _AnimatedCategoryGrid._colGap) / 2;
         final cx = newTopLeft.dx + tw / 2;
-        final cy = newTopLeft.dy + _eventsGridTileRowHeight(context) / 2;
-        final reCol = (cx / (tw + _AnimatedCategoryGrid._colGap)).round().clamp(
-          0,
-          1,
-        );
-        final reRow =
-            (cy /
-                    (_eventsGridTileRowHeight(context) +
-                        _AnimatedCategoryGrid._rowGap))
-                .floor()
-                .clamp(0, 999);
-        final reSlot = (reRow * 2 + reCol).clamp(
-          0,
-          _gridCombinedOrder.length - 1,
+        final cy = newTopLeft.dy + capturedGhostHeight / 2;
+        final reSlot = _gridInsertionIndexForPointer(
+          dragKey: key,
+          ghostCenter: Offset(cx, cy),
+          availableWidth: box.size.width,
         );
         setState(() {
           _gridDragCrossingToList = false;
@@ -2408,11 +2578,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           // Cat was never removed from _gridCombinedOrder — just reposition it.
           final currentGridIdx = _gridCombinedOrder.indexOf(key);
           if (currentGridIdx != -1) {
-            _gridCombinedOrder.removeAt(currentGridIdx);
-            _gridCombinedOrder.insert(
-              reSlot.clamp(0, _gridCombinedOrder.length),
-              key,
-            );
+            final visibleOrder = _currentVisibleGridOrder();
+            final visibleTarget = reSlot.clamp(0, visibleOrder.length - 1);
+            final reordered = [...visibleOrder]
+              ..removeAt(visibleOrder.indexOf(key));
+            reordered.insert(visibleTarget, key);
+            _applyReorderedVisibleGrid(reordered);
           }
           _draggingListCat = null;
           _dragListTopY = null;
@@ -2445,45 +2616,40 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       }
     }
 
-    // Slot detection uses the grid's half-width column pitch, while the
-    // ghost centre uses its captured resting width/height.  The captured
-    // geometry is never changed while the pointer is down.
-    final slotWidth = (box.size.width - _AnimatedCategoryGrid._colGap) / 2;
-    final ghostWidth = _dragGridTileWidth ?? slotWidth;
+    // The ghost centre is measured from the captured resting geometry. The
+    // insertion target itself is computed from the live grid rectangles below;
+    // no fixed row pitch or half-width assumption is used.
+    final ghostWidth =
+        _dragGridTileWidth ??
+        (box.size.width - _AnimatedCategoryGrid._colGap) / 2;
     final ghostHeight =
         _dragGridTileHeight ?? _eventsGridTileRowHeight(context);
 
-    final cx = newTopLeft.dx + ghostWidth / 2;
-    final cy = newTopLeft.dy + ghostHeight / 2;
-    final col = (cx / (slotWidth + _AnimatedCategoryGrid._colGap))
-        .round()
-        .clamp(0, 1);
-    final row =
-        (cy /
-                (_eventsGridTileRowHeight(context) +
-                    _AnimatedCategoryGrid._rowGap))
-            .floor()
-            .clamp(0, 999);
-
-    final absoluteSlot = row * 2 + col;
+    final ghostCenter = Offset(
+      newTopLeft.dx + ghostWidth / 2,
+      newTopLeft.dy + ghostHeight / 2,
+    );
+    final targetInsert = _gridInsertionIndexForPointer(
+      dragKey: key,
+      ghostCenter: ghostCenter,
+      availableWidth: box.size.width,
+    );
 
     setState(() {
-      // Move item directly in the unified order list.
-      // _gridCombinedOrder contains only non-archived items, so it IS the
-      // visible combined list — no filtering needed.
-      final totalCount = _gridCombinedOrder.length;
-      if (totalCount == 0) return;
-      final Object item = key is String ? key.substring(6) : key as Object;
-      final currentIdx = _gridCombinedOrder.indexOf(item);
-      final targetIdx = absoluteSlot.clamp(0, totalCount - 1);
       // Keep the lifted card at the geometry captured on pointer-down.  The
       // final slot's width is applied only after release, when the normal
       // AnimatedPositioned tiles settle into the reordered layout.
       _dragGridTopLeft = newTopLeft;
-      if (currentIdx != -1 && targetIdx != currentIdx) {
-        _gridCombinedOrder
-          ..removeAt(currentIdx)
-          ..insert(targetIdx, item);
+      final visibleOrder = _currentVisibleGridOrder();
+      final item = _gridModelKey(key);
+      final currentIdx = visibleOrder.indexOf(item);
+      if (currentIdx != -1) {
+        final reordered = [...visibleOrder]..removeAt(currentIdx);
+        final safeTarget = targetInsert.clamp(0, reordered.length);
+        reordered.insert(safeTarget, item);
+        if (!_sameGridOrder(visibleOrder, reordered)) {
+          _applyReorderedVisibleGrid(reordered);
+        }
       }
     });
     _gridDragOverlayEntry?.markNeedsBuild();
@@ -4340,8 +4506,13 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           Positioned(
             // Keep the circle-to-title relationship explicit: the title
             // starts exactly 8pt below the circle, with no optical offset.
+            // Both horizontal bounds are required here because this card is
+            // rendered in the global overlay; without a right bound, the
+            // Positioned Text receives loose width constraints and stays on
+            // one line even though the lifted card has a wrapped height.
             top: _kGridTileCircleSize + _kGridTileTitleGap,
             left: 0,
+            right: 0,
             child: Text(
               tile.label,
               style: TextStyle(
@@ -4353,6 +4524,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 letterSpacing: kTracking17,
                 height: kLineHeight,
               ),
+              softWrap: true,
             ),
           ),
         ],
@@ -4427,6 +4599,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.3,
                   ),
+                  // The lifted pinned-category placeholder uses the same fixed
+                  // visual badge as the settled grid tile. Keep Dynamic Type
+                  // from resizing it while the category is being reordered.
+                  textScaler: TextScaler.noScaling,
                 ),
               ),
             ),
@@ -4434,8 +4610,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           Positioned(
             // Keep the circle-to-title relationship explicit: the title
             // starts exactly 8pt below the circle, with no optical offset.
+            // Keep the overlay title width bounded just like the settled
+            // pinned tile so long names wrap inside the captured card.
             top: _kGridTileCircleSize + _kGridTileTitleGap,
             left: 0,
+            right: 0,
             child: Text(
               cat.name,
               style: TextStyle(
@@ -4447,6 +4626,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                 letterSpacing: kTracking17,
                 height: kLineHeight,
               ),
+              softWrap: true,
             ),
           ),
         ],
@@ -16475,7 +16655,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     final TextStyle valueStyle = valueColor != null
         ? _kRowValueStyle.copyWith(
             color: valueColor,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w400,
           )
         : _kRowValueStyle;
     // Keep the value/chevron in the same fixed trailing slot as the parent
