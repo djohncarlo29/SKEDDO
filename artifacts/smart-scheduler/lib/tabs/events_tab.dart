@@ -2874,48 +2874,73 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         final gridBox =
             _gridStackKey.currentContext?.findRenderObject() as RenderBox?;
         if (gridBox != null) {
-          final tileW =
-              (gridBox.size.width - _AnimatedCategoryGrid._colGap) / 2;
+          final availableWidth = gridBox.size.width;
+          final halfWidth =
+              (availableWidth - _AnimatedCategoryGrid._colGap) / 2;
+          final titleNeedsFullWidth =
+              _eventsGridTitleWidth(context, cat.name) >
+              halfWidth - _kGridTileInset * 2;
+          final tileW = titleNeedsFullWidth ? availableWidth : halfWidth;
+          final tileH = _eventsGridTileHeight(
+            context,
+            _GridLayoutSpec(title: cat.name, allowsFullWidthTitle: true),
+            tileW,
+          );
           // Centre-grab: treat the cat as entering the tile at its midpoint so
           // the ghost is always centred on the finger (no inherited list grab).
-          final grab = Offset(tileW / 2, _eventsGridTileRowHeight(context) / 2);
+          final grab = Offset(tileW / 2, tileH / 2);
           final gridLocal = gridBox.globalToLocal(globalPos);
           final rawTopLeft = gridLocal - grab;
-          // Slot from ghost centre (same formula as normal grid reorder).
-          final cx = rawTopLeft.dx + tileW / 2;
-          final cy = rawTopLeft.dy + _eventsGridTileRowHeight(context) / 2;
-          final col = (cx / (tileW + _AnimatedCategoryGrid._colGap))
-              .round()
-              .clamp(0, 1);
-          final row =
-              (cy /
-                      (_eventsGridTileRowHeight(context) +
-                          _AnimatedCategoryGrid._rowGap))
-                  .floor()
-                  .clamp(0, 999);
-          final slot = (row * 2 + col).clamp(0, _gridCombinedOrder.length);
           setState(() {
             _listDragCrossingToGrid = true;
-            _crossGridTargetSlot = slot;
-            _gridCombinedOrder.insert(slot, cat);
-            final insertedIndex = _gridCombinedOrder.indexOf(cat);
-            final insertedGeometries = _eventsGridItemGeometry(
-              context,
-              _currentGridLayoutSpecs(),
-              gridBox.size.width,
-            );
-            final insertedGeometry = insertedGeometries[insertedIndex];
+            // Temporarily append the item so the shared geometry helper can
+            // calculate an insertion boundary against the complete visible
+            // order. It is moved to the measured target immediately below.
+            _gridCombinedOrder.add(cat);
             _draggingGridKey = cat;
-            _dragGridTileWidth = insertedGeometry.width;
-            _dragGridTileHeight = insertedGeometry.height;
+            _dragGridTileWidth = tileW;
+            _dragGridTileHeight = tileH;
             _dragGridGrabOffset = grab; // ← centre-grab for smooth tracking
-            _dragGridFullWidth =
-                insertedGeometry.width >=
-                gridBox.size.width - _kGridGeometryEpsilon;
+            _dragGridFullWidth = titleNeedsFullWidth;
             _dragGridTopLeft = Offset(
               rawTopLeft.dx,
               rawTopLeft.dy,
             ); // ← raw finger position, not slot
+          });
+
+          final targetSlot = _gridInsertionIndexForPointer(
+            dragKey: cat,
+            ghostCenter: Offset(
+              rawTopLeft.dx + tileW / 2,
+              rawTopLeft.dy + tileH / 2,
+            ),
+            availableWidth: availableWidth,
+          );
+          setState(() {
+            final visibleOrder = _currentVisibleGridOrder();
+            final reordered = [...visibleOrder]
+              ..removeAt(visibleOrder.indexOf(cat));
+            final safeTarget = targetSlot.clamp(0, reordered.length);
+            reordered.insert(safeTarget, cat);
+            _applyReorderedVisibleGrid(reordered);
+            _crossGridTargetSlot = safeTarget;
+
+            // Capture the actual final slot geometry. A short title can be
+            // full-width when it is last after an isolated long title, while
+            // the next short title may be half-width.
+            final finalIndex = _currentVisibleGridOrder().indexOf(cat);
+            final finalGeometries = _eventsGridItemGeometry(
+              context,
+              _currentGridLayoutSpecs(),
+              availableWidth,
+            );
+            if (finalIndex >= 0 && finalIndex < finalGeometries.length) {
+              _dragGridTileWidth = finalGeometries[finalIndex].width;
+              _dragGridTileHeight = finalGeometries[finalIndex].height;
+              _dragGridFullWidth =
+                  finalGeometries[finalIndex].width >=
+                  availableWidth - _kGridGeometryEpsilon;
+            }
           });
         } else {
           setState(() => _listDragCrossingToGrid = true);
@@ -2948,37 +2973,32 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           // Ghost top-left tracks the finger every frame (identical to a
           // normal grid drag — localPos − grab, fully continuous).
           final rawTopLeft = gridLocal - grab;
-          // Slot from ghost centre — only mutates the data list when it changes.
+          // Slot from the same measured geometry used by the settled grid.
           final tileH =
               _dragGridTileHeight ?? _eventsGridTileRowHeight(context);
-          final slotWidth =
-              (gridBox.size.width - _AnimatedCategoryGrid._colGap) / 2;
-          final cx = rawTopLeft.dx + tileW / 2;
-          final cy = rawTopLeft.dy + tileH / 2;
-          final col = (cx / (slotWidth + _AnimatedCategoryGrid._colGap))
-              .round()
-              .clamp(0, 1);
-          final row =
-              (cy /
-                      (_eventsGridTileRowHeight(context) +
-                          _AnimatedCategoryGrid._rowGap))
-                  .floor()
-                  .clamp(0, 999);
-          final newSlot = (row * 2 + col).clamp(
-            0,
-            _gridCombinedOrder.length - 1,
+          final targetInsert = _gridInsertionIndexForPointer(
+            dragKey: cat,
+            ghostCenter: Offset(
+              rawTopLeft.dx + tileW / 2,
+              rawTopLeft.dy + tileH / 2,
+            ),
+            availableWidth: gridBox.size.width,
           );
-          final currentIdx = _gridCombinedOrder.indexOf(cat);
-          if (currentIdx != -1 && newSlot != currentIdx) {
-            _gridCombinedOrder.removeAt(currentIdx);
-            _gridCombinedOrder.insert(newSlot, cat);
-            _crossGridTargetSlot = newSlot;
-          }
+          final visibleOrder = _currentVisibleGridOrder();
+          final currentIdx = visibleOrder.indexOf(cat);
+          if (currentIdx == -1) return;
+          final reordered = [...visibleOrder]..removeAt(currentIdx);
+          final safeTarget = targetInsert.clamp(0, reordered.length);
+          reordered.insert(safeTarget, cat);
           // Always update ghost position so it follows the finger smoothly.
           setState(() {
             // Keep the geometry selected when the category first enters the
             // grid.  A destination width change waits for release.
             _dragGridTopLeft = rawTopLeft;
+            if (!_sameGridOrder(visibleOrder, reordered)) {
+              _applyReorderedVisibleGrid(reordered);
+              _crossGridTargetSlot = safeTarget;
+            }
           });
         }
         _listDragOverlayEntry?.markNeedsBuild();
@@ -6922,37 +6942,51 @@ List<_GridItemGeometry> _eventsGridItemGeometry(
   final geometries = List<_GridItemGeometry?>.filled(specs.length, null);
   var top = 0.0;
 
-  // Pair decisions are made before either tile is positioned. If one pinned
-  // title cannot fit its half-width tile with the required right inset, both
-  // members of that pair become full-width rows.
+  // A tile that cannot fit at half width occupies its own full-width row. It
+  // must not consume the next item as part of a forced-full-width pair:
+  // otherwise a long tile followed by two short tiles produces three
+  // full-width rows instead of [long full] + [short, short].
   for (var i = 0; i < specs.length;) {
     final second = i + 1 < specs.length ? i + 1 : null;
-    final pairNeedsFullWidth =
-        second == null ||
-        (specs[i].allowsFullWidthTitle &&
-            _eventsGridTitleWidth(context, specs[i].title) >
-                halfWidth - _kGridTileInset * 2) ||
-        (second != null &&
-            specs[second].allowsFullWidthTitle &&
-            _eventsGridTitleWidth(context, specs[second].title) >
-                halfWidth - _kGridTileInset * 2);
+    final currentNeedsFullWidth =
+        specs[i].allowsFullWidthTitle &&
+        _eventsGridTitleWidth(context, specs[i].title) >
+            halfWidth - _kGridTileInset * 2;
 
-    if (pairNeedsFullWidth) {
-      for (final index in [i, if (second != null) second]) {
-        final height = _eventsGridTileHeight(
-          context,
-          specs[index],
-          availableWidth,
-        );
-        geometries[index] = _GridItemGeometry(
-          left: 0,
-          top: top,
-          width: availableWidth,
-          height: height,
-        );
-        top += height + rowGap;
-      }
-    } else {
+    if (currentNeedsFullWidth || second == null) {
+      final height = _eventsGridTileHeight(context, specs[i], availableWidth);
+      geometries[i] = _GridItemGeometry(
+        left: 0,
+        top: top,
+        width: availableWidth,
+        height: height,
+      );
+      top += height + rowGap;
+      i++;
+      continue;
+    }
+
+    final secondNeedsFullWidth =
+        specs[second].allowsFullWidthTitle &&
+        _eventsGridTitleWidth(context, specs[second].title) >
+            halfWidth - _kGridTileInset * 2;
+
+    if (secondNeedsFullWidth) {
+      // Keep ordering intact: the current short title gets a full-width row
+      // rather than sharing a row with a title that cannot fit beside it.
+      final height = _eventsGridTileHeight(context, specs[i], availableWidth);
+      geometries[i] = _GridItemGeometry(
+        left: 0,
+        top: top,
+        width: availableWidth,
+        height: height,
+      );
+      top += height + rowGap;
+      i++;
+      continue;
+    }
+
+    {
       final height = max(
         _eventsGridTileHeight(context, specs[i], halfWidth),
         _eventsGridTileHeight(context, specs[second!], halfWidth),
@@ -6972,7 +7006,7 @@ List<_GridItemGeometry> _eventsGridItemGeometry(
       top += height + rowGap;
     }
 
-    i += second == null ? 1 : 2;
+    i += 2;
   }
 
   return geometries.cast<_GridItemGeometry>();
