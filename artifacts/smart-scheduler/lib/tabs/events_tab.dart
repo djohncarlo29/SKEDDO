@@ -4382,10 +4382,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       context,
       _kGridTileCircleSize,
     );
-    final circleScale = _eventsCategoryIconScale(
-      context,
-      _kGridTileCircleSize,
-    );
+    final circleScale = _eventsCategoryIconScale(context, _kGridTileCircleSize);
     // Replicate the exact icon layout from _CategoryTile._buildCard() so the
     // ghost matches the static tile pixel-for-pixel.
     //
@@ -4531,7 +4528,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.3,
                   ),
-                  textScaler: TextScaler.noScaling,
+                  textScaler: MediaQuery.textScalerOf(context),
                 ),
               ),
             ),
@@ -4636,10 +4633,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.3,
                   ),
-                  // The lifted pinned-category placeholder uses the same fixed
-                  // visual badge as the settled grid tile. Keep Dynamic Type
-                  // from resizing it while the category is being reordered.
-                  textScaler: TextScaler.noScaling,
+                  textScaler: MediaQuery.textScalerOf(context),
                 ),
               ),
             ),
@@ -7216,10 +7210,7 @@ class _CategoryTile extends StatelessWidget {
       context,
       _kGridTileCircleSize,
     );
-    final circleScale = _eventsCategoryIconScale(
-      context,
-      _kGridTileCircleSize,
-    );
+    final circleScale = _eventsCategoryIconScale(context, _kGridTileCircleSize);
     return Container(
       padding: const EdgeInsets.fromLTRB(
         _kGridTileInset,
@@ -7299,7 +7290,7 @@ class _CategoryTile extends StatelessWidget {
                     fontStyle: FontStyle.normal,
                     letterSpacing: -0.3,
                   ),
-                  textScaler: TextScaler.noScaling,
+                  textScaler: MediaQuery.textScalerOf(context),
                 ),
               ),
             ),
@@ -7349,19 +7340,12 @@ class _CategoryTile extends StatelessWidget {
 
     final icon = data.icon!;
     if (icon == SFIcons.sf_music_note) {
-      return _BeamedNoteIcon(
-        size: data.iconSize * circleScale,
-        color: white,
-      );
+      return _BeamedNoteIcon(size: data.iconSize * circleScale, color: white);
     }
     if (icon == CupertinoIcons.tray_fill) {
       return Transform.translate(
         offset: const Offset(0, -1),
-        child: Icon(
-          icon,
-          color: white,
-          size: data.iconSize * circleScale,
-        ),
+        child: Icon(icon, color: white, size: data.iconSize * circleScale),
       );
     }
     if (icon == CupertinoIcons.clock) {
@@ -7383,11 +7367,7 @@ class _CategoryTile extends StatelessWidget {
         weight: 0.25,
       );
     }
-    return Icon(
-      icon,
-      color: white,
-      size: data.iconSize * circleScale,
-    );
+    return Icon(icon, color: white, size: data.iconSize * circleScale);
   }
 }
 
@@ -7842,11 +7822,7 @@ class _PinnedUserTile extends StatelessWidget {
                     fontStyle: FontStyle.normal,
                     letterSpacing: -0.3,
                   ),
-                  // Match built-in Smart Category tiles. The grid count is a
-                  // fixed visual badge and must not grow with Dynamic Type;
-                  // otherwise pinned user-category numbers render larger than
-                  // the corresponding built-in numbers.
-                  textScaler: TextScaler.noScaling,
+                  textScaler: MediaQuery.textScalerOf(context),
                 ),
               ),
             ),
