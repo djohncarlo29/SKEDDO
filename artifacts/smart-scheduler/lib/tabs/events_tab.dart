@@ -4378,6 +4378,14 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     BoxShadow shadow, {
     bool suppressDarkModeOutline = false,
   }) {
+    final circleSize = _eventsScaledCategoryIconSize(
+      context,
+      _kGridTileCircleSize,
+    );
+    final circleScale = _eventsCategoryIconScale(
+      context,
+      _kGridTileCircleSize,
+    );
     // Replicate the exact icon layout from _CategoryTile._buildCard() so the
     // ghost matches the static tile pixel-for-pixel.
     //
@@ -4397,8 +4405,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         children: [
           Center(
             child: SizedBox(
-              width: 24,
-              height: 24,
+              width: 24 * circleScale,
+              height: 24 * circleScale,
               child: SvgPicture.asset(
                 'assets/icons/calendar_frame.svg',
                 colorFilter: const ColorFilter.mode(
@@ -4410,7 +4418,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
           ),
           if (tile.day != null)
             Positioned(
-              top: 14.6,
+              top: 14.6 * circleScale,
               left: 0,
               right: 0,
               child: Center(
@@ -4423,7 +4431,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
                     style: TextStyle(
                       inherit: false,
                       color: Color(0xFFFFFFFF),
-                      fontSize: 9.5,
+                      fontSize: 9.5 * circleScale,
                       fontFamily: kSFProText,
                       fontWeight: FontWeight.w700,
                       fontStyle: FontStyle.normal,
@@ -4447,15 +4455,27 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
       if (icon == CupertinoIcons.tray_fill) {
         inner = Transform.translate(
           offset: const Offset(0, -1),
-          child: Icon(icon, color: CupertinoColors.white, size: tile.iconSize),
+          child: Icon(
+            icon,
+            color: CupertinoColors.white,
+            size: tile.iconSize * circleScale,
+          ),
         );
       } else if (icon == CupertinoIcons.clock) {
         inner = Transform.translate(
           offset: const Offset(0, -1),
-          child: Icon(icon, color: CupertinoColors.white, size: tile.iconSize),
+          child: Icon(
+            icon,
+            color: CupertinoColors.white,
+            size: tile.iconSize * circleScale,
+          ),
         );
       } else {
-        inner = Icon(icon, color: CupertinoColors.white, size: tile.iconSize);
+        inner = Icon(
+          icon,
+          color: CupertinoColors.white,
+          size: tile.iconSize * circleScale,
+        );
       }
       circleContent = Center(child: inner);
     }
@@ -4486,8 +4506,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             top: 0,
             left: 0,
             child: Container(
-              width: _kGridTileCircleSize,
-              height: _kGridTileCircleSize,
+              width: circleSize,
+              height: circleSize,
               decoration: BoxDecoration(
                 color: renderCategoryColor(color, context),
                 shape: BoxShape.circle,
@@ -4499,7 +4519,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             top: 0,
             right: 0,
             child: SizedBox(
-              height: 35.5,
+              height: circleSize,
               child: Center(
                 child: Text(
                   '${tile.count}',
@@ -4523,7 +4543,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             // rendered in the global overlay; without a right bound, the
             // Positioned Text receives loose width constraints and stays on
             // one line even though the lifted card has a wrapped height.
-            top: _kGridTileCircleSize + _kGridTileTitleGap,
+            top: circleSize + _kGridTileTitleGap,
             left: 0,
             right: 0,
             child: Text(
@@ -4550,6 +4570,10 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     BoxShadow shadow, {
     bool suppressDarkModeOutline = false,
   }) {
+    final circleSize = _eventsScaledCategoryIconSize(
+      context,
+      _kGridTileCircleSize,
+    );
     return Container(
       padding: const EdgeInsets.fromLTRB(
         _kGridTileInset,
@@ -4576,8 +4600,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             top: 0,
             left: 0,
             child: Container(
-              width: _kGridTileCircleSize,
-              height: _kGridTileCircleSize,
+              width: circleSize,
+              height: circleSize,
               decoration: BoxDecoration(
                 color: _categoryIconCircleColor(
                   cat.iconOrSvg,
@@ -4588,7 +4612,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
               child: Center(
                 child: _renderCatIcon(
                   cat.iconOrSvg,
-                  _kGridTileCircleSize,
+                  circleSize,
                   CupertinoColors.white,
                   emojiOffsetY: 1,
                   ctx: context,
@@ -4600,7 +4624,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             top: 0,
             right: 0,
             child: SizedBox(
-              height: 35.5,
+              height: circleSize,
               child: Center(
                 child: Text(
                   '${_liveEventCounts[cat.id] ?? 0}',
@@ -4625,7 +4649,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             // starts exactly 8pt below the circle, with no optical offset.
             // Keep the overlay title width bounded just like the settled
             // pinned tile so long names wrap inside the captured card.
-            top: _kGridTileCircleSize + _kGridTileTitleGap,
+            top: circleSize + _kGridTileTitleGap,
             left: 0,
             right: 0,
             child: Text(
@@ -6868,6 +6892,22 @@ const _kGridTileCircleSize = 35.5;
 const _kGridTileTitleGap = 8.0;
 const _kGridGeometryEpsilon = 0.5;
 
+/// Scales a category icon's complete visual unit from the active OS text
+/// scaler.  The glyph is later derived from the returned circle size rather
+/// than scaled independently, so nonlinear accessibility curves cannot change
+/// the icon-to-circle ratio.
+double _eventsScaledCategoryIconSize(
+  BuildContext context,
+  double authoredSize,
+) => MediaQuery.textScalerOf(context).scale(authoredSize);
+
+double _eventsCategoryIconScale(
+  BuildContext context,
+  double authoredCircleSize,
+) =>
+    _eventsScaledCategoryIconSize(context, authoredCircleSize) /
+    authoredCircleSize;
+
 TextStyle _eventsGridTitleStyle() => TextStyle(
   inherit: false,
   fontSize: 17,
@@ -6879,6 +6919,10 @@ TextStyle _eventsGridTitleStyle() => TextStyle(
 
 double _eventsGridTileRowHeight(BuildContext context) {
   final scaler = MediaQuery.textScalerOf(context);
+  final circleSize = _eventsScaledCategoryIconSize(
+    context,
+    _kGridTileCircleSize,
+  );
   final titlePainter = TextPainter(
     text: TextSpan(text: 'Completed', style: _eventsGridTitleStyle()),
     textDirection: TextDirection.ltr,
@@ -6887,7 +6931,7 @@ double _eventsGridTileRowHeight(BuildContext context) {
   // Keep these values as physical layout gaps. Text scaling grows the row
   // around them instead of compressing the circle/title relationship.
   return _kGridTileInset +
-      _kGridTileCircleSize +
+      circleSize +
       _kGridTileTitleGap +
       titlePainter.height +
       _kGridTileInset;
@@ -6920,9 +6964,13 @@ double _eventsGridTileHeight(
   _GridLayoutSpec spec,
   double tileWidth,
 ) {
+  final circleSize = _eventsScaledCategoryIconSize(
+    context,
+    _kGridTileCircleSize,
+  );
   final contentHeight =
       _kGridTileInset +
-      _kGridTileCircleSize +
+      circleSize +
       _kGridTileTitleGap +
       _eventsGridTitleHeight(context, spec.title, tileWidth) +
       _kGridTileInset;
@@ -7164,6 +7212,14 @@ class _CategoryTile extends StatelessWidget {
   Widget _buildCard(BuildContext context) {
     final surfaceColor = resolveThemeColor(kSbSurface, context);
     final shadows = resolveThemeShadows(kCardShadow, context);
+    final circleSize = _eventsScaledCategoryIconSize(
+      context,
+      _kGridTileCircleSize,
+    );
+    final circleScale = _eventsCategoryIconScale(
+      context,
+      _kGridTileCircleSize,
+    );
     return Container(
       padding: const EdgeInsets.fromLTRB(
         _kGridTileInset,
@@ -7184,8 +7240,8 @@ class _CategoryTile extends StatelessWidget {
             top: 0,
             left: 0,
             child: Container(
-              width: _kGridTileCircleSize,
-              height: _kGridTileCircleSize,
+              width: circleSize,
+              height: circleSize,
               decoration: BoxDecoration(
                 color: renderCategoryColor(color, context),
                 shape: BoxShape.circle,
@@ -7194,10 +7250,10 @@ class _CategoryTile extends StatelessWidget {
                 fit: StackFit.expand,
                 clipBehavior: Clip.none,
                 children: [
-                  Center(child: _buildIconContent()),
+                  Center(child: _buildIconContent(circleScale)),
                   if (data.day != null)
                     Positioned(
-                      top: 14.6,
+                      top: 14.6 * circleScale,
                       left: 0,
                       right: 0,
                       child: Center(
@@ -7210,7 +7266,7 @@ class _CategoryTile extends StatelessWidget {
                             style: TextStyle(
                               inherit: false,
                               color: Color(0xFFFFFFFF),
-                              fontSize: 9.5,
+                              fontSize: 9.5 * circleScale,
                               fontFamily: kSFProText,
                               fontWeight: FontWeight.w700,
                               fontStyle: FontStyle.normal,
@@ -7230,7 +7286,7 @@ class _CategoryTile extends StatelessWidget {
             top: 0,
             right: 0,
             child: SizedBox(
-              height: 35.5,
+              height: circleSize,
               child: Center(
                 child: Text(
                   '${data.count}',
@@ -7251,7 +7307,7 @@ class _CategoryTile extends StatelessWidget {
           Positioned(
             // Keep the circle-to-title relationship explicit: the title
             // starts exactly 8pt below the circle, with no optical offset.
-            top: _kGridTileCircleSize + _kGridTileTitleGap,
+            top: circleSize + _kGridTileTitleGap,
             left: 0,
             right: 0,
             child: Text(
@@ -7274,13 +7330,13 @@ class _CategoryTile extends StatelessWidget {
     );
   }
 
-  Widget _buildIconContent() {
+  Widget _buildIconContent(double circleScale) {
     const white = Color(0xFFFFFFFF);
 
     if (data.isCalendar) {
       return SizedBox(
-        width: 24,
-        height: 24,
+        width: 24 * circleScale,
+        height: 24 * circleScale,
         child: SvgPicture.asset(
           'assets/icons/calendar_frame.svg',
           colorFilter: const ColorFilter.mode(
@@ -7293,12 +7349,19 @@ class _CategoryTile extends StatelessWidget {
 
     final icon = data.icon!;
     if (icon == SFIcons.sf_music_note) {
-      return _BeamedNoteIcon(size: data.iconSize, color: white);
+      return _BeamedNoteIcon(
+        size: data.iconSize * circleScale,
+        color: white,
+      );
     }
     if (icon == CupertinoIcons.tray_fill) {
       return Transform.translate(
         offset: const Offset(0, -1),
-        child: Icon(icon, color: white, size: data.iconSize),
+        child: Icon(
+          icon,
+          color: white,
+          size: data.iconSize * circleScale,
+        ),
       );
     }
     if (icon == CupertinoIcons.clock) {
@@ -7306,7 +7369,7 @@ class _CategoryTile extends StatelessWidget {
         offset: const Offset(0, -1),
         child: SearchWeightedIcon(
           icon,
-          size: data.iconSize,
+          size: data.iconSize * circleScale,
           color: white,
           weight: 0.25,
         ),
@@ -7315,12 +7378,16 @@ class _CategoryTile extends StatelessWidget {
     if (icon == CupertinoIcons.checkmark) {
       return SearchWeightedIcon(
         icon,
-        size: data.iconSize,
+        size: data.iconSize * circleScale,
         color: white,
         weight: 0.25,
       );
     }
-    return Icon(icon, color: white, size: data.iconSize);
+    return Icon(
+      icon,
+      color: white,
+      size: data.iconSize * circleScale,
+    );
   }
 }
 
@@ -7715,6 +7782,10 @@ class _PinnedUserTile extends StatelessWidget {
   Widget _buildCard(BuildContext context) {
     final resolvedSurface = resolveThemeColor(kSbSurface, context);
     final resolvedShadows = resolveThemeShadows(kCardShadow, context);
+    final circleSize = _eventsScaledCategoryIconSize(
+      context,
+      _kGridTileCircleSize,
+    );
     return Container(
       padding: const EdgeInsets.fromLTRB(
         _kGridTileInset,
@@ -7735,8 +7806,8 @@ class _PinnedUserTile extends StatelessWidget {
             top: 0,
             left: 0,
             child: Container(
-              width: _kGridTileCircleSize,
-              height: _kGridTileCircleSize,
+              width: circleSize,
+              height: circleSize,
               decoration: BoxDecoration(
                 color: _categoryIconCircleColor(
                   category.iconOrSvg,
@@ -7747,7 +7818,7 @@ class _PinnedUserTile extends StatelessWidget {
               child: Center(
                 child: _renderCatIcon(
                   category.iconOrSvg,
-                  _kGridTileCircleSize,
+                  circleSize,
                   CupertinoColors.white,
                   emojiOffsetY: 1,
                 ),
@@ -7758,7 +7829,7 @@ class _PinnedUserTile extends StatelessWidget {
             top: 0,
             right: 0,
             child: SizedBox(
-              height: 35.5,
+              height: circleSize,
               child: Center(
                 child: Text(
                   '$liveCount',
@@ -7783,7 +7854,7 @@ class _PinnedUserTile extends StatelessWidget {
           Positioned(
             // Keep the circle-to-title relationship explicit: the title
             // starts exactly 8pt below the circle, with no optical offset.
-            top: _kGridTileCircleSize + _kGridTileTitleGap,
+            top: circleSize + _kGridTileTitleGap,
             left: 0,
             right: 0,
             child: Text(
@@ -7881,7 +7952,7 @@ double _eventsCategoryListRowHeight(
   );
   const verticalPadding = 32.0; // 16 px top + 16 px bottom
   const subtitleGap = 4.0;
-  const iconHeight = 34.0;
+  final iconHeight = _eventsScaledCategoryIconSize(context, 34.0);
   double measure(_FlatItem current) {
     final label = current.category?.name ?? current.group?.name;
     if (label == null) return 64.0;
@@ -8499,6 +8570,7 @@ class _CategoryRow extends StatelessWidget {
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
+    final circleSize = _eventsScaledCategoryIconSize(context, 34.0);
 
     // Indent group member rows with extra left padding.
     final leftPad = indented ? 32.0 : 16.0;
@@ -8523,8 +8595,8 @@ class _CategoryRow extends StatelessWidget {
                 child: Row(
                   children: [
                     Container(
-                      width: 34,
-                      height: 34,
+                      width: circleSize,
+                      height: circleSize,
                       decoration: BoxDecoration(
                         color: _categoryIconCircleColor(
                           category.iconOrSvg,
@@ -8535,7 +8607,7 @@ class _CategoryRow extends StatelessWidget {
                       child: Center(
                         child: _renderCatIcon(
                           category.iconOrSvg,
-                          34,
+                          circleSize,
                           CupertinoColors.white,
                           emojiOffsetY: 1,
                         ),
@@ -8719,6 +8791,8 @@ class _GroupRow extends StatelessWidget {
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
     final textScaler = MediaQuery.textScalerOf(context);
+    final groupIconSize = _eventsScaledCategoryIconSize(context, 34.0);
+    final groupIconScale = groupIconSize / 34.0;
 
     return Column(
       children: [
@@ -8739,14 +8813,14 @@ class _GroupRow extends StatelessWidget {
                   children: [
                     // Stack icon — no colored container; icon is kSecondaryLabel.
                     SizedBox(
-                      width: 34,
-                      height: 34,
+                      width: groupIconSize,
+                      height: groupIconSize,
                       child: Center(
                         child: Transform.translate(
                           offset: const Offset(0, -1),
                           child: FixedSFIcon(
                             SFIcons.sf_rectangle_stack,
-                            fontSize: 22,
+                            fontSize: 22 * groupIconScale,
                             color: secondaryLabel,
                             fontWeight: FontWeight.w500,
                           ),
