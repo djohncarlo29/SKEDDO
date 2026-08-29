@@ -5980,6 +5980,8 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
         if (item is String && smartTileByLabel.containsKey(item))
           _GridEntry(
             key: 'smart_$item',
+            title: item,
+            allowsFullWidthTitle: false,
             // Smart tiles only support Archive (no Delete/Pin) — fade+scale
             // down softly, mirroring the list/grid archive treatment.
             // When dragging, the ghost is in the Overlay — hide placeholder.
@@ -6016,7 +6018,12 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
             ),
           )
         else if (item is _UserCategory)
-          _GridEntry(key: item, child: _buildPinnedGridTile(item)),
+          _GridEntry(
+            key: item,
+            title: item.name,
+            allowsFullWidthTitle: true,
+            child: _buildPinnedGridTile(item),
+          ),
     ];
 
     // Shared search-bar row — used by both layout paths below.
@@ -6581,8 +6588,39 @@ class _TileData {
 // convention used elsewhere in this file for the same lists.
 class _GridEntry {
   final Object key;
+  final String title;
+  final bool allowsFullWidthTitle;
   final Widget child;
-  const _GridEntry({required this.key, required this.child});
+  const _GridEntry({
+    required this.key,
+    required this.title,
+    required this.allowsFullWidthTitle,
+    required this.child,
+  });
+}
+
+class _GridLayoutSpec {
+  final String title;
+  final bool allowsFullWidthTitle;
+
+  const _GridLayoutSpec({
+    required this.title,
+    required this.allowsFullWidthTitle,
+  });
+}
+
+class _GridItemGeometry {
+  final double left;
+  final double top;
+  final double width;
+  final double height;
+
+  const _GridItemGeometry({
+    required this.left,
+    required this.top,
+    required this.width,
+    required this.height,
+  });
 }
 
 // ── Animated grid: smart tiles + pinned user categories ────────────────────
@@ -6598,18 +6636,20 @@ const _kGridTileInset = 16.0;
 const _kGridTileCircleSize = 35.5;
 const _kGridTileTitleGap = 8.0;
 
+TextStyle _eventsGridTitleStyle() => TextStyle(
+  inherit: false,
+  fontSize: 17,
+  fontFamily: kSFProText,
+  fontWeight: FontWeight.w600,
+  height: kLineHeight,
+);
+
 double _eventsGridTileRowHeight(BuildContext context) {
   final scaler = MediaQuery.textScalerOf(context);
   final titlePainter = TextPainter(
     text: TextSpan(
       text: 'Completed',
-      style: TextStyle(
-        inherit: false,
-        fontSize: 17,
-        fontFamily: kSFProText,
-        fontWeight: FontWeight.w600,
-        height: kLineHeight,
-      ),
+      style: _eventsGridTitleStyle(),
     ),
     textDirection: TextDirection.ltr,
     textScaler: scaler,
@@ -6621,6 +6661,114 @@ double _eventsGridTileRowHeight(BuildContext context) {
       _kGridTileTitleGap +
       titlePainter.height +
       _kGridTileInset;
+}
+
+double _eventsGridTitleWidth(
+  BuildContext context,
+  String title,
+) {
+  final painter = TextPainter(
+    text: TextSpan(text: title, style: _eventsGridTitleStyle()),
+    textDirection: TextDirection.ltr,
+    textScaler: MediaQuery.textScalerOf(context),
+  )..layout();
+  return painter.width;
+}
+
+double _eventsGridTitleHeight(
+  BuildContext context,
+  String title,
+  double tileWidth,
+) {
+  final painter = TextPainter(
+    text: TextSpan(text: title, style: _eventsGridTitleStyle()),
+    textDirection: TextDirection.ltr,
+    textScaler: MediaQuery.textScalerOf(context),
+  )..layout(maxWidth: max(1.0, tileWidth - _kGridTileInset * 2));
+  return painter.height;
+}
+
+double _eventsGridTileHeight(
+  BuildContext context,
+  _GridLayoutSpec spec,
+  double tileWidth,
+) {
+  final contentHeight =
+      _kGridTileInset +
+      _kGridTileCircleSize +
+      _kGridTileTitleGap +
+      _eventsGridTitleHeight(context, spec.title, tileWidth) +
+      _kGridTileInset;
+  return max(_eventsGridTileRowHeight(context), contentHeight);
+}
+
+List<_GridItemGeometry> _eventsGridItemGeometry(
+  BuildContext context,
+  List<_GridLayoutSpec> specs,
+  double availableWidth,
+) {
+  if (specs.isEmpty) return const [];
+
+  const rowGap = 16.0;
+  const colGap = 16.0;
+  final halfWidth = max(1.0, (availableWidth - colGap) / 2);
+  final geometries = List<_GridItemGeometry?>.filled(specs.length, null);
+  var top = 0.0;
+
+  // Pair decisions are made before either tile is positioned. If one pinned
+  // title cannot fit its half-width tile with the required right inset, both
+  // members of that pair become full-width rows.
+  for (var i = 0; i < specs.length; ) {
+    final second = i + 1 < specs.length ? i + 1 : null;
+    final pairNeedsFullWidth =
+        second == null ||
+        (specs[i].allowsFullWidthTitle &&
+            _eventsGridTitleWidth(context, specs[i].title) >
+                halfWidth - _kGridTileInset * 2) ||
+        (second != null &&
+            specs[second].allowsFullWidthTitle &&
+            _eventsGridTitleWidth(context, specs[second].title) >
+                halfWidth - _kGridTileInset * 2);
+
+    if (pairNeedsFullWidth) {
+      for (final index in [i, if (second != null) second]) {
+        final height = _eventsGridTileHeight(
+          context,
+          specs[index],
+          availableWidth,
+        );
+        geometries[index] = _GridItemGeometry(
+          left: 0,
+          top: top,
+          width: availableWidth,
+          height: height,
+        );
+        top += height + rowGap;
+      }
+    } else {
+      final height = max(
+        _eventsGridTileHeight(context, specs[i], halfWidth),
+        _eventsGridTileHeight(context, specs[second!], halfWidth),
+      );
+      geometries[i] = _GridItemGeometry(
+        left: 0,
+        top: top,
+        width: halfWidth,
+        height: height,
+      );
+      geometries[second] = _GridItemGeometry(
+        left: halfWidth + colGap,
+        top: top,
+        width: halfWidth,
+        height: height,
+      );
+      top += height + rowGap;
+    }
+
+    i += second == null ? 1 : 2;
+  }
+
+  return geometries.cast<_GridItemGeometry>();
 }
 
 class _AnimatedCategoryGrid extends StatelessWidget {
@@ -6656,37 +6804,22 @@ class _AnimatedCategoryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rowHeight = _eventsGridTileRowHeight(context);
-    final rowCount = (entries.length / 2).ceil();
-    final totalHeight = rowCount == 0
-        ? 0.0
-        : rowCount * rowHeight + (rowCount - 1) * _rowGap;
-
     return LayoutBuilder(
       builder: (context, constraints) {
-        final tileWidth = (constraints.maxWidth - _colGap) / 2;
-
-        // When the total tile count is odd, the last tile spans both columns
-        // so it fills the row instead of sitting alone on the left half.
-        // AnimatedPositioned carries the stable ValueKey for each tile, so
-        // when parity flips (a tile is pinned or unpinned/archived/deleted)
-        // it automatically animates the affected tile's left+width change:
-        //   • even → odd  (tile removed): new last tile expands to full width.
-        //   • odd  → even (tile added):   previously full-width tile shrinks.
-        final isOdd = entries.length.isOdd;
-        final lastIdx = entries.length - 1;
-
-        // Left offset: for the full-width tile col is always 0, which the
-        // normal formula already produces (lastIdx % 2 == 0 when count is odd
-        // because odd-1 is even), so no special-casing needed in dx.
-        Offset logicalOffset(int i) => Offset(
-          (i % 2) * (tileWidth + _colGap),
-          (i ~/ 2) * (rowHeight + _rowGap),
+        final geometries = _eventsGridItemGeometry(
+          context,
+          [
+            for (final entry in entries)
+              _GridLayoutSpec(
+                title: entry.title,
+                allowsFullWidthTitle: entry.allowsFullWidthTitle,
+              ),
+          ],
+          constraints.maxWidth,
         );
-
-        // Width: full-width for the solitary last tile, half-width otherwise.
-        double logicalWidth(int i) =>
-            (isOdd && i == lastIdx) ? constraints.maxWidth : tileWidth;
+        final totalHeight = geometries.isEmpty
+            ? 0.0
+            : geometries.last.top + geometries.last.height;
 
         return AnimatedContainer(
           duration: _duration,
@@ -6703,10 +6836,10 @@ class _AnimatedCategoryGrid extends StatelessWidget {
                     key: ValueKey(entries[i].key),
                     duration: _duration,
                     curve: _curve,
-                    left: logicalOffset(i).dx,
-                    top: logicalOffset(i).dy,
-                    width: logicalWidth(i),
-                    height: rowHeight,
+                    left: geometries[i].left,
+                    top: geometries[i].top,
+                    width: geometries[i].width,
+                    height: geometries[i].height,
                     child: entries[i].child,
                   ),
               // ── Dragging tile: instant positioning ────────────────────────
@@ -6727,8 +6860,10 @@ class _AnimatedCategoryGrid extends StatelessWidget {
                       curve: Curves.linear,
                       left: dragLocalTopLeft!.dx,
                       top: dragLocalTopLeft!.dy,
-                      width: dragFullWidth ? constraints.maxWidth : tileWidth,
-                      height: rowHeight,
+                      width: dragFullWidth
+                          ? constraints.maxWidth
+                          : geometries[i].width,
+                      height: geometries[i].height,
                       child: entries[i].child,
                     ),
             ],
@@ -7405,6 +7540,7 @@ class _PinnedUserTile extends StatelessWidget {
             // starts exactly 8pt below the circle, with no optical offset.
             top: _kGridTileCircleSize + _kGridTileTitleGap,
             left: 0,
+            right: 0,
             child: Text(
               category.name,
               style: TextStyle(
@@ -7417,6 +7553,7 @@ class _PinnedUserTile extends StatelessWidget {
                 letterSpacing: kTracking17,
                 height: kLineHeight,
               ),
+              softWrap: true,
             ),
           ),
         ],
