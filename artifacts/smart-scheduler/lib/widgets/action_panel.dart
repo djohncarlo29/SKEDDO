@@ -760,10 +760,7 @@ class _ActionPanelState extends State<ActionPanel>
     if (widget.maxHeight != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _scrollCtrl.hasClients) {
-          final pos = _scrollCtrl.position;
-          if (_showBottomFade != (pos.maxScrollExtent > 1.0)) {
-            setState(() => _showBottomFade = pos.maxScrollExtent > 1.0);
-          }
+          _syncScrollEdgeFades(_scrollCtrl.position);
         }
       });
     }
@@ -792,14 +789,11 @@ class _ActionPanelState extends State<ActionPanel>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollabilityCheckScheduled = false;
       if (!mounted || !_scrollCtrl.hasClients) return;
-      final canScroll = _scrollCtrl.position.maxScrollExtent > 1.0;
-      if (_canScroll == canScroll && _showBottomFade == canScroll) {
-        return;
-      }
-      setState(() {
-        _canScroll = canScroll;
-        _showBottomFade = canScroll;
-      });
+      // maxHeight can change while an expandable sub-panel follows the
+      // main panel's scroll offset.  Use the controller's current pixels,
+      // rather than treating every newly-overflowing viewport as if it were
+      // still at the top.
+      _syncScrollEdgeFades(_scrollCtrl.position);
     });
   }
 
@@ -869,10 +863,13 @@ class _ActionPanelState extends State<ActionPanel>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.maxHeight != widget.maxHeight ||
         oldWidget.items.length != widget.items.length) {
-      _canScroll = false;
-      _showTopFade = false;
-      _showBottomFade = false;
-      _scheduleScrollabilityCheck();
+      if (widget.maxHeight == null) {
+        _canScroll = false;
+        _showTopFade = false;
+        _showBottomFade = false;
+      } else {
+        _scheduleScrollabilityCheck();
+      }
     }
   }
 
