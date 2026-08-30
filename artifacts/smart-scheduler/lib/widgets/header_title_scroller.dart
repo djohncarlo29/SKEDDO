@@ -12,26 +12,52 @@ double headerTitleFontSize(
   BuildContext context, {
   double baseFontSize = kHeaderTitleBaseFontSize,
 }) {
-  final stops = appSkeddoTextScaleStops;
+  final skeddoStops = appSkeddoTextScaleStops;
+  final nativeProfile = appNativeTextScaleProfileNotifier.value;
+  final usesSystem = appTextSizeUsesSystemNotifier.value;
+  final nativeStops = nativeProfile?.stops;
+  final stops = usesSystem && nativeStops != null && nativeStops.length >= 2
+      ? nativeStops.map((stop) => stop.scale).toList(growable: false)
+      : skeddoStops;
   if (stops.isEmpty || !baseFontSize.isFinite || baseFontSize <= 0) {
     return baseFontSize;
   }
 
-  final usesSystem = appTextSizeUsesSystemNotifier.value;
+  int nearestStopIndex(double target) {
+    var closestIndex = 0;
+    var closestDistance = double.infinity;
+    for (var index = 0; index < stops.length; index++) {
+      final distance = (stops[index] - target).abs();
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    }
+    return closestIndex;
+  }
+
   final defaultIndex = usesSystem
-      ? skeddoTextScaleIndexForSystemScale(1.0)
-      : (stops.length ~/ 2).clamp(0, stops.length - 1).toInt();
+      ? nearestStopIndex(1.0)
+      : (skeddoStops.length ~/ 2).clamp(0, skeddoStops.length - 1).toInt();
   final activeIndex = usesSystem
-      ? skeddoTextScaleIndexForSystemScale(appSystemTextScaleNotifier.value)
+      ? nearestStopIndex(appSystemTextScaleNotifier.value)
       : appTextSizeIndexNotifier.value;
   final lowerIndex = (defaultIndex - 1).clamp(0, stops.length - 1);
   final upperIndex = (defaultIndex + 1).clamp(0, stops.length - 1);
   final boundedIndex = activeIndex.clamp(lowerIndex, upperIndex).toInt();
 
   double scaledSizeAt(int index) {
-    final mapping = appSkeddoTextScaleMappingNotifier.value;
-    if (index < mapping.length) {
-      final scaler = mapping[index].scaler;
+    final scaler = usesSystem && nativeStops != null && nativeStops.length >= 2
+        ? nativeStops[index].scaler
+        : index < appSkeddoTextScaleMappingNotifier.value.length
+        ? appSkeddoTextScaleMappingNotifier.value[index].scaler
+        : null;
+    if (scaler != null) {
+      final scaled = scaler.scale(baseFontSize);
+      if (scaled.isFinite && scaled > 0) return scaled;
+    }
+    if (!usesSystem && index < appSkeddoTextScaleMappingNotifier.value.length) {
+      final scaler = appSkeddoTextScaleMappingNotifier.value[index].scaler;
       if (scaler != null) {
         final scaled = scaler.scale(baseFontSize);
         if (scaled.isFinite && scaled > 0) return scaled;
@@ -197,82 +223,93 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveStyle = widget.style.copyWith(
-      fontSize: headerTitleFontSize(
-        context,
-        baseFontSize: widget.style.fontSize ?? kHeaderTitleBaseFontSize,
-      ),
-    );
-    return Semantics(
-      label: widget.title,
-      child: NotificationListener<ScrollNotification>(
-        onNotification: _handleScrollNotification,
-        child: ClipRect(
-          child: NotificationListener<ScrollMetricsNotification>(
-            onNotification: _handleMetricsNotification,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Align(
-                  alignment: Alignment.bottomLeft,
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: SingleChildScrollView(
-                      controller: _scrollController,
-                      primary: false,
-                      scrollDirection: Axis.horizontal,
-                      // A title that fits completely is not scrollable, so it
-                      // cannot rubberband or display an edge fade. Overflowing
-                      // titles retain native bouncing at their real edges.
-                      physics: const BouncingScrollPhysics(),
-                      padding: EdgeInsets.zero,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            widget.title,
-                            maxLines: 1,
-                            softWrap: false,
-                            overflow: TextOverflow.visible,
-                            // Large Header titles are intentionally fixed-height. The
-                            // rest of the app continues to follow the bounded
-                            // header scale above instead of the ambient scaler.
-                            textScaler: TextScaler.noScaling,
-                            style: effectiveStyle,
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        appTextSizeUsesSystemNotifier,
+        appTextSizeIndexNotifier,
+        appSystemTextScaleNotifier,
+        appSkeddoTextScaleMappingNotifier,
+        appNativeTextScaleProfileNotifier,
+      ]),
+      builder: (context, _) {
+        final effectiveStyle = widget.style.copyWith(
+          fontSize: headerTitleFontSize(
+            context,
+            baseFontSize: widget.style.fontSize ?? kHeaderTitleBaseFontSize,
+          ),
+        );
+        return Semantics(
+          label: widget.title,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _handleScrollNotification,
+            child: ClipRect(
+              child: NotificationListener<ScrollMetricsNotification>(
+                onNotification: _handleMetricsNotification,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Align(
+                      alignment: Alignment.bottomLeft,
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          primary: false,
+                          scrollDirection: Axis.horizontal,
+                          // A title that fits completely is not scrollable, so it
+                          // cannot rubberband or display an edge fade. Overflowing
+                          // titles retain native bouncing at their real edges.
+                          physics: const BouncingScrollPhysics(),
+                          padding: EdgeInsets.zero,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                widget.title,
+                                maxLines: 1,
+                                softWrap: false,
+                                overflow: TextOverflow.visible,
+                                // Large Header titles are intentionally fixed-height. The
+                                // rest of the app continues to follow the bounded
+                                // header scale above instead of the ambient scaler.
+                                textScaler: TextScaler.noScaling,
+                                style: effectiveStyle,
+                              ),
+                              if (widget.trailing != null) ...[
+                                SizedBox(width: widget.trailingGap),
+                                widget.trailing!,
+                              ],
+                            ],
                           ),
-                          if (widget.trailing != null) ...[
-                            SizedBox(width: widget.trailingGap),
-                            widget.trailing!,
-                          ],
-                        ],
+                        ),
                       ),
                     ),
-                  ),
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: _buildFade(
+                        visible: _showLeadingFade,
+                        opaqueAtStart: true,
+                      ),
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: _buildFade(
+                        visible: _showTrailingFade,
+                        opaqueAtStart: false,
+                      ),
+                    ),
+                  ],
                 ),
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: _buildFade(
-                    visible: _showLeadingFade,
-                    opaqueAtStart: true,
-                  ),
-                ),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: _buildFade(
-                    visible: _showTrailingFade,
-                    opaqueAtStart: false,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
