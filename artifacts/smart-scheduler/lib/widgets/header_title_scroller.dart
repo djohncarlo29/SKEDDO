@@ -105,10 +105,9 @@ class HeaderTitleScroller extends StatefulWidget {
 
 class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
   late final ScrollController _scrollController;
+  bool _canScroll = false;
   bool _showLeadingFade = false;
   bool _showTrailingFade = false;
-  bool _overscrollingLeading = false;
-  bool _overscrollingTrailing = false;
 
   @override
   void initState() {
@@ -123,10 +122,16 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
     if (oldWidget.title != widget.title) {
       // Every newly displayed title starts at its logical beginning, including
       // titles arriving through the tab/DCV and Settings navigation animations.
+      // Clear the old title's edge state immediately; otherwise the previous
+      // title's fade can paint for one frame before the post-layout reset.
+      if (_showLeadingFade || _showTrailingFade) {
+        _showLeadingFade = false;
+        _showTrailingFade = false;
+      }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !_scrollController.hasClients) return;
         _scrollController.jumpTo(0);
-        _updateFades();
+        _syncScrollEdgeFades(_scrollController.position);
       });
     } else {
       _scheduleFadeUpdate();
@@ -149,27 +154,25 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
 
   void _updateFades() {
     if (!mounted || !_scrollController.hasClients) return;
-    final position = _scrollController.position;
-    final maxExtent = position.maxScrollExtent;
-    final offset = position.pixels;
-    final hasOverflow = maxExtent > 0.5;
-    final isOverscrollingLeading = _overscrollingLeading || offset < -0.5;
-    final isOverscrollingTrailing =
-        _overscrollingTrailing || offset > maxExtent + 0.5;
-    // Use the actual extents instead of a raw offset threshold. This makes
-    // the fade disappear as soon as the scroll position is truly at an edge,
-    // including while a rubberband settles back into place.
-    final showLeading =
-        (hasOverflow && position.extentBefore > 0.5) || isOverscrollingLeading;
+    _syncScrollEdgeFades(_scrollController.position);
+  }
+
+  void _syncScrollEdgeFades(ScrollMetrics metrics) {
+    final canScroll = metrics.maxScrollExtent > 1.0;
+    final showLeading = canScroll && metrics.pixels > 1.0;
     final showTrailing =
         widget.showTrailingFade &&
-        ((hasOverflow && position.extentAfter > 0.5) ||
-            isOverscrollingTrailing);
+        canScroll &&
+        metrics.pixels < metrics.maxScrollExtent - 1.0;
 
-    if (showLeading == _showLeadingFade && showTrailing == _showTrailingFade) {
+    if (_canScroll == canScroll &&
+        showLeading == _showLeadingFade &&
+        showTrailing == _showTrailingFade) {
       return;
     }
+    if (!mounted) return;
     setState(() {
+      _canScroll = canScroll;
       _showLeadingFade = showLeading;
       _showTrailingFade = showTrailing;
     });
@@ -177,44 +180,30 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
 
   bool _handleScrollNotification(ScrollNotification notification) {
     if (notification.metrics.axis != Axis.horizontal) return false;
-    if (notification is ScrollStartNotification) {
-      _overscrollingLeading = false;
-      _overscrollingTrailing = false;
-    } else if (notification is OverscrollNotification) {
-      _overscrollingLeading = notification.overscroll < -0.5;
-      _overscrollingTrailing = notification.overscroll > 0.5;
-    } else if (notification is ScrollEndNotification) {
-      _overscrollingLeading = false;
-      _overscrollingTrailing = false;
-    }
-    _updateFades();
+    _syncScrollEdgeFades(notification.metrics);
     return false;
   }
 
   bool _handleMetricsNotification(ScrollMetricsNotification notification) {
     if (notification.metrics.axis == Axis.horizontal) {
-      _updateFades();
+      _syncScrollEdgeFades(notification.metrics);
     }
     return false;
   }
 
   Widget _buildFade({required bool visible, required bool opaqueAtStart}) {
+    if (!visible) return const SizedBox.shrink();
     return IgnorePointer(
-      child: AnimatedOpacity(
-        opacity: visible ? 1 : 0,
-        duration: const Duration(milliseconds: 100),
-        curve: Curves.easeOut,
-        child: SizedBox(
-          width: widget.fadeWidth,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: opaqueAtStart
-                    ? [widget.fadeColor, widget.fadeColor.withValues(alpha: 0)]
-                    : [widget.fadeColor.withValues(alpha: 0), widget.fadeColor],
-              ),
+      child: SizedBox(
+        width: widget.fadeWidth,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: opaqueAtStart
+                  ? [widget.fadeColor, widget.fadeColor.withValues(alpha: 0)]
+                  : [widget.fadeColor.withValues(alpha: 0), widget.fadeColor],
             ),
           ),
         ),
@@ -257,10 +246,12 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                           controller: _scrollController,
                           primary: false,
                           scrollDirection: Axis.horizontal,
-                          // A title that fits completely is not scrollable, so it
-                          // cannot rubberband or display an edge fade. Overflowing
-                          // titles retain native bouncing at their real edges.
-                          physics: const BouncingScrollPhysics(),
+                          // Match the picker mini-panel behavior: determine
+                          // overflow after layout, then make only genuinely
+                          // overflowing titles scrollable.
+                          physics: _canScroll
+                              ? const BouncingScrollPhysics()
+                              : const NeverScrollableScrollPhysics(),
                           padding: EdgeInsets.zero,
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
