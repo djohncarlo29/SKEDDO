@@ -1731,34 +1731,30 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         children: [
           // Title
           Expanded(
-            child: Transform.translate(
-              // The nested calendar panel row paints its title slightly above
-              // the standard header baseline; correct only that paint offset.
-              offset: const Offset(0, 2),
-              child: HeaderTitleScroller(
-                title: title,
-                fadeColor: resolveThemeColor(kCardColor, context),
-                // The title area ends immediately before the calendar arrows,
-                // so its trailing boundary must fade instead of hard-clipping.
-                showTrailingFade: true,
-                trailing: _CalendarNavChevron(
-                  canUp: canUp,
-                  canDown: canDown,
-                  onUp: isActive && canUp
-                      ? () => _calendarTabKey.currentState?.navigateUp()
-                      : null,
-                  onDown: isActive && canDown
-                      ? () => _calendarTabKey.currentState?.navigateDown()
-                      : null,
-                ),
-                style: TextStyle(
-                  fontFamily: kSFProText,
-                  fontSize: 34,
-                  fontWeight: FontWeight.bold,
-                  fontStyle: FontStyle.normal,
-                  color: isToday ? resolveAccentColor(context) : primaryLabel,
-                  letterSpacing: -1.2,
-                ),
+            child: HeaderTitleScroller(
+              title: title,
+              fadeColor: resolveThemeColor(kCardColor, context),
+              // The title area ends immediately before the calendar arrows,
+              // so its trailing boundary must fade instead of hard-clipping.
+              showTrailingFade: true,
+              trailingBuilder: (titleFontSize) => _CalendarNavChevron(
+                titleFontSize: titleFontSize,
+                canUp: canUp,
+                canDown: canDown,
+                onUp: isActive && canUp
+                    ? () => _calendarTabKey.currentState?.navigateUp()
+                    : null,
+                onDown: isActive && canDown
+                    ? () => _calendarTabKey.currentState?.navigateDown()
+                    : null,
+              ),
+              style: TextStyle(
+                fontFamily: kSFProText,
+                fontSize: 34,
+                fontWeight: FontWeight.bold,
+                fontStyle: FontStyle.normal,
+                color: isToday ? resolveAccentColor(context) : primaryLabel,
+                letterSpacing: -1.2,
               ),
             ),
           ),
@@ -2821,12 +2817,14 @@ class _ChevronPainter extends CustomPainter {
 // Bottom half → go back  (Day→Month, Month→Year)
 class _CalendarNavChevron extends StatelessWidget {
   const _CalendarNavChevron({
+    required this.titleFontSize,
     required this.canUp,
     required this.canDown,
     this.onUp,
     this.onDown,
   });
 
+  final double titleFontSize;
   final bool canUp, canDown;
   final VoidCallback? onUp;
   final VoidCallback? onDown;
@@ -2844,27 +2842,45 @@ class _CalendarNavChevron extends StatelessWidget {
     const double shift = 26.0;
     const double hitW = 86.0; // 34 left-of-icon + 12 icon + 40 right ext
     const double iconLeft = 34.0; // shift + 8 px visual gap
+    final safeTitleFontSize =
+        titleFontSize.isFinite && titleFontSize > 0
+        ? titleFontSize
+        : kHeaderTitleBaseFontSize;
+    final scale = safeTitleFontSize / kHeaderTitleBaseFontSize;
+    final iconSize = 12.0 * scale;
+    // Keep the chevron group shorter than the rendered title line. This makes
+    // the title, rather than the trailing control, determine the row height at
+    // every bounded text-size position and therefore preserves the shared
+    // Notes baseline.
+    final halfHeight = safeTitleFontSize / 2;
+    final iconCenterInHalf = halfHeight * 0.6;
+    final firstTop = iconCenterInHalf - iconSize / 2;
+    final firstBottom = halfHeight - firstTop - iconSize;
+    final secondTop = firstBottom;
+    final secondBottom = firstTop;
     final disabledColor = resolveThemeColor(kSecondaryLabel, context);
 
     Widget half({
       required _ChevronDir direction,
       required Color color,
       required VoidCallback? onTap,
-      required EdgeInsets padding,
+      required double top,
+      required double bottom,
     }) {
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: SizedBox(
           width: hitW,
+          height: halfHeight,
           child: Padding(
-            padding: padding.copyWith(left: iconLeft),
+            padding: EdgeInsets.fromLTRB(iconLeft, top, 0, bottom),
             child: Align(
               alignment: Alignment.centerLeft,
               child: _ChevronIcon(
                 direction: direction,
                 color: color,
-                size: 12,
+                size: iconSize,
                 strokeWidth: 1.6,
               ),
             ),
@@ -2883,13 +2899,15 @@ class _CalendarNavChevron extends StatelessWidget {
             direction: _ChevronDir.up,
             color: canUp ? resolveAccentColor(context) : disabledColor,
             onTap: onUp,
-            padding: const EdgeInsets.fromLTRB(0, 6, 0, 2),
+            top: firstTop,
+            bottom: firstBottom,
           ),
           half(
             direction: _ChevronDir.down,
             color: canDown ? resolveAccentColor(context) : disabledColor,
             onTap: onDown,
-            padding: const EdgeInsets.fromLTRB(0, 2, 0, 6),
+            top: secondTop,
+            bottom: secondBottom,
           ),
         ],
       ),

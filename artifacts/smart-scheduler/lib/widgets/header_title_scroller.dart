@@ -89,6 +89,7 @@ class HeaderTitleScroller extends StatefulWidget {
   final Color fadeColor;
   final double fadeWidth;
   final Widget? trailing;
+  final Widget Function(double titleFontSize)? trailingBuilder;
   final double trailingGap;
   final bool showTrailingFade;
 
@@ -99,6 +100,7 @@ class HeaderTitleScroller extends StatefulWidget {
     required this.fadeColor,
     this.fadeWidth = 36,
     this.trailing,
+    this.trailingBuilder,
     this.trailingGap = 4,
     this.showTrailingFade = true,
   });
@@ -247,6 +249,11 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
             baseFontSize: widget.style.fontSize ?? kHeaderTitleBaseFontSize,
           ),
         );
+        final trailing =
+            widget.trailingBuilder?.call(
+              effectiveStyle.fontSize ?? kHeaderTitleBaseFontSize,
+            ) ??
+            widget.trailing;
         return Semantics(
           label: widget.title,
           child: NotificationListener<ScrollNotification>(
@@ -302,9 +309,9 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                                     textScaler: TextScaler.noScaling,
                                     style: effectiveStyle,
                                   ),
-                                  if (widget.trailing != null) ...[
+                                   if (trailing != null) ...[
                                     SizedBox(width: widget.trailingGap),
-                                    widget.trailing!,
+                                     trailing,
                                   ],
                                 ],
                               ),
