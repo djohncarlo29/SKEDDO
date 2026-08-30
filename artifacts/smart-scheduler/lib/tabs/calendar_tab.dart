@@ -8835,7 +8835,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
         ? {'Night before (9 PM)'}
         : {'At time of event'};
     final current = index < _alerts.length ? _alerts[index] : 'None';
-    final previousMinutes = index == 0
+    final previousMinutes = index == 0 || index > _alerts.length
         ? -1
         : _kAlertMinutes[_alerts[index - 1]] ?? -1;
     final visible = list.where((base) {
@@ -8901,9 +8901,32 @@ class _NewEventSheetState extends State<_NewEventSheet>
     }
   }
 
-  List<int> get _visibleAlertRowIndexes {
-    if (_alert == 'None') return const [];
-    return List<int>.generate(_alerts.length, (index) => index + 1);
+  Widget _buildAnimatedAlertRow(int index) {
+    final visible = index <= _alerts.length;
+    return AnimatedSize(
+      key: ValueKey('alert-row-$index'),
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeInOutCubic,
+      alignment: Alignment.topCenter,
+      clipBehavior: Clip.hardEdge,
+      child: visible
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _sep(),
+                _pickerRow(
+                  _allDay
+                      ? _alertRowLabel(index).replaceFirst('Alert', 'Reminder')
+                      : _alertRowLabel(index),
+                  _alertDisplayLabel(
+                    index < _alerts.length ? _alerts[index] : 'None',
+                  ),
+                  items: _alertItemsFor(index),
+                ),
+              ],
+            )
+          : const SizedBox.shrink(),
+    );
   }
 
   // ── Attachment rows (Card 7) ──────────────────────────────────────────────
@@ -9658,18 +9681,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final index in _visibleAlertRowIndexes) ...[
-              _sep(),
-              _pickerRow(
-                _allDay
-                    ? _alertRowLabel(index).replaceFirst('Alert', 'Reminder')
-                    : _alertRowLabel(index),
-                _alertDisplayLabel(
-                  index < _alerts.length ? _alerts[index] : 'None',
-                ),
-                items: _alertItemsFor(index),
-              ),
-            ],
+            for (var index = 1; index < _kAlertAllBase.length; index++)
+              _buildAnimatedAlertRow(index),
           ],
         ),
       ),

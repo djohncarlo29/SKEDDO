@@ -10573,7 +10573,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
 
   List<ActionItem> _alertItemsFor(int index) {
     final current = index < _alerts.length ? _alerts[index] : 'None';
-    final previousMinutes = index == 0
+    final previousMinutes = index == 0 || index > _alerts.length
         ? -1
         : _kAlertMinutes[_alerts[index - 1]] ?? -1;
     final visible = _kAlertAllBase.where((base) {
@@ -10632,9 +10632,30 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     assert(AlertSequence.isValid(_alerts, _kAlertMinutes));
   }
 
-  List<int> get _visibleAlertRowIndexes {
-    if (_alert == 'None') return const [];
-    return List<int>.generate(_alerts.length, (index) => index + 1);
+  Widget _buildAnimatedAlertRow(int index) {
+    final visible = index <= _alerts.length;
+    return AnimatedSize(
+      key: ValueKey('category-alert-row-$index'),
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeInOutCubic,
+      alignment: Alignment.topCenter,
+      clipBehavior: Clip.hardEdge,
+      child: visible
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _sep(),
+                _pickerRow(
+                  _alertRowLabel(index),
+                  _alertDisplayLabel(
+                    index < _alerts.length ? _alerts[index] : 'None',
+                  ),
+                  items: _alertItemsFor(index),
+                ),
+              ],
+            )
+          : const SizedBox.shrink(),
+    );
   }
 
   void _save() {
@@ -12319,16 +12340,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final index in _visibleAlertRowIndexes) ...[
-              _sep(),
-              _pickerRow(
-                _alertRowLabel(index),
-                _alertDisplayLabel(
-                  index < _alerts.length ? _alerts[index] : 'None',
-                ),
-                items: _alertItemsFor(index),
-              ),
-            ],
+            for (var index = 1; index < _kAlertAllBase.length; index++)
+              _buildAnimatedAlertRow(index),
           ],
         ),
       ),
