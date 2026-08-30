@@ -1,4 +1,50 @@
 import 'package:flutter/cupertino.dart';
+import '../app_settings.dart';
+
+const double kHeaderTitleBaseFontSize = 34;
+
+/// Returns the Large Header size for the active text-size position.
+///
+/// Headers use the current OS/custom profile around the default position, but
+/// are intentionally bounded to one position below or above default so the
+/// fixed-height header remains stable at accessibility extremes.
+double headerTitleFontSize(
+  BuildContext context, {
+  double baseFontSize = kHeaderTitleBaseFontSize,
+}) {
+  final stops = appSkeddoTextScaleStops;
+  if (stops.isEmpty || !baseFontSize.isFinite || baseFontSize <= 0) {
+    return baseFontSize;
+  }
+
+  final usesSystem = appTextSizeUsesSystemNotifier.value;
+  final defaultIndex = usesSystem
+      ? skeddoTextScaleIndexForSystemScale(1.0)
+      : (stops.length ~/ 2).clamp(0, stops.length - 1).toInt();
+  final activeIndex = usesSystem
+      ? skeddoTextScaleIndexForSystemScale(appSystemTextScaleNotifier.value)
+      : appTextSizeIndexNotifier.value;
+  final lowerIndex = (defaultIndex - 1).clamp(0, stops.length - 1);
+  final upperIndex = (defaultIndex + 1).clamp(0, stops.length - 1);
+  final boundedIndex = activeIndex.clamp(lowerIndex, upperIndex).toInt();
+
+  double scaledSizeAt(int index) {
+    final mapping = appSkeddoTextScaleMappingNotifier.value;
+    if (index < mapping.length) {
+      final scaler = mapping[index].scaler;
+      if (scaler != null) {
+        final scaled = scaler.scale(baseFontSize);
+        if (scaled.isFinite && scaled > 0) return scaled;
+      }
+    }
+    return baseFontSize * stops[index];
+  }
+
+  final defaultSize = scaledSizeAt(defaultIndex);
+  final boundedSize = scaledSizeAt(boundedIndex);
+  if (!defaultSize.isFinite || defaultSize <= 0) return baseFontSize;
+  return baseFontSize * boundedSize / defaultSize;
+}
 
 /// A single-line Large Header title that can be explored horizontally when its
 /// rendered width is larger than the title slot.
@@ -13,6 +59,7 @@ class HeaderTitleScroller extends StatefulWidget {
   final double fadeWidth;
   final Widget? trailing;
   final double trailingGap;
+  final bool showTrailingFade;
 
   const HeaderTitleScroller({
     super.key,
@@ -22,6 +69,7 @@ class HeaderTitleScroller extends StatefulWidget {
     this.fadeWidth = 36,
     this.trailing,
     this.trailingGap = 4,
+    this.showTrailingFade = true,
   });
 
   @override
@@ -32,6 +80,8 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
   late final ScrollController _scrollController;
   bool _showLeadingFade = false;
   bool _showTrailingFade = false;
+  bool _overscrollingLeading = false;
+  bool _overscrollingTrailing = false;
 
   @override
   void initState() {
@@ -76,13 +126,18 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
     final maxExtent = position.maxScrollExtent;
     final offset = position.pixels;
     final hasOverflow = maxExtent > 0.5;
-    // With a short title, maxExtent is zero, but BouncingScrollPhysics still
-    // exposes a small overscroll while the user pushes against either edge.
-    // Treat that transient overscroll as an edge-fade state so every header
-    // responds consistently, even when its title fits at rest.
-    final showLeading = (hasOverflow && offset > 0.5) || offset < -0.5;
+    final isOverscrollingLeading = _overscrollingLeading || offset < -0.5;
+    final isOverscrollingTrailing =
+        _overscrollingTrailing || offset > maxExtent + 0.5;
+    // Use the actual extents instead of a raw offset threshold. This makes
+    // the fade disappear as soon as the scroll position is truly at an edge,
+    // including while a rubberband settles back into place.
+    final showLeading =
+        (hasOverflow && position.extentBefore > 0.5) || isOverscrollingLeading;
     final showTrailing =
-        (hasOverflow && offset < maxExtent - 0.5) || offset > maxExtent + 0.5;
+        widget.showTrailingFade &&
+        ((hasOverflow && position.extentAfter > 0.5) ||
+            isOverscrollingTrailing);
 
     if (showLeading == _showLeadingFade && showTrailing == _showTrailingFade) {
       return;
@@ -91,6 +146,22 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
       _showLeadingFade = showLeading;
       _showTrailingFade = showTrailing;
     });
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.horizontal) return false;
+    if (notification is ScrollStartNotification) {
+      _overscrollingLeading = false;
+      _overscrollingTrailing = false;
+    } else if (notification is OverscrollNotification) {
+      _overscrollingLeading = notification.overscroll < -0.5;
+      _overscrollingTrailing = notification.overscroll > 0.5;
+    } else if (notification is ScrollEndNotification) {
+      _overscrollingLeading = false;
+      _overscrollingTrailing = false;
+    }
+    _updateFades();
+    return false;
   }
 
   bool _handleMetricsNotification(ScrollMetricsNotification notification) {
@@ -126,68 +197,78 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveStyle = widget.style.copyWith(
+      fontSize: headerTitleFontSize(
+        context,
+        baseFontSize: widget.style.fontSize ?? kHeaderTitleBaseFontSize,
+      ),
+    );
     return Semantics(
       label: widget.title,
-      child: NotificationListener<ScrollMetricsNotification>(
-        onNotification: _handleMetricsNotification,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _handleScrollNotification,
         child: ClipRect(
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Align(
-                alignment: Alignment.bottomLeft,
-                child: SizedBox(
-                  width: double.infinity,
-                  child: SingleChildScrollView(
-                    controller: _scrollController,
-                    primary: false,
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(
-                      parent: AlwaysScrollableScrollPhysics(),
-                    ),
-                    padding: EdgeInsets.zero,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          widget.title,
-                          maxLines: 1,
-                          softWrap: false,
-                          overflow: TextOverflow.visible,
-                          // Large Header titles are intentionally fixed-height. The
-                          // rest of the app continues to follow the active OS scaler.
-                          textScaler: TextScaler.noScaling,
-                          style: widget.style,
-                        ),
-                        if (widget.trailing != null) ...[
-                          SizedBox(width: widget.trailingGap),
-                          widget.trailing!,
+          child: NotificationListener<ScrollMetricsNotification>(
+            onNotification: _handleMetricsNotification,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Align(
+                  alignment: Alignment.bottomLeft,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      primary: false,
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+                      padding: EdgeInsets.zero,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            widget.title,
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.visible,
+                            // Large Header titles are intentionally fixed-height. The
+                            // rest of the app continues to follow the bounded
+                            // header scale above instead of the ambient scaler.
+                            textScaler: TextScaler.noScaling,
+                            style: effectiveStyle,
+                          ),
+                          if (widget.trailing != null) ...[
+                            SizedBox(width: widget.trailingGap),
+                            widget.trailing!,
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              Positioned(
-                left: 0,
-                top: 0,
-                bottom: 0,
-                child: _buildFade(
-                  visible: _showLeadingFade,
-                  opaqueAtStart: true,
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: _buildFade(
+                    visible: _showLeadingFade,
+                    opaqueAtStart: true,
+                  ),
                 ),
-              ),
-              Positioned(
-                right: 0,
-                top: 0,
-                bottom: 0,
-                child: _buildFade(
-                  visible: _showTrailingFade,
-                  opaqueAtStart: false,
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: _buildFade(
+                    visible: _showTrailingFade,
+                    opaqueAtStart: false,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

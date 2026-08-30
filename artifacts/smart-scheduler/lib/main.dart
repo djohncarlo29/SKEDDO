@@ -1732,6 +1732,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             child: HeaderTitleScroller(
               title: title,
               fadeColor: resolveThemeColor(kCardColor, context),
+              showTrailingFade: false,
               trailing: _CalendarNavChevron(
                 canUp: canUp,
                 canDown: canDown,
