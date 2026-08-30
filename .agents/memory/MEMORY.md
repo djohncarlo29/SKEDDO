@@ -1,3 +1,4 @@
+- [Floating bar rim compositing](floating-bar-rim-compositing.md) - any rim meant to participate in active-pill refraction must be painted before the bodyless glass bar overlay.
 - [AnimatedBuilder child caching](animated-builder-child-caching.md) — never pass setState-driven widgets as AnimatedBuilder.child; move them inline into the builder callback instead.
 - [Native STT channels](native-stt-channels.md) — speech_to_text replaced by native MethodChannel+EventChannel; iOS uses SFSpeechRecognizer, Android uses SpeechRecognizer.
 - [Events Tab keyboard dismissal root cause](events-tab-keyboard-root-cause.md) — keyboard dismissed by off-screen DCV CustomScrollView winning gesture arena; fix is SizedBox.expand when label.isEmpty.
