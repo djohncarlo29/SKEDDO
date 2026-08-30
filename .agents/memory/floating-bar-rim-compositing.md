@@ -11,7 +11,7 @@ output and refracts the rim using the active pill’s smaller animated envelope.
 selection lens contracts, lifts, or squashes. Moving it behind the overlay only
 changes paint order; it does not make the rim part of the pill’s captured bar.
 
-**How to apply:** Use the bar capsule’s optical shape border for the hairline and
-do not add a duplicate DecoratedBox rim in the live shell or visual preview.
-Keep shadows separate from this rim; they have different capture and Dark Mode
-behavior.
+**How to apply:** Use the bar capsule’s optical shape border for the hairline,
+give it an explicit low-alpha light tint so it remains visible, and do not add a
+duplicate DecoratedBox rim in the live shell or visual preview. Keep shadows
+separate from this rim; they have different capture and Dark Mode behavior.

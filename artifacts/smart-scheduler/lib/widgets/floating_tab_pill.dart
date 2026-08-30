@@ -368,12 +368,13 @@ LiquidGlassStyle _floatingTabBarStyle(BuildContext context) {
       // moving envelope can refract it instead of leaving a fixed sibling
       // outline behind the glass.
       borderWidth: 0.5,
+      borderColor: Color(0x26FFFFFF),
       lightIntensity: 0.46,
       lightDirection: 62,
       borderType: OpticalBorder(
         borderSaturation: 1.0,
-        ambientIntensity: 0.18,
-        borderSolidity: 0.28,
+        ambientIntensity: 0.55,
+        borderSolidity: 0.35,
         lightSpread: 0.12,
       ),
     ),
