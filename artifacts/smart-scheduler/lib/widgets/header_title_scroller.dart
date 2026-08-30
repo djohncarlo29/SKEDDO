@@ -125,23 +125,29 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              SingleChildScrollView(
-                controller: _scrollController,
-                primary: false,
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                ),
-                padding: EdgeInsets.zero,
-                child: Text(
-                  widget.title,
-                  maxLines: 1,
-                  softWrap: false,
-                  overflow: TextOverflow.visible,
-                  // Large Header titles are intentionally fixed-height. The
-                  // rest of the app continues to follow the active OS scaler.
-                  textScaler: TextScaler.noScaling,
-                  style: widget.style,
+              Align(
+                alignment: Alignment.bottomLeft,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    primary: false,
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
+                    padding: EdgeInsets.zero,
+                    child: Text(
+                      widget.title,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.visible,
+                      // Large Header titles are intentionally fixed-height. The
+                      // rest of the app continues to follow the active OS scaler.
+                      textScaler: TextScaler.noScaling,
+                      style: widget.style,
+                    ),
+                  ),
                 ),
               ),
               Positioned(
