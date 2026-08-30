@@ -36,9 +36,10 @@ double headerTitleFontSize(
     return closestIndex;
   }
 
-  final defaultIndex = usesSystem
-      ? nearestStopIndex(1.0)
-      : (skeddoStops.length ~/ 2).clamp(0, skeddoStops.length - 1).toInt();
+  // The default is the profile stop representing the platform's normal
+  // 1.0 scale. It is not necessarily the middle Custom tick: Android and
+  // iOS expose different numbers and positions of native text-size stops.
+  final defaultIndex = nearestStopIndex(1.0);
   final activeIndex = usesSystem
       ? nearestStopIndex(appSystemTextScaleNotifier.value)
       : appTextSizeIndexNotifier.value;
