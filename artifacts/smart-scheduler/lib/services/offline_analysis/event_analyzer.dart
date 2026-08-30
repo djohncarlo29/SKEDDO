@@ -123,6 +123,11 @@ class DefaultEventAnalyzer implements EventAnalyzer {
           repeatEndDate: _labelValue(text, 'repeat ends'),
           alert: _labelValue(text, 'alert'),
           secondAlert: _labelValue(text, 'second alert'),
+          alerts: [
+            if (_labelValue(text, 'alert') != null) _labelValue(text, 'alert')!,
+            if (_labelValue(text, 'second alert') != null)
+              _labelValue(text, 'second alert')!,
+          ],
           url: _url(text),
           notes: _labelValue(text, 'notes'),
           recurrence: parsed.recurrence,
@@ -198,6 +203,7 @@ class DefaultEventAnalyzer implements EventAnalyzer {
           notes: fields['DESCRIPTION'],
           alert: alarms.isEmpty ? null : alarms.first,
           secondAlert: alarms.length < 2 ? null : alarms[1],
+          alerts: alarms.isEmpty ? null : List.unmodifiable(alarms),
           recurrence: fields['RRULE'],
           timeZone: zone ?? fields['X-WR-TIMEZONE'],
           originalDateText: startRaw,

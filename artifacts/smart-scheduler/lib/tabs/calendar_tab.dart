@@ -23,6 +23,7 @@ import '../widgets/action_panel.dart';
 import '../widgets/view_mode_icons.dart';
 import '../widgets/app_switch.dart';
 import '../services/event_store.dart';
+import '../services/alert_sequence.dart';
 import '../ai/search/search_service.dart';
 import 'events_tab.dart'
     show wrapSearchEventTileWithActions, wrapSearchEventTileWithPressScale;
@@ -5556,6 +5557,7 @@ class _NewEventCategory {
   final Map<String, dynamic>? presetCustomRepeatConfig;
   final String? presetAlert;
   final String? presetSecondAlert;
+  final List<String>? presetAlerts;
 
   const _NewEventCategory({
     required this.id,
@@ -5571,6 +5573,7 @@ class _NewEventCategory {
     this.presetCustomRepeatConfig,
     this.presetAlert,
     this.presetSecondAlert,
+    this.presetAlerts,
   });
 }
 
@@ -5750,8 +5753,15 @@ class _NewEventSheetState extends State<_NewEventSheet>
   _NewEventCustomRepeatConfig? _savedCustomConfig;
 
   // ── Alerts ────────────────────────────────────────────────────────────────
-  String _alert = 'At time of event';
-  String _secondAlert = 'None';
+  List<String> _alerts = ['At time of event'];
+
+  String get _alert => _alerts.isEmpty ? 'None' : _alerts.first;
+
+  set _alert(String value) => _setAlertAt(0, value);
+
+  String get _secondAlert => _alerts.length > 1 ? _alerts[1] : 'None';
+
+  set _secondAlert(String value) => _setAlertAt(1, value);
 
   // ── Unscheduled Reminder ──────────────────────────────────────────────────
   String _reminder = 'Never'; // 'Never' | 'On Date'
@@ -5807,6 +5817,41 @@ class _NewEventSheetState extends State<_NewEventSheet>
     '2 days before (9 AM)',
     '1 week before',
   ];
+
+  List<String> _normaliseAlertState(Iterable<String?> values) =>
+      AlertSequence.compact(values);
+
+  void _setAlertAt(int index, String value) {
+    if (value == 'None') {
+      if (_alerts.length > index) {
+        _alerts.removeRange(index, _alerts.length);
+      }
+      return;
+    }
+    while (_alerts.length <= index) {
+      _alerts.add(value);
+    }
+    _alerts[index] = value;
+  }
+
+  String _alertRowLabel(int index) {
+    const names = [
+      'First',
+      'Second',
+      'Third',
+      'Fourth',
+      'Fifth',
+      'Sixth',
+      'Seventh',
+      'Eighth',
+      'Ninth',
+      'Tenth',
+      'Eleventh',
+      'Twelfth',
+    ];
+    final name = index < names.length ? names[index] : '${index + 1}th';
+    return '$name Alert';
+  }
 
   // ── Category ──────────────────────────────────────────────────────────────
   String _categoryId = 'uncategorized';
@@ -6943,6 +6988,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           customRepeatConfig: customRepeatCfg,
           alert: _alert == 'None' ? null : _alert,
           secondAlert: _secondAlert == 'None' ? null : _secondAlert,
+          alerts: AlertSequence.compact(_alerts),
           reminderOption: _unscheduled ? _reminder : null,
           reminderDateTime: (_unscheduled && _reminder == 'On Date')
               ? _reminderDate.toIso8601String()
@@ -6982,6 +7028,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
         customRepeatConfig: customRepeatCfg,
         alert: _alert == 'None' ? null : _alert,
         secondAlert: _secondAlert == 'None' ? null : _secondAlert,
+        alerts: AlertSequence.compact(_alerts),
         reminderOption: _unscheduled ? _reminder : null,
         reminderDateTime: (_unscheduled && _reminder == 'On Date')
             ? _reminderDate.toIso8601String()
@@ -7186,8 +7233,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
     }
 
     // ── Alerts ────────────────────────────────────────────────────────────
-    _alert = e.alert ?? 'At time of event';
-    _secondAlert = e.secondAlert ?? 'None';
+    _alerts = _normaliseAlertState(e.alertSequence);
+    if (_alerts.isEmpty && e.alerts == null && e.alert == null) {
+      _alerts = ['At time of event'];
+    }
 
     // ── Reminder (Unscheduled events only) ────────────────────────────────
     if (_unscheduled) {
@@ -7348,6 +7397,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
                   : null,
               presetAlert: m['presetAlert'] as String?,
               presetSecondAlert: m['presetSecondAlert'] as String?,
+              presetAlerts: (m['presetAlerts'] as List?)
+                  ?.map((value) => value.toString())
+                  .toList(),
             ),
           );
         }
@@ -7721,8 +7773,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
       _repeat = cat.presetRepeat ?? 'Never';
       _savedCustomConfig = _configFromMap(cat.presetCustomRepeatConfig);
       _endRepeat = cat.presetRepeatEndType ?? 'Never';
-      _alert = cat.presetAlert ?? 'At time of event';
-      _secondAlert = cat.presetSecondAlert ?? 'None';
+      final presetAlerts = _normaliseAlertState(
+        cat.presetAlerts ?? [cat.presetAlert, cat.presetSecondAlert],
+      );
+      _alerts = presetAlerts.isEmpty ? ['At time of event'] : presetAlerts;
     }
 
     ActionItem itemFor(_NewEventCategory cat) => ActionItem(
@@ -8772,40 +8826,35 @@ class _NewEventSheetState extends State<_NewEventSheet>
       .toList();
 
   List<ActionItem> _alertItems() {
+    return _alertItemsFor(0);
+  }
+
+  List<ActionItem> _alertItemsFor(int index) {
     final list = _allDay ? _kAlertAllDayBase : _kAlertAllBase;
     final breakBefore = _allDay
         ? {'Night before (9 PM)'}
         : {'At time of event'};
+    final current = index < _alerts.length ? _alerts[index] : 'None';
+    final previousMinutes = index == 0
+        ? -1
+        : _kAlertMinutes[_alerts[index - 1]] ?? -1;
+    final visible = list.where((base) {
+      final minutes = _kAlertMinutes[base] ?? -1;
+      return index == 0 ||
+          base == 'None' ||
+          previousMinutes == -1 ||
+          minutes < previousMinutes;
+    }).toList();
     return _buildAlertActionItems(
-      list,
-      _alert,
+      visible,
+      current,
       (base) {
-        final alertMins = _kAlertMinutes[base] ?? -1;
-        final secondMins = _kAlertMinutes[_secondAlert] ?? -1;
         setState(() {
-          _alert = base;
-          if (base == 'None') {
-            _secondAlert = 'None';
-          } else if (alertMins != -1 &&
-              secondMins != -1 &&
-              secondMins >= alertMins) {
-            // Auto-pick best second alert from the same mode's option list.
-            final candidates = _allDay ? _kAlertAllDayBase : _kAlertAllBase;
-            String best = 'None';
-            int bestMins = -1;
-            for (final b in candidates) {
-              final m = _kAlertMinutes[b] ?? -1;
-              if (m >= 0 && m < alertMins && m > bestMins) {
-                bestMins = m;
-                best = b;
-              }
-            }
-            _secondAlert = best;
-          }
+          _selectAlert(index, base);
         });
-        if (base == 'None') {
+        if (index == 0 && base == 'None') {
           _secondAlertCtrl.animateTo(0.0, curve: Curves.easeIn);
-        } else {
+        } else if (index == 0) {
           _secondAlertCtrl.animateTo(1.0, curve: Curves.easeOut);
         }
       },
@@ -8814,23 +8863,47 @@ class _NewEventSheetState extends State<_NewEventSheet>
     );
   }
 
-  List<ActionItem> _secondAlertItems() {
-    final alertMins = _kAlertMinutes[_alert] ?? -1;
+  void _selectAlert(int index, String base) {
     final list = _allDay ? _kAlertAllDayBase : _kAlertAllBase;
-    final breakBefore = _allDay
-        ? {'Night before (9 PM)'}
-        : {'At time of event'};
-    final visible = list.where((base) {
-      final mins = _kAlertMinutes[base] ?? -1;
-      return mins == -1 || alertMins == -1 || mins < alertMins;
-    }).toList();
-    return _buildAlertActionItems(
-      visible,
-      _secondAlert,
-      (base) => setState(() => _secondAlert = base),
-      groupBreakBefore: breakBefore,
-      checkmarkColor: _resolvedCategoryColor,
-    );
+    if (base == 'None') {
+      if (_alerts.length > index) {
+        _alerts.removeRange(index, _alerts.length);
+      }
+      return;
+    }
+    while (_alerts.length <= index) {
+      _alerts.add(base);
+    }
+    _alerts[index] = base;
+
+    // A change to an earlier row may invalidate later selections. Keep the
+    // valid prefix and remove the invalid tail rather than leaving an alert
+    // that the picker can no longer select.
+    var previousMinutes = _kAlertMinutes[base] ?? -1;
+    var cursor = index + 1;
+    while (cursor < _alerts.length) {
+      final candidate = _alerts[cursor];
+      final candidateMinutes = _kAlertMinutes[candidate];
+      if (candidateMinutes == null ||
+          candidateMinutes >= previousMinutes ||
+          _alerts.sublist(0, cursor).contains(candidate)) {
+        _alerts.removeRange(cursor, _alerts.length);
+        break;
+      }
+      previousMinutes = candidateMinutes;
+      cursor++;
+    }
+    assert(AlertSequence.isValid(_alerts, _kAlertMinutes));
+    // Keep only options present in this mode's picker after a mode switch.
+    // The first row is always valid when it was selected from the same list.
+    if (_alerts.any((value) => !list.contains(value))) {
+      _alerts.removeWhere((value) => !list.contains(value));
+    }
+  }
+
+  List<int> get _visibleAlertRowIndexes {
+    if (_alert == 'None') return const [];
+    return List<int>.generate(_alerts.length, (index) => index + 1);
   }
 
   // ── Attachment rows (Card 7) ──────────────────────────────────────────────
@@ -9569,7 +9642,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     ]),
   );
 
-  // ── Alerts section (Card 6): Alert + Second Alert ─────────────────────────
+  // ── Alerts section (Card 6): Alert + optional ordered alerts ──────────────
 
   Widget _buildAlertsSection() => AnimatedBuilder(
     animation: _secondAlertCtrl,
@@ -9585,12 +9658,18 @@ class _NewEventSheetState extends State<_NewEventSheet>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _sep(),
-            _pickerRow(
-              _allDay ? 'Second Reminder' : 'Second Alert',
-              _alertDisplayLabel(_secondAlert),
-              items: _secondAlertItems(),
-            ),
+            for (final index in _visibleAlertRowIndexes) ...[
+              _sep(),
+              _pickerRow(
+                _allDay
+                    ? _alertRowLabel(index).replaceFirst('Alert', 'Reminder')
+                    : _alertRowLabel(index),
+                _alertDisplayLabel(
+                  index < _alerts.length ? _alerts[index] : 'None',
+                ),
+                items: _alertItemsFor(index),
+              ),
+            ],
           ],
         ),
       ),

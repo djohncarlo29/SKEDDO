@@ -111,6 +111,7 @@ class EventStore {
           customRepeatConfig: e.customRepeatConfig,
           alert: e.alert,
           secondAlert: e.secondAlert,
+          alerts: e.alerts,
           url: e.url,
           notes: e.notes,
           attachmentPaths: e.attachmentPaths,
@@ -235,27 +236,23 @@ class EventStore {
   }) {
     final dateText = date?.trim() ?? '';
     final endDateText = endDate?.trim() ?? '';
-    final start = dateText.isEmpty ? null : AIServices.dateParser.parse(dateText);
-    final startTime =
-        time == null ? null : AIServices.dateParser.parse(time);
-    final end =
-        endDateText.isEmpty ? null : AIServices.dateParser.parse(endDateText);
-    final parsedEndTime =
-        endTime == null ? null : AIServices.dateParser.parse(endTime);
+    final start = dateText.isEmpty
+        ? null
+        : AIServices.dateParser.parse(dateText);
+    final startTime = time == null ? null : AIServices.dateParser.parse(time);
+    final end = endDateText.isEmpty
+        ? null
+        : AIServices.dateParser.parse(endDateText);
+    final parsedEndTime = endTime == null
+        ? null
+        : AIServices.dateParser.parse(endTime);
 
     final startDate = start?.absoluteDate;
     final canonicalStartTime = startTime?.canonicalTime ?? start?.canonicalTime;
-    final combinedStart = _combineCanonicalTime(
-      startDate,
-      canonicalStartTime,
-    );
+    final combinedStart = _combineCanonicalTime(startDate, canonicalStartTime);
     final endDateValue = end?.absoluteDate ?? startDate;
-    final canonicalEndTime =
-        parsedEndTime?.canonicalTime ?? end?.canonicalTime;
-    final combinedEnd = _combineCanonicalTime(
-      endDateValue,
-      canonicalEndTime,
-    );
+    final canonicalEndTime = parsedEndTime?.canonicalTime ?? end?.canonicalTime;
+    final combinedEnd = _combineCanonicalTime(endDateValue, canonicalEndTime);
     final parsedSource = start ?? startTime ?? end ?? parsedEndTime;
     if (parsedSource == null) return null;
 
@@ -267,7 +264,8 @@ class EventStore {
       canonicalTime: canonicalStartTime,
       canonicalEndTime: canonicalEndTime,
       datePrecision: start?.datePrecision ?? parsedSource.datePrecision,
-      timePrecision: startTime?.timePrecision ??
+      timePrecision:
+          startTime?.timePrecision ??
           start?.timePrecision ??
           parsedSource.timePrecision,
       alternateDates: start?.alternateDates ?? parsedSource.alternateDates,
@@ -314,6 +312,7 @@ class EventStore {
     Map<String, dynamic>? customRepeatConfig,
     String? alert,
     String? secondAlert,
+    List<String>? alerts,
     String? reminderOption,
     String? reminderDateTime,
     String? reminderRepeat,
@@ -354,6 +353,7 @@ class EventStore {
       customRepeatConfig: customRepeatConfig,
       alert: alert,
       secondAlert: secondAlert,
+      alerts: alerts,
       reminderOption: reminderOption,
       reminderDateTime: reminderDateTime,
       reminderRepeat: reminderRepeat,
@@ -403,6 +403,7 @@ class EventStore {
             customRepeatConfig: updated.customRepeatConfig,
             alert: updated.alert,
             secondAlert: updated.secondAlert,
+            alerts: updated.alerts,
             url: updated.url,
             notes: updated.notes,
             attachmentPaths: updated.attachmentPaths,
@@ -444,6 +445,7 @@ class EventStore {
     Map<String, dynamic>? customRepeatConfig,
     String? alert,
     String? secondAlert,
+    List<String>? alerts,
   }) {
     final updated = [
       for (final e in events.value)
@@ -459,6 +461,7 @@ class EventStore {
                 customRepeatConfig: customRepeatConfig,
                 alert: alert,
                 secondAlert: secondAlert,
+                alerts: alerts,
               )
             : e,
     ];

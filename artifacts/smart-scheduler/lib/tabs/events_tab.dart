@@ -19,6 +19,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../app_theme.dart';
 import '../ai/ai_services.dart';
 import '../services/event_store.dart';
+import '../services/alert_sequence.dart';
 import '../widgets/action_panel.dart';
 import '../widgets/native_text_input.dart';
 import '../widgets/emoji_picker_sheet.dart';
@@ -4939,6 +4940,7 @@ class EventsTabState extends State<EventsTab>
       customRepeatConfig: customCfg,
       alert: updated.presetAlert ?? 'At time of event',
       secondAlert: updated.presetSecondAlert,
+      alerts: updated.presetAlerts,
     );
     // Keep the Smart Category AI parse cache consistent when the rule changes.
     // Evict the old description so a revert to the previous text gets a fresh
@@ -7470,6 +7472,10 @@ class _UserCategory {
   /// Second alert preset.
   final String? presetSecondAlert;
 
+  /// Ordered alert preset sequence. Legacy preset fields are retained as a
+  /// fallback when loading categories saved before this list was introduced.
+  final List<String>? presetAlerts;
+
   const _UserCategory({
     required this.id,
     required this.name,
@@ -7491,6 +7497,7 @@ class _UserCategory {
     this.presetCustomRepeatConfig,
     this.presetAlert,
     this.presetSecondAlert,
+    this.presetAlerts,
   });
 
   /// Returns the SVG asset path (String) when one is set, otherwise the
@@ -7518,6 +7525,7 @@ class _UserCategory {
     presetCustomRepeatConfig: presetCustomRepeatConfig,
     presetAlert: presetAlert,
     presetSecondAlert: presetSecondAlert,
+    presetAlerts: presetAlerts,
   );
 
   Map<String, dynamic> toJson() => {
@@ -7553,6 +7561,8 @@ class _UserCategory {
       'presetAlert': presetAlert,
     if (presetSecondAlert != null && presetSecondAlert != 'None')
       'presetSecondAlert': presetSecondAlert,
+    if (presetAlerts != null && presetAlerts!.isNotEmpty)
+      'presetAlerts': presetAlerts,
   };
 
   factory _UserCategory.fromJson(Map<String, dynamic> json) {
@@ -7565,6 +7575,7 @@ class _UserCategory {
         (json['id'] as String?) ??
         'usr-legacy-$name-${json['colorValue'] ?? 0}';
     final rawCrc = json['presetCustomRepeatConfig'];
+    final rawAlerts = json['presetAlerts'];
     return _UserCategory(
       id: id,
       name: name,
@@ -7592,6 +7603,9 @@ class _UserCategory {
       presetCustomRepeatConfig: rawCrc is Map<String, dynamic> ? rawCrc : null,
       presetAlert: json['presetAlert'] as String?,
       presetSecondAlert: json['presetSecondAlert'] as String?,
+      presetAlerts: rawAlerts is List
+          ? AlertSequence.compact(rawAlerts.map((value) => value?.toString()))
+          : null,
     );
   }
 }
@@ -10032,8 +10046,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   String _travelMode = 'None';
   String _repeat = 'Never';
   _CustomRepeatConfig? _savedCustomConfig;
-  String _alert = 'At time of event';
-  String _secondAlert = 'None';
+  List<String> _alerts = ['At time of event'];
+
+  String get _alert => _alerts.isEmpty ? 'None' : _alerts.first;
+
+  String get _secondAlert => _alerts.length > 1 ? _alerts[1] : 'None';
 
   // Overlay management for the mini ActionPanel that opens on picker-row tap.
   // A persistent ValueNotifier lets us reset its value on re-open without
@@ -10088,6 +10105,38 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     '2 days before': 2880,
     '1 week before': 10080,
   };
+
+  void _setAlertAt(int index, String value) {
+    if (value == 'None') {
+      if (_alerts.length > index) {
+        _alerts.removeRange(index, _alerts.length);
+      }
+      return;
+    }
+    while (_alerts.length <= index) {
+      _alerts.add(value);
+    }
+    _alerts[index] = value;
+  }
+
+  String _alertRowLabel(int index) {
+    const names = [
+      'First',
+      'Second',
+      'Third',
+      'Fourth',
+      'Fifth',
+      'Sixth',
+      'Seventh',
+      'Eighth',
+      'Ninth',
+      'Tenth',
+      'Eleventh',
+      'Twelfth',
+    ];
+    final name = index < names.length ? names[index] : '${index + 1}th';
+    return '$name Alert';
+  }
 
   // ── selection state for color + icon pickers ─────────────────────────────
   late Color _selectedColor =
@@ -10190,8 +10239,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       _travelMode = init.presetTravelMode ?? 'None';
       _repeat = init.presetRepeat ?? 'Never';
       _endRepeat = init.presetRepeatEndType ?? 'Never';
-      _alert = init.presetAlert ?? 'At time of event';
-      _secondAlert = init.presetSecondAlert ?? 'None';
+      _alerts = AlertSequence.compact(
+        init.presetAlerts ?? [init.presetAlert, init.presetSecondAlert],
+      ).toList();
+      if (_alerts.isEmpty) _alerts = ['At time of event'];
       // Reconstruct custom repeat config if present.
       final crc = init.presetCustomRepeatConfig;
       if (crc != null) {
@@ -10518,64 +10569,72 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     '1 week before',
   ];
 
-  List<ActionItem> _alertItems() => _buildAlertActionItems(
-    _kAlertAllBase,
-    _alert,
-    (base) {
-      // When alert moves to a tighter time, auto-reset second alert if it
-      // would now equal or precede the primary (second must be STRICTLY closer).
-      final alertMins = _kAlertMinutes[base] ?? -1;
-      final secondMins = _kAlertMinutes[_secondAlert] ?? -1;
-      setState(() {
-        _alert = base;
-        if (base == 'None') {
-          // Alert dismissed — reset Second Alert to its default so it starts
-          // fresh whenever the card becomes visible again.
-          _secondAlert = 'None';
-        } else if (alertMins != -1 &&
-            secondMins != -1 &&
-            secondMins >= alertMins) {
-          // Auto-adjust Second Alert to the largest option still strictly
-          // closer to the event than the new Alert (not None if avoidable).
-          String best = 'None';
-          int bestMins = -1;
-          for (final entry in _kAlertMinutes.entries) {
-            final m = entry.value;
-            if (m >= 0 && m < alertMins && m > bestMins) {
-              bestMins = m;
-              best = entry.key;
-            }
-          }
-          _secondAlert = best;
-        }
-      });
-      // Show / hide Second Alert card based on whether Alert is 'None'.
-      if (base == 'None') {
-        _secondAlertCtrl.animateTo(0.0, curve: Curves.easeIn);
-      } else {
-        _secondAlertCtrl.animateTo(1.0, curve: Curves.easeOut);
-      }
-    },
-    groupBreakBefore: {'At time of event'},
-    checkmarkColor: _resolvedSelectedColor,
-  );
+  List<ActionItem> _alertItems() => _alertItemsFor(0);
 
-  // Second Alert: only options STRICTLY CLOSER to the event than _alert.
-  // The same option as Alert is excluded ("it shouldn't be on Second Alert").
-  // 'None' (−1) is always included. When Alert = 'None', no restriction.
-  List<ActionItem> _secondAlertItems() {
-    final alertMins = _kAlertMinutes[_alert] ?? -1;
+  List<ActionItem> _alertItemsFor(int index) {
+    final current = index < _alerts.length ? _alerts[index] : 'None';
+    final previousMinutes = index == 0
+        ? -1
+        : _kAlertMinutes[_alerts[index - 1]] ?? -1;
     final visible = _kAlertAllBase.where((base) {
-      final mins = _kAlertMinutes[base] ?? -1;
-      return mins == -1 || alertMins == -1 || mins < alertMins;
+      final minutes = _kAlertMinutes[base] ?? -1;
+      return index == 0 ||
+          base == 'None' ||
+          previousMinutes == -1 ||
+          minutes < previousMinutes;
     }).toList();
     return _buildAlertActionItems(
       visible,
-      _secondAlert,
-      (base) => setState(() => _secondAlert = base),
+      current,
+      (base) {
+        setState(() => _selectAlert(index, base));
+        if (index == 0) {
+          _secondAlertCtrl.animateTo(
+            base == 'None' ? 0.0 : 1.0,
+            curve: base == 'None' ? Curves.easeIn : Curves.easeOut,
+          );
+        }
+      },
       groupBreakBefore: {'At time of event'},
       checkmarkColor: _resolvedSelectedColor,
     );
+  }
+
+  void _selectAlert(int index, String base) {
+    if (base == 'None') {
+      if (_alerts.length > index) {
+        _alerts.removeRange(index, _alerts.length);
+      }
+      return;
+    }
+    while (_alerts.length <= index) {
+      _alerts.add(base);
+    }
+    _alerts[index] = base;
+
+    // A change to an earlier row may invalidate later selections. Keep the
+    // valid prefix and remove the invalid tail rather than leaving an alert
+    // that the picker can no longer select.
+    var previousMinutes = _kAlertMinutes[base] ?? -1;
+    var cursor = index + 1;
+    while (cursor < _alerts.length) {
+      final candidate = _alerts[cursor];
+      final candidateMinutes = _kAlertMinutes[candidate];
+      if (candidateMinutes == null ||
+          candidateMinutes >= previousMinutes ||
+          _alerts.sublist(0, cursor).contains(candidate)) {
+        _alerts.removeRange(cursor, _alerts.length);
+        break;
+      }
+      previousMinutes = candidateMinutes;
+      cursor++;
+    }
+    assert(AlertSequence.isValid(_alerts, _kAlertMinutes));
+  }
+
+  List<int> get _visibleAlertRowIndexes {
+    if (_alert == 'None') return const [];
+    return List<int>.generate(_alerts.length, (index) => index + 1);
   }
 
   void _save() {
@@ -10661,6 +10720,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         presetCustomRepeatConfig: presetCustomRepeatCfg,
         presetAlert: _alert == 'None' ? null : _alert,
         presetSecondAlert: _secondAlert == 'None' ? null : _secondAlert,
+        presetAlerts: AlertSequence.compact(_alerts),
       ),
     );
     Navigator.of(context).pop();
@@ -12259,12 +12319,16 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _sep(),
-            _pickerRow(
-              'Second Alert',
-              _alertDisplayLabel(_secondAlert),
-              items: _secondAlertItems(),
-            ),
+            for (final index in _visibleAlertRowIndexes) ...[
+              _sep(),
+              _pickerRow(
+                _alertRowLabel(index),
+                _alertDisplayLabel(
+                  index < _alerts.length ? _alerts[index] : 'None',
+                ),
+                items: _alertItemsFor(index),
+              ),
+            ],
           ],
         ),
       ),
@@ -13310,15 +13374,26 @@ class _EditDcvSectionsSheet extends StatefulWidget {
   State<_EditDcvSectionsSheet> createState() => _EditDcvSectionsSheetState();
 }
 
-class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
+class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
+    with TickerProviderStateMixin {
   late List<int> _sectionOrder;
   final Set<int> _deletingSections = <int>{};
   final Map<int, GlobalKey> _rowKeys = <int, GlobalKey>{};
+  final GlobalKey _scrollViewportKey = GlobalKey();
+  final ScrollController _scrollController = ScrollController();
   int? _draggingOriginalIndex;
   int? _dragGapIndex;
+  int? _dragEndNewIndex;
+  Offset? _lastDragGlobalPosition;
+  Duration? _lastDragAutoScrollElapsed;
+  Ticker? _dragAutoScrollTicker;
+  bool _dragAutoScrollTicking = false;
+  bool _didDragAutoScroll = false;
 
   static const double _kHeaderEdge = kModalSheetButtonEdgeGap;
   static const double _kHeaderButtonSize = kModalSheetButtonDiameter;
+  static const double _kDragAutoScrollEdgeExtent = 88.0;
+  static const double _kDragAutoScrollMaxVelocity = 900.0;
 
   @override
   void initState() {
@@ -13328,16 +13403,26 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
 
   @override
   void dispose() {
+    _stopDragAutoScroll();
+    _dragAutoScrollTicker?.dispose();
+    _dragAutoScrollTicker = null;
+    _scrollController.dispose();
     super.dispose();
   }
 
   void _reorder(int oldIndex, int newIndex) {
+    final autoScrollNewIndex = _dragEndNewIndex;
+    _dragEndNewIndex = null;
     setState(() {
+      if (_didDragAutoScroll && autoScrollNewIndex != null) {
+        newIndex = autoScrollNewIndex;
+      }
       if (newIndex > oldIndex) newIndex -= 1;
       final moved = _sectionOrder.removeAt(oldIndex);
       _sectionOrder.insert(newIndex, moved);
       _draggingOriginalIndex = null;
       _dragGapIndex = null;
+      _didDragAutoScroll = false;
     });
   }
 
@@ -13377,6 +13462,100 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
     }
     if (_dragGapIndex != gapIndex && mounted) {
       setState(() => _dragGapIndex = gapIndex);
+    }
+  }
+
+  RenderBox? _dragScrollViewportBox() {
+    final keyedObject = _scrollViewportKey.currentContext?.findRenderObject();
+    if (keyedObject is RenderBox &&
+        keyedObject.attached &&
+        keyedObject.hasSize) {
+      return keyedObject;
+    }
+    final fallbackObject = context.findRenderObject();
+    if (fallbackObject is RenderBox &&
+        fallbackObject.attached &&
+        fallbackObject.hasSize) {
+      return fallbackObject;
+    }
+    return null;
+  }
+
+  void _recordDragPointer(Offset globalPosition) {
+    _lastDragGlobalPosition = globalPosition;
+  }
+
+  void _startDragAutoScroll() {
+    _lastDragAutoScrollElapsed = null;
+    _dragAutoScrollTicker ??= createTicker(_tickDragAutoScroll);
+    if (!(_dragAutoScrollTicker?.isActive ?? false)) {
+      _dragAutoScrollTicker!.start();
+    }
+  }
+
+  void _stopDragAutoScroll() {
+    _dragAutoScrollTicker?.stop();
+    _lastDragGlobalPosition = null;
+    _lastDragAutoScrollElapsed = null;
+    _dragAutoScrollTicking = false;
+  }
+
+  void _tickDragAutoScroll(Duration elapsed) {
+    if (!mounted || _dragAutoScrollTicking || _draggingOriginalIndex == null) {
+      return;
+    }
+    final pointer = _lastDragGlobalPosition;
+    final viewport = _dragScrollViewportBox();
+    if (pointer == null || viewport == null || !_scrollController.hasClients) {
+      return;
+    }
+
+    final previousElapsed = _lastDragAutoScrollElapsed;
+    _lastDragAutoScrollElapsed = elapsed;
+    if (previousElapsed == null) return;
+
+    final elapsedMicros = (elapsed - previousElapsed).inMicroseconds.clamp(
+      0,
+      33333,
+    );
+    final seconds = elapsedMicros / Duration.microsecondsPerSecond;
+    if (seconds <= 0) return;
+
+    final viewportTop = viewport.localToGlobal(Offset.zero).dy;
+    final viewportHeight = viewport.size.height;
+    final pointerY = pointer.dy - viewportTop;
+    final edge = _kDragAutoScrollEdgeExtent;
+
+    double signedProximity = 0.0;
+    if (pointerY < edge) {
+      final proximity = (1.0 - pointerY / edge).clamp(0.0, 1.0);
+      signedProximity = -proximity * proximity;
+    } else if (pointerY > viewportHeight - edge) {
+      final proximity = (1.0 - (viewportHeight - pointerY) / edge).clamp(
+        0.0,
+        1.0,
+      );
+      signedProximity = proximity * proximity;
+    }
+    if (signedProximity == 0.0) return;
+
+    final position = _scrollController.position;
+    final currentOffset = position.pixels;
+    final requestedDelta =
+        signedProximity * _kDragAutoScrollMaxVelocity * seconds;
+    final targetOffset = (currentOffset + requestedDelta).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if ((targetOffset - currentOffset).abs() < 0.01) return;
+
+    _dragAutoScrollTicking = true;
+    try {
+      _scrollController.jumpTo(targetOffset);
+      _didDragAutoScroll = true;
+      _updateDragGap(pointer.dy);
+    } finally {
+      _dragAutoScrollTicking = false;
     }
   }
 
@@ -13564,6 +13743,9 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
             const SizedBox(height: 12),
             Expanded(
               child: ListView(
+                key: _scrollViewportKey,
+                controller: _scrollController,
+                primary: false,
                 padding: EdgeInsets.fromLTRB(
                   16,
                   8,
@@ -13579,22 +13761,52 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet> {
                       shadows: resolveThemeShadows(kCardShadow, context),
                     ),
                     child: Listener(
-                      onPointerMove: (details) =>
-                          _updateDragGap(details.position.dy),
+                      onPointerDown: (details) =>
+                          _recordDragPointer(details.position),
+                      onPointerMove: (details) {
+                        _recordDragPointer(details.position);
+                        _updateDragGap(details.position.dy);
+                      },
                       child: ReorderableListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         buildDefaultDragHandles: false,
                         itemCount: _sectionOrder.length,
                         onReorder: _reorder,
-                        onReorderStart: (rowIndex) => setState(() {
-                          _draggingOriginalIndex = _sectionOrder[rowIndex];
-                          _dragGapIndex = rowIndex;
-                        }),
-                        onReorderEnd: (_) => setState(() {
-                          _draggingOriginalIndex = null;
-                          _dragGapIndex = null;
-                        }),
+                        onReorderStart: (rowIndex) {
+                          final originalIndex = _sectionOrder[rowIndex];
+                          setState(() {
+                            _draggingOriginalIndex = originalIndex;
+                            _dragGapIndex = rowIndex;
+                            _dragEndNewIndex = null;
+                            _didDragAutoScroll = false;
+                          });
+                          final pointer = _lastDragGlobalPosition;
+                          if (pointer != null) {
+                            _startDragAutoScroll();
+                          }
+                        },
+                        onReorderEnd: (oldIndex) {
+                          final draggingIndex = _draggingOriginalIndex;
+                          final gapIndex = _dragGapIndex;
+                          if (_didDragAutoScroll &&
+                              draggingIndex != null &&
+                              gapIndex != null) {
+                            final currentIndex = _sectionOrder.indexOf(
+                              draggingIndex,
+                            );
+                            if (currentIndex >= 0) {
+                              _dragEndNewIndex = gapIndex <= currentIndex
+                                  ? gapIndex
+                                  : gapIndex + 1;
+                            }
+                          }
+                          _stopDragAutoScroll();
+                          setState(() {
+                            _draggingOriginalIndex = null;
+                            _dragGapIndex = null;
+                          });
+                        },
                         proxyDecorator: _sectionReorderProxy,
                         itemBuilder: (context, rowIndex) {
                           final originalIndex = _sectionOrder[rowIndex];

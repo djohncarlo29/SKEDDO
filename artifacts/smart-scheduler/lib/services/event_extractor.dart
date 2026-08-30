@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'offline_analysis.dart' as offline;
+import 'alert_sequence.dart';
 
 // The attachment UI consumes this small presentation model. Keep the richer
 // offline-analysis model inside the analysis service so the sheet remains
@@ -24,6 +25,7 @@ class ExtractedEvent {
   final Map<String, dynamic>? customRepeatConfig;
   final String? alert;
   final String? secondAlert;
+  final List<String>? alerts;
   final String? reminderOption;
   final String? reminderDateTime;
   final String? reminderRepeat;
@@ -63,6 +65,7 @@ class ExtractedEvent {
     this.customRepeatConfig,
     this.alert,
     this.secondAlert,
+    this.alerts,
     this.reminderOption,
     this.reminderDateTime,
     this.reminderRepeat,
@@ -84,6 +87,9 @@ class ExtractedEvent {
     this.warnings = const [],
     this.uid,
   });
+
+  List<String> get alertSequence =>
+      AlertSequence.compact(alerts ?? [alert, secondAlert]);
 
   bool get needsReview => interpretationConfidence < .7;
 }
@@ -183,6 +189,7 @@ class EventExtractor {
         customRepeatConfig: event.customRepeatConfig,
         alert: event.alert,
         secondAlert: event.secondAlert,
+        alerts: event.alerts,
         reminderOption: event.reminderOption,
         reminderDateTime: event.reminderDateTime,
         reminderRepeat: event.reminderRepeat,

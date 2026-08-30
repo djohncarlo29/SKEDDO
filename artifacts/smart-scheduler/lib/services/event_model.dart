@@ -1,4 +1,5 @@
 import '../ai/parsed_date.dart';
+import 'alert_sequence.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ScheduledEvent — the core event data class.
@@ -66,6 +67,18 @@ class ScheduledEvent {
   /// Second alert rule, e.g. "None", "30 minutes before travel time".
   final String? secondAlert;
 
+  /// Ordered alert rules. The first item fires furthest from the event and
+  /// each following item is strictly closer. Empty means no alerts.
+  ///
+  /// This is nullable only so records written before variable-length alerts
+  /// can be distinguished and migrated from [alert]/[secondAlert].
+  final List<String>? alerts;
+
+  /// Effective ordered alerts, including a backwards-compatible read of the
+  /// legacy two-field representation.
+  List<String> get alertSequence =>
+      AlertSequence.compact(alerts ?? [alert, secondAlert]);
+
   /// URL attached to the event (saved as plain text; UI renders as hyperlink).
   final String? url;
 
@@ -129,6 +142,7 @@ class ScheduledEvent {
     this.customRepeatConfig,
     this.alert,
     this.secondAlert,
+    this.alerts,
     this.url,
     this.notes,
     this.attachmentPaths,
@@ -156,6 +170,7 @@ class ScheduledEvent {
     required Map<String, dynamic>? customRepeatConfig,
     required String? alert,
     required String? secondAlert,
+    required List<String>? alerts,
   }) => ScheduledEvent(
     id: id,
     title: title,
@@ -175,6 +190,7 @@ class ScheduledEvent {
     customRepeatConfig: customRepeatConfig,
     alert: alert,
     secondAlert: secondAlert,
+    alerts: alerts,
     url: url,
     notes: notes,
     attachmentPaths: attachmentPaths,
@@ -212,6 +228,7 @@ class ScheduledEvent {
     customRepeatConfig: customRepeatConfig,
     alert: alert,
     secondAlert: secondAlert,
+    alerts: alerts,
     url: url,
     notes: notes,
     attachmentPaths: attachmentPaths,
@@ -245,6 +262,7 @@ class ScheduledEvent {
     customRepeatConfig: customRepeatConfig,
     alert: alert,
     secondAlert: secondAlert,
+    alerts: alerts,
     url: url,
     notes: notes,
     attachmentPaths: attachmentPaths,
@@ -278,6 +296,7 @@ class ScheduledEvent {
     customRepeatConfig: customRepeatConfig,
     alert: alert,
     secondAlert: secondAlert,
+    alerts: alerts,
     url: url,
     notes: notes,
     attachmentPaths: attachmentPaths,
@@ -315,6 +334,7 @@ class ScheduledEvent {
     if (alert != null && alert != 'None') 'alert': alert,
     if (secondAlert != null && secondAlert != 'None')
       'secondAlert': secondAlert,
+    if (alertSequence.isNotEmpty) 'alerts': alertSequence,
     if (reminderOption != null && reminderOption != 'Never')
       'reminderOption': reminderOption,
     if (reminderDateTime != null) 'reminderDateTime': reminderDateTime,
@@ -337,6 +357,7 @@ class ScheduledEvent {
     final rawAttachments = j['attachmentPaths'];
     final rawCustomConfig = j['customRepeatConfig'];
     final rawReminderCustomConfig = j['reminderCustomRepeatConfig'];
+    final rawAlerts = j['alerts'];
     return ScheduledEvent(
       id: (j['id'] as String?) ?? '',
       title: (j['title'] as String?) ?? '',
@@ -358,6 +379,9 @@ class ScheduledEvent {
           : null,
       alert: j['alert'] as String?,
       secondAlert: j['secondAlert'] as String?,
+      alerts: rawAlerts is List
+          ? AlertSequence.compact(rawAlerts.map((value) => value?.toString()))
+          : null,
       reminderOption: j['reminderOption'] as String?,
       reminderDateTime: j['reminderDateTime'] as String?,
       reminderRepeat: j['reminderRepeat'] as String?,

@@ -487,6 +487,7 @@ class RecurrenceExpander {
       customRepeatConfig: base.customRepeatConfig,
       alert: base.alert,
       secondAlert: base.secondAlert,
+      alerts: base.alerts,
       url: base.url,
       notes: base.notes,
       attachmentPaths: base.attachmentPaths,

@@ -194,6 +194,7 @@ class ExtractedEvent {
   final Map<String, dynamic>? customRepeatConfig;
   final String? alert;
   final String? secondAlert;
+  final List<String>? alerts;
   final String? reminderOption;
   final String? reminderDateTime;
   final String? reminderRepeat;
@@ -241,6 +242,7 @@ class ExtractedEvent {
     this.customRepeatConfig,
     this.alert,
     this.secondAlert,
+    this.alerts,
     this.reminderOption,
     this.reminderDateTime,
     this.reminderRepeat,

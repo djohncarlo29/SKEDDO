@@ -13,7 +13,7 @@ Every field in the New Event sheet is saved to `ScheduledEvent` on checkmark tap
 - `travelTime`, `travelMode` — card 3 (saved as strings, e.g. "1 hour", "Car")
 - `repeat`, `repeatEndType`, `repeatEndDate`, `customRepeatConfig` — card 4
 - `categoryId` — card 5 (standard category ID)
-- `alert`, `secondAlert` — card 6
+- `alerts` — ordered card 6 sequence; `alert` and `secondAlert` remain legacy compatibility fields
 - `url`, `notes`, `attachmentNames` — card 7 (attachment bytes NOT in SharedPreferences)
 - `parsedDate` — AI-populated after save
 
@@ -37,15 +37,17 @@ Unscheduled toggle → `date`/`time`/`endDate`/`endTime` all null → event natu
 ## Alert timing logic
 - Travel Time = None: alerts are relative to event start time
 - Travel Time set: alert options shift to be relative to travel start (= event start − travel duration)
-- Second Alert must fire AFTER first Alert (option list is constrained)
+- Each subsequent alert must fire strictly AFTER the preceding alert; every row is constrained to valid closer options
 - All-day events: alerts are calendar-anchored ("Night before 9 PM", "On day of event 9 AM")
-- Saved as plain strings; actual alarm datetime is computed at scheduling time, not stored
+- Saved as an `alerts` JSON array of plain strings; actual alarm datetime is computed at scheduling time, not stored
+- Old records reconstruct the sequence from `alert` and `secondAlert`; selecting `None` truncates the list and all later rows
 
 ## Category preset propagation rules
 - Selecting any named category in the Event sheet calls `_applyPreset()` → fills all preset fields from the category, fallback to system defaults for unset fields.
 - Selecting **Uncategorized** also calls `_applyPreset()` with no preset fields → all fallbacks apply, so alert = "At time of event" (never silent).
 - When a user **edits** an existing category, `_updateCategory()` calls `EventStore.instance.updateCategoryPresets()` which walks all events with that `categoryId` and calls `copyWithPreset()` on each, then persists.
 - `ScheduledEvent.copyWithPreset()` replaces only the 10 preset fields; title, dates, url, notes, attachments, parsedDate are preserved.
+- Category presets persist and restore the same variable-length `alerts` sequence, including propagation to existing events.
 
 ## Normalisation
 `_categoryId == 'uncategorized'` → normalised to `'sys-uncategorized'` on save.
