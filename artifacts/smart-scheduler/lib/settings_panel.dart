@@ -9,6 +9,7 @@ import 'widgets/app_switch.dart';
 import 'widgets/accent_tinted_image.dart';
 import 'widgets/fixed_size_icon.dart';
 import 'widgets/floating_tab_pill.dart';
+import 'widgets/header_title_scroller.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SettingsPanel — full-screen slide-in settings surface with sub-screen nav.
@@ -743,15 +744,19 @@ class _SettingsHeader extends StatelessWidget {
                     ),
                     child: Align(
                       alignment: Alignment.bottomLeft,
-                      child: Text(
-                        title,
-                        style: TextStyle(
-                          fontFamily: kSFProText,
-                          fontSize: 34,
-                          fontWeight: FontWeight.bold,
-                          fontStyle: FontStyle.normal,
-                          color: primaryLabel,
-                          letterSpacing: -1.2,
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: HeaderTitleScroller(
+                          title: title,
+                          fadeColor: cardColor,
+                          style: TextStyle(
+                            fontFamily: kSFProText,
+                            fontSize: 34,
+                            fontWeight: FontWeight.bold,
+                            fontStyle: FontStyle.normal,
+                            color: primaryLabel,
+                            letterSpacing: -1.2,
+                          ),
                         ),
                       ),
                     ),

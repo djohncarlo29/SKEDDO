@@ -22,6 +22,7 @@ import 'widgets/action_panel.dart';
 import 'widgets/accent_tinted_image.dart';
 import 'widgets/events_header_icon.dart';
 import 'widgets/floating_tab_pill.dart';
+import 'widgets/header_title_scroller.dart';
 import 'widgets/native_text_input.dart';
 import 'widgets/search_bar_widget.dart';
 import 'widgets/view_mode_icons.dart';
@@ -1727,15 +1728,18 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Title
-          Text(
-            title,
-            style: TextStyle(
-              fontFamily: kSFProText,
-              fontSize: 34,
-              fontWeight: FontWeight.bold,
-              fontStyle: FontStyle.normal,
-              color: isToday ? resolveAccentColor(context) : primaryLabel,
-              letterSpacing: -1.2,
+          Expanded(
+            child: HeaderTitleScroller(
+              title: title,
+              fadeColor: resolveThemeColor(kCardColor, context),
+              style: TextStyle(
+                fontFamily: kSFProText,
+                fontSize: 34,
+                fontWeight: FontWeight.bold,
+                fontStyle: FontStyle.normal,
+                color: isToday ? resolveAccentColor(context) : primaryLabel,
+                letterSpacing: -1.2,
+              ),
             ),
           ),
           // ↕ nav chevron — +4 px gap from title (visual); hit area extends
@@ -2495,39 +2499,53 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                               // the title and the content change at t=0 with
                                                               // no overlap, no crossfade, no flicker.
                                                               child: isDCVVisual
-                                                                  ? Text(
-                                                                      _dcvCategory ??
-                                                                          '',
-                                                                      style: TextStyle(
-                                                                        fontFamily:
-                                                                            kSFProText,
-                                                                        fontSize:
-                                                                            34,
-                                                                        fontWeight:
-                                                                            FontWeight.bold,
-                                                                        fontStyle:
-                                                                            FontStyle.normal,
-                                                                        color:
-                                                                            primaryLabel,
-                                                                        letterSpacing:
-                                                                            -1.2,
+                                                                  ? SizedBox(
+                                                                      width: double
+                                                                          .infinity,
+                                                                      child: HeaderTitleScroller(
+                                                                        title:
+                                                                            _dcvCategory ??
+                                                                            '',
+                                                                        fadeColor:
+                                                                            headerColor,
+                                                                        style: TextStyle(
+                                                                          fontFamily:
+                                                                              kSFProText,
+                                                                          fontSize:
+                                                                              34,
+                                                                          fontWeight:
+                                                                              FontWeight.bold,
+                                                                          fontStyle:
+                                                                              FontStyle.normal,
+                                                                          color:
+                                                                              primaryLabel,
+                                                                          letterSpacing:
+                                                                              -1.2,
+                                                                        ),
                                                                       ),
                                                                     )
-                                                                  : Text(
-                                                                      _nonDCVHeaderTitle,
-                                                                      style: TextStyle(
-                                                                        fontFamily:
-                                                                            kSFProText,
-                                                                        fontSize:
-                                                                            34,
-                                                                        fontWeight:
-                                                                            FontWeight.bold,
-                                                                        fontStyle:
-                                                                            FontStyle.normal,
-                                                                        color:
-                                                                            primaryLabel,
-                                                                        letterSpacing:
-                                                                            -1.2,
+                                                                  : SizedBox(
+                                                                      width: double
+                                                                          .infinity,
+                                                                      child: HeaderTitleScroller(
+                                                                        title:
+                                                                            _nonDCVHeaderTitle,
+                                                                        fadeColor:
+                                                                            headerColor,
+                                                                        style: TextStyle(
+                                                                          fontFamily:
+                                                                              kSFProText,
+                                                                          fontSize:
+                                                                              34,
+                                                                          fontWeight:
+                                                                              FontWeight.bold,
+                                                                          fontStyle:
+                                                                              FontStyle.normal,
+                                                                          color:
+                                                                              primaryLabel,
+                                                                          letterSpacing:
+                                                                              -1.2,
+                                                                        ),
                                                                       ),
                                                                     ),
                                                             ),
