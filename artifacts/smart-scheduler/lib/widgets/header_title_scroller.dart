@@ -221,9 +221,10 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                       controller: _scrollController,
                       primary: false,
                       scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(
-                        parent: AlwaysScrollableScrollPhysics(),
-                      ),
+                      // A title that fits completely is not scrollable, so it
+                      // cannot rubberband or display an edge fade. Overflowing
+                      // titles retain native bouncing at their real edges.
+                      physics: const BouncingScrollPhysics(),
                       padding: EdgeInsets.zero,
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
