@@ -76,26 +76,6 @@ class FloatingTabPill extends StatelessWidget {
               ),
             ),
           ),
-          // Paint the rim into the live backdrop before the glass bar captures
-          // it. This keeps the 0.5px outline visible around the bar while
-          // allowing the lifted active pill to refract and bend the section
-          // underneath it instead of leaving a crisp hairline on top.
-          Positioned(
-            left: kFloatingTabBarHorizontalMargin,
-            right: kFloatingTabBarHorizontalMargin,
-            bottom: bottomOffset,
-            height: kFloatingTabBarHeight,
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: const ShapeDecoration(
-                  shape: BoundedSquircleStadiumBorder(
-                    radius: kSquircleStadiumRadius,
-                    side: BorderSide(color: Color(0x26FFFFFF), width: 0.5),
-                  ),
-                ),
-              ),
-            ),
-          ),
           // The package adds MediaQuery.padding.bottom internally on its
           // Impeller path. Remove that implicit inset and pass the complete
           // shared offset explicitly, otherwise the glass capsule is lifted
@@ -290,26 +270,6 @@ class _FloatingTabBarGlassPreviewState
                             child: SizedBox(width: barWidth, height: 50),
                           ),
                         ),
-                        // Keep the preview's rim in the glass backdrop so
-                        // the active lens path, when enabled later, can
-                        // refract it rather than painting over it.
-                        IgnorePointer(
-                          child: SizedBox(
-                            width: barWidth,
-                            height: 50,
-                            child: DecoratedBox(
-                              decoration: const ShapeDecoration(
-                                shape: BoundedSquircleStadiumBorder(
-                                  radius: kSquircleStadiumRadius,
-                                  side: BorderSide(
-                                    color: Color(0x26FFFFFF),
-                                    width: 0.5,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
                         // The Settings preview is a visual sample, not a second
                         // navigation control. Ignore the tab bar's own hit
                         // testing so taps cannot make a selection indicator
@@ -403,7 +363,11 @@ LiquidGlassStyle _floatingTabBarStyle(BuildContext context) {
     ),
     shape: const LiquidGlassShape.squircle(
       cornerRadius: kSquircleStadiumRadius,
-      borderWidth: 0.45,
+      // Keep the 0.5px hairline inside the capsule lens. The active lifted
+      // pill captures this optical rim as part of the bar, so its smaller
+      // moving envelope can refract it instead of leaving a fixed sibling
+      // outline behind the glass.
+      borderWidth: 0.5,
       lightIntensity: 0.46,
       lightDirection: 62,
       borderType: OpticalBorder(
