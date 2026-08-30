@@ -109,6 +109,7 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
   // the scroll physics: even a short title should accept the native
   // rubberband gesture when the user pulls it.
   bool _canScroll = false;
+  bool _resettingTitle = false;
   bool _showLeadingFade = false;
   bool _showTrailingFade = false;
 
@@ -127,6 +128,15 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
       // titles arriving through the tab/DCV and Settings navigation animations.
       // Clear the old title's edge state immediately; otherwise the previous
       // title's fade can paint for one frame before the post-layout reset.
+      _resettingTitle = true;
+      _canScroll = false;
+      // Reset the actual scroll offset synchronously as well. Waiting for the
+      // post-layout callback lets a newly mounted short title inherit the old
+      // screen's offset and appear clipped before its state is corrected.
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
+      _resettingTitle = false;
       if (_showLeadingFade || _showTrailingFade) {
         _showLeadingFade = false;
         _showTrailingFade = false;
@@ -156,7 +166,7 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
   }
 
   void _updateFades() {
-    if (!mounted || !_scrollController.hasClients) return;
+    if (!mounted || _resettingTitle || !_scrollController.hasClients) return;
     _syncScrollEdgeFades(_scrollController.position);
   }
 
@@ -238,68 +248,85 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
             child: ClipRect(
               child: NotificationListener<ScrollMetricsNotification>(
                 onNotification: _handleMetricsNotification,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Align(
-                      alignment: Alignment.bottomLeft,
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: SingleChildScrollView(
-                          controller: _scrollController,
-                          primary: false,
-                          scrollDirection: Axis.horizontal,
-                          // Headers always accept the native rubberband gesture,
-                          // including titles that fit completely.  _canScroll
-                          // remains only an overflow/fade decision; it must not
-                          // disable the gesture for short titles.
-                          physics: const BouncingScrollPhysics(
-                            parent: AlwaysScrollableScrollPhysics(),
-                          ),
-                          padding: EdgeInsets.zero,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Text(
-                                widget.title,
-                                maxLines: 1,
-                                softWrap: false,
-                                overflow: TextOverflow.visible,
-                                // Large Header titles are intentionally fixed-height. The
-                                // rest of the app continues to follow the bounded
-                                // header scale above instead of the ambient scaler.
-                                textScaler: TextScaler.noScaling,
-                                style: effectiveStyle,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Scroll metrics arrive after layout. Preflight the text
+                    // width so an overflowing title has its initial trailing
+                    // fade in the very first painted frame.
+                    final overflowBeforeLayout =
+                        _textOverflowsViewport(effectiveStyle, constraints.maxWidth);
+                    final initialTrailingFade =
+                        !_canScroll &&
+                        overflowBeforeLayout &&
+                        widget.showTrailingFade &&
+                        (!_scrollController.hasClients ||
+                            _scrollController.position.pixels <= 1.0);
+
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Align(
+                          alignment: Alignment.bottomLeft,
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: SingleChildScrollView(
+                              controller: _scrollController,
+                              primary: false,
+                              scrollDirection: Axis.horizontal,
+                              // Headers always accept the native rubberband gesture,
+                              // including titles that fit completely.  _canScroll
+                              // remains only an overflow/fade decision; it must not
+                              // disable the gesture for short titles.
+                              physics: const BouncingScrollPhysics(
+                                parent: AlwaysScrollableScrollPhysics(),
                               ),
-                              if (widget.trailing != null) ...[
-                                SizedBox(width: widget.trailingGap),
-                                widget.trailing!,
-                              ],
-                            ],
+                              padding: EdgeInsets.zero,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    widget.title,
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    overflow: TextOverflow.visible,
+                                    // Large Header titles are intentionally fixed-height. The
+                                    // rest of the app continues to follow the bounded
+                                    // header scale above instead of the ambient scaler.
+                                    textScaler: TextScaler.noScaling,
+                                    style: effectiveStyle,
+                                  ),
+                                  if (widget.trailing != null) ...[
+                                    SizedBox(width: widget.trailingGap),
+                                    widget.trailing!,
+                                  ],
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    Positioned(
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      child: _buildFade(
-                        visible: _showLeadingFade,
-                        opaqueAtStart: true,
-                      ),
-                    ),
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      child: _buildFade(
-                        visible: _showTrailingFade,
-                        opaqueAtStart: false,
-                      ),
-                    ),
-                  ],
+                        Positioned(
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          child: _buildFade(
+                            visible: _showLeadingFade,
+                            opaqueAtStart: true,
+                          ),
+                        ),
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          child: _buildFade(
+                            visible:
+                                _showTrailingFade || initialTrailingFade,
+                            opaqueAtStart: false,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -307,5 +334,16 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
         );
       },
     );
+  }
+
+  bool _textOverflowsViewport(TextStyle style, double viewportWidth) {
+    if (!viewportWidth.isFinite || viewportWidth <= 0) return false;
+    final painter = TextPainter(
+      text: TextSpan(text: widget.title, style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+      textScaler: TextScaler.noScaling,
+    )..layout();
+    return painter.width > viewportWidth + 1.0;
   }
 }
