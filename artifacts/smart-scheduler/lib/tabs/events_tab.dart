@@ -10764,12 +10764,14 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   // Mirrors _CategoryTile._buildIconContent, scaled up 2x (32px tile circle
   // → 64px sheet circle) including the day-number overlay for the four
   // calendar-type tiles (Today/Tomorrow/This Week/Next Week).
-  Widget _smartPreviewIcon(_TileData data) {
+  Widget _smartPreviewIcon(_TileData data, {required double circleSize}) {
+    final scale = circleSize / 64;
+    final iconSize = 38 * scale;
     const white = CupertinoColors.white;
     final icon = data.isCalendar
         ? SizedBox(
-            width: 38,
-            height: 38,
+            width: iconSize,
+            height: iconSize,
             child: SvgPicture.asset(
               'assets/icons/calendar_frame.svg',
               colorFilter: const ColorFilter.mode(
@@ -10779,8 +10781,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             ),
           )
         : (data.icon! == SFIcons.sf_music_note
-              ? _BeamedNoteIcon(size: 38, color: white)
-              : Icon(data.icon!, color: white, size: 38));
+              ? _BeamedNoteIcon(size: iconSize, color: white)
+              : Icon(data.icon!, color: white, size: iconSize));
 
     if (data.day == null) return icon;
 
@@ -10790,7 +10792,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       children: [
         Center(child: icon),
         Positioned(
-          top: 28,
+          top: 28 * scale,
           left: 0,
           right: 0,
           child: Center(
@@ -10803,13 +10805,14 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 style: TextStyle(
                   inherit: false,
                   color: Color(0xFFFFFFFF),
-                  fontSize: 18,
+                  fontSize: 18 * scale,
                   fontFamily: kSFProText,
                   fontWeight: FontWeight.w700,
                   fontStyle: FontStyle.normal,
                   height: 1.0,
                   letterSpacing: 0,
                 ),
+                textScaler: TextScaler.noScaling,
               ),
             ),
           ),
@@ -10956,25 +10959,29 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   // ── Card 1: Identity ──────────────────────────────────────────────────────
 
   Widget _buildIdentityCard() {
+    final textScaler = MediaQuery.textScalerOf(context);
+    final circleSize = textScaler.scale(64);
+    final circleShadowBlur = textScaler.scale(16);
     final previewColor = _isEmojiIcon(_effectiveIcon)
         ? _emojiCircleColor(_resolvedSelectedColor)
         : _resolvedSelectedColor;
 
     return _card([
-      // Static blue circle icon centred above the fields.
+       // The preview circle follows the active OS text-size curve just like
+       // the smaller category icon in Card 2.
       Padding(
         padding: const EdgeInsets.only(top: 20, bottom: 16),
         child: Center(
           child: Container(
-            width: 64,
-            height: 64,
+             width: circleSize,
+             height: circleSize,
             decoration: BoxDecoration(
               color: previewColor,
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
                   color: previewColor.withOpacity(0.32),
-                  blurRadius: 16,
+                 blurRadius: circleShadowBlur,
                   spreadRadius: 0,
                   offset: Offset.zero,
                 ),
@@ -10993,10 +11000,13 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     ),
                   Center(
                     child: _isSmart
-                        ? _smartPreviewIcon(widget.smartData!)
+                        ? _smartPreviewIcon(
+                            widget.smartData!,
+                            circleSize: circleSize,
+                          )
                         : _renderCatIcon(
                             _effectiveIcon,
-                            64,
+                            circleSize,
                             CupertinoColors.white,
                             emojiOffsetY: 2,
                             ctx: context,
