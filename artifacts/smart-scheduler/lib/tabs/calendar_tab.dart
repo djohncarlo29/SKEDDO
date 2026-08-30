@@ -8912,20 +8912,30 @@ class _NewEventSheetState extends State<_NewEventSheet>
       child: visible
           ? Column(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                _sep(),
-                _pickerRow(
-                  _allDay
-                      ? _alertRowLabel(index).replaceFirst('Alert', 'Reminder')
-                      : _alertRowLabel(index),
-                  _alertDisplayLabel(
-                    index < _alerts.length ? _alerts[index] : 'None',
-                  ),
-                  items: _alertItemsFor(index),
-                ),
-              ],
+              children: [_sep(), _buildAnimatedAlertPickerRow(index)],
             )
           : const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildAnimatedAlertPickerRow(int index) {
+    final label = _allDay
+        ? _alertRowLabel(index).replaceFirst('Alert', 'Reminder')
+        : _alertRowLabel(index);
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      transitionBuilder: (child, animation) =>
+          FadeTransition(opacity: animation, child: child),
+      child: KeyedSubtree(
+        key: ValueKey(label),
+        child: _pickerRow(
+          label,
+          _alertDisplayLabel(index < _alerts.length ? _alerts[index] : 'None'),
+          items: _alertItemsFor(index),
+        ),
+      ),
     );
   }
 
@@ -9670,11 +9680,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
   Widget _buildAlertsSection() => AnimatedBuilder(
     animation: _secondAlertCtrl,
     builder: (ctx, _) => _card([
-      _pickerRow(
-        _allDay ? 'Reminder' : 'Alert',
-        _alertDisplayLabel(_alert),
-        items: _alertItems(),
-      ),
+      _buildAnimatedAlertPickerRow(0),
       SizeTransition(
         sizeFactor: _secondAlertCtrl,
         axisAlignment: 1.0,
