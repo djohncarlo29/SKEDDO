@@ -10,6 +10,7 @@ import 'package:flutter/gestures.dart'
     show GestureRecognizerFactoryWithHandlers, ScaleGestureRecognizer;
 import 'package:flutter/material.dart'
     show ReorderableDragStartListener, ReorderableListView;
+import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
@@ -1604,9 +1605,11 @@ class EventsTab extends StatefulWidget {
 
 /// Public so AppShell can hold a `GlobalKey<EventsTabState>` and call
 /// `deactivate()` when the user switches away from the Events tab.
-class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
+class EventsTabState extends State<EventsTab>
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
+  final GlobalKey _scrollViewportKey = GlobalKey();
   // GlobalKey keeps _AppSearchBarState alive when the parent sliver switches
   // between SliverToBoxAdapter (unfocused) and SliverPersistentHeader (focused).
   // Without this key, the element is remounted on every search-mode transition,
@@ -1775,6 +1778,18 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
   final GlobalKey _gridStackKey = GlobalKey();
   final GlobalKey _listStackKey = GlobalKey();
 
+  // ── Drag edge auto-scroll ─────────────────────────────────────────────────
+  // The grid and category list are both children of the same CustomScrollView,
+  // while their lifted ghosts live in the root Overlay.  Keep the latest
+  // pointer in global coordinates and drive scrolling independently of pointer
+  // move events so holding a drag at an edge continues to reveal content.
+  static const double _kDragAutoScrollEdgeExtent = 88.0;
+  static const double _kDragAutoScrollMaxVelocity = 900.0;
+  Ticker? _dragAutoScrollTicker;
+  Offset? _lastDragGlobalPosition;
+  Duration? _lastDragAutoScrollElapsed;
+  bool _dragAutoScrollTicking = false;
+
   // ── List drag overlay ──────────────────────────────────────────────────────
   // When a list row is being dragged, the ghost tile is rendered in the global
   // Overlay above all scroll content (headers, buttons, etc.) so its z-index
@@ -1849,6 +1864,134 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     }
     if (_trackingGridResize) {
       WidgetsBinding.instance.addPostFrameCallback(_tickGridResizeCompensation);
+    }
+  }
+
+  RenderBox? _dragScrollViewportBox() {
+    final keyedObject = _scrollViewportKey.currentContext?.findRenderObject();
+    if (keyedObject is RenderBox &&
+        keyedObject.attached &&
+        keyedObject.hasSize) {
+      return keyedObject;
+    }
+    final fallbackObject = context.findRenderObject();
+    if (fallbackObject is RenderBox &&
+        fallbackObject.attached &&
+        fallbackObject.hasSize) {
+      return fallbackObject;
+    }
+    return null;
+  }
+
+  void _startDragAutoScroll(Offset globalPosition) {
+    _lastDragGlobalPosition = globalPosition;
+    _lastDragAutoScrollElapsed = null;
+    _dragAutoScrollTicker ??= createTicker(_tickDragAutoScroll);
+    if (!(_dragAutoScrollTicker?.isActive ?? false)) {
+      _dragAutoScrollTicker!.start();
+    }
+  }
+
+  void _recordDragAutoScrollPointer(Offset globalPosition) {
+    _lastDragGlobalPosition = globalPosition;
+    if (!(_dragAutoScrollTicker?.isActive ?? false)) {
+      _lastDragAutoScrollElapsed = null;
+      _dragAutoScrollTicker ??= createTicker(_tickDragAutoScroll);
+      _dragAutoScrollTicker!.start();
+    }
+  }
+
+  void _stopDragAutoScroll() {
+    _dragAutoScrollTicker?.stop();
+    _lastDragGlobalPosition = null;
+    _lastDragAutoScrollElapsed = null;
+    _dragAutoScrollTicking = false;
+  }
+
+  void _reconcileActiveDragAt(Offset globalPosition) {
+    // A list-origin drag owns the list handler even after it creates a
+    // temporary grid placeholder.  Conversely, a grid-origin drag owns the
+    // grid handler after it creates a temporary list placeholder.  This keeps
+    // the cross-section state machine in one place for pointer and ticker
+    // updates alike.
+    if (_draggingGroupHeader != null) {
+      _onGroupHeaderReorderUpdate(_draggingGroupHeader!, globalPosition);
+    } else if (_listDragCrossingToGrid && _draggingListCat != null) {
+      _onListReorderUpdate(_draggingListCat!, globalPosition);
+    } else if (_gridDragCrossingToList && _draggingGridKey != null) {
+      _onGridReorderUpdate(_draggingGridKey!, globalPosition);
+    } else if (_draggingGridKey != null) {
+      _onGridReorderUpdate(_draggingGridKey!, globalPosition);
+    } else if (_draggingListCat != null) {
+      _onListReorderUpdate(_draggingListCat!, globalPosition);
+    }
+  }
+
+  void _tickDragAutoScroll(Duration elapsed) {
+    if (!mounted || _dragAutoScrollTicking) return;
+    final pointer = _lastDragGlobalPosition;
+    final viewport = _dragScrollViewportBox();
+    if (pointer == null ||
+        viewport == null ||
+        !_scrollController.hasClients ||
+        _activatedFromOffScreen) {
+      return;
+    }
+
+    final previousElapsed = _lastDragAutoScrollElapsed;
+    _lastDragAutoScrollElapsed = elapsed;
+    if (previousElapsed == null) return;
+
+    // A long frame or a paused app should not turn one delayed callback into a
+    // large jump.  The drag remains attached to the global pointer while the
+    // next frame continues the normal proximity-based scroll.
+    final elapsedMicros = (elapsed - previousElapsed).inMicroseconds.clamp(
+      0,
+      33333,
+    );
+    final seconds = elapsedMicros / Duration.microsecondsPerSecond;
+    if (seconds <= 0) return;
+
+    final viewportTop = viewport.localToGlobal(Offset.zero).dy;
+    final viewportHeight = viewport.size.height;
+    final pointerY = pointer.dy - viewportTop;
+    final edge = _kDragAutoScrollEdgeExtent;
+
+    double signedProximity = 0.0;
+    if (pointerY < edge) {
+      // The clamp also allows the ghost to remain in the top trigger zone
+      // while the list is being scrolled back toward the grid.
+      final proximity = (1.0 - pointerY / edge).clamp(0.0, 1.0);
+      signedProximity = -proximity * proximity;
+    } else if (pointerY > viewportHeight - edge) {
+      final proximity = (1.0 - (viewportHeight - pointerY) / edge).clamp(
+        0.0,
+        1.0,
+      );
+      signedProximity = proximity * proximity;
+    }
+    if (signedProximity == 0.0) return;
+
+    final position = _scrollController.position;
+    final currentOffset = position.pixels;
+    final requestedDelta =
+        signedProximity * _kDragAutoScrollMaxVelocity * seconds;
+    final targetOffset = (currentOffset + requestedDelta).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if ((targetOffset - currentOffset).abs() < 0.01) return;
+
+    _dragAutoScrollTicking = true;
+    try {
+      _scrollController.jumpTo(targetOffset);
+      // Scroll changes move the grid/list RenderBoxes in global space.  Run
+      // the same hit-testing and cross-section state machine once more using
+      // the unchanged global pointer, so the ghost never drifts or targets
+      // stale local coordinates while the finger is held still.
+      _reconcileActiveDragAt(pointer);
+    } finally {
+      _dragAutoScrollTicking = false;
     }
   }
 
@@ -2485,9 +2628,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     _gridDragOverlayEntry?.remove();
     _gridDragOverlayEntry = OverlayEntry(builder: _buildGridDragOverlay);
     Overlay.of(context).insert(_gridDragOverlayEntry!);
+    _startDragAutoScroll(globalPos);
   }
 
   void _onGridReorderUpdate(Object key, Offset globalPos) {
+    _recordDragAutoScrollPointer(globalPos);
     final box = _gridStackKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.attached || _draggingGridKey != key) return;
     final grab = _dragGridGrabOffset;
@@ -2672,6 +2817,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
   void _onGridReorderEnd(Object key) {
     if (_draggingGridKey != key) return;
+    _stopDragAutoScroll();
     // ── Cross-section unpin: tile dragged below the grid into the list ────────
     if (_gridDragCrossingToList && key is _UserCategory) {
       // cat.id is already in _listTopOrder at _crossListTargetIdx.
@@ -2770,6 +2916,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
   void _onGridReorderCancel(Object key) {
     if (_draggingGridKey != key) return;
+    _stopDragAutoScroll();
     _gridDragOverlayEntry?.remove();
     _gridDragOverlayEntry = null;
     if (_gridDragCrossingToList && key is _UserCategory) {
@@ -2840,9 +2987,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     _listDragOverlayEntry?.remove();
     _listDragOverlayEntry = OverlayEntry(builder: _buildListDragOverlay);
     Overlay.of(context).insert(_listDragOverlayEntry!);
+    _startDragAutoScroll(globalPos);
   }
 
   void _onListReorderUpdate(_UserCategory cat, Offset globalPos) {
+    _recordDragAutoScrollPointer(globalPos);
     final box = _listStackKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.attached || _draggingListCat != cat) return;
     final localPos = box.globalToLocal(globalPos);
@@ -3583,6 +3732,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
   void _onListReorderEnd(_UserCategory cat) {
     if (_draggingListCat != cat) return;
+    _stopDragAutoScroll();
     _groupDetectionTimer?.cancel();
     _groupDetectionTimer = null;
     _joinGroupDwellTimer?.cancel();
@@ -3703,6 +3853,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
   void _onListReorderCancel(_UserCategory cat) {
     if (_draggingListCat != cat) return;
+    _stopDragAutoScroll();
     _groupDetectionTimer?.cancel();
     _groupDetectionTimer = null;
     _joinGroupDwellTimer?.cancel();
@@ -3768,9 +3919,11 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     _listDragOverlayEntry?.remove();
     _listDragOverlayEntry = OverlayEntry(builder: _buildListDragOverlay);
     Overlay.of(context).insert(_listDragOverlayEntry!);
+    _startDragAutoScroll(globalPos);
   }
 
   void _onGroupHeaderReorderUpdate(_CategoryGroup group, Offset globalPos) {
+    _recordDragAutoScrollPointer(globalPos);
     final box = _listStackKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.attached || _draggingGroupHeader?.id != group.id) {
       return;
@@ -3847,6 +4000,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
   void _onGroupHeaderReorderEnd(_CategoryGroup group) {
     if (_draggingGroupHeader?.id != group.id) return;
+    _stopDragAutoScroll();
     _listDragOverlayEntry?.remove();
     _listDragOverlayEntry = null;
     setState(() {
@@ -3859,6 +4013,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
   void _onGroupHeaderReorderCancel(_CategoryGroup group) {
     if (_draggingGroupHeader?.id != group.id) return;
+    _stopDragAutoScroll();
     _listDragOverlayEntry?.remove();
     _listDragOverlayEntry = null;
     setState(() {
@@ -5292,6 +5447,9 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _stopDragAutoScroll();
+    _dragAutoScrollTicker?.dispose();
+    _dragAutoScrollTicker = null;
     _midnightTimer?.cancel();
     _clockTimer?.cancel();
     _searchDebounce?.cancel();
@@ -6169,6 +6327,7 @@ class EventsTabState extends State<EventsTab> with WidgetsBindingObserver {
     // (_activatedFromOffScreen) the key lives in the Stack overlay so the
     // gridView scroll position is never disturbed.
     final Widget gridView = CustomScrollView(
+      key: _scrollViewportKey,
       controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
