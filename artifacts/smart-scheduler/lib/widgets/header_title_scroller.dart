@@ -105,6 +105,9 @@ class HeaderTitleScroller extends StatefulWidget {
 
 class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
   late final ScrollController _scrollController;
+  // Tracks real overflow for edge fades.  This is intentionally separate from
+  // the scroll physics: even a short title should accept the native
+  // rubberband gesture when the user pulls it.
   bool _canScroll = false;
   bool _showLeadingFade = false;
   bool _showTrailingFade = false;
@@ -246,12 +249,13 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                           controller: _scrollController,
                           primary: false,
                           scrollDirection: Axis.horizontal,
-                          // Match the picker mini-panel behavior: determine
-                          // overflow after layout, then make only genuinely
-                          // overflowing titles scrollable.
-                          physics: _canScroll
-                              ? const BouncingScrollPhysics()
-                              : const NeverScrollableScrollPhysics(),
+                          // Headers always accept the native rubberband gesture,
+                          // including titles that fit completely.  _canScroll
+                          // remains only an overflow/fade decision; it must not
+                          // disable the gesture for short titles.
+                          physics: const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          ),
                           padding: EdgeInsets.zero,
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
