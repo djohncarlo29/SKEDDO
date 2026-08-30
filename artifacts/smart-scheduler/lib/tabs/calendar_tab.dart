@@ -8922,18 +8922,33 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final label = _allDay
         ? _alertRowLabel(index).replaceFirst('Alert', 'Reminder')
         : _alertRowLabel(index);
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 220),
-      switchInCurve: Curves.easeOut,
-      switchOutCurve: Curves.easeIn,
-      transitionBuilder: (child, animation) =>
-          FadeTransition(opacity: animation, child: child),
-      child: KeyedSubtree(
-        key: ValueKey(label),
-        child: _pickerRow(
-          label,
-          _alertDisplayLabel(index < _alerts.length ? _alerts[index] : 'None'),
-          items: _alertItemsFor(index),
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeInOutCubic,
+      alignment: Alignment.topCenter,
+      clipBehavior: Clip.hardEdge,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 260),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: SizeTransition(
+            sizeFactor: animation,
+            axis: Axis.vertical,
+            axisAlignment: -1.0,
+            child: child,
+          ),
+        ),
+        child: KeyedSubtree(
+          key: ValueKey(label),
+          child: _pickerRow(
+            label,
+            _alertDisplayLabel(
+              index < _alerts.length ? _alerts[index] : 'None',
+            ),
+            items: _alertItemsFor(index),
+          ),
         ),
       ),
     );
