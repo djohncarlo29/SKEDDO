@@ -1732,9 +1732,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             child: HeaderTitleScroller(
               title: title,
               fadeColor: resolveThemeColor(kCardColor, context),
-              // Calendar titles only fade at their leading edge. The right side
-              // belongs to the calendar controls and must remain fully clear.
-              showTrailingFade: false,
+              // The title area ends immediately before the calendar arrows, so
+              // its trailing boundary must fade instead of hard-clipping text.
+              showTrailingFade: true,
               trailing: _CalendarNavChevron(
                 canUp: canUp,
                 canDown: canDown,
