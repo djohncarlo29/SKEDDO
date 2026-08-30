@@ -172,10 +172,12 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
 
   void _syncScrollEdgeFades(ScrollMetrics metrics) {
     final canScroll = metrics.maxScrollExtent > 1.0;
-    final showLeading = canScroll && metrics.pixels > 1.0;
+    // Do not gate these on [canScroll]. A short title has maxScrollExtent == 0
+    // but can still rubberband past either edge; the clipped pixels need the
+    // same fade treatment as a long title.
+    final showLeading = metrics.pixels > 1.0;
     final showTrailing =
         widget.showTrailingFade &&
-        canScroll &&
         metrics.pixels < metrics.maxScrollExtent - 1.0;
 
     if (_canScroll == canScroll &&
