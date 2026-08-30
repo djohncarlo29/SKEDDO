@@ -1716,7 +1716,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // ── Calendar-tab header row (title + ↕ + < >) ────────────────────────────
   // ALL three elements — title, ↕ chevron, and < > arrows — are placed inside
   // the three-panel sliding Stack so everything slides together on swipes.
-  // Each panel is a full-width Row: [title] [↕] [·········Spacer·········] [< >]
+  // Each panel is a full-width Row: [title + ↕] [< >]
   Widget _buildCalendarTitleRow() {
     final canUp = _calendarView != CalendarView.day;
     final canDown = _calendarView != CalendarView.year;
@@ -1753,7 +1753,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               ),
             ),
           ),
-          const Spacer(),
           // < > nav arrows — right edge of the panel
           AnimatedTapIcon(
             padding: const EdgeInsets.fromLTRB(18, 12, 4, 8),
