@@ -11,13 +11,17 @@ class HeaderTitleScroller extends StatefulWidget {
   final TextStyle style;
   final Color fadeColor;
   final double fadeWidth;
+  final Widget? trailing;
+  final double trailingGap;
 
   const HeaderTitleScroller({
     super.key,
     required this.title,
     required this.style,
     required this.fadeColor,
-    this.fadeWidth = 24,
+    this.fadeWidth = 36,
+    this.trailing,
+    this.trailingGap = 4,
   });
 
   @override
@@ -72,8 +76,13 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
     final maxExtent = position.maxScrollExtent;
     final offset = position.pixels;
     final hasOverflow = maxExtent > 0.5;
-    final showLeading = hasOverflow && offset > 0.5;
-    final showTrailing = hasOverflow && offset < maxExtent - 0.5;
+    // With a short title, maxExtent is zero, but BouncingScrollPhysics still
+    // exposes a small overscroll while the user pushes against either edge.
+    // Treat that transient overscroll as an edge-fade state so every header
+    // responds consistently, even when its title fits at rest.
+    final showLeading = (hasOverflow && offset > 0.5) || offset < -0.5;
+    final showTrailing =
+        (hasOverflow && offset < maxExtent - 0.5) || offset > maxExtent + 0.5;
 
     if (showLeading == _showLeadingFade && showTrailing == _showTrailingFade) {
       return;
@@ -137,15 +146,25 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                       parent: AlwaysScrollableScrollPhysics(),
                     ),
                     padding: EdgeInsets.zero,
-                    child: Text(
-                      widget.title,
-                      maxLines: 1,
-                      softWrap: false,
-                      overflow: TextOverflow.visible,
-                      // Large Header titles are intentionally fixed-height. The
-                      // rest of the app continues to follow the active OS scaler.
-                      textScaler: TextScaler.noScaling,
-                      style: widget.style,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          widget.title,
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.visible,
+                          // Large Header titles are intentionally fixed-height. The
+                          // rest of the app continues to follow the active OS scaler.
+                          textScaler: TextScaler.noScaling,
+                          style: widget.style,
+                        ),
+                        if (widget.trailing != null) ...[
+                          SizedBox(width: widget.trailingGap),
+                          widget.trailing!,
+                        ],
+                      ],
                     ),
                   ),
                 ),
