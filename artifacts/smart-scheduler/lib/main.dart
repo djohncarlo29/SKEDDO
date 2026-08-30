@@ -1731,29 +1731,34 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         children: [
           // Title
           Expanded(
-            child: HeaderTitleScroller(
-              title: title,
-              fadeColor: resolveThemeColor(kCardColor, context),
-              // The title area ends immediately before the calendar arrows, so
-              // its trailing boundary must fade instead of hard-clipping text.
-              showTrailingFade: true,
-              trailing: _CalendarNavChevron(
-                canUp: canUp,
-                canDown: canDown,
-                onUp: isActive && canUp
-                    ? () => _calendarTabKey.currentState?.navigateUp()
-                    : null,
-                onDown: isActive && canDown
-                    ? () => _calendarTabKey.currentState?.navigateDown()
-                    : null,
-              ),
-              style: TextStyle(
-                fontFamily: kSFProText,
-                fontSize: 34,
-                fontWeight: FontWeight.bold,
-                fontStyle: FontStyle.normal,
-                color: isToday ? resolveAccentColor(context) : primaryLabel,
-                letterSpacing: -1.2,
+            child: Transform.translate(
+              // The nested calendar panel row paints its title slightly above
+              // the standard header baseline; correct only that paint offset.
+              offset: const Offset(0, 2),
+              child: HeaderTitleScroller(
+                title: title,
+                fadeColor: resolveThemeColor(kCardColor, context),
+                // The title area ends immediately before the calendar arrows,
+                // so its trailing boundary must fade instead of hard-clipping.
+                showTrailingFade: true,
+                trailing: _CalendarNavChevron(
+                  canUp: canUp,
+                  canDown: canDown,
+                  onUp: isActive && canUp
+                      ? () => _calendarTabKey.currentState?.navigateUp()
+                      : null,
+                  onDown: isActive && canDown
+                      ? () => _calendarTabKey.currentState?.navigateDown()
+                      : null,
+                ),
+                style: TextStyle(
+                  fontFamily: kSFProText,
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                  fontStyle: FontStyle.normal,
+                  color: isToday ? resolveAccentColor(context) : primaryLabel,
+                  letterSpacing: -1.2,
+                ),
               ),
             ),
           ),
