@@ -2,6 +2,10 @@ import 'package:flutter/cupertino.dart';
 import '../app_settings.dart';
 
 const double kHeaderTitleBaseFontSize = 34;
+// Shared bottom breathing room for every large header title. Keeping this
+// outside the individual screens prevents baseline drift between tabs and
+// Settings sub-screens.
+const double kHeaderTitleBottomInset = 10;
 
 /// Returns the Large Header size for the active text-size position.
 ///

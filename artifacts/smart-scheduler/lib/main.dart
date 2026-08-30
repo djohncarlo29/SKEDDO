@@ -1725,7 +1725,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     Widget buildPanel(String title, {required bool isActive}) {
       final isToday = _isTodayTitle(title, _calendarDisplayYear);
       return Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        // Keep the title's text baseline on the same bottom edge as the
+        // standard Notes/Events header title.
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // Title
           Expanded(
@@ -2484,7 +2486,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                           const EdgeInsets.only(
                                                             left: 16,
                                                             right: 16,
-                                                            bottom: 10,
+                                                            bottom:
+                                                                kHeaderTitleBottomInset,
                                                           ),
                                                       child:
                                                           !isDCVVisual &&
