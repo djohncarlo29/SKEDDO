@@ -14388,7 +14388,7 @@ class _CategoryDetailView extends StatefulWidget {
 }
 
 class _CategoryDetailViewState extends State<_CategoryDetailView>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   // ── Local event ordering (survives within one DCV session) ────────────────
   late List<ScheduledEvent> _items;
 
@@ -14409,6 +14409,18 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   // are looked up by event ID, not by list position.
   final Map<String, GlobalKey> _itemKeys = {};
   final Map<int, GlobalKey> _sectionKeys = {};
+  final GlobalKey _dcvScrollViewportKey = GlobalKey();
+  final ScrollController _dcvScrollController = ScrollController();
+
+  // Keep the latest drag pointer in global coordinates and drive the DCV's
+  // scroll independently of pointer-move callbacks.  This lets a stationary
+  // finger at an edge continue revealing event tiles.
+  static const double _kDragAutoScrollEdgeExtent = 88.0;
+  static const double _kDragAutoScrollMaxVelocity = 900.0;
+  Ticker? _dragAutoScrollTicker;
+  Offset? _lastDragGlobalPosition;
+  Duration? _lastDragAutoScrollElapsed;
+  bool _dragAutoScrollTicking = false;
 
   // ── Collapse state ────────────────────────────────────────────────────────
   /// Section keys (header text) that are currently collapsed.  Empty by
@@ -14522,9 +14534,13 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
 
   @override
   void dispose() {
+    _stopDragAutoScroll();
+    _dragAutoScrollTicker?.dispose();
+    _dragAutoScrollTicker = null;
     _sortAnimCtrl.dispose();
     _dragOverlay?.remove();
     _dragOverlay = null;
+    _dcvScrollController.dispose();
     super.dispose();
   }
 
@@ -14739,6 +14755,109 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
 
   // ── Reorder helpers ───────────────────────────────────────────────────────
 
+  RenderBox? _dragScrollViewportBox() {
+    final keyedObject = _dcvScrollViewportKey.currentContext
+        ?.findRenderObject();
+    if (keyedObject is RenderBox &&
+        keyedObject.attached &&
+        keyedObject.hasSize) {
+      return keyedObject;
+    }
+    final fallbackObject = context.findRenderObject();
+    if (fallbackObject is RenderBox &&
+        fallbackObject.attached &&
+        fallbackObject.hasSize) {
+      return fallbackObject;
+    }
+    return null;
+  }
+
+  void _startDragAutoScroll(Offset globalPosition) {
+    _lastDragGlobalPosition = globalPosition;
+    _lastDragAutoScrollElapsed = null;
+    _dragAutoScrollTicker ??= createTicker(_tickDragAutoScroll);
+    if (!(_dragAutoScrollTicker?.isActive ?? false)) {
+      _dragAutoScrollTicker!.start();
+    }
+  }
+
+  void _recordDragAutoScrollPointer(Offset globalPosition) {
+    _lastDragGlobalPosition = globalPosition;
+    if (!(_dragAutoScrollTicker?.isActive ?? false)) {
+      _lastDragAutoScrollElapsed = null;
+      _dragAutoScrollTicker ??= createTicker(_tickDragAutoScroll);
+      _dragAutoScrollTicker!.start();
+    }
+  }
+
+  void _stopDragAutoScroll() {
+    _dragAutoScrollTicker?.stop();
+    _lastDragGlobalPosition = null;
+    _lastDragAutoScrollElapsed = null;
+    _dragAutoScrollTicking = false;
+  }
+
+  void _tickDragAutoScroll(Duration elapsed) {
+    if (!mounted || _dragAutoScrollTicking) return;
+    final pointer = _lastDragGlobalPosition;
+    final viewport = _dragScrollViewportBox();
+    if (pointer == null ||
+        viewport == null ||
+        !_dcvScrollController.hasClients) {
+      return;
+    }
+
+    final previousElapsed = _lastDragAutoScrollElapsed;
+    _lastDragAutoScrollElapsed = elapsed;
+    if (previousElapsed == null) return;
+
+    final elapsedMicros = (elapsed - previousElapsed).inMicroseconds.clamp(
+      0,
+      33333,
+    );
+    final seconds = elapsedMicros / Duration.microsecondsPerSecond;
+    if (seconds <= 0) return;
+
+    final viewportTop = viewport.localToGlobal(Offset.zero).dy;
+    final viewportHeight = viewport.size.height;
+    final pointerY = pointer.dy - viewportTop;
+    final edge = _kDragAutoScrollEdgeExtent;
+
+    double signedProximity = 0.0;
+    if (pointerY < edge) {
+      final proximity = (1.0 - pointerY / edge).clamp(0.0, 1.0);
+      signedProximity = -proximity * proximity;
+    } else if (pointerY > viewportHeight - edge) {
+      final proximity = (1.0 - (viewportHeight - pointerY) / edge).clamp(
+        0.0,
+        1.0,
+      );
+      signedProximity = proximity * proximity;
+    }
+    if (signedProximity == 0.0) return;
+
+    final position = _dcvScrollController.position;
+    final currentOffset = position.pixels;
+    final requestedDelta =
+        signedProximity * _kDragAutoScrollMaxVelocity * seconds;
+    final targetOffset = (currentOffset + requestedDelta).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if ((targetOffset - currentOffset).abs() < 0.01) return;
+
+    _dragAutoScrollTicking = true;
+    try {
+      _dcvScrollController.jumpTo(targetOffset);
+      // Scrolling changes every event row's global position.  Re-run the
+      // existing reorder hit-testing with the unchanged global pointer so a
+      // stationary drag keeps finding the newly revealed rows.
+      _updateReorder(pointer);
+    } finally {
+      _dragAutoScrollTicking = false;
+    }
+  }
+
   void _startReorder(String eventId, Offset globalPos) {
     // Drag-reorder only available in Manual mode.
     if (widget.sortBy != 'Manual') return;
@@ -14785,6 +14904,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         Overlay.of(context).insert(_dragOverlay!);
       }
     });
+    _startDragAutoScroll(globalPos);
   }
 
   /// Event dots belong to the event's assigned standard category, not to the
@@ -14802,6 +14922,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   }
 
   void _updateReorder(Offset globalPos) {
+    _recordDragAutoScrollPointer(globalPos);
     _dragGlobalY = globalPos.dy;
     _dragOverlay?.markNeedsBuild();
 
@@ -15113,6 +15234,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   }
 
   void _endReorder() {
+    _stopDragAutoScroll();
     _dragReflowGeneration++;
     _sortAnimCtrl.stop();
     _sortAnimCtrl.value = 0.0;
@@ -15652,6 +15774,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       return Opacity(
         opacity: hideForSortMeasurement ? 0.0 : 1.0,
         child: CustomScrollView(
+          key: _dcvScrollViewportKey,
+          controller: _dcvScrollController,
           primary: false,
           physics: const AlwaysScrollableScrollPhysics(
             parent: BouncingScrollPhysics(),
@@ -15874,6 +15998,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       return SizedBox.expand(child: emptyStateContent);
     }
     return CustomScrollView(
+      key: _dcvScrollViewportKey,
+      controller: _dcvScrollController,
       primary: false,
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
