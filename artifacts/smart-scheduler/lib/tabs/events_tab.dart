@@ -10765,24 +10765,33 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   // → 64px sheet circle) including the day-number overlay for the four
   // calendar-type tiles (Today/Tomorrow/This Week/Next Week).
   Widget _smartPreviewIcon(_TileData data) {
+    // The modal circle is authored at 64px, but the complete visual unit must
+    // follow the active OS text-size curve just like the grid tile does.
+    final circleScale = _eventsCategoryIconScale(context, 64);
     if (data.isCalendar) {
       // Card 1 scales the complete 64px preview unit once. Keep the calendar
       // frame and day badge in the same authored composition here as in the
       // main Events tile.
+      //
+      // Derive the modal badge position from the working grid geometry instead
+      // of using an independent 64px guess. This keeps the number at the same
+      // frame-relative position at both sizes.
+      const modalCircleSize = 64.0;
+      final modalGeometryScale = modalCircleSize / _kGridTileCircleSize;
       return _buildUnifiedCalendarIconUnit(
         day: data.day,
-        authoredCircleSize: 64,
+        authoredCircleSize: modalCircleSize,
         frameSize: 38,
-        dayTop: 28,
-        dayFontSize: 18,
-        circleScale: 1,
+        dayTop: 14.6 * modalGeometryScale,
+        dayFontSize: 9.5 * modalGeometryScale,
+        circleScale: circleScale,
       );
     }
 
     const white = CupertinoColors.white;
     return data.icon! == SFIcons.sf_music_note
-        ? _BeamedNoteIcon(size: 38, color: white)
-        : Icon(data.icon!, color: white, size: 38);
+        ? _BeamedNoteIcon(size: 38 * circleScale, color: white)
+        : Icon(data.icon!, color: white, size: 38 * circleScale);
   }
 
   Future<void> _openMaps(String query) async {
@@ -10925,6 +10934,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   Widget _buildIdentityCard() {
     final textScaler = MediaQuery.textScalerOf(context);
     final circleSize = textScaler.scale(64);
+    final circleScale = _eventsCategoryIconScale(context, 64);
     final previewColor = _isEmojiIcon(_effectiveIcon)
         ? _emojiCircleColor(_resolvedSelectedColor)
         : _resolvedSelectedColor;
@@ -10935,59 +10945,47 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       Padding(
         padding: const EdgeInsets.only(top: 20, bottom: 16),
         child: Center(
-          child: SizedBox(
+          // The circle itself owns the resolved OS scale. The icon unit inside
+          // it receives that same scale, avoiding a second modal-only
+          // FittedBox whose constraints can mask the intended growth.
+          child: Container(
             width: circleSize,
             height: circleSize,
-            child: Center(
-              // Fit the complete authored 64px unit once. The icon,
-              // highlight, badge, and shadow therefore share the same final
-              // coordinates at every OS text-size setting.
-              child: FittedBox(
-                fit: BoxFit.fill,
-                alignment: Alignment.center,
-                child: SizedBox(
-                  width: 64,
-                  height: 64,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: previewColor,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: previewColor.withOpacity(0.32),
-                          blurRadius: 16,
-                          spreadRadius: 0,
-                          offset: Offset.zero,
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          // Emoji circles use only their flat white-blended
-                          // swatch. Keep the add-blend highlight for the
-                          // existing non-emoji preview treatment.
-                          if (!_isEmojiIcon(_effectiveIcon))
-                            CustomPaint(
-                              painter: _CircleAddHighlightPainter(previewColor),
-                            ),
-                          Center(
-                            child: _isSmart
-                                ? _smartPreviewIcon(widget.smartData!)
-                                : _renderCatIcon(
-                                    _effectiveIcon,
-                                    64,
-                                    CupertinoColors.white,
-                                    emojiOffsetY: 2,
-                                    ctx: context,
-                                  ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+            decoration: BoxDecoration(
+              color: previewColor,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: previewColor.withOpacity(0.32),
+                  blurRadius: 16 * circleScale,
+                  spreadRadius: 0,
+                  offset: Offset.zero,
                 ),
+              ],
+            ),
+            child: ClipOval(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Emoji circles use only their flat white-blended
+                  // swatch. Keep the add-blend highlight for the existing
+                  // non-emoji preview treatment.
+                  if (!_isEmojiIcon(_effectiveIcon))
+                    CustomPaint(
+                      painter: _CircleAddHighlightPainter(previewColor),
+                    ),
+                  Center(
+                    child: _isSmart
+                        ? _smartPreviewIcon(widget.smartData!)
+                        : _renderCatIcon(
+                            _effectiveIcon,
+                            64 * circleScale,
+                            CupertinoColors.white,
+                            emojiOffsetY: 2 * circleScale,
+                            ctx: context,
+                          ),
+                  ),
+                ],
               ),
             ),
           ),
