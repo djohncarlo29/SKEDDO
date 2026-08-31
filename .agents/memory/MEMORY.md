@@ -84,3 +84,4 @@
 - [Expandable modal card surfaces](expandable-modal-card-surfaces.md) — expandable row stacks must use one shared bounded squircle surface, never adjacent partial-radius cards.
 - [Action-panel scroll fallback](action-panel-scroll-fallback.md) — expandable menus must cap main/sub-panels and anchor drill-downs to the live main-panel scroll offset.
 - [Pinned Flutter Dart tool path](flutter-dart-tool-path.md) — standalone Dart CLI commands use the SDK cache path beside the Flutter executable.
+- [Dart2JS thread-limit retry](dart2js-thread-limit.md) — a DartWorker thread-creation failure during Flutter web compilation is transient; retry before debugging source.

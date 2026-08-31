@@ -157,6 +157,7 @@ class _CategoryContextMenu extends StatefulWidget {
   final WidgetBuilder previewBuilder;
   final bool isSmartCategory;
   final bool isPinned;
+  final bool isUtilityCategory;
 
   /// When true, renders the group context menu (Edit Group Info, Delete Group)
   /// instead
@@ -187,6 +188,7 @@ class _CategoryContextMenu extends StatefulWidget {
     required this.previewBuilder,
     this.isSmartCategory = false,
     this.isPinned = false,
+    this.isUtilityCategory = false,
     this.isGroup = false,
     this.onTap,
     this.onPin,
@@ -322,6 +324,7 @@ class _CategoryContextMenuState extends State<_CategoryContextMenu>
         previewBuilder: widget.previewBuilder,
         isSmartCategory: widget.isSmartCategory,
         isPinned: widget.isPinned,
+        isUtilityCategory: widget.isUtilityCategory,
         onDismiss: _hide,
         // The closing overlay (~420ms) paints an opaque floating copy of the
         // row directly on top of the real one while it animates back down —
@@ -614,6 +617,7 @@ class _ContextMenuOverlay extends StatelessWidget {
   final WidgetBuilder previewBuilder;
   final bool isSmartCategory;
   final bool isPinned;
+  final bool isUtilityCategory;
 
   /// Event mode: shows "Edit Event" and "Delete Event" instead of category actions.
   final bool isEvent;
@@ -638,6 +642,7 @@ class _ContextMenuOverlay extends StatelessWidget {
     required this.previewBuilder,
     required this.isSmartCategory,
     required this.isPinned,
+    this.isUtilityCategory = false,
     required this.onDismiss,
     this.isEvent = false,
     this.isGroup = false,
@@ -682,6 +687,17 @@ class _ContextMenuOverlay extends StatelessWidget {
           icon: SFIcons.sf_trash,
           isDestructive: true,
           onTap: onDeleteGroup,
+        ),
+      ];
+    }
+    if (isUtilityCategory) {
+      return [
+        ActionItem(
+          label: isPinned ? 'Unpin' : 'Pin',
+          icon: isPinned ? SFIcons.sf_pin_slash : SFIcons.sf_pin,
+          iconSize: 21,
+          iconOffset: const Offset(-1.0, 0),
+          onTap: isPinned ? onUnpin : onPin,
         ),
       ];
     }
@@ -1651,6 +1667,9 @@ class EventsTabState extends State<EventsTab>
   // Mutable lists: user categories that are NOT pinned, and those that ARE.
   final List<_UserCategory> _userCategories = List.from(_kUserCategories);
   final List<_UserCategory> _pinnedUserCategories = [];
+  // Deleted category snapshots remain available to the Recently Deleted
+  // section even after their live category record is removed.
+  final List<_UserCategory> _recentlyDeletedCategories = [];
 
   /// User-created DCV sections, keyed by the category label. An empty name
   /// represents a newly-created section whose visible placeholder is
@@ -2086,6 +2105,16 @@ class EventsTabState extends State<EventsTab>
   List<_UserCategory> get _visibleUserCategories =>
       _userCategories.where((c) => !c.archived).toList();
 
+  List<String> get _archivedSmartLabels => [
+    for (final label in _kDCVLabels)
+      if (_archivedSmartCategories.contains(label)) label,
+  ];
+
+  List<_UserCategory> get _archivedUserCategories => [
+    ..._userCategories.where((c) => c.archived),
+    ..._pinnedUserCategories.where((c) => c.archived),
+  ];
+
   /// Builds the ordered flat item list for the CATEGORIES section.
   /// Groups whose members are expanded also include their member rows.
   /// Used by _CategoryCard for rendering and by the drag-reorder system.
@@ -2335,6 +2364,10 @@ class EventsTabState extends State<EventsTab>
       );
       setState(() {
         _deletingFromList.removeAll(categories);
+        _recentlyDeletedCategories
+          ..removeWhere((existing) =>
+              categories.any((deleted) => deleted.id == existing.id))
+          ..addAll(categories);
         _userCategories.removeWhere((cat) => group.memberIds.contains(cat.id));
         _listTopOrder.removeWhere(
           (token) =>
@@ -2352,12 +2385,16 @@ class EventsTabState extends State<EventsTab>
   /// Phase 1: shrink + fade the row with a brief destructive-red flash.
   /// Phase 2 (after the flash + collapse finish): actually remove the data.
   void _deleteUserCategory(_UserCategory cat) {
+    if (_isSystemUtilityCategory(cat)) return;
     setState(() => _deletingFromList.add(cat));
     Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
       EventStore.instance.reassignCategories(fromCategoryIds: {cat.id});
       setState(() {
         _deletingFromList.remove(cat);
+        _recentlyDeletedCategories
+          ..removeWhere((existing) => existing.id == cat.id)
+          ..add(cat);
         _userCategories.remove(cat);
         // Remove from group (dissolves if < 2 remain) or solo slot.
         _removeFromGroupById(cat.id);
@@ -2368,17 +2405,55 @@ class EventsTabState extends State<EventsTab>
   }
 
   void _deletePinnedCategory(_UserCategory cat) {
+    if (_isSystemUtilityCategory(cat)) return;
     setState(() => _deletingFromGrid.add(cat));
     Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
       EventStore.instance.reassignCategories(fromCategoryIds: {cat.id});
       setState(() {
         _deletingFromGrid.remove(cat);
+        _recentlyDeletedCategories
+          ..removeWhere((existing) => existing.id == cat.id)
+          ..add(cat);
         _pinnedUserCategories.remove(cat);
         _gridCombinedOrder.remove(cat);
       });
       _saveCategories();
     });
+  }
+
+  void _openArchivedCategoriesSheet() {
+    showRoundedCupertinoSheet<void>(
+      context: context,
+      pageBuilder: (_) => _ArchivedCategoriesSheet(
+        smartLabels: _archivedSmartLabels,
+        userCategories: _archivedUserCategories,
+      ),
+    );
+  }
+
+  void _openRecentlyDeletedSheet() {
+    showRoundedCupertinoSheet<void>(
+      context: context,
+      pageBuilder: (_) => _RecentlyDeletedSheet(
+        events: EventStore.instance.deletedEvents.value,
+        categories: List<_UserCategory>.from(_recentlyDeletedCategories),
+      ),
+    );
+  }
+
+  void _onCategoryTapped(_UserCategory category) {
+    switch (category.id) {
+      case _kIdSysArchivedCategories:
+        _openArchivedCategoriesSheet();
+      case _kIdSysRecentlyDeleted:
+        _openRecentlyDeletedSheet();
+      default:
+        widget.onTileTapped?.call(
+          category.name,
+          renderCategoryColor(category.color, context),
+        );
+    }
   }
 
   // ── Grid drag-reorder (unified: smart tiles + pinned user tiles) ──────────
@@ -4582,10 +4657,7 @@ class EventsTabState extends State<EventsTab>
               width: circleSize,
               height: circleSize,
               decoration: BoxDecoration(
-                color: _categoryIconCircleColor(
-                  cat.iconOrSvg,
-                  renderCategoryColor(cat.color, context),
-                ),
+                color: _userCategoryCircleColor(cat, context),
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -4652,6 +4724,7 @@ class EventsTabState extends State<EventsTab>
   /// Phase 1 plays a soft slide+fade+collapse; phase 2 flips the archived
   /// flag once that finishes (row/tile is already invisible by then).
   void _archiveCategory(_UserCategory cat) {
+    if (_isSystemUtilityCategory(cat)) return;
     final inGrid = _pinnedUserCategories.contains(cat);
     setState(() {
       if (inGrid) {
@@ -4702,6 +4775,9 @@ class EventsTabState extends State<EventsTab>
         onEdit: () => _editCategory(c),
         onArchive: () => _archiveCategory(c),
         onDelete: () => _deletePinnedCategory(c),
+        onTap: _isSystemUtilityCategory(c)
+            ? () => _onCategoryTapped(c)
+            : null,
         onReorderStart: (p) => _onGridReorderStart(c, p),
         onReorderUpdate: (p) => _onGridReorderUpdate(c, p),
         onReorderEnd: () => _onGridReorderEnd(c),
@@ -5133,7 +5209,9 @@ class EventsTabState extends State<EventsTab>
     final knownCategoryIds = {
       ..._userCategories,
       ..._pinnedUserCategories,
-    }.map((category) => category.id).toSet();
+    }.where((category) => !_isSystemUtilityCategory(category))
+        .map((category) => category.id)
+        .toSet();
     return allEvents
         .where(
           (event) => isUncategorized
@@ -5429,6 +5507,7 @@ class EventsTabState extends State<EventsTab>
 
   static const _kPrefsUserCats = 'events_user_categories';
   static const _kPrefsPinnedCats = 'events_pinned_categories';
+  static const _kPrefsDeletedCats = 'events_recently_deleted_categories';
   static const _kPrefsSmartColors = 'events_smart_category_colors';
   static const _kPrefsArchivedSmart = 'events_archived_smart_categories';
   static const _kPrefsSmartOrder = 'events_smart_category_order';
@@ -5456,6 +5535,12 @@ class EventsTabState extends State<EventsTab>
               prefs.setStringList(
                 _kPrefsPinnedCats,
                 _pinnedUserCategories
+                    .map((c) => jsonEncode(c.toJson()))
+                    .toList(),
+              ),
+              prefs.setStringList(
+                _kPrefsDeletedCats,
+                _recentlyDeletedCategories
                     .map((c) => jsonEncode(c.toJson()))
                     .toList(),
               ),
@@ -5531,6 +5616,7 @@ class EventsTabState extends State<EventsTab>
       if (!mounted) return;
       final rawUser = prefs.getStringList(_kPrefsUserCats);
       final rawPinned = prefs.getStringList(_kPrefsPinnedCats);
+      final rawDeleted = prefs.getStringList(_kPrefsDeletedCats);
       final rawSmartColors = prefs.getString(_kPrefsSmartColors);
       final rawArchivedSmart = prefs.getStringList(_kPrefsArchivedSmart);
       final rawSmartOrder = prefs.getStringList(_kPrefsSmartOrder);
@@ -5543,6 +5629,7 @@ class EventsTabState extends State<EventsTab>
       );
       if (rawUser == null &&
           rawPinned == null &&
+          rawDeleted == null &&
           rawSmartColors == null &&
           rawArchivedSmart == null &&
           rawSmartOrder == null &&
@@ -5612,6 +5699,18 @@ class EventsTabState extends State<EventsTab>
               ),
             );
         }
+        if (rawDeleted != null) {
+          _recentlyDeletedCategories
+            ..clear()
+            ..addAll(
+              rawDeleted.map(
+                (s) => _UserCategory.fromJson(
+                  jsonDecode(s) as Map<String, dynamic>,
+                ),
+              ),
+            );
+        }
+        _ensureSystemUtilityCategories();
         if (rawSmartColors != null) {
           final decoded = jsonDecode(rawSmartColors) as Map<String, dynamic>;
           _smartCategoryColors
@@ -5712,6 +5811,19 @@ class EventsTabState extends State<EventsTab>
               _userCategories.where((c) => !c.archived).map((c) => c.id),
             );
         }
+        // New system categories are appended for existing installs without
+        // disturbing any saved user ordering. Group members intentionally do
+        // not receive a top-level token.
+        final groupMemberIds = {
+          for (final group in _categoryGroups) ...group.memberIds,
+        };
+        for (final category in _userCategories) {
+          if (!category.archived &&
+              !groupMemberIds.contains(category.id) &&
+              !_listTopOrder.contains(category.id)) {
+            _listTopOrder.add(category.id);
+          }
+        }
       });
 
       // Refresh CategoryRegistry so search results display accurate names+colours.
@@ -5728,6 +5840,29 @@ class EventsTabState extends State<EventsTab>
         }
       }
     });
+  }
+
+  /// Adds the two permanent navigation categories to data saved by older
+  /// versions and restores their canonical metadata if an old record exists.
+  /// Their placement remains governed by the saved list/grid order.
+  void _ensureSystemUtilityCategories() {
+    for (final systemCategory in _kUserCategories.where(
+      _isSystemUtilityCategory,
+    )) {
+      final userIndex = _userCategories.indexWhere(
+        (category) => category.id == systemCategory.id,
+      );
+      final pinnedIndex = _pinnedUserCategories.indexWhere(
+        (category) => category.id == systemCategory.id,
+      );
+      if (pinnedIndex != -1) {
+        _pinnedUserCategories[pinnedIndex] = systemCategory;
+      } else if (userIndex != -1) {
+        _userCategories[userIndex] = systemCategory;
+      } else {
+        _userCategories.add(systemCategory);
+      }
+    }
   }
 
   void _updateSmartCategoryColor(String label, Color color) {
@@ -5886,7 +6021,9 @@ class EventsTabState extends State<EventsTab>
     final knownCategoryIds = {
       ..._userCategories,
       ..._pinnedUserCategories,
-    }.map((category) => category.id).toSet();
+    }.where((category) => !_isSystemUtilityCategory(category))
+        .map((category) => category.id)
+        .toSet();
     return {
       for (final event in allEvents)
         if (isUncategorized
@@ -5902,7 +6039,8 @@ class EventsTabState extends State<EventsTab>
   void _updateCategoryRegistry() {
     CategoryRegistry.update({
       for (final c in [..._userCategories, ..._pinnedUserCategories])
-        c.id: CategoryMeta(name: c.name, rawColor: c.color),
+        if (!_isSystemUtilityCategory(c))
+          c.id: CategoryMeta(name: c.name, rawColor: c.color),
     });
   }
 
@@ -6126,7 +6264,9 @@ class EventsTabState extends State<EventsTab>
       final knownCategoryIds = {
         ..._userCategories,
         ..._pinnedUserCategories,
-      }.map((category) => category.id).toSet();
+      }.where((category) => !_isSystemUtilityCategory(category))
+          .map((category) => category.id)
+          .toSet();
       final counts = <String, int>{};
       for (final e in allEvents) {
         final id =
@@ -6150,6 +6290,11 @@ class EventsTabState extends State<EventsTab>
               .length;
         }
       }
+      counts[_kIdSysArchivedCategories] =
+          _archivedSmartLabels.length + _archivedUserCategories.length;
+      counts[_kIdSysRecentlyDeleted] =
+          _recentlyDeletedCategories.length +
+          EventStore.instance.deletedEvents.value.length;
       _liveEventCounts = counts;
     }
 
@@ -6392,6 +6537,7 @@ class EventsTabState extends State<EventsTab>
                     dragGroupTargetCat: _dragGroupTargetCat,
                     collapsedGroupDwellId: _collapsedGroupDwellId,
                     onPin: _pinCategory,
+                    onCategoryTap: _onCategoryTapped,
                     onEdit: _editCategory,
                     onArchive: _archiveCategory,
                     onDelete: _deleteUserCategory,
@@ -6419,7 +6565,9 @@ class EventsTabState extends State<EventsTab>
           SliverPadding(
             padding: EdgeInsets.fromLTRB(
               16,
-              _buildFlatDisplayList().isEmpty ? 0.0 : kFloatingTabBarVisualGap,
+              _buildFlatDisplayList().isEmpty
+                  ? 0.0
+                  : kFloatingTabBarVisualGap,
               16,
               24,
             ),
@@ -6543,7 +6691,9 @@ class EventsTabState extends State<EventsTab>
                         final knownCategoryIds = {
                           ..._userCategories,
                           ..._pinnedUserCategories,
-                        }.map((category) => category.id).toSet();
+                        }.where((category) => !_isSystemUtilityCategory(category))
+                            .map((category) => category.id)
+                            .toSet();
                         dcvEvents = allEvents.where((e) {
                           if (isUncat) {
                             return _uncatIds.contains(e.categoryId) ||
@@ -7440,6 +7590,11 @@ class _UserCategory {
   /// in the category list.
   final String smartDescription;
 
+  /// System navigation categories are first-class list/grid entries, but do
+  /// not represent an event category and cannot be edited, archived, or
+  /// deleted.
+  final bool isSystemUtility;
+
   // ── Preset values — auto-fill the New Event sheet when this category is picked
   /// Starting location preset (future Maps API).
   final String? presetLocation;
@@ -7487,6 +7642,7 @@ class _UserCategory {
     this.archived = false,
     this.categoryType = 'Standard',
     this.smartDescription = '',
+    this.isSystemUtility = false,
     this.presetLocation,
     this.presetDestination,
     this.presetTravelTime,
@@ -7515,6 +7671,7 @@ class _UserCategory {
     archived: archived ?? this.archived,
     categoryType: categoryType,
     smartDescription: smartDescription,
+    isSystemUtility: isSystemUtility,
     presetLocation: presetLocation,
     presetDestination: presetDestination,
     presetTravelTime: presetTravelTime,
@@ -7541,6 +7698,7 @@ class _UserCategory {
     'archived': archived,
     'categoryType': categoryType,
     'smartDescription': smartDescription,
+    if (isSystemUtility) 'isSystemUtility': true,
     // Preset fields (omit when null/None to keep storage lean)
     if (presetLocation != null && presetLocation!.isNotEmpty)
       'presetLocation': presetLocation,
@@ -7593,6 +7751,7 @@ class _UserCategory {
       archived: (json['archived'] as bool?) ?? false,
       categoryType: (json['categoryType'] as String?) ?? 'Standard',
       smartDescription: (json['smartDescription'] as String?) ?? '',
+      isSystemUtility: (json['isSystemUtility'] as bool?) ?? false,
       presetLocation: json['presetLocation'] as String?,
       presetDestination: json['presetDestination'] as String?,
       presetTravelTime: json['presetTravelTime'] as String?,
@@ -7709,6 +7868,23 @@ class _FlatItem {
 // These are permanent — they must never be reassigned or reused by user cats.
 const _kIdSysUnnamed = 'sys-unnamed';
 const _kIdSysUncategorized = 'sys-uncategorized';
+const _kIdSysArchivedCategories = 'sys-archived-categories';
+const _kIdSysRecentlyDeleted = 'sys-recently-deleted';
+
+bool _isSystemUtilityCategory(_UserCategory category) =>
+    category.isSystemUtility ||
+    category.id == _kIdSysArchivedCategories ||
+    category.id == _kIdSysRecentlyDeleted;
+
+Color _userCategoryCircleColor(
+  _UserCategory category,
+  BuildContext context,
+) {
+  final resolved = renderCategoryColor(category.color, context);
+  return _isSystemUtilityCategory(category)
+      ? _emojiCircleColor(resolved)
+      : _categoryIconCircleColor(category.iconOrSvg, resolved);
+}
 
 const _kUserCategories = [
   _UserCategory(
@@ -7724,6 +7900,24 @@ const _kUserCategories = [
     description: 'For events without a specific category',
     count: 0,
     icon: CupertinoIcons.folder,
+  ),
+  _UserCategory(
+    id: _kIdSysArchivedCategories,
+    name: 'Archived Categories',
+    description: '',
+    count: 0,
+    color: kCatSlate,
+    icon: SFIcons.sf_archivebox,
+    isSystemUtility: true,
+  ),
+  _UserCategory(
+    id: _kIdSysRecentlyDeleted,
+    name: 'Recently Deleted',
+    description: '',
+    count: 0,
+    color: kCatRed,
+    icon: SFIcons.sf_trash,
+    isSystemUtility: true,
   ),
 ];
 
@@ -7756,6 +7950,7 @@ class _PinnedUserTile extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onArchive;
   final VoidCallback? onDelete;
+  final VoidCallback? onTap;
   final void Function(Offset)? onReorderStart;
   final void Function(Offset)? onReorderUpdate;
   final VoidCallback? onReorderEnd;
@@ -7769,6 +7964,7 @@ class _PinnedUserTile extends StatelessWidget {
     this.onEdit,
     this.onArchive,
     this.onDelete,
+    this.onTap,
     this.onReorderStart,
     this.onReorderUpdate,
     this.onReorderEnd,
@@ -7781,17 +7977,19 @@ class _PinnedUserTile extends StatelessWidget {
     return _CategoryContextMenu(
       isSmartCategory: false,
       isPinned: true,
+      isUtilityCategory: _isSystemUtilityCategory(category),
       reorderable: true,
       onUnpin: onUnpin,
       onEdit: onEdit,
       onArchive: onArchive,
       onDelete: onDelete,
-      onTap: onTap != null
+      onTap: this.onTap ??
+          (onTap != null
           ? () => onTap(
               category.name,
               renderCategoryColor(category.color, context),
             )
-          : null,
+          : null),
       onReorderStart: onReorderStart,
       onReorderUpdate: onReorderUpdate,
       onReorderEnd: onReorderEnd,
@@ -7831,10 +8029,7 @@ class _PinnedUserTile extends StatelessWidget {
               width: circleSize,
               height: circleSize,
               decoration: BoxDecoration(
-                color: _categoryIconCircleColor(
-                  category.iconOrSvg,
-                  renderCategoryColor(category.color, context),
-                ),
+                color: _userCategoryCircleColor(category, context),
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -8276,10 +8471,7 @@ Widget _buildCategoryListRowBody(
     width: circleSize,
     height: circleSize,
     decoration: BoxDecoration(
-      color: _categoryIconCircleColor(
-        category.iconOrSvg,
-        renderCategoryColor(category.color, context),
-      ),
+      color: _userCategoryCircleColor(category, context),
       shape: BoxShape.circle,
     ),
     child: Center(
@@ -8547,6 +8739,7 @@ class _CategoryCard extends StatelessWidget {
   /// (the dragged cat is hovering over a collapsed group and counting down).
   final String? collapsedGroupDwellId;
   final void Function(_UserCategory)? onPin;
+  final void Function(_UserCategory)? onCategoryTap;
   final void Function(_UserCategory)? onEdit;
   final void Function(_UserCategory)? onArchive;
   final void Function(_UserCategory)? onDelete;
@@ -8582,6 +8775,7 @@ class _CategoryCard extends StatelessWidget {
     this.dragGroupTargetCat,
     this.collapsedGroupDwellId,
     this.onPin,
+    this.onCategoryTap,
     this.onEdit,
     this.onArchive,
     this.onDelete,
@@ -8812,6 +9006,7 @@ class _CategoryCard extends StatelessWidget {
         isGroupTarget: isGroupTarget,
         stadium: stadium,
         onPin: item.isSolo && onPin != null ? () => onPin!(cat) : null,
+        onTap: onCategoryTap != null ? () => onCategoryTap!(cat) : null,
         onEdit: onEdit != null ? () => onEdit!(cat) : null,
         onArchive: onArchive != null ? () => onArchive!(cat) : null,
         onDelete: onDelete != null ? () => onDelete!(cat) : null,
@@ -8932,6 +9127,7 @@ class _CategoryRow extends StatelessWidget {
   final bool stadium;
 
   final VoidCallback? onPin;
+  final VoidCallback? onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onArchive;
   final VoidCallback? onDelete;
@@ -8951,6 +9147,7 @@ class _CategoryRow extends StatelessWidget {
     this.isGroupTarget = false,
     this.stadium = false,
     this.onPin,
+    this.onTap,
     this.onEdit,
     this.onArchive,
     this.onDelete,
@@ -8966,17 +9163,19 @@ class _CategoryRow extends StatelessWidget {
     Widget content = _CategoryContextMenu(
       isSmartCategory: false,
       isPinned: false,
+      isUtilityCategory: _isSystemUtilityCategory(category),
       reorderable: true, // group members are now individually reorderable
       onPin: onPin,
       onEdit: onEdit,
       onArchive: onArchive,
       onDelete: onDelete,
-      onTap: onTap != null
+      onTap: this.onTap ??
+          (onTap != null
           ? () => onTap(
               category.name,
               renderCategoryColor(category.color, context),
             )
-          : null,
+          : null),
       onReorderStart: onReorderStart,
       onReorderUpdate: onReorderUpdate,
       onReorderEnd: onReorderEnd,
@@ -9455,6 +9654,271 @@ class _AddCategoryButtonState extends State<_AddCategoryButton>
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ArchivedCategoriesSheet extends StatelessWidget {
+  final List<String> smartLabels;
+  final List<_UserCategory> userCategories;
+
+  const _ArchivedCategoriesSheet({
+    required this.smartLabels,
+    required this.userCategories,
+  });
+
+  Widget _item(BuildContext context, String title) {
+    final primary = resolveThemeColor(kPrimaryLabel, context);
+    final secondary = resolveThemeColor(kSecondaryLabel, context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: ShapeDecoration(
+          color: resolveThemeColor(kSbSurface, context),
+          shape: const BoundedSquircleStadiumBorder(),
+        ),
+        child: Row(
+          children: [
+            FixedSFIcon(
+              SFIcons.sf_archivebox,
+              fontSize: 20,
+              color: secondary,
+              fontWeight: FontWeight.w500,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  inherit: false,
+                  color: primary,
+                  fontSize: 17,
+                  fontFamily: kSFProText,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: kTracking17,
+                  height: kLineHeight,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(BuildContext context, String label) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      label,
+      style: TextStyle(
+        inherit: false,
+        color: resolveThemeColor(kSecondaryLabel, context),
+        fontSize: 13,
+        fontFamily: kSFProText,
+        fontWeight: FontWeight.w600,
+        letterSpacing: kTracking16,
+      ),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = resolveThemeColor(kPrimaryLabel, context);
+    final textScaler = MediaQuery.textScalerOf(context);
+    return Column(
+      children: [
+        RoundedCupertinoSheetHeader(
+          child: SizedBox(
+            height: 72,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Text(
+                  'Archived Categories',
+                  style: TextStyle(
+                    inherit: false,
+                    color: primary,
+                    fontSize: textScaler.scale(17),
+                    fontFamily: kSFProText,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: kTracking17,
+                    height: kLineHeight,
+                  ),
+                ),
+                Positioned(
+                  right: kModalSheetButtonEdgeGap,
+                  child: _ModalCircleButton(
+                    icon: CupertinoIcons.xmark,
+                    iconColor: primary,
+                    onTap: () => Navigator.of(context).pop(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              8,
+              16,
+              max(20, systemSafeAreaBottomInset(context)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (smartLabels.isNotEmpty) ...[
+                  _sectionLabel(context, 'SMART CATEGORIES'),
+                  for (final label in smartLabels) _item(context, label),
+                ],
+                if (userCategories.isNotEmpty) ...[
+                  if (smartLabels.isNotEmpty) const SizedBox(height: 12),
+                  _sectionLabel(context, 'CATEGORIES'),
+                  for (final category in userCategories)
+                    _item(context, category.name),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecentlyDeletedSheet extends StatelessWidget {
+  final List<ScheduledEvent> events;
+  final List<_UserCategory> categories;
+
+  const _RecentlyDeletedSheet({
+    required this.events,
+    required this.categories,
+  });
+
+  Widget _item(BuildContext context, String title, IconData icon) {
+    final primary = resolveThemeColor(kPrimaryLabel, context);
+    final secondary = resolveThemeColor(kSecondaryLabel, context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: ShapeDecoration(
+          color: resolveThemeColor(kSbSurface, context),
+          shape: const BoundedSquircleStadiumBorder(),
+        ),
+        child: Row(
+          children: [
+            FixedSFIcon(
+              icon,
+              fontSize: 20,
+              color: secondary,
+              fontWeight: FontWeight.w500,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title.trim().isEmpty ? 'Untitled' : title.trim(),
+                style: TextStyle(
+                  inherit: false,
+                  color: primary,
+                  fontSize: 17,
+                  fontFamily: kSFProText,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: kTracking17,
+                  height: kLineHeight,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(BuildContext context, String label) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      label,
+      style: TextStyle(
+        inherit: false,
+        color: resolveThemeColor(kSecondaryLabel, context),
+        fontSize: 13,
+        fontFamily: kSFProText,
+        fontWeight: FontWeight.w600,
+        letterSpacing: kTracking16,
+      ),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = resolveThemeColor(kPrimaryLabel, context);
+    final textScaler = MediaQuery.textScalerOf(context);
+    return Column(
+      children: [
+        RoundedCupertinoSheetHeader(
+          child: SizedBox(
+            height: 72,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Text(
+                  'Recently Deleted',
+                  style: TextStyle(
+                    inherit: false,
+                    color: primary,
+                    fontSize: textScaler.scale(17),
+                    fontFamily: kSFProText,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: kTracking17,
+                    height: kLineHeight,
+                  ),
+                ),
+                Positioned(
+                  right: kModalSheetButtonEdgeGap,
+                  child: _ModalCircleButton(
+                    icon: CupertinoIcons.xmark,
+                    iconColor: primary,
+                    onTap: () => Navigator.of(context).pop(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              8,
+              16,
+              max(20, systemSafeAreaBottomInset(context)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (events.isNotEmpty) ...[
+                  _sectionLabel(context, 'EVENTS'),
+                  for (final event in events)
+                    _item(context, event.title, SFIcons.sf_calendar),
+                ],
+                if (categories.isNotEmpty) ...[
+                  if (events.isNotEmpty) const SizedBox(height: 12),
+                  _sectionLabel(context, 'CATEGORIES'),
+                  for (final category in categories)
+                    _item(context, category.name, SFIcons.sf_folder),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

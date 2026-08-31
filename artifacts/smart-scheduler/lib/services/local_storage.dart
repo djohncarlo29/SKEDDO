@@ -18,6 +18,7 @@ class LocalStorage {
   static final LocalStorage instance = LocalStorage._();
 
   static const _kEventsKey = 'skeddo_events_v1';
+  static const _kDeletedEventsKey = 'skeddo_deleted_events_v1';
   static const _kEmbVersionsKey = 'skeddo_emb_versions_v1';
 
   /// Persist [events] to SharedPreferences as a JSON string list.
@@ -42,6 +43,40 @@ class LocalStorage {
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getStringList(_kEventsKey) ?? [];
+      return raw
+          .map((s) {
+            try {
+              return ScheduledEvent.fromJson(
+                jsonDecode(s) as Map<String, dynamic>,
+              );
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<ScheduledEvent>()
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Persist events that were removed from the live schedule so the Events
+  /// tab can expose them through Recently Deleted.
+  Future<bool> saveDeletedEvents(List<ScheduledEvent> events) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonList = events.map((e) => jsonEncode(e.toJson())).toList();
+      return await prefs.setStringList(_kDeletedEventsKey, jsonList);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Load the Recently Deleted event snapshots, or an empty list on failure.
+  Future<List<ScheduledEvent>> loadDeletedEvents() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getStringList(_kDeletedEventsKey) ?? [];
       return raw
           .map((s) {
             try {

@@ -24,6 +24,7 @@ class EventStore {
   static final EventStore instance = EventStore._();
 
   final events = ValueNotifier<List<ScheduledEvent>>([]);
+  final deletedEvents = ValueNotifier<List<ScheduledEvent>>([]);
 
   int _nextId = 1;
 
@@ -79,6 +80,7 @@ class EventStore {
   /// defensive gate.
   Future<void> loadFromStorage() async {
     final saved = await LocalStorage.instance.loadEvents();
+    deletedEvents.value = await LocalStorage.instance.loadDeletedEvents();
     if (saved.isNotEmpty) {
       // Advance the ID counter past all existing IDs to prevent collisions.
       _nextId = saved.fold(1, (max, e) {
@@ -542,7 +544,14 @@ class EventStore {
       (e) => e.id == id,
       orElse: () => ScheduledEvent(id: id, title: ''),
     );
+    final existed = events.value.any((e) => e.id == id);
+    if (!existed) return;
     final attachmentPaths = removed.attachmentPaths ?? const [];
+    deletedEvents.value = [
+      ...deletedEvents.value.where((e) => e.id != id),
+      removed,
+    ];
+    LocalStorage.instance.saveDeletedEvents(deletedEvents.value);
     events.value = events.value.where((e) => e.id != id).toList();
     _onRemoved?.call(id, attachmentPaths, events.value); // fire-and-forget
   }
@@ -553,6 +562,14 @@ class EventStore {
     final allPaths = events.value
         .expand((e) => e.attachmentPaths ?? const <String>[])
         .toList();
+    if (events.value.isNotEmpty) {
+      final byId = <String, ScheduledEvent>{
+        for (final event in deletedEvents.value) event.id: event,
+        for (final event in events.value) event.id: event,
+      };
+      deletedEvents.value = byId.values.toList();
+      LocalStorage.instance.saveDeletedEvents(deletedEvents.value);
+    }
     events.value = [];
     // Persist the empty state.
     LocalStorage.instance.saveEvents([]).then((ok) {
