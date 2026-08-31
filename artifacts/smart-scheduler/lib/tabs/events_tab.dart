@@ -11082,7 +11082,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                 // use the current accent, matching the cursor.
                                 HorizontalEdgeFade(
                                   fadeColor: resolveThemeColor(
-                                    kSbSurface,
+                                    kModalCard,
                                     context,
                                   ),
                                   child: CupertinoTheme(
@@ -12320,7 +12320,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             alignment: Alignment.center,
             children: [
               HorizontalEdgeFade(
-                fadeColor: resolveThemeColor(kSbSurface, context),
+                fadeColor: resolveThemeColor(kModalCard, context),
                 child: CupertinoTextField(
                   controller: _titleCtrl,
                   focusNode: _titleFocus,
@@ -12415,7 +12415,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             alignment: Alignment.center,
             children: [
               HorizontalEdgeFade(
-                fadeColor: resolveThemeColor(kSbSurface, context),
+                fadeColor: resolveThemeColor(kModalCard, context),
                 child: CupertinoTextField(
                   controller: _descCtrl,
                   focusNode: _descFocus,
@@ -12762,7 +12762,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             // The actual text field with an empty placeholder string so our
             // animated overlay above is the only placeholder the user sees.
             HorizontalEdgeFade(
-              fadeColor: resolveThemeColor(kSbSurface, context),
+              fadeColor: resolveThemeColor(kModalCard, context),
               child: CupertinoTheme(
                 data: CupertinoTheme.of(
                   context,

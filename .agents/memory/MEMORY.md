@@ -54,6 +54,7 @@
 - [Categories accordion outer clip](categories-accordion-outer-clip.md) — keep the outer unpinned CATEGORIES surface on one fixed bounded squircle; only rows and height should animate.
 - [Events search overlay rendering](events-search-overlay-rendering.md) — search overlays must render the shared result widgets; DCV scopes ranking only, never visibility.
 - [Horizontal fade layout bounds](horizontal-fade-layout-bounds.md) — shared one-line fade wrappers must use natural-height Stack sizing; StackFit.expand breaks modal Column layouts.
+- [Horizontal fade surface matching](horizontal-fade-surface-matching.md) — fade endpoints must resolve to the exact surface behind each text row, especially modal cards in dark mode.
 - [Temporal composition API compatibility](temporal-composition-api.md) — shared event temporal composition must use the canonical model copy API and keep date/time precision enums distinct.
 - [Search fuzzy equal-length guard](search-fuzzy-equal-length.md) — equal-length typo comparisons must not select the target token as both sides of prefix logic.
 - [Cupertino selection styling across Shorebird versions](cupertino-selection-style-shorebird.md) — use DefaultSelectionStyle plus CupertinoTheme; Shorebird's CupertinoTextField has no selectionColor parameter.

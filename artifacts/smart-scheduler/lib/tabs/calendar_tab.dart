@@ -6233,7 +6233,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     EdgeInsets? paddingOverride,
   }) {
     final clearIconSize = scaledSearchIconSize(context, 18);
-    final resolvedSurface = resolveThemeColor(kSbSurface, context);
+    final resolvedSurface = resolveThemeColor(kModalCard, context);
     final textField = CupertinoTheme(
       data: CupertinoTheme.of(context).copyWith(
         primaryColor: renderCategoryColor(_categoryColor, context),
@@ -7937,7 +7937,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
               },
             ),
             HorizontalEdgeFade(
-              fadeColor: resolveThemeColor(kSbSurface, context),
+              fadeColor: resolveThemeColor(kModalCard, context),
               child: CupertinoTheme(
                 data: CupertinoTheme.of(context).copyWith(
                   primaryColor: renderCategoryColor(_categoryColor, context),
@@ -9218,7 +9218,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             const SizedBox(width: 12),
             Expanded(
               child: HorizontalEdgeFade(
-                fadeColor: resolveThemeColor(kSbSurface, context),
+                fadeColor: resolveThemeColor(kModalCard, context),
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(
