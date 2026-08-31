@@ -556,6 +556,28 @@ class EventStore {
     _onRemoved?.call(id, attachmentPaths, events.value); // fire-and-forget
   }
 
+  /// Restore a deleted event to the default category.
+  ///
+  /// Recently deleted events no longer retain an active category assignment:
+  /// recovery intentionally returns them to Uncategorized, matching the
+  /// product's recovery copy and avoiding references to deleted categories.
+  bool restoreDeleted(String id) {
+    final deletedIndex = deletedEvents.value.indexWhere(
+      (event) => event.id == id,
+    );
+    if (deletedIndex < 0) return false;
+
+    final deleted = deletedEvents.value[deletedIndex];
+    final restored = deleted.copyWithCategory('sys-uncategorized');
+    final nextDeleted = List<ScheduledEvent>.of(deletedEvents.value)
+      ..removeAt(deletedIndex);
+    deletedEvents.value = nextDeleted;
+    events.value = [...events.value, restored];
+    LocalStorage.instance.saveDeletedEvents(nextDeleted);
+    _onAdded?.call(restored, events.value); // fire-and-forget
+    return true;
+  }
+
   void clear() {
     // Collect every attachment path before wiping the list so the pipeline
     // can delete the files from disk after the events are gone from memory.

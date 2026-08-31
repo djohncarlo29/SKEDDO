@@ -2147,6 +2147,23 @@ class EventsTabState extends State<EventsTab>
     ..._pinnedUserCategories.where((c) => c.archived),
   ];
 
+  /// System utility categories are navigation entries whose visibility is
+  /// driven by the contents they expose. They remain in the persisted order so
+  /// restoring an item does not need to rebuild the user's list ordering, but
+  /// empty utilities must not occupy a visible row.
+  bool _hasSystemUtilityItems(_UserCategory category) {
+    switch (category.id) {
+      case _kIdSysArchivedCategories:
+        return _archivedSmartLabels.isNotEmpty ||
+            _archivedUserCategories.isNotEmpty;
+      case _kIdSysRecentlyDeleted:
+        return EventStore.instance.deletedEvents.value.isNotEmpty ||
+            _recentlyDeletedCategories.isNotEmpty;
+      default:
+        return true;
+    }
+  }
+
   /// Builds the ordered flat item list for the CATEGORIES section.
   /// Groups whose members are expanded also include their member rows.
   /// Used by _CategoryCard for rendering and by the drag-reorder system.
@@ -2183,7 +2200,9 @@ class EventsTabState extends State<EventsTab>
         }
       } else {
         final c = catById[token];
-        if (c != null && !c.archived) {
+        if (c != null &&
+            !c.archived &&
+            _hasSystemUtilityItems(c)) {
           result.add(_FlatItem.solo(c));
         }
       }
@@ -2193,25 +2212,7 @@ class EventsTabState extends State<EventsTab>
 
   /// Whether the CATEGORIES list has any visible content (solo cats or groups).
   bool get _hasVisibleListItems =>
-      _listTopOrder.isNotEmpty &&
-      (_listTopOrder.any(
-        (t) =>
-            t.startsWith('grp-') ||
-            (_userCategories
-                    .firstWhere(
-                      (c) => c.id == t,
-                      orElse:
-                          () => const _UserCategory(
-                            id: '',
-                            name: '',
-                            description: '',
-                            count: 0,
-                            archived: true,
-                          ),
-                    )
-                    .archived ==
-                false),
-      ));
+      _buildFlatDisplayList().isNotEmpty;
 
   // ── Group management ──────────────────────────────────────────────────────
 
@@ -2463,12 +2464,136 @@ class EventsTabState extends State<EventsTab>
 
   void _onCategoryTapped(_UserCategory category) {
     // System utility categories are first-class DCVs, just like every other
-    // category. Their content is supplied by the detail-view builder below;
-    // they must not branch into a modal sheet.
+    // category. Their content is supplied by the detail-view builder below.
     widget.onTileTapped?.call(
       category.name,
       renderCategoryColor(category.color, context),
     );
+  }
+
+  void _openUtilityItemSheet({
+    required String title,
+    required String subtitle,
+    required String actionLabel,
+    required VoidCallback onAction,
+  }) async {
+    final shouldAct = await _UtilityItemSheet.show(
+      context,
+      title: title,
+      subtitle: subtitle,
+      actionLabel: actionLabel,
+    );
+    if (!mounted || shouldAct != true) return;
+    onAction();
+  }
+
+  void _openArchivedSmartCategory(String label) {
+    _openUtilityItemSheet(
+      title: 'Archived Category',
+      subtitle:
+          'To edit an archived category, you\'ll need to recover it. '
+          'This will move it back to your categories list.',
+      actionLabel: 'Unarchive',
+      onAction: () => _unarchiveSmartCategory(label),
+    );
+  }
+
+  void _openArchivedCategory(_UserCategory category) {
+    _openUtilityItemSheet(
+      title: 'Archived Category',
+      subtitle:
+          'To edit an archived category, you\'ll need to recover it. '
+          'This will move it back to your categories list.',
+      actionLabel: 'Unarchive',
+      onAction: () => _unarchiveCategory(category),
+    );
+  }
+
+  void _openDeletedEvent(ScheduledEvent event) {
+    _openUtilityItemSheet(
+      title: 'Recently Deleted Event',
+      subtitle:
+          'To edit a recently deleted event, you\'ll need to recover it. '
+          'This will move it to the default category.',
+      actionLabel: 'Recover',
+      onAction: () {
+        if (EventStore.instance.restoreDeleted(event.id)) {
+          setState(() {});
+        }
+      },
+    );
+  }
+
+  void _openDeletedCategory(_UserCategory category) {
+    _openUtilityItemSheet(
+      title: 'Recently Deleted Category',
+      subtitle:
+          'To edit a recently deleted category, you\'ll need to recover it. '
+          'This will move it back to your categories list.',
+      actionLabel: 'Recover',
+      onAction: () => _recoverDeletedCategory(category),
+    );
+  }
+
+  void _unarchiveSmartCategory(String label) {
+    if (!_archivedSmartCategories.contains(label)) return;
+    setState(() {
+      _archivedSmartCategories.remove(label);
+      if (!_smartCategoryOrder.contains(label)) {
+        _smartCategoryOrder.add(label);
+      }
+      if (!_gridCombinedOrder.contains(label)) {
+        _gridCombinedOrder.add(label);
+      }
+    });
+    _saveCategories();
+  }
+
+  void _unarchiveCategory(_UserCategory category) {
+    final isInList = _userCategories.any((candidate) => candidate.id == category.id);
+    final isInGrid = _pinnedUserCategories.any(
+      (candidate) => candidate.id == category.id,
+    );
+    if (!isInList && !isInGrid) return;
+
+    final restored = category.copyWith(archived: false);
+    setState(() {
+      _userCategories.removeWhere((candidate) => candidate.id == category.id);
+      _pinnedUserCategories.removeWhere(
+        (candidate) => candidate.id == category.id,
+      );
+      _gridCombinedOrder.removeWhere(
+        (item) => item is _UserCategory && item.id == category.id,
+      );
+      _userCategories.add(restored);
+      if (!_listTopOrder.contains(restored.id)) {
+        _listTopOrder.add(restored.id);
+      }
+    });
+    _saveCategories();
+  }
+
+  void _recoverDeletedCategory(_UserCategory category) {
+    final isDeleted = _recentlyDeletedCategories.any(
+      (candidate) => candidate.id == category.id,
+    );
+    if (!isDeleted) return;
+
+    final restored = category.copyWith(archived: false);
+    setState(() {
+      _recentlyDeletedCategories.removeWhere(
+        (candidate) => candidate.id == category.id,
+      );
+      _userCategories.removeWhere((candidate) => candidate.id == category.id);
+      _pinnedUserCategories.removeWhere(
+        (candidate) => candidate.id == category.id,
+      );
+      _userCategories.add(restored);
+      if (!_listTopOrder.contains(restored.id)) {
+        _listTopOrder.add(restored.id);
+      }
+    });
+    _saveCategories();
   }
 
   // ── Grid drag-reorder (unified: smart tiles + pinned user tiles) ──────────
@@ -6828,6 +6953,9 @@ class EventsTabState extends State<EventsTab>
                             ? (_) => _DcvUtilityContent(
                               archivedSmartLabels: _archivedSmartLabels,
                               archivedCategories: _archivedUserCategories,
+                              onArchivedSmartCategoryTap:
+                                  _openArchivedSmartCategory,
+                              onArchivedCategoryTap: _openArchivedCategory,
                             )
                             : isRecentlyDeletedUtility &&
                                 hasRecentlyDeletedUtilityItems
@@ -6835,6 +6963,8 @@ class EventsTabState extends State<EventsTab>
                               deletedEvents:
                                   EventStore.instance.deletedEvents.value,
                               deletedCategories: _recentlyDeletedCategories,
+                              onDeletedEventTap: _openDeletedEvent,
+                              onDeletedCategoryTap: _openDeletedCategory,
                             )
                             : null,
                   );
@@ -9675,6 +9805,178 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
   }
 }
 
+/// Confirmation overlay used when an item in Archived Categories or Recently
+/// Deleted is tapped. The copy explains why the item must be restored before it
+/// can be edited, while the action itself is supplied by the owning Events tab.
+class _UtilityItemSheet {
+  static Future<bool?> show(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required String actionLabel,
+  }) async {
+    final completer = Completer<bool?>();
+    late final OverlayEntry entry;
+    final overlay = Overlay.of(context, rootOverlay: true);
+
+    void close(bool? result) {
+      if (completer.isCompleted) return;
+      entry.remove();
+      completer.complete(result);
+    }
+
+    entry = OverlayEntry(
+      builder:
+          (_) => _UtilityItemSheetOverlay(
+            title: title,
+            subtitle: subtitle,
+            actionLabel: actionLabel,
+            onResult: close,
+          ),
+    );
+    overlay.insert(entry);
+    return completer.future;
+  }
+}
+
+class _UtilityItemSheetOverlay extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String actionLabel;
+  final void Function(bool?) onResult;
+
+  const _UtilityItemSheetOverlay({
+    required this.title,
+    required this.subtitle,
+    required this.actionLabel,
+    required this.onResult,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = resolveThemeColor(kPrimaryLabel, context);
+    final secondary = resolveThemeColor(kSecondaryLabel, context);
+    final buttonDecor = ShapeDecoration(
+      color: resolveThemeColor(kModalButtonBackground, context),
+      shape: const BoundedSquircleStadiumBorder(),
+      shadows: resolveThemeShadows(kCardShadow, context),
+    );
+    final sheetBorder =
+        CupertinoTheme.brightnessOf(context) == Brightness.dark
+            ? BorderSide(
+              color: resolveThemeColor(kTertiaryLabel, context),
+              width: 0.5,
+            )
+            : null;
+
+    Widget button({
+      required String label,
+      required VoidCallback onTap,
+    }) {
+      return GelBloomButton(
+        peakScale: 1.06,
+        tapDelay: const Duration(milliseconds: 120),
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          clipBehavior: Clip.antiAlias,
+          decoration: buttonDecor,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Center(
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                inherit: false,
+                fontSize: 17,
+                fontFamily: kSFProText,
+                fontWeight: FontWeight.w500,
+                color: primary,
+                letterSpacing: kTracking17,
+                height: kLineHeight,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Stack(
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => onResult(null),
+          child: const ColoredBox(
+            color: Color(0x44000000),
+            child: SizedBox.expand(),
+          ),
+        ),
+        Align(
+          alignment: Alignment.center,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: GelBloomCard(
+                scaleOrigin: Alignment.center,
+                fillOpacity: 0.82,
+                shadowOpacity: 0.26,
+                border: sheetBorder,
+                shape: BoundedSquircleStadiumBorder(
+                  radius: kLargeModalSheetCornerRadius,
+                  side: sheetBorder ?? BorderSide.none,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          inherit: false,
+                          fontSize: 18,
+                          fontFamily: kSFProText,
+                          fontWeight: FontWeight.w600,
+                          color: primary,
+                          letterSpacing: kTracking16,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          inherit: false,
+                          fontSize: 15,
+                          fontFamily: kSFProText,
+                          fontWeight: FontWeight.w400,
+                          color: secondary,
+                          height: 1.5,
+                          letterSpacing: kTracking16,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      button(
+                        label: actionLabel,
+                        onTap: () => onResult(true),
+                      ),
+                      const SizedBox(height: 8),
+                      button(
+                        label: 'Cancel',
+                        onTap: () => onResult(null),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // ADD CATEGORY BUTTON
 // ══════════════════════════════════════════════════════════════════════════════
@@ -9779,12 +10081,20 @@ class _DcvUtilityContent extends StatelessWidget {
   final List<_UserCategory> archivedCategories;
   final List<ScheduledEvent> deletedEvents;
   final List<_UserCategory> deletedCategories;
+  final ValueChanged<String>? onArchivedSmartCategoryTap;
+  final ValueChanged<_UserCategory>? onArchivedCategoryTap;
+  final ValueChanged<ScheduledEvent>? onDeletedEventTap;
+  final ValueChanged<_UserCategory>? onDeletedCategoryTap;
 
   const _DcvUtilityContent({
     this.archivedSmartLabels = const [],
     this.archivedCategories = const [],
     this.deletedEvents = const [],
     this.deletedCategories = const [],
+    this.onArchivedSmartCategoryTap,
+    this.onArchivedCategoryTap,
+    this.onDeletedEventTap,
+    this.onDeletedCategoryTap,
   });
 
   Widget _sectionLabel(BuildContext context, String label) => Padding(
@@ -9807,60 +10117,69 @@ class _DcvUtilityContent extends StatelessWidget {
     required String title,
     String? subtitle,
     required Widget leading,
+    VoidCallback? onTap,
   }) {
     final primary = resolveThemeColor(kPrimaryLabel, context);
     final secondary = resolveThemeColor(kSecondaryLabel, context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: ShapeDecoration(
-          color: resolveThemeColor(kSbSurface, context),
-          shape: const BoundedSquircleStadiumBorder(),
-        ),
-        child: Row(
-          children: [
-            SizedBox(width: 24, height: 24, child: Center(child: leading)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
+    final row = Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: ShapeDecoration(
+        color: resolveThemeColor(kSbSurface, context),
+        shape: const BoundedSquircleStadiumBorder(),
+      ),
+      child: Row(
+        children: [
+          SizedBox(width: 24, height: 24, child: Center(child: leading)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title.trim().isEmpty ? 'Untitled' : title.trim(),
+                  style: TextStyle(
+                    inherit: false,
+                    color: primary,
+                    fontSize: 17,
+                    fontFamily: kSFProText,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: kTracking17,
+                    height: kLineHeight,
+                  ),
+                ),
+                if (subtitle != null && subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 3),
                   Text(
-                    title.trim().isEmpty ? 'Untitled' : title.trim(),
+                    subtitle,
                     style: TextStyle(
                       inherit: false,
-                      color: primary,
-                      fontSize: 17,
+                      color: secondary,
+                      fontSize: 13,
                       fontFamily: kSFProText,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: kTracking17,
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: kTracking16,
                       height: kLineHeight,
                     ),
                   ),
-                  if (subtitle != null && subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        inherit: false,
-                        color: secondary,
-                        fontSize: 13,
-                        fontFamily: kSFProText,
-                        fontWeight: FontWeight.w400,
-                        letterSpacing: kTracking16,
-                        height: kLineHeight,
-                      ),
-                    ),
-                  ],
                 ],
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child:
+          onTap == null
+              ? row
+              : GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onTap,
+                child: row,
+              ),
     );
   }
 
@@ -9901,6 +10220,7 @@ class _DcvUtilityContent extends StatelessWidget {
               context,
               title: label,
               leading: _sfIcon(context, SFIcons.sf_archivebox),
+              onTap: () => onArchivedSmartCategoryTap?.call(label),
             ),
           ),
         );
@@ -9915,6 +10235,7 @@ class _DcvUtilityContent extends StatelessWidget {
               context,
               title: category.name,
               leading: _categoryIcon(context, category),
+              onTap: () => onArchivedCategoryTap?.call(category),
             ),
           ),
         );
@@ -9930,6 +10251,7 @@ class _DcvUtilityContent extends StatelessWidget {
               title: event.title,
               subtitle: _eventSubtitle(event),
               leading: _sfIcon(context, SFIcons.sf_calendar),
+              onTap: () => onDeletedEventTap?.call(event),
             ),
           ),
         );
@@ -9944,6 +10266,7 @@ class _DcvUtilityContent extends StatelessWidget {
               context,
               title: category.name,
               leading: _categoryIcon(context, category),
+              onTap: () => onDeletedCategoryTap?.call(category),
             ),
           ),
         );
