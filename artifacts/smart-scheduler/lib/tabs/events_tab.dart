@@ -8027,6 +8027,8 @@ const _kSmartCategoryDescriptions = <String, String>{
   'Unscheduled': 'Groups events that don\'t yet have a date or time.',
   'All Events': 'Shows every event you\'ve created.',
   'Completed': 'Shows events you\'ve marked as done.',
+  'Archived Categories': 'Shows categories you\'ve archived.',
+  'Recently Deleted': 'Shows deleted events and categories.',
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -11756,10 +11758,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Emoji circles use only their flat white-blended
-                  // swatch. Keep the add-blend highlight for the existing
-                  // non-emoji preview treatment.
-                  if (!_isEmojiIcon(_effectiveIcon))
+                  // Emoji circles and utility previews use only their flat
+                  // swatch. Keep the add-blend highlight for other previews.
+                  if (!_isEmojiIcon(_effectiveIcon) && !widget.smartUtility)
                     CustomPaint(
                       painter: _CircleAddHighlightPainter(previewColor),
                     ),
