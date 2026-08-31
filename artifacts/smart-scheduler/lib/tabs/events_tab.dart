@@ -6902,9 +6902,12 @@ Widget _buildUnifiedCalendarIconUnit({
   required double dayFontSize,
   required double circleScale,
 }) {
-  return Center(
-    child: Transform.scale(
-      scale: circleScale,
+  return SizedBox(
+    width: authoredCircleSize * circleScale,
+    height: authoredCircleSize * circleScale,
+    child: FittedBox(
+      fit: BoxFit.fill,
+      alignment: Alignment.center,
       child: SizedBox(
         width: authoredCircleSize,
         height: authoredCircleSize,

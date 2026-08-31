@@ -15,14 +15,12 @@ matching drag ghost together, but leave the add/edit preview and detail
 placeholder layouts unchanged.
 
 The calendar frame and day badge must be composed at authored coordinates and
-fitted together as one final-sized visual unit. A separately laid-out Text
-widget inside a transformed box can still rasterize its baseline lower at
-non-default text sizes.
+fitted together as one final-sized visual unit. Keep the normal Text renderer;
+the fitting boundary is the important part.
 
-**Why:** Flutter paragraph layout and the SVG can land on different fractional
-coordinates when the OS text scaler changes, even when both are wrapped in a
-shared Transform.scale.
+**Why:** A shared Transform around a child with default-size layout bounds did
+not reliably produce the same final coordinate space as the scaled tile.
 
 **How to apply:** Share the authored calendar composition between the in-grid
-tile, lifted-card renderer, and modal preview; paint the no-scaling badge at
-authored coordinates, then fit the complete composition to its scaled bounds.
+tile, lifted-card renderer, and modal preview; keep the badge on
+TextScaler.noScaling, then fit the complete composition to its scaled bounds.
