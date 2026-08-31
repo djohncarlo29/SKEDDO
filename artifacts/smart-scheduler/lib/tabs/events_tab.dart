@@ -2505,8 +2505,8 @@ class EventsTabState extends State<EventsTab>
     _openUtilityItemSheet(
       title: 'Archived Smart Category',
       subtitle:
-          'This built-in Smart Category can only be archived, not deleted. '
-          'Unarchiving it will return it to your pinned Smart Categories.',
+          'To edit an archived built-in smart category, you\'ll need to '
+          'recover it. This will move it back to your pinned categories list.',
       actionLabel: 'Unarchive',
       onAction: () => _unarchiveSmartCategory(label),
     );
