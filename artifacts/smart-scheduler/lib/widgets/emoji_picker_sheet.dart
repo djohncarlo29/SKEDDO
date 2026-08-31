@@ -1089,7 +1089,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                         8,
                         16,
                         math.max(
-                          20,
+                          16,
                           systemSafeAreaBottomInset(context),
                         ),
                       ),
