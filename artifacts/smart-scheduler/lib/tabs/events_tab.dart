@@ -10925,7 +10925,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   Widget _buildIdentityCard() {
     final textScaler = MediaQuery.textScalerOf(context);
     final circleSize = textScaler.scale(64);
-    final circleScale = circleSize / 64;
     final previewColor = _isEmojiIcon(_effectiveIcon)
         ? _emojiCircleColor(_resolvedSelectedColor)
         : _resolvedSelectedColor;
