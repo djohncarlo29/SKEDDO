@@ -115,8 +115,10 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
         onNotification: _handleScrollNotification,
         child: NotificationListener<ScrollMetricsNotification>(
           onNotification: _handleMetricsNotification,
-          child: Stack(
-            fit: StackFit.expand,
+           child: Stack(
+             // Let one-line fields establish their natural height. Expanding
+             // this stack in an unbounded modal Column can make the entire
+             // sheet body fail layout while its header still renders.
             children: [
               widget.child,
               Positioned(
