@@ -1802,6 +1802,10 @@ class EventsTabState extends State<EventsTab>
   // Like user-category archiving, there's no reveal/unarchive UI yet.
   final Set<String> _archivedSmartCategories = {};
 
+  /// The date each utility item was archived or deleted. Utility detail views
+  /// use these action dates for their date-only section headers.
+  final Map<String, DateTime> _utilityItemDates = {};
+
   // Animation sets — used by the grid and list to drive implicit animations.
   final Set<_UserCategory> _removingFromList = {};
   final Set<_UserCategory> _newInList = {};
@@ -2408,6 +2412,9 @@ class EventsTabState extends State<EventsTab>
                 categories.any((deleted) => deleted.id == existing.id),
           )
           ..addAll(categories);
+        for (final category in categories) {
+          _setUtilityDate('deleted-category', category.id);
+        }
         _userCategories.removeWhere((cat) => group.memberIds.contains(cat.id));
         _listTopOrder.removeWhere(
           (token) =>
@@ -2435,6 +2442,7 @@ class EventsTabState extends State<EventsTab>
         _recentlyDeletedCategories
           ..removeWhere((existing) => existing.id == cat.id)
           ..add(cat);
+        _setUtilityDate('deleted-category', cat.id);
         _userCategories.remove(cat);
         // Remove from group (dissolves if < 2 remain) or solo slot.
         _removeFromGroupById(cat.id);
@@ -2455,6 +2463,7 @@ class EventsTabState extends State<EventsTab>
         _recentlyDeletedCategories
           ..removeWhere((existing) => existing.id == cat.id)
           ..add(cat);
+        _setUtilityDate('deleted-category', cat.id);
         _pinnedUserCategories.remove(cat);
         _gridCombinedOrder.remove(cat);
       });
@@ -2518,6 +2527,8 @@ class EventsTabState extends State<EventsTab>
       actionLabel: 'Recover',
       onAction: () {
         if (EventStore.instance.restoreDeleted(event.id)) {
+          _removeUtilityDate('deleted-event', event.id);
+          _saveCategories();
           setState(() {});
         }
       },
@@ -2539,6 +2550,7 @@ class EventsTabState extends State<EventsTab>
     if (!_archivedSmartCategories.contains(label)) return;
     setState(() {
       _archivedSmartCategories.remove(label);
+      _removeUtilityDate('archived-smart', label);
       if (!_smartCategoryOrder.contains(label)) {
         _smartCategoryOrder.add(label);
       }
@@ -2562,6 +2574,7 @@ class EventsTabState extends State<EventsTab>
       _pinnedUserCategories.removeWhere(
         (candidate) => candidate.id == category.id,
       );
+      _removeUtilityDate('archived-category', category.id);
       _gridCombinedOrder.removeWhere(
         (item) => item is _UserCategory && item.id == category.id,
       );
@@ -2584,6 +2597,7 @@ class EventsTabState extends State<EventsTab>
       _recentlyDeletedCategories.removeWhere(
         (candidate) => candidate.id == category.id,
       );
+      _removeUtilityDate('deleted-category', category.id);
       _userCategories.removeWhere((candidate) => candidate.id == category.id);
       _pinnedUserCategories.removeWhere(
         (candidate) => candidate.id == category.id,
@@ -4889,6 +4903,7 @@ class EventsTabState extends State<EventsTab>
         final i = _userCategories.indexOf(cat);
         if (i != -1) {
           _userCategories[i] = archived;
+          _setUtilityDate('archived-category', cat.id);
           // Remove from group (dissolves if < 2 remain) and from solo slot.
           // The archived category stays in _userCategories but is hidden.
           _removeFromGroupById(cat.id);
@@ -4897,6 +4912,7 @@ class EventsTabState extends State<EventsTab>
           final j = _pinnedUserCategories.indexOf(cat);
           if (j != -1) {
             _pinnedUserCategories[j] = archived;
+            _setUtilityDate('archived-category', cat.id);
             // Archived pinned tiles leave the grid entirely.
             _gridCombinedOrder.remove(cat);
           }
@@ -5560,7 +5576,16 @@ class EventsTabState extends State<EventsTab>
 
   // ── EventStore listener ───────────────────────────────────────────────────
   void _onEventsChanged() {
+    var addedUtilityDates = false;
+    for (final event in EventStore.instance.deletedEvents.value) {
+      final key = _utilityDateKey('deleted-event', event.id);
+      if (!_utilityItemDates.containsKey(key)) {
+        _utilityItemDates[key] = DateTime.now();
+        addedUtilityDates = true;
+      }
+    }
     if (mounted) setState(() {});
+    if (addedUtilityDates) _saveCategories();
     _reloadPersistedDcvSections();
   }
 
@@ -5692,6 +5717,20 @@ class EventsTabState extends State<EventsTab>
   static const _kPrefsDcvCustomSections = 'events_dcv_custom_sections';
   static const _kPrefsDcvCustomSectionEventIds =
       'events_dcv_custom_section_event_ids';
+  static const _kPrefsUtilityItemDates = 'events_utility_item_dates';
+
+  static String _utilityDateKey(String type, String id) => '$type:$id';
+
+  DateTime _utilityDateFor(String type, String id) =>
+      _utilityItemDates[_utilityDateKey(type, id)] ?? DateTime.now();
+
+  void _setUtilityDate(String type, String id) {
+    _utilityItemDates[_utilityDateKey(type, id)] = DateTime.now();
+  }
+
+  void _removeUtilityDate(String type, String id) {
+    _utilityItemDates.remove(_utilityDateKey(type, id));
+  }
 
   // True while the "couldn't save" banner is visible — prevents duplicate
   // overlays if _saveCategories() is called several times in quick succession
@@ -5755,6 +5794,14 @@ class EventsTabState extends State<EventsTab>
                 _kPrefsDcvCustomSectionEventIds,
                 jsonEncode(_dcvCustomSectionEventIds),
               ),
+              prefs.setString(
+                _kPrefsUtilityItemDates,
+                jsonEncode(
+                  _utilityItemDates.map(
+                    (key, value) => MapEntry(key, value.toIso8601String()),
+                  ),
+                ),
+              ),
             ]);
             if (results.any((ok) => !ok) && mounted) {
               _showCategorySaveError();
@@ -5804,6 +5851,7 @@ class EventsTabState extends State<EventsTab>
       final rawDcvSectionEventIds = prefs.getString(
         _kPrefsDcvCustomSectionEventIds,
       );
+      final rawUtilityItemDates = prefs.getString(_kPrefsUtilityItemDates);
       if (rawUser == null &&
           rawPinned == null &&
           rawDeleted == null &&
@@ -5811,7 +5859,8 @@ class EventsTabState extends State<EventsTab>
           rawArchivedSmart == null &&
           rawSmartOrder == null &&
           rawDcvSections == null &&
-          rawDcvSectionEventIds == null) {
+          rawDcvSectionEventIds == null &&
+          rawUtilityItemDates == null) {
         return; // first launch — keep defaults
       }
       setState(() {
@@ -5852,6 +5901,19 @@ class EventsTabState extends State<EventsTab>
                   ),
                 ),
               );
+          }
+        }
+        if (rawUtilityItemDates != null) {
+          final decoded = jsonDecode(rawUtilityItemDates);
+          if (decoded is Map) {
+            _utilityItemDates
+              ..clear()
+              ..addAll({
+                for (final entry in decoded.entries)
+                  if (DateTime.tryParse(entry.value.toString()) != null)
+                    entry.key.toString():
+                        DateTime.parse(entry.value.toString()),
+              });
           }
         }
         if (rawUser != null) {
@@ -6061,6 +6123,7 @@ class EventsTabState extends State<EventsTab>
       setState(() {
         _archivingSmartLabels.remove(label);
         _archivedSmartCategories.add(label);
+        _setUtilityDate('archived-smart', label);
         _gridCombinedOrder.remove(label); // archived smart tiles leave the grid
       });
       _saveCategories();
@@ -6953,6 +7016,17 @@ class EventsTabState extends State<EventsTab>
                             ? (_) => _DcvUtilityContent(
                               archivedSmartLabels: _archivedSmartLabels,
                               archivedCategories: _archivedUserCategories,
+                              archivedSmartDates: {
+                                for (final label in _archivedSmartLabels)
+                                  label: _utilityDateFor('archived-smart', label),
+                              },
+                              archivedCategoryDates: {
+                                for (final category in _archivedUserCategories)
+                                  category.id: _utilityDateFor(
+                                    'archived-category',
+                                    category.id,
+                                  ),
+                              },
                               onArchivedSmartCategoryTap:
                                   _openArchivedSmartCategory,
                               onArchivedCategoryTap: _openArchivedCategory,
@@ -6963,6 +7037,21 @@ class EventsTabState extends State<EventsTab>
                               deletedEvents:
                                   EventStore.instance.deletedEvents.value,
                               deletedCategories: _recentlyDeletedCategories,
+                              deletedEventDates: {
+                                for (final event
+                                    in EventStore.instance.deletedEvents.value)
+                                  event.id: _utilityDateFor(
+                                    'deleted-event',
+                                    event.id,
+                                  ),
+                              },
+                              deletedCategoryDates: {
+                                for (final category in _recentlyDeletedCategories)
+                                  category.id: _utilityDateFor(
+                                    'deleted-category',
+                                    category.id,
+                                  ),
+                              },
                               onDeletedEventTap: _openDeletedEvent,
                               onDeletedCategoryTap: _openDeletedCategory,
                             )
@@ -10076,11 +10165,66 @@ class _AddCategoryButtonState extends State<_AddCategoryButton>
 /// Body content for the Archived Categories and Recently Deleted detailed
 /// category views. The surrounding header, slide transition, empty state, and
 /// scrolling are all supplied by [_CategoryDetailView].
+class _UtilityContentItem {
+  final DateTime date;
+  final String title;
+  final String? subtitle;
+  final Widget leading;
+  final VoidCallback? onTap;
+
+  const _UtilityContentItem({
+    required this.date,
+    required this.title,
+    this.subtitle,
+    required this.leading,
+    this.onTap,
+  });
+}
+
+DateTime _utilityDay(DateTime date) => DateTime(date.year, date.month, date.day);
+
+String _utilityDateHeader(DateTime date) {
+  const weekdays = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  final day = _utilityDay(date);
+  final now = DateTime.now();
+  final today = _utilityDay(now);
+  if (day == today) return 'Today';
+  if (day == today.subtract(const Duration(days: 1))) return 'Yesterday';
+  return '${weekdays[day.weekday - 1]} - '
+      '${months[day.month - 1]} ${day.day}, ${day.year}';
+}
+
 class _DcvUtilityContent extends StatelessWidget {
   final List<String> archivedSmartLabels;
   final List<_UserCategory> archivedCategories;
   final List<ScheduledEvent> deletedEvents;
   final List<_UserCategory> deletedCategories;
+  final Map<String, DateTime> archivedSmartDates;
+  final Map<String, DateTime> archivedCategoryDates;
+  final Map<String, DateTime> deletedEventDates;
+  final Map<String, DateTime> deletedCategoryDates;
   final ValueChanged<String>? onArchivedSmartCategoryTap;
   final ValueChanged<_UserCategory>? onArchivedCategoryTap;
   final ValueChanged<ScheduledEvent>? onDeletedEventTap;
@@ -10091,6 +10235,10 @@ class _DcvUtilityContent extends StatelessWidget {
     this.archivedCategories = const [],
     this.deletedEvents = const [],
     this.deletedCategories = const [],
+    this.archivedSmartDates = const {},
+    this.archivedCategoryDates = const {},
+    this.deletedEventDates = const {},
+    this.deletedCategoryDates = const {},
     this.onArchivedSmartCategoryTap,
     this.onArchivedCategoryTap,
     this.onDeletedEventTap,
@@ -10210,63 +10358,58 @@ class _DcvUtilityContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final items = <_UtilityContentItem>[
+      for (final label in archivedSmartLabels)
+        _UtilityContentItem(
+          date: archivedSmartDates[label] ?? DateTime.now(),
+          title: label,
+          leading: _sfIcon(context, SFIcons.sf_archivebox),
+          onTap: () => onArchivedSmartCategoryTap?.call(label),
+        ),
+      for (final category in archivedCategories)
+        _UtilityContentItem(
+          date: archivedCategoryDates[category.id] ?? DateTime.now(),
+          title: category.name,
+          leading: _categoryIcon(context, category),
+          onTap: () => onArchivedCategoryTap?.call(category),
+        ),
+      for (final event in deletedEvents)
+        _UtilityContentItem(
+          date: deletedEventDates[event.id] ?? DateTime.now(),
+          title: event.title,
+          subtitle: _eventSubtitle(event),
+          leading: _sfIcon(context, SFIcons.sf_calendar),
+          onTap: () => onDeletedEventTap?.call(event),
+        ),
+      for (final category in deletedCategories)
+        _UtilityContentItem(
+          date: deletedCategoryDates[category.id] ?? DateTime.now(),
+          title: category.name,
+          leading: _categoryIcon(context, category),
+          onTap: () => onDeletedCategoryTap?.call(category),
+        ),
+    ];
+
+    final grouped = <DateTime, List<_UtilityContentItem>>{};
+    for (final item in items) {
+      (grouped[_utilityDay(item.date)] ??= []).add(item);
+    }
+    final dates = grouped.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
     final children = <Widget>[];
-    if (archivedSmartLabels.isNotEmpty) {
+    for (var index = 0; index < dates.length; index++) {
+      if (index > 0) children.add(const SizedBox(height: 12));
+      final date = dates[index];
       children
-        ..add(_sectionLabel(context, 'SMART CATEGORIES'))
+        ..add(_sectionLabel(context, _utilityDateHeader(date)))
         ..addAll(
-          archivedSmartLabels.map(
-            (label) => _row(
+          grouped[date]!.map(
+            (item) => _row(
               context,
-              title: label,
-              leading: _sfIcon(context, SFIcons.sf_archivebox),
-              onTap: () => onArchivedSmartCategoryTap?.call(label),
-            ),
-          ),
-        );
-    }
-    if (archivedCategories.isNotEmpty) {
-      if (children.isNotEmpty) children.add(const SizedBox(height: 12));
-      children
-        ..add(_sectionLabel(context, 'CATEGORIES'))
-        ..addAll(
-          archivedCategories.map(
-            (category) => _row(
-              context,
-              title: category.name,
-              leading: _categoryIcon(context, category),
-              onTap: () => onArchivedCategoryTap?.call(category),
-            ),
-          ),
-        );
-    }
-    if (deletedEvents.isNotEmpty) {
-      if (children.isNotEmpty) children.add(const SizedBox(height: 12));
-      children
-        ..add(_sectionLabel(context, 'EVENTS'))
-        ..addAll(
-          deletedEvents.map(
-            (event) => _row(
-              context,
-              title: event.title,
-              subtitle: _eventSubtitle(event),
-              leading: _sfIcon(context, SFIcons.sf_calendar),
-              onTap: () => onDeletedEventTap?.call(event),
-            ),
-          ),
-        );
-    }
-    if (deletedCategories.isNotEmpty) {
-      if (children.isNotEmpty) children.add(const SizedBox(height: 12));
-      children
-        ..add(_sectionLabel(context, 'CATEGORIES'))
-        ..addAll(
-          deletedCategories.map(
-            (category) => _row(
-              context,
-              title: category.name,
-              leading: _categoryIcon(context, category),
-              onTap: () => onDeletedCategoryTap?.call(category),
+              title: item.title,
+              subtitle: item.subtitle,
+              leading: item.leading,
+              onTap: item.onTap,
             ),
           ),
         );
