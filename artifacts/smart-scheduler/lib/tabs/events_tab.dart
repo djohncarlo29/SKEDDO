@@ -6902,15 +6902,9 @@ Widget _buildUnifiedCalendarIconUnit({
   required double dayFontSize,
   required double circleScale,
 }) {
-  // Lay out the final-sized unit and fit the authored composition into it.
-  // This keeps the frame and badge on one coordinate system instead of
-  // transforming a child whose layout bounds are still the default size.
-  return SizedBox(
-    width: authoredCircleSize * circleScale,
-    height: authoredCircleSize * circleScale,
-    child: FittedBox(
-      fit: BoxFit.fill,
-      alignment: Alignment.center,
+  return Center(
+    child: Transform.scale(
+      scale: circleScale,
       child: SizedBox(
         width: authoredCircleSize,
         height: authoredCircleSize,
@@ -6932,12 +6926,29 @@ Widget _buildUnifiedCalendarIconUnit({
               ),
             ),
             if (day != null)
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _UnifiedCalendarDayPainter(
-                    day: day,
-                    top: dayTop,
-                    fontSize: dayFontSize,
+              Positioned(
+                top: dayTop,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Transform.scale(
+                    scale: 1.05,
+                    scaleY: 1.3,
+                    child: Text(
+                      '$day',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        inherit: false,
+                        color: Color(0xFFFFFFFF),
+                        fontSize: dayFontSize,
+                        fontFamily: kSFProText,
+                        fontWeight: FontWeight.w700,
+                        fontStyle: FontStyle.normal,
+                        height: 1.0,
+                        letterSpacing: 0,
+                      ),
+                      textScaler: TextScaler.noScaling,
+                    ),
                   ),
                 ),
               ),
@@ -6946,55 +6957,6 @@ Widget _buildUnifiedCalendarIconUnit({
       ),
     ),
   );
-}
-
-class _UnifiedCalendarDayPainter extends CustomPainter {
-  const _UnifiedCalendarDayPainter({
-    required this.day,
-    required this.top,
-    required this.fontSize,
-  });
-
-  final int day;
-  final double top;
-  final double fontSize;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: '$day',
-        style: TextStyle(
-          inherit: false,
-          color: const Color(0xFFFFFFFF),
-          fontSize: fontSize,
-          fontFamily: kSFProText,
-          fontWeight: FontWeight.w700,
-          fontStyle: FontStyle.normal,
-          height: 1.0,
-          letterSpacing: 0,
-        ),
-      ),
-      textAlign: TextAlign.center,
-      textDirection: TextDirection.ltr,
-      textScaler: TextScaler.noScaling,
-    )..layout(maxWidth: size.width);
-
-    final textCenter = Offset(size.width / 2, top + textPainter.height / 2);
-    canvas
-      ..save()
-      ..translate(textCenter.dx, textCenter.dy)
-      ..scale(1.05, 1.3)
-      ..translate(-textCenter.dx, -textCenter.dy);
-    textPainter.paint(canvas, Offset(0, top));
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _UnifiedCalendarDayPainter oldDelegate) =>
-      day != oldDelegate.day ||
-      top != oldDelegate.top ||
-      fontSize != oldDelegate.fontSize;
 }
 
 TextStyle _eventsGridTitleStyle() => TextStyle(
