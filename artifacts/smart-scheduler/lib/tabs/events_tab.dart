@@ -4940,6 +4940,26 @@ class EventsTabState extends State<EventsTab>
   /// Opens the category editor pre-filled with [cat]'s current info.
   /// Replaces [cat] in whichever list currently holds it once saved.
   void _editCategory(_UserCategory cat) {
+    if (_isSystemUtilityCategory(cat)) {
+      showRoundedCupertinoSheet<void>(
+        context: context,
+        pageBuilder:
+            (context) => _AddCategorySheet(
+              initial: cat,
+              smartData: _TileData.icon(
+                label: cat.name,
+                count: _liveEventCounts[cat.id] ?? 0,
+                icon: cat.icon,
+              ),
+              smartColor: cat.color,
+              smartIconColor: _userCategoryIconColor(cat, context),
+              smartUtility: true,
+              onSaveColor: (color) =>
+                  _updateCategory(cat, cat.copyWith(color: color)),
+            ),
+      );
+      return;
+    }
     showRoundedCupertinoSheet<void>(
       context: context,
       pageBuilder:
@@ -7725,12 +7745,12 @@ class _UserCategory {
   /// IconData. Pass this to [_renderCatIcon] at every render site.
   Object get iconOrSvg => svgAsset ?? icon;
 
-  _UserCategory copyWith({bool? archived}) => _UserCategory(
+  _UserCategory copyWith({bool? archived, Color? color}) => _UserCategory(
     id: id,
     name: name,
     description: description,
     count: count,
-    color: color,
+    color: color ?? this.color,
     icon: icon,
     svgAsset: svgAsset,
     archived: archived ?? this.archived,
@@ -10727,12 +10747,16 @@ class _AddCategorySheet extends StatefulWidget {
   /// fixed) — only the color swatch can be changed.
   final _TileData? smartData;
   final Color? smartColor;
+  final Color? smartIconColor;
+  final bool smartUtility;
   final void Function(Color)? onSaveColor;
   const _AddCategorySheet({
     this.onSave,
     this.initial,
     this.smartData,
     this.smartColor,
+    this.smartIconColor,
+    this.smartUtility = false,
     this.onSaveColor,
   });
 
@@ -11521,6 +11545,15 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     // The modal circle is authored at 64px, but the complete visual unit must
     // follow the active OS text-size curve just like the grid tile does.
     final circleScale = _eventsCategoryIconScale(context, 64);
+    if (widget.smartUtility) {
+      return _renderCatIcon(
+        data.icon!,
+        64 * circleScale,
+        widget.smartIconColor ?? CupertinoColors.white,
+        ctx: context,
+        emojiOffsetY: 2 * circleScale,
+      );
+    }
     if (data.isCalendar) {
       // Card 1 scales the complete 64px preview unit once. Keep the calendar
       // frame and day badge in the same authored composition here as in the
@@ -11541,10 +11574,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       );
     }
 
-    const white = CupertinoColors.white;
+    final iconColor = widget.smartIconColor ?? CupertinoColors.white;
     return data.icon! == SFIcons.sf_music_note
-        ? _BeamedNoteIcon(size: 38 * circleScale, color: white)
-        : Icon(data.icon!, color: white, size: 38 * circleScale);
+        ? _BeamedNoteIcon(size: 38 * circleScale, color: iconColor)
+        : Icon(data.icon!, color: iconColor, size: 38 * circleScale);
   }
 
   Future<void> _openMaps(String query) async {
@@ -11691,7 +11724,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     final circleSize = textScaler.scale(64);
     final circleScale = _eventsCategoryIconScale(context, 64);
     final previewColor =
-        _isEmojiIcon(_effectiveIcon)
+        widget.smartUtility || _isEmojiIcon(_effectiveIcon)
             ? _emojiCircleColor(_resolvedSelectedColor)
             : _resolvedSelectedColor;
 
