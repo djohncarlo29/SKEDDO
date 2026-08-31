@@ -11085,6 +11085,11 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                     kModalCard,
                                     context,
                                   ),
+                                  leadingInset: kHorizontalFadeEdgeGap,
+                                  trailingInset:
+                                      kHorizontalFadeEdgeGap +
+                                      scaledSearchIconSize(context, 18),
+                                  controller: _nameCtrl,
                                   child: CupertinoTheme(
                                     data: CupertinoTheme.of(context).copyWith(
                                       primaryColor: resolveAccentColor(context),
@@ -12321,6 +12326,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             children: [
               HorizontalEdgeFade(
                 fadeColor: resolveThemeColor(kModalCard, context),
+                leadingInset: kHorizontalFadeEdgeGap,
+                trailingInset:
+                    kHorizontalFadeEdgeGap +
+                    kModalRowHorizontalInset +
+                    scaledSearchIconSize(context, 18),
+                controller: _titleCtrl,
                 child: CupertinoTextField(
                   controller: _titleCtrl,
                   focusNode: _titleFocus,
@@ -12416,6 +12427,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             children: [
               HorizontalEdgeFade(
                 fadeColor: resolveThemeColor(kModalCard, context),
+                leadingInset: kHorizontalFadeEdgeGap,
+                trailingInset:
+                    kHorizontalFadeEdgeGap +
+                    kModalRowHorizontalInset +
+                    scaledSearchIconSize(context, 18),
+                controller: _descCtrl,
                 child: CupertinoTextField(
                   controller: _descCtrl,
                   focusNode: _descFocus,
@@ -12763,6 +12780,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             // animated overlay above is the only placeholder the user sees.
             HorizontalEdgeFade(
               fadeColor: resolveThemeColor(kModalCard, context),
+              leadingInset: kHorizontalFadeEdgeGap,
+              trailingInset: kHorizontalFadeEdgeGap,
+              controller: ctrl,
               child: CupertinoTheme(
                 data: CupertinoTheme.of(
                   context,

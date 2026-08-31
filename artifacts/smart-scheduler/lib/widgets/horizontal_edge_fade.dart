@@ -8,11 +8,16 @@ import 'package:flutter/cupertino.dart';
 /// the child's left and right edges. Pulling a short child against either
 /// boundary still reveals the corresponding fade when the child's physics
 /// support bouncing.
+const double kHorizontalFadeEdgeGap = 16.0;
+
 class HorizontalEdgeFade extends StatefulWidget {
   final Widget child;
   final Color fadeColor;
   final double fadeWidth;
   final bool showTrailingFade;
+  final double leadingInset;
+  final double trailingInset;
+  final TextEditingController? controller;
 
   const HorizontalEdgeFade({
     super.key,
@@ -20,6 +25,9 @@ class HorizontalEdgeFade extends StatefulWidget {
     required this.fadeColor,
     this.fadeWidth = 36,
     this.showTrailingFade = true,
+    this.leadingInset = 0,
+    this.trailingInset = 0,
+    this.controller,
   });
 
   @override
@@ -34,10 +42,25 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   bool _resetting = false;
   bool _showLeadingFade = false;
   bool _showTrailingFade = false;
+  bool _suppressTrailingAfterEdit = false;
+  String? _lastControllerText;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastControllerText = widget.controller?.text;
+    widget.controller?.addListener(_handleControllerChanged);
+  }
 
   @override
   void didUpdateWidget(covariant HorizontalEdgeFade oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?.removeListener(_handleControllerChanged);
+      _lastControllerText = widget.controller?.text;
+      widget.controller?.addListener(_handleControllerChanged);
+      _suppressTrailingAfterEdit = false;
+    }
     if (oldWidget.fadeColor != widget.fadeColor ||
         oldWidget.showTrailingFade != widget.showTrailingFade) {
       _resetting = true;
@@ -45,6 +68,32 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
       _showLeadingFade = false;
       _showTrailingFade = false;
       _resetting = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller?.removeListener(_handleControllerChanged);
+    super.dispose();
+  }
+
+  void _handleControllerChanged() {
+    final controller = widget.controller;
+    if (controller == null) return;
+    final textChanged = _lastControllerText != controller.text;
+    _lastControllerText = controller.text;
+    if (!textChanged) return;
+
+    // EditableText moves its internal scroll position to keep a newly typed
+    // character visible after the controller notification. Hide the trailing
+    // fade immediately, then let the next scroll notification restore it if
+    // the user drags back into the overflow.
+    _suppressTrailingAfterEdit =
+        controller.selection.isValid &&
+        controller.selection.isCollapsed &&
+        controller.selection.extentOffset >= controller.text.length;
+    if (_suppressTrailingAfterEdit && _showTrailingFade && mounted) {
+      setState(() => _showTrailingFade = false);
     }
   }
 
@@ -65,8 +114,13 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     if (_resetting) return;
     final canScroll = metrics.maxScrollExtent > 1.0;
     final showLeading = metrics.pixels > 1.0;
+    if (_suppressTrailingAfterEdit &&
+        metrics.pixels >= metrics.maxScrollExtent - 1.0) {
+      _suppressTrailingAfterEdit = false;
+    }
     final showTrailing =
         widget.showTrailingFade &&
+        !_suppressTrailingAfterEdit &&
         metrics.pixels < metrics.maxScrollExtent - 1.0;
 
     if (_canScroll == canScroll &&
@@ -122,7 +176,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
             children: [
               widget.child,
               Positioned(
-                left: 0,
+                left: widget.leadingInset,
                 top: 0,
                 bottom: 0,
                 child: _fade(
@@ -131,7 +185,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
                 ),
               ),
               Positioned(
-                right: 0,
+                right: widget.trailingInset,
                 top: 0,
                 bottom: 0,
                 child: _fade(

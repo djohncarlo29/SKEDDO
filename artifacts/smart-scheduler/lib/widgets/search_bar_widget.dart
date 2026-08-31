@@ -443,6 +443,13 @@ class AppSearchBarState extends State<AppSearchBar>
                         selectionColor: selectionTint.withOpacity(0.20),
                         child: HorizontalEdgeFade(
                           fadeColor: surfaceColor,
+                          // The search icon already leaves an 8 px gap before
+                          // the field; add 8 px so the fade starts 16 px from
+                          // the icon. The trailing icon starts at the field
+                          // boundary, so it gets the full 16 px gap.
+                          leadingInset: kHorizontalFadeEdgeGap - 8,
+                          trailingInset: kHorizontalFadeEdgeGap,
+                          controller: widget.controller,
                           child: NativeTextInput(
                             controller: widget.controller,
                             onFocusChanged: widget.onFocusChanged,

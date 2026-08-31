@@ -6291,6 +6291,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
               ? textField
               : HorizontalEdgeFade(
                   fadeColor: resolvedSurface,
+                  leadingInset: kHorizontalFadeEdgeGap,
+                  trailingInset: kHorizontalFadeEdgeGap + clearIconSize,
+                  controller: ctrl,
                   child: textField,
                 ),
           // Clear button
@@ -7938,6 +7941,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
             ),
             HorizontalEdgeFade(
               fadeColor: resolveThemeColor(kModalCard, context),
+              leadingInset: kHorizontalFadeEdgeGap,
+              trailingInset: kHorizontalFadeEdgeGap,
+              controller: ctrl,
               child: CupertinoTheme(
                 data: CupertinoTheme.of(context).copyWith(
                   primaryColor: renderCategoryColor(_categoryColor, context),
@@ -9219,6 +9225,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
             Expanded(
               child: HorizontalEdgeFade(
                 fadeColor: resolveThemeColor(kModalCard, context),
+                leadingInset: kHorizontalFadeEdgeGap - 12,
+                trailingInset: kHorizontalFadeEdgeGap - 12,
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(
