@@ -4420,8 +4420,12 @@ class EventsTabState extends State<EventsTab>
     //   • Others: plain Icon
     final Widget circleContent;
     if (tile.isCalendar) {
-      circleContent = _buildUnifiedSmartCalendarIcon(
+      circleContent = _buildUnifiedCalendarIconUnit(
         day: tile.day,
+        authoredCircleSize: _kGridTileCircleSize,
+        frameSize: 24,
+        dayTop: 14.6,
+        dayFontSize: 9.5,
         circleScale: circleScale,
       );
     } else {
@@ -7351,8 +7355,12 @@ class _CategoryTile extends StatelessWidget {
     const white = Color(0xFFFFFFFF);
 
     if (data.isCalendar) {
-      return _buildUnifiedSmartCalendarIcon(
+      return _buildUnifiedCalendarIconUnit(
         day: data.day,
+        authoredCircleSize: _kGridTileCircleSize,
+        frameSize: 24,
+        dayTop: 14.6,
+        dayFontSize: 9.5,
         circleScale: circleScale,
       );
     }
@@ -10754,58 +10762,24 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   // → 64px sheet circle) including the day-number overlay for the four
   // calendar-type tiles (Today/Tomorrow/This Week/Next Week).
   Widget _smartPreviewIcon(_TileData data) {
+    if (data.isCalendar) {
+      // Card 1 scales the complete 64px preview unit once. Keep the calendar
+      // frame and day badge in the same authored composition here as in the
+      // main Events tile.
+      return _buildUnifiedCalendarIconUnit(
+        day: data.day,
+        authoredCircleSize: 64,
+        frameSize: 38,
+        dayTop: 28,
+        dayFontSize: 18,
+        circleScale: 1,
+      );
+    }
+
     const white = CupertinoColors.white;
-    final icon = data.isCalendar
-        ? SizedBox(
-            width: 38,
-            height: 38,
-            child: SvgPicture.asset(
-              'assets/icons/calendar_frame.svg',
-              colorFilter: const ColorFilter.mode(
-                Color(0xFFFFFFFF),
-                BlendMode.srcIn,
-              ),
-            ),
-          )
-        : (data.icon! == SFIcons.sf_music_note
-              ? _BeamedNoteIcon(size: 38, color: white)
-              : Icon(data.icon!, color: white, size: 38));
-
-    if (data.day == null) return icon;
-
-    return Stack(
-      fit: StackFit.expand,
-      clipBehavior: Clip.none,
-      children: [
-        Center(child: icon),
-        Positioned(
-          top: 28,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: Transform.scale(
-              scale: 1.05,
-              scaleY: 1.3,
-              child: Text(
-                '${data.day}',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  inherit: false,
-                  color: Color(0xFFFFFFFF),
-                  fontSize: 18,
-                  fontFamily: kSFProText,
-                  fontWeight: FontWeight.w700,
-                  fontStyle: FontStyle.normal,
-                  height: 1.0,
-                  letterSpacing: 0,
-                ),
-                textScaler: TextScaler.noScaling,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
+    return data.icon! == SFIcons.sf_music_note
+        ? _BeamedNoteIcon(size: 38, color: white)
+        : Icon(data.icon!, color: white, size: 38);
   }
 
   Future<void> _openMaps(String query) async {
