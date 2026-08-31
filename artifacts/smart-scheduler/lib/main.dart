@@ -1906,6 +1906,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             activeDCV: _dcvCategory,
             dcvSortBy: _dcvSortByMap[_dcvCategory] ?? 'Manual',
             dcvSortDir: _dcvSortDirMap[_dcvCategory] ?? '',
+            onUtilityBecameEmpty: _exitDCV,
             // Section-enabled categories open in their initial flat manual
             // view.  Built-in date Smart Categories retain their date
             // grouping.  This is intentionally independent from the menu's

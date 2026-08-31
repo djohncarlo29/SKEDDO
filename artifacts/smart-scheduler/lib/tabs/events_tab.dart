@@ -1605,6 +1605,8 @@ class EventsTab extends StatefulWidget {
   final Animation<double>? searchModeAnimation;
   final String? activeDCV;
   final void Function(String label, Color color)? onTileTapped;
+  /// Called after an open utility DCV has rendered its empty state.
+  final VoidCallback? onUtilityBecameEmpty;
   // AnimationController owned by AppShell.  0.0 = grid fully visible,
   // 1.0 = DCV fully visible.  Passing the same controller to both EventsTab
   // and the AppShell header AnimatedBuilder guarantees they rebuild and paint
@@ -1641,6 +1643,7 @@ class EventsTab extends StatefulWidget {
     this.searchModeAnimation,
     this.activeDCV,
     this.onTileTapped,
+    this.onUtilityBecameEmpty,
     this.onActiveDCVCategoryChanged,
     this.onEditEvent,
     this.dcvSortBy,
@@ -1676,6 +1679,7 @@ class EventsTabState extends State<EventsTab>
   bool _greyFadeIn = false;
   String _searchText = '';
   bool _wasSearchFocusedBeforePause = false;
+  bool _utilityExitScheduled = false;
 
   // ── Smart search results (filled asynchronously by _scheduleSearch) ────────
   List<SearchHit> _searchPrimary = [];
@@ -2530,6 +2534,7 @@ class EventsTabState extends State<EventsTab>
           _removeUtilityDate('deleted-event', event.id);
           _saveCategories();
           setState(() {});
+          _scheduleUtilityExitIfEmpty();
         }
       },
     );
@@ -2546,6 +2551,39 @@ class EventsTabState extends State<EventsTab>
     );
   }
 
+  bool _activeUtilityIsEmpty() {
+    switch (widget.activeDCV) {
+      case 'Archived Categories':
+        return _archivedSmartLabels.isEmpty &&
+            _archivedUserCategories.isEmpty;
+      case 'Recently Deleted':
+        return EventStore.instance.deletedEvents.value.isEmpty &&
+            _recentlyDeletedCategories.isEmpty;
+      default:
+        return false;
+    }
+  }
+
+  /// Wait for the state change to paint the utility empty state before asking
+  /// AppShell to reverse the shared DCV transition. This makes the empty state
+  /// perceptible instead of replacing the DCV on the same frame as its last
+  /// item disappears.
+  void _scheduleUtilityExitIfEmpty() {
+    if (_utilityExitScheduled ||
+        widget.onUtilityBecameEmpty == null ||
+        !_activeUtilityIsEmpty()) {
+      return;
+    }
+    _utilityExitScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_activeUtilityIsEmpty()) {
+        _utilityExitScheduled = false;
+        return;
+      }
+      widget.onUtilityBecameEmpty!.call();
+    });
+  }
+
   void _unarchiveSmartCategory(String label) {
     if (!_archivedSmartCategories.contains(label)) return;
     setState(() {
@@ -2559,6 +2597,7 @@ class EventsTabState extends State<EventsTab>
       }
     });
     _saveCategories();
+    _scheduleUtilityExitIfEmpty();
   }
 
   void _unarchiveCategory(_UserCategory category) {
@@ -2584,6 +2623,7 @@ class EventsTabState extends State<EventsTab>
       }
     });
     _saveCategories();
+    _scheduleUtilityExitIfEmpty();
   }
 
   void _recoverDeletedCategory(_UserCategory category) {
@@ -5586,6 +5626,7 @@ class EventsTabState extends State<EventsTab>
     }
     if (mounted) setState(() {});
     if (addedUtilityDates) _saveCategories();
+    _scheduleUtilityExitIfEmpty();
     _reloadPersistedDcvSections();
   }
 
@@ -5664,6 +5705,9 @@ class EventsTabState extends State<EventsTab>
   @override
   void didUpdateWidget(covariant EventsTab old) {
     super.didUpdateWidget(old);
+    if (old.activeDCV != widget.activeDCV) {
+      _utilityExitScheduled = false;
+    }
     // The active section editor can still have focus when the DCV closes, so
     // its final onSubmitted callback is not guaranteed to run. Persist the
     // live in-memory section names before the detail view is left.
