@@ -14,14 +14,14 @@ smart-category icon circles, and there alone.
 matching drag ghost together, but leave the add/edit preview and detail
 placeholder layouts unchanged.
 
-The drag ghost is rendered in the global overlay, so its day-number Text must
-also explicitly use `TextScaler.noScaling`; matching font size and position
-alone is not enough when the device accessibility text scale is enlarged.
+The calendar frame and day badge must be composed at their authored circle size
+and transformed once as a unified visual unit. Separately scaling the frame,
+Positioned top, and font size causes the badge to drift inside the frame.
 
 **Why:** The overlay inherits the device text scale independently of the
 fixed-position badge geometry, which changes the measured glyph height and
 shifts the day number inside the calendar circle.
 
-**How to apply:** Any future change to the four calendar badge numbers must be
-made in both the in-grid tile and the lifted-card renderer, including their
-text-scaling policy.
+**How to apply:** Share the unified calendar composition between the in-grid
+tile and lifted-card renderer; keep the badge text on `TextScaler.noScaling`
+inside that transformed unit.

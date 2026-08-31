@@ -4412,8 +4412,7 @@ class EventsTabState extends State<EventsTab>
     // ghost matches the static tile pixel-for-pixel.
     //
     // Calendar tiles (Today / Tomorrow / This Week / Next Week):
-    //   • SVG calendar frame centred in the circle
-    //   • Day number overlaid at top:14 via a Positioned, same scale+scaleY
+    //   • unified SVG calendar frame + day badge composition
     //
     // Icon tiles with special offsets:
     //   • tray_fill (All Events): translate (0, -1) — matches _buildIconContent
@@ -4421,55 +4420,9 @@ class EventsTabState extends State<EventsTab>
     //   • Others: plain Icon
     final Widget circleContent;
     if (tile.isCalendar) {
-      circleContent = Stack(
-        fit: StackFit.expand,
-        clipBehavior: Clip.none,
-        children: [
-          Center(
-            child: SizedBox(
-              width: 24 * circleScale,
-              height: 24 * circleScale,
-              child: SvgPicture.asset(
-                'assets/icons/calendar_frame.svg',
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFFFFFFFF),
-                  BlendMode.srcIn,
-                ),
-              ),
-            ),
-          ),
-          if (tile.day != null)
-            Positioned(
-              top: 14.6 * circleScale,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Transform.scale(
-                  scale: 1.05,
-                  scaleY: 1.3,
-                  child: Text(
-                    '${tile.day}',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      inherit: false,
-                      color: Color(0xFFFFFFFF),
-                      fontSize: 9.5 * circleScale,
-                      fontFamily: kSFProText,
-                      fontWeight: FontWeight.w700,
-                      fontStyle: FontStyle.normal,
-                      height: 1.0,
-                      letterSpacing: 0,
-                    ),
-                    // Keep the lifted card's calendar badge identical to the
-                    // in-grid tile.  This text sits at a fixed position inside
-                    // the 35.5px circle, so OS text scaling changes its
-                    // measured height and shifts the number vertically.
-                    textScaler: TextScaler.noScaling,
-                  ),
-                ),
-              ),
-            ),
-        ],
+      circleContent = _buildUnifiedSmartCalendarIcon(
+        day: tile.day,
+        circleScale: circleScale,
       );
     } else {
       final icon = tile.icon!;
@@ -6932,6 +6885,72 @@ double _eventsCategoryIconScale(
     _eventsScaledCategoryIconSize(context, authoredCircleSize) /
     authoredCircleSize;
 
+/// The calendar frame and its day badge are one authored visual unit.
+///
+/// Keep all geometry at the default 35.5px circle size and apply the active
+/// accessibility scale once around the complete composition. This prevents
+/// the badge's text layout from drifting independently of the frame.
+Widget _buildUnifiedSmartCalendarIcon({
+  required int? day,
+  required double circleScale,
+}) {
+  return Center(
+    child: Transform.scale(
+      scale: circleScale,
+      child: SizedBox(
+        width: _kGridTileCircleSize,
+        height: _kGridTileCircleSize,
+        child: Stack(
+          fit: StackFit.expand,
+          clipBehavior: Clip.none,
+          children: [
+            Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: SvgPicture.asset(
+                  'assets/icons/calendar_frame.svg',
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFFFFFFFF),
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ),
+            ),
+            if (day != null)
+              Positioned(
+                top: 14.6,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Transform.scale(
+                    scale: 1.05,
+                    scaleY: 1.3,
+                    child: Text(
+                      '$day',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        inherit: false,
+                        color: Color(0xFFFFFFFF),
+                        fontSize: 9.5,
+                        fontFamily: kSFProText,
+                        fontWeight: FontWeight.w700,
+                        fontStyle: FontStyle.normal,
+                        height: 1.0,
+                        letterSpacing: 0,
+                      ),
+                      textScaler: TextScaler.noScaling,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 TextStyle _eventsGridTitleStyle() => TextStyle(
   inherit: false,
   fontSize: 17,
@@ -7271,34 +7290,7 @@ class _CategoryTile extends StatelessWidget {
                 fit: StackFit.expand,
                 clipBehavior: Clip.none,
                 children: [
-                  Center(child: _buildIconContent(circleScale)),
-                  if (data.day != null)
-                    Positioned(
-                      top: 14.6 * circleScale,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: Transform.scale(
-                          scale: 1.05,
-                          scaleY: 1.3,
-                          child: Text(
-                            '${data.day}',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              inherit: false,
-                              color: Color(0xFFFFFFFF),
-                              fontSize: 9.5 * circleScale,
-                              fontFamily: kSFProText,
-                              fontWeight: FontWeight.w700,
-                              fontStyle: FontStyle.normal,
-                              height: 1.0,
-                              letterSpacing: 0,
-                            ),
-                            textScaler: TextScaler.noScaling,
-                          ),
-                        ),
-                      ),
-                    ),
+                  _buildIconContent(circleScale),
                 ],
               ),
             ),
@@ -7355,16 +7347,9 @@ class _CategoryTile extends StatelessWidget {
     const white = Color(0xFFFFFFFF);
 
     if (data.isCalendar) {
-      return SizedBox(
-        width: 24 * circleScale,
-        height: 24 * circleScale,
-        child: SvgPicture.asset(
-          'assets/icons/calendar_frame.svg',
-          colorFilter: const ColorFilter.mode(
-            Color(0xFFFFFFFF),
-            BlendMode.srcIn,
-          ),
-        ),
+      return _buildUnifiedSmartCalendarIcon(
+        day: data.day,
+        circleScale: circleScale,
       );
     }
 
