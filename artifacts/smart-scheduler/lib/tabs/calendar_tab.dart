@@ -19,6 +19,7 @@ import '../widgets/fixed_size_icon.dart';
 import '../widgets/native_text_input.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/search_bar_widget.dart';
+import '../widgets/horizontal_edge_fade.dart';
 import '../widgets/action_panel.dart';
 import '../widgets/view_mode_icons.dart';
 import '../widgets/app_switch.dart';
@@ -6232,6 +6233,34 @@ class _NewEventSheetState extends State<_NewEventSheet>
     EdgeInsets? paddingOverride,
   }) {
     final clearIconSize = scaledSearchIconSize(context, 18);
+    final resolvedSurface = resolveThemeColor(kSbSurface, context);
+    final textField = CupertinoTheme(
+      data: CupertinoTheme.of(context).copyWith(
+        primaryColor: renderCategoryColor(_categoryColor, context),
+      ),
+      child: DefaultSelectionStyle(
+        selectionColor: renderCategoryColor(
+          _categoryColor,
+          context,
+        ).withValues(alpha: 0.20),
+        child: CupertinoTextField(
+          controller: ctrl,
+          focusNode: focus,
+          placeholder: '',
+          style: _kLabelStyle,
+          cursorColor: renderCategoryColor(_categoryColor, context),
+          decoration: null,
+          textCapitalization: TextCapitalization.sentences,
+          maxLines: maxLinesOverride ?? (multiline ? null : 1),
+          minLines: minLinesOverride ?? (multiline ? 3 : 1),
+          scrollPhysics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
+          padding: EdgeInsets.only(right: math.max(28.0, clearIconSize)),
+          onChanged: (_) => setState(() {}),
+        ),
+      ),
+    );
     return Padding(
       padding:
           paddingOverride ??
@@ -6258,35 +6287,12 @@ class _NewEventSheetState extends State<_NewEventSheet>
               );
             },
           ),
-          CupertinoTheme(
-            data: CupertinoTheme.of(context).copyWith(
-              primaryColor: renderCategoryColor(_categoryColor, context),
-            ),
-            child: DefaultSelectionStyle(
-              selectionColor: renderCategoryColor(
-                _categoryColor,
-                context,
-              ).withValues(alpha: 0.20),
-              child: CupertinoTextField(
-                controller: ctrl,
-                focusNode: focus,
-                placeholder: '',
-                style: _kLabelStyle,
-                cursorColor: renderCategoryColor(_categoryColor, context),
-                decoration: null,
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: maxLinesOverride ?? (multiline ? null : 1),
-                minLines: minLinesOverride ?? (multiline ? 3 : 1),
-                scrollPhysics: multiline
-                    ? const BouncingScrollPhysics(
-                        parent: AlwaysScrollableScrollPhysics(),
-                      )
-                    : null,
-                padding: EdgeInsets.only(right: math.max(28.0, clearIconSize)),
-                onChanged: (_) => setState(() {}),
-              ),
-            ),
-          ),
+          multiline
+              ? textField
+              : HorizontalEdgeFade(
+                  fadeColor: resolvedSurface,
+                  child: textField,
+                ),
           // Clear button
           AnimatedBuilder(
             animation: ctrl,
@@ -7930,31 +7936,37 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 );
               },
             ),
-            CupertinoTheme(
-              data: CupertinoTheme.of(context).copyWith(
-                primaryColor: renderCategoryColor(_categoryColor, context),
-              ),
-              child: DefaultSelectionStyle(
-                selectionColor: renderCategoryColor(
-                  _categoryColor,
-                  context,
-                ).withOpacity(0.20),
-                child: CupertinoTextField(
-                  controller: ctrl,
-                  focusNode: focusNode,
-                  placeholder: '',
-                  placeholderStyle: _kPlaceholderStyle,
-                  style: _kLabelStyle,
-                  cursorColor: renderCategoryColor(_categoryColor, context),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
+            HorizontalEdgeFade(
+              fadeColor: resolveThemeColor(kSbSurface, context),
+              child: CupertinoTheme(
+                data: CupertinoTheme.of(context).copyWith(
+                  primaryColor: renderCategoryColor(_categoryColor, context),
+                ),
+                child: DefaultSelectionStyle(
+                  selectionColor: renderCategoryColor(
+                    _categoryColor,
+                    context,
+                  ).withOpacity(0.20),
+                  child: CupertinoTextField(
+                    controller: ctrl,
+                    focusNode: focusNode,
+                    placeholder: '',
+                    placeholderStyle: _kPlaceholderStyle,
+                    style: _kLabelStyle,
+                    cursorColor: renderCategoryColor(_categoryColor, context),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    clearButtonMode: OverlayVisibilityMode.never,
+                    scrollPhysics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: null,
+                    textInputAction: TextInputAction.next,
                   ),
-                  clearButtonMode: OverlayVisibilityMode.never,
-                  onChanged: (_) => setState(() {}),
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: null,
-                  textInputAction: TextInputAction.next,
                 ),
               ),
             ),
@@ -9205,12 +9217,15 @@ class _NewEventSheetState extends State<_NewEventSheet>
             icon,
             const SizedBox(width: 12),
             Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
+              child: HorizontalEdgeFade(
+                fadeColor: resolveThemeColor(kSbSurface, context),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  child: Text(file.name, style: _kLabelStyle, maxLines: 1),
                 ),
-                child: Text(file.name, style: _kLabelStyle, maxLines: 1),
               ),
             ),
             const SizedBox(width: 8),

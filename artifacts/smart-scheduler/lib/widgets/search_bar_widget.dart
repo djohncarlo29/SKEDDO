@@ -8,6 +8,7 @@ import '../app_theme.dart';
 import '../services/speech_service.dart';
 import 'native_text_input.dart';
 import 'fixed_size_icon.dart';
+import 'horizontal_edge_fade.dart';
 
 // ── Shared constants ──────────────────────────────────────────────────────────
 // kSbCornerRadius is the shared 24 px card/section radius. The search bar's
@@ -440,33 +441,36 @@ class AppSearchBarState extends State<AppSearchBar>
                       ).copyWith(primaryColor: selectionTint),
                       child: DefaultSelectionStyle(
                         selectionColor: selectionTint.withOpacity(0.20),
-                        child: NativeTextInput(
-                          controller: widget.controller,
-                          onFocusChanged: widget.onFocusChanged,
-                          placeholder: widget.placeholder,
-                          placeholderStyle: TextStyle(
-                            inherit: false,
-                            color: secondaryLabel,
-                            fontSize: kSearchBarTextFontSize,
-                            fontFamily: kSFProText,
-                            fontWeight: FontWeight.w400,
-                            fontStyle: FontStyle.normal,
-                            letterSpacing: kTracking16,
+                        child: HorizontalEdgeFade(
+                          fadeColor: surfaceColor,
+                          child: NativeTextInput(
+                            controller: widget.controller,
+                            onFocusChanged: widget.onFocusChanged,
+                            placeholder: widget.placeholder,
+                            placeholderStyle: TextStyle(
+                              inherit: false,
+                              color: secondaryLabel,
+                              fontSize: kSearchBarTextFontSize,
+                              fontFamily: kSFProText,
+                              fontWeight: FontWeight.w400,
+                              fontStyle: FontStyle.normal,
+                              letterSpacing: kTracking16,
+                            ),
+                            style: TextStyle(
+                              inherit: false,
+                              fontSize: kSearchBarTextFontSize,
+                              color: primaryLabel,
+                              fontFamily: kSFProText,
+                              fontWeight: FontWeight.w400,
+                              fontStyle: FontStyle.normal,
+                              letterSpacing: kTracking16,
+                              height: kLineHeight,
+                            ),
+                            padding: EdgeInsets.zero,
+                            cursorColor: selectionTint,
+                            selectionColor: selectionTint.withOpacity(0.20),
+                            selectionControls: _selectionControls,
                           ),
-                          style: TextStyle(
-                            inherit: false,
-                            fontSize: kSearchBarTextFontSize,
-                            color: primaryLabel,
-                            fontFamily: kSFProText,
-                            fontWeight: FontWeight.w400,
-                            fontStyle: FontStyle.normal,
-                            letterSpacing: kTracking16,
-                            height: kLineHeight,
-                          ),
-                          padding: EdgeInsets.zero,
-                          cursorColor: selectionTint,
-                          selectionColor: selectionTint.withOpacity(0.20),
-                          selectionControls: _selectionControls,
                         ),
                       ),
                     ),

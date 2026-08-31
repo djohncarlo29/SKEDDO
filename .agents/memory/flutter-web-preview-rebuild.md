@@ -7,4 +7,4 @@ The Smart Scheduler preview workflow serves a compiled Flutter web build rather 
 
 **Why:** Repeated icon adjustments appeared unchanged because the preview was still serving the previous compiled bundle. A workflow restart rebuilt and served the latest source.
 
-**How to apply:** After Dart UI changes, use the existing `artifacts/smart-scheduler: expo` workflow restart before judging the rendered result; do not build an APK unless explicitly requested.
+**How to apply:** After Dart UI changes, use the existing `artifacts/smart-scheduler: expo` workflow restart before judging the rendered result; a cold rebuild can exceed the workflow's readiness window even when `flutter build web` succeeds; do not build an APK unless explicitly requested.

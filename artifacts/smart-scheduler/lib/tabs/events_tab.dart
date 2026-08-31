@@ -25,6 +25,7 @@ import '../widgets/native_text_input.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/search_bar_widget.dart';
+import '../widgets/horizontal_edge_fade.dart';
 import '../widgets/app_switch.dart';
 import '../widgets/fixed_size_icon.dart';
 import '../ai/search/search_service.dart';
@@ -2502,10 +2503,10 @@ class EventsTabState extends State<EventsTab>
 
   void _openArchivedSmartCategory(String label) {
     _openUtilityItemSheet(
-      title: 'Archived Category',
+      title: 'Archived Smart Category',
       subtitle:
-          'To edit an archived category, you\'ll need to recover it. '
-          'This will move it back to your categories list.',
+          'This built-in Smart Category can only be archived, not deleted. '
+          'Unarchiving it will return it to your pinned Smart Categories.',
       actionLabel: 'Unarchive',
       onAction: () => _unarchiveSmartCategory(label),
     );
@@ -11079,38 +11080,47 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                 ),
                                 // CupertinoTheme ensures selection handles
                                 // use the current accent, matching the cursor.
-                                CupertinoTheme(
-                                  data: CupertinoTheme.of(context).copyWith(
-                                    primaryColor: resolveAccentColor(context),
+                                HorizontalEdgeFade(
+                                  fadeColor: resolveThemeColor(
+                                    kSbSurface,
+                                    context,
                                   ),
-                                  child: DefaultSelectionStyle(
-                                    selectionColor: resolveAccentColor(
-                                      context,
-                                    ).withOpacity(0.20),
-                                    child: CupertinoTextField(
-                                      controller: _nameCtrl,
-                                      focusNode: _nameFocus,
-                                      placeholder: '',
-                                      style: TextStyle(
-                                        inherit: false,
-                                        color: resolveThemeColor(
-                                          kPrimaryLabel,
-                                          context,
+                                  child: CupertinoTheme(
+                                    data: CupertinoTheme.of(context).copyWith(
+                                      primaryColor: resolveAccentColor(context),
+                                    ),
+                                    child: DefaultSelectionStyle(
+                                      selectionColor: resolveAccentColor(
+                                        context,
+                                      ).withOpacity(0.20),
+                                      child: CupertinoTextField(
+                                        controller: _nameCtrl,
+                                        focusNode: _nameFocus,
+                                        placeholder: '',
+                                        style: TextStyle(
+                                          inherit: false,
+                                          color: resolveThemeColor(
+                                            kPrimaryLabel,
+                                            context,
+                                          ),
+                                          fontSize: 17,
+                                          fontFamily: kSFProText,
+                                          fontWeight: FontWeight.w400,
+                                          letterSpacing: kTracking17,
+                                          height: kLineHeight,
                                         ),
-                                        fontSize: 17,
-                                        fontFamily: kSFProText,
-                                        fontWeight: FontWeight.w400,
-                                        letterSpacing: kTracking17,
-                                        height: kLineHeight,
+                                        cursorColor: resolveAccentColor(context),
+                                        // Right padding leaves room for the clear button.
+                                        padding: const EdgeInsets.only(right: 30),
+                                        scrollPhysics: const BouncingScrollPhysics(
+                                          parent: AlwaysScrollableScrollPhysics(),
+                                        ),
+                                        decoration: null,
+                                        textCapitalization:
+                                            TextCapitalization.sentences,
+                                        textInputAction: TextInputAction.done,
+                                        onChanged: (_) => setState(() {}),
                                       ),
-                                      cursorColor: resolveAccentColor(context),
-                                      // Right padding leaves room for the clear button.
-                                      padding: const EdgeInsets.only(right: 30),
-                                      decoration: null,
-                                      textCapitalization:
-                                          TextCapitalization.sentences,
-                                      textInputAction: TextInputAction.done,
-                                      onChanged: (_) => setState(() {}),
                                     ),
                                   ),
                                 ),
@@ -12309,47 +12319,53 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
           child: Stack(
             alignment: Alignment.center,
             children: [
-              CupertinoTextField(
-                controller: _titleCtrl,
-                focusNode: _titleFocus,
-                readOnly: _isSmart,
-                showCursor: !_isSmart,
-                // New Category (not Edit, not a smart tile) opens with the
-                // keyboard already up and focused here.
-                autofocus: !_isSmart && widget.initial == null,
-                // selectionControls uses a captured colour so handles update live
-                // when the user changes the category swatch.
-                selectionControls: _selectionControls,
-                // No contextMenuBuilder here: _TintedCupertinoTextSelectionControls
-                // inherits CupertinoTextSelectionControls.buildToolbar, which always
-                // renders the full Cupertino floating-bubble toolbar (Select All,
-                // Look Up, Share, etc.) regardless of platform — matching the Notes
-                // tab and every other CupertinoTextField in the app.
-                placeholder: 'Title',
-                placeholderStyle: _kPlaceholderStyle,
-                style:
-                    _isSmart
-                        ? _kFieldStyle.copyWith(
-                          color: resolveThemeColor(kSecondaryLabel, context),
-                        )
-                        : _titleCtrl.text.isNotEmpty
-                        ? _kFieldStyle.copyWith(
-                          color: _resolvedSelectedColor,
-                          fontWeight: FontWeight.w600,
-                        )
-                        : _kFieldStyle,
-                textAlign: TextAlign.center,
-                cursorColor: _resolvedSelectedColor,
-                // 37 px on each side keeps text centred; no prefix/suffix slots.
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 37,
-                  vertical: 14,
+              HorizontalEdgeFade(
+                fadeColor: resolveThemeColor(kSbSurface, context),
+                child: CupertinoTextField(
+                  controller: _titleCtrl,
+                  focusNode: _titleFocus,
+                  readOnly: _isSmart,
+                  showCursor: !_isSmart,
+                  // New Category (not Edit, not a smart tile) opens with the
+                  // keyboard already up and focused here.
+                  autofocus: !_isSmart && widget.initial == null,
+                  // selectionControls uses a captured colour so handles update live
+                  // when the user changes the category swatch.
+                  selectionControls: _selectionControls,
+                  // No contextMenuBuilder here: _TintedCupertinoTextSelectionControls
+                  // inherits CupertinoTextSelectionControls.buildToolbar, which always
+                  // renders the full Cupertino floating-bubble toolbar (Select All,
+                  // Look Up, Share, etc.) regardless of platform — matching the Notes
+                  // tab and every other CupertinoTextField in the app.
+                  placeholder: 'Title',
+                  placeholderStyle: _kPlaceholderStyle,
+                  style:
+                      _isSmart
+                          ? _kFieldStyle.copyWith(
+                            color: resolveThemeColor(kSecondaryLabel, context),
+                          )
+                          : _titleCtrl.text.isNotEmpty
+                          ? _kFieldStyle.copyWith(
+                            color: _resolvedSelectedColor,
+                            fontWeight: FontWeight.w600,
+                          )
+                          : _kFieldStyle,
+                  textAlign: TextAlign.center,
+                  cursorColor: _resolvedSelectedColor,
+                  // 37 px on each side keeps text centred; no prefix/suffix slots.
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 37,
+                    vertical: 14,
+                  ),
+                  clearButtonMode: OverlayVisibilityMode.never,
+                  scrollPhysics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: null,
+                  textInputAction: TextInputAction.next,
                 ),
-                clearButtonMode: OverlayVisibilityMode.never,
-                onChanged: (_) => setState(() {}),
-                textCapitalization: TextCapitalization.sentences,
-                decoration: null,
-                textInputAction: TextInputAction.next,
               ),
               // Clear button — Positioned overlay so it never enters the text
               // field's internal layout and cannot block selection gestures.
@@ -12398,32 +12414,38 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
           child: Stack(
             alignment: Alignment.center,
             children: [
-              CupertinoTextField(
-                controller: _descCtrl,
-                focusNode: _descFocus,
-                scrollController: _descScrollCtrl,
-                readOnly: _isSmart,
-                showCursor: !_isSmart,
-                selectionControls: _selectionControls,
-                placeholder: 'Subtitle',
-                placeholderStyle: _kPlaceholderStyle,
-                style:
-                    _isSmart
-                        ? _kFieldStyle.copyWith(
-                          color: resolveThemeColor(kSecondaryLabel, context),
-                        )
-                        : _kFieldStyle,
-                textAlign: TextAlign.center,
-                cursorColor: _resolvedSelectedColor,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 37,
-                  vertical: 14,
+              HorizontalEdgeFade(
+                fadeColor: resolveThemeColor(kSbSurface, context),
+                child: CupertinoTextField(
+                  controller: _descCtrl,
+                  focusNode: _descFocus,
+                  scrollController: _descScrollCtrl,
+                  readOnly: _isSmart,
+                  showCursor: !_isSmart,
+                  selectionControls: _selectionControls,
+                  placeholder: 'Subtitle',
+                  placeholderStyle: _kPlaceholderStyle,
+                  style:
+                      _isSmart
+                          ? _kFieldStyle.copyWith(
+                            color: resolveThemeColor(kSecondaryLabel, context),
+                          )
+                          : _kFieldStyle,
+                  textAlign: TextAlign.center,
+                  cursorColor: _resolvedSelectedColor,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 37,
+                    vertical: 14,
+                  ),
+                  clearButtonMode: OverlayVisibilityMode.never,
+                  scrollPhysics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: null,
+                  textInputAction: TextInputAction.done,
                 ),
-                clearButtonMode: OverlayVisibilityMode.never,
-                onChanged: (_) => setState(() {}),
-                textCapitalization: TextCapitalization.sentences,
-                decoration: null,
-                textInputAction: TextInputAction.done,
               ),
               if (!_isSmart)
                 AnimatedBuilder(
@@ -12739,32 +12761,38 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             ),
             // The actual text field with an empty placeholder string so our
             // animated overlay above is the only placeholder the user sees.
-            CupertinoTheme(
-              data: CupertinoTheme.of(
-                context,
-              ).copyWith(primaryColor: _resolvedSelectedColor),
-              child: DefaultSelectionStyle(
-                selectionColor: _resolvedSelectedColor.withOpacity(0.20),
-                child: CupertinoTextField(
-                  controller: ctrl,
-                  focusNode: focusNode,
-                  placeholder: '',
-                  placeholderStyle: _kPlaceholderStyle,
-                  style: _kFieldStyle,
-                  cursorColor: _resolvedSelectedColor,
-                  selectionControls: _selectionControls,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
+            HorizontalEdgeFade(
+              fadeColor: resolveThemeColor(kSbSurface, context),
+              child: CupertinoTheme(
+                data: CupertinoTheme.of(
+                  context,
+                ).copyWith(primaryColor: _resolvedSelectedColor),
+                child: DefaultSelectionStyle(
+                  selectionColor: _resolvedSelectedColor.withOpacity(0.20),
+                  child: CupertinoTextField(
+                    controller: ctrl,
+                    focusNode: focusNode,
+                    placeholder: '',
+                    placeholderStyle: _kPlaceholderStyle,
+                    style: _kFieldStyle,
+                    cursorColor: _resolvedSelectedColor,
+                    selectionControls: _selectionControls,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    clearButtonMode: OverlayVisibilityMode.never,
+                    scrollPhysics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: null,
+                    textInputAction: TextInputAction.next,
                   ),
-                  clearButtonMode: OverlayVisibilityMode.never,
-                  onChanged: (_) => setState(() {}),
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: null,
-                  textInputAction: TextInputAction.next,
                 ),
               ),
-            ), // CupertinoTextField + DefaultSelectionStyle + CupertinoTheme
+            ), // HorizontalEdgeFade + CupertinoTextField + selection style
           ],
         ),
       ),

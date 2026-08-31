@@ -223,6 +223,9 @@ class _NativeTextInputState extends State<NativeTextInput> {
           decoration: null,
           maxLines: widget.multiline ? null : 1,
           minLines: null,
+          scrollPhysics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
           keyboardType: widget.multiline
               ? TextInputType.multiline
               : TextInputType.text,
