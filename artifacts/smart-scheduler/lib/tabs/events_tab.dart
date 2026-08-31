@@ -10940,11 +10940,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             width: circleSize,
             height: circleSize,
             child: Center(
-              // Scale the complete authored 64px unit once. The icon,
-              // highlight, badge, and shadow therefore remain one unified
-              // visual element instead of receiving separate text-scale math.
-              child: Transform.scale(
-                scale: circleScale,
+              // Fit the complete authored 64px unit once. The icon,
+              // highlight, badge, and shadow therefore share the same final
+              // coordinates at every OS text-size setting.
+              child: FittedBox(
+                fit: BoxFit.fill,
+                alignment: Alignment.center,
                 child: SizedBox(
                   width: 64,
                   height: 64,
