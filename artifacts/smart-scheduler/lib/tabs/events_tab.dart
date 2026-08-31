@@ -712,6 +712,13 @@ class _ContextMenuOverlay extends StatelessWidget {
           iconOffset: const Offset(-1.0, 0),
           onTap: isPinned ? onUnpin : onPin,
         ),
+        ActionItem(
+          label: 'Edit Category Info',
+          icon: SFIcons.sf_pencil,
+          iconSize: 22,
+          iconWeight: FontWeight.w500,
+          onTap: onEdit,
+        ),
       ];
     }
     return [
@@ -4679,7 +4686,7 @@ class EventsTabState extends State<EventsTab>
                 child: _renderCatIcon(
                   cat.iconOrSvg,
                   circleSize,
-                  CupertinoColors.white,
+                  _userCategoryIconColor(cat, context),
                   emojiOffsetY: 1,
                   ctx: context,
                 ),
@@ -7832,7 +7839,7 @@ class _UserCategory {
 
 Color _userCategoryIconColor(_UserCategory category, BuildContext context) {
   if (category.id == _kIdSysArchivedCategories) {
-    return resolveThemeColor(kSecondaryLabel, context);
+    return CupertinoColors.black;
   }
   if (category.id == _kIdSysRecentlyDeleted) {
     return CupertinoColors.destructiveRed;
@@ -16531,6 +16538,19 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
 
   // ── Empty-state helpers ───────────────────────────────────────────────────────
 
+  String get _emptyStateTitle {
+    switch (widget.label) {
+      case 'Archived Categories':
+        return 'No Archived Categories';
+      case 'Recently Deleted':
+        return 'No Recently Deleted Items';
+      default:
+        return widget.categoryType == 'Shopping List'
+            ? 'Add Shopping Items'
+            : 'No Events';
+    }
+  }
+
   String get _emptyStateSubtitle {
     if (widget.categoryType == 'Shopping List') {
       return 'Items added to this category are automatically\n'
@@ -16553,6 +16573,10 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         return 'All of your events will appear here.';
       case 'Completed':
         return 'Completed events will appear here.';
+      case 'Archived Categories':
+        return 'Archived categories will appear here.';
+      case 'Recently Deleted':
+        return 'Deleted events and categories will appear here.';
       default:
         return 'Add a new event by tapping + button';
     }
@@ -16987,9 +17011,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
           RepaintBoundary(child: _buildIcon()),
           SizedBox(height: 16),
           Text(
-            widget.categoryType == 'Shopping List'
-                ? 'Add Shopping Items'
-                : 'No Events',
+            _emptyStateTitle,
             textAlign: TextAlign.center,
             style: TextStyle(
               inherit: false,
