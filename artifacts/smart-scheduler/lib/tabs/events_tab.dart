@@ -6887,27 +6887,31 @@ double _eventsCategoryIconScale(
 
 /// The calendar frame and its day badge are one authored visual unit.
 ///
-/// Keep all geometry at the default 35.5px circle size and apply the active
+/// Keep all geometry at the authored circle size and apply the active
 /// accessibility scale once around the complete composition. This prevents
 /// the badge's text layout from drifting independently of the frame.
-Widget _buildUnifiedSmartCalendarIcon({
+Widget _buildUnifiedCalendarIconUnit({
   required int? day,
+  required double authoredCircleSize,
+  required double frameSize,
+  required double dayTop,
+  required double dayFontSize,
   required double circleScale,
 }) {
   return Center(
     child: Transform.scale(
       scale: circleScale,
       child: SizedBox(
-        width: _kGridTileCircleSize,
-        height: _kGridTileCircleSize,
+        width: authoredCircleSize,
+        height: authoredCircleSize,
         child: Stack(
           fit: StackFit.expand,
           clipBehavior: Clip.none,
           children: [
             Center(
               child: SizedBox(
-                width: 24,
-                height: 24,
+                width: frameSize,
+                height: frameSize,
                 child: SvgPicture.asset(
                   'assets/icons/calendar_frame.svg',
                   colorFilter: const ColorFilter.mode(
@@ -6919,7 +6923,7 @@ Widget _buildUnifiedSmartCalendarIcon({
             ),
             if (day != null)
               Positioned(
-                top: 14.6,
+                top: dayTop,
                 left: 0,
                 right: 0,
                 child: Center(
@@ -6932,7 +6936,7 @@ Widget _buildUnifiedSmartCalendarIcon({
                       style: TextStyle(
                         inherit: false,
                         color: Color(0xFFFFFFFF),
-                        fontSize: 9.5,
+                        fontSize: dayFontSize,
                         fontFamily: kSFProText,
                         fontWeight: FontWeight.w700,
                         fontStyle: FontStyle.normal,
