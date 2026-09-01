@@ -12776,9 +12776,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 return Positioned.fill(
                   child: IgnorePointer(
                     child: Padding(
-                      padding: const EdgeInsets.only(
+                      padding: EdgeInsets.only(
                         left: kHorizontalFadeEdgeGap,
-                        right: kHorizontalFadeContentGap,
+                        right: _locationClearFieldGap(),
                         top: 14,
                         bottom: 14,
                       ),
@@ -12805,7 +12805,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             HorizontalEdgeFade(
               fadeColor: resolveThemeColor(kModalCard, context),
               leadingInset: kHorizontalFadeEdgeGap,
-              trailingInset: kHorizontalFadeContentGap,
+              trailingInset: _locationClearFieldGap(),
               controller: ctrl,
               child: CupertinoTheme(
                 data: CupertinoTheme.of(
@@ -12821,9 +12821,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     style: _kFieldStyle,
                     cursorColor: _resolvedSelectedColor,
                     selectionControls: _selectionControls,
-                    padding: const EdgeInsets.only(
+                    padding: EdgeInsets.only(
                       left: kHorizontalFadeEdgeGap,
-                      right: kHorizontalFadeContentGap,
+                      right: _locationClearFieldGap(),
                       top: 14,
                       bottom: 14,
                     ),
@@ -12848,6 +12848,17 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       ),
     ],
   );
+
+  double _locationClearFieldGap() {
+    final mapPinSize = MediaQuery.textScalerOf(context).scale(28);
+    final clearIconSize = scaledSearchIconSize(context, 17);
+    final actionSize = max(mapPinSize, clearIconSize);
+    final clearIconLeadingInset = (actionSize - clearIconSize) / 2;
+    return max(
+      0.0,
+      kHorizontalFadeContentGap - clearIconLeadingInset,
+    );
+  }
 
   /// The location action uses a true fade-through: the map-pin circle and
   /// clear button overlap while one fades out and the other fades in.

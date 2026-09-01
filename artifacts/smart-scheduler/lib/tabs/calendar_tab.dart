@@ -7930,9 +7930,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 return Positioned.fill(
                   child: IgnorePointer(
                     child: Padding(
-                      padding: const EdgeInsets.only(
+                      padding: EdgeInsets.only(
                         left: kHorizontalFadeEdgeGap,
-                        right: kHorizontalFadeContentGap,
+                        right: _locationClearFieldGap(),
                         top: 14,
                         bottom: 14,
                       ),
@@ -7957,7 +7957,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             HorizontalEdgeFade(
               fadeColor: resolveThemeColor(kModalCard, context),
               leadingInset: kHorizontalFadeEdgeGap,
-              trailingInset: kHorizontalFadeContentGap,
+              trailingInset: _locationClearFieldGap(),
               controller: ctrl,
               child: CupertinoTheme(
                 data: CupertinoTheme.of(context).copyWith(
@@ -7975,9 +7975,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     placeholderStyle: _kPlaceholderStyle,
                     style: _kLabelStyle,
                     cursorColor: renderCategoryColor(_categoryColor, context),
-                    padding: const EdgeInsets.only(
+                    padding: EdgeInsets.only(
                       left: kHorizontalFadeEdgeGap,
-                      right: kHorizontalFadeContentGap,
+                      right: _locationClearFieldGap(),
                       top: 14,
                       bottom: 14,
                     ),
@@ -8002,6 +8002,17 @@ class _NewEventSheetState extends State<_NewEventSheet>
       ),
     ],
   );
+
+  double _locationClearFieldGap() {
+    final mapPinSize = MediaQuery.textScalerOf(context).scale(28);
+    final clearIconSize = scaledSearchIconSize(context, 17);
+    final actionSize = math.max(mapPinSize, clearIconSize);
+    final clearIconLeadingInset = (actionSize - clearIconSize) / 2;
+    return math.max(
+      0.0,
+      kHorizontalFadeContentGap - clearIconLeadingInset,
+    );
+  }
 
   Widget _buildLocationTrailingAction(
     TextEditingController ctrl,
@@ -9253,7 +9264,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 ),
               ),
             ),
-            const SizedBox(width: kHorizontalFadeContentGap),
+             const SizedBox(width: kHorizontalFadeEdgeGap),
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: onRemove,
