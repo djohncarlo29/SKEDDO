@@ -2649,6 +2649,7 @@ class EventsTabState extends State<EventsTab>
       }
     });
     _saveCategories();
+    _scheduleUtilityExitIfEmpty();
   }
 
   // ── Grid drag-reorder (unified: smart tiles + pinned user tiles) ──────────
