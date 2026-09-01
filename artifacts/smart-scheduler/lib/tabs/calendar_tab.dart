@@ -17,6 +17,7 @@ import '../app_theme.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import '../widgets/fixed_size_icon.dart';
 import '../widgets/native_text_input.dart';
+import '../widgets/text_editing_helpers.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/horizontal_edge_fade.dart';
@@ -6227,6 +6228,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     required TextEditingController ctrl,
     required FocusNode focus,
     required String placeholder,
+    bool caretToEndOnTap = false,
     bool multiline = false,
     int? minLinesOverride,
     int? maxLinesOverride,
@@ -6253,6 +6255,12 @@ class _NewEventSheetState extends State<_NewEventSheet>
           textCapitalization: TextCapitalization.sentences,
           maxLines: maxLinesOverride ?? (multiline ? null : 1),
           minLines: minLinesOverride ?? (multiline ? 3 : 1),
+          onTap: caretToEndOnTap
+              ? () => scheduleTextFieldCaretToEnd(
+                    ctrl,
+                    isMounted: () => mounted,
+                  )
+              : null,
           scrollPhysics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
@@ -7992,6 +8000,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     textCapitalization: TextCapitalization.sentences,
                     decoration: null,
                     textInputAction: TextInputAction.next,
+                    onTap: () => scheduleTextFieldCaretToEnd(
+                      ctrl,
+                      isMounted: () => mounted,
+                    ),
                   ),
                 ),
               ),
@@ -10311,6 +10323,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                               ctrl: _titleCtrl,
                               focus: _titleFocus,
                               placeholder: 'Title',
+                              caretToEndOnTap: true,
                             ),
                             _sep(),
                             _textField(
@@ -10477,6 +10490,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                               ctrl: _urlCtrl,
                               focus: _urlFocus,
                               placeholder: 'URL',
+                              caretToEndOnTap: true,
                             ),
                             _sep(),
                             _textField(

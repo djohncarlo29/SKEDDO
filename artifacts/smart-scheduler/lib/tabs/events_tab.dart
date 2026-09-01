@@ -22,6 +22,7 @@ import '../services/event_store.dart';
 import '../services/alert_sequence.dart';
 import '../widgets/action_panel.dart';
 import '../widgets/native_text_input.dart';
+import '../widgets/text_editing_helpers.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/search_bar_widget.dart';
@@ -10809,6 +10810,10 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
     super.dispose();
   }
 
+  void _scheduleCaretToEnd(TextEditingController controller) {
+    scheduleTextFieldCaretToEnd(controller, isMounted: () => mounted);
+  }
+
   void _dismissPicker({bool animate = true}) {
     if (!_pickerOpen) return;
     _pickerIsClosing.value = true;
@@ -11135,6 +11140,8 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                         textCapitalization:
                                             TextCapitalization.sentences,
                                         textInputAction: TextInputAction.done,
+                                        onTap: () =>
+                                            _scheduleCaretToEnd(_nameCtrl),
                                         onChanged: (_) => setState(() {}),
                                       ),
                                     ),
@@ -12083,6 +12090,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     setState(() {});
   }
 
+  void _scheduleCaretToEnd(TextEditingController controller) {
+    scheduleTextFieldCaretToEnd(controller, isMounted: () => mounted);
+  }
+
   // Mirrors _CategoryTile._buildIconContent, scaled up 2x (32px tile circle
   // → 64px sheet circle) including the day-number overlay for the four
   // calendar-type tiles (Today/Tomorrow/This Week/Next Week).
@@ -12406,6 +12417,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   textCapitalization: TextCapitalization.sentences,
                   decoration: null,
                   textInputAction: TextInputAction.next,
+                   onTap: _isSmart
+                       ? null
+                       : () => _scheduleCaretToEnd(_titleCtrl),
                 ),
               ),
               // Clear button — Positioned overlay so it never enters the text
@@ -12504,6 +12518,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   textCapitalization: TextCapitalization.sentences,
                   decoration: null,
                   textInputAction: TextInputAction.done,
+                  onTap: _isSmart
+                      ? null
+                      : () => _scheduleCaretToEnd(_descCtrl),
                 ),
               ),
               if (!_isSmart)
@@ -12871,6 +12888,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     textCapitalization: TextCapitalization.sentences,
                     decoration: null,
                     textInputAction: TextInputAction.next,
+                    onTap: () => _scheduleCaretToEnd(ctrl),
                   ),
                 ),
               ),
