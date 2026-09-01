@@ -293,6 +293,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
       builder: (context, menuOpen, child) {
         _element.style.visibility = menuOpen ? 'hidden' : 'visible';
         return Stack(
+          fit: StackFit.expand,
           children: [
             child!, // HtmlElementView — always present
             if (menuOpen) _buildGhostText(), // ghost added/removed as a child

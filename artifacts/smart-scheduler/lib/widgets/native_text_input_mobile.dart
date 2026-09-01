@@ -188,6 +188,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
     final double placeholderOffset = _focusNode.hasFocus ? 4.0 : 0.0;
 
     return Stack(
+      fit: StackFit.expand,
       alignment: alignment,
       children: [
         if (showPlaceholder)
