@@ -293,6 +293,7 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
       child: NotificationListener<ScrollMetricsNotification>(
         onNotification: _handleMetricsNotification,
         child: Stack(
+            fit: StackFit.expand,
             clipBehavior: Clip.none,
             children: [
               widget.child,
