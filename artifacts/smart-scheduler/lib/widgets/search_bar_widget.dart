@@ -432,52 +432,52 @@ class AppSearchBarState extends State<AppSearchBar>
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: ClipRect(
-                  child: TapRegion(
-                    groupId: kSbGroupId,
-                    child: CupertinoTheme(
-                      data: CupertinoTheme.of(
-                        context,
-                      ).copyWith(primaryColor: selectionTint),
-                      child: DefaultSelectionStyle(
-                        selectionColor: selectionTint.withOpacity(0.20),
-                        child: HorizontalEdgeFade(
-                          fadeColor: surfaceColor,
-                          // The search icon already leaves an 8 px gap before
-                          // the field; add 8 px so the fade starts 16 px from
-                          // the icon. The trailing icon starts at the field
-                          // boundary, so it gets the full 16 px gap.
-                          leadingInset: kHorizontalFadeEdgeGap - 8,
-                          trailingInset: kHorizontalFadeEdgeGap,
+                child: TapRegion(
+                  groupId: kSbGroupId,
+                  child: CupertinoTheme(
+                    data: CupertinoTheme.of(
+                      context,
+                    ).copyWith(primaryColor: selectionTint),
+                    child: DefaultSelectionStyle(
+                      selectionColor: selectionTint.withOpacity(0.20),
+                      child: HorizontalEdgeFade(
+                        fadeColor: surfaceColor,
+                        // The search icon leaves an 8 px gap before the
+                        // field, so another 8 px puts the opaque fade edge
+                        // 16 px from the icon. The clear icon begins at the
+                        // field boundary, so its opaque fade edge is inset by
+                        // the full 16 px. The fade is not clipped at the
+                        // field boundary.
+                        leadingInset: kHorizontalFadeEdgeGap - 8,
+                        trailingInset: kHorizontalFadeEdgeGap,
+                        controller: widget.controller,
+                        child: NativeTextInput(
                           controller: widget.controller,
-                          child: NativeTextInput(
-                            controller: widget.controller,
-                            onFocusChanged: widget.onFocusChanged,
-                            placeholder: widget.placeholder,
-                            placeholderStyle: TextStyle(
-                              inherit: false,
-                              color: secondaryLabel,
-                              fontSize: kSearchBarTextFontSize,
-                              fontFamily: kSFProText,
-                              fontWeight: FontWeight.w400,
-                              fontStyle: FontStyle.normal,
-                              letterSpacing: kTracking16,
-                            ),
-                            style: TextStyle(
-                              inherit: false,
-                              fontSize: kSearchBarTextFontSize,
-                              color: primaryLabel,
-                              fontFamily: kSFProText,
-                              fontWeight: FontWeight.w400,
-                              fontStyle: FontStyle.normal,
-                              letterSpacing: kTracking16,
-                              height: kLineHeight,
-                            ),
-                            padding: EdgeInsets.zero,
-                            cursorColor: selectionTint,
-                            selectionColor: selectionTint.withOpacity(0.20),
-                            selectionControls: _selectionControls,
+                          onFocusChanged: widget.onFocusChanged,
+                          placeholder: widget.placeholder,
+                          placeholderStyle: TextStyle(
+                            inherit: false,
+                            color: secondaryLabel,
+                            fontSize: kSearchBarTextFontSize,
+                            fontFamily: kSFProText,
+                            fontWeight: FontWeight.w400,
+                            fontStyle: FontStyle.normal,
+                            letterSpacing: kTracking16,
                           ),
+                          style: TextStyle(
+                            inherit: false,
+                            fontSize: kSearchBarTextFontSize,
+                            color: primaryLabel,
+                            fontFamily: kSFProText,
+                            fontWeight: FontWeight.w400,
+                            fontStyle: FontStyle.normal,
+                            letterSpacing: kTracking16,
+                            height: kLineHeight,
+                          ),
+                          padding: EdgeInsets.zero,
+                          cursorColor: selectionTint,
+                          selectionColor: selectionTint.withOpacity(0.20),
+                          selectionControls: _selectionControls,
                         ),
                       ),
                     ),
