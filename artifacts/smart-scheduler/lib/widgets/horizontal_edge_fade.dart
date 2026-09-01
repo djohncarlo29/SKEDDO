@@ -63,9 +63,9 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   bool _resetting = false;
   bool _showLeadingFade = false;
   bool _showTrailingFade = false;
-  bool _suppressTrailingAfterEdit = false;
   TextEditingValue? _lastControllerValue;
   ScrollController? _attachedScrollController;
+  int _editSyncTicket = 0;
 
   @override
   void initState() {
@@ -82,7 +82,6 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
       oldWidget.controller?.removeListener(_handleControllerChanged);
       _lastControllerValue = widget.controller?.value;
       widget.controller?.addListener(_handleControllerChanged);
-      _suppressTrailingAfterEdit = false;
     }
     if (oldWidget.scrollController != widget.scrollController) {
       _detachScrollController();
@@ -142,30 +141,66 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     final selectionChanged = previousValue?.selection != value.selection;
     if (!textChanged && !selectionChanged) return;
 
-    // EditableText moves its internal scroll position to keep a newly typed
-    // character/cursor visible after the controller notification. Hide the
-    // trailing fade immediately when the cursor is at the natural end, then
-    // let the next scroll notification restore it if actual overflow remains.
-    _suppressTrailingAfterEdit =
-        value.selection.isValid &&
-        value.selection.isCollapsed &&
-        value.selection.extentOffset >= value.text.length;
-    if (_suppressTrailingAfterEdit && _showTrailingFade && mounted) {
-      setState(() => _showTrailingFade = false);
+    // Empty text has no hidden content, even if the text field has not
+    // recalculated its scroll metrics yet. Clear the visual state immediately
+    // instead of allowing one stale metrics notification to paint old fades.
+    if (value.text.isEmpty) {
+      _editSyncTicket++;
+      if (_canScroll || _showLeadingFade || _showTrailingFade) {
+        if (mounted) {
+          setState(() {
+            _canScroll = false;
+            _showLeadingFade = false;
+            _showTrailingFade = false;
+          });
+        }
+      }
     }
+
+    _scheduleEditSync(value);
+  }
+
+  /// Lets EditableText finish its layout, then keeps the caret's end visible
+  /// for typing, deletion, and paste. A second frame handles the case where
+  /// the text field updates its max extent one frame after the controller.
+  void _scheduleEditSync(TextEditingValue editedValue) {
+    final ticket = ++_editSyncTicket;
+
+    void syncAfterLayout() {
+      if (!mounted || ticket != _editSyncTicket) return;
+      final controller = _attachedScrollController;
+      if (controller?.hasClients != true) return;
+      final position = controller!.position;
+      if (!position.hasContentDimensions) return;
+
+      final value = widget.controller?.value;
+      if (value?.text.isEmpty == true) {
+        if (position.pixels != position.minScrollExtent) {
+          position.jumpTo(position.minScrollExtent);
+        }
+      } else if (value != null &&
+          value.selection.isValid &&
+          value.selection.isCollapsed &&
+          value.selection.extentOffset >= value.text.length &&
+          position.pixels != position.maxScrollExtent) {
+        // Pasting or appending at the end must reveal the newly inserted tail
+        // immediately. This also keeps the last character visible while
+        // backspacing at the end.
+        position.jumpTo(position.maxScrollExtent);
+      }
+      _sync(position);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      syncAfterLayout();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        syncAfterLayout();
+      });
+    });
   }
 
   bool _handleScrollNotification(ScrollNotification notification) {
     if (notification.metrics.axis != Axis.horizontal) return false;
-    // A controller edit can briefly notify before EditableText finishes
-    // moving its viewport to the caret at the new end. Keep the trailing fade
-    // hidden during that handoff, but stop suppressing it as soon as the user
-    // deliberately drags away from the end. At that point the fade is useful
-    // again because content is genuinely hidden on the right.
-    if (notification is ScrollUpdateNotification &&
-        notification.dragDetails != null) {
-      _suppressTrailingAfterEdit = false;
-    }
     _sync(notification.metrics);
     return false;
   }
@@ -179,6 +214,19 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
 
   void _sync(ScrollMetrics metrics) {
     if (_resetting) return;
+    // Metrics can lag behind a controller clear by a frame. Text itself is
+    // authoritative: an empty field cannot have hidden content on either end.
+    if (widget.controller?.text.isEmpty == true) {
+      if (_canScroll || _showLeadingFade || _showTrailingFade) {
+        if (!mounted) return;
+        setState(() {
+          _canScroll = false;
+          _showLeadingFade = false;
+          _showTrailingFade = false;
+        });
+      }
+      return;
+    }
     final canScroll = metrics.maxScrollExtent > 1.0;
     // Most fields only show fades when content is genuinely clipped. Selected
     // modal fields opt into the Large Header behavior, where a short field
@@ -198,14 +246,9 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
         (canScroll
             ? metrics.extentBefore > 1.0
             : widget.showLeadingFadeWhenContentFits || isPulledPastEnd);
-    if (_suppressTrailingAfterEdit &&
-        metrics.pixels >= metrics.maxScrollExtent - 1.0) {
-      _suppressTrailingAfterEdit = false;
-    }
     final showTrailing =
         fadeEdges &&
         widget.showTrailingFade &&
-        !_suppressTrailingAfterEdit &&
         (canScroll
             ? metrics.extentAfter > 1.0
             : widget.fadeWhenContentFits || isPulledPastStart);

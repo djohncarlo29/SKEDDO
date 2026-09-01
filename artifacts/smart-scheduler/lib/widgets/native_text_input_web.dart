@@ -12,6 +12,9 @@ class NativeTextInput extends StatefulWidget {
   final TextStyle style;
   final TextStyle placeholderStyle;
   final EdgeInsets padding;
+  // Kept in the shared API for parity with the mobile Cupertino field. The
+  // browser input owns its native horizontal scroll position.
+  final ScrollController? scrollController;
   final Color cursorColor;
   final Color? selectionColor;
   final TextSelectionControls? selectionControls;
@@ -25,6 +28,7 @@ class NativeTextInput extends StatefulWidget {
     required this.style,
     required this.placeholderStyle,
     required this.cursorColor,
+    this.scrollController,
     this.selectionColor,
     this.selectionControls,
     this.multiline = false,

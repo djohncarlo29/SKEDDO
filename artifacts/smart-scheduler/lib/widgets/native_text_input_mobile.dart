@@ -21,6 +21,7 @@ class NativeTextInput extends StatefulWidget {
   final TextStyle style;
   final TextStyle placeholderStyle;
   final EdgeInsets padding;
+  final ScrollController? scrollController;
   final Color cursorColor;
   final Color? selectionColor;
   final TextSelectionControls? selectionControls;
@@ -36,6 +37,7 @@ class NativeTextInput extends StatefulWidget {
     required this.style,
     required this.placeholderStyle,
     required this.cursorColor,
+    this.scrollController,
     this.selectionColor,
     this.selectionControls,
     this.multiline = false,
@@ -219,6 +221,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
         CupertinoTextField(
           controller: widget.controller,
           focusNode: _focusNode,
+          scrollController: widget.scrollController,
           style: widget.style,
           decoration: null,
           maxLines: widget.multiline ? null : 1,

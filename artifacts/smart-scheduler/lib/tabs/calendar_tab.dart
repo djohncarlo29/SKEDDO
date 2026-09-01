@@ -5649,9 +5649,6 @@ class _AttachmentFilenameState extends State<_AttachmentFilename> {
       builder: (context, constraints) {
         return HorizontalEdgeFade(
           fadeColor: widget.fadeColor,
-          // Do not opt into fades when content fits: the viewport is still
-          // always-scrollable for rubberbanding. During that rubberband, use
-          // the same edge fade behavior as HeaderTitleScroller.
           fadeOnRubberbandWhenContentFits: true,
           scrollController: _scrollController,
           child: SingleChildScrollView(
@@ -6394,7 +6391,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
               ? textField
               : HorizontalEdgeFade(
                   fadeColor: resolvedSurface,
-                  fadeWhenContentFits: true,
+                  fadeOnRubberbandWhenContentFits: true,
                   // This field is already 16 px inside the card from the
                   // outer row padding, so the card-edge fade begins here.
                    leadingInset: 0,

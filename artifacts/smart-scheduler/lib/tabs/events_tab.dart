@@ -11150,7 +11150,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                     kModalCard,
                                     context,
                                   ),
-                                  fadeWhenContentFits: true,
+                                  fadeOnRubberbandWhenContentFits: true,
                                    // The field's content begins 8 px inside
                                    // the row, and ends 8 px before its clear
                                    // action. Fades begin at those boundaries.
@@ -12424,7 +12424,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             children: [
               HorizontalEdgeFade(
                 fadeColor: resolveThemeColor(kModalCard, context),
-                fadeWhenContentFits: true,
+                fadeOnRubberbandWhenContentFits: true,
                 // The title text starts after the symmetric clear-action
                 // reservation, not at the card's 16 px edge. Anchor the fade
                 // to that real text-content boundary so it overlays clipped
@@ -12547,7 +12547,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             children: [
               HorizontalEdgeFade(
                 fadeColor: resolveThemeColor(kModalCard, context),
-                fadeWhenContentFits: true,
+                fadeOnRubberbandWhenContentFits: true,
                 // Match the title field above: the subtitle's text viewport
                 // begins after the reserved clear-action space.
                 leadingInset:

@@ -192,6 +192,7 @@ class AppSearchBarState extends State<AppSearchBar>
   String _preListenText = '';
 
   late final AnimationController _pulseCtrl;
+  late final ScrollController _scrollController;
   late final ValueNotifier<Color> _selectionColorNotifier;
   late final TintedCupertinoTextSelectionControls _selectionControls;
 
@@ -204,6 +205,7 @@ class AppSearchBarState extends State<AppSearchBar>
     _selectionControls = TintedCupertinoTextSelectionControls(
       _selectionColorNotifier,
     );
+    _scrollController = ScrollController();
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -215,6 +217,7 @@ class AppSearchBarState extends State<AppSearchBar>
   @override
   void dispose() {
     _pulseCtrl.dispose();
+    _scrollController.dispose();
     _selectionColorNotifier.dispose();
     super.dispose();
   }
@@ -444,11 +447,11 @@ class AppSearchBarState extends State<AppSearchBar>
                       selectionColor: selectionTint.withOpacity(0.20),
                       child: HorizontalEdgeFade(
                         fadeColor: surfaceColor,
-                        // Search text should get the same Large Header
-                        // treatment as the modal's short single-line fields:
-                        // no fade while settled and fitting, but reveal the
-                        // appropriate edge fade during rubberbanding.
-                        fadeWhenContentFits: true,
+                        // Short search text still participates in the native
+                        // rubberband gesture. Show an edge fade only while it
+                        // is pulled past that edge; resting fitting text has
+                        // no hidden content and therefore no fade.
+                        fadeOnRubberbandWhenContentFits: true,
                         // The editable viewport spans from icon edge to icon
                         // edge. Its content has one 8 px inset on each side,
                         // and the fades begin exactly at those usable-field
@@ -456,8 +459,10 @@ class AppSearchBarState extends State<AppSearchBar>
                         leadingInset: kSearchFieldFadeEdgeGap,
                         trailingInset: kSearchFieldFadeEdgeGap,
                         controller: widget.controller,
+                        scrollController: _scrollController,
                         child: NativeTextInput(
                           controller: widget.controller,
+                          scrollController: _scrollController,
                           onFocusChanged: widget.onFocusChanged,
                           placeholder: widget.placeholder,
                           placeholderStyle: TextStyle(
