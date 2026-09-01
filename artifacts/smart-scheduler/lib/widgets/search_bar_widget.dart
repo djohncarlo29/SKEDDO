@@ -441,13 +441,12 @@ class AppSearchBarState extends State<AppSearchBar>
                       selectionColor: selectionTint.withOpacity(0.20),
                       child: HorizontalEdgeFade(
                         fadeColor: surfaceColor,
-                        // The editable viewport begins immediately after the
-                        // search icon, and the fade is flush with that
-                        // boundary. The 16 px breathing room lives inside the
-                        // scrolling content, so text travels beneath the
-                        // gradient instead of being hard-clipped before it.
-                        leadingInset: 0,
-                        trailingInset: 0,
+                        // The editable viewport spans from icon edge to icon
+                        // edge. Its content has one 16 px inset on each side,
+                        // and the fades begin exactly at those usable-field
+                        // boundaries.
+                        leadingInset: kHorizontalFadeEdgeGap,
+                        trailingInset: kHorizontalFadeEdgeGap,
                         controller: widget.controller,
                         child: NativeTextInput(
                           controller: widget.controller,
@@ -493,12 +492,13 @@ class AppSearchBarState extends State<AppSearchBar>
                 builder: (context, value, child) {
                   final bool hasText = value.text.isNotEmpty;
                   return SizedBox(
-                     // Reserve the icon plus two 16 px spaces: one between
-                     // the scrolling viewport and the action, and one between
-                     // the action and the search-bar's outer edge.
+                     // Reserve the icon plus its one 16 px outer inset. The
+                     // other 16 px belongs to the editable field's content
+                     // padding, so the usable field ends exactly 16 px before
+                     // the action icon.
                     width:
                         textScaler.scale(kSearchBarClearIconSize) +
-                         (kSearchBarHorizontalEdgePadding * 2),
+                          kSearchBarHorizontalEdgePadding,
                     height: textLineHeight,
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 200),
