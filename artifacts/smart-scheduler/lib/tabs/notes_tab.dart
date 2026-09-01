@@ -1320,6 +1320,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                           widget.controller.text.isEmpty),
                                   child: VerticalEdgeFade(
                                     fadeColor: surfaceColor,
+                                    fadeHeight: 48,
                                     fadeOnRubberbandWhenContentFits: true,
                                     controller: widget.controller,
                                     scrollController: widget.scrollController,

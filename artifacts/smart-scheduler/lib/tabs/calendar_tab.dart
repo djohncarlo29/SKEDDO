@@ -6394,6 +6394,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           multiline
               ? VerticalEdgeFade(
                   fadeColor: resolvedSurface,
+                  fadeHeight: 48,
                   fadeOnRubberbandWhenContentFits: true,
                   controller: ctrl,
                   scrollController: scrollController,
