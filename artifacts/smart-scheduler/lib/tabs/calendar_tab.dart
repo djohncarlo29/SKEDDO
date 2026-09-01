@@ -6260,7 +6260,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                multiline
                    ? EdgeInsets.only(right: math.max(28.0, clearIconSize))
                    : EdgeInsets.only(
-                       left: kHorizontalFadeContentGap,
+                       left: 0,
                        right: clearIconSize + kHorizontalFadeContentGap,
                      ),
           onChanged: (_) => setState(() {}),
@@ -6290,7 +6290,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                   ),
                    child: Padding(
                      padding: EdgeInsets.only(
-                       left: multiline ? 0 : kHorizontalFadeContentGap,
+                       left: 0,
                      ),
                      child: Text(placeholder, style: _kPlaceholderStyle),
                    ),
@@ -6304,7 +6304,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                   fadeColor: resolvedSurface,
                   // This field is already 16 px inside the card from the
                   // outer row padding, so the card-edge fade begins here.
-                   leadingInset: kHorizontalFadeContentGap,
+                   leadingInset: 0,
                    trailingInset: clearIconSize + kHorizontalFadeContentGap,
                   controller: ctrl,
                   child: textField,
@@ -7930,9 +7930,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 return Positioned.fill(
                   child: IgnorePointer(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: kHorizontalFadeContentGap,
-                        vertical: 14,
+                      padding: const EdgeInsets.only(
+                        left: kHorizontalFadeEdgeGap,
+                        right: kHorizontalFadeContentGap,
+                        top: 14,
+                        bottom: 14,
                       ),
                       child: Align(
                         alignment: Alignment.centerLeft,
@@ -7954,7 +7956,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             ),
             HorizontalEdgeFade(
               fadeColor: resolveThemeColor(kModalCard, context),
-              leadingInset: kHorizontalFadeContentGap,
+              leadingInset: kHorizontalFadeEdgeGap,
               trailingInset: kHorizontalFadeContentGap,
               controller: ctrl,
               child: CupertinoTheme(
@@ -7973,9 +7975,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     placeholderStyle: _kPlaceholderStyle,
                     style: _kLabelStyle,
                     cursorColor: renderCategoryColor(_categoryColor, context),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: kHorizontalFadeContentGap,
-                      vertical: 14,
+                    padding: const EdgeInsets.only(
+                      left: kHorizontalFadeEdgeGap,
+                      right: kHorizontalFadeContentGap,
+                      top: 14,
+                      bottom: 14,
                     ),
                     clearButtonMode: OverlayVisibilityMode.never,
                     scrollPhysics: const BouncingScrollPhysics(
@@ -9234,7 +9238,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
         child: Row(
           children: [
             icon,
-            const SizedBox(width: kHorizontalFadeContentGap),
+             const SizedBox(width: kHorizontalFadeEdgeGap),
             Expanded(
               child: HorizontalEdgeFade(
                 fadeColor: resolveThemeColor(kModalCard, context),

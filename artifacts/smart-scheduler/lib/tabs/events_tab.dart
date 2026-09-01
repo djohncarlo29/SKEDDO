@@ -11046,9 +11046,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                         child: Align(
                                           alignment: Alignment.centerLeft,
                                            child: Padding(
-                                             padding: const EdgeInsets.only(
-                                               left: kHorizontalFadeContentGap,
-                                             ),
+                                             padding: EdgeInsets.zero,
                                              child: AnimatedContainer(
                                                duration: const Duration(
                                                  milliseconds: 180,
@@ -11094,7 +11092,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                    // The field's content begins 8 px inside
                                    // the row, and ends 8 px before its clear
                                    // action. Fades begin at those boundaries.
-                                   leadingInset: kHorizontalFadeContentGap,
+                                    leadingInset: 0,
                                   trailingInset:
                                        scaledSearchIconSize(context, 18) +
                                        kHorizontalFadeContentGap,
@@ -11125,7 +11123,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                         ),
                                         cursorColor: resolveAccentColor(context),
                                          padding: EdgeInsets.only(
-                                           left: kHorizontalFadeContentGap,
+                                           left: 0,
                                            right:
                                                scaledSearchIconSize(context, 18) +
                                                kHorizontalFadeContentGap,
@@ -12339,7 +12337,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             children: [
               HorizontalEdgeFade(
                 fadeColor: resolveThemeColor(kModalCard, context),
-                leadingInset: kHorizontalFadeContentGap,
+                leadingInset: kHorizontalFadeEdgeGap,
                 trailingInset:
                     kHorizontalFadeContentGap +
                     kModalRowHorizontalInset +
@@ -12443,7 +12441,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             children: [
               HorizontalEdgeFade(
                 fadeColor: resolveThemeColor(kModalCard, context),
-                leadingInset: kHorizontalFadeContentGap,
+                leadingInset: kHorizontalFadeEdgeGap,
                 trailingInset:
                     kHorizontalFadeContentGap +
                     kModalRowHorizontalInset +
@@ -12773,9 +12771,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 return Positioned.fill(
                   child: IgnorePointer(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: kHorizontalFadeContentGap,
-                        vertical: 14,
+                      padding: const EdgeInsets.only(
+                        left: kHorizontalFadeEdgeGap,
+                        right: kHorizontalFadeContentGap,
+                        top: 14,
+                        bottom: 14,
                       ),
                       child: Align(
                         alignment: Alignment.centerLeft,
@@ -12799,7 +12799,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             // animated overlay above is the only placeholder the user sees.
             HorizontalEdgeFade(
               fadeColor: resolveThemeColor(kModalCard, context),
-              leadingInset: kHorizontalFadeContentGap,
+              leadingInset: kHorizontalFadeEdgeGap,
               trailingInset: kHorizontalFadeContentGap,
               controller: ctrl,
               child: CupertinoTheme(
@@ -12816,9 +12816,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     style: _kFieldStyle,
                     cursorColor: _resolvedSelectedColor,
                     selectionControls: _selectionControls,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: kHorizontalFadeContentGap,
-                      vertical: 14,
+                    padding: const EdgeInsets.only(
+                      left: kHorizontalFadeEdgeGap,
+                      right: kHorizontalFadeContentGap,
+                      top: 14,
+                      bottom: 14,
                     ),
                     clearButtonMode: OverlayVisibilityMode.never,
                     scrollPhysics: const BouncingScrollPhysics(
