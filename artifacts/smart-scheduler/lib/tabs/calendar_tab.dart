@@ -6291,7 +6291,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
               ? textField
               : HorizontalEdgeFade(
                   fadeColor: resolvedSurface,
-                  leadingInset: kHorizontalFadeEdgeGap,
+                  // This field is already 16 px inside the card from the
+                  // outer row padding, so the card-edge fade begins here.
+                  leadingInset: 0,
                   trailingInset: kHorizontalFadeEdgeGap + clearIconSize,
                   controller: ctrl,
                   child: textField,

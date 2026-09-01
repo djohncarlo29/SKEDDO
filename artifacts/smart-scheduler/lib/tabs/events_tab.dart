@@ -11086,7 +11086,10 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                     kModalCard,
                                     context,
                                   ),
-                                  leadingInset: kHorizontalFadeEdgeGap,
+                                  // The row is already inset 16 px from the
+                                  // card edge; the fade begins at that content
+                                  // boundary rather than another 16 px in.
+                                  leadingInset: 0,
                                   trailingInset:
                                       kHorizontalFadeEdgeGap +
                                       scaledSearchIconSize(context, 18),

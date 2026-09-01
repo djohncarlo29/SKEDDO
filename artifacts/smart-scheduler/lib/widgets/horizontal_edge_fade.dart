@@ -5,9 +5,9 @@ import 'package:flutter/cupertino.dart';
 ///
 /// The wrapped child owns the actual horizontal scroll position. This widget
 /// listens to its scroll notifications and paints non-interactive fades above
-/// the child's left and right edges. Pulling a short child against either
-/// boundary still reveals the corresponding fade when the child's physics
-/// support bouncing.
+/// the child's left and right edges. The insets locate the opaque boundary of
+/// each fade; they do not reserve layout space or add a separate gap between
+/// the text and the fade.
 const double kHorizontalFadeEdgeGap = 16.0;
 
 class HorizontalEdgeFade extends StatefulWidget {
@@ -15,7 +15,11 @@ class HorizontalEdgeFade extends StatefulWidget {
   final Color fadeColor;
   final double fadeWidth;
   final bool showTrailingFade;
+  /// Distance from the wrapped surface's left edge to the fully opaque edge
+  /// of the left fade. The fade extends inward from this point.
   final double leadingInset;
+  /// Distance from the wrapped surface's right edge to the fully opaque edge
+  /// of the right fade. The fade extends inward from this point.
   final double trailingInset;
   final TextEditingController? controller;
 
@@ -36,19 +40,19 @@ class HorizontalEdgeFade extends StatefulWidget {
 
 class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   // The child owns the actual horizontal scroll position. These flags mirror
-  // HeaderTitleScroller: overflow is tracked independently from the physics
-  // so a short field can still reveal a fade while it is rubberbanding.
+  // HeaderTitleScroller: each side is derived independently from the actual
+  // overflow position rather than from the other side's visibility.
   bool _canScroll = false;
   bool _resetting = false;
   bool _showLeadingFade = false;
   bool _showTrailingFade = false;
   bool _suppressTrailingAfterEdit = false;
-  String? _lastControllerText;
+  TextEditingValue? _lastControllerValue;
 
   @override
   void initState() {
     super.initState();
-    _lastControllerText = widget.controller?.text;
+    _lastControllerValue = widget.controller?.value;
     widget.controller?.addListener(_handleControllerChanged);
   }
 
@@ -57,7 +61,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller?.removeListener(_handleControllerChanged);
-      _lastControllerText = widget.controller?.text;
+      _lastControllerValue = widget.controller?.value;
       widget.controller?.addListener(_handleControllerChanged);
       _suppressTrailingAfterEdit = false;
     }
@@ -80,18 +84,21 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   void _handleControllerChanged() {
     final controller = widget.controller;
     if (controller == null) return;
-    final textChanged = _lastControllerText != controller.text;
-    _lastControllerText = controller.text;
-    if (!textChanged) return;
+    final value = controller.value;
+    final previousValue = _lastControllerValue;
+    _lastControllerValue = value;
+    final textChanged = previousValue?.text != value.text;
+    final selectionChanged = previousValue?.selection != value.selection;
+    if (!textChanged && !selectionChanged) return;
 
     // EditableText moves its internal scroll position to keep a newly typed
-    // character visible after the controller notification. Hide the trailing
-    // fade immediately, then let the next scroll notification restore it if
-    // the user drags back into the overflow.
+    // character/cursor visible after the controller notification. Hide the
+    // trailing fade immediately when the cursor is at the natural end, then
+    // let the next scroll notification restore it if actual overflow remains.
     _suppressTrailingAfterEdit =
-        controller.selection.isValid &&
-        controller.selection.isCollapsed &&
-        controller.selection.extentOffset >= controller.text.length;
+        value.selection.isValid &&
+        value.selection.isCollapsed &&
+        value.selection.extentOffset >= value.text.length;
     if (_suppressTrailingAfterEdit && _showTrailingFade && mounted) {
       setState(() => _showTrailingFade = false);
     }
@@ -113,12 +120,16 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   void _sync(ScrollMetrics metrics) {
     if (_resetting) return;
     final canScroll = metrics.maxScrollExtent > 1.0;
-    final showLeading = metrics.pixels > 1.0;
+    // AlwaysScrollableScrollPhysics can report negative/overscrolled pixels
+    // even when the content fits. Only actual content overflow may enable a
+    // fade; rubber-band motion alone must not create one.
+    final showLeading = canScroll && metrics.pixels > 1.0;
     if (_suppressTrailingAfterEdit &&
         metrics.pixels >= metrics.maxScrollExtent - 1.0) {
       _suppressTrailingAfterEdit = false;
     }
     final showTrailing =
+        canScroll &&
         widget.showTrailingFade &&
         !_suppressTrailingAfterEdit &&
         metrics.pixels < metrics.maxScrollExtent - 1.0;
@@ -164,6 +175,9 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
 
   @override
   Widget build(BuildContext context) {
+    // The child is painted first and the fades are painted above it. The
+    // outer clip only trims the wrapped surface itself; it must not be
+    // replaced with a pre-clipped text region followed by a detached fade.
     return ClipRect(
       child: NotificationListener<ScrollNotification>(
         onNotification: _handleScrollNotification,
