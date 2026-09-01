@@ -538,6 +538,26 @@ Color renderCategoryColor(Color stored, BuildContext context) {
 // in the search bar once the field has text (see search_bar_widget.dart).
 const kSearchClearCircleIcon = CupertinoIcons.clear_circled_solid;
 
+/// Returns the top offset for an action whose visual centre should sit on the
+/// first line of a modal text field.
+///
+/// This deliberately uses the field's content inset and first line box rather
+/// than the enclosing row height.  The distinction matters for multiline
+/// fields, where centring against the row would place the clear action beside
+/// the middle of the text instead of beside its first line.
+double modalFirstLineActionTop(
+  BuildContext context, {
+  required double actionHeight,
+  double contentTopPadding = 0,
+  double fontSize = 17,
+  double lineHeight = kLineHeight,
+}) {
+  final scaledFontSize = MediaQuery.textScalerOf(context).scale(fontSize);
+  final firstLineHeight = scaledFontSize * lineHeight;
+  return contentTopPadding +
+      math.max(0.0, (firstLineHeight - actionHeight) / 2);
+}
+
 // ── Pill background colour ────────────────────────────────────────────────────
 // Used for date/time picker trigger pills and the Cancel import pill.
 const kPillColor = CupertinoDynamicColor.withBrightness(

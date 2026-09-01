@@ -11148,8 +11148,13 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                       return const SizedBox.shrink();
                                     return Positioned(
                                       right: 0,
-                                      top: 0,
-                                      bottom: 0,
+                                       top: modalFirstLineActionTop(
+                                         context,
+                                         actionHeight: scaledSearchIconSize(
+                                           context,
+                                           18,
+                                         ),
+                                       ),
                                       child: GestureDetector(
                                         behavior: HitTestBehavior.opaque,
                                         onTap: () {
@@ -12405,8 +12410,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     if (_titleCtrl.text.isEmpty) return const SizedBox.shrink();
                     return Positioned(
                       right: 0,
-                      top: 0,
-                      bottom: 0,
+                       top: modalFirstLineActionTop(
+                         context,
+                         actionHeight: scaledSearchIconSize(context, 18),
+                         contentTopPadding: 14,
+                       ),
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () {
@@ -12614,6 +12622,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         scaler,
         inputWidth,
       );
+      final clearTop = modalFirstLineActionTop(
+        context,
+        actionHeight: clearSlotSize,
+        contentTopPadding: 10,
+      );
       // Keep the authored 48 px row at normal/compact sizes, but let both
       // Dynamic Type and the entered rule text grow the row naturally.
       final rowHeight = max(48.0, contentHeight + 20.0);
@@ -12632,7 +12645,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               right: kModalRowHorizontalInset,
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              // Anchor the trailing clear slot to the first line of the
+              // expandable field rather than the full multiline row.
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: SizedBox(
@@ -12724,29 +12739,38 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 ),
                 const SizedBox(width: 10),
                 if (_smartDescriptionCtrl.text.isNotEmpty)
-                  GestureDetector(
-                    key: const ValueKey('smartdesc-clear'),
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      _smartDescriptionCtrl.clear();
-                      _smartDescriptionFocus.requestFocus();
-                      setState(() {});
-                    },
-                    child: SizedBox(
-                      width: clearSlotSize,
-                      height: clearSlotSize,
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: Icon(
-                          kSearchClearCircleIcon,
-                          color: kEmptyStateIcon,
-                          size: clearIconSize,
+                  Padding(
+                    padding: EdgeInsets.only(top: clearTop),
+                    child: GestureDetector(
+                      key: const ValueKey('smartdesc-clear'),
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        _smartDescriptionCtrl.clear();
+                        _smartDescriptionFocus.requestFocus();
+                        setState(() {});
+                      },
+                      child: SizedBox(
+                        width: clearSlotSize,
+                        height: clearSlotSize,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Icon(
+                            kSearchClearCircleIcon,
+                            color: kEmptyStateIcon,
+                            size: clearIconSize,
+                          ),
                         ),
                       ),
                     ),
                   )
                 else
-                  SizedBox(width: clearSlotSize, height: clearSlotSize),
+                  Padding(
+                    padding: EdgeInsets.only(top: clearTop),
+                    child: SizedBox(
+                      width: clearSlotSize,
+                      height: clearSlotSize,
+                    ),
+                  ),
               ],
             ),
           ),

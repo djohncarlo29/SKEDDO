@@ -6316,7 +6316,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
               if (ctrl.text.isEmpty) return const SizedBox.shrink();
               return Positioned(
                 right: 0,
-                top: 0,
+                top: modalFirstLineActionTop(
+                  context,
+                  actionHeight: clearIconSize,
+                ),
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
@@ -9247,6 +9250,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
         // The shared 32 px container has an even 8 px top and bottom inset.
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         child: Row(
+           // The file icon is taller than the filename line. Keep the remove
+           // action tied to the filename's first-line centre instead of the
+           // whole row's centre.
+           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             icon,
              const SizedBox(width: kHorizontalFadeEdgeGap),
@@ -9265,13 +9272,21 @@ class _NewEventSheetState extends State<_NewEventSheet>
               ),
             ),
              const SizedBox(width: kHorizontalFadeEdgeGap),
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: onRemove,
-              child: Icon(
-                kSearchClearCircleIcon,
-                color: kEmptyStateIcon,
-                size: clearIconSize,
+            Padding(
+              padding: EdgeInsets.only(
+                top: modalFirstLineActionTop(
+                  context,
+                  actionHeight: clearIconSize,
+                ),
+              ),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onRemove,
+                child: Icon(
+                  kSearchClearCircleIcon,
+                  color: kEmptyStateIcon,
+                  size: clearIconSize,
+                ),
               ),
             ),
           ],

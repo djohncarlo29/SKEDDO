@@ -1358,7 +1358,15 @@ class _NoteInputCardState extends State<_NoteInputCard>
                             if (hasText) widget.controller.clear();
                           },
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                             padding: EdgeInsets.fromLTRB(
+                               8,
+                               modalFirstLineActionTop(
+                                 context,
+                                 actionHeight: clearIconSize,
+                               ),
+                               8,
+                               8,
+                             ),
                             child: AnimatedBuilder(
                               animation: _clearScaleCtrl,
                               builder: (context, _) => Transform.scale(
