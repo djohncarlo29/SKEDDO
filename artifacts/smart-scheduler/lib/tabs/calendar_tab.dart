@@ -5609,56 +5609,59 @@ class _AttachmentFile {
   });
 }
 
-/// A filename gets its own controller so the edge fade knows the real
-/// overflow extent immediately after an attachment row is inserted.
-class _AttachmentFilename extends StatefulWidget {
+/// Paints filenames without giving a scrolling viewport permission to
+/// hard-clip the last glyph. Fitting names use the entire available width;
+/// genuinely overflowing names receive a two-sided alpha fade.
+class _AttachmentFilename extends StatelessWidget {
   final String name;
   final TextStyle style;
-  final Color fadeColor;
 
   const _AttachmentFilename({
     super.key,
     required this.name,
     required this.style,
-    required this.fadeColor,
   });
 
   @override
-  State<_AttachmentFilename> createState() => _AttachmentFilenameState();
-}
-
-class _AttachmentFilenameState extends State<_AttachmentFilename> {
-  late final ScrollController _scrollController;
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController = ScrollController();
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return HorizontalEdgeFade(
-      fadeColor: widget.fadeColor,
-      // Keep the edge treatment visible even for a short name, while the
-      // controller lets HorizontalEdgeFade synchronise on first layout.
-      fadeWhenContentFits: true,
-      showLeadingFadeWhenContentFits: true,
-      scrollController: _scrollController,
-      child: SingleChildScrollView(
-        controller: _scrollController,
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        child: Text(widget.name, style: widget.style, maxLines: 1),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textPainter = TextPainter(
+          text: TextSpan(text: name, style: style),
+          maxLines: 1,
+          textDirection: Directionality.of(context),
+        )..layout();
+        final availableWidth = constraints.maxWidth;
+        final overflows = textPainter.width > availableWidth + 0.1;
+        final text = SizedBox(
+          width: availableWidth,
+          child: Text(
+            name,
+            style: style,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.clip,
+          ),
+        );
+        if (!overflows) return text;
+
+        const edgeFadeWidth = 28.0;
+        final fadeWidth = edgeFadeWidth.clamp(0.0, availableWidth / 2);
+        final fadeStart = fadeWidth / availableWidth;
+        return ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (bounds) => LinearGradient(
+            colors: const [
+              Color(0x00FFFFFF),
+              Color(0xFFFFFFFF),
+              Color(0xFFFFFFFF),
+              Color(0x00FFFFFF),
+            ],
+            stops: [0.0, fadeStart, 1.0 - fadeStart, 1.0],
+          ).createShader(bounds),
+          child: text,
+        );
+      },
     );
   }
 }
@@ -9352,7 +9355,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 key: ValueKey(file),
                 name: file.name,
                 style: _kLabelStyle,
-                fadeColor: resolveThemeColor(kModalCard, context),
               ),
             ),
             const SizedBox(width: kHorizontalFadeEdgeGap),

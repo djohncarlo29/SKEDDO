@@ -85,7 +85,9 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     }
     if (oldWidget.fadeColor != widget.fadeColor ||
         oldWidget.showTrailingFade != widget.showTrailingFade ||
-        oldWidget.fadeWhenContentFits != widget.fadeWhenContentFits) {
+        oldWidget.fadeWhenContentFits != widget.fadeWhenContentFits ||
+        oldWidget.showLeadingFadeWhenContentFits !=
+            widget.showLeadingFadeWhenContentFits) {
       _resetting = true;
       _canScroll = false;
       _showLeadingFade = false;
@@ -193,7 +195,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     final showTrailing =
         fadeEdges &&
         widget.showTrailingFade &&
-        !_suppressTrailingAfterEdit &&
+        (!_suppressTrailingAfterEdit || widget.fadeWhenContentFits) &&
         (canScroll
             ? metrics.extentAfter > 1.0
             : widget.fadeWhenContentFits || isPulledPastStart);
