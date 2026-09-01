@@ -8036,6 +8036,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             ),
             HorizontalEdgeFade(
               fadeColor: resolveThemeColor(kModalCard, context),
+              fadeOnRubberbandWhenContentFits: true,
               leadingInset: kHorizontalFadeEdgeGap,
               trailingInset: _locationClearFieldGap(),
               controller: ctrl,
