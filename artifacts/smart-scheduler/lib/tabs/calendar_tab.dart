@@ -5609,6 +5609,58 @@ class _AttachmentFile {
   });
 }
 
+/// A filename gets its own controller so the edge fade knows the real
+/// overflow extent immediately after an attachment row is inserted.
+class _AttachmentFilename extends StatefulWidget {
+  final String name;
+  final TextStyle style;
+  final Color fadeColor;
+
+  const _AttachmentFilename({
+    super.key,
+    required this.name,
+    required this.style,
+    required this.fadeColor,
+  });
+
+  @override
+  State<_AttachmentFilename> createState() => _AttachmentFilenameState();
+}
+
+class _AttachmentFilenameState extends State<_AttachmentFilename> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return HorizontalEdgeFade(
+      fadeColor: widget.fadeColor,
+      // A filename should fade only when it genuinely overflows. The
+      // controller also lets HorizontalEdgeFade synchronise on first layout.
+      scrollController: _scrollController,
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+        child: Text(widget.name, style: widget.style, maxLines: 1),
+      ),
+    );
+  }
+}
+
 // ── Import progress ring painter ─────────────────────────────────────────────
 
 class _ImportProgressPainter extends CustomPainter {
@@ -7985,6 +8037,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
               leadingInset: kHorizontalFadeEdgeGap,
               trailingInset: _locationClearFieldGap(),
               controller: ctrl,
+              scrollController: scrollController,
               child: CupertinoTheme(
                 data: CupertinoTheme.of(context).copyWith(
                   primaryColor: renderCategoryColor(_categoryColor, context),
@@ -9286,36 +9339,24 @@ class _NewEventSheetState extends State<_NewEventSheet>
         // The shared 32 px container has an even 8 px top and bottom inset.
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         child: Row(
-           // The file icon is taller than the filename line. Keep the remove
-           // action tied to the filename's first-line centre instead of the
-           // whole row's centre.
-           crossAxisAlignment: CrossAxisAlignment.start,
+          // Center the filename baseline and remove action against the
+          // thumbnail's 32 px row, matching the other single-line modal rows.
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             icon,
-             const SizedBox(width: kHorizontalFadeEdgeGap),
+            const SizedBox(width: kHorizontalFadeEdgeGap),
             Expanded(
-              child: HorizontalEdgeFade(
+              child: _AttachmentFilename(
+                key: ValueKey(file),
+                name: file.name,
+                style: _kLabelStyle,
                 fadeColor: resolveThemeColor(kModalCard, context),
-                fadeWhenContentFits: true,
-                leadingInset: 0,
-                trailingInset: 0,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics(),
-                  ),
-                  child: Text(file.name, style: _kLabelStyle, maxLines: 1),
-                ),
               ),
             ),
-             const SizedBox(width: kHorizontalFadeEdgeGap),
-            Padding(
-              padding: EdgeInsets.only(
-                top: modalFirstLineActionTop(
-                  context,
-                  actionHeight: clearIconSize,
-                ),
-              ),
+            const SizedBox(width: kHorizontalFadeEdgeGap),
+            SizedBox(
+              width: clearIconSize,
+              height: clearIconSize,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: onRemove,

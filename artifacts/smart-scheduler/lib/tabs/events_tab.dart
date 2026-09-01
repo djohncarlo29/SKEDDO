@@ -12939,6 +12939,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               leadingInset: kHorizontalFadeEdgeGap,
               trailingInset: _locationClearFieldGap(),
               controller: ctrl,
+              scrollController: scrollController,
               child: CupertinoTheme(
                 data: CupertinoTheme.of(
                   context,

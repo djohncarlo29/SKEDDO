@@ -203,11 +203,16 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     });
   }
 
-  Widget _fade({required bool visible, required bool opaqueAtStart}) {
+  Widget _fade({
+    required bool visible,
+    required bool opaqueAtStart,
+    double solidTailWidth = 0,
+  }) {
     if (!visible) return const SizedBox.shrink();
+    final totalWidth = widget.fadeWidth + solidTailWidth;
     return IgnorePointer(
       child: SizedBox(
-        width: widget.fadeWidth,
+        width: totalWidth,
         child: DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -222,6 +227,12 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
                       widget.fadeColor.withValues(alpha: 0),
                       widget.fadeColor,
                     ],
+              // The trailing inset is part of the overlay, not an uncovered
+              // gap. Keeping it solid prevents a clipped glyph from peeking
+              // through the last fractional pixel beside the action slot.
+              stops: solidTailWidth > 0 && !opaqueAtStart
+                  ? [0, widget.fadeWidth / totalWidth]
+                  : null,
             ),
           ),
         ),
@@ -235,6 +246,15 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     // gradient is the edge treatment; this wrapper must not add a second
     // ClipRect boundary before the fade. TextField/scroll-view children still
     // own their normal viewport clipping.
+    // A fractional inset can leave a one-device-pixel raster seam between the
+    // fade and the text field's own clip. Snap the opaque boundary to the
+    // display grid before positioning the overlay.
+    final devicePixelRatio = View.of(context).devicePixelRatio;
+    double snap(double value) =>
+        (value * devicePixelRatio).round() / devicePixelRatio;
+    final leadingInset = snap(widget.leadingInset);
+    final trailingInset = snap(widget.trailingInset);
+
     return NotificationListener<ScrollNotification>(
       onNotification: _handleScrollNotification,
       child: NotificationListener<ScrollMetricsNotification>(
@@ -247,7 +267,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
           children: [
             widget.child,
             Positioned(
-              left: widget.leadingInset,
+              left: leadingInset,
               top: 0,
               bottom: 0,
               child: _fade(
@@ -256,12 +276,13 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
               ),
             ),
             Positioned(
-              right: widget.trailingInset,
+              right: trailingInset,
               top: 0,
               bottom: 0,
               child: _fade(
                 visible: _showTrailingFade,
                 opaqueAtStart: false,
+                solidTailWidth: trailingInset,
               ),
             ),
           ],
