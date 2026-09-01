@@ -176,39 +176,39 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   @override
   Widget build(BuildContext context) {
     // The child is painted first and the fades are painted above it. The
-    // outer clip only trims the wrapped surface itself; it must not be
-    // replaced with a pre-clipped text region followed by a detached fade.
-    return ClipRect(
-      child: NotificationListener<ScrollNotification>(
-        onNotification: _handleScrollNotification,
-        child: NotificationListener<ScrollMetricsNotification>(
-          onNotification: _handleMetricsNotification,
-           child: Stack(
-             // Let one-line fields establish their natural height. Expanding
-             // this stack in an unbounded modal Column can make the entire
-             // sheet body fail layout while its header still renders.
-            children: [
-              widget.child,
-              Positioned(
-                left: widget.leadingInset,
-                top: 0,
-                bottom: 0,
-                child: _fade(
-                  visible: _showLeadingFade,
-                  opaqueAtStart: true,
-                ),
+    // gradient is the edge treatment; this wrapper must not add a second
+    // ClipRect boundary before the fade. TextField/scroll-view children still
+    // own their normal viewport clipping.
+    return NotificationListener<ScrollNotification>(
+      onNotification: _handleScrollNotification,
+      child: NotificationListener<ScrollMetricsNotification>(
+        onNotification: _handleMetricsNotification,
+        child: Stack(
+          clipBehavior: Clip.none,
+          // Let one-line fields establish their natural height. Expanding
+          // this stack in an unbounded modal Column can make the entire
+          // sheet body fail layout while its header still renders.
+          children: [
+            widget.child,
+            Positioned(
+              left: widget.leadingInset,
+              top: 0,
+              bottom: 0,
+              child: _fade(
+                visible: _showLeadingFade,
+                opaqueAtStart: true,
               ),
-              Positioned(
-                right: widget.trailingInset,
-                top: 0,
-                bottom: 0,
-                child: _fade(
-                  visible: _showTrailingFade,
-                  opaqueAtStart: false,
-                ),
+            ),
+            Positioned(
+              right: widget.trailingInset,
+              top: 0,
+              bottom: 0,
+              child: _fade(
+                visible: _showTrailingFade,
+                opaqueAtStart: false,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
