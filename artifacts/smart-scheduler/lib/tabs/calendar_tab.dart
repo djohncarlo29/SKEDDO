@@ -5645,21 +5645,38 @@ class _AttachmentFilenameState extends State<_AttachmentFilename> {
 
   @override
   Widget build(BuildContext context) {
-    return HorizontalEdgeFade(
-      fadeColor: widget.fadeColor,
-      // Do not opt into fades when content fits: the viewport is still
-      // always-scrollable for rubberbanding. During that rubberband, use the
-      // same edge fade behavior as HeaderTitleScroller.
-      fadeOnRubberbandWhenContentFits: true,
-      scrollController: _scrollController,
-      child: SingleChildScrollView(
-        controller: _scrollController,
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return HorizontalEdgeFade(
+          fadeColor: widget.fadeColor,
+          // Do not opt into fades when content fits: the viewport is still
+          // always-scrollable for rubberbanding. During that rubberband, use
+          // the same edge fade behavior as HeaderTitleScroller.
+          fadeOnRubberbandWhenContentFits: true,
+          scrollController: _scrollController,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            primary: false,
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            child: ConstrainedBox(
+              // A short filename must occupy the full filename lane just
+              // like an overflowing one; otherwise its rubberband range and
+              // clipping boundary stop at the text's intrinsic width.
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: Text(
+                widget.name,
+                style: widget.style,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.visible,
+              ),
+            ),
         ),
-        child: Text(widget.name, style: widget.style, maxLines: 1),
-      ),
+        );
+      },
     );
   }
 }

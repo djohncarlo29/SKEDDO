@@ -230,6 +230,8 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   }) {
     if (!visible) return const SizedBox.shrink();
     final totalWidth = widget.fadeWidth + solidTailWidth;
+    final hasOpaqueTail = solidTailWidth > 0;
+    final fadeEnd = (widget.fadeWidth / totalWidth).clamp(0.0, 1.0).toDouble();
     return IgnorePointer(
       child: SizedBox(
         width: totalWidth,
@@ -243,10 +245,19 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
                       widget.fadeColor,
                       widget.fadeColor.withValues(alpha: 0),
                     ]
+                  : hasOpaqueTail
+                  ? [
+                      widget.fadeColor.withValues(alpha: 0),
+                      widget.fadeColor,
+                      widget.fadeColor,
+                    ]
                   : [
                       widget.fadeColor.withValues(alpha: 0),
                       widget.fadeColor,
                     ],
+              stops: !opaqueAtStart && hasOpaqueTail
+                  ? [0.0, fadeEnd, 1.0]
+                  : null,
             ),
           ),
         ),
