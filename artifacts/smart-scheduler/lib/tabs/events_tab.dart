@@ -1682,6 +1682,8 @@ class EventsTabState extends State<EventsTab>
   String _searchText = '';
   bool _wasSearchFocusedBeforePause = false;
   bool _utilityExitScheduled = false;
+  bool _hadArchivedUtilityItems = false;
+  bool _hadRecentlyDeletedUtilityItems = false;
 
   // ── Smart search results (filled asynchronously by _scheduleSearch) ────────
   List<SearchHit> _searchPrimary = [];
@@ -2174,18 +2176,31 @@ class EventsTabState extends State<EventsTab>
     }
   }
 
-  /// Keeps the two utility navigation rows out of the user's saved ordering.
-  /// They are transient rows and must always reappear after every regular
-  /// category/group, rather than returning to their previous position.
+  /// Moves utility rows to their canonical resurfacing position. They remain
+  /// ordinary reorderable rows after they are visible; this is only used when
+  /// a utility section first reappears (and while migrating old saved order).
   void _moveSystemUtilityRowsToBottom() {
-    final utilityTokens = <String>[];
-    final seen = <String>{};
+    final hasArchived = _listTopOrder.contains(_kIdSysArchivedCategories);
+    final hasRecentlyDeleted = _listTopOrder.contains(_kIdSysRecentlyDeleted);
     _listTopOrder.removeWhere((token) {
-      if (!_kSystemUtilityCategoryIds.contains(token)) return false;
-      if (seen.add(token)) utilityTokens.add(token);
-      return true;
+      return _kSystemUtilityCategoryIds.contains(token);
     });
-    _listTopOrder.addAll(utilityTokens);
+    if (hasArchived) _listTopOrder.add(_kIdSysArchivedCategories);
+    if (hasRecentlyDeleted) _listTopOrder.add(_kIdSysRecentlyDeleted);
+  }
+
+  void _syncUtilityVisibilityAndResurface() {
+    final hasArchived =
+        _archivedSmartLabels.isNotEmpty || _archivedUserCategories.isNotEmpty;
+    final hasRecentlyDeleted =
+        EventStore.instance.deletedEvents.value.isNotEmpty ||
+        _recentlyDeletedCategories.isNotEmpty;
+    if ((hasArchived && !_hadArchivedUtilityItems) ||
+        (hasRecentlyDeleted && !_hadRecentlyDeletedUtilityItems)) {
+      _moveSystemUtilityRowsToBottom();
+    }
+    _hadArchivedUtilityItems = hasArchived;
+    _hadRecentlyDeletedUtilityItems = hasRecentlyDeleted;
   }
 
   /// Builds the ordered flat item list for the CATEGORIES section.
@@ -2204,15 +2219,7 @@ class EventsTabState extends State<EventsTab>
     };
     final result = <_FlatItem>[];
 
-    // Render utility rows last even during an in-flight reorder or before the
-    // persistence write has completed.
-    final orderedTokens = [
-      ..._listTopOrder.where(
-        (token) => !_kSystemUtilityCategoryIds.contains(token),
-      ),
-      ..._listTopOrder.where(_kSystemUtilityCategoryIds.contains),
-    ];
-    for (final token in orderedTokens) {
+    for (final token in _listTopOrder) {
       if (token.startsWith('grp-')) {
         final gid = token.substring(4);
         final g = groupById[gid];
@@ -2452,6 +2459,7 @@ class EventsTabState extends State<EventsTab>
         _expandedGroupIds.remove(group.id);
         _expandingGroupIds.remove(group.id);
         _collapsingGroupIds.remove(group.id);
+        _syncUtilityVisibilityAndResurface();
       });
       _saveCategories();
     });
@@ -2475,6 +2483,7 @@ class EventsTabState extends State<EventsTab>
         // Remove from group (dissolves if < 2 remain) or solo slot.
         _removeFromGroupById(cat.id);
         _listTopOrder.remove(cat.id);
+        _syncUtilityVisibilityAndResurface();
       });
       _saveCategories();
     });
@@ -2494,6 +2503,7 @@ class EventsTabState extends State<EventsTab>
         _setUtilityDate('deleted-category', cat.id);
         _pinnedUserCategories.remove(cat);
         _gridCombinedOrder.remove(cat);
+        _syncUtilityVisibilityAndResurface();
       });
       _saveCategories();
     });
@@ -2556,6 +2566,7 @@ class EventsTabState extends State<EventsTab>
       onAction: () {
         if (EventStore.instance.restoreDeleted(event.id)) {
           _removeUtilityDate('deleted-event', event.id);
+          _syncUtilityVisibilityAndResurface();
           _saveCategories();
           setState(() {});
           _scheduleUtilityExitIfEmpty();
@@ -2619,6 +2630,7 @@ class EventsTabState extends State<EventsTab>
       if (!_gridCombinedOrder.contains(label)) {
         _gridCombinedOrder.add(label);
       }
+      _syncUtilityVisibilityAndResurface();
     });
     _saveCategories();
     _scheduleUtilityExitIfEmpty();
@@ -2645,6 +2657,7 @@ class EventsTabState extends State<EventsTab>
       if (!_listTopOrder.contains(restored.id)) {
         _listTopOrder.add(restored.id);
       }
+      _syncUtilityVisibilityAndResurface();
     });
     _saveCategories();
     _scheduleUtilityExitIfEmpty();
@@ -2670,6 +2683,7 @@ class EventsTabState extends State<EventsTab>
       if (!_listTopOrder.contains(restored.id)) {
         _listTopOrder.add(restored.id);
       }
+      _syncUtilityVisibilityAndResurface();
     });
     _saveCategories();
     _scheduleUtilityExitIfEmpty();
@@ -4982,6 +4996,7 @@ class EventsTabState extends State<EventsTab>
             _gridCombinedOrder.remove(cat);
           }
         }
+        _syncUtilityVisibilityAndResurface();
       });
       _saveCategories();
     });
@@ -5649,6 +5664,7 @@ class EventsTabState extends State<EventsTab>
         addedUtilityDates = true;
       }
     }
+    _syncUtilityVisibilityAndResurface();
     if (mounted) setState(() {});
     if (addedUtilityDates) _saveCategories();
     _scheduleUtilityExitIfEmpty();
@@ -5807,7 +5823,6 @@ class EventsTabState extends State<EventsTab>
   bool _saveBannerVisible = false;
 
   void _saveCategories() {
-    _moveSystemUtilityRowsToBottom();
     SharedPreferences.getInstance()
         .then((prefs) async {
           try {
@@ -6134,8 +6149,13 @@ class EventsTabState extends State<EventsTab>
           }
         }
         _moveSystemUtilityRowsToBottom();
+        _hadArchivedUtilityItems =
+            _archivedSmartLabels.isNotEmpty ||
+            _archivedUserCategories.isNotEmpty;
+        _hadRecentlyDeletedUtilityItems =
+            EventStore.instance.deletedEvents.value.isNotEmpty ||
+            _recentlyDeletedCategories.isNotEmpty;
       });
-      _saveCategories();
 
       // Refresh CategoryRegistry so search results display accurate names+colours.
       _updateCategoryRegistry();
@@ -6155,7 +6175,7 @@ class EventsTabState extends State<EventsTab>
 
   /// Adds the two permanent navigation categories to data saved by older
   /// versions and restores their canonical metadata if an old record exists.
-  /// Their placement in the categories list is always after regular rows.
+  /// Their list placement is handled separately so they remain reorderable.
   void _ensureSystemUtilityCategories() {
     for (final systemCategory in _kUserCategories.where(
       _isSystemUtilityCategory,
@@ -6197,6 +6217,7 @@ class EventsTabState extends State<EventsTab>
         _archivedSmartCategories.add(label);
         _setUtilityDate('archived-smart', label);
         _gridCombinedOrder.remove(label); // archived smart tiles leave the grid
+        _syncUtilityVisibilityAndResurface();
       });
       _saveCategories();
     });
@@ -9567,9 +9588,7 @@ class _CategoryRow extends StatelessWidget {
       isSmartCategory: false,
       isPinned: false,
       isUtilityCategory: _isSystemUtilityCategory(category),
-      // Utility rows are fixed navigation entries and must remain at the
-      // bottom of the categories list.
-      reorderable: !_isSystemUtilityCategory(category),
+      reorderable: true, // utility rows remain fully reorderable
       onPin: onPin,
       onEdit: onEdit,
       onArchive: onArchive,
@@ -11131,6 +11150,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                     kModalCard,
                                     context,
                                   ),
+                                  fadeWhenContentFits: true,
                                    // The field's content begins 8 px inside
                                    // the row, and ends 8 px before its clear
                                    // action. Fades begin at those boundaries.
@@ -12404,6 +12424,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             children: [
               HorizontalEdgeFade(
                 fadeColor: resolveThemeColor(kModalCard, context),
+                fadeWhenContentFits: true,
                 // The title text starts after the symmetric clear-action
                 // reservation, not at the card's 16 px edge. Anchor the fade
                 // to that real text-content boundary so it overlays clipped
@@ -12526,6 +12547,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             children: [
               HorizontalEdgeFade(
                 fadeColor: resolveThemeColor(kModalCard, context),
+                fadeWhenContentFits: true,
                 // Match the title field above: the subtitle's text viewport
                 // begins after the reserved clear-action space.
                 leadingInset:
@@ -12913,6 +12935,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             // animated overlay above is the only placeholder the user sees.
             HorizontalEdgeFade(
               fadeColor: resolveThemeColor(kModalCard, context),
+              fadeWhenContentFits: true,
               leadingInset: kHorizontalFadeEdgeGap,
               trailingInset: _locationClearFieldGap(),
               controller: ctrl,
@@ -14191,6 +14214,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                       Positioned(
                         right: _kHeaderEdge,
                         child: _ModalCircleButton(
+                          // Remount the stateful glass lens when validity
+                          // changes so the old accent surface cannot linger
+                          // through the disabled transition.
+                          key: ValueKey<bool>(
+                            _isSmart || _titleCtrl.text.trim().isNotEmpty,
+                          ),
                           icon: CupertinoIcons.checkmark,
                           containerColor:
                               _titleCtrl.text.trim().isEmpty

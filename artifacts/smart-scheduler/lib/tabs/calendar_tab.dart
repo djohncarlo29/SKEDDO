@@ -5478,6 +5478,7 @@ class _CalModalCircleButton extends StatelessWidget {
   final Offset iconOffset;
 
   const _CalModalCircleButton({
+    super.key,
     required this.icon,
     required this.iconColor,
     required this.onTap,
@@ -6321,6 +6322,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
               ? textField
               : HorizontalEdgeFade(
                   fadeColor: resolvedSurface,
+                  fadeWhenContentFits: true,
                   // This field is already 16 px inside the card from the
                   // outer row padding, so the card-edge fade begins here.
                    leadingInset: 0,
@@ -7979,6 +7981,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             ),
             HorizontalEdgeFade(
               fadeColor: resolveThemeColor(kModalCard, context),
+              fadeWhenContentFits: true,
               leadingInset: kHorizontalFadeEdgeGap,
               trailingInset: _locationClearFieldGap(),
               controller: ctrl,
@@ -9293,6 +9296,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             Expanded(
               child: HorizontalEdgeFade(
                 fadeColor: resolveThemeColor(kModalCard, context),
+                fadeWhenContentFits: true,
                 leadingInset: 0,
                 trailingInset: 0,
                 child: SingleChildScrollView(
@@ -10300,6 +10304,12 @@ class _NewEventSheetState extends State<_NewEventSheet>
                         Positioned(
                           right: _kHeaderEdge,
                           child: _CalModalCircleButton(
+                            // Remount the stateful glass lens when the title
+                            // becomes empty so the enabled accent surface
+                            // cannot linger in the disabled state.
+                            key: ValueKey<bool>(
+                              _titleCtrl.text.trim().isNotEmpty,
+                            ),
                             icon: CupertinoIcons.checkmark,
                             containerColor: _titleCtrl.text.trim().isEmpty
                                 ? resolveThemeColor(

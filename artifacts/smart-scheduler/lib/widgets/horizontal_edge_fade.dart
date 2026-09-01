@@ -24,6 +24,10 @@ class HorizontalEdgeFade extends StatefulWidget {
   final double trailingInset;
   final TextEditingController? controller;
   final ScrollController? scrollController;
+  /// Keeps the Large Header behavior for short, rubberbandable content:
+  /// show the trailing fade at rest and reveal the leading fade while the
+  /// content is pulled toward that edge even when maxScrollExtent is zero.
+  final bool fadeWhenContentFits;
 
   const HorizontalEdgeFade({
     super.key,
@@ -35,6 +39,7 @@ class HorizontalEdgeFade extends StatefulWidget {
     this.trailingInset = 0,
     this.controller,
     this.scrollController,
+    this.fadeWhenContentFits = false,
   });
 
   @override
@@ -75,7 +80,8 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
       _attachScrollController();
     }
     if (oldWidget.fadeColor != widget.fadeColor ||
-        oldWidget.showTrailingFade != widget.showTrailingFade) {
+        oldWidget.showTrailingFade != widget.showTrailingFade ||
+        oldWidget.fadeWhenContentFits != widget.fadeWhenContentFits) {
       _resetting = true;
       _canScroll = false;
       _showLeadingFade = false;
@@ -161,16 +167,17 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   void _sync(ScrollMetrics metrics) {
     if (_resetting) return;
     final canScroll = metrics.maxScrollExtent > 1.0;
-    // AlwaysScrollableScrollPhysics can report negative/overscrolled pixels
-    // even when the content fits. Only actual content overflow may enable a
-    // fade; rubber-band motion alone must not create one.
-    final showLeading = canScroll && metrics.pixels > 1.0;
+    // Most fields only show fades when content is genuinely clipped. Selected
+    // modal fields opt into the Large Header behavior, where a short field
+    // still fades at its edge during native rubberband motion.
+    final fadeEdges = canScroll || widget.fadeWhenContentFits;
+    final showLeading = fadeEdges && metrics.pixels > 1.0;
     if (_suppressTrailingAfterEdit &&
         metrics.pixels >= metrics.maxScrollExtent - 1.0) {
       _suppressTrailingAfterEdit = false;
     }
     final showTrailing =
-        canScroll &&
+        fadeEdges &&
         widget.showTrailingFade &&
         !_suppressTrailingAfterEdit &&
         metrics.pixels < metrics.maxScrollExtent - 1.0;
