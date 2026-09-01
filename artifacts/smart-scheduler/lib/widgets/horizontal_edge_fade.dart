@@ -9,6 +9,7 @@ import 'package:flutter/cupertino.dart';
 /// each fade; they do not reserve layout space or add a separate gap between
 /// the text and the fade.
 const double kHorizontalFadeEdgeGap = 16.0;
+const double kHorizontalFadeContentGap = 8.0;
 
 class HorizontalEdgeFade extends StatefulWidget {
   final Widget child;

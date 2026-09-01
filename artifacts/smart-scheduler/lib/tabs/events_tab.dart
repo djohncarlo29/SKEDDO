@@ -11045,32 +11045,37 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                       child: IgnorePointer(
                                         child: Align(
                                           alignment: Alignment.centerLeft,
-                                          child: AnimatedContainer(
-                                            duration: const Duration(
-                                              milliseconds: 180,
-                                            ),
-                                            curve: Curves.easeOut,
-                                            transform:
-                                                Matrix4.translationValues(
-                                                  _nameFocus.hasFocus
-                                                      ? 4.0
-                                                      : 0.0,
-                                                  0,
-                                                  0,
-                                                ),
-                                            child: Text(
-                                              'Title',
-                                              style: TextStyle(
-                                                inherit: false,
-                                                color: resolveThemeColor(
-                                                  kTertiaryLabel,
-                                                  context,
-                                                ),
-                                                fontSize: 17,
-                                                fontFamily: kSFProText,
-                                                fontWeight: FontWeight.w400,
-                                                letterSpacing: kTracking17,
-                                                height: kLineHeight,
+                                           child: Padding(
+                                             padding: const EdgeInsets.only(
+                                               left: kHorizontalFadeContentGap,
+                                             ),
+                                             child: AnimatedContainer(
+                                               duration: const Duration(
+                                                 milliseconds: 180,
+                                               ),
+                                               curve: Curves.easeOut,
+                                               transform:
+                                                   Matrix4.translationValues(
+                                                     _nameFocus.hasFocus
+                                                         ? 4.0
+                                                         : 0.0,
+                                                     0,
+                                                     0,
+                                                   ),
+                                               child: Text(
+                                                 'Title',
+                                                 style: TextStyle(
+                                                   inherit: false,
+                                                   color: resolveThemeColor(
+                                                     kTertiaryLabel,
+                                                     context,
+                                                   ),
+                                                   fontSize: 17,
+                                                   fontFamily: kSFProText,
+                                                   fontWeight: FontWeight.w400,
+                                                   letterSpacing: kTracking17,
+                                                   height: kLineHeight,
+                                                 ),
                                               ),
                                             ),
                                           ),
@@ -11086,13 +11091,13 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                     kModalCard,
                                     context,
                                   ),
-                                  // The row is already inset 16 px from the
-                                  // card edge; the fade begins at that content
-                                  // boundary rather than another 16 px in.
-                                  leadingInset: 0,
+                                   // The field's content begins 8 px inside
+                                   // the row, and ends 8 px before its clear
+                                   // action. Fades begin at those boundaries.
+                                   leadingInset: kHorizontalFadeContentGap,
                                   trailingInset:
-                                      kHorizontalFadeEdgeGap +
-                                      scaledSearchIconSize(context, 18),
+                                       scaledSearchIconSize(context, 18) +
+                                       kHorizontalFadeContentGap,
                                   controller: _nameCtrl,
                                   child: CupertinoTheme(
                                     data: CupertinoTheme.of(context).copyWith(
@@ -11119,8 +11124,12 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                           height: kLineHeight,
                                         ),
                                         cursorColor: resolveAccentColor(context),
-                                        // Right padding leaves room for the clear button.
-                                        padding: const EdgeInsets.only(right: 30),
+                                         padding: EdgeInsets.only(
+                                           left: kHorizontalFadeContentGap,
+                                           right:
+                                               scaledSearchIconSize(context, 18) +
+                                               kHorizontalFadeContentGap,
+                                         ),
                                         scrollPhysics: const BouncingScrollPhysics(
                                           parent: AlwaysScrollableScrollPhysics(),
                                         ),
@@ -12330,9 +12339,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             children: [
               HorizontalEdgeFade(
                 fadeColor: resolveThemeColor(kModalCard, context),
-                leadingInset: kHorizontalFadeEdgeGap,
+                leadingInset: kHorizontalFadeContentGap,
                 trailingInset:
-                    kHorizontalFadeEdgeGap +
+                    kHorizontalFadeContentGap +
                     kModalRowHorizontalInset +
                     scaledSearchIconSize(context, 18),
                 controller: _titleCtrl,
@@ -12368,10 +12377,13 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   textAlign: TextAlign.center,
                   cursorColor: _resolvedSelectedColor,
                   // 37 px on each side keeps text centred; no prefix/suffix slots.
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 37,
-                    vertical: 14,
-                  ),
+                   padding: EdgeInsets.symmetric(
+                     horizontal:
+                         kModalRowHorizontalInset +
+                         scaledSearchIconSize(context, 18) +
+                         kHorizontalFadeContentGap,
+                     vertical: 14,
+                   ),
                   clearButtonMode: OverlayVisibilityMode.never,
                   scrollPhysics: const BouncingScrollPhysics(
                     parent: AlwaysScrollableScrollPhysics(),
@@ -12431,9 +12443,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             children: [
               HorizontalEdgeFade(
                 fadeColor: resolveThemeColor(kModalCard, context),
-                leadingInset: kHorizontalFadeEdgeGap,
+                leadingInset: kHorizontalFadeContentGap,
                 trailingInset:
-                    kHorizontalFadeEdgeGap +
+                    kHorizontalFadeContentGap +
                     kModalRowHorizontalInset +
                     scaledSearchIconSize(context, 18),
                 controller: _descCtrl,
@@ -12454,10 +12466,13 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                           : _kFieldStyle,
                   textAlign: TextAlign.center,
                   cursorColor: _resolvedSelectedColor,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 37,
-                    vertical: 14,
-                  ),
+                   padding: EdgeInsets.symmetric(
+                     horizontal:
+                         kModalRowHorizontalInset +
+                         scaledSearchIconSize(context, 18) +
+                         kHorizontalFadeContentGap,
+                     vertical: 14,
+                   ),
                   clearButtonMode: OverlayVisibilityMode.never,
                   scrollPhysics: const BouncingScrollPhysics(
                     parent: AlwaysScrollableScrollPhysics(),
@@ -12759,7 +12774,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   child: IgnorePointer(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
+                        horizontal: kHorizontalFadeContentGap,
                         vertical: 14,
                       ),
                       child: Align(
@@ -12784,8 +12799,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             // animated overlay above is the only placeholder the user sees.
             HorizontalEdgeFade(
               fadeColor: resolveThemeColor(kModalCard, context),
-              leadingInset: kHorizontalFadeEdgeGap,
-              trailingInset: kHorizontalFadeEdgeGap,
+              leadingInset: kHorizontalFadeContentGap,
+              trailingInset: kHorizontalFadeContentGap,
               controller: ctrl,
               child: CupertinoTheme(
                 data: CupertinoTheme.of(
@@ -12802,7 +12817,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     cursorColor: _resolvedSelectedColor,
                     selectionControls: _selectionControls,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
+                      horizontal: kHorizontalFadeContentGap,
                       vertical: 14,
                     ),
                     clearButtonMode: OverlayVisibilityMode.never,

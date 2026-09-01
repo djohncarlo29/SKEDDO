@@ -6256,7 +6256,13 @@ class _NewEventSheetState extends State<_NewEventSheet>
           scrollPhysics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
-          padding: EdgeInsets.only(right: math.max(28.0, clearIconSize)),
+           padding:
+               multiline
+                   ? EdgeInsets.only(right: math.max(28.0, clearIconSize))
+                   : EdgeInsets.only(
+                       left: kHorizontalFadeContentGap,
+                       right: clearIconSize + kHorizontalFadeContentGap,
+                     ),
           onChanged: (_) => setState(() {}),
         ),
       ),
@@ -6282,7 +6288,12 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     0,
                     0,
                   ),
-                  child: Text(placeholder, style: _kPlaceholderStyle),
+                   child: Padding(
+                     padding: EdgeInsets.only(
+                       left: multiline ? 0 : kHorizontalFadeContentGap,
+                     ),
+                     child: Text(placeholder, style: _kPlaceholderStyle),
+                   ),
                 ),
               );
             },
@@ -6293,8 +6304,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
                   fadeColor: resolvedSurface,
                   // This field is already 16 px inside the card from the
                   // outer row padding, so the card-edge fade begins here.
-                  leadingInset: 0,
-                  trailingInset: kHorizontalFadeEdgeGap + clearIconSize,
+                   leadingInset: kHorizontalFadeContentGap,
+                   trailingInset: clearIconSize + kHorizontalFadeContentGap,
                   controller: ctrl,
                   child: textField,
                 ),
@@ -7920,7 +7931,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                   child: IgnorePointer(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
+                        horizontal: kHorizontalFadeContentGap,
                         vertical: 14,
                       ),
                       child: Align(
@@ -7943,8 +7954,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
             ),
             HorizontalEdgeFade(
               fadeColor: resolveThemeColor(kModalCard, context),
-              leadingInset: kHorizontalFadeEdgeGap,
-              trailingInset: kHorizontalFadeEdgeGap,
+              leadingInset: kHorizontalFadeContentGap,
+              trailingInset: kHorizontalFadeContentGap,
               controller: ctrl,
               child: CupertinoTheme(
                 data: CupertinoTheme.of(context).copyWith(
@@ -7963,7 +7974,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     style: _kLabelStyle,
                     cursorColor: renderCategoryColor(_categoryColor, context),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
+                      horizontal: kHorizontalFadeContentGap,
                       vertical: 14,
                     ),
                     clearButtonMode: OverlayVisibilityMode.never,
@@ -9223,12 +9234,12 @@ class _NewEventSheetState extends State<_NewEventSheet>
         child: Row(
           children: [
             icon,
-            const SizedBox(width: 12),
+            const SizedBox(width: kHorizontalFadeContentGap),
             Expanded(
               child: HorizontalEdgeFade(
                 fadeColor: resolveThemeColor(kModalCard, context),
-                leadingInset: kHorizontalFadeEdgeGap - 12,
-                trailingInset: kHorizontalFadeEdgeGap - 12,
+                leadingInset: 0,
+                trailingInset: 0,
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(
@@ -9238,17 +9249,14 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: kHorizontalFadeContentGap),
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: onRemove,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 4),
-                child: Icon(
-                  kSearchClearCircleIcon,
-                  color: kEmptyStateIcon,
-                  size: clearIconSize,
-                ),
+              child: Icon(
+                kSearchClearCircleIcon,
+                color: kEmptyStateIcon,
+                size: clearIconSize,
               ),
             ),
           ],
