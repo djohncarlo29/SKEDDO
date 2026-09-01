@@ -12935,7 +12935,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             // animated overlay above is the only placeholder the user sees.
             HorizontalEdgeFade(
               fadeColor: resolveThemeColor(kModalCard, context),
-              fadeWhenContentFits: true,
               leadingInset: kHorizontalFadeEdgeGap,
               trailingInset: _locationClearFieldGap(),
               controller: ctrl,

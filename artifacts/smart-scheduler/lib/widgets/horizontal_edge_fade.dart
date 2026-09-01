@@ -195,7 +195,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     final showTrailing =
         fadeEdges &&
         widget.showTrailingFade &&
-        (!_suppressTrailingAfterEdit || widget.fadeWhenContentFits) &&
+        !_suppressTrailingAfterEdit &&
         (canScroll
             ? metrics.extentAfter > 1.0
             : widget.fadeWhenContentFits || isPulledPastStart);
