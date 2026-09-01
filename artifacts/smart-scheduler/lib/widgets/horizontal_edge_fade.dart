@@ -171,7 +171,15 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     // modal fields opt into the Large Header behavior, where a short field
     // still fades at its edge during native rubberband motion.
     final fadeEdges = canScroll || widget.fadeWhenContentFits;
-    final showLeading = fadeEdges && metrics.pixels > 1.0;
+    // For overflowing content, use the metrics' actual visible extents rather
+    // than assuming minScrollExtent is zero. For fitting content, the only
+    // hidden pixels are produced by a rubberband overscroll: pulling past the
+    // start moves the content toward the right edge, while pulling past the
+    // end moves it toward the left edge.
+    final isPulledPastStart = metrics.pixels < metrics.minScrollExtent - 1.0;
+    final isPulledPastEnd = metrics.pixels > metrics.maxScrollExtent + 1.0;
+    final showLeading = fadeEdges &&
+        (canScroll ? metrics.extentBefore > 1.0 : isPulledPastEnd);
     if (_suppressTrailingAfterEdit &&
         metrics.pixels >= metrics.maxScrollExtent - 1.0) {
       _suppressTrailingAfterEdit = false;
@@ -180,7 +188,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
         fadeEdges &&
         widget.showTrailingFade &&
         !_suppressTrailingAfterEdit &&
-        metrics.pixels < metrics.maxScrollExtent - 1.0;
+        (canScroll ? metrics.extentAfter > 1.0 : isPulledPastStart);
 
     if (_canScroll == canScroll &&
         _showLeadingFade == showLeading &&

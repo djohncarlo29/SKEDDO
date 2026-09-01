@@ -444,6 +444,11 @@ class AppSearchBarState extends State<AppSearchBar>
                       selectionColor: selectionTint.withOpacity(0.20),
                       child: HorizontalEdgeFade(
                         fadeColor: surfaceColor,
+                        // Search text should get the same Large Header
+                        // treatment as the modal's short single-line fields:
+                        // no fade while settled and fitting, but reveal the
+                        // appropriate edge fade during rubberbanding.
+                        fadeWhenContentFits: true,
                         // The editable viewport spans from icon edge to icon
                         // edge. Its content has one 8 px inset on each side,
                         // and the fades begin exactly at those usable-field
