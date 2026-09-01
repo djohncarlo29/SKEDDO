@@ -213,20 +213,33 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
           // underneath.
           child: ColoredBox(
             color: resolveThemeColor(kModalBackground, context),
-            child: MediaQuery(
-              data: mqData,
-              child: CupertinoUserInterfaceLevel(
-                data: CupertinoUserInterfaceLevelData.elevated,
-                // Keep the page full-height. The route's 8% translation and
-                // viewport clip define the usable visible area; shrinking
-                // this child clips content in every modal.
-                // Build the page under the cleaned MediaQuery above.
-                // Calling builder(context) here would pass the route's
-                // original context and restore SafeArea padding.
-                child: _RoundedSheetScope(
-                  child: Builder(builder: builder),
-                ),
-              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // The route's resting position is 8% below the viewport.
+                // Give the page exactly the visible 92% so its bottom edge
+                // lands at the physical bottom after that translation.
+                final double visiblePageHeight =
+                    constraints.maxHeight * (1.0 - _kTopGapRatio);
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: SizedBox(
+                    width: constraints.maxWidth,
+                    height: visiblePageHeight,
+                    child: MediaQuery(
+                      data: mqData,
+                      child: CupertinoUserInterfaceLevel(
+                        data: CupertinoUserInterfaceLevelData.elevated,
+                        // Build the page under the cleaned MediaQuery above.
+                        // Calling builder(context) here would pass the route's
+                        // original context and restore SafeArea padding.
+                        child: _RoundedSheetScope(
+                          child: Builder(builder: builder),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ),
