@@ -5648,8 +5648,9 @@ class _AttachmentFilenameState extends State<_AttachmentFilename> {
     return HorizontalEdgeFade(
       fadeColor: widget.fadeColor,
       // Do not opt into fades when content fits: the viewport is still
-      // always-scrollable for rubberbanding, but both ends stay clear when
-      // the complete filename is visible.
+      // always-scrollable for rubberbanding. During that rubberband, use the
+      // same edge fade behavior as HeaderTitleScroller.
+      fadeOnRubberbandWhenContentFits: true,
       scrollController: _scrollController,
       child: SingleChildScrollView(
         controller: _scrollController,

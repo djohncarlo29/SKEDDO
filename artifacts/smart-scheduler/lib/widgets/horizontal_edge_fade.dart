@@ -28,6 +28,10 @@ class HorizontalEdgeFade extends StatefulWidget {
   /// show the trailing fade at rest and reveal the leading fade while the
   /// content is pulled toward that edge even when maxScrollExtent is zero.
   final bool fadeWhenContentFits;
+  /// Allows short, fully visible content to show the corresponding fade only
+  /// while it is being rubberbanded past an edge. Unlike
+  /// [fadeWhenContentFits], this does not show a fade at rest.
+  final bool fadeOnRubberbandWhenContentFits;
   /// Shows the leading edge treatment at rest when content fits. This is
   /// useful for static labels whose two ends should share the same treatment.
   final bool showLeadingFadeWhenContentFits;
@@ -43,6 +47,7 @@ class HorizontalEdgeFade extends StatefulWidget {
     this.controller,
     this.scrollController,
     this.fadeWhenContentFits = false,
+    this.fadeOnRubberbandWhenContentFits = false,
     this.showLeadingFadeWhenContentFits = false,
   });
 
@@ -86,6 +91,8 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     if (oldWidget.fadeColor != widget.fadeColor ||
         oldWidget.showTrailingFade != widget.showTrailingFade ||
         oldWidget.fadeWhenContentFits != widget.fadeWhenContentFits ||
+        oldWidget.fadeOnRubberbandWhenContentFits !=
+            widget.fadeOnRubberbandWhenContentFits ||
         oldWidget.showLeadingFadeWhenContentFits !=
             widget.showLeadingFadeWhenContentFits) {
       _resetting = true;
@@ -176,7 +183,10 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     // Most fields only show fades when content is genuinely clipped. Selected
     // modal fields opt into the Large Header behavior, where a short field
     // still fades at its edge during native rubberband motion.
-    final fadeEdges = canScroll || widget.fadeWhenContentFits;
+    final fadeEdges =
+        canScroll ||
+        widget.fadeWhenContentFits ||
+        widget.fadeOnRubberbandWhenContentFits;
     // For overflowing content, use the metrics' actual visible extents rather
     // than assuming minScrollExtent is zero. For fitting content, the only
     // hidden pixels are produced by a rubberband overscroll: pulling past the
