@@ -11325,6 +11325,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   );
   final _startLocCtrl = TextEditingController();
   final _destCtrl = TextEditingController();
+  final _titleScrollCtrl = ScrollController();
   final _descScrollCtrl = ScrollController();
 
   // ── Title / description focus nodes ──────────────────────────────────────
@@ -11653,6 +11654,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     _destCtrl.dispose();
 
     _descScrollCtrl.dispose();
+    _titleScrollCtrl.dispose();
     _titleFocus.dispose();
     _descFocus.dispose();
     _startLocFocus.dispose();
@@ -12343,9 +12345,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     kModalRowHorizontalInset +
                     scaledSearchIconSize(context, 18),
                 controller: _titleCtrl,
+                scrollController: _titleScrollCtrl,
                 child: CupertinoTextField(
                   controller: _titleCtrl,
                   focusNode: _titleFocus,
+                  scrollController: _titleScrollCtrl,
                   readOnly: _isSmart,
                   showCursor: !_isSmart,
                   // New Category (not Edit, not a smart tile) opens with the
@@ -12447,6 +12451,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     kModalRowHorizontalInset +
                     scaledSearchIconSize(context, 18),
                 controller: _descCtrl,
+                scrollController: _descScrollCtrl,
                 child: CupertinoTextField(
                   controller: _descCtrl,
                   focusNode: _descFocus,

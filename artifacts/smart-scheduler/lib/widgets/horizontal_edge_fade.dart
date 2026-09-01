@@ -23,6 +23,7 @@ class HorizontalEdgeFade extends StatefulWidget {
   /// of the right fade. The fade extends inward from this point.
   final double trailingInset;
   final TextEditingController? controller;
+  final ScrollController? scrollController;
 
   const HorizontalEdgeFade({
     super.key,
@@ -33,6 +34,7 @@ class HorizontalEdgeFade extends StatefulWidget {
     this.leadingInset = 0,
     this.trailingInset = 0,
     this.controller,
+    this.scrollController,
   });
 
   @override
@@ -49,12 +51,14 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   bool _showTrailingFade = false;
   bool _suppressTrailingAfterEdit = false;
   TextEditingValue? _lastControllerValue;
+  ScrollController? _attachedScrollController;
 
   @override
   void initState() {
     super.initState();
     _lastControllerValue = widget.controller?.value;
     widget.controller?.addListener(_handleControllerChanged);
+    _attachScrollController();
   }
 
   @override
@@ -65,6 +69,10 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
       _lastControllerValue = widget.controller?.value;
       widget.controller?.addListener(_handleControllerChanged);
       _suppressTrailingAfterEdit = false;
+    }
+    if (oldWidget.scrollController != widget.scrollController) {
+      _detachScrollController();
+      _attachScrollController();
     }
     if (oldWidget.fadeColor != widget.fadeColor ||
         oldWidget.showTrailingFade != widget.showTrailingFade) {
@@ -79,7 +87,30 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   @override
   void dispose() {
     widget.controller?.removeListener(_handleControllerChanged);
+    _detachScrollController();
     super.dispose();
+  }
+
+  void _attachScrollController() {
+    final controller = widget.scrollController;
+    if (controller == null) return;
+    _attachedScrollController = controller;
+    controller.addListener(_handleScrollControllerChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _attachedScrollController != controller) return;
+      if (controller.hasClients) _sync(controller.position);
+    });
+  }
+
+  void _detachScrollController() {
+    _attachedScrollController?.removeListener(_handleScrollControllerChanged);
+    _attachedScrollController = null;
+  }
+
+  void _handleScrollControllerChanged() {
+    final controller = _attachedScrollController;
+    if (controller?.hasClients != true) return;
+    _sync(controller!.position);
   }
 
   void _handleControllerChanged() {
