@@ -12859,7 +12859,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                         width: clearSlotSize,
                         height: clearSlotSize,
                         child: Align(
-                          alignment: Alignment.centerRight,
+                    // Center the smaller clear icon in the same action slot as
+                    // the map pin. _locationClearFieldGap() measures this
+                    // visual leading inset so the fade ends 8 px before it.
+                    alignment: Alignment.center,
                           child: Icon(
                             kSearchClearCircleIcon,
                             color: kEmptyStateIcon,
