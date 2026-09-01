@@ -430,9 +430,6 @@ class AppSearchBarState extends State<AppSearchBar>
                   ),
                 ),
               ),
-              // Match the header-title scroll viewport: the text viewport
-              // begins a full 16 px after the visible search icon.
-              const SizedBox(width: kHorizontalFadeEdgeGap),
               Expanded(
                 child: TapRegion(
                   groupId: kSbGroupId,
@@ -444,10 +441,11 @@ class AppSearchBarState extends State<AppSearchBar>
                       selectionColor: selectionTint.withOpacity(0.20),
                       child: HorizontalEdgeFade(
                         fadeColor: surfaceColor,
-                        // The fade is flush with the scrolling viewport,
-                        // like HeaderTitleScroller. The viewport itself
-                        // starts 16 px after the search icon and ends 16 px
-                        // before the clear/mic action.
+                        // The editable viewport begins immediately after the
+                        // search icon, and the fade is flush with that
+                        // boundary. The 16 px breathing room lives inside the
+                        // scrolling content, so text travels beneath the
+                        // gradient instead of being hard-clipped before it.
                         leadingInset: 0,
                         trailingInset: 0,
                         controller: widget.controller,
@@ -474,7 +472,10 @@ class AppSearchBarState extends State<AppSearchBar>
                             letterSpacing: kTracking16,
                             height: kLineHeight,
                           ),
-                          padding: EdgeInsets.zero,
+                           padding: const EdgeInsets.only(
+                             left: kHorizontalFadeEdgeGap,
+                             right: kHorizontalFadeEdgeGap,
+                           ),
                           cursorColor: selectionTint,
                           selectionColor: selectionTint.withOpacity(0.20),
                           selectionControls: _selectionControls,
