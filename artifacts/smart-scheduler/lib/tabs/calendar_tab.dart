@@ -5646,8 +5646,10 @@ class _AttachmentFilenameState extends State<_AttachmentFilename> {
   Widget build(BuildContext context) {
     return HorizontalEdgeFade(
       fadeColor: widget.fadeColor,
-      // A filename should fade only when it genuinely overflows. The
-      // controller also lets HorizontalEdgeFade synchronise on first layout.
+      // Keep the edge treatment visible even for a short name, while the
+      // controller lets HorizontalEdgeFade synchronise on first layout.
+      fadeWhenContentFits: true,
+      showLeadingFadeWhenContentFits: true,
       scrollController: _scrollController,
       child: SingleChildScrollView(
         controller: _scrollController,

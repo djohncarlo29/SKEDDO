@@ -28,6 +28,9 @@ class HorizontalEdgeFade extends StatefulWidget {
   /// show the trailing fade at rest and reveal the leading fade while the
   /// content is pulled toward that edge even when maxScrollExtent is zero.
   final bool fadeWhenContentFits;
+  /// Shows the leading edge treatment at rest when content fits. This is
+  /// useful for static labels whose two ends should share the same treatment.
+  final bool showLeadingFadeWhenContentFits;
 
   const HorizontalEdgeFade({
     super.key,
@@ -40,6 +43,7 @@ class HorizontalEdgeFade extends StatefulWidget {
     this.controller,
     this.scrollController,
     this.fadeWhenContentFits = false,
+    this.showLeadingFadeWhenContentFits = false,
   });
 
   @override
@@ -179,7 +183,9 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     final isPulledPastStart = metrics.pixels < metrics.minScrollExtent - 1.0;
     final isPulledPastEnd = metrics.pixels > metrics.maxScrollExtent + 1.0;
     final showLeading = fadeEdges &&
-        (canScroll ? metrics.extentBefore > 1.0 : isPulledPastEnd);
+        (canScroll
+            ? metrics.extentBefore > 1.0
+            : widget.showLeadingFadeWhenContentFits || isPulledPastEnd);
     if (_suppressTrailingAfterEdit &&
         metrics.pixels >= metrics.maxScrollExtent - 1.0) {
       _suppressTrailingAfterEdit = false;
@@ -188,7 +194,9 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
         fadeEdges &&
         widget.showTrailingFade &&
         !_suppressTrailingAfterEdit &&
-        (canScroll ? metrics.extentAfter > 1.0 : isPulledPastStart);
+        (canScroll
+            ? metrics.extentAfter > 1.0
+            : widget.fadeWhenContentFits || isPulledPastStart);
 
     if (_canScroll == canScroll &&
         _showLeadingFade == showLeading &&
@@ -227,12 +235,6 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
                       widget.fadeColor.withValues(alpha: 0),
                       widget.fadeColor,
                     ],
-              // The trailing inset is part of the overlay, not an uncovered
-              // gap. Keeping it solid prevents a clipped glyph from peeking
-              // through the last fractional pixel beside the action slot.
-              stops: solidTailWidth > 0 && !opaqueAtStart
-                  ? [0, widget.fadeWidth / totalWidth]
-                  : null,
             ),
           ),
         ),
@@ -246,15 +248,6 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     // gradient is the edge treatment; this wrapper must not add a second
     // ClipRect boundary before the fade. TextField/scroll-view children still
     // own their normal viewport clipping.
-    // A fractional inset can leave a one-device-pixel raster seam between the
-    // fade and the text field's own clip. Snap the opaque boundary to the
-    // display grid before positioning the overlay.
-    final devicePixelRatio = View.of(context).devicePixelRatio;
-    double snap(double value) =>
-        (value * devicePixelRatio).round() / devicePixelRatio;
-    final leadingInset = snap(widget.leadingInset);
-    final trailingInset = snap(widget.trailingInset);
-
     return NotificationListener<ScrollNotification>(
       onNotification: _handleScrollNotification,
       child: NotificationListener<ScrollMetricsNotification>(
@@ -267,7 +260,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
           children: [
             widget.child,
             Positioned(
-              left: leadingInset,
+              left: widget.leadingInset,
               top: 0,
               bottom: 0,
               child: _fade(
@@ -276,13 +269,16 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
               ),
             ),
             Positioned(
-              right: trailingInset,
+              // Run the trailing gradient continuously through the inset.
+              // A hard stop at a fractional inset creates the visible slit
+              // between the fade and the text field's action reservation.
+              right: 0,
               top: 0,
               bottom: 0,
               child: _fade(
                 visible: _showTrailingFade,
                 opaqueAtStart: false,
-                solidTailWidth: trailingInset,
+                solidTailWidth: widget.trailingInset,
               ),
             ),
           ],
