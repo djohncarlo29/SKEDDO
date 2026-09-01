@@ -5678,11 +5678,13 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   final _titleCtrl = TextEditingController();
   final _subtitleCtrl = TextEditingController();
+  final _titleScrollCtrl = ScrollController();
   final _titleFocus = FocusNode();
   final _subtitleFocus = FocusNode();
 
   // ── URL / Notes ───────────────────────────────────────────────────────────
   final _urlCtrl = TextEditingController();
+  final _urlScrollCtrl = ScrollController();
   final _urlFocus = FocusNode();
   final _notesCtrl = TextEditingController();
   final _notesFocus = FocusNode();
@@ -5742,8 +5744,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   // ── Location ──────────────────────────────────────────────────────────────
   final _locationTextCtrl = TextEditingController();
+  final _locationScrollCtrl = ScrollController();
   final _locationFocus = FocusNode();
   final _destCtrl = TextEditingController();
+  final _destScrollCtrl = ScrollController();
   final _destFocus = FocusNode();
 
   // ── Travel ────────────────────────────────────────────────────────────────
@@ -6059,9 +6063,13 @@ class _NewEventSheetState extends State<_NewEventSheet>
     _attachmentConsumeCtrl.dispose();
     _titleCtrl.dispose();
     _subtitleCtrl.dispose();
+    _titleScrollCtrl.dispose();
     _locationTextCtrl.dispose();
+    _locationScrollCtrl.dispose();
     _destCtrl.dispose();
+    _destScrollCtrl.dispose();
     _urlCtrl.dispose();
+    _urlScrollCtrl.dispose();
     _notesCtrl.dispose();
     _titleFocus.dispose();
     _subtitleFocus.dispose();
@@ -6229,6 +6237,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     required FocusNode focus,
     required String placeholder,
     bool caretToEndOnTap = false,
+    ScrollController? scrollController,
     bool multiline = false,
     int? minLinesOverride,
     int? maxLinesOverride,
@@ -6248,6 +6257,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
         child: CupertinoTextField(
           controller: ctrl,
           focusNode: focus,
+          scrollController: scrollController,
           placeholder: '',
           style: _kLabelStyle,
           cursorColor: renderCategoryColor(_categoryColor, context),
@@ -6258,6 +6268,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           onTap: caretToEndOnTap
               ? () => scheduleTextFieldCaretToEnd(
                     ctrl,
+                    scrollController: scrollController,
                     isMounted: () => mounted,
                   )
               : null,
@@ -7928,6 +7939,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     String hint,
     FocusNode focusNode,
     String trailKeyPrefix,
+    ScrollController scrollController,
   ) => Row(
     children: [
       Expanded(
@@ -7982,6 +7994,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                   child: CupertinoTextField(
                     controller: ctrl,
                     focusNode: focusNode,
+                    scrollController: scrollController,
                     placeholder: '',
                     placeholderStyle: _kPlaceholderStyle,
                     style: _kLabelStyle,
@@ -8002,6 +8015,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     textInputAction: TextInputAction.next,
                     onTap: () => scheduleTextFieldCaretToEnd(
                       ctrl,
+                      scrollController: scrollController,
                       isMounted: () => mounted,
                     ),
                   ),
@@ -8154,9 +8168,16 @@ class _NewEventSheetState extends State<_NewEventSheet>
         'Starting Location',
         _locationFocus,
         'start',
+        _locationScrollCtrl,
       ),
       _sep(),
-      _locationRow(_destCtrl, 'Destination', _destFocus, 'dest'),
+      _locationRow(
+        _destCtrl,
+        'Destination',
+        _destFocus,
+        'dest',
+        _destScrollCtrl,
+      ),
       // Travel Time row collapses when All-day is on.
       SizeTransition(
         sizeFactor: _travelRowCtrl,
@@ -10324,6 +10345,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                               focus: _titleFocus,
                               placeholder: 'Title',
                               caretToEndOnTap: true,
+                              scrollController: _titleScrollCtrl,
                             ),
                             _sep(),
                             _textField(
@@ -10491,6 +10513,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                               focus: _urlFocus,
                               placeholder: 'URL',
                               caretToEndOnTap: true,
+                              scrollController: _urlScrollCtrl,
                             ),
                             _sep(),
                             _textField(

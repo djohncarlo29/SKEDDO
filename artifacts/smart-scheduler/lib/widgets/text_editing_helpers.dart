@@ -8,11 +8,27 @@ import 'package:flutter/cupertino.dart';
 /// helper.
 void scheduleTextFieldCaretToEnd(
   TextEditingController controller, {
+  ScrollController? scrollController,
   bool Function()? isMounted,
 }) {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     if (isMounted != null && !isMounted()) return;
     final text = controller.text;
     controller.selection = TextSelection.collapsed(offset: text.length);
+
+    void scrollToEnd() {
+      if (isMounted != null && !isMounted()) return;
+      if (scrollController?.hasClients != true) return;
+      final position = scrollController!.position;
+      if (!position.hasContentDimensions) return;
+      if (position.pixels != position.maxScrollExtent) {
+        position.jumpTo(position.maxScrollExtent);
+      }
+    }
+
+    // The text field may update its scroll extent in the frame after the
+    // selection change, especially when it is first mounted in a sheet.
+    scrollToEnd();
+    WidgetsBinding.instance.addPostFrameCallback((_) => scrollToEnd());
   });
 }

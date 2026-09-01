@@ -2174,6 +2174,20 @@ class EventsTabState extends State<EventsTab>
     }
   }
 
+  /// Keeps the two utility navigation rows out of the user's saved ordering.
+  /// They are transient rows and must always reappear after every regular
+  /// category/group, rather than returning to their previous position.
+  void _moveSystemUtilityRowsToBottom() {
+    final utilityTokens = <String>[];
+    final seen = <String>{};
+    _listTopOrder.removeWhere((token) {
+      if (!_kSystemUtilityCategoryIds.contains(token)) return false;
+      if (seen.add(token)) utilityTokens.add(token);
+      return true;
+    });
+    _listTopOrder.addAll(utilityTokens);
+  }
+
   /// Builds the ordered flat item list for the CATEGORIES section.
   /// Groups whose members are expanded also include their member rows.
   /// Used by _CategoryCard for rendering and by the drag-reorder system.
@@ -2190,7 +2204,15 @@ class EventsTabState extends State<EventsTab>
     };
     final result = <_FlatItem>[];
 
-    for (final token in _listTopOrder) {
+    // Render utility rows last even during an in-flight reorder or before the
+    // persistence write has completed.
+    final orderedTokens = [
+      ..._listTopOrder.where(
+        (token) => !_kSystemUtilityCategoryIds.contains(token),
+      ),
+      ..._listTopOrder.where(_kSystemUtilityCategoryIds.contains),
+    ];
+    for (final token in orderedTokens) {
       if (token.startsWith('grp-')) {
         final gid = token.substring(4);
         final g = groupById[gid];
@@ -5785,6 +5807,7 @@ class EventsTabState extends State<EventsTab>
   bool _saveBannerVisible = false;
 
   void _saveCategories() {
+    _moveSystemUtilityRowsToBottom();
     SharedPreferences.getInstance()
         .then((prefs) async {
           try {
@@ -6110,7 +6133,9 @@ class EventsTabState extends State<EventsTab>
             _listTopOrder.add(category.id);
           }
         }
+        _moveSystemUtilityRowsToBottom();
       });
+      _saveCategories();
 
       // Refresh CategoryRegistry so search results display accurate names+colours.
       _updateCategoryRegistry();
@@ -6130,7 +6155,7 @@ class EventsTabState extends State<EventsTab>
 
   /// Adds the two permanent navigation categories to data saved by older
   /// versions and restores their canonical metadata if an old record exists.
-  /// Their placement remains governed by the saved list/grid order.
+  /// Their placement in the categories list is always after regular rows.
   void _ensureSystemUtilityCategories() {
     for (final systemCategory in _kUserCategories.where(
       _isSystemUtilityCategory,
@@ -8234,6 +8259,10 @@ const _kIdSysUnnamed = 'sys-unnamed';
 const _kIdSysUncategorized = 'sys-uncategorized';
 const _kIdSysArchivedCategories = 'sys-archived-categories';
 const _kIdSysRecentlyDeleted = 'sys-recently-deleted';
+const _kSystemUtilityCategoryIds = {
+  _kIdSysArchivedCategories,
+  _kIdSysRecentlyDeleted,
+};
 
 bool _isSystemUtilityCategory(_UserCategory category) =>
     category.isSystemUtility ||
@@ -9538,7 +9567,9 @@ class _CategoryRow extends StatelessWidget {
       isSmartCategory: false,
       isPinned: false,
       isUtilityCategory: _isSystemUtilityCategory(category),
-      reorderable: true, // group members are now individually reorderable
+      // Utility rows are fixed navigation entries and must remain at the
+      // bottom of the categories list.
+      reorderable: !_isSystemUtilityCategory(category),
       onPin: onPin,
       onEdit: onEdit,
       onArchive: onArchive,
@@ -10776,6 +10807,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
     text: widget.initial?.name ?? '',
   );
   final FocusNode _nameFocus = FocusNode();
+  final ScrollController _nameScrollCtrl = ScrollController();
   late final Set<String> _selectedIds = Set<String>.from(
     widget.initialMemberIds,
   );
@@ -10805,13 +10837,18 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
   void dispose() {
     _nameCtrl.dispose();
     _nameFocus.dispose();
+    _nameScrollCtrl.dispose();
     _dismissPicker(animate: false);
     _pickerIsClosing.dispose();
     super.dispose();
   }
 
   void _scheduleCaretToEnd(TextEditingController controller) {
-    scheduleTextFieldCaretToEnd(controller, isMounted: () => mounted);
+    scheduleTextFieldCaretToEnd(
+      controller,
+      scrollController: _nameScrollCtrl,
+      isMounted: () => mounted,
+    );
   }
 
   void _dismissPicker({bool animate = true}) {
@@ -11113,6 +11150,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                       child: CupertinoTextField(
                                         controller: _nameCtrl,
                                         focusNode: _nameFocus,
+                                        scrollController: _nameScrollCtrl,
                                         placeholder: '',
                                         style: TextStyle(
                                           inherit: false,
@@ -11339,6 +11377,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   final _destCtrl = TextEditingController();
   final _titleScrollCtrl = ScrollController();
   final _descScrollCtrl = ScrollController();
+  final _startLocScrollCtrl = ScrollController();
+  final _destScrollCtrl = ScrollController();
 
   // ── Title / description focus nodes ──────────────────────────────────────
   final _titleFocus = FocusNode();
@@ -11667,6 +11707,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
 
     _descScrollCtrl.dispose();
     _titleScrollCtrl.dispose();
+    _startLocScrollCtrl.dispose();
+    _destScrollCtrl.dispose();
     _titleFocus.dispose();
     _descFocus.dispose();
     _startLocFocus.dispose();
@@ -12090,8 +12132,15 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     setState(() {});
   }
 
-  void _scheduleCaretToEnd(TextEditingController controller) {
-    scheduleTextFieldCaretToEnd(controller, isMounted: () => mounted);
+  void _scheduleCaretToEnd(
+    TextEditingController controller, {
+    ScrollController? scrollController,
+  }) {
+    scheduleTextFieldCaretToEnd(
+      controller,
+      scrollController: scrollController,
+      isMounted: () => mounted,
+    );
   }
 
   // Mirrors _CategoryTile._buildIconContent, scaled up 2x (32px tile circle
@@ -12417,9 +12466,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   textCapitalization: TextCapitalization.sentences,
                   decoration: null,
                   textInputAction: TextInputAction.next,
-                   onTap: _isSmart
-                       ? null
-                       : () => _scheduleCaretToEnd(_titleCtrl),
+                  onTap: _isSmart
+                      ? null
+                      : () => _scheduleCaretToEnd(
+                          _titleCtrl,
+                          scrollController: _titleScrollCtrl,
+                        ),
                 ),
               ),
               // Clear button — Positioned overlay so it never enters the text
@@ -12520,7 +12572,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   textInputAction: TextInputAction.done,
                   onTap: _isSmart
                       ? null
-                      : () => _scheduleCaretToEnd(_descCtrl),
+                      : () => _scheduleCaretToEnd(
+                          _descCtrl,
+                          scrollController: _descScrollCtrl,
+                        ),
                 ),
               ),
               if (!_isSmart)
@@ -12814,6 +12869,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     TextEditingController ctrl,
     String hint,
     FocusNode focusNode,
+    ScrollController scrollController,
   ) => Row(
     children: [
       Expanded(
@@ -12869,6 +12925,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   child: CupertinoTextField(
                     controller: ctrl,
                     focusNode: focusNode,
+                    scrollController: scrollController,
                     placeholder: '',
                     placeholderStyle: _kPlaceholderStyle,
                     style: _kFieldStyle,
@@ -12888,7 +12945,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     textCapitalization: TextCapitalization.sentences,
                     decoration: null,
                     textInputAction: TextInputAction.next,
-                    onTap: () => _scheduleCaretToEnd(ctrl),
+                    onTap: () => _scheduleCaretToEnd(
+                      ctrl,
+                      scrollController: scrollController,
+                    ),
                   ),
                 ),
               ),
@@ -13704,9 +13764,19 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     animation: _travelModeCtrl,
     builder:
         (ctx, _) => _card([
-          _locationRow(_startLocCtrl, 'Starting Location', _startLocFocus),
+          _locationRow(
+            _startLocCtrl,
+            'Starting Location',
+            _startLocFocus,
+            _startLocScrollCtrl,
+          ),
           _sep(),
-          _locationRow(_destCtrl, 'Destination', _destFocus),
+          _locationRow(
+            _destCtrl,
+            'Destination',
+            _destFocus,
+            _destScrollCtrl,
+          ),
           _sep(),
           _pickerRow('Travel Time', _travelTime, items: _travelTimeItems()),
           // Travel Mode expands inside the same card as Travel Time.
