@@ -12344,7 +12344,14 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             children: [
               HorizontalEdgeFade(
                 fadeColor: resolveThemeColor(kModalCard, context),
-                leadingInset: kHorizontalFadeEdgeGap,
+                // The title text starts after the symmetric clear-action
+                // reservation, not at the card's 16 px edge. Anchor the fade
+                // to that real text-content boundary so it overlays clipped
+                // glyphs instead of sitting in empty left padding.
+                leadingInset:
+                    kModalRowHorizontalInset +
+                    scaledSearchIconSize(context, 18) +
+                    kHorizontalFadeContentGap,
                 trailingInset:
                     kHorizontalFadeContentGap +
                     kModalRowHorizontalInset +
@@ -12453,7 +12460,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             children: [
               HorizontalEdgeFade(
                 fadeColor: resolveThemeColor(kModalCard, context),
-                leadingInset: kHorizontalFadeEdgeGap,
+                // Match the title field above: the subtitle's text viewport
+                // begins after the reserved clear-action space.
+                leadingInset:
+                    kModalRowHorizontalInset +
+                    scaledSearchIconSize(context, 18) +
+                    kHorizontalFadeContentGap,
                 trailingInset:
                     kHorizontalFadeContentGap +
                     kModalRowHorizontalInset +
