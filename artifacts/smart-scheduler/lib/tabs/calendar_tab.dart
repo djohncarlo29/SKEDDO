@@ -5612,47 +5612,30 @@ class _AttachmentFile {
 /// Gives every filename its own horizontal rubberbandable viewport. The
 /// shared edge fade remains overflow-driven, so a name that is fully visible
 /// does not show a fade at either end.
-class _AttachmentFilename extends StatefulWidget {
+class _AttachmentFilename extends StatelessWidget {
   final String name;
   final TextStyle style;
   final Color fadeColor;
+  final ScrollController scrollController;
 
   const _AttachmentFilename({
     super.key,
     required this.name,
     required this.style,
     required this.fadeColor,
+    required this.scrollController,
   });
-
-  @override
-  State<_AttachmentFilename> createState() => _AttachmentFilenameState();
-}
-
-class _AttachmentFilenameState extends State<_AttachmentFilename> {
-  late final ScrollController _scrollController;
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController = ScrollController();
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         return HorizontalEdgeFade(
-          fadeColor: widget.fadeColor,
+          fadeColor: fadeColor,
           fadeOnRubberbandWhenContentFits: true,
-          scrollController: _scrollController,
+          scrollController: scrollController,
           child: SingleChildScrollView(
-            controller: _scrollController,
+            controller: scrollController,
             primary: false,
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(
@@ -5664,8 +5647,8 @@ class _AttachmentFilenameState extends State<_AttachmentFilename> {
               // clipping boundary stop at the text's intrinsic width.
               constraints: BoxConstraints(minWidth: constraints.maxWidth),
               child: Text(
-                widget.name,
-                style: widget.style,
+                name,
+                style: style,
                 maxLines: 1,
                 softWrap: false,
                 overflow: TextOverflow.visible,
@@ -5765,6 +5748,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   // ── Attachments ───────────────────────────────────────────────────────────
   final List<_AttachmentFile> _attachments = [];
+  // Keep filename viewport state outside AnimatedList rows. AnimatedList may
+  // rebuild neighboring rows while a removal is animating; controllers keyed
+  // by the attachment object keep those rows at their existing offsets.
+  final Map<_AttachmentFile, ScrollController> _attachmentScrollControllers =
+      <_AttachmentFile, ScrollController>{};
   final GlobalKey<AnimatedListState> _attachmentListKey =
       GlobalKey<AnimatedListState>();
   // Pre-existing attachment paths loaded from the event being edited.
@@ -6147,7 +6135,18 @@ class _NewEventSheetState extends State<_NewEventSheet>
     _destFocus.dispose();
     _urlFocus.dispose();
     _notesFocus.dispose();
+    for (final controller in _attachmentScrollControllers.values) {
+      controller.dispose();
+    }
+    _attachmentScrollControllers.clear();
     super.dispose();
+  }
+
+  ScrollController _attachmentScrollControllerFor(_AttachmentFile file) {
+    return _attachmentScrollControllers.putIfAbsent(
+      file,
+      ScrollController.new,
+    );
   }
 
   // ── Formatting ────────────────────────────────────────────────────────────
@@ -6397,6 +6396,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                    leadingInset: 0,
                    trailingInset: clearIconSize + kHorizontalFadeContentGap,
                   controller: ctrl,
+                  scrollController: scrollController,
                   child: textField,
                 ),
           // Clear button
@@ -9371,6 +9371,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 name: file.name,
                 style: _kLabelStyle,
                 fadeColor: resolveThemeColor(kModalCard, context),
+                scrollController: _attachmentScrollControllerFor(file),
               ),
             ),
             const SizedBox(width: kHorizontalFadeEdgeGap),
@@ -9411,6 +9412,12 @@ class _NewEventSheetState extends State<_NewEventSheet>
       ),
       duration: const Duration(milliseconds: 280),
     );
+    // Keep the removed row's controller alive until its SizeTransition has
+    // finished using it, then release only that row's state.
+    Future.delayed(const Duration(milliseconds: 280), () {
+      final controller = _attachmentScrollControllers.remove(removedFile);
+      if (controller != null) controller.dispose();
+    });
   }
 
   Widget _fileIconBox(

@@ -11159,6 +11159,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                        scaledSearchIconSize(context, 18) +
                                        kHorizontalFadeContentGap,
                                   controller: _nameCtrl,
+                                  scrollController: _nameScrollCtrl,
                                   child: CupertinoTheme(
                                     data: CupertinoTheme.of(context).copyWith(
                                       primaryColor: resolveAccentColor(context),
