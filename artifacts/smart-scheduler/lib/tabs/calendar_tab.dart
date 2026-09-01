@@ -10261,7 +10261,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                         16,
                         8,
                         16,
-                        math.max(16, systemSafeAreaBottomInset(context)),
+                        math.max(20, systemSafeAreaBottomInset(context)),
                       ),
                       child: Column(
                         children: [

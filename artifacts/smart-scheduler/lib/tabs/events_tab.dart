@@ -11009,7 +11009,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                       16,
                       8,
                       16,
-                      max(16, systemSafeAreaBottomInset(context)),
+                      max(20, systemSafeAreaBottomInset(context)),
                     ),
                     child: Container(
                       decoration: ShapeDecoration(
@@ -14061,7 +14061,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                       16,
                       8,
                       16,
-                      max(16, systemSafeAreaBottomInset(context)),
+                      max(20, systemSafeAreaBottomInset(context)),
                     ),
                     child: Column(
                       children: [
@@ -15141,7 +15141,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
                   16,
                   8,
                   16,
-                  max(16, systemSafeAreaBottomInset(context)),
+                  max(20, systemSafeAreaBottomInset(context)),
                 ),
                 children: [
                   Container(
