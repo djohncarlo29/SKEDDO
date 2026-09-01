@@ -445,11 +445,11 @@ class AppSearchBarState extends State<AppSearchBar>
                       child: HorizontalEdgeFade(
                         fadeColor: surfaceColor,
                         // The editable viewport spans from icon edge to icon
-                        // edge. Its content has one 16 px inset on each side,
+                        // edge. Its content has one 8 px inset on each side,
                         // and the fades begin exactly at those usable-field
                         // boundaries.
-                        leadingInset: kHorizontalFadeEdgeGap,
-                        trailingInset: kHorizontalFadeEdgeGap,
+                        leadingInset: kSearchFieldFadeEdgeGap,
+                        trailingInset: kSearchFieldFadeEdgeGap,
                         controller: widget.controller,
                         child: NativeTextInput(
                           controller: widget.controller,
@@ -475,8 +475,8 @@ class AppSearchBarState extends State<AppSearchBar>
                             height: kLineHeight,
                           ),
                            padding: const EdgeInsets.only(
-                             left: kHorizontalFadeEdgeGap,
-                             right: kHorizontalFadeEdgeGap,
+                             left: kSearchFieldFadeEdgeGap,
+                             right: kSearchFieldFadeEdgeGap,
                            ),
                           cursorColor: selectionTint,
                           selectionColor: selectionTint.withOpacity(0.20),
@@ -495,10 +495,9 @@ class AppSearchBarState extends State<AppSearchBar>
                 builder: (context, value, child) {
                   final bool hasText = value.text.isNotEmpty;
                   return SizedBox(
-                     // Reserve the icon plus its one 16 px outer inset. The
-                     // other 16 px belongs to the editable field's content
-                     // padding, so the usable field ends exactly 16 px before
-                     // the action icon.
+                     // Reserve the action icon plus its 16 px outer inset.
+                     // The editable field's own 8 px content padding supplies
+                     // the usable-field distance before the action icon.
                     width:
                         textScaler.scale(kSearchBarClearIconSize) +
                           kSearchBarHorizontalEdgePadding,

@@ -3,7 +3,7 @@ name: Horizontal fade layout bounds
 description: Layout constraints required by the shared one-line horizontal fade wrapper.
 ---
 
-The shared one-line horizontal fade wrapper must let its text-field child determine its natural height. Its overlay fades can be positioned against that resulting size; the wrapper must not use StackFit.expand or add a separate ClipRect when it may appear inside a modal Column or Stack. For search fields, the editable viewport spans icon edge to icon edge, while one 16px content inset per side defines the usable text area and the fade starts at those inner boundaries; never add a second pre-fade gap or clip.
+The shared one-line horizontal fade wrapper must let its text-field child determine its natural height. Its overlay fades can be positioned against that resulting size; the wrapper must not use StackFit.expand or add a separate ClipRect when it may appear inside a modal Column or Stack. For search fields, the editable viewport spans icon edge to icon edge, while one inner content inset per side defines the usable text area and the fade starts at those inner boundaries; never add a second pre-fade gap or clip.
 
 **Why:** a tight expansion in an unbounded vertical parent can fail the modal body layout while the sheet header remains visible, and a wrapper clip creates a second boundary instead of letting text run underneath the fade.
 
