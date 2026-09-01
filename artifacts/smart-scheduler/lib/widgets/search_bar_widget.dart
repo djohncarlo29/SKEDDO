@@ -15,6 +15,9 @@ import 'horizontal_edge_fade.dart';
 // stadium geometry has its own explicit 20 px token below.
 const double kSbCornerRadius = kCornerRadius;
 const kSbCursorColor = kAccentColor;
+// Inner breathing room between each search action icon and the usable,
+// fade-covered text field. The bar's outer edge padding remains 16 px.
+const double kSearchFieldFadeEdgeGap = 8.0;
 
 /// The TapRegion group that covers every text input in the app.  A tap on any
 /// widget in the group does NOT fire onTapOutside on other group members.
