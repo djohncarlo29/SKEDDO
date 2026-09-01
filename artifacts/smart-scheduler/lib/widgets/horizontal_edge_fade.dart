@@ -106,6 +106,15 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
 
   bool _handleScrollNotification(ScrollNotification notification) {
     if (notification.metrics.axis != Axis.horizontal) return false;
+    // A controller edit can briefly notify before EditableText finishes
+    // moving its viewport to the caret at the new end. Keep the trailing fade
+    // hidden during that handoff, but stop suppressing it as soon as the user
+    // deliberately drags away from the end. At that point the fade is useful
+    // again because content is genuinely hidden on the right.
+    if (notification is ScrollUpdateNotification &&
+        notification.dragDetails != null) {
+      _suppressTrailingAfterEdit = false;
+    }
     _sync(notification.metrics);
     return false;
   }
