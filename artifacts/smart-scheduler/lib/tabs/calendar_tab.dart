@@ -20,6 +20,7 @@ import '../widgets/native_text_input.dart';
 import '../widgets/text_editing_helpers.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/search_bar_widget.dart';
+import '../widgets/vertical_edge_fade.dart';
 import '../widgets/horizontal_edge_fade.dart';
 import '../widgets/action_panel.dart';
 import '../widgets/view_mode_icons.dart';
@@ -5732,6 +5733,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
   final _titleCtrl = TextEditingController();
   final _subtitleCtrl = TextEditingController();
   final _titleScrollCtrl = ScrollController();
+  final _subtitleScrollCtrl = ScrollController();
   final _titleFocus = FocusNode();
   final _subtitleFocus = FocusNode();
 
@@ -5740,6 +5742,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
   final _urlScrollCtrl = ScrollController();
   final _urlFocus = FocusNode();
   final _notesCtrl = TextEditingController();
+  final _notesScrollCtrl = ScrollController();
   final _notesFocus = FocusNode();
 
   // ── Expandable multiline fields ───────────────────────────────────────────
@@ -6122,6 +6125,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     _titleCtrl.dispose();
     _subtitleCtrl.dispose();
     _titleScrollCtrl.dispose();
+    _subtitleScrollCtrl.dispose();
     _locationTextCtrl.dispose();
     _locationScrollCtrl.dispose();
     _destCtrl.dispose();
@@ -6129,6 +6133,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     _urlCtrl.dispose();
     _urlScrollCtrl.dispose();
     _notesCtrl.dispose();
+    _notesScrollCtrl.dispose();
     _titleFocus.dispose();
     _subtitleFocus.dispose();
     _locationFocus.dispose();
@@ -6387,7 +6392,13 @@ class _NewEventSheetState extends State<_NewEventSheet>
             },
           ),
           multiline
-              ? textField
+              ? VerticalEdgeFade(
+                  fadeColor: resolvedSurface,
+                  fadeOnRubberbandWhenContentFits: true,
+                  controller: ctrl,
+                  scrollController: scrollController,
+                  child: textField,
+                )
               : HorizontalEdgeFade(
                   fadeColor: resolvedSurface,
                   fadeOnRubberbandWhenContentFits: true,
@@ -10432,6 +10443,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                               placeholder: 'Subtitle',
                               multiline: true,
                               maxLinesOverride: 10,
+                              scrollController: _subtitleScrollCtrl,
                             ),
                           ]),
                           const SizedBox(height: kModalCardGap),
@@ -10601,6 +10613,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                               multiline: true,
                               maxLinesOverride: 10,
                               minLinesOverride: 5,
+                              scrollController: _notesScrollCtrl,
                             ),
                           ]),
                         ],

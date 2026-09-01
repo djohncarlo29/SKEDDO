@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:html' as html;
 import 'dart:ui_web' as ui_web;
 import 'package:flutter/cupertino.dart';
 import '../app_theme.dart';
+import 'edge_fade_metrics.dart';
 import 'search_bar_widget.dart' show sbContextMenuActive;
 
 class NativeTextInput extends StatefulWidget {
@@ -15,6 +17,7 @@ class NativeTextInput extends StatefulWidget {
   // Kept in the shared API for parity with the mobile Cupertino field. The
   // browser input owns its native horizontal scroll position.
   final ScrollController? scrollController;
+  final ValueNotifier<EdgeFadeMetrics?>? metricsListenable;
   final Color cursorColor;
   final Color? selectionColor;
   final TextSelectionControls? selectionControls;
@@ -29,6 +32,7 @@ class NativeTextInput extends StatefulWidget {
     required this.placeholderStyle,
     required this.cursorColor,
     this.scrollController,
+    this.metricsListenable,
     this.selectionColor,
     this.selectionControls,
     this.multiline = false,
@@ -75,7 +79,9 @@ class _NativeTextInputState extends State<NativeTextInput> {
   late final String _viewType;
   late final html.HtmlElement _element;
   StreamSubscription<html.Event>? _inputSub;
+  StreamSubscription<html.Event>? _scrollSub;
   bool _updatingFromNative = false;
+  bool _metricsScheduled = false;
 
   @override
   void initState() {
@@ -88,6 +94,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
         : html.InputElement(type: 'text');
     _setNativeText(widget.controller.text);
     _inputSub = _element.onInput.listen((_) => _syncTextFromNative());
+    _scrollSub = _element.onScroll.listen((_) => _publishScrollMetrics());
     widget.controller.addListener(_syncTextToNative);
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (_) => _element);
     NativeTextInput._instances.add(this);
@@ -108,6 +115,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
       oldWidget.controller.removeListener(_syncTextToNative);
       widget.controller.addListener(_syncTextToNative);
       _setNativeText(widget.controller.text);
+      _schedulePublishScrollMetrics();
     }
   }
 
@@ -116,6 +124,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
     NativeTextInput._instances.remove(this);
     widget.controller.removeListener(_syncTextToNative);
     _inputSub?.cancel();
+    _scrollSub?.cancel();
     _element.remove();
     super.dispose();
   }
@@ -167,6 +176,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
         ..style.setProperty('-ms-overflow-style', 'none')
         ..style.setProperty('overscroll-behavior', 'contain');
     }
+    _schedulePublishScrollMetrics();
   }
 
   void _syncTextFromNative() {
@@ -178,6 +188,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
       selection: TextSelection.collapsed(offset: text.length),
     );
     _updatingFromNative = false;
+    _schedulePublishScrollMetrics();
   }
 
   void _syncTextToNative() {
@@ -185,6 +196,32 @@ class _NativeTextInputState extends State<NativeTextInput> {
     final text = widget.controller.text;
     if (_nativeText == text) return;
     _setNativeText(text);
+    _schedulePublishScrollMetrics();
+  }
+
+  void _schedulePublishScrollMetrics() {
+    if (_metricsScheduled) return;
+    _metricsScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _metricsScheduled = false;
+      if (mounted) _publishScrollMetrics();
+    });
+  }
+
+  void _publishScrollMetrics() {
+    final notifier = widget.metricsListenable;
+    if (notifier == null) return;
+    final viewport = _element.clientHeight.toDouble();
+    final content = _element.scrollHeight.toDouble();
+    final maxExtent = math.max(0.0, content - viewport);
+    final pixels = _element.scrollTop.toDouble();
+    notifier.value = EdgeFadeMetrics(
+      pixels: pixels,
+      minScrollExtent: 0,
+      maxScrollExtent: maxExtent,
+      extentBefore: math.max(0.0, pixels),
+      extentAfter: math.max(0.0, maxExtent - pixels),
+    );
   }
 
   String get _nativeText {

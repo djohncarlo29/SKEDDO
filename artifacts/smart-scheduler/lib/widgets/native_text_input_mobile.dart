@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'edge_fade_metrics.dart';
 
 /// Cupertino-native text input used across the app's search bars and the
 /// Notes tab note editor.
@@ -22,6 +23,7 @@ class NativeTextInput extends StatefulWidget {
   final TextStyle placeholderStyle;
   final EdgeInsets padding;
   final ScrollController? scrollController;
+  final ValueNotifier<EdgeFadeMetrics?>? metricsListenable;
   final Color cursorColor;
   final Color? selectionColor;
   final TextSelectionControls? selectionControls;
@@ -38,6 +40,7 @@ class NativeTextInput extends StatefulWidget {
     required this.placeholderStyle,
     required this.cursorColor,
     this.scrollController,
+    this.metricsListenable,
     this.selectionColor,
     this.selectionControls,
     this.multiline = false,

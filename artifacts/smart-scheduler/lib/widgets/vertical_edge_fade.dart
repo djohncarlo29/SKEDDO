@@ -1,0 +1,323 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'edge_fade_metrics.dart';
+
+/// Paints top and bottom fades over a multiline scrollable.
+///
+/// Like [HorizontalEdgeFade], this is driven by the scrollable's actual
+/// extents. Fitting text is fade-free at rest, but the corresponding opposite
+/// edge is revealed while the native bouncing scroll view is pulled past an
+/// edge.
+class VerticalEdgeFade extends StatefulWidget {
+  final Widget child;
+  final Color fadeColor;
+  final double fadeHeight;
+  final bool showBottomFade;
+  final double topInset;
+  final double bottomInset;
+  final TextEditingController? controller;
+  final ScrollController? scrollController;
+  final ValueListenable<EdgeFadeMetrics?>? metricsListenable;
+  final bool fadeWhenContentFits;
+  final bool fadeOnRubberbandWhenContentFits;
+  final bool showTopFadeWhenContentFits;
+
+  const VerticalEdgeFade({
+    super.key,
+    required this.child,
+    required this.fadeColor,
+    this.fadeHeight = 36,
+    this.showBottomFade = true,
+    this.topInset = 0,
+    this.bottomInset = 0,
+    this.controller,
+    this.scrollController,
+    this.metricsListenable,
+    this.fadeWhenContentFits = false,
+    this.fadeOnRubberbandWhenContentFits = false,
+    this.showTopFadeWhenContentFits = false,
+  });
+
+  @override
+  State<VerticalEdgeFade> createState() => _VerticalEdgeFadeState();
+}
+
+class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
+  bool _canScroll = false;
+  bool _resetting = false;
+  bool _showTopFade = false;
+  bool _showBottomFade = false;
+  TextEditingValue? _lastControllerValue;
+  ScrollController? _attachedScrollController;
+  int _editSyncTicket = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastControllerValue = widget.controller?.value;
+    widget.controller?.addListener(_handleControllerChanged);
+    widget.metricsListenable?.addListener(_handleExternalMetricsChanged);
+    _attachScrollController();
+  }
+
+  @override
+  void didUpdateWidget(covariant VerticalEdgeFade oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?.removeListener(_handleControllerChanged);
+      _lastControllerValue = widget.controller?.value;
+      widget.controller?.addListener(_handleControllerChanged);
+    }
+    if (oldWidget.metricsListenable != widget.metricsListenable) {
+      oldWidget.metricsListenable?.removeListener(_handleExternalMetricsChanged);
+      widget.metricsListenable?.addListener(_handleExternalMetricsChanged);
+    }
+    if (oldWidget.scrollController != widget.scrollController) {
+      _detachScrollController();
+      _attachScrollController();
+    }
+    if (oldWidget.fadeColor != widget.fadeColor ||
+        oldWidget.showBottomFade != widget.showBottomFade ||
+        oldWidget.fadeWhenContentFits != widget.fadeWhenContentFits ||
+        oldWidget.fadeOnRubberbandWhenContentFits !=
+            widget.fadeOnRubberbandWhenContentFits ||
+        oldWidget.showTopFadeWhenContentFits !=
+            widget.showTopFadeWhenContentFits) {
+      _resetting = true;
+      _canScroll = false;
+      _showTopFade = false;
+      _showBottomFade = false;
+      _resetting = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller?.removeListener(_handleControllerChanged);
+    widget.metricsListenable?.removeListener(_handleExternalMetricsChanged);
+    _detachScrollController();
+    super.dispose();
+  }
+
+  void _attachScrollController() {
+    final controller = widget.scrollController;
+    if (controller == null) return;
+    _attachedScrollController = controller;
+    controller.addListener(_handleScrollControllerChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _attachedScrollController != controller) return;
+      if (controller.hasClients) _sync(controller.position);
+    });
+  }
+
+  void _detachScrollController() {
+    _attachedScrollController?.removeListener(_handleScrollControllerChanged);
+    _attachedScrollController = null;
+  }
+
+  void _handleScrollControllerChanged() {
+    final controller = _attachedScrollController;
+    if (controller?.hasClients != true) return;
+    _sync(controller!.position);
+  }
+
+  void _handleExternalMetricsChanged() {
+    final metrics = widget.metricsListenable?.value;
+    if (metrics != null) _sync(metrics);
+  }
+
+  void _handleControllerChanged() {
+    final controller = widget.controller;
+    if (controller == null) return;
+    final value = controller.value;
+    final previousValue = _lastControllerValue;
+    _lastControllerValue = value;
+    final textChanged = previousValue?.text != value.text;
+    final selectionChanged = previousValue?.selection != value.selection;
+    if (!textChanged && !selectionChanged) return;
+
+    if (value.text.isEmpty) {
+      _editSyncTicket++;
+      if (_canScroll || _showTopFade || _showBottomFade) {
+        if (mounted) {
+          setState(() {
+            _canScroll = false;
+            _showTopFade = false;
+            _showBottomFade = false;
+          });
+        }
+      }
+    }
+    _scheduleEditSync(value);
+  }
+
+  void _scheduleEditSync(TextEditingValue editedValue) {
+    final ticket = ++_editSyncTicket;
+
+    void syncAfterLayout() {
+      if (!mounted || ticket != _editSyncTicket) return;
+      final controller = _attachedScrollController;
+      if (controller?.hasClients != true) return;
+      final position = controller!.position;
+      if (!position.hasContentDimensions) return;
+
+      final value = widget.controller?.value;
+      if (value?.text.isEmpty == true) {
+        if (position.pixels != position.minScrollExtent) {
+          position.jumpTo(position.minScrollExtent);
+        }
+      } else if (value != null &&
+          value.selection.isValid &&
+          value.selection.isCollapsed &&
+          value.selection.extentOffset >= value.text.length &&
+          position.pixels != position.maxScrollExtent) {
+        // Pasting or appending at the end must reveal the newly inserted tail.
+        position.jumpTo(position.maxScrollExtent);
+      }
+      _sync(position);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      syncAfterLayout();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        syncAfterLayout();
+      });
+    });
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) return false;
+    _sync(notification.metrics);
+    return false;
+  }
+
+  bool _handleMetricsNotification(ScrollMetricsNotification notification) {
+    if (notification.metrics.axis == Axis.vertical) {
+      _sync(notification.metrics);
+    }
+    return false;
+  }
+
+  void _sync(dynamic metrics) {
+    if (_resetting) return;
+    if (widget.controller?.text.isEmpty == true) {
+      if (_canScroll || _showTopFade || _showBottomFade) {
+        if (!mounted) return;
+        setState(() {
+          _canScroll = false;
+          _showTopFade = false;
+          _showBottomFade = false;
+        });
+      }
+      return;
+    }
+
+    final canScroll = metrics.maxScrollExtent > 1.0;
+    final fadeEdges =
+        canScroll ||
+        widget.fadeWhenContentFits ||
+        widget.fadeOnRubberbandWhenContentFits;
+    final isPulledPastStart =
+        metrics.pixels < metrics.minScrollExtent - 1.0;
+    final isPulledPastEnd = metrics.pixels > metrics.maxScrollExtent + 1.0;
+    final showTop = fadeEdges &&
+        (canScroll
+            ? metrics.extentBefore > 1.0
+            : widget.showTopFadeWhenContentFits || isPulledPastEnd);
+    final showBottom = fadeEdges &&
+        widget.showBottomFade &&
+        (canScroll
+            ? metrics.extentAfter > 1.0
+            : widget.fadeWhenContentFits || isPulledPastStart);
+
+    if (_canScroll == canScroll &&
+        _showTopFade == showTop &&
+        _showBottomFade == showBottom) {
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _canScroll = canScroll;
+      _showTopFade = showTop;
+      _showBottomFade = showBottom;
+    });
+  }
+
+  Widget _fade({
+    required bool visible,
+    required bool opaqueAtStart,
+    double solidTailHeight = 0,
+  }) {
+    if (!visible) return const SizedBox.shrink();
+    final totalHeight = widget.fadeHeight + solidTailHeight;
+    final hasOpaqueTail = solidTailHeight > 0;
+    final fadeEnd =
+        (widget.fadeHeight / totalHeight).clamp(0.0, 1.0).toDouble();
+    return IgnorePointer(
+      child: SizedBox(
+        height: totalHeight,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: opaqueAtStart
+                  ? [
+                      widget.fadeColor,
+                      widget.fadeColor.withValues(alpha: 0),
+                    ]
+                  : hasOpaqueTail
+                  ? [
+                      widget.fadeColor.withValues(alpha: 0),
+                      widget.fadeColor,
+                      widget.fadeColor,
+                    ]
+                  : [
+                      widget.fadeColor.withValues(alpha: 0),
+                      widget.fadeColor,
+                    ],
+              stops: !opaqueAtStart && hasOpaqueTail
+                  ? [0.0, fadeEnd, 1.0]
+                  : null,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: _handleScrollNotification,
+      child: NotificationListener<ScrollMetricsNotification>(
+        onNotification: _handleMetricsNotification,
+        child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              widget.child,
+              Positioned(
+                left: 0,
+                right: 0,
+                top: widget.topInset,
+                child: _fade(
+                  visible: _showTopFade,
+                  opaqueAtStart: true,
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _fade(
+                  visible: _showBottomFade,
+                  opaqueAtStart: false,
+                  solidTailHeight: widget.bottomInset,
+                ),
+              ),
+            ],
+          ),
+      ),
+    );
+  }
+}

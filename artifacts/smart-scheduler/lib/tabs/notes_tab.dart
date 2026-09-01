@@ -21,6 +21,8 @@ import '../widgets/action_panel.dart';
 import '../widgets/native_text_input.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/search_bar_widget.dart';
+import '../widgets/vertical_edge_fade.dart';
+import '../widgets/edge_fade_metrics.dart';
 import '../ai/search/search_service.dart';
 import '../services/event_store.dart' show EventStore;
 import 'events_tab.dart'
@@ -179,6 +181,8 @@ class NotesTab extends StatefulWidget {
 
 class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
   final _noteController = TextEditingController();
+  final _noteScrollController = ScrollController();
+  final _noteMetrics = ValueNotifier<EdgeFadeMetrics?>(null);
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
   final _noteInputKey = GlobalKey<_NoteInputCardState>();
@@ -276,6 +280,8 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     _searchController.removeListener(_onSearchTextChanged);
     _scrollController.dispose();
     _noteController.dispose();
+    _noteScrollController.dispose();
+    _noteMetrics.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -593,6 +599,8 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                       _NoteInputCard(
                         key: _noteInputKey,
                         controller: _noteController,
+                        scrollController: _noteScrollController,
+                        metricsListenable: _noteMetrics,
                       ),
                       const SizedBox(height: 16),
                       const _SaveEventButton(),
@@ -693,7 +701,15 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
 // ─────────────────────────────────────────────────────────────────────────────
 class _NoteInputCard extends StatefulWidget {
   final TextEditingController controller;
-  const _NoteInputCard({super.key, required this.controller});
+  final ScrollController scrollController;
+  final ValueNotifier<EdgeFadeMetrics?> metricsListenable;
+
+  const _NoteInputCard({
+    super.key,
+    required this.controller,
+    required this.scrollController,
+    required this.metricsListenable,
+  });
 
   @override
   State<_NoteInputCard> createState() => _NoteInputCardState();
@@ -1302,33 +1318,43 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                       _attachMenuOpen ||
                                       (!_noteFocused &&
                                           widget.controller.text.isEmpty),
-                                  child: NativeTextInput(
+                                  child: VerticalEdgeFade(
+                                    fadeColor: surfaceColor,
+                                    fadeOnRubberbandWhenContentFits: true,
                                     controller: widget.controller,
-                                    placeholder: 'Type your schedule here...',
-                                    multiline: true,
-                                    onFocusChanged: (focused) =>
-                                        setState(() => _noteFocused = focused),
-                                    style: TextStyle(
-                                      inherit: false,
-                                      fontSize: 17,
-                                      color: primaryLabel,
-                                      fontFamily: 'SFProText',
-                                      fontWeight: FontWeight.w400,
-                                      fontStyle: FontStyle.normal,
-                                      letterSpacing: kTracking16,
-                                      height: kLineHeight,
+                                    scrollController: widget.scrollController,
+                                    metricsListenable: widget.metricsListenable,
+                                    child: NativeTextInput(
+                                      controller: widget.controller,
+                                      placeholder: 'Type your schedule here...',
+                                      multiline: true,
+                                      scrollController: widget.scrollController,
+                                      metricsListenable:
+                                          widget.metricsListenable,
+                                      onFocusChanged: (focused) =>
+                                          setState(() => _noteFocused = focused),
+                                      style: TextStyle(
+                                        inherit: false,
+                                        fontSize: 17,
+                                        color: primaryLabel,
+                                        fontFamily: 'SFProText',
+                                        fontWeight: FontWeight.w400,
+                                        fontStyle: FontStyle.normal,
+                                        letterSpacing: kTracking16,
+                                        height: kLineHeight,
+                                      ),
+                                      placeholderStyle: TextStyle(
+                                        inherit: false,
+                                        color: secondaryLabel,
+                                        fontSize: 17,
+                                        fontFamily: 'SFProText',
+                                        fontWeight: FontWeight.w400,
+                                        fontStyle: FontStyle.normal,
+                                        letterSpacing: kTracking16,
+                                        height: kLineHeight,
+                                      ),
+                                      cursorColor: resolveAccentColor(context),
                                     ),
-                                    placeholderStyle: TextStyle(
-                                      inherit: false,
-                                      color: secondaryLabel,
-                                      fontSize: 17,
-                                      fontFamily: 'SFProText',
-                                      fontWeight: FontWeight.w400,
-                                      fontStyle: FontStyle.normal,
-                                      letterSpacing: kTracking16,
-                                      height: kLineHeight,
-                                    ),
-                                    cursorColor: resolveAccentColor(context),
                                   ),
                                 ),
                                 if (!_noteFocused &&
