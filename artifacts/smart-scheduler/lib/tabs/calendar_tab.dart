@@ -5609,59 +5609,56 @@ class _AttachmentFile {
   });
 }
 
-/// Paints filenames without giving a scrolling viewport permission to
-/// hard-clip the last glyph. Fitting names use the entire available width;
-/// genuinely overflowing names receive a two-sided alpha fade.
-class _AttachmentFilename extends StatelessWidget {
+/// Gives every filename its own horizontal rubberbandable viewport. The
+/// shared edge fade remains overflow-driven, so a name that is fully visible
+/// does not show a fade at either end.
+class _AttachmentFilename extends StatefulWidget {
   final String name;
   final TextStyle style;
+  final Color fadeColor;
 
   const _AttachmentFilename({
     super.key,
     required this.name,
     required this.style,
+    required this.fadeColor,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final textPainter = TextPainter(
-          text: TextSpan(text: name, style: style),
-          maxLines: 1,
-          textDirection: Directionality.of(context),
-        )..layout();
-        final availableWidth = constraints.maxWidth;
-        final overflows = textPainter.width > availableWidth + 0.1;
-        final text = SizedBox(
-          width: availableWidth,
-          child: Text(
-            name,
-            style: style,
-            maxLines: 1,
-            softWrap: false,
-            overflow: TextOverflow.clip,
-          ),
-        );
-        if (!overflows) return text;
+  State<_AttachmentFilename> createState() => _AttachmentFilenameState();
+}
 
-        const edgeFadeWidth = 28.0;
-        final fadeWidth = edgeFadeWidth.clamp(0.0, availableWidth / 2);
-        final fadeStart = fadeWidth / availableWidth;
-        return ShaderMask(
-          blendMode: BlendMode.dstIn,
-          shaderCallback: (bounds) => LinearGradient(
-            colors: const [
-              Color(0x00FFFFFF),
-              Color(0xFFFFFFFF),
-              Color(0xFFFFFFFF),
-              Color(0x00FFFFFF),
-            ],
-            stops: [0.0, fadeStart, 1.0 - fadeStart, 1.0],
-          ).createShader(bounds),
-          child: text,
-        );
-      },
+class _AttachmentFilenameState extends State<_AttachmentFilename> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return HorizontalEdgeFade(
+      fadeColor: widget.fadeColor,
+      // Do not opt into fades when content fits: the viewport is still
+      // always-scrollable for rubberbanding, but both ends stay clear when
+      // the complete filename is visible.
+      scrollController: _scrollController,
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+        child: Text(widget.name, style: widget.style, maxLines: 1),
+      ),
     );
   }
 }
@@ -9354,6 +9351,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 key: ValueKey(file),
                 name: file.name,
                 style: _kLabelStyle,
+                fadeColor: resolveThemeColor(kModalCard, context),
               ),
             ),
             const SizedBox(width: kHorizontalFadeEdgeGap),
