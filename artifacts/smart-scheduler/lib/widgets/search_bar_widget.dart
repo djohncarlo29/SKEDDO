@@ -430,7 +430,9 @@ class AppSearchBarState extends State<AppSearchBar>
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              // Match the header-title scroll viewport: the text viewport
+              // begins a full 16 px after the visible search icon.
+              const SizedBox(width: kHorizontalFadeEdgeGap),
               Expanded(
                 child: TapRegion(
                   groupId: kSbGroupId,
@@ -442,14 +444,12 @@ class AppSearchBarState extends State<AppSearchBar>
                       selectionColor: selectionTint.withOpacity(0.20),
                       child: HorizontalEdgeFade(
                         fadeColor: surfaceColor,
-                        // The search icon leaves an 8 px gap before the
-                        // field, so another 8 px puts the opaque fade edge
-                        // 16 px from the icon. The clear icon begins at the
-                        // field boundary, so its opaque fade edge is inset by
-                        // the full 16 px. The fade is not clipped at the
-                        // field boundary.
-                        leadingInset: kHorizontalFadeEdgeGap - 8,
-                        trailingInset: kHorizontalFadeEdgeGap,
+                        // The fade is flush with the scrolling viewport,
+                        // like HeaderTitleScroller. The viewport itself
+                        // starts 16 px after the search icon and ends 16 px
+                        // before the clear/mic action.
+                        leadingInset: 0,
+                        trailingInset: 0,
                         controller: widget.controller,
                         child: NativeTextInput(
                           controller: widget.controller,
@@ -492,13 +492,12 @@ class AppSearchBarState extends State<AppSearchBar>
                 builder: (context, value, child) {
                   final bool hasText = value.text.isNotEmpty;
                   return SizedBox(
-                    // Reserve space for the largest trailing icon at the
-                    // current text scale plus the fixed edge inset. This
-                    // keeps the inset fixed without constraining a scaled
-                    // icon inside the old fixed-width slot.
+                     // Reserve the icon plus two 16 px spaces: one between
+                     // the scrolling viewport and the action, and one between
+                     // the action and the search-bar's outer edge.
                     width:
                         textScaler.scale(kSearchBarClearIconSize) +
-                        kSearchBarHorizontalEdgePadding,
+                         (kSearchBarHorizontalEdgePadding * 2),
                     height: textLineHeight,
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 200),
