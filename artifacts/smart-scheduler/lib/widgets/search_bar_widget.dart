@@ -649,18 +649,19 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
           return SizedBox(
             width: _kFullWidth * t,
             height: 40,
-            // Keep the glass lens at its authored 50 px slot while the
-            // surrounding viewport reveals it.  Letting the animated width
-            // become the lens' layout width makes LiquidGlassView capture a
-            // squeezed/partially clipped backdrop; that is especially visible
-            // when a sheet is stacked above the tab and the button is
-            // composited through the occluding route.
-            child: ClipRect(
-              child: OverflowBox(
+            // Keep the glass lens at its authored 50 px slot.  Do not clip it
+            // to this animated layout slot: ClipRect creates a visible
+            // rectangle around the circular capture surface and also clips
+            // the GelBloomButton's intentional overshoot.  Scaling the fixed
+            // lens gives us a clean reveal while preserving its capture size.
+            child: OverflowBox(
+              alignment: Alignment.centerLeft,
+              minWidth: _kFullWidth,
+              maxWidth: _kFullWidth,
+              child: Transform.scale(
                 alignment: Alignment.centerLeft,
-                minWidth: _kFullWidth,
-                maxWidth: _kFullWidth,
-                child: Opacity(opacity: t, child: child),
+                scale: t,
+                child: child,
               ),
             ),
           );
