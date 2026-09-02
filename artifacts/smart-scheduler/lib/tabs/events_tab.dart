@@ -2566,10 +2566,8 @@ class EventsTabState extends State<EventsTab>
       subtitle:
           'To edit an archived built-in smart category, you\'ll need to '
           'recover it. This will move it back to your pinned categories list.',
-      actionLabel: 'Unarchive',
+      actionLabel: 'Recover',
       onAction: () => _unarchiveSmartCategory(label),
-      destructiveActionLabel: 'Delete Category',
-      onDestructiveAction: () => _requestDeleteArchivedSmartCategory(label),
     );
   }
 
@@ -2645,27 +2643,6 @@ class EventsTabState extends State<EventsTab>
     } else {
       _deleteUserCategory(category);
     }
-  }
-
-  void _requestDeleteArchivedSmartCategory(String label) async {
-    final confirmed = await showDeleteConfirmationSheet(
-      context,
-      title: 'Delete the category "${_categoryDisplayName(label)}"?',
-    );
-    if (!mounted || confirmed != true) return;
-    if (!_archivedSmartCategories.contains(label)) return;
-    setState(() {
-      _archivedSmartCategories.remove(label);
-      _recentlyDeletedSmartCategories
-        ..remove(label)
-        ..add(label);
-      _setUtilityDate('deleted-smart', label);
-      _gridCombinedOrder.remove(label);
-      _removeUtilityDate('archived-smart', label);
-      _syncUtilityVisibilityAndResurface();
-    });
-    _saveCategories();
-    _scheduleUtilityExitIfEmpty();
   }
 
   void _requestDeleteArchivedCategory(_UserCategory category) async {
