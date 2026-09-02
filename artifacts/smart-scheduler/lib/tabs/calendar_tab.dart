@@ -465,6 +465,9 @@ class CalendarTabState extends State<CalendarTab>
   // ── Search overlay ────────────────────────────────────────────────────────────
   final TextEditingController _searchCtrl = TextEditingController();
   final _searchBarKey = GlobalKey<AppSearchBarState>();
+  // Keep the Liquid Glass cancel control alive when the search row moves
+  // between the calendar content and its full-screen search overlay.
+  final _searchCancelKey = GlobalKey();
   bool _greyActive = false;
   bool _greyFadeIn = false;
   bool _searchFocused = false;
@@ -1505,6 +1508,7 @@ class CalendarTabState extends State<CalendarTab>
             ),
           ),
           SearchCancelButton(
+            key: _searchCancelKey,
             searchFocused: true,
             onTap: cancelSearch,
             animation: widget.searchModeAnimation,

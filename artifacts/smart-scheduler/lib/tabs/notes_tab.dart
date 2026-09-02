@@ -191,6 +191,9 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
   // Without this key, the element is remounted on every search-mode transition,
   // which kills any in-progress STT session (onPartial/onFinal see !mounted).
   final _searchBarKey = GlobalKey<AppSearchBarState>();
+  // Keep the Liquid Glass cancel control alive when the search row moves
+  // between the scrollable sliver and the off-screen search overlay.
+  final _searchCancelKey = GlobalKey();
   bool _searchFocused = false;
   bool _activatedFromOffScreen = false;
   double _savedScrollOffset = 0;
@@ -514,6 +517,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
             ),
           ),
           SearchCancelButton(
+            key: _searchCancelKey,
             animation: widget.searchModeAnimation,
             searchFocused: _searchFocused,
             onTap: _cancelSearch,
