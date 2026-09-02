@@ -50,6 +50,7 @@
 - [Event creation save architecture](event-creation-save-architecture.md) — all ScheduledEvent fields, picker constraints, recurrence storage rule, alert timing logic, and normalisation decisions.
 - [Deleted category recovery](deleted-category-recovery.md) — recovering a category restores its structure only; events remain in Uncategorized by product decision.
 - [Category archive choices](category-archive-choices.md) — contentful categories ask whether to archive intact or move events out and archive only the category.
+- [Group deletion confirmation](group-deletion-confirmation.md) — removing a group is immediate; deleting its categories requires a second confirmation.
 - [EventStore date-parse concatenation bug](event-store-date-parse-bug.md) — parse date-only in create(); appending normTime breaks _tryMonthDay regex → absoluteDate null → Unscheduled.
 - [AnimatedPositioned per-frame lag](animated-positioned-per-frame-lag.md) — never animate position on a per-frame drag variable; use Positioned+AnimatedContainer to separate finger-tracking (no anim) from width grow/shrink (animated).
 - [HNSW vector index Dart](hnsw-dart-notes.md) — brute-force path < 500 entries; SplayTreeMap from dart:collection causes "not defined" errors in test runner; use sorted List<_Candidate> instead.

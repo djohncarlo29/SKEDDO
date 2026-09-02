@@ -2436,6 +2436,17 @@ class EventsTabState extends State<EventsTab>
       case _DeleteGroupChoice.only:
         _ungroupGroup(group);
       case _DeleteGroupChoice.withCategories:
+        final confirmed = await showDeleteConfirmationSheet(
+          context,
+          title: 'Delete group "${group.name}" and its categories?',
+          subtitle:
+              'The group will be removed. Its categories will move to '
+              'Recently Deleted, and their events will move to Uncategorized. '
+              'You can recover the categories later, but the group itself '
+              'will not be restored.',
+          actionLabel: 'Delete Group and Categories',
+        );
+        if (!mounted || confirmed != true) return;
         _deleteGroupAndCategories(group);
     }
   }
@@ -10216,7 +10227,8 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'Choose whether to keep or delete the group and their categories.',
+                        'Choose whether to remove only the group and keep its '
+                        'categories, or delete the group and its categories.',
                         style: TextStyle(
                           inherit: false,
                           fontSize: 15,
@@ -10229,7 +10241,7 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                       ),
                       const SizedBox(height: 24),
                       button(
-                        label: 'Delete Group Only',
+                        label: 'Remove Group Only',
                         labelColor: primary,
                         onTap: () => onResult(_DeleteGroupChoice.only),
                       ),
