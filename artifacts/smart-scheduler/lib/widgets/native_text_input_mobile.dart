@@ -22,6 +22,10 @@ class NativeTextInput extends StatefulWidget {
   final TextStyle style;
   final TextStyle placeholderStyle;
   final EdgeInsets padding;
+  // Optional minimum multiline viewport height expressed in lines. When set,
+  // this takes the place of `expands` so a fixed-height field still has a
+  // full-sized editable viewport while its text is short.
+  final int? minLines;
   final ScrollController? scrollController;
   final ValueNotifier<EdgeFadeMetrics?>? metricsListenable;
   final Color cursorColor;
@@ -39,6 +43,7 @@ class NativeTextInput extends StatefulWidget {
     required this.style,
     required this.placeholderStyle,
     required this.cursorColor,
+    this.minLines,
     this.scrollController,
     this.metricsListenable,
     this.selectionColor,
@@ -228,9 +233,9 @@ class _NativeTextInputState extends State<NativeTextInput> {
           scrollController: widget.scrollController,
           style: widget.style,
           decoration: null,
-          expands: widget.multiline,
+           expands: widget.multiline && widget.minLines == null,
           maxLines: widget.multiline ? null : 1,
-          minLines: null,
+           minLines: widget.multiline ? widget.minLines : null,
           scrollPhysics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),

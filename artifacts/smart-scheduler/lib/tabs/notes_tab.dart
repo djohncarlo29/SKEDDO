@@ -1329,6 +1329,13 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                       controller: widget.controller,
                                       placeholder: 'Type your schedule here...',
                                       multiline: true,
+                                      // The card stays 155 px tall. Seven lines
+                                      // at the field's 17 px / 1.3 line-height
+                                      // fill that viewport, preventing the
+                                      // editable area from collapsing to the
+                                      // intrinsic height of short text during
+                                      // a downward rubber-band.
+                                      minLines: 7,
                                       scrollController: widget.scrollController,
                                       metricsListenable:
                                           widget.metricsListenable,

@@ -14,6 +14,9 @@ class NativeTextInput extends StatefulWidget {
   final TextStyle style;
   final TextStyle placeholderStyle;
   final EdgeInsets padding;
+  // Kept in the shared API for parity with the mobile implementation. The
+  // HTML textarea already receives the fixed viewport height from its parent.
+  final int? minLines;
   // Kept in the shared API for parity with the mobile Cupertino field. The
   // browser input owns its native horizontal scroll position.
   final ScrollController? scrollController;
@@ -31,6 +34,7 @@ class NativeTextInput extends StatefulWidget {
     required this.style,
     required this.placeholderStyle,
     required this.cursorColor,
+    this.minLines,
     this.scrollController,
     this.metricsListenable,
     this.selectionColor,
