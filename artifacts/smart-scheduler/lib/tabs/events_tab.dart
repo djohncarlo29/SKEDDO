@@ -2619,7 +2619,7 @@ class EventsTabState extends State<EventsTab>
     if (_isSystemUtilityCategory(category)) return;
     final confirmed = await showDeleteConfirmationSheet(
       context,
-      title: 'Delete Category "${_categoryDisplayName(category.name)}"?',
+      title: 'Delete the category "${_categoryDisplayName(category.name)}"?',
     );
     if (!mounted || confirmed != true) return;
     if (_pinnedUserCategories.contains(category)) {
@@ -2632,7 +2632,7 @@ class EventsTabState extends State<EventsTab>
   void _requestDeleteArchivedSmartCategory(String label) async {
     final confirmed = await showDeleteConfirmationSheet(
       context,
-      title: 'Delete Category "${_categoryDisplayName(label)}"?',
+      title: 'Delete the category "${_categoryDisplayName(label)}"?',
     );
     if (!mounted || confirmed != true) return;
     if (!_archivedSmartCategories.contains(label)) return;
@@ -2655,7 +2655,7 @@ class EventsTabState extends State<EventsTab>
     if (!isArchived) return;
     final confirmed = await showDeleteConfirmationSheet(
       context,
-      title: 'Delete Category "${_categoryDisplayName(category.name)}"?',
+      title: 'Delete the category "${_categoryDisplayName(category.name)}"?',
     );
     if (!mounted || confirmed != true) return;
     EventStore.instance.reassignCategories(fromCategoryIds: {category.id});
@@ -2681,9 +2681,7 @@ class EventsTabState extends State<EventsTab>
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title: 'Delete ${_eventDisplayName(event.title)}?',
-      subtitle:
-          'This is a permanent action. Are you sure you want to delete this '
-          'item?',
+      subtitle: permanentDeleteConfirmationSubtitle(),
       actionLabel: 'Permanently Delete',
     );
     if (!mounted || confirmed != true) return;
@@ -2700,9 +2698,7 @@ class EventsTabState extends State<EventsTab>
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title: 'Delete ${_categoryDisplayName(category.name)}?',
-      subtitle:
-          'This is a permanent action. Are you sure you want to delete this '
-          'item?',
+      subtitle: permanentDeleteConfirmationSubtitle(),
       actionLabel: 'Permanently Delete',
     );
     if (!mounted || confirmed != true) return;
@@ -15319,7 +15315,17 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
     Navigator.of(context).pop();
   }
 
-  void _deleteSection(int originalIndex) {
+  Future<void> _deleteSection(int originalIndex) async {
+    if (!_sectionOrder.contains(originalIndex) ||
+        _deletingSections.contains(originalIndex)) {
+      return;
+    }
+    final sectionName = _sectionDisplayName(widget.sectionNames[originalIndex]);
+    final confirmed = await showDeleteConfirmationSheet(
+      context,
+      title: 'Delete the section "$sectionName"?',
+    );
+    if (!mounted || confirmed != true) return;
     if (!_sectionOrder.contains(originalIndex) ||
         _deletingSections.contains(originalIndex)) {
       return;
