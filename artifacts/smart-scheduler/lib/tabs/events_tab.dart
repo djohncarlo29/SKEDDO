@@ -2526,7 +2526,7 @@ class EventsTabState extends State<EventsTab>
     _UserCategory cat, {
     required bool deleteEvents,
   }) {
-    if (_isSystemUtilityCategory(cat) || _isProtectedEventCategory(cat)) return;
+    if (_isSystemUtilityCategory(cat)) return;
     setState(() => _deletingFromList.add(cat));
     Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
@@ -2552,7 +2552,7 @@ class EventsTabState extends State<EventsTab>
     _UserCategory cat, {
     required bool deleteEvents,
   }) {
-    if (_isSystemUtilityCategory(cat) || _isProtectedEventCategory(cat)) return;
+    if (_isSystemUtilityCategory(cat)) return;
     setState(() => _deletingFromGrid.add(cat));
     Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
@@ -2678,10 +2678,7 @@ class EventsTabState extends State<EventsTab>
   }
 
   void _requestDeleteCategory(_UserCategory category) async {
-    if (_isSystemUtilityCategory(category) ||
-        _isProtectedEventCategory(category)) {
-      return;
-    }
+    if (_isSystemUtilityCategory(category)) return;
     final choice = await _ArchiveCategorySheet.show(
       context,
       categoryName: _categoryDisplayName(category.name),
@@ -2786,10 +2783,53 @@ class EventsTabState extends State<EventsTab>
   /// If the selected default category is being deleted, fall back before any
   /// event reassignment occurs so those events never point at the deleted ID.
   void _ensureDefaultCategoryAvailable(Set<String> deletingIds) {
-    if (!deletingIds.contains(appDefaultCategoryId)) return;
-    appDefaultCategoryNotifier.value = kDefaultCategoryFallbackId;
-    appDefaultCategoryLabelNotifier.value = 'Uncategorized';
-    saveAppSetting('Default Category', 'Uncategorized');
+    final currentId = appDefaultCategoryId;
+    final activeCandidates = <_UserCategory>[];
+    final seenIds = <String>{};
+    for (final category in [..._userCategories, ..._pinnedUserCategories]) {
+      if (category.archived ||
+          _isSystemUtilityCategory(category) ||
+          deletingIds.contains(category.id) ||
+          !seenIds.add(category.id)) {
+        continue;
+      }
+      activeCandidates.add(category);
+    }
+    if (deletingIds.isNotEmpty &&
+        !deletingIds.contains(currentId) &&
+        activeCandidates.any((category) => category.id == currentId)) {
+      return;
+    }
+    if (deletingIds.isEmpty &&
+        activeCandidates.any((category) => category.id == currentId)) {
+      return;
+    }
+
+    final replacement = activeCandidates.firstOrNull;
+    if (replacement != null) {
+      appDefaultCategoryNotifier.value = replacement.id;
+      appDefaultCategoryLabelNotifier.value = replacement.name;
+      saveAppSetting('Default Category', replacement.name);
+      return;
+    }
+
+    // Both install-time categories can be deleted. If no normal category is
+    // left, create a fresh ordinary fallback so future events still have a
+    // valid category instead of pointing at a deleted record.
+    final fallback = _UserCategory(
+      id: 'usr-default-${DateTime.now().millisecondsSinceEpoch}',
+      name: 'Uncategorized',
+      description: 'For events without a specific category',
+      count: 0,
+      icon: CupertinoIcons.folder,
+    );
+    _userCategories.add(fallback);
+    if (!_listTopOrder.contains(fallback.id)) {
+      _listTopOrder.add(fallback.id);
+    }
+    appDefaultCategoryNotifier.value = fallback.id;
+    appDefaultCategoryLabelNotifier.value = fallback.name;
+    saveAppSetting('Default Category', fallback.name);
   }
 
   void _removeCategoryEvents(
@@ -5233,7 +5273,6 @@ class EventsTabState extends State<EventsTab>
   /// preserve or move.
   void _archiveCategory(_UserCategory cat) {
     if (_isSystemUtilityCategory(cat) ||
-        _isProtectedEventCategory(cat) ||
         _archivingFromList.contains(cat) ||
         _archivingFromGrid.contains(cat)) {
       return;
@@ -5270,7 +5309,7 @@ class EventsTabState extends State<EventsTab>
   /// deleting it. Phase 1 plays a soft slide+fade+collapse; phase 2 flips the
   /// archived flag once that finishes (row/tile is already invisible by then).
   void _archiveCategoryAfterChoice(_UserCategory cat) {
-    if (_isSystemUtilityCategory(cat) || _isProtectedEventCategory(cat)) return;
+    if (_isSystemUtilityCategory(cat)) return;
     _ensureDefaultCategoryAvailable({cat.id});
     final inGrid = _pinnedUserCategories.contains(cat);
     setState(() {
@@ -6366,19 +6405,7 @@ class EventsTabState extends State<EventsTab>
             ..addAll(rawDeletedSmart);
         }
         _ensureSystemUtilityCategories();
-        final activeCategoryIds = {
-          ..._userCategories.where((category) => !category.archived).map(
-                (category) => category.id,
-              ),
-          ..._pinnedUserCategories
-              .where((category) => !category.archived)
-              .map((category) => category.id),
-        };
-        if (!activeCategoryIds.contains(appDefaultCategoryId)) {
-          appDefaultCategoryNotifier.value = kDefaultCategoryFallbackId;
-          appDefaultCategoryLabelNotifier.value = 'Uncategorized';
-          saveAppSetting('Default Category', 'Uncategorized');
-        }
+        _ensureDefaultCategoryAvailable({});
         if (rawSmartColors != null) {
           final decoded = jsonDecode(rawSmartColors) as Map<String, dynamic>;
           _smartCategoryColors
@@ -6517,18 +6544,22 @@ class EventsTabState extends State<EventsTab>
     });
   }
 
-  /// Adds permanent system categories to data saved by older versions and
-  /// restores their canonical metadata if an old record exists. Uncategorized
-  /// and Unnamed are protected so the default-category fallback always exists.
+  /// Adds missing install-time categories to data saved by older versions.
+  /// Unnamed and Uncategorized become ordinary categories after installation:
+  /// existing records, including archived records, keep all user edits, and
+  /// deleted records stay deleted.
   void _ensureSystemUtilityCategories() {
-    for (final systemCategory in _kUserCategories.where(
-      (category) =>
-          _isSystemUtilityCategory(category) ||
-          _isProtectedEventCategory(category),
-    )) {
-      _recentlyDeletedCategories.removeWhere(
+    for (final systemCategory in _kUserCategories) {
+      final isUtility = _isSystemUtilityCategory(systemCategory);
+      final isDeleted = _recentlyDeletedCategories.any(
         (category) => category.id == systemCategory.id,
       );
+      if (!isUtility && isDeleted) continue;
+      if (isUtility) {
+        _recentlyDeletedCategories.removeWhere(
+          (category) => category.id == systemCategory.id,
+        );
+      }
       final userIndex = _userCategories.indexWhere(
         (category) => category.id == systemCategory.id,
       );
@@ -6536,12 +6567,16 @@ class EventsTabState extends State<EventsTab>
         (category) => category.id == systemCategory.id,
       );
       if (pinnedIndex != -1) {
-        _pinnedUserCategories[pinnedIndex] = systemCategory;
-        _userCategories.removeWhere(
-          (category) => category.id == systemCategory.id,
-        );
+        if (isUtility) {
+          _pinnedUserCategories[pinnedIndex] = systemCategory;
+          _userCategories.removeWhere(
+            (category) => category.id == systemCategory.id,
+          );
+        }
       } else if (userIndex != -1) {
-        _userCategories[userIndex] = systemCategory;
+        if (isUtility) {
+          _userCategories[userIndex] = systemCategory;
+        }
       } else {
         _userCategories.add(systemCategory);
       }
@@ -8652,7 +8687,9 @@ class _FlatItem {
 }
 
 // ── Well-known system category IDs ───────────────────────────────────────────
-// These are permanent — they must never be reassigned or reused by user cats.
+// These IDs are reserved for the install-time categories and utility rows.
+// Unnamed and Uncategorized are ordinary categories after first launch and
+// may be archived, deleted, or recreated as a last-resort default.
 const _kIdSysUnnamed = 'sys-unnamed';
 const _kIdSysUncategorized = 'sys-uncategorized';
 const _kIdSysArchivedCategories = 'sys-archived-categories';
@@ -8666,9 +8703,6 @@ bool _isSystemUtilityCategory(_UserCategory category) =>
     category.isSystemUtility ||
     category.id == _kIdSysArchivedCategories ||
     category.id == _kIdSysRecentlyDeleted;
-
-bool _isProtectedEventCategory(_UserCategory category) =>
-    category.id == _kIdSysUnnamed || category.id == _kIdSysUncategorized;
 
 Color _userCategoryCircleColor(_UserCategory category, BuildContext context) {
   final resolved = renderCategoryColor(category.color, context);
@@ -8767,7 +8801,6 @@ class _PinnedUserTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onTap = _CategoryTapCallback.of(context)?.onTileTapped;
-    final canArchiveOrDelete = !_isProtectedEventCategory(category);
     return _CategoryContextMenu(
       isSmartCategory: false,
       isPinned: true,
@@ -8775,8 +8808,8 @@ class _PinnedUserTile extends StatelessWidget {
       reorderable: true,
       onUnpin: onUnpin,
       onEdit: onEdit,
-      onArchive: canArchiveOrDelete ? onArchive : null,
-      onDelete: canArchiveOrDelete ? onDelete : null,
+      onArchive: onArchive,
+      onDelete: onDelete,
       onTap:
           this.onTap ??
           (onTap != null
@@ -9965,7 +9998,6 @@ class _CategoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onTap = _CategoryTapCallback.of(context)?.onTileTapped;
-    final canArchiveOrDelete = !_isProtectedEventCategory(category);
     Widget content = _CategoryContextMenu(
       isSmartCategory: false,
       isPinned: false,
@@ -9973,8 +10005,8 @@ class _CategoryRow extends StatelessWidget {
       reorderable: true, // utility rows remain fully reorderable
       onPin: onPin,
       onEdit: onEdit,
-      onArchive: canArchiveOrDelete ? onArchive : null,
-      onDelete: canArchiveOrDelete ? onDelete : null,
+      onArchive: onArchive,
+      onDelete: onDelete,
       onTap:
           this.onTap ??
           (onTap != null

@@ -727,8 +727,8 @@ class _DefaultCategoryOption {
 }
 
 /// The default-category picker intentionally reads the same persisted category
-/// records as EventsTab, but keeps only active Standard categories and the two
-/// permanent system categories that can receive events.
+/// records as EventsTab and keeps only active Standard categories. Unnamed and
+/// Uncategorized are included while they exist, just like any other category.
 class _DefaultCategorySection extends StatefulWidget {
   final Color accentColor;
 
@@ -740,18 +740,7 @@ class _DefaultCategorySection extends StatefulWidget {
 }
 
 class _DefaultCategorySectionState extends State<_DefaultCategorySection> {
-  List<_DefaultCategoryOption> _options = const [
-    _DefaultCategoryOption(
-      id: kDefaultCategoryFallbackId,
-      name: 'Uncategorized',
-      color: kAccentColor,
-    ),
-    _DefaultCategoryOption(
-      id: 'sys-unnamed',
-      name: 'Unnamed',
-      color: kAccentColor,
-    ),
-  ];
+  List<_DefaultCategoryOption> _options = const [];
 
   @override
   void initState() {
@@ -802,29 +791,6 @@ class _DefaultCategorySectionState extends State<_DefaultCategorySection> {
         // Ignore only the malformed category record.
       }
     }
-    // System categories remain available even before EventsTab has persisted
-    // its initial category list.
-    if (!seen.contains('sys-unnamed')) {
-      records.insert(
-        0,
-        const _DefaultCategoryOption(
-          id: 'sys-unnamed',
-          name: 'Unnamed',
-          color: kAccentColor,
-        ),
-      );
-    }
-    if (!seen.contains(kDefaultCategoryFallbackId)) {
-      records.insert(
-        0,
-        const _DefaultCategoryOption(
-          id: kDefaultCategoryFallbackId,
-          name: 'Uncategorized',
-          color: kAccentColor,
-        ),
-      );
-    }
-
     if (!mounted) return;
     final selectedExists = records.any(
       (option) => option.id == appDefaultCategoryNotifier.value,
