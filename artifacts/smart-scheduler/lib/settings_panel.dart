@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/cupertino.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'ai/ai_services.dart';
@@ -75,6 +77,7 @@ class _SettingsRoute {
   final bool isAccentColor;
   final bool isLiquidGlass;
   final bool isTextSize;
+  final bool isDefaultCategory;
   const _SettingsRoute({
     required this.title,
     required this.options,
@@ -82,6 +85,7 @@ class _SettingsRoute {
     this.isAccentColor = false,
     this.isLiquidGlass = false,
     this.isTextSize = false,
+    this.isDefaultCategory = false,
   });
 }
 
@@ -143,6 +147,12 @@ const _kRoutes = <String, _SettingsRoute>{
     title: 'Default Event Duration',
     options: ['15 minutes', '30 minutes', '1 hour', '2 hours'],
     defaultValue: '1 hour',
+  ),
+  'Default Category': _SettingsRoute(
+    title: 'Default Category',
+    options: const [],
+    defaultValue: 'Uncategorized',
+    isDefaultCategory: true,
   ),
   'Date Format': _SettingsRoute(
     title: 'Date Format',
@@ -281,6 +291,8 @@ class _SettingsPanelState extends State<SettingsPanel>
         appStartOfWeekNotifier,
         appDefaultViewNotifier,
         appEventDurationNotifier,
+         appDefaultCategoryNotifier,
+         appDefaultCategoryLabelNotifier,
         appDateLocaleNotifier,
         appLiquidGlassOpacityNotifier,
       ]),
@@ -302,6 +314,7 @@ class _SettingsPanelState extends State<SettingsPanel>
         final startOfWeekLabel = appStartOfWeekNotifier.value;
         final defaultViewLabel = appDefaultViewNotifier.value;
         final eventDurationLabel = appEventDurationNotifier.value;
+        final defaultCategoryLabel = appDefaultCategoryLabelNotifier.value;
         final dateFormatLabel =
             appDateLocaleNotifier.value == DateLocalePreference.dayFirst
             ? 'Day first (D/M/Y)'
@@ -335,6 +348,7 @@ class _SettingsPanelState extends State<SettingsPanel>
                         startOfWeekLabel: startOfWeekLabel,
                         defaultViewLabel: defaultViewLabel,
                         eventDurationLabel: eventDurationLabel,
+                         defaultCategoryLabel: defaultCategoryLabel,
                         dateFormatLabel: dateFormatLabel,
                         liquidGlassOpacityLabel: liquidGlassOpacityLabel,
                       ),
@@ -403,6 +417,7 @@ class _MainSettingsContent extends StatelessWidget {
   final String startOfWeekLabel;
   final String defaultViewLabel;
   final String eventDurationLabel;
+  final String defaultCategoryLabel;
   final String dateFormatLabel;
   final String liquidGlassOpacityLabel;
 
@@ -416,6 +431,7 @@ class _MainSettingsContent extends StatelessWidget {
     required this.startOfWeekLabel,
     required this.defaultViewLabel,
     required this.eventDurationLabel,
+    required this.defaultCategoryLabel,
     required this.dateFormatLabel,
     required this.liquidGlassOpacityLabel,
   });
@@ -504,6 +520,11 @@ class _MainSettingsContent extends StatelessWidget {
               title: 'Default Event Duration',
               trailing: _ValueTrailing(eventDurationLabel),
               onTap: () => _tap('Default Event Duration'),
+            ),
+            _SettingsRow(
+              title: 'Default Category',
+              trailing: _ValueTrailing(defaultCategoryLabel),
+              onTap: () => _tap('Default Category'),
             ),
             _SettingsRow(
               title: 'Date Format',
@@ -609,6 +630,7 @@ class _SubScreenState extends State<_SubScreen> {
       'Start of Week' => appStartOfWeekNotifier.value,
       'Default View' => appDefaultViewNotifier.value,
       'Default Event Duration' => appEventDurationNotifier.value,
+      'Default Category' => appDefaultCategoryLabelNotifier.value,
       'Date Format' =>
         appDateLocaleNotifier.value == DateLocalePreference.dayFirst
             ? 'Day first (D/M/Y)'
@@ -669,6 +691,8 @@ class _SubScreenState extends State<_SubScreen> {
             const _LiquidGlassSection()
           else if (widget.route.isTextSize)
             _TextSizeSection(accentColor: widget.accentColor)
+          else if (widget.route.isDefaultCategory)
+            _DefaultCategorySection(accentColor: widget.accentColor)
           else
             _SubScreenSection(
               options: widget.route.options,
@@ -685,6 +709,234 @@ class _SubScreenState extends State<_SubScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DefaultCategoryOption {
+  final String id;
+  final String name;
+  final Color color;
+
+  const _DefaultCategoryOption({
+    required this.id,
+    required this.name,
+    required this.color,
+  });
+}
+
+/// The default-category picker intentionally reads the same persisted category
+/// records as EventsTab, but keeps only active Standard categories and the two
+/// permanent system categories that can receive events.
+class _DefaultCategorySection extends StatefulWidget {
+  final Color accentColor;
+
+  const _DefaultCategorySection({required this.accentColor});
+
+  @override
+  State<_DefaultCategorySection> createState() =>
+      _DefaultCategorySectionState();
+}
+
+class _DefaultCategorySectionState extends State<_DefaultCategorySection> {
+  List<_DefaultCategoryOption> _options = const [
+    _DefaultCategoryOption(
+      id: kDefaultCategoryFallbackId,
+      name: 'Uncategorized',
+      color: kAccentColor,
+    ),
+    _DefaultCategoryOption(
+      id: 'sys-unnamed',
+      name: 'Unnamed',
+      color: kAccentColor,
+    ),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    final prefs = await SharedPreferences.getInstance();
+    final records = <_DefaultCategoryOption>[];
+    final seen = <String>{};
+    final raw = [
+      ...?prefs.getStringList('events_user_categories'),
+      ...?prefs.getStringList('events_pinned_categories'),
+    ];
+
+    void addRecord(Object? value) {
+      if (value is! Map) return;
+      final id = value['id']?.toString() ?? '';
+      final name = value['name']?.toString().trim() ?? '';
+      final type = value['categoryType']?.toString() ?? 'Standard';
+      if (id.isEmpty ||
+          name.isEmpty ||
+          value['archived'] == true ||
+          type != 'Standard' ||
+          id == 'sys-archived-categories' ||
+          id == 'sys-recently-deleted') {
+        return;
+      }
+      if (!seen.add(id)) return;
+      final colorValue = value['colorValue'];
+      final rawColor = colorValue is num
+          ? colorValue.toInt()
+          : kAccentColor.value;
+      records.add(
+        _DefaultCategoryOption(
+          id: id,
+          name: name,
+          color: resolveCategorySwatch(Color(rawColor)),
+        ),
+      );
+    }
+
+    for (final encoded in raw) {
+      try {
+        addRecord(jsonDecode(encoded));
+      } catch (_) {
+        // Ignore only the malformed category record.
+      }
+    }
+    // System categories remain available even before EventsTab has persisted
+    // its initial category list.
+    if (!seen.contains('sys-unnamed')) {
+      records.insert(
+        0,
+        const _DefaultCategoryOption(
+          id: 'sys-unnamed',
+          name: 'Unnamed',
+          color: kAccentColor,
+        ),
+      );
+    }
+    if (!seen.contains(kDefaultCategoryFallbackId)) {
+      records.insert(
+        0,
+        const _DefaultCategoryOption(
+          id: kDefaultCategoryFallbackId,
+          name: 'Uncategorized',
+          color: kAccentColor,
+        ),
+      );
+    }
+
+    if (!mounted) return;
+    final selectedExists = records.any(
+      (option) => option.id == appDefaultCategoryNotifier.value,
+    );
+    if (!selectedExists) {
+      appDefaultCategoryNotifier.value = kDefaultCategoryFallbackId;
+      appDefaultCategoryLabelNotifier.value = 'Uncategorized';
+      await saveAppSetting('Default Category', 'Uncategorized');
+    }
+    setState(() => _options = List.unmodifiable(records));
+  }
+
+  void _select(_DefaultCategoryOption option) {
+    appDefaultCategoryNotifier.value = option.id;
+    appDefaultCategoryLabelNotifier.value = option.name;
+    saveAppSetting('Default Category', option.name);
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cardBg = resolveThemeColor(kCardColor, context);
+    final shadowColor = resolveThemeColor(kCardShadowColor, context);
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: _SettingsCard(
+          rows: [
+            for (final option in _options)
+              _DefaultCategoryRow(
+                option: option,
+                selected: option.id == appDefaultCategoryNotifier.value,
+                accentColor: widget.accentColor,
+                onTap: () => _select(option),
+              ),
+          ],
+          cardBg: cardBg,
+          shadowColor: shadowColor,
+        ),
+      ),
+    );
+  }
+}
+
+class _DefaultCategoryRow extends StatefulWidget {
+  final _DefaultCategoryOption option;
+  final bool selected;
+  final Color accentColor;
+  final VoidCallback onTap;
+
+  const _DefaultCategoryRow({
+    required this.option,
+    required this.selected,
+    required this.accentColor,
+    required this.onTap,
+  });
+
+  @override
+  State<_DefaultCategoryRow> createState() => _DefaultCategoryRowState();
+}
+
+class _DefaultCategoryRowState extends State<_DefaultCategoryRow> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 80),
+        color: _pressed ? kActionPanelGroupBreak : const Color(0x00000000),
+        constraints: const BoxConstraints(minHeight: _kSettingsRowHeight),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: _kSettingsRowVerticalPadding,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: renderCategoryColor(widget.option.color, context),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                widget.option.name,
+                style: TextStyle(
+                  fontFamily: kSFProText,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w400,
+                  color: resolveThemeColor(kPrimaryLabel, context),
+                ),
+              ),
+            ),
+            if (widget.selected)
+              Icon(
+                CupertinoIcons.checkmark,
+                size: 20,
+                color: widget.accentColor,
+              ),
+          ],
+        ),
       ),
     );
   }

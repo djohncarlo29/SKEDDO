@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../ai/ai_services.dart';
 import '../ai/parsed_date.dart';
+import '../app_settings.dart';
 import 'event_model.dart';
 import 'local_storage.dart';
 import 'recurrence_expander.dart';
@@ -322,12 +323,13 @@ class EventStore {
     String? url,
     String? notes,
     List<String>? attachmentPaths,
-    String categoryId = 'sys-uncategorized',
+    String? categoryId,
   }) {
     // Normalise time strings to 12-hour AM/PM before storing so all events
     // have a consistent format regardless of their origin (UI, tests, imports).
     final normTime = _normalizeTime(time);
     final normEndTime = _normalizeTime(endTime);
+    final resolvedCategoryId = categoryId ?? appDefaultCategoryId;
 
     final parsed = _parseEventTemporal(
       date: date,
@@ -364,7 +366,7 @@ class EventStore {
       notes: notes,
       attachmentPaths: attachmentPaths,
       parsedDate: parsed,
-      categoryId: categoryId,
+      categoryId: resolvedCategoryId,
       createdAt: DateTime.now().toIso8601String(),
     );
     add(e);
@@ -492,16 +494,17 @@ class EventStore {
   /// with the category registry and makes the change visible immediately.
   void reassignCategories({
     required Set<String> fromCategoryIds,
-    String toCategoryId = 'sys-uncategorized',
+    String? toCategoryId,
   }) {
     if (fromCategoryIds.isEmpty) return;
+    final destination = toCategoryId ?? appDefaultCategoryId;
 
     var changed = false;
     final reassigned = <ScheduledEvent>[];
     final updated = events.value.map((event) {
       if (!fromCategoryIds.contains(event.categoryId)) return event;
       changed = true;
-      final next = event.copyWithCategory(toCategoryId);
+      final next = event.copyWithCategory(destination);
       reassigned.add(next);
       return next;
     }).toList();
@@ -568,7 +571,7 @@ class EventStore {
     if (deletedIndex < 0) return false;
 
     final deleted = deletedEvents.value[deletedIndex];
-    final restored = deleted.copyWithCategory('sys-uncategorized');
+    final restored = deleted.copyWithCategory(appDefaultCategoryId);
     final nextDeleted = List<ScheduledEvent>.of(deletedEvents.value)
       ..removeAt(deletedIndex);
     deletedEvents.value = nextDeleted;

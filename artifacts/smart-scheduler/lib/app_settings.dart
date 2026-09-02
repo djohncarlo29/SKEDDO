@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -429,6 +430,21 @@ final ValueNotifier<String> appEventDurationNotifier = ValueNotifier<String>(
   '1 hour',
 );
 
+/// Event creation and category recovery — category ID to use when no category
+/// is explicitly selected.  Uncategorized is the default for new installs.
+const String kDefaultCategoryFallbackId = 'sys-uncategorized';
+final ValueNotifier<String> appDefaultCategoryNotifier =
+    ValueNotifier<String>(kDefaultCategoryFallbackId);
+
+/// Display name cached for the Settings main-list trailing.
+final ValueNotifier<String> appDefaultCategoryLabelNotifier =
+    ValueNotifier<String>('Uncategorized');
+
+String get appDefaultCategoryId {
+  final id = appDefaultCategoryNotifier.value;
+  return id.isEmpty ? kDefaultCategoryFallbackId : id;
+}
+
 /// Parsing preference for ambiguous numeric dates such as 08/12/2026.
 final ValueNotifier<DateLocalePreference> appDateLocaleNotifier =
     ValueNotifier<DateLocalePreference>(DateLocalePreference.monthFirst);
@@ -456,8 +472,11 @@ const _kAccentIndexKey = 'app_accent_index';
 const _kStartOfWeekKey = 'app_start_of_week';
 const _kDefaultViewKey = 'app_default_view';
 const _kEventDurationKey = 'app_event_duration';
+const _kDefaultCategoryKey = 'app_default_category';
 const _kDateLocaleKey = 'app_date_locale';
 const _kLiquidGlassOpacityKey = 'app_liquid_glass_opacity';
+const _kPersistedUserCategoriesKey = 'events_user_categories';
+const _kPersistedPinnedCategoriesKey = 'events_pinned_categories';
 
 /// Load all persisted settings from SharedPreferences and update notifiers.
 /// Call this once at startup (before [runApp]) so the first build reflects the
@@ -518,6 +537,32 @@ Future<void> loadAppSettings() async {
   final eventDuration = prefs.getString(_kEventDurationKey);
   if (eventDuration != null) appEventDurationNotifier.value = eventDuration;
 
+  final defaultCategory = prefs.getString(_kDefaultCategoryKey);
+  if (defaultCategory != null && defaultCategory.isNotEmpty) {
+    appDefaultCategoryNotifier.value = defaultCategory;
+  }
+  // Resolve the cached label before the first Settings build. Category records
+  // are owned by EventsTab, but their lightweight persisted JSON is shared.
+  final savedCategories = [
+    ...?prefs.getStringList(_kPersistedUserCategoriesKey),
+    ...?prefs.getStringList(_kPersistedPinnedCategoriesKey),
+  ];
+  for (final raw in savedCategories) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map &&
+            decoded['id']?.toString() == appDefaultCategoryNotifier.value) {
+          final name = decoded['name']?.toString().trim();
+          if (name != null && name.isNotEmpty) {
+            appDefaultCategoryLabelNotifier.value = name;
+          }
+          break;
+        }
+      } catch (_) {
+        // A malformed category record should not block other app settings.
+      }
+  }
+
   final dateLocale = prefs.getString(_kDateLocaleKey);
   DateLocalePreference? savedPreference;
   for (final item in DateLocalePreference.values) {
@@ -564,6 +609,8 @@ Future<void> saveAppSetting(String routeTitle, String value) {
         await prefs.setString(_kDefaultViewKey, value);
       case 'Default Event Duration':
         await prefs.setString(_kEventDurationKey, value);
+      case 'Default Category':
+        await prefs.setString(_kDefaultCategoryKey, appDefaultCategoryNotifier.value);
       case 'Date Format':
         await prefs.setString(
           _kDateLocaleKey,

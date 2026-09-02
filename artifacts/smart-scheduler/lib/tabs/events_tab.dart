@@ -17,6 +17,7 @@ import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../app_theme.dart';
+import '../app_settings.dart';
 import '../ai/ai_services.dart';
 import '../services/event_store.dart';
 import '../services/alert_sequence.dart';
@@ -2441,7 +2442,8 @@ class EventsTabState extends State<EventsTab>
           title: 'Delete group "${group.name}" and its categories?',
           subtitle:
               'The group will be removed. Its categories will move to '
-              'Recently Deleted, and their events will move to Uncategorized. '
+              'Recently Deleted, and their events will move to the default '
+              'category. '
               'You can recover the categories later, but the group itself '
               'will not be restored.',
           actionLabel: 'Delete Group and Categories',
@@ -2466,6 +2468,9 @@ class EventsTabState extends State<EventsTab>
     setState(() => _deletingFromList.addAll(categories));
     Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
+      _ensureDefaultCategoryAvailable(
+        categories.map((category) => category.id).toSet(),
+      );
       EventStore.instance.reassignCategories(
         fromCategoryIds: categories.map((cat) => cat.id).toSet(),
       );
@@ -2502,6 +2507,7 @@ class EventsTabState extends State<EventsTab>
     setState(() => _deletingFromList.add(cat));
     Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
+      _ensureDefaultCategoryAvailable({cat.id});
       EventStore.instance.reassignCategories(fromCategoryIds: {cat.id});
       setState(() {
         _deletingFromList.remove(cat);
@@ -2524,6 +2530,7 @@ class EventsTabState extends State<EventsTab>
     setState(() => _deletingFromGrid.add(cat));
     Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
+      _ensureDefaultCategoryAvailable({cat.id});
       EventStore.instance.reassignCategories(fromCategoryIds: {cat.id});
       setState(() {
         _deletingFromGrid.remove(cat);
@@ -2599,7 +2606,7 @@ class EventsTabState extends State<EventsTab>
     _openUtilityItemSheet(
       title: 'Recently Deleted Event',
       subtitle:
-          'Recovering will return this event to Uncategorized. Permanently '
+          'Recovering will return this event to the default category. Permanently '
           'deleting it cannot be undone.',
       actionLabel: 'Recover',
       onAction: () {
@@ -2633,7 +2640,7 @@ class EventsTabState extends State<EventsTab>
     _openUtilityItemSheet(
       title: 'Recently Deleted Category',
       subtitle:
-          'Its events were moved to Uncategorized when the category was '
+          'Its events were moved to the default category when the category was '
           'deleted. Recovering the category will not move those events back '
           'automatically.',
       actionLabel: 'Recover',
@@ -2650,7 +2657,7 @@ class EventsTabState extends State<EventsTab>
       title: 'Delete the category "${_categoryDisplayName(category.name)}"?',
       subtitle:
           'The category will move to Recently Deleted. Its events will move '
-          'to Uncategorized, while its saved section layout stays with the '
+          'to the default category, while its saved section layout stays with the '
           'category. Recovering it will not move the events back automatically.',
     );
     if (!mounted || confirmed != true) return;
@@ -2671,11 +2678,12 @@ class EventsTabState extends State<EventsTab>
       title: 'Delete the category "${_categoryDisplayName(category.name)}"?',
       subtitle:
           'This archived category will move to Recently Deleted. Its events '
-          'will move to Uncategorized, while its saved section layout stays '
+          'will move to the default category, while its saved section layout stays '
           'with the category. Recovering it will not move the events back '
           'automatically.',
     );
     if (!mounted || confirmed != true) return;
+    _ensureDefaultCategoryAvailable({category.id});
     EventStore.instance.reassignCategories(fromCategoryIds: {category.id});
     setState(() {
       _recentlyDeletedCategories
@@ -2722,7 +2730,7 @@ class EventsTabState extends State<EventsTab>
       title: 'Delete ${_categoryDisplayName(category.name)}?',
       subtitle:
           'This category and its saved sections will be permanently deleted '
-          'and cannot be recovered. Its events are already in Uncategorized '
+          'and cannot be recovered. Its events are already in the default category '
           'and will not be affected.',
       actionLabel: 'Permanently Delete',
     );
@@ -2742,6 +2750,15 @@ class EventsTabState extends State<EventsTab>
     });
     _saveCategories();
     _scheduleUtilityExitIfEmpty();
+  }
+
+  /// If the selected default category is being deleted, fall back before any
+  /// event reassignment occurs so those events never point at the deleted ID.
+  void _ensureDefaultCategoryAvailable(Set<String> deletingIds) {
+    if (!deletingIds.contains(appDefaultCategoryId)) return;
+    appDefaultCategoryNotifier.value = kDefaultCategoryFallbackId;
+    appDefaultCategoryLabelNotifier.value = 'Uncategorized';
+    saveAppSetting('Default Category', 'Uncategorized');
   }
 
   void _requestPermanentlyDeleteSmartCategory(String label) async {
@@ -5185,6 +5202,7 @@ class EventsTabState extends State<EventsTab>
     );
     if (!mounted || choice == null) return;
     if (choice == _ArchiveCategoryChoice.categoryOnly) {
+      _ensureDefaultCategoryAvailable({cat.id});
       EventStore.instance.reassignCategories(fromCategoryIds: {cat.id});
       setState(() {
         _dcvCustomSectionNames.remove(cat.name);
@@ -10404,7 +10422,7 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
                       Text(
                         'Choose whether to keep the category, sections, and '
                         'events together, or archive only the category and '
-                        'move its events to Uncategorized.',
+                         'move its events to the default category.',
                         style: TextStyle(
                           inherit: false,
                           fontSize: 15,

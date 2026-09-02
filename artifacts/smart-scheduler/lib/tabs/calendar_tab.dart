@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../app_theme.dart';
+import '../app_settings.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import '../widgets/fixed_size_icon.dart';
 import '../widgets/native_text_input.dart';
@@ -5997,8 +5998,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
   @override
   void initState() {
     super.initState();
-    if (widget.initial == null && widget.initialCategoryId != null) {
-      _categoryId = widget.initialCategoryId!;
+    if (widget.initial == null) {
+      final requestedId = widget.initialCategoryId ?? appDefaultCategoryId;
+      _categoryId = requestedId == kDefaultCategoryFallbackId
+          ? 'uncategorized'
+          : requestedId;
     }
     final now = DateTime.now();
     // Next full hour, minute = 0.  DateTime handles the 23→0 midnight rollover.
@@ -7572,7 +7576,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
       if (_categoryId == 'uncategorized') _categoryColor = uncatColor;
       // When editing, resolve the name and colour for the pre-selected
       // category (set by _initFromEvent before categories were loaded).
-      if (widget.initial != null && _categoryId != 'uncategorized') {
+      if (_categoryId != 'uncategorized') {
         final match = parsed.cast<_NewEventCategory?>().firstWhere(
           (c) => c?.id == _categoryId,
           orElse: () => null,
@@ -7582,7 +7586,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           _categoryColor = match.color;
           _initialCategoryName = _categoryName;
         }
-      } else if (widget.initial == null && widget.initialCategoryId != null) {
+      } else if (widget.initial == null) {
         final match = parsed.cast<_NewEventCategory?>().firstWhere(
           (c) => c?.id == _categoryId,
           orElse: () => null,
