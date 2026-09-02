@@ -26,6 +26,9 @@ class NativeTextInput extends StatefulWidget {
   // this takes the place of `expands` so a fixed-height field still has a
   // full-sized editable viewport while its text is short.
   final int? minLines;
+  // Optional per-field scroll physics. The default remains the existing
+  // bouncing behavior; Notes uses a narrowly-scoped short-content variant.
+  final ScrollPhysics? scrollPhysics;
   final ScrollController? scrollController;
   final ValueNotifier<EdgeFadeMetrics?>? metricsListenable;
   final Color cursorColor;
@@ -44,6 +47,7 @@ class NativeTextInput extends StatefulWidget {
     required this.placeholderStyle,
     required this.cursorColor,
     this.minLines,
+    this.scrollPhysics,
     this.scrollController,
     this.metricsListenable,
     this.selectionColor,
@@ -236,9 +240,11 @@ class _NativeTextInputState extends State<NativeTextInput> {
            expands: widget.multiline && widget.minLines == null,
           maxLines: widget.multiline ? null : 1,
            minLines: widget.multiline ? widget.minLines : null,
-          scrollPhysics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
-          ),
+           scrollPhysics:
+               widget.scrollPhysics ??
+               const BouncingScrollPhysics(
+                 parent: AlwaysScrollableScrollPhysics(),
+               ),
           keyboardType: widget.multiline
               ? TextInputType.multiline
               : TextInputType.text,

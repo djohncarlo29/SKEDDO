@@ -10417,6 +10417,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     behavior: HitTestBehavior.opaque,
                     onTap: _dismissModalSheetFocus,
                     child: SingleChildScrollView(
+                      // This sheet owns its scroll position. Without this,
+                      // it can inherit the calendar's primary controller and
+                      // open at the calendar's old offset, leaving only the
+                      // fixed header visible.
+                      primary: false,
                       physics: const AlwaysScrollableScrollPhysics(
                         parent: BouncingScrollPhysics(),
                       ),

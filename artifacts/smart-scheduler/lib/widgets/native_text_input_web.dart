@@ -19,6 +19,7 @@ class NativeTextInput extends StatefulWidget {
   final int? minLines;
   // Kept in the shared API for parity with the mobile Cupertino field. The
   // browser input owns its native horizontal scroll position.
+  final ScrollPhysics? scrollPhysics;
   final ScrollController? scrollController;
   final ValueNotifier<EdgeFadeMetrics?>? metricsListenable;
   final Color cursorColor;
@@ -35,6 +36,7 @@ class NativeTextInput extends StatefulWidget {
     required this.placeholderStyle,
     required this.cursorColor,
     this.minLines,
+    this.scrollPhysics,
     this.scrollController,
     this.metricsListenable,
     this.selectionColor,

@@ -215,9 +215,9 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
             color: resolveThemeColor(kModalBackground, context),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                // The route's resting position is 8% below the viewport.
-                // Give the page exactly the visible 92% so its bottom edge
-                // lands at the physical bottom after that translation.
+                // The route rests 8% below the viewport. Keep the authored
+                // page at the visible 92% so its scrollable content ends at
+                // the physical bottom instead of extending below the clip.
                 final double visiblePageHeight =
                     constraints.maxHeight * (1.0 - _kTopGapRatio);
                 return Align(
