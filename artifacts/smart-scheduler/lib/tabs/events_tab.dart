@@ -2437,25 +2437,18 @@ class EventsTabState extends State<EventsTab>
       case _DeleteGroupChoice.only:
         _ungroupGroup(group);
       case _DeleteGroupChoice.withCategories:
-        final confirmed = await showDeleteConfirmationSheet(
-          context,
-          title: 'Delete group "${group.name}" and its categories?',
-          subtitle:
-              'The group will be removed. Its categories will move to '
-              'Recently Deleted, and their events will move to the default '
-              'category. '
-              'You can recover the categories later, but the group itself '
-              'will not be restored.',
-          actionLabel: 'Delete Group and Categories',
-        );
-        if (!mounted || confirmed != true) return;
-        _deleteGroupAndCategories(group);
+        _deleteGroupAndCategories(group, deleteEvents: false);
+      case _DeleteGroupChoice.withCategoriesAndContents:
+        _deleteGroupAndCategories(group, deleteEvents: true);
     }
   }
 
   /// Deletes the group and its member categories using the same visible
   /// category-collapse animation as the existing Delete Category action.
-  void _deleteGroupAndCategories(_CategoryGroup group) {
+  void _deleteGroupAndCategories(
+    _CategoryGroup group, {
+    required bool deleteEvents,
+  }) {
     final categories =
         _userCategories
             .where((cat) => group.memberIds.contains(cat.id))
@@ -2471,9 +2464,9 @@ class EventsTabState extends State<EventsTab>
       _ensureDefaultCategoryAvailable(
         categories.map((category) => category.id).toSet(),
       );
-      EventStore.instance.reassignCategories(
-        fromCategoryIds: categories.map((cat) => cat.id).toSet(),
-      );
+      for (final category in categories) {
+        _removeCategoryEvents(category.id, deleteEvents: deleteEvents);
+      }
       setState(() {
         _deletingFromList.removeAll(categories);
         _recentlyDeletedCategories
@@ -2502,13 +2495,16 @@ class EventsTabState extends State<EventsTab>
 
   /// Phase 1: shrink + fade the row with a brief destructive-red flash.
   /// Phase 2 (after the flash + collapse finish): actually remove the data.
-  void _deleteUserCategory(_UserCategory cat) {
+  void _deleteUserCategory(
+    _UserCategory cat, {
+    required bool deleteEvents,
+  }) {
     if (_isSystemUtilityCategory(cat)) return;
     setState(() => _deletingFromList.add(cat));
     Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
       _ensureDefaultCategoryAvailable({cat.id});
-      EventStore.instance.reassignCategories(fromCategoryIds: {cat.id});
+      _removeCategoryEvents(cat.id, deleteEvents: deleteEvents);
       setState(() {
         _deletingFromList.remove(cat);
         _recentlyDeletedCategories
@@ -2525,13 +2521,16 @@ class EventsTabState extends State<EventsTab>
     });
   }
 
-  void _deletePinnedCategory(_UserCategory cat) {
+  void _deletePinnedCategory(
+    _UserCategory cat, {
+    required bool deleteEvents,
+  }) {
     if (_isSystemUtilityCategory(cat)) return;
     setState(() => _deletingFromGrid.add(cat));
     Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
       _ensureDefaultCategoryAvailable({cat.id});
-      EventStore.instance.reassignCategories(fromCategoryIds: {cat.id});
+      _removeCategoryEvents(cat.id, deleteEvents: deleteEvents);
       setState(() {
         _deletingFromGrid.remove(cat);
         _recentlyDeletedCategories
@@ -2640,9 +2639,9 @@ class EventsTabState extends State<EventsTab>
     _openUtilityItemSheet(
       title: 'Recently Deleted Category',
       subtitle:
-          'Its events were moved to the default category when the category was '
-          'deleted. Recovering the category will not move those events back '
-          'automatically.',
+          'Its events may have been moved to the default category or deleted '
+          'with the category. Recovering the category will not restore deleted '
+          'events or move reassigned events back automatically.',
       actionLabel: 'Recover',
       onAction: () => _recoverDeletedCategory(category),
       destructiveActionLabel: 'Permanently Delete',
@@ -2652,19 +2651,17 @@ class EventsTabState extends State<EventsTab>
 
   void _requestDeleteCategory(_UserCategory category) async {
     if (_isSystemUtilityCategory(category)) return;
-    final confirmed = await showDeleteConfirmationSheet(
+    final choice = await _ArchiveCategorySheet.show(
       context,
-      title: 'Delete the category "${_categoryDisplayName(category.name)}"?',
-      subtitle:
-          'The category will move to Recently Deleted. Its events will move '
-          'to the default category, while its saved section layout stays with the '
-          'category. Recovering it will not move the events back automatically.',
+      categoryName: _categoryDisplayName(category.name),
+      actionVerb: 'Delete',
     );
-    if (!mounted || confirmed != true) return;
+    if (!mounted || choice == null) return;
+    final deleteEvents = choice == _ArchiveCategoryChoice.withContents;
     if (_pinnedUserCategories.contains(category)) {
-      _deletePinnedCategory(category);
+      _deletePinnedCategory(category, deleteEvents: deleteEvents);
     } else {
-      _deleteUserCategory(category);
+      _deleteUserCategory(category, deleteEvents: deleteEvents);
     }
   }
 
@@ -2759,6 +2756,23 @@ class EventsTabState extends State<EventsTab>
     appDefaultCategoryNotifier.value = kDefaultCategoryFallbackId;
     appDefaultCategoryLabelNotifier.value = 'Uncategorized';
     saveAppSetting('Default Category', 'Uncategorized');
+  }
+
+  void _removeCategoryEvents(
+    String categoryId, {
+    required bool deleteEvents,
+  }) {
+    final eventIds = EventStore.instance.events.value
+        .where((event) => event.categoryId == categoryId)
+        .map((event) => event.id)
+        .toList();
+    if (deleteEvents) {
+      for (final eventId in eventIds) {
+        EventStore.instance.remove(eventId);
+      }
+    } else {
+      EventStore.instance.reassignCategories(fromCategoryIds: {categoryId});
+    }
   }
 
   void _requestPermanentlyDeleteSmartCategory(String label) async {
@@ -10111,7 +10125,7 @@ class _GroupRow extends StatelessWidget {
   }
 }
 
-enum _DeleteGroupChoice { only, withCategories }
+enum _DeleteGroupChoice { only, withCategories, withCategoriesAndContents }
 
 /// Overlay confirmation sheet for group deletion.
 ///
@@ -10246,7 +10260,10 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                       const SizedBox(height: 10),
                       Text(
                         'Choose whether to remove only the group and keep its '
-                        'categories, or delete the group and its categories.',
+                        'categories, delete the group and categories while '
+                        'moving their events to the default category, or '
+                        'delete the group, categories, and events together. '
+                        'Category sections stay with deleted categories.',
                         style: TextStyle(
                           inherit: false,
                           fontSize: 15,
@@ -10266,9 +10283,17 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                       const SizedBox(height: 8),
                       button(
                         label: 'Delete Group and Categories',
-                        labelColor: CupertinoColors.destructiveRed,
+                        labelColor: primary,
                         onTap:
                             () => onResult(_DeleteGroupChoice.withCategories),
+                      ),
+                      const SizedBox(height: 8),
+                      button(
+                        label: 'Delete Group, Categories & Events',
+                        labelColor: CupertinoColors.destructiveRed,
+                        onTap: () => onResult(
+                          _DeleteGroupChoice.withCategoriesAndContents,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       button(
@@ -10296,6 +10321,7 @@ class _ArchiveCategorySheet {
   static Future<_ArchiveCategoryChoice?> show(
     BuildContext context, {
     required String categoryName,
+    String actionVerb = 'Archive',
   }) async {
     final completer = Completer<_ArchiveCategoryChoice?>();
     late final OverlayEntry entry;
@@ -10311,6 +10337,7 @@ class _ArchiveCategorySheet {
       builder:
           (_) => _ArchiveCategorySheetOverlay(
             categoryName: categoryName,
+            actionVerb: actionVerb,
             onResult: close,
           ),
     );
@@ -10321,10 +10348,12 @@ class _ArchiveCategorySheet {
 
 class _ArchiveCategorySheetOverlay extends StatelessWidget {
   final String categoryName;
+  final String actionVerb;
   final void Function(_ArchiveCategoryChoice?) onResult;
 
   const _ArchiveCategorySheetOverlay({
     required this.categoryName,
+    required this.actionVerb,
     required this.onResult,
   });
 
@@ -10408,7 +10437,7 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'Archive "$categoryName"?',
+                        '$actionVerb "$categoryName"?',
                         style: TextStyle(
                           inherit: false,
                           fontSize: 18,
@@ -10420,9 +10449,16 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'Choose whether to keep the category, sections, and '
-                        'events together, or archive only the category and '
-                         'move its events to the default category.',
+                        actionVerb == 'Delete'
+                            ? 'Choose whether to move the category and its '
+                                'events to Recently Deleted together, or '
+                                'delete only the category and move its events '
+                                'to the default category. The category’s saved '
+                                'sections stay with it.'
+                            : 'Choose whether to keep the category, sections, '
+                                'and events together, or archive only the '
+                                'category and move its events to the default '
+                                'category.',
                         style: TextStyle(
                           inherit: false,
                           fontSize: 15,
@@ -10435,17 +10471,29 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
                       ),
                       const SizedBox(height: 24),
                       button(
-                        label: 'Archive Category & Contents',
+                        label: actionVerb == 'Delete'
+                            ? 'Delete Category Only'
+                            : 'Archive Category & Contents',
                         labelColor: primary,
                         onTap:
-                            () => onResult(_ArchiveCategoryChoice.withContents),
+                            () => onResult(
+                              actionVerb == 'Delete'
+                                  ? _ArchiveCategoryChoice.categoryOnly
+                                  : _ArchiveCategoryChoice.withContents,
+                            ),
                       ),
                       const SizedBox(height: 8),
                       button(
-                        label: 'Archive Category Only',
+                        label: actionVerb == 'Delete'
+                            ? 'Delete Category & Events'
+                            : 'Archive Category Only',
                         labelColor: CupertinoColors.destructiveRed,
                         onTap:
-                            () => onResult(_ArchiveCategoryChoice.categoryOnly),
+                            () => onResult(
+                              actionVerb == 'Delete'
+                                  ? _ArchiveCategoryChoice.withContents
+                                  : _ArchiveCategoryChoice.categoryOnly,
+                            ),
                       ),
                       const SizedBox(height: 8),
                       button(
