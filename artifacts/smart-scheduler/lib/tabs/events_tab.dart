@@ -1725,6 +1725,9 @@ class EventsTabState extends State<EventsTab>
   // Deleted category snapshots remain available to the Recently Deleted
   // section even after their live category record is removed.
   final List<_UserCategory> _recentlyDeletedCategories = [];
+  // Archived built-in smart categories use labels rather than user-category
+  // records, so keep their recoverable snapshots separately.
+  final List<String> _recentlyDeletedSmartCategories = [];
 
   /// User-created DCV sections, keyed by the category label. An empty name
   /// represents a newly-created section whose visible placeholder is
@@ -2184,7 +2187,8 @@ class EventsTabState extends State<EventsTab>
             _archivedUserCategories.isNotEmpty;
       case _kIdSysRecentlyDeleted:
         return EventStore.instance.deletedEvents.value.isNotEmpty ||
-            _recentlyDeletedCategories.isNotEmpty;
+            _recentlyDeletedCategories.isNotEmpty ||
+            _recentlyDeletedSmartCategories.isNotEmpty;
       default:
         return true;
     }
@@ -2208,7 +2212,8 @@ class EventsTabState extends State<EventsTab>
         _archivedSmartLabels.isNotEmpty || _archivedUserCategories.isNotEmpty;
     final hasRecentlyDeleted =
         EventStore.instance.deletedEvents.value.isNotEmpty ||
-        _recentlyDeletedCategories.isNotEmpty;
+        _recentlyDeletedCategories.isNotEmpty ||
+        _recentlyDeletedSmartCategories.isNotEmpty;
     if ((hasArchived && !_hadArchivedUtilityItems) ||
         (hasRecentlyDeleted && !_hadRecentlyDeletedUtilityItems)) {
       _moveSystemUtilityRowsToBottom();
@@ -2602,6 +2607,19 @@ class EventsTabState extends State<EventsTab>
     );
   }
 
+  void _openDeletedSmartCategory(String label) {
+    _openUtilityItemSheet(
+      title: 'Recently Deleted Category',
+      subtitle:
+          'To edit a recently deleted category, you\'ll need to recover it. '
+          'This will move it back to your pinned categories list.',
+      actionLabel: 'Recover',
+      onAction: () => _recoverDeletedSmartCategory(label),
+      destructiveActionLabel: 'Permanently Delete',
+      onDestructiveAction: () => _requestPermanentlyDeleteSmartCategory(label),
+    );
+  }
+
   void _openDeletedCategory(_UserCategory category) {
     _openUtilityItemSheet(
       title: 'Recently Deleted Category',
@@ -2638,9 +2656,11 @@ class EventsTabState extends State<EventsTab>
     if (!_archivedSmartCategories.contains(label)) return;
     setState(() {
       _archivedSmartCategories.remove(label);
-      _smartCategoryOrder.remove(label);
+      _recentlyDeletedSmartCategories
+        ..remove(label)
+        ..add(label);
+      _setUtilityDate('deleted-smart', label);
       _gridCombinedOrder.remove(label);
-      _smartCategoryColors.remove(label);
       _removeUtilityDate('archived-smart', label);
       _syncUtilityVisibilityAndResurface();
     });
@@ -2660,6 +2680,10 @@ class EventsTabState extends State<EventsTab>
     if (!mounted || confirmed != true) return;
     EventStore.instance.reassignCategories(fromCategoryIds: {category.id});
     setState(() {
+      _recentlyDeletedCategories
+        ..removeWhere((existing) => existing.id == category.id)
+        ..add(category);
+      _setUtilityDate('deleted-category', category.id);
       _userCategories.removeWhere(
         (candidate) => candidate.id == category.id,
       );
@@ -2717,6 +2741,27 @@ class EventsTabState extends State<EventsTab>
     _scheduleUtilityExitIfEmpty();
   }
 
+  void _requestPermanentlyDeleteSmartCategory(String label) async {
+    final confirmed = await showDeleteConfirmationSheet(
+      context,
+      title: 'Delete ${_categoryDisplayName(label)}?',
+      subtitle: permanentDeleteConfirmationSubtitle(),
+      actionLabel: 'Permanently Delete',
+    );
+    if (!mounted || confirmed != true) return;
+    if (!_recentlyDeletedSmartCategories.contains(label)) return;
+    setState(() {
+      _recentlyDeletedSmartCategories.remove(label);
+      _smartCategoryOrder.remove(label);
+      _gridCombinedOrder.remove(label);
+      _smartCategoryColors.remove(label);
+      _removeUtilityDate('deleted-smart', label);
+      _syncUtilityVisibilityAndResurface();
+    });
+    _saveCategories();
+    _scheduleUtilityExitIfEmpty();
+  }
+
   bool _activeUtilityIsEmpty() {
     switch (widget.activeDCV) {
       case 'Archived Categories':
@@ -2724,7 +2769,8 @@ class EventsTabState extends State<EventsTab>
             _archivedUserCategories.isEmpty;
       case 'Recently Deleted':
         return EventStore.instance.deletedEvents.value.isEmpty &&
-            _recentlyDeletedCategories.isEmpty;
+            _recentlyDeletedCategories.isEmpty &&
+            _recentlyDeletedSmartCategories.isEmpty;
       default:
         return false;
     }
@@ -2813,6 +2859,24 @@ class EventsTabState extends State<EventsTab>
       _userCategories.add(restored);
       if (!_listTopOrder.contains(restored.id)) {
         _listTopOrder.add(restored.id);
+      }
+      _syncUtilityVisibilityAndResurface();
+    });
+    _saveCategories();
+    _scheduleUtilityExitIfEmpty();
+  }
+
+  void _recoverDeletedSmartCategory(String label) {
+    if (!_recentlyDeletedSmartCategories.contains(label)) return;
+    setState(() {
+      _recentlyDeletedSmartCategories.remove(label);
+      _removeUtilityDate('deleted-smart', label);
+      _archivedSmartCategories.remove(label);
+      if (!_smartCategoryOrder.contains(label)) {
+        _smartCategoryOrder.add(label);
+      }
+      if (!_gridCombinedOrder.contains(label)) {
+        _gridCombinedOrder.add(label);
       }
       _syncUtilityVisibilityAndResurface();
     });
@@ -5927,6 +5991,7 @@ class EventsTabState extends State<EventsTab>
   static const _kPrefsUserCats = 'events_user_categories';
   static const _kPrefsPinnedCats = 'events_pinned_categories';
   static const _kPrefsDeletedCats = 'events_recently_deleted_categories';
+  static const _kPrefsDeletedSmart = 'events_recently_deleted_smart_categories';
   static const _kPrefsSmartColors = 'events_smart_category_colors';
   static const _kPrefsArchivedSmart = 'events_archived_smart_categories';
   static const _kPrefsSmartOrder = 'events_smart_category_order';
@@ -5976,6 +6041,10 @@ class EventsTabState extends State<EventsTab>
                 _recentlyDeletedCategories
                     .map((c) => jsonEncode(c.toJson()))
                     .toList(),
+              ),
+              prefs.setStringList(
+                _kPrefsDeletedSmart,
+                _recentlyDeletedSmartCategories,
               ),
               prefs.setString(
                 _kPrefsSmartColors,
@@ -6060,6 +6129,7 @@ class EventsTabState extends State<EventsTab>
       final rawUser = prefs.getStringList(_kPrefsUserCats);
       final rawPinned = prefs.getStringList(_kPrefsPinnedCats);
       final rawDeleted = prefs.getStringList(_kPrefsDeletedCats);
+      final rawDeletedSmart = prefs.getStringList(_kPrefsDeletedSmart);
       final rawSmartColors = prefs.getString(_kPrefsSmartColors);
       final rawArchivedSmart = prefs.getStringList(_kPrefsArchivedSmart);
       final rawSmartOrder = prefs.getStringList(_kPrefsSmartOrder);
@@ -6074,6 +6144,7 @@ class EventsTabState extends State<EventsTab>
       if (rawUser == null &&
           rawPinned == null &&
           rawDeleted == null &&
+          rawDeletedSmart == null &&
           rawSmartColors == null &&
           rawArchivedSmart == null &&
           rawSmartOrder == null &&
@@ -6167,6 +6238,11 @@ class EventsTabState extends State<EventsTab>
                 ),
               ),
             );
+        }
+        if (rawDeletedSmart != null) {
+          _recentlyDeletedSmartCategories
+            ..clear()
+            ..addAll(rawDeletedSmart);
         }
         _ensureSystemUtilityCategories();
         if (rawSmartColors != null) {
@@ -6762,6 +6838,7 @@ class EventsTabState extends State<EventsTab>
           _archivedSmartLabels.length + _archivedUserCategories.length;
       counts[_kIdSysRecentlyDeleted] =
           _recentlyDeletedCategories.length +
+          _recentlyDeletedSmartCategories.length +
           EventStore.instance.deletedEvents.value.length;
       _liveEventCounts = counts;
     }
@@ -6802,7 +6879,11 @@ class EventsTabState extends State<EventsTab>
     final smartTiles =
         _smartCategoryOrder.isNotEmpty
             ? _smartCategoryOrder
-                .where((label) => !_archivedSmartCategories.contains(label))
+                .where(
+                  (label) =>
+                      !_archivedSmartCategories.contains(label) &&
+                      !_recentlyDeletedSmartCategories.contains(label),
+                )
                 .map(
                   (label) => allSmartTiles.firstWhere(
                     (t) => t.label == label,
@@ -6811,7 +6892,11 @@ class EventsTabState extends State<EventsTab>
                 )
                 .toList()
             : allSmartTiles
-                .where((t) => !_archivedSmartCategories.contains(t.label))
+                .where(
+                  (t) =>
+                      !_archivedSmartCategories.contains(t.label) &&
+                      !_recentlyDeletedSmartCategories.contains(t.label),
+                )
                 .toList();
 
     // ── Grid: unified ordering across smart tiles and pinned user categories ─
@@ -7196,7 +7281,8 @@ class EventsTabState extends State<EventsTab>
                       _archivedUserCategories.isNotEmpty;
                   final hasRecentlyDeletedUtilityItems =
                       EventStore.instance.deletedEvents.value.isNotEmpty ||
-                      _recentlyDeletedCategories.isNotEmpty;
+                      _recentlyDeletedCategories.isNotEmpty ||
+                      _recentlyDeletedSmartCategories.isNotEmpty;
                   return _CategoryDetailView(
                     key: ValueKey(widget.activeDCV ?? '_none'),
                     label: widget.activeDCV ?? '',
@@ -7265,6 +7351,7 @@ class EventsTabState extends State<EventsTab>
                             ? (_) => _DcvUtilityContent(
                               deletedEvents:
                                   EventStore.instance.deletedEvents.value,
+                              deletedSmartLabels: _recentlyDeletedSmartCategories,
                               deletedCategories: _recentlyDeletedCategories,
                               deletedEventDates: {
                                 for (final event
@@ -7272,6 +7359,14 @@ class EventsTabState extends State<EventsTab>
                                   event.id: _utilityDateFor(
                                     'deleted-event',
                                     event.id,
+                                  ),
+                              },
+                              deletedSmartDates: {
+                                for (final label
+                                    in _recentlyDeletedSmartCategories)
+                                  label: _utilityDateFor(
+                                    'deleted-smart',
+                                    label,
                                   ),
                               },
                               deletedCategoryDates: {
@@ -7282,6 +7377,8 @@ class EventsTabState extends State<EventsTab>
                                   ),
                               },
                               onDeletedEventTap: _openDeletedEvent,
+                              onDeletedSmartCategoryTap:
+                                  _openDeletedSmartCategory,
                               onDeletedCategoryTap: _openDeletedCategory,
                             )
                             : null,
@@ -10473,28 +10570,34 @@ class _DcvUtilityContent extends StatelessWidget {
   final List<String> archivedSmartLabels;
   final List<_UserCategory> archivedCategories;
   final List<ScheduledEvent> deletedEvents;
+  final List<String> deletedSmartLabels;
   final List<_UserCategory> deletedCategories;
   final Map<String, DateTime> archivedSmartDates;
   final Map<String, DateTime> archivedCategoryDates;
   final Map<String, DateTime> deletedEventDates;
+  final Map<String, DateTime> deletedSmartDates;
   final Map<String, DateTime> deletedCategoryDates;
   final ValueChanged<String>? onArchivedSmartCategoryTap;
   final ValueChanged<_UserCategory>? onArchivedCategoryTap;
   final ValueChanged<ScheduledEvent>? onDeletedEventTap;
+  final ValueChanged<String>? onDeletedSmartCategoryTap;
   final ValueChanged<_UserCategory>? onDeletedCategoryTap;
 
   const _DcvUtilityContent({
     this.archivedSmartLabels = const [],
     this.archivedCategories = const [],
     this.deletedEvents = const [],
+    this.deletedSmartLabels = const [],
     this.deletedCategories = const [],
     this.archivedSmartDates = const {},
     this.archivedCategoryDates = const {},
     this.deletedEventDates = const {},
+    this.deletedSmartDates = const {},
     this.deletedCategoryDates = const {},
     this.onArchivedSmartCategoryTap,
     this.onArchivedCategoryTap,
     this.onDeletedEventTap,
+    this.onDeletedSmartCategoryTap,
     this.onDeletedCategoryTap,
   });
 
@@ -10633,6 +10736,13 @@ class _DcvUtilityContent extends StatelessWidget {
           subtitle: _eventSubtitle(event),
           leading: _sfIcon(context, SFIcons.sf_calendar),
           onTap: () => onDeletedEventTap?.call(event),
+        ),
+      for (final label in deletedSmartLabels)
+        _UtilityContentItem(
+          date: deletedSmartDates[label] ?? DateTime.now(),
+          title: label,
+          leading: _sfIcon(context, SFIcons.sf_archivebox),
+          onTap: () => onDeletedSmartCategoryTap?.call(label),
         ),
       for (final category in deletedCategories)
         _UtilityContentItem(
