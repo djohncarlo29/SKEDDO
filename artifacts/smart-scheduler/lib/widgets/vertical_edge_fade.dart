@@ -293,31 +293,33 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
       child: NotificationListener<ScrollMetricsNotification>(
         onNotification: _handleMetricsNotification,
         child: Stack(
-            fit: StackFit.expand,
-            clipBehavior: Clip.none,
-            children: [
-              widget.child,
-              Positioned(
-                left: 0,
-                right: 0,
-                top: widget.topInset,
-                child: _fade(
-                  visible: _showTopFade,
-                  opaqueAtStart: true,
-                ),
+          // Let multiline fields establish their natural height. Expanding
+          // this stack inside the modal's unbounded scroll column can make
+          // the entire sheet body fail layout while its header still renders.
+          clipBehavior: Clip.none,
+          children: [
+            widget.child,
+            Positioned(
+              left: 0,
+              right: 0,
+              top: widget.topInset,
+              child: _fade(
+                visible: _showTopFade,
+                opaqueAtStart: true,
               ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: _fade(
-                  visible: _showBottomFade,
-                  opaqueAtStart: false,
-                  solidTailHeight: widget.bottomInset,
-                ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _fade(
+                visible: _showBottomFade,
+                opaqueAtStart: false,
+                solidTailHeight: widget.bottomInset,
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
       ),
     );
   }
