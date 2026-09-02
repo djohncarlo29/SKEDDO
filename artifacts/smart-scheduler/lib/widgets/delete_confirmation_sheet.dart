@@ -36,15 +36,6 @@ Future<bool?> showDeleteConfirmationSheet(
   return completer.future;
 }
 
-/// Copy used by the second confirmation shown before an item is permanently
-/// removed.  Keep the sentence break explicit so the subtitle remains the
-/// intended two-line message at all supported text sizes.
-String permanentDeleteConfirmationSubtitle({int itemCount = 1}) {
-  final itemPhrase = itemCount == 1 ? 'this item' : 'these items';
-  return 'This is a permanent action.\n'
-      'Are you sure you want to delete $itemPhrase?';
-}
-
 /// Confirms and then moves an active event to Recently Deleted.
 Future<void> confirmDeleteEvent(
   BuildContext context,

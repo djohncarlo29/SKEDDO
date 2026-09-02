@@ -2564,8 +2564,8 @@ class EventsTabState extends State<EventsTab>
     _openUtilityItemSheet(
       title: 'Archived Smart Category',
       subtitle:
-          'To edit an archived built-in smart category, you\'ll need to '
-          'recover it. This will move it back to your pinned categories list.',
+          'This built-in smart category is archived and hidden. Recover it '
+          'to show it again. Your events are not changed.',
       actionLabel: 'Recover',
       onAction: () => _unarchiveSmartCategory(label),
     );
@@ -2575,8 +2575,8 @@ class EventsTabState extends State<EventsTab>
     _openUtilityItemSheet(
       title: 'Archived Category',
       subtitle:
-          'To edit an archived category, you\'ll need to recover it. '
-          'This will move it back to your categories list.',
+          'This category is archived, so its sections and events are still '
+          'kept with it. Recover it to show the category again.',
       actionLabel: 'Unarchive',
       onAction: () => _unarchiveCategory(category),
       destructiveActionLabel: 'Delete Category',
@@ -2588,8 +2588,8 @@ class EventsTabState extends State<EventsTab>
     _openUtilityItemSheet(
       title: 'Recently Deleted Event',
       subtitle:
-          'To edit a recently deleted event, you\'ll need to recover it. '
-          'This will move it to the default category.',
+          'Recovering will return this event to Uncategorized. Permanently '
+          'deleting it cannot be undone.',
       actionLabel: 'Recover',
       onAction: () {
         if (EventStore.instance.restoreDeleted(event.id)) {
@@ -2609,8 +2609,8 @@ class EventsTabState extends State<EventsTab>
     _openUtilityItemSheet(
       title: 'Recently Deleted Category',
       subtitle:
-          'To edit a recently deleted category, you\'ll need to recover it. '
-          'This will move it back to your pinned categories list.',
+          'Recovering will restore this built-in smart category. Your events '
+          'are not changed. Permanently deleting it cannot be undone.',
       actionLabel: 'Recover',
       onAction: () => _recoverDeletedSmartCategory(label),
       destructiveActionLabel: 'Permanently Delete',
@@ -2622,8 +2622,9 @@ class EventsTabState extends State<EventsTab>
     _openUtilityItemSheet(
       title: 'Recently Deleted Category',
       subtitle:
-          'To edit a recently deleted category, you\'ll need to recover it. '
-          'This will move it back to your categories list.',
+          'Its events were moved to Uncategorized when the category was '
+          'deleted. Recovering the category will not move those events back '
+          'automatically.',
       actionLabel: 'Recover',
       onAction: () => _recoverDeletedCategory(category),
       destructiveActionLabel: 'Permanently Delete',
@@ -2636,6 +2637,10 @@ class EventsTabState extends State<EventsTab>
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title: 'Delete the category "${_categoryDisplayName(category.name)}"?',
+      subtitle:
+          'The category will move to Recently Deleted. Its events will move '
+          'to Uncategorized, while its saved section layout stays with the '
+          'category. Recovering it will not move the events back automatically.',
     );
     if (!mounted || confirmed != true) return;
     if (_pinnedUserCategories.contains(category)) {
@@ -2653,6 +2658,11 @@ class EventsTabState extends State<EventsTab>
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title: 'Delete the category "${_categoryDisplayName(category.name)}"?',
+      subtitle:
+          'This archived category will move to Recently Deleted. Its events '
+          'will move to Uncategorized, while its saved section layout stays '
+          'with the category. Recovering it will not move the events back '
+          'automatically.',
     );
     if (!mounted || confirmed != true) return;
     EventStore.instance.reassignCategories(fromCategoryIds: {category.id});
@@ -2682,7 +2692,7 @@ class EventsTabState extends State<EventsTab>
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title: 'Delete ${_eventDisplayName(event.title)}?',
-      subtitle: permanentDeleteConfirmationSubtitle(),
+      subtitle: 'This event will be permanently deleted and cannot be recovered.',
       actionLabel: 'Permanently Delete',
     );
     if (!mounted || confirmed != true) return;
@@ -2699,7 +2709,10 @@ class EventsTabState extends State<EventsTab>
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title: 'Delete ${_categoryDisplayName(category.name)}?',
-      subtitle: permanentDeleteConfirmationSubtitle(),
+      subtitle:
+          'This category and its saved sections will be permanently deleted '
+          'and cannot be recovered. Its events are already in Uncategorized '
+          'and will not be affected.',
       actionLabel: 'Permanently Delete',
     );
     if (!mounted || confirmed != true) return;
@@ -2711,6 +2724,8 @@ class EventsTabState extends State<EventsTab>
       _recentlyDeletedCategories.removeWhere(
         (candidate) => candidate.id == category.id,
       );
+      _dcvCustomSectionNames.remove(category.name);
+      _dcvCustomSectionEventIds.remove(category.name);
       _removeUtilityDate('deleted-category', category.id);
       _syncUtilityVisibilityAndResurface();
     });
@@ -2722,7 +2737,9 @@ class EventsTabState extends State<EventsTab>
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title: 'Delete ${_categoryDisplayName(label)}?',
-      subtitle: permanentDeleteConfirmationSubtitle(),
+      subtitle:
+          'This built-in smart category will be permanently deleted and '
+          'cannot be recovered. Your events will not be affected.',
       actionLabel: 'Permanently Delete',
     );
     if (!mounted || confirmed != true) return;
@@ -5674,6 +5691,9 @@ class EventsTabState extends State<EventsTab>
     showDeleteConfirmationSheet(
       context,
       title: 'Delete the section "$sectionName"?',
+      subtitle:
+          'Events in this section will stay in this category and will no '
+          'longer belong to this section. They will not be deleted.',
     ).then((confirmed) {
       if (!mounted || confirmed != true) return;
       reorderDcvSections(label, [
@@ -15411,6 +15431,9 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title: 'Delete the section "$sectionName"?',
+      subtitle:
+          'Events in this section will stay in this category and will no '
+          'longer belong to this section. They will not be deleted.',
     );
     if (!mounted || confirmed != true) return;
     if (!_sectionOrder.contains(originalIndex) ||
