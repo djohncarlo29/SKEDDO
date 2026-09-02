@@ -3,8 +3,8 @@ name: Deleted category recovery
 description: Product rule for event placement when a deleted user category is recovered.
 ---
 
-Recovering a deleted user category restores the category and its saved section layout, but events stay in Uncategorized and are not automatically moved back.
+Recovering a deleted user category restores its saved section layout and any still-deleted events that were removed with that category. Events already recovered individually or reassigned by a category-only action stay where they are.
 
-**Why:** The user chose predictable, non-destructive event placement over silently reassigning events during recovery.
+**Why:** Category-and-content deletion is a recoverable bundle; silently separating its events defeats the action label. Category-only deletion remains intentionally non-destructive to events.
 
-**How to apply:** Keep category deletion subtitles explicit that events move to Uncategorized and remain there after recovery. Permanent category deletion must not modify those events.
+**How to apply:** Preserve the original category ID on deleted event snapshots. Restore bundle events with the category, but restore individually recovered events to the current default. Permanent deletion removes remaining bundled snapshots.

@@ -556,14 +556,15 @@ class EventStore {
     ];
     LocalStorage.instance.saveDeletedEvents(deletedEvents.value);
     events.value = events.value.where((e) => e.id != id).toList();
+    LocalStorage.instance.saveEvents(events.value);
     _onRemoved?.call(id, attachmentPaths, events.value); // fire-and-forget
   }
 
   /// Restore a deleted event to the default category.
   ///
-  /// Recently deleted events no longer retain an active category assignment:
-  /// recovery intentionally returns them to Uncategorized, matching the
-  /// product's recovery copy and avoiding references to deleted categories.
+  /// Individual event recovery intentionally returns the event to the current
+  /// default category. Category-bundle recovery uses
+  /// [restoreDeletedForCategory] instead so the original category is kept.
   bool restoreDeleted(String id) {
     final deletedIndex = deletedEvents.value.indexWhere(
       (event) => event.id == id,
@@ -577,8 +578,55 @@ class EventStore {
     deletedEvents.value = nextDeleted;
     events.value = [...events.value, restored];
     LocalStorage.instance.saveDeletedEvents(nextDeleted);
+    LocalStorage.instance.saveEvents(events.value);
     _onAdded?.call(restored, events.value); // fire-and-forget
     return true;
+  }
+
+  /// Restores every still-deleted event that was originally assigned to
+  /// [categoryId]. Unlike [restoreDeleted], this preserves the original
+  /// category because the category and its contents are being recovered as a
+  /// single bundle.
+  ///
+  /// Events that the user already recovered individually are no longer in
+  /// [deletedEvents] and are intentionally left where the user restored them.
+  int restoreDeletedForCategory(String categoryId) {
+    final bundled = deletedEvents.value
+        .where((event) => event.categoryId == categoryId)
+        .toList();
+    if (bundled.isEmpty) return 0;
+
+    final bundledIds = {for (final event in bundled) event.id};
+    final nextDeleted = deletedEvents.value
+        .where((event) => !bundledIds.contains(event.id))
+        .toList();
+    final existingIds = {for (final event in events.value) event.id};
+    final restored = bundled
+        .where((event) => !existingIds.contains(event.id))
+        .toList();
+
+    deletedEvents.value = nextDeleted;
+    events.value = [...events.value, ...restored];
+    LocalStorage.instance.saveDeletedEvents(nextDeleted);
+    LocalStorage.instance.saveEvents(events.value);
+    for (final event in restored) {
+      _onAdded?.call(event, events.value); // fire-and-forget
+    }
+    return restored.length;
+  }
+
+  /// Permanently removes still-deleted events that belong to [categoryId].
+  /// This is used when a deleted category is permanently removed so a
+  /// category-and-content deletion cannot leave orphaned event snapshots.
+  int permanentlyDeleteForCategory(String categoryId) {
+    final nextDeleted = deletedEvents.value
+        .where((event) => event.categoryId != categoryId)
+        .toList();
+    final removed = deletedEvents.value.length - nextDeleted.length;
+    if (removed == 0) return 0;
+    deletedEvents.value = nextDeleted;
+    LocalStorage.instance.saveDeletedEvents(nextDeleted);
+    return removed;
   }
 
   /// Permanently removes an event that is already in Recently Deleted.
