@@ -32,6 +32,7 @@ import '../widgets/fixed_size_icon.dart';
 import '../ai/search/search_service.dart';
 import '../services/category_registry.dart';
 import '../widgets/smart_search_results.dart';
+import '../widgets/delete_confirmation_sheet.dart';
 
 // ── ISO 8601 week number ──────────────────────────────────────────────────────
 int _isoWeekNumber(DateTime date) {
@@ -47,6 +48,15 @@ int _isoWeekNumber(DateTime date) {
 
 // ── shared card constants ─────────────────────────────────────────────────────
 const _kCornerRadius = kSbCornerRadius;
+
+String _categoryDisplayName(String name) =>
+    name.trim().isEmpty ? 'Unnamed' : name.trim();
+
+String _eventDisplayName(String title) =>
+    title.trim().isEmpty ? 'Untitled' : title.trim();
+
+String _sectionDisplayName(String title) =>
+    title.trim().isEmpty ? 'New Section' : title.trim();
 
 void _dismissModalSheetFocus() {
   NativeTextInput.unfocusAll();
@@ -2527,15 +2537,22 @@ class EventsTabState extends State<EventsTab>
     required String subtitle,
     required String actionLabel,
     required VoidCallback onAction,
+    String? destructiveActionLabel,
+    VoidCallback? onDestructiveAction,
   }) async {
-    final shouldAct = await _UtilityItemSheet.show(
+    final action = await _UtilityItemSheet.show(
       context,
       title: title,
       subtitle: subtitle,
       actionLabel: actionLabel,
+      destructiveActionLabel: destructiveActionLabel,
     );
-    if (!mounted || shouldAct != true) return;
-    onAction();
+    if (!mounted) return;
+    if (action == _UtilityItemAction.primary) {
+      onAction();
+    } else if (action == _UtilityItemAction.destructive) {
+      onDestructiveAction?.call();
+    }
   }
 
   void _openArchivedSmartCategory(String label) {
@@ -2546,6 +2563,8 @@ class EventsTabState extends State<EventsTab>
           'recover it. This will move it back to your pinned categories list.',
       actionLabel: 'Unarchive',
       onAction: () => _unarchiveSmartCategory(label),
+      destructiveActionLabel: 'Delete Category',
+      onDestructiveAction: () => _requestDeleteArchivedSmartCategory(label),
     );
   }
 
@@ -2557,6 +2576,8 @@ class EventsTabState extends State<EventsTab>
           'This will move it back to your categories list.',
       actionLabel: 'Unarchive',
       onAction: () => _unarchiveCategory(category),
+      destructiveActionLabel: 'Delete Category',
+      onDestructiveAction: () => _requestDeleteArchivedCategory(category),
     );
   }
 
@@ -2576,6 +2597,8 @@ class EventsTabState extends State<EventsTab>
           _scheduleUtilityExitIfEmpty();
         }
       },
+      destructiveActionLabel: 'Permanently Delete',
+      onDestructiveAction: () => _requestPermanentlyDeleteEvent(event),
     );
   }
 
@@ -2587,7 +2610,115 @@ class EventsTabState extends State<EventsTab>
           'This will move it back to your categories list.',
       actionLabel: 'Recover',
       onAction: () => _recoverDeletedCategory(category),
+      destructiveActionLabel: 'Permanently Delete',
+      onDestructiveAction: () => _requestPermanentlyDeleteCategory(category),
     );
+  }
+
+  void _requestDeleteCategory(_UserCategory category) async {
+    if (_isSystemUtilityCategory(category)) return;
+    final confirmed = await showDeleteConfirmationSheet(
+      context,
+      title: 'Delete Category "${_categoryDisplayName(category.name)}"?',
+    );
+    if (!mounted || confirmed != true) return;
+    if (_pinnedUserCategories.contains(category)) {
+      _deletePinnedCategory(category);
+    } else {
+      _deleteUserCategory(category);
+    }
+  }
+
+  void _requestDeleteArchivedSmartCategory(String label) async {
+    final confirmed = await showDeleteConfirmationSheet(
+      context,
+      title: 'Delete Category "${_categoryDisplayName(label)}"?',
+    );
+    if (!mounted || confirmed != true) return;
+    if (!_archivedSmartCategories.contains(label)) return;
+    setState(() {
+      _archivedSmartCategories.remove(label);
+      _smartCategoryOrder.remove(label);
+      _gridCombinedOrder.remove(label);
+      _smartCategoryColors.remove(label);
+      _removeUtilityDate('archived-smart', label);
+      _syncUtilityVisibilityAndResurface();
+    });
+    _saveCategories();
+    _scheduleUtilityExitIfEmpty();
+  }
+
+  void _requestDeleteArchivedCategory(_UserCategory category) async {
+    final isArchived = _archivedUserCategories.any(
+      (candidate) => candidate.id == category.id,
+    );
+    if (!isArchived) return;
+    final confirmed = await showDeleteConfirmationSheet(
+      context,
+      title: 'Delete Category "${_categoryDisplayName(category.name)}"?',
+    );
+    if (!mounted || confirmed != true) return;
+    EventStore.instance.reassignCategories(fromCategoryIds: {category.id});
+    setState(() {
+      _userCategories.removeWhere(
+        (candidate) => candidate.id == category.id,
+      );
+      _pinnedUserCategories.removeWhere(
+        (candidate) => candidate.id == category.id,
+      );
+      _listTopOrder.remove(category.id);
+      _gridCombinedOrder.removeWhere(
+        (item) => item is _UserCategory && item.id == category.id,
+      );
+      _removeUtilityDate('archived-category', category.id);
+      _syncUtilityVisibilityAndResurface();
+    });
+    _saveCategories();
+    _scheduleUtilityExitIfEmpty();
+  }
+
+  void _requestPermanentlyDeleteEvent(ScheduledEvent event) async {
+    final confirmed = await showDeleteConfirmationSheet(
+      context,
+      title: 'Delete ${_eventDisplayName(event.title)}?',
+      subtitle:
+          'This is a permanent action. Are you sure you want to delete this '
+          'item?',
+      actionLabel: 'Permanently Delete',
+    );
+    if (!mounted || confirmed != true) return;
+    if (EventStore.instance.permanentlyDelete(event.id)) {
+      _removeUtilityDate('deleted-event', event.id);
+      _syncUtilityVisibilityAndResurface();
+      setState(() {});
+      _saveCategories();
+      _scheduleUtilityExitIfEmpty();
+    }
+  }
+
+  void _requestPermanentlyDeleteCategory(_UserCategory category) async {
+    final confirmed = await showDeleteConfirmationSheet(
+      context,
+      title: 'Delete ${_categoryDisplayName(category.name)}?',
+      subtitle:
+          'This is a permanent action. Are you sure you want to delete this '
+          'item?',
+      actionLabel: 'Permanently Delete',
+    );
+    if (!mounted || confirmed != true) return;
+    final deleted = _recentlyDeletedCategories.any(
+      (candidate) => candidate.id == category.id,
+    );
+    if (!deleted) return;
+    setState(() {
+      _recentlyDeletedCategories.removeWhere(
+        (candidate) => candidate.id == category.id,
+      );
+      _removeUtilityDate('deleted-category', category.id);
+      _syncUtilityVisibilityAndResurface();
+    });
+    _saveCategories();
+    _scheduleUtilityExitIfEmpty();
   }
 
   bool _activeUtilityIsEmpty() {
@@ -5021,7 +5152,7 @@ class EventsTabState extends State<EventsTab>
         onUnpin: () => _unpinCategory(c),
         onEdit: () => _editCategory(c),
         onArchive: () => _archiveCategory(c),
-        onDelete: () => _deletePinnedCategory(c),
+        onDelete: () => _requestDeleteCategory(c),
         onTap: _isSystemUtilityCategory(c) ? () => _onCategoryTapped(c) : null,
         onReorderStart: (p) => _onGridReorderStart(c, p),
         onReorderUpdate: (p) => _onGridReorderUpdate(c, p),
@@ -5502,10 +5633,17 @@ class EventsTabState extends State<EventsTab>
   void deleteDcvSection(String label, int index) {
     final names = _dcvCustomSectionNames[label];
     if (names == null || index < 0 || index >= names.length) return;
-    reorderDcvSections(label, [
-      for (var i = 0; i < names.length; i++)
-        if (i != index) i,
-    ]);
+    final sectionName = _sectionDisplayName(names[index]);
+    showDeleteConfirmationSheet(
+      context,
+      title: 'Delete the section "$sectionName"?',
+    ).then((confirmed) {
+      if (!mounted || confirmed != true) return;
+      reorderDcvSections(label, [
+        for (var i = 0; i < names.length; i++)
+          if (i != index) i,
+      ]);
+    });
   }
 
   void _reorderDcvSections(String label, List<List<String>> sectionEventIds) {
@@ -5567,11 +5705,7 @@ class EventsTabState extends State<EventsTab>
         .cast<_UserCategory?>()
         .firstWhere((c) => c?.name == name, orElse: () => null);
     if (cat == null) return;
-    if (_pinnedUserCategories.contains(cat)) {
-      _deletePinnedCategory(cat);
-    } else {
-      _deleteUserCategory(cat);
-    }
+    _requestDeleteCategory(cat);
   }
 
   /// Called by AppShell when the user taps "Archive Category" in the DCV
@@ -6437,6 +6571,7 @@ class EventsTabState extends State<EventsTab>
           widget.onEditEvent == null
               ? null
               : () => widget.onEditEvent!(hit.event),
+      onDelete: () => confirmDeleteEvent(context, hit.event),
     );
   }
 
@@ -6879,7 +7014,7 @@ class EventsTabState extends State<EventsTab>
                     onCategoryTap: _onCategoryTapped,
                     onEdit: _editCategory,
                     onArchive: _archiveCategory,
-                    onDelete: _deleteUserCategory,
+                    onDelete: _requestDeleteCategory,
                     onEditGroup: _editGroupSheet,
                     onDeleteGroup: _openDeleteGroupSheet,
                     onToggleExpand: _toggleGroupExpanded,
@@ -7325,12 +7460,13 @@ Widget wrapSearchEventTileWithActions({
   required Widget child,
   required WidgetBuilder previewBuilder,
   VoidCallback? onEdit,
+  VoidCallback? onDelete,
 }) {
   return _EventContextMenu(
     child: child,
     previewBuilder: previewBuilder,
     onEdit: onEdit,
-    onDelete: () => EventStore.instance.remove(hit.event.id),
+    onDelete: onDelete ?? () => EventStore.instance.remove(hit.event.id),
   );
 }
 
@@ -9997,21 +10133,24 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
   }
 }
 
-/// Confirmation overlay used when an item in Archived Categories or Recently
-/// Deleted is tapped. The copy explains why the item must be restored before it
-/// can be edited, while the action itself is supplied by the owning Events tab.
+enum _UtilityItemAction { primary, destructive }
+
+/// Overlay action sheet used when an item in Archived Categories or Recently
+/// Deleted is tapped. Recovery stays first, an optional destructive action is
+/// placed in the middle, and Cancel remains last.
 class _UtilityItemSheet {
-  static Future<bool?> show(
+  static Future<_UtilityItemAction?> show(
     BuildContext context, {
     required String title,
     required String subtitle,
     required String actionLabel,
+    String? destructiveActionLabel,
   }) async {
-    final completer = Completer<bool?>();
+    final completer = Completer<_UtilityItemAction?>();
     late final OverlayEntry entry;
     final overlay = Overlay.of(context, rootOverlay: true);
 
-    void close(bool? result) {
+    void close(_UtilityItemAction? result) {
       if (completer.isCompleted) return;
       entry.remove();
       completer.complete(result);
@@ -10023,6 +10162,7 @@ class _UtilityItemSheet {
             title: title,
             subtitle: subtitle,
             actionLabel: actionLabel,
+            destructiveActionLabel: destructiveActionLabel,
             onResult: close,
           ),
     );
@@ -10035,12 +10175,14 @@ class _UtilityItemSheetOverlay extends StatelessWidget {
   final String title;
   final String subtitle;
   final String actionLabel;
-  final void Function(bool?) onResult;
+  final String? destructiveActionLabel;
+  final void Function(_UtilityItemAction?) onResult;
 
   const _UtilityItemSheetOverlay({
     required this.title,
     required this.subtitle,
     required this.actionLabel,
+    required this.destructiveActionLabel,
     required this.onResult,
   });
 
@@ -10063,6 +10205,7 @@ class _UtilityItemSheetOverlay extends StatelessWidget {
 
     Widget button({
       required String label,
+      required Color labelColor,
       required VoidCallback onTap,
     }) {
       return GelBloomButton(
@@ -10083,7 +10226,7 @@ class _UtilityItemSheetOverlay extends StatelessWidget {
                 fontSize: 17,
                 fontFamily: kSFProText,
                 fontWeight: FontWeight.w500,
-                color: primary,
+                color: labelColor,
                 letterSpacing: kTracking17,
                 height: kLineHeight,
               ),
@@ -10150,11 +10293,22 @@ class _UtilityItemSheetOverlay extends StatelessWidget {
                       const SizedBox(height: 24),
                       button(
                         label: actionLabel,
-                        onTap: () => onResult(true),
+                        labelColor: primary,
+                        onTap: () => onResult(_UtilityItemAction.primary),
                       ),
+                      if (destructiveActionLabel != null) ...[
+                        const SizedBox(height: 8),
+                        button(
+                          label: destructiveActionLabel!,
+                          labelColor: CupertinoColors.destructiveRed,
+                          onTap: () =>
+                              onResult(_UtilityItemAction.destructive),
+                        ),
+                      ],
                       const SizedBox(height: 8),
                       button(
                         label: 'Cancel',
+                        labelColor: primary,
                         onTap: () => onResult(null),
                       ),
                     ],
@@ -17550,6 +17704,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
             isFirst: index == 0,
             isLast: index == total - 1,
             hasGapAbove: hasGapAbove,
+            onDelete: () => confirmDeleteEvent(context, event),
             onEdit:
                 widget.onEditEvent != null
                     ? () => widget.onEditEvent!(event)
@@ -18155,6 +18310,9 @@ class _ScheduledEventCard extends StatelessWidget {
   /// Called when the user selects "Edit Event" from the long-press menu.
   final VoidCallback? onEdit;
 
+  /// Called when the user selects "Delete Event" from the long-press menu.
+  final VoidCallback? onDelete;
+
   /// When true the card participates in long-press drag-to-reorder (e.g. in
   /// the Category Detail View).  The callbacks mirror [_CategoryContextMenu].
   final bool reorderable;
@@ -18189,6 +18347,7 @@ class _ScheduledEventCard extends StatelessWidget {
     required this.event,
     this.dotColor,
     this.onEdit,
+    this.onDelete,
     this.reorderable = false,
     this.onReorderStart,
     this.onReorderUpdate,
@@ -18404,7 +18563,7 @@ class _ScheduledEventCard extends StatelessWidget {
       // so the drag ghost looks correct even when the card is inside a group.
       previewBuilder: _buildCard,
       onEdit: onEdit,
-      onDelete: () => EventStore.instance.remove(event.id),
+      onDelete: onDelete ?? () => EventStore.instance.remove(event.id),
       reorderable: reorderable,
       onReorderStart: onReorderStart,
       onReorderUpdate: onReorderUpdate,

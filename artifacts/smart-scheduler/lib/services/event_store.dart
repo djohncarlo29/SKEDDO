@@ -578,6 +578,16 @@ class EventStore {
     return true;
   }
 
+  /// Permanently removes an event that is already in Recently Deleted.
+  bool permanentlyDelete(String id) {
+    final nextDeleted = List<ScheduledEvent>.of(deletedEvents.value)
+      ..removeWhere((event) => event.id == id);
+    if (nextDeleted.length == deletedEvents.value.length) return false;
+    deletedEvents.value = nextDeleted;
+    LocalStorage.instance.saveDeletedEvents(nextDeleted);
+    return true;
+  }
+
   void clear() {
     // Collect every attachment path before wiping the list so the pipeline
     // can delete the files from disk after the events are gone from memory.

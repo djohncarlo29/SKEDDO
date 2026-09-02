@@ -28,6 +28,7 @@ import '../services/event_store.dart' show EventStore;
 import 'events_tab.dart'
     show wrapSearchEventTileWithActions, wrapSearchEventTileWithPressScale;
 import '../widgets/smart_search_results.dart';
+import '../widgets/delete_confirmation_sheet.dart';
 
 String _alertOrdinal(int index) {
   const names = [
@@ -581,6 +582,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                       onEdit: widget.onEditEvent == null
                           ? null
                           : () => widget.onEditEvent!(hit.event),
+                      onDelete: () => confirmDeleteEvent(context, hit.event),
                     ),
                 eventTilePressWrapper: wrapSearchEventTileWithPressScale,
               ),
@@ -677,6 +679,8 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                             onEdit: widget.onEditEvent == null
                                 ? null
                                 : () => widget.onEditEvent!(hit.event),
+                            onDelete: () =>
+                                confirmDeleteEvent(context, hit.event),
                           ),
                       eventTilePressWrapper: wrapSearchEventTileWithPressScale,
                     )

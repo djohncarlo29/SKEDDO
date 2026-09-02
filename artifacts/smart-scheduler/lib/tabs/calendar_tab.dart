@@ -31,6 +31,7 @@ import '../ai/search/search_service.dart';
 import 'events_tab.dart'
     show wrapSearchEventTileWithActions, wrapSearchEventTileWithPressScale;
 import '../widgets/smart_search_results.dart';
+import '../widgets/delete_confirmation_sheet.dart';
 
 void _dismissModalSheetFocus() {
   NativeTextInput.unfocusAll();
@@ -1561,6 +1562,7 @@ class CalendarTabState extends State<CalendarTab>
                                 cancelSearch();
                                 widget.onEditEvent!(hit.event);
                               },
+                        onDelete: () => confirmDeleteEvent(context, hit.event),
                       ),
                   eventTilePressWrapper: wrapSearchEventTileWithPressScale,
                 )
