@@ -2577,7 +2577,7 @@ class EventsTabState extends State<EventsTab>
       subtitle:
           'This category is archived, so its sections and events are still '
           'kept with it. Recover it to show the category again.',
-      actionLabel: 'Unarchive',
+      actionLabel: 'Recover',
       onAction: () => _unarchiveCategory(category),
       destructiveActionLabel: 'Delete Category',
       onDestructiveAction: () => _requestDeleteArchivedCategory(category),
@@ -5148,11 +5148,46 @@ class EventsTabState extends State<EventsTab>
     );
   }
 
-  /// Flags [cat] as archived so it's hidden from the grid/list without
-  /// deleting it. No reveal/unarchive UI exists yet — tracked as follow-up.
-  /// Phase 1 plays a soft slide+fade+collapse; phase 2 flips the archived
-  /// flag once that finishes (row/tile is already invisible by then).
+  /// Opens archive choices when a category has sections or events. Empty
+  /// categories can be archived directly because there is no content to
+  /// preserve or move.
   void _archiveCategory(_UserCategory cat) {
+    if (_isSystemUtilityCategory(cat) ||
+        _archivingFromList.contains(cat) ||
+        _archivingFromGrid.contains(cat)) {
+      return;
+    }
+    final eventCount = _liveEventCounts[cat.id] ?? 0;
+    final sectionCount = _dcvCustomSectionNames[cat.name]?.length ?? 0;
+    if (eventCount == 0 && sectionCount == 0) {
+      _archiveCategoryAfterChoice(cat);
+      return;
+    }
+
+    _openArchiveCategorySheet(cat);
+  }
+
+  void _openArchiveCategorySheet(_UserCategory cat) async {
+    final choice = await _ArchiveCategorySheet.show(
+      context,
+      categoryName: _categoryDisplayName(cat.name),
+    );
+    if (!mounted || choice == null) return;
+    if (choice == _ArchiveCategoryChoice.categoryOnly) {
+      EventStore.instance.reassignCategories(fromCategoryIds: {cat.id});
+      setState(() {
+        _dcvCustomSectionNames.remove(cat.name);
+        _dcvCustomSectionEventIds.remove(cat.name);
+      });
+      _saveCategories();
+    }
+    _archiveCategoryAfterChoice(cat);
+  }
+
+  /// Flags [cat] as archived so it's hidden from the grid/list without
+  /// deleting it. Phase 1 plays a soft slide+fade+collapse; phase 2 flips the
+  /// archived flag once that finishes (row/tile is already invisible by then).
+  void _archiveCategoryAfterChoice(_UserCategory cat) {
     if (_isSystemUtilityCategory(cat)) return;
     final inGrid = _pinnedUserCategories.contains(cat);
     setState(() {
@@ -10204,6 +10239,183 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                         labelColor: CupertinoColors.destructiveRed,
                         onTap:
                             () => onResult(_DeleteGroupChoice.withCategories),
+                      ),
+                      const SizedBox(height: 8),
+                      button(
+                        label: 'Cancel',
+                        labelColor: primary,
+                        onTap: () => onResult(null),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+enum _ArchiveCategoryChoice { withContents, categoryOnly }
+
+/// Lets the user decide whether a category's contents should remain together
+/// before the category is archived.
+class _ArchiveCategorySheet {
+  static Future<_ArchiveCategoryChoice?> show(
+    BuildContext context, {
+    required String categoryName,
+  }) async {
+    final completer = Completer<_ArchiveCategoryChoice?>();
+    late final OverlayEntry entry;
+    final overlay = Overlay.of(context, rootOverlay: true);
+
+    void close(_ArchiveCategoryChoice? result) {
+      if (completer.isCompleted) return;
+      entry.remove();
+      completer.complete(result);
+    }
+
+    entry = OverlayEntry(
+      builder:
+          (_) => _ArchiveCategorySheetOverlay(
+            categoryName: categoryName,
+            onResult: close,
+          ),
+    );
+    overlay.insert(entry);
+    return completer.future;
+  }
+}
+
+class _ArchiveCategorySheetOverlay extends StatelessWidget {
+  final String categoryName;
+  final void Function(_ArchiveCategoryChoice?) onResult;
+
+  const _ArchiveCategorySheetOverlay({
+    required this.categoryName,
+    required this.onResult,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = resolveThemeColor(kPrimaryLabel, context);
+    final secondary = resolveThemeColor(kSecondaryLabel, context);
+    final buttonDecor = ShapeDecoration(
+      color: resolveThemeColor(kModalButtonBackground, context),
+      shape: const BoundedSquircleStadiumBorder(),
+      shadows: resolveThemeShadows(kCardShadow, context),
+    );
+    final sheetBorder =
+        CupertinoTheme.brightnessOf(context) == Brightness.dark
+            ? BorderSide(
+              color: resolveThemeColor(kTertiaryLabel, context),
+              width: 0.5,
+            )
+            : null;
+    Widget button({
+      required String label,
+      required Color labelColor,
+      required VoidCallback onTap,
+    }) {
+      return GelBloomButton(
+        peakScale: 1.06,
+        tapDelay: const Duration(milliseconds: 120),
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          clipBehavior: Clip.antiAlias,
+          decoration: buttonDecor,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Center(
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                inherit: false,
+                fontSize: 17,
+                fontFamily: kSFProText,
+                fontWeight: FontWeight.w500,
+                color: labelColor,
+                letterSpacing: kTracking17,
+                height: kLineHeight,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Stack(
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => onResult(null),
+          child: const ColoredBox(
+            color: Color(0x44000000),
+            child: SizedBox.expand(),
+          ),
+        ),
+        Align(
+          alignment: Alignment.center,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: GelBloomCard(
+                scaleOrigin: Alignment.center,
+                fillOpacity: 0.82,
+                shadowOpacity: 0.26,
+                border: sheetBorder,
+                shape: BoundedSquircleStadiumBorder(
+                  radius: kLargeModalSheetCornerRadius,
+                  side: sheetBorder ?? BorderSide.none,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Archive "$categoryName"?',
+                        style: TextStyle(
+                          inherit: false,
+                          fontSize: 18,
+                          fontFamily: kSFProText,
+                          fontWeight: FontWeight.w600,
+                          color: primary,
+                          letterSpacing: kTracking16,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Choose whether to keep the category, sections, and '
+                        'events together, or archive only the category and '
+                        'move its events to Uncategorized.',
+                        style: TextStyle(
+                          inherit: false,
+                          fontSize: 15,
+                          fontFamily: kSFProText,
+                          fontWeight: FontWeight.w400,
+                          color: secondary,
+                          height: 1.5,
+                          letterSpacing: kTracking16,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      button(
+                        label: 'Archive Category & Contents',
+                        labelColor: primary,
+                        onTap:
+                            () => onResult(_ArchiveCategoryChoice.withContents),
+                      ),
+                      const SizedBox(height: 8),
+                      button(
+                        label: 'Archive Category Only',
+                        labelColor: CupertinoColors.destructiveRed,
+                        onTap:
+                            () => onResult(_ArchiveCategoryChoice.categoryOnly),
                       ),
                       const SizedBox(height: 8),
                       button(
