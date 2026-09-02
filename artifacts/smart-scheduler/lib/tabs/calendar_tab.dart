@@ -10340,6 +10340,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
   @override
   Widget build(BuildContext context) {
     return Stack(
+      // The rounded sheet route gives this page a finite 92% viewport.
+      // Expand the scaffold to that viewport so its header and Expanded
+      // scroll body receive the same bounded height as the Category sheet.
+      fit: StackFit.expand,
       children: [
         CupertinoPageScaffold(
           backgroundColor: kModalBackground,
