@@ -115,38 +115,6 @@ class _FixedScrollPosition extends ScrollPositionWithSingleContext {
   }
 }
 
-/// Keeps a short, non-overflowing note field 1:1 while the finger reverses
-/// direction between its two rubber-band edges.
-///
-/// With seven minimum lines, short notes have no real scroll extent
-/// (minScrollExtent == maxScrollExtent == 0). Flutter's normal bouncing
-/// physics can consume enough reverse delta in one update to cross the
-/// zero-boundary and start pulling the opposite edge, which looks like the
-/// text shoots past the top. Long notes retain the normal BouncingScrollPhysics
-/// path, including its existing fast-scroll behavior.
-class _ShortNoteScrollPhysics extends BouncingScrollPhysics {
-  const _ShortNoteScrollPhysics({super.parent});
-
-  @override
-  _ShortNoteScrollPhysics applyTo(ScrollPhysics? ancestor) {
-    return _ShortNoteScrollPhysics(parent: buildParent(ancestor));
-  }
-
-  @override
-  double applyPhysicsToUserOffset(ScrollMetrics position, double offset) {
-    final noContentExtent =
-        (position.maxScrollExtent - position.minScrollExtent).abs() <= 0.5;
-    if (noContentExtent && position.outOfRange) {
-      // While easing back from either short-content edge, do not apply
-      // BouncingScrollPhysics' friction curve. This keeps the viewport
-      // movement exactly matched to the finger, including when the gesture
-      // crosses the resting zero position.
-      return offset;
-    }
-    return super.applyPhysicsToUserOffset(position, offset);
-  }
-}
-
 // ── Search header delegate ────────────────────────────────────────────────────
 // Same pattern as EventsTab: always a SliverPersistentHeader so the AppSearchBar
 // element is never remounted across search-mode transitions.
@@ -1368,11 +1336,14 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                       // intrinsic height of short text during
                                       // a downward rubber-band.
                                       minLines: 7,
-                                      scrollPhysics:
-                                          const _ShortNoteScrollPhysics(
-                                            parent:
-                                                AlwaysScrollableScrollPhysics(),
-                                          ),
+                                       // Keep short notes rubberbandable, but
+                                       // use Flutter's normal edge friction
+                                       // instead of matching every finger pixel.
+                                       scrollPhysics:
+                                           const BouncingScrollPhysics(
+                                             parent:
+                                                 AlwaysScrollableScrollPhysics(),
+                                           ),
                                       scrollController: widget.scrollController,
                                       metricsListenable:
                                           widget.metricsListenable,
