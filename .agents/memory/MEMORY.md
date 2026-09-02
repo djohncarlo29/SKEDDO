@@ -48,6 +48,7 @@
 - [flutter_onnxruntime Android crash](onnxruntime-android-crash.md) — ONNX session.run() causes an unrecoverable JNI SIGSEGV on Android; also covers the earlier UnsatisfiedLinkError fix and plugin registration patch.
 - [TFLite Android embedding](tflite-android-embedding.md) — all-MiniLM-L6-v2 TFLite model tensor layout, source URL, and KGP 2.1 Gradle fix (kotlin.jvm.target.validation.mode=WARNING).
 - [Event creation save architecture](event-creation-save-architecture.md) — all ScheduledEvent fields, picker constraints, recurrence storage rule, alert timing logic, and normalisation decisions.
+- [Deleted category recovery](deleted-category-recovery.md) — recovering a category restores its structure only; events remain in Uncategorized by product decision.
 - [EventStore date-parse concatenation bug](event-store-date-parse-bug.md) — parse date-only in create(); appending normTime breaks _tryMonthDay regex → absoluteDate null → Unscheduled.
 - [AnimatedPositioned per-frame lag](animated-positioned-per-frame-lag.md) — never animate position on a per-frame drag variable; use Positioned+AnimatedContainer to separate finger-tracking (no anim) from width grow/shrink (animated).
 - [HNSW vector index Dart](hnsw-dart-notes.md) — brute-force path < 500 entries; SplayTreeMap from dart:collection causes "not defined" errors in test runner; use sorted List<_Candidate> instead.
