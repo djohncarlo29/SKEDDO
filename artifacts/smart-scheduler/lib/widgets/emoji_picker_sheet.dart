@@ -28,6 +28,73 @@ class _HorizontalInsetClipper extends CustomClipper<Rect> {
   }
 }
 
+class _SoccerBallCategoryPainter extends CustomPainter {
+  final double opacity;
+
+  const _SoccerBallCategoryPainter({required this.opacity});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) * 0.42;
+    final ballColor = const Color(0xFFF2F2F7).withValues(alpha: opacity);
+    final detailColor = const Color(0xFF1C1C1E).withValues(alpha: opacity);
+
+    canvas.drawCircle(center, radius, Paint()..color = ballColor);
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = detailColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(1.0, size.width * 0.055),
+    );
+
+    final pentagonRadius = radius * 0.28;
+    final pentagon = Path();
+    for (var i = 0; i < 5; i++) {
+      final angle = -math.pi / 2 + i * 2 * math.pi / 5;
+      final point = center +
+          Offset(
+            math.cos(angle) * pentagonRadius,
+            math.sin(angle) * pentagonRadius,
+          );
+      if (i == 0) {
+        pentagon.moveTo(point.dx, point.dy);
+      } else {
+        pentagon.lineTo(point.dx, point.dy);
+      }
+    }
+    pentagon.close();
+    canvas.drawPath(pentagon, Paint()..color = detailColor);
+
+    final spokePaint = Paint()
+      ..color = detailColor
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = math.max(1.0, size.width * 0.045);
+    for (var i = 0; i < 5; i++) {
+      final angle = -math.pi / 2 + i * 2 * math.pi / 5;
+      final start = center +
+          Offset(
+            math.cos(angle) * pentagonRadius * 1.15,
+            math.sin(angle) * pentagonRadius * 1.15,
+          );
+      final end = center +
+          Offset(
+            math.cos(angle) * radius * 0.82,
+            math.sin(angle) * radius * 0.82,
+          );
+      canvas.drawLine(start, end, spokePaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SoccerBallCategoryPainter oldDelegate) {
+    return oldDelegate.opacity != opacity;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Emoji category data
 // ─────────────────────────────────────────────────────────────────────────────
@@ -470,9 +537,7 @@ const List<_EmojiCat> kEmojiCategories = [
     ],
   ),
   (
-    // The variation selector keeps Flutter web from briefly treating the
-    // ball as a text glyph while the emoji font is settling.
-    icon: '⚽️',
+    icon: '⚽',
     name: 'Activities',
     emojis: [
       '⚽',
@@ -1391,6 +1456,34 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     );
   }
 
+  double _categoryMinimumGap(BuildContext context, double availableWidth) {
+    final defaultItemWidth = List<double>.generate(
+      kEmojiCategories.length,
+      (i) {
+        final fontSize = i == _catIndex ? 24.0 : 20.0;
+        final isBall = kEmojiCategories[i].icon == '⚽';
+        final glyphWidth = isBall
+            ? fontSize
+            : (TextPainter(
+                text: TextSpan(
+                  text: kEmojiCategories[i].icon,
+                  style: TextStyle(fontSize: fontSize),
+                ),
+                textDirection: Directionality.of(context),
+                textScaler: TextScaler.noScaling,
+                maxLines: 1,
+              )..layout()).width;
+        return glyphWidth + 2 * _emojiCategoryItemHorizontalPadding;
+      },
+    );
+    final freeSpace =
+        availableWidth - defaultItemWidth.fold(0.0, (sum, width) => sum + width);
+    return math.max(
+      0.0,
+      freeSpace / (kEmojiCategories.length - 1),
+    );
+  }
+
   void _close() => Navigator.of(context, rootNavigator: true).pop();
 
   @override
@@ -1631,6 +1724,11 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                     ),
                                     child: LayoutBuilder(
                                       builder: (context, constraints) {
+                                        final categoryMinimumGap =
+                                            _categoryMinimumGap(
+                                          context,
+                                          constraints.maxWidth,
+                                        );
                                         return SingleChildScrollView(
                                           controller: _categoryScrollCtrl,
                                           primary: false,
@@ -1649,10 +1747,18 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                               mainAxisSize: MainAxisSize.min,
                                               mainAxisAlignment:
                                                   MainAxisAlignment.spaceBetween,
+                                              spacing: categoryMinimumGap,
                                               children: List.generate(
                                                 kEmojiCategories.length,
                                                 (i) {
                                                   final sel = i == _catIndex;
+                                                  final fontSize = textScaler
+                                                      .scale(
+                                                    sel ? 24.0 : 20.0,
+                                                  );
+                                                  final isBall =
+                                                      kEmojiCategories[i].icon ==
+                                                      '⚽';
                                                   return GestureDetector(
                                                     key: _categoryTabKeys[i],
                                                     onTap: () =>
@@ -1666,22 +1772,41 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                         horizontal:
                                                             _emojiCategoryItemHorizontalPadding,
                                                       ),
-                                                      child: Text(
-                                                        kEmojiCategories[i].icon,
-                                                        style: TextStyle(
-                                                          fontSize: textScaler
-                                                              .scale(
-                                                            sel ? 24.0 : 20.0,
-                                                          ),
-                                                          color: sel
-                                                              ? null
-                                                              : const Color(
-                                                                  0x66000000,
+                                                      child: isBall
+                                                          ? SizedBox(
+                                                              width: fontSize,
+                                                              height: fontSize,
+                                                              child:
+                                                                  RepaintBoundary(
+                                                                child: CustomPaint(
+                                                                  painter:
+                                                                      _SoccerBallCategoryPainter(
+                                                                    opacity: sel
+                                                                        ? 1.0
+                                                                        : 0.42,
+                                                                  ),
                                                                 ),
-                                                        ),
-                                                        textScaler:
-                                                            TextScaler.noScaling,
-                                                      ),
+                                                              ),
+                                                            )
+                                                          : Text(
+                                                              kEmojiCategories[i]
+                                                                  .icon,
+                                                              style: TextStyle(
+                                                                inherit: false,
+                                                                fontSize:
+                                                                    fontSize,
+                                                                color: sel
+                                                                    ? labelColor
+                                                                    : labelColor
+                                                                        .withValues(
+                                                                          alpha:
+                                                                              0.42,
+                                                                        ),
+                                                              ),
+                                                              textScaler:
+                                                                  TextScaler
+                                                                      .noScaling,
+                                                            ),
                                                     ),
                                                   );
                                                 },
