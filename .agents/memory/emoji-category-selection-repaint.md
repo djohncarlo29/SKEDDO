@@ -3,14 +3,15 @@ name: Emoji category selection repaint
 description: Selection rendering for variation-selector emoji in the category strip.
 ---
 
-Category-tab selection alpha must be painted by the emoji Text itself, not by an
-Opacity compositing wrapper. Variation-selector color emoji such as the heart
-can retain the wrapper's old rasterized appearance after the horizontally
-scrollable strip repositions.
+Category-tab selection must keep the scroll target separate from the painted
+emoji subtree. Variation-selector color emoji such as the heart need a real
+Opacity layer for dimming, but that painted subtree must be replaced as a whole
+when selection changes.
 
-**Why:** The picker could switch its grid data correctly while the heart tab
-continued to look selected after navigating away from it.
+**Why:** The picker could switch its grid data correctly while one or more old
+tab layers continued to look selected after navigating away from them.
 
-**How to apply:** Keep the category slot keyed only for visibility scrolling,
-and express selected versus idle opacity in the TextStyle color so the
-RenderParagraph receives a fresh paint value on every category switch.
+**How to apply:** Use a stable, non-painted GlobalKey target for
+ensureVisible, and put a selection-dependent key around the complete painted
+tab. Keep Opacity around the emoji text because platform color emoji may ignore
+alpha in TextStyle.color.
