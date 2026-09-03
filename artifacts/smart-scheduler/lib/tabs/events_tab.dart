@@ -13111,6 +13111,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   focusNode: _titleFocus,
                   scrollController: _titleScrollCtrl,
                   readOnly: _isSmart,
+                   enableInteractiveSelection: !_isSmart,
                   showCursor: !_isSmart,
                   // New Category (not Edit, not a smart tile) opens with the
                   // keyboard already up and focused here.
@@ -13232,6 +13233,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   focusNode: _descFocus,
                   scrollController: _descScrollCtrl,
                   readOnly: _isSmart,
+                   enableInteractiveSelection: !_isSmart,
                   showCursor: !_isSmart,
                   selectionControls: _selectionControls,
                   placeholder: 'Subtitle',

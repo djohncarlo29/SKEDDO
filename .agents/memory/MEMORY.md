@@ -71,7 +71,7 @@
 - [Search cancel glass reparenting](search-cancel-glass-reparenting.md) — keep the cancel lens keyed across inline↔overlay search moves so its occlusion-safe capture state survives remount-prone transitions.
 - [Editable DCV section keyboard reveal](editable-dcv-section-keyboard.md) — focused section headers near the viewport bottom need post-inset ensureVisible, including after wrapped text grows.
 - [DCV section membership reconciliation](dcv-section-membership-reconciliation.md) — reconcile newly visible events into the first section before permuting headers, or stale parent membership moves them with the new first header.
-- [Flexible label-value wrapping](flexible-label-value-wrapping.md) — choose label/value widths together by measured wrapped height; never give one side all remaining width.
+- [Flexible label-value wrapping](flexible-label-value-wrapping.md) — normal rows alternate value wrap, label wrap, value wrap, then label wrap while preserving the gap.
 - [Attachment import flow](attachment-import-flow.md) — remove only the pre-import confirmation overlay; keep the Importing sheet and its Cancel behavior unchanged.
 - [Attachment card corner stability](attachment-card-corner-stability.md) — let AnimatedList animate attachment rows inside one fixed-radius outer card; avoid AnimatedSize and empty-state stadium switching.
 - [AppShell floating overlays](app-shell-floating-overlays.md) — Positioned shell controls must be direct Stack children; nesting one in Column causes a blank Flutter web shell.

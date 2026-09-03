@@ -187,6 +187,44 @@ void main() {
     },
   );
 
+  testWidgets(
+    'alternates to a second label wrap after the first value wrap cannot fit',
+    (tester) async {
+      const labelStyle = TextStyle(fontSize: 17);
+      const valueStyle = TextStyle(fontSize: 15);
+
+      await tester.pumpWidget(
+        const CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: SizedBox(
+              width: 200,
+              child: MediaQuery(
+                data: const MediaQueryData(textScaler: TextScaler.noScaling),
+                child: MinGapLabelValueRow(
+                  label: 'A Long Label',
+                  labelStyle: labelStyle,
+                  value: 'First Second Third',
+                  valueStyle: valueStyle,
+                  trailing: Text('First Second Third', style: valueStyle),
+                  trailingExtraWidth: 0,
+                  alignTrailing: false,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final labelSize = tester.getSize(find.text('A Long Label'));
+      final valueSize = tester.getSize(find.text('First Second Third'));
+      expect(labelSize.height, greaterThan(34));
+      expect(valueSize.height, greaterThan(18));
+      expect(labelSize.width, lessThan(200));
+      expect(valueSize.width, lessThan(200));
+    },
+  );
+
   test(
     'allows a protected short pair to unwrap only below its full width',
     () {

@@ -894,14 +894,10 @@ class MinGapLabelValueRow extends StatelessWidget {
             constraints.maxWidth.isFinite &&
             leadingTotal + labelWidth + kLabelValueGap + valueWidth <=
                 constraints.maxWidth;
-        // Wrapping is a fallback only. Preserve the natural single-line label
-        // whenever the value can wrap beside it without violating the gap or
-        // the minimum readable width of either block. This applies to every
-        // chevron-value row, including Settings and modal-sheet rows.
-        final singleLineLabelSlot = labelWidth + kTextLayoutEpsilon;
-        final availableForText = constraints.maxWidth.isFinite
-            ? math.max(0.0, constraints.maxWidth - leadingTotal)
-            : double.infinity;
+        // Wrapping is a fallback only. The first wrapped allocation preserves
+        // the natural single-line label whenever the value can wrap beside it
+        // without violating the gap. Later allocations may wrap the label,
+        // then alternate back to the value, in that order.
         final minimumLabelWidth = _minimumReadableWidth(
           context,
           label,
@@ -952,74 +948,7 @@ class MinGapLabelValueRow extends StatelessWidget {
           }
         }
 
-        // A compact two-column row is only valid when both columns can keep
-        // their widest word intact. If that is impossible, stack the value
-        // below the label and give both blocks the full text width.
-        final minimumValueTextWidth = _minimumReadableWidth(
-          context,
-          wrappedValue,
-          valueStyle,
-        );
-        final minimumValueSlot = trailingExtraWidth + minimumValueTextWidth;
-        final compactAvailableAfterGap = math.max(
-          0.0,
-          availableForText - kLabelValueGap,
-        );
-        final requiresStackedLayout =
-            constraints.maxWidth.isFinite &&
-            !fitsOnOneLine &&
-            (compactAvailableAfterGap < minimumLabelWidth + minimumValueSlot ||
-                _longestWordWidth(context, label, labelStyle) >
-                    availableForText + kTextLayoutEpsilon ||
-                _longestWordWidth(context, wrappedValue, valueStyle) >
-                    availableForText - trailingExtraWidth + kTextLayoutEpsilon);
-
-        if (requiresStackedLayout) {
-          final stackedRow = Row(
-            mainAxisSize: MainAxisSize.max,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (leading != null) ...[
-                SizedBox(width: leadingWidth, child: leading!),
-                SizedBox(width: leadingGap),
-              ],
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(label, style: labelStyle, softWrap: true),
-                    const SizedBox(height: 3),
-                    trailing,
-                  ],
-                ),
-              ),
-            ],
-          );
-          return _animateRowHeight(
-            stackedRow,
-            alignment: leading == null ? Alignment.topCenter : Alignment.center,
-          );
-        }
-
-        final labelCanKeepSingleLineWithWrappedValue =
-            !fitsOnOneLine &&
-            !hasProtectedPair &&
-            _hasMultipleWords(wrappedValue) &&
-            singleLineLabelSlot +
-                    kLabelValueGap +
-                    trailingExtraWidth +
-                    minimumValueTextWidth <=
-                availableForText;
-        final forceSharedWrap =
-            !fitsOnOneLine &&
-            !labelCanKeepSingleLineWithWrappedValue;
-        final labelCanWrap =
-            forceSharedWrap && _hasMultipleWords(label);
-        final valueCanWrap =
-            !fitsOnOneLine && _hasMultipleWords(wrappedValue);
-
-        if (fitsOnOneLine && !labelCanWrap && !valueCanWrap) {
+        if (fitsOnOneLine) {
           final row = Row(
             mainAxisSize: alignTrailing ? MainAxisSize.max : MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -1060,13 +989,12 @@ class MinGapLabelValueRow extends StatelessWidget {
         );
         final minLabelSlot = math.min(availableAfterGap, minLabelWidth);
 
-        // The score makes row height the primary objective. If two allocations
-        // have the same row height, prefer the one with less total text height;
-        // this keeps a one-line label beside a two-line value when that is
-        // already as short as a two-line/two-line arrangement.
+        // Search only within allocations that keep each side's widest word
+        // intact. The first valid wrap target wins; this gives the value-first
+        // alternating order its intended priority.
         var bestLabelSlot = minLabelSlot;
         var bestValueSlot = math.max(0.0, availableAfterGap - bestLabelSlot);
-        var bestTotalHeight = double.infinity;
+        var foundAllocation = false;
         final maxLabelSlot = math.max(
           minLabelSlot,
           availableAfterGap - minValueSlot,
@@ -1074,162 +1002,150 @@ class MinGapLabelValueRow extends StatelessWidget {
         final searchStart = math.min(minLabelSlot, maxLabelSlot);
         final searchEnd = math.max(minLabelSlot, maxLabelSlot);
 
-        final bothBlocksCanWrap =
-            _hasMultipleWords(label) && _hasMultipleWords(wrappedValue);
-        var bestMaxLines = 999999;
-        var bestWrappedBlocks = double.infinity;
-        var bestTotalLines = 999999;
-        var sharedLabelSlot = 0.0;
-        var sharedValueSlot = 0.0;
-        var sharedMaxLines = 999999;
-        var sharedTotalHeight = double.infinity;
+        bool findAllocation(int targetLabelLines, int targetValueLines) {
+          var targetFound = false;
+          var targetScore = double.infinity;
+          var targetLabelSlot = minLabelSlot;
+          var targetValueSlot = math.max(
+            0.0,
+            availableAfterGap - targetLabelSlot,
+          );
 
-        void considerAllocation(
-          double candidateLabelSlot, {
-          double? candidateValueSlot,
-        }) {
-          final labelSlot = candidateLabelSlot
-              .clamp(0.0, availableAfterGap)
-              .toDouble();
-          final valueSlot =
-              (candidateValueSlot ?? availableAfterGap - labelSlot)
-                  .clamp(0.0, availableAfterGap)
-                  .toDouble();
-          final labelMetrics = _wrappedMetrics(
-            context,
-            label,
-            labelStyle,
-            labelSlot,
-          );
-          final valueMetrics = _wrappedMetrics(
-            context,
-            wrappedValue,
-            valueStyle,
-            math.max(0.0, valueSlot - trailingExtraWidth),
-          );
-          final labelWordsFit =
-              labelSlot + kTextLayoutEpsilon >=
-              _longestWordWidth(context, label, labelStyle);
-          final valueWordsFit =
-              valueSlot - trailingExtraWidth + kTextLayoutEpsilon >=
-              _longestWordWidth(context, wrappedValue, valueStyle);
-          if (!labelWordsFit ||
-              !valueWordsFit ||
-              (!labelCanWrap && labelMetrics.lineCount > 1) ||
-              (!valueCanWrap && valueMetrics.lineCount > 1) ||
-              (labelCanWrap && labelMetrics.lineCount < 2) ||
-              (valueCanWrap && valueMetrics.lineCount < 2)) {
-            return;
-          }
-          final totalHeight = labelMetrics.height + valueMetrics.height;
-          final maxLines = math.max(
-            labelMetrics.lineCount,
-            valueMetrics.lineCount,
-          );
-          final totalLines = labelMetrics.lineCount + valueMetrics.lineCount;
-          final wrappedBlocks =
-              (labelMetrics.lineCount > 1 ? 1 : 0) +
-              (valueMetrics.lineCount > 1 ? 1 : 0);
+          void considerCandidate(double candidateLabelSlot) {
+            final labelSlot = candidateLabelSlot
+                .clamp(0.0, availableAfterGap)
+                .toDouble();
+            final valueSlot = (availableAfterGap - labelSlot)
+                .clamp(0.0, availableAfterGap)
+                .toDouble();
+            final labelMetrics = _wrappedMetrics(
+              context,
+              label,
+              labelStyle,
+              labelSlot,
+            );
+            final valueMetrics = _wrappedMetrics(
+              context,
+              wrappedValue,
+              valueStyle,
+              math.max(0.0, valueSlot - trailingExtraWidth),
+            );
+            final labelWordsFit =
+                labelSlot + kTextLayoutEpsilon >=
+                _longestWordWidth(context, label, labelStyle);
+            final valueWordsFit =
+                valueSlot - trailingExtraWidth + kTextLayoutEpsilon >=
+                _longestWordWidth(context, wrappedValue, valueStyle);
+            if (!labelWordsFit ||
+                !valueWordsFit ||
+                labelMetrics.lineCount != targetLabelLines ||
+                valueMetrics.lineCount != targetValueLines) {
+              return;
+            }
 
-          // When both text blocks have real break opportunities, remember the
-          // best genuinely shared wrap separately. It is allowed to win over
-          // a one-sided allocation when it keeps the row at the same maximum
-          // line count, but only after the natural single-line layout has been
-          // ruled out by the minimum-gap constraint. The explicit pair
-          // preferences above are enforced by the line-count guards below.
-          if (bothBlocksCanWrap &&
-              labelMetrics.lineCount > 1 &&
-              valueMetrics.lineCount > 1) {
-            if (maxLines < sharedMaxLines ||
-                (maxLines == sharedMaxLines &&
-                    totalHeight < sharedTotalHeight)) {
-              sharedLabelSlot = labelSlot;
-              sharedValueSlot = valueSlot;
-              sharedMaxLines = maxLines;
-              sharedTotalHeight = totalHeight;
+            // Prefer the allocation closest to the natural label width. This
+            // keeps the first value wrap from stealing unnecessary width from
+            // the label while preserving the target line counts.
+            final score = (labelSlot - labelWidth).abs();
+            if (!targetFound || score < targetScore) {
+              targetFound = true;
+              targetScore = score;
+              targetLabelSlot = labelSlot;
+              targetValueSlot = valueSlot;
             }
           }
 
-          const epsilon = 0.01;
-          final isBetter =
-              maxLines < bestMaxLines ||
-              (maxLines == bestMaxLines &&
-                  (totalHeight < bestTotalHeight - epsilon ||
-                      (totalHeight - bestTotalHeight).abs() <= epsilon &&
-                          (totalLines < bestTotalLines ||
-                              (totalLines == bestTotalLines &&
-                                  wrappedBlocks < bestWrappedBlocks))));
-          if (isBetter) {
-            bestLabelSlot = labelSlot;
-            bestValueSlot = valueSlot;
-            bestMaxLines = maxLines;
-            bestTotalHeight = totalHeight;
-            bestTotalLines = totalLines;
-            bestWrappedBlocks = wrappedBlocks.toDouble();
+          for (
+            var candidateLabelSlot = searchStart;
+            candidateLabelSlot <= searchEnd;
+            candidateLabelSlot += 1.0
+          ) {
+            considerCandidate(candidateLabelSlot);
+          }
+          considerCandidate(searchEnd);
+
+          if (targetFound) {
+            bestLabelSlot = targetLabelSlot;
+            bestValueSlot = targetValueSlot;
+          }
+          return targetFound;
+        }
+
+        int wordCount(String text) {
+          final trimmed = text.trim();
+          return trimmed.isEmpty ? 1 : trimmed.split(RegExp(r'\s+')).length;
+        }
+
+        final labelWordCount = wordCount(label);
+        final valueWordCount = wordCount(wrappedValue);
+        final wrapTargets = <List<int>>[];
+
+        void addWrapTarget(int targetLabelLines, int targetValueLines) {
+          if (targetLabelLines == 1 && targetValueLines == 1) return;
+          wrapTargets.add([targetLabelLines, targetValueLines]);
+        }
+
+        // Normal rows alternate one additional wrap at a time, always giving
+        // the value the first opportunity: value 2 / label 1, then value 2 /
+        // label 2, then value 3 / label 2, and so on.
+        var targetLabelLines = 1;
+        var targetValueLines = 1;
+        if (hasProtectedPair) {
+          // The protected-pair branch above already tried label-first with the
+          // complete value. If that was not possible, make both sides
+          // breakable before continuing the same alternating progression.
+          if (labelWordCount > 1) targetLabelLines++;
+          if (valueWordCount > 1) targetValueLines++;
+          addWrapTarget(targetLabelLines, targetValueLines);
+        } else {
+          while (targetValueLines < valueWordCount ||
+              targetLabelLines < labelWordCount) {
+            if (targetValueLines < valueWordCount) {
+              targetValueLines++;
+              addWrapTarget(targetLabelLines, targetValueLines);
+            }
+            if (targetLabelLines < labelWordCount) {
+              targetLabelLines++;
+              addWrapTarget(targetLabelLines, targetValueLines);
+            }
           }
         }
 
-        // Try the intended authored wrap widths first. If there is spare room,
-        // the unused width becomes extra gap rather than widening a block back
-        // to one line.
-        final preferredLabelSlot = labelCanWrap
-            ? math.max(minLabelSlot, (labelWidth + minLabelSlot) / 2.0)
-            : (labelCanKeepSingleLineWithWrappedValue
-                  ? singleLineLabelSlot
-                  : labelWidth);
-        final preferredValueSlot = valueCanWrap
-            ? math.max(minValueSlot, (valueWidth + minValueSlot) / 2.0)
-            : valueWidth;
-        if (preferredLabelSlot + preferredValueSlot <= availableAfterGap) {
-          considerAllocation(
-            preferredLabelSlot,
-            candidateValueSlot: preferredValueSlot,
+        for (final target in wrapTargets) {
+          if (findAllocation(target[0], target[1])) {
+            foundAllocation = true;
+            break;
+          }
+        }
+
+        if (!foundAllocation) {
+          final stackedRow = Row(
+            mainAxisSize: MainAxisSize.max,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (leading != null) ...[
+                SizedBox(width: leadingWidth, child: leading!),
+                SizedBox(width: leadingGap),
+              ],
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(label, style: labelStyle, softWrap: true),
+                    const SizedBox(height: 3),
+                    trailing,
+                  ],
+                ),
+              ),
+            ],
+          );
+          return _animateRowHeight(
+            stackedRow,
+            alignment: leading == null ? Alignment.topCenter : Alignment.center,
           );
         }
 
-        // Also compare the two one-sided choices. The required-wrap guard
-        // above keeps only the valid one when exactly one block can wrap.
-        considerAllocation(
-          labelCanKeepSingleLineWithWrappedValue
-              ? singleLineLabelSlot
-              : labelWidth,
-        );
-        considerAllocation(availableAfterGap - valueWidth);
-
-        // If neither one-sided choice is short enough, compare shared-wrap
-        // allocations. Wrapping changes at word boundaries, so a one-pixel
-        // sweep is enough to find useful breakpoints while remaining stable at
-        // fractional device widths and Dynamic Type sizes.
-        for (
-          var candidateLabelSlot = searchStart;
-          candidateLabelSlot <= searchEnd;
-          candidateLabelSlot += 1.0
-        ) {
-          considerAllocation(candidateLabelSlot);
-        }
-        // Include the fractional endpoint so the right edge remains exact.
-        considerAllocation(searchEnd);
-
-        if (forceSharedWrap &&
-            bothBlocksCanWrap &&
-            sharedMaxLines <= bestMaxLines &&
-            sharedMaxLines < 999999) {
-          bestLabelSlot = sharedLabelSlot;
-          bestValueSlot = sharedValueSlot;
-        }
-
-        final finalLabelMetrics = _wrappedMetrics(
-          context,
-          label,
-          labelStyle,
-          bestLabelSlot,
-        );
-        final finalValueMetrics = _wrappedMetrics(
-          context,
-          wrappedValue,
-          valueStyle,
-          math.max(0.0, bestValueSlot - trailingExtraWidth),
-        );
         final row = Row(
           mainAxisSize: MainAxisSize.max,
           crossAxisAlignment: CrossAxisAlignment.center,
