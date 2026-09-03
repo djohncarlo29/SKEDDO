@@ -14596,23 +14596,41 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               const swatchCountPerRow = 6;
               const swatchGap = 16.0;
               const baseSwatchSize = 43.0;
-              final textScaledSize = MediaQuery.textScalerOf(
-                context,
-              ).scale(baseSwatchSize);
-              // The circle follows the OS text-size profile without being
-              // shrunk to preserve six columns. Once six scaled circles no
-              // longer fit with the minimum 16pt gap, the next whole number
-              // of columns is used instead.
-              final swatchSize = textScaledSize;
+              final textScaler = MediaQuery.textScalerOf(context);
+              final textScaledSize = textScaler.scale(baseSwatchSize);
+              final defaultSixColumnSize =
+                  max(
+                    0.0,
+                    (availableWidth -
+                            (swatchCountPerRow - 1) * swatchGap) /
+                        swatchCountPerRow,
+                  );
+              final defaultSwatchSize = min(
+                baseSwatchSize,
+                defaultSixColumnSize,
+              );
+              final defaultTextScale = textScaler.scale(16) / 16;
+              // Default and smaller text sizes establish a six-column
+              // baseline. This prevents a narrow phone from starting at
+              // 5+5+2 while still allowing the swatches to grow or shrink
+              // with the OS setting. Once text is larger than the default,
+              // the scaled circles are never capped; the minimum gap then
+              // naturally determines when six columns become five.
+              final scaledFromDefault =
+                  defaultSwatchSize * (textScaledSize / baseSwatchSize);
+              final swatchSize =
+                  defaultTextScale <= 1.001
+                      ? min(defaultSwatchSize, scaledFromDefault)
+                      : scaledFromDefault;
               final columns = max(
                 1,
                 min(
                   swatchCountPerRow,
                   min(
                     _kColorOptions.length,
-                    ((availableWidth + swatchGap) /
-                            (swatchSize + swatchGap))
-                        .floor(),
+                      ((availableWidth + swatchGap + 0.001) /
+                              (swatchSize + swatchGap))
+                          .floor(),
                   ),
                 ),
               );
