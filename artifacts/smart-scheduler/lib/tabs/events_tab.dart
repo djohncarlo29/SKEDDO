@@ -14589,22 +14589,39 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       child: _card([
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: SizedBox(
-            // Wrap otherwise shrink-wraps to the combined child widths. Keep
-            // it as wide as the card's padded content so spaceBetween anchors
-            // the first and last swatch slots to the 16 px card insets.
-            width: double.infinity,
-            child: Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              runSpacing: 8,
-              children: [
-                for (final color in _kColorOptions)
-                  SizedBox(
-                    width: swatchSlotSize,
-                    child: _colorSwatch(color),
-                  ),
-              ],
-            ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final availableWidth = constraints.maxWidth;
+              final columns = max(
+                1,
+                min(
+                  _kColorOptions.length,
+                  (availableWidth / swatchSlotSize).floor(),
+                ),
+              );
+              // Calculate one fixed gap for the current full row. Full rows
+              // therefore reach both 16 px card insets exactly. The Wrap is
+              // start-aligned so a partial final row stays left-to-right
+              // instead of spreading its first and last swatches apart.
+              final gap =
+                  columns > 1
+                      ? (availableWidth - columns * swatchSlotSize) /
+                          (columns - 1)
+                      : 0.0;
+
+              return Wrap(
+                alignment: WrapAlignment.start,
+                spacing: gap,
+                runSpacing: 8,
+                children: [
+                  for (final color in _kColorOptions)
+                    SizedBox(
+                      width: swatchSlotSize,
+                      child: _colorSwatch(color),
+                    ),
+                ],
+              );
+            },
           ),
         ),
       ]),
