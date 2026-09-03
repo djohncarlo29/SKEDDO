@@ -230,12 +230,13 @@ const List<_EmojiCat> kEmojiCategories = [
       '👫🏻',
       '👬🏻',
       '👭🏻',
-      // Android and iOS render these per-person light-tone modifiers as the
-      // native family glyph where supported, while avoiding the default
-      // yellow family presentation.
-      '👨🏻‍👩🏻‍👦🏻',
-      '👨🏻‍👩🏻‍👧🏻',
-      '👨🏻‍👩🏻‍👧🏻‍👦🏻',
+      // These are the exact native family sequences. They have no official
+      // Unicode light-tone variant; the grid uses matching light-tone artwork
+      // for these three entries while keeping these original values for
+      // selection and persistence.
+      '👨‍👩‍👦',
+      '👨‍👩‍👧',
+      '👨‍👩‍👧‍👦',
     ],
   ),
   (
@@ -896,6 +897,12 @@ const List<_EmojiCat> kEmojiCategories = [
   ),
 ];
 
+const Map<String, String> _familyEmojiAssets = {
+  '👨‍👩‍👦': 'assets/emoji_family/family_boy.png',
+  '👨‍👩‍👧': 'assets/emoji_family/family_girl.png',
+  '👨‍👩‍👧‍👦': 'assets/emoji_family/family_two_children.png',
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // EmojiPickerSheet — full-page sheet content for showRoundedCupertinoSheet
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1420,11 +1427,22 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
             height: gridHeight,
             child: Stack(
               children: List.generate(emojis.length, (i) {
-                final emoji = Text(
-                  emojis[i],
-                  style: TextStyle(fontSize: cellFontSize, height: 1.0),
-                  textScaler: TextScaler.noScaling,
-                );
+                final familyAsset = _familyEmojiAssets[emojis[i]];
+                final emoji =
+                    familyAsset == null
+                        ? Text(
+                          emojis[i],
+                          style: TextStyle(fontSize: cellFontSize, height: 1.0),
+                          textScaler: TextScaler.noScaling,
+                        )
+                        : Image.asset(
+                          familyAsset,
+                          width: cellSize,
+                          height: cellSize,
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.high,
+                          excludeFromSemantics: true,
+                        );
                 final child =
                     active
                         ? CupertinoButton(

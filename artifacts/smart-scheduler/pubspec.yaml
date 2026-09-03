@@ -57,6 +57,7 @@ flutter:
     - assets/fonts/
     - assets/icons/
     - assets/custom_icons/
+    - assets/emoji_family/
     - assets/models/
 
   fonts:
