@@ -1487,7 +1487,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                       : const Duration(
                                                         milliseconds: 280,
                                                       ),
-                                              curve: Curves.easeOutBack,
+                                              curve: Curves.easeInOutCubic,
                                               left: _dragOffset - w,
                                               top: 0,
                                               bottom: 0,
@@ -1504,7 +1504,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                     : const Duration(
                                                       milliseconds: 280,
                                                     ),
-                                            curve: Curves.easeOutBack,
+                                            curve: Curves.easeInOutCubic,
                                             left: _dragOffset,
                                             top: 0,
                                             bottom: 0,
@@ -1526,7 +1526,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                       : const Duration(
                                                         milliseconds: 280,
                                                       ),
-                                              curve: Curves.easeOutBack,
+                                              curve: Curves.easeInOutCubic,
                                               left: _dragOffset + w,
                                               top: 0,
                                               bottom: 0,
