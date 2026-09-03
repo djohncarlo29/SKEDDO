@@ -14567,12 +14567,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   }
 
   Widget _buildColorCard() {
-    // 44 px preserves the previous unselected circle's visual diameter while
+    // 43 px preserves the previous unselected circle's visual diameter while
     // making the painted circle itself the layout unit. Scaling the complete
     // unit lets the grid respond to Dynamic Type without adding hidden outer
     // padding that would move the visible edge away from the card inset.
     final textScaler = MediaQuery.textScalerOf(context);
-    final swatchSize = textScaler.scale(44);
+    final swatchSize = textScaler.scale(43);
 
     return SizedBox(
       width: double.infinity,
@@ -14582,20 +14582,25 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
           child: LayoutBuilder(
             builder: (context, constraints) {
               final availableWidth = constraints.maxWidth;
+              const minSwatchGap = 16.0;
               final columns = max(
                 1,
                 min(
                   6,
                   min(
                     _kColorOptions.length,
-                    (availableWidth / swatchSize).floor(),
+                    ((availableWidth + minSwatchGap) /
+                            (swatchSize + minSwatchGap))
+                        .floor(),
                   ),
                 ),
               );
-              // Calculate one fixed gap for the current full row. Full rows
-              // therefore reach both 16 px card insets exactly. The Wrap is
-              // start-aligned so a partial final row stays left-to-right
-              // instead of spreading its first and last swatches apart.
+              // Calculate one fixed gap for the current full row. It is never
+              // below 16 px, so the grid drops a column before the swatches
+              // become crowded. Full rows reach both card insets exactly. The
+              // Wrap is start-aligned so a partial final row stays
+              // left-to-right instead of spreading its first and last
+              // swatches apart.
               final gap =
                   columns > 1
                       ? (availableWidth - columns * swatchSize) /
@@ -14605,7 +14610,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               return Wrap(
                 alignment: WrapAlignment.start,
                 spacing: gap,
-                runSpacing: 8,
+                runSpacing: minSwatchGap,
                 children: [
                   for (final color in _kColorOptions)
                     SizedBox(
