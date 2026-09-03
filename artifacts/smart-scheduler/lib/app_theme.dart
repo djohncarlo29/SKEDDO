@@ -770,9 +770,9 @@ class _WrappedTextMetrics {
 /// value from becoming needlessly tall, and vice versa.
 ///
 /// If even the widest word from each block cannot fit beside the other block,
-/// the row becomes a small two-line stack. This is preferable to letting the
-/// paragraph engine split a word such as "Category" or "Uncategorized" at a
-/// character boundary when Dynamic Type is very large.
+/// the row becomes a full-width vertical stack: the label is left-aligned on
+/// top, and the value is right-aligned below it with a fixed 16 pt gap. Both
+/// blocks retain their full width so either one can wrap across multiple lines.
 class MinGapLabelValueRow extends StatelessWidget {
   const MinGapLabelValueRow({
     super.key,
@@ -1132,9 +1132,23 @@ class MinGapLabelValueRow extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(label, style: labelStyle, softWrap: true),
-                    const SizedBox(height: 3),
-                    trailing,
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        label,
+                        style: labelStyle,
+                        textAlign: TextAlign.left,
+                        softWrap: true,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: trailing,
+                      ),
+                    ),
                   ],
                 ),
               ),

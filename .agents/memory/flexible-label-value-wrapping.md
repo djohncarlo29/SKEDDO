@@ -17,15 +17,20 @@ the ordinary breakable-value fallback begin.
 
 Words must never be allowed to split at a character boundary. Reject any
 side-by-side allocation narrower than either block's widest word; if no valid
-allocation remains, stack the value below the label and let the row grow.
+allocation remains, stack the value below the label and let the row grow. In
+that fallback, the label is left-aligned above the value, the value is
+right-aligned below it, and their fixed vertical gap is 16pt; both blocks may
+wrap across multiple lines.
 When protecting a short two-word value, preserve its visible normal-looking
 space; only the break opportunity changes.
 
 **Why:** The value is the trailing content users scan first, so it should take
 the first wrap opportunity without forcing the label to wrap prematurely.
 Alternating one additional line at a time avoids a large jump in row height and
-keeps the visible gap stable. Splitting a compact value such as "1 hour" still
-creates an awkward one-character line break, so that pair remains protected.
+keeps the visible gap stable. When side-by-side layout is impossible, the
+vertical fallback still needs predictable hierarchy and breathing room.
+Splitting a compact value such as "1 hour" still creates an awkward
+one-character line break, so that pair remains protected.
 
 **How to apply:** Reuse the shared row layout for every chevron-value
 row, including picker/modal and settings rows. Keep words intact; try the

@@ -134,6 +134,51 @@ void main() {
   );
 
   testWidgets(
+    'stacks long label and value with fixed alignment and gap',
+    (tester) async {
+      const rowKey = ValueKey('stacked-label-value-row');
+      const valueKey = ValueKey('stacked-value');
+
+      await tester.pumpWidget(
+        const MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.noScaling),
+          child: CupertinoApp(
+            home: CupertinoPageScaffold(
+              child: SizedBox(
+                width: 120,
+                child: MinGapLabelValueRow(
+                  key: rowKey,
+                  label: 'A very long label',
+                  labelStyle: TextStyle(fontSize: 17),
+                  value: 'First Second Third',
+                  valueStyle: TextStyle(fontSize: 15),
+                  trailing: Text(
+                    'First Second Third',
+                    key: valueKey,
+                    style: TextStyle(fontSize: 15),
+                  ),
+                  trailingExtraWidth: 0,
+                  alignTrailing: false,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final rowRect = tester.getRect(find.byKey(rowKey));
+      final labelRect = tester.getRect(find.text('A very long label'));
+      final valueRect = tester.getRect(find.byKey(valueKey));
+      expect(labelRect.left, closeTo(rowRect.left, 0.01));
+      expect(valueRect.right, closeTo(rowRect.right, 0.01));
+      expect(valueRect.top - labelRect.bottom, closeTo(16, 0.01));
+      expect(labelRect.height, greaterThan(34));
+      expect(valueRect.height, greaterThan(34));
+    },
+  );
+
+  testWidgets(
     'keeps one-character word values together while the label wraps first',
     (tester) async {
       const labelStyle = TextStyle(fontSize: 17);
