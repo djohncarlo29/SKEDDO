@@ -14589,16 +14589,22 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       child: _card([
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            runSpacing: 8,
-            children: [
-              for (final color in _kColorOptions)
-                SizedBox(
-                  width: swatchSlotSize,
-                  child: _colorSwatch(color),
-                ),
-            ],
+          child: SizedBox(
+            // Wrap otherwise shrink-wraps to the combined child widths. Keep
+            // it as wide as the card's padded content so spaceBetween anchors
+            // the first and last swatch slots to the 16 px card insets.
+            width: double.infinity,
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              runSpacing: 8,
+              children: [
+                for (final color in _kColorOptions)
+                  SizedBox(
+                    width: swatchSlotSize,
+                    child: _colorSwatch(color),
+                  ),
+              ],
+            ),
           ),
         ),
       ]),
