@@ -14528,6 +14528,22 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       kEmptyStateIcon,
       context,
     ).withOpacity(0.50);
+    final textScaler = MediaQuery.textScalerOf(context);
+    final selectionGap = textScaler.scale(3.0);
+    final selectionRingWidth = textScaler.scale(3.0);
+    final selectedVisualSize =
+        size + 2 * (selectionGap + selectionRingWidth);
+
+    final colorCircle = SizedBox.square(
+      dimension: size,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: resolveThemeColor(c, context),
+        ),
+      ),
+    );
+
     return GelBloomButton(
       onTap: () {
         setState(() {
@@ -14543,25 +14559,27 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         dimension: size,
         child:
             selected
-                ? Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: ringColor, width: 3.0),
-                  ),
-                  padding: const EdgeInsets.all(3.0),
+                ? OverflowBox(
+                  alignment: Alignment.center,
+                  minWidth: selectedVisualSize,
+                  maxWidth: selectedVisualSize,
+                  minHeight: selectedVisualSize,
+                  maxHeight: selectedVisualSize,
                   child: Container(
+                    width: selectedVisualSize,
+                    height: selectedVisualSize,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: resolveThemeColor(c, context),
+                      border: Border.all(
+                        color: ringColor,
+                        width: selectionRingWidth,
+                      ),
                     ),
+                    padding: EdgeInsets.all(selectionGap),
+                    child: colorCircle,
                   ),
                 )
-                : Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: resolveThemeColor(c, context),
-                  ),
-                ),
+                : colorCircle,
       ),
     );
   }
