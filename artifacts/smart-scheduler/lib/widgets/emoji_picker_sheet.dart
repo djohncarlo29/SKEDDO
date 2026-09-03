@@ -1419,6 +1419,32 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     );
   }
 
+  double _defaultCategoryGap(BuildContext context, double availableWidth) {
+    final defaultItemWidth = List<double>.generate(
+      kEmojiCategories.length,
+      (i) {
+        final fontSize = i == _catIndex ? 24.0 : 20.0;
+        final glyphWidth =
+            (TextPainter(
+              text: TextSpan(
+                text: kEmojiCategories[i].icon,
+                style: TextStyle(fontSize: fontSize),
+              ),
+              textDirection: Directionality.of(context),
+              textScaler: TextScaler.noScaling,
+              maxLines: 1,
+            )..layout()).width;
+        return glyphWidth + 2 * _emojiCategoryItemHorizontalPadding;
+      },
+    );
+    final freeSpace =
+        availableWidth - defaultItemWidth.fold(0.0, (sum, width) => sum + width);
+    return math.max(
+      0.0,
+      freeSpace / (kEmojiCategories.length - 1),
+    );
+  }
+
   void _close() => Navigator.of(context, rootNavigator: true).pop();
 
   @override
@@ -1659,6 +1685,15 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                     ),
                                     child: LayoutBuilder(
                                       builder: (context, constraints) {
+                                        final largerThanDefault =
+                                            textScaler.scale(20.0) > 20.0;
+                                        final categoryMinimumGap =
+                                            largerThanDefault
+                                                ? _defaultCategoryGap(
+                                                  context,
+                                                  constraints.maxWidth,
+                                                )
+                                                : 0.0;
                                         return SingleChildScrollView(
                                           controller: _categoryScrollCtrl,
                                           primary: false,
@@ -1677,6 +1712,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                               mainAxisSize: MainAxisSize.min,
                                               mainAxisAlignment:
                                                   MainAxisAlignment.spaceBetween,
+                                              spacing: categoryMinimumGap,
                                               children: List.generate(
                                                 kEmojiCategories.length,
                                                 (i) {
