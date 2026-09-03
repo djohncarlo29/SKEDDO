@@ -885,6 +885,13 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   int _catIndex = 0;
   double _dragOffset = 0.0;
   final _scrollCtrl = ScrollController();
+  int _emojiColumns = 8;
+  int _automaticEmojiColumns = 8;
+  bool _emojiColumnsWasPinched = false;
+  final Map<int, Offset> _emojiPointers = {};
+  double? _emojiPinchStartDistance;
+  bool _emojiPinchActive = false;
+  bool _emojiPinchHandled = false;
 
   @override
   void dispose() {
@@ -900,7 +907,61 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     _scrollCtrl.jumpTo(0);
   }
 
+  double _currentEmojiPointerDistance() {
+    final points = _emojiPointers.values.toList(growable: false);
+    if (points.length < 2) return 0.0;
+    return (points[0] - points[1]).distance;
+  }
+
+  void _onEmojiPointerDown(PointerDownEvent event) {
+    _emojiPointers[event.pointer] = event.position;
+    if (_emojiPointers.length == 2) {
+      _emojiPinchStartDistance = _currentEmojiPointerDistance();
+      _emojiPinchActive = true;
+      _emojiPinchHandled = false;
+      if (_dragOffset != 0) {
+        setState(() => _dragOffset = 0);
+      }
+    }
+  }
+
+  void _onEmojiPointerMove(PointerMoveEvent event) {
+    if (!_emojiPointers.containsKey(event.pointer)) return;
+    _emojiPointers[event.pointer] = event.position;
+    if (!_emojiPinchActive || _emojiPinchHandled) return;
+
+    final startDistance = _emojiPinchStartDistance;
+    if (startDistance == null || startDistance == 0) return;
+    final scale = _currentEmojiPointerDistance() / startDistance;
+    final minimumPinchColumns = math.max(1, _automaticEmojiColumns - 1);
+    final maximumPinchColumns = _automaticEmojiColumns + 1;
+
+    if (scale > 1.18 && _emojiColumns > minimumPinchColumns) {
+      setState(() {
+        _emojiColumns -= 1;
+        _emojiColumnsWasPinched = true;
+      });
+      _emojiPinchHandled = true;
+    } else if (scale < 0.84 && _emojiColumns < maximumPinchColumns) {
+      setState(() {
+        _emojiColumns += 1;
+        _emojiColumnsWasPinched = true;
+      });
+      _emojiPinchHandled = true;
+    }
+  }
+
+  void _onEmojiPointerEnd(PointerEvent event) {
+    _emojiPointers.remove(event.pointer);
+    if (_emojiPointers.length < 2) {
+      _emojiPinchStartDistance = null;
+      _emojiPinchActive = false;
+      _emojiPinchHandled = false;
+    }
+  }
+
   void _onDragUpdate(DragUpdateDetails d, double panelWidth) {
+    if (_emojiPinchActive) return;
     setState(() {
       double next = _dragOffset + d.delta.dx;
       // Rubber-band resistance at left/right edges
@@ -913,6 +974,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   }
 
   void _onDragEnd(DragEndDetails d, double panelWidth) {
+    if (_emojiPinchActive) return;
     final vel = d.primaryVelocity ?? 0;
     final threshold = panelWidth / 2;
 
@@ -958,15 +1020,30 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
           1.0,
           defaultCellSize * (emojiFontSize / 26.0),
         );
-        final columns = math.max(
+        final automaticColumns = math.max(
           1,
           ((contentWidth + minimumSpacing + 0.001) /
                   (targetCellSize + minimumSpacing))
               .floor(),
         );
+        // The column count belongs to the entire subsheet, not this category.
+        // Reset a manual pinch offset if the OS-derived baseline changes.
+        if (!_emojiColumnsWasPinched ||
+            automaticColumns != _automaticEmojiColumns) {
+          _automaticEmojiColumns = automaticColumns;
+          _emojiColumns = automaticColumns;
+          _emojiColumnsWasPinched = false;
+        }
+        final columns =
+            _emojiColumnsWasPinched ? _emojiColumns : automaticColumns;
+        final cellSize =
+            _emojiColumnsWasPinched
+                ? (contentWidth - minimumSpacing * (columns - 1)) /
+                    columns
+                : targetCellSize;
         final crossAxisSpacing =
             columns > 1
-                ? (contentWidth - columns * targetCellSize) /
+                ? (contentWidth - columns * cellSize) /
                     (columns - 1)
                 : 0.0;
 
@@ -1142,35 +1219,42 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
                                   final w = constraints.maxWidth;
-                                  return GestureDetector(
-                                    behavior: HitTestBehavior.opaque,
-                                    onHorizontalDragUpdate: (d) =>
-                                        _onDragUpdate(d, w),
-                                    onHorizontalDragEnd: (d) =>
-                                        _onDragEnd(d, w),
-                                    child: Stack(
-                                      clipBehavior: Clip.hardEdge,
-                                      children: [
-                                        if (_catIndex > 0)
-                                          Transform.translate(
-                                            offset: Offset(_dragOffset - w, 0),
-                                            child: _buildGrid(_catIndex - 1),
-                                          ),
-                                        Transform.translate(
-                                          offset: Offset(_dragOffset, 0),
-                                          child: _buildGrid(
-                                            _catIndex,
-                                            active: true,
-                                          ),
-                                        ),
-                                        if (_catIndex <
-                                            kEmojiCategories.length - 1)
-                                          Transform.translate(
-                                            offset: Offset(_dragOffset + w, 0),
-                                            child: _buildGrid(_catIndex + 1),
-                                          ),
-                                      ],
-                                    ),
+                return Listener(
+                  behavior: HitTestBehavior.opaque,
+                  onPointerDown: _onEmojiPointerDown,
+                  onPointerMove: _onEmojiPointerMove,
+                  onPointerUp: _onEmojiPointerEnd,
+                  onPointerCancel: _onEmojiPointerEnd,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onHorizontalDragUpdate: (d) =>
+                        _onDragUpdate(d, w),
+                    onHorizontalDragEnd: (d) =>
+                        _onDragEnd(d, w),
+                    child: Stack(
+                      clipBehavior: Clip.hardEdge,
+                      children: [
+                        if (_catIndex > 0)
+                          Transform.translate(
+                            offset: Offset(_dragOffset - w, 0),
+                            child: _buildGrid(_catIndex - 1),
+                          ),
+                        Transform.translate(
+                          offset: Offset(_dragOffset, 0),
+                          child: _buildGrid(
+                            _catIndex,
+                            active: true,
+                          ),
+                        ),
+                        if (_catIndex <
+                            kEmojiCategories.length - 1)
+                          Transform.translate(
+                            offset: Offset(_dragOffset + w, 0),
+                            child: _buildGrid(_catIndex + 1),
+                          ),
+                      ],
+                    ),
+                  ),
                                   );
                                 },
                               ),
