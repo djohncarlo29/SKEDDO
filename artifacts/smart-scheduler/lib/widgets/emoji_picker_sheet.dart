@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import '../app_theme.dart';
+import 'horizontal_edge_fade.dart';
 import 'rounded_cupertino_sheet.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1545,44 +1546,48 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                             // Row 2 — category strip
                             SizedBox(
                               height: textScaler.scale(52.0),
-                              child: SingleChildScrollView(
-                                controller: _categoryScrollCtrl,
-                                primary: false,
-                                scrollDirection: Axis.horizontal,
-                                physics: const BouncingScrollPhysics(
-                                  parent: AlwaysScrollableScrollPhysics(),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: List.generate(
-                                    kEmojiCategories.length,
-                                    (i) {
-                                      final sel = i == _catIndex;
-                                      return GestureDetector(
-                                        key: _categoryTabKeys[i],
-                                        onTap: () => _switchCategory(i),
-                                        behavior: HitTestBehavior.opaque,
-                                        child: Padding(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: textScaler.scale(8.0),
-                                            vertical: textScaler.scale(8.0),
-                                          ),
-                                          child: Text(
-                                            kEmojiCategories[i].icon,
-                                            style: TextStyle(
-                                              fontSize: textScaler.scale(
-                                                sel ? 24.0 : 20.0,
-                                              ),
-                                              height: 1.0,
-                                              color: sel
-                                                  ? null
-                                                  : const Color(0x66000000),
+                              child: HorizontalEdgeFade(
+                                fadeColor: cardColor,
+                                fadeOnRubberbandWhenContentFits: true,
+                                child: SingleChildScrollView(
+                                  controller: _categoryScrollCtrl,
+                                  primary: false,
+                                  scrollDirection: Axis.horizontal,
+                                  physics: const BouncingScrollPhysics(
+                                    parent: AlwaysScrollableScrollPhysics(),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: List.generate(
+                                      kEmojiCategories.length,
+                                      (i) {
+                                        final sel = i == _catIndex;
+                                        return GestureDetector(
+                                          key: _categoryTabKeys[i],
+                                          onTap: () => _switchCategory(i),
+                                          behavior: HitTestBehavior.opaque,
+                                          child: Padding(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: textScaler.scale(8.0),
+                                              vertical: textScaler.scale(8.0),
                                             ),
-                                            textScaler: TextScaler.noScaling,
+                                            child: Text(
+                                              kEmojiCategories[i].icon,
+                                              style: TextStyle(
+                                                fontSize: textScaler.scale(
+                                                  sel ? 24.0 : 20.0,
+                                                ),
+                                                height: 1.0,
+                                                color: sel
+                                                    ? null
+                                                    : const Color(0x66000000),
+                                              ),
+                                              textScaler: TextScaler.noScaling,
+                                            ),
                                           ),
-                                        ),
-                                      );
-                                    },
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),
