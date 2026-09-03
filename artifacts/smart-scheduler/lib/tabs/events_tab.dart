@@ -11758,57 +11758,6 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                             child: Stack(
                               alignment: Alignment.centerLeft,
                               children: [
-                                // Animated placeholder: slides 4 px right on
-                                // focus, matching the Location field behaviour.
-                                AnimatedBuilder(
-                                  animation: Listenable.merge([
-                                    _nameCtrl,
-                                    _nameFocus,
-                                  ]),
-                                  builder: (_, __) {
-                                    if (_nameCtrl.text.isNotEmpty)
-                                      return const SizedBox.shrink();
-                                    return Positioned.fill(
-                                      child: IgnorePointer(
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                           child: Padding(
-                                             padding: EdgeInsets.zero,
-                                             child: AnimatedContainer(
-                                               duration: const Duration(
-                                                 milliseconds: 180,
-                                               ),
-                                               curve: Curves.easeOut,
-                                               transform:
-                                                   Matrix4.translationValues(
-                                                     _nameFocus.hasFocus
-                                                         ? 4.0
-                                                         : 0.0,
-                                                     0,
-                                                     0,
-                                                   ),
-                                               child: Text(
-                                                 'Title',
-                                                 style: TextStyle(
-                                                   inherit: false,
-                                                   color: resolveThemeColor(
-                                                     kTertiaryLabel,
-                                                     context,
-                                                   ),
-                                                   fontSize: 17,
-                                                   fontFamily: kSFProText,
-                                                   fontWeight: FontWeight.w400,
-                                                   letterSpacing: kTracking17,
-                                                   height: kLineHeight,
-                                                 ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
                                 // CupertinoTheme ensures selection handles
                                 // use the current accent, matching the cursor.
                                 HorizontalEdgeFade(
@@ -11824,6 +11773,20 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                   trailingInset:
                                        scaledSearchIconSize(context, 18) +
                                        kHorizontalFadeContentGap,
+                                  placeholderText: 'Title',
+                                  placeholderTextStyle: TextStyle(
+                                    inherit: false,
+                                    color: resolveThemeColor(
+                                      kTertiaryLabel,
+                                      context,
+                                    ),
+                                    fontSize: 17,
+                                    fontFamily: kSFProText,
+                                    fontWeight: FontWeight.w400,
+                                    letterSpacing: kTracking17,
+                                    height: kLineHeight,
+                                  ),
+                                  placeholderFocusNode: _nameFocus,
                                   controller: _nameCtrl,
                                   scrollController: _nameScrollCtrl,
                                   child: CupertinoTheme(
@@ -13104,6 +13067,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     kHorizontalFadeContentGap +
                     kModalRowHorizontalInset +
                     scaledSearchIconSize(context, 18),
+                placeholderText: 'Title',
+                placeholderTextStyle: _kPlaceholderStyle,
+                placeholderTextAlign: TextAlign.center,
+                placeholderFocusNode: _titleFocus,
                 controller: _titleCtrl,
                 scrollController: _titleScrollCtrl,
                 child: CupertinoTextField(
@@ -13124,7 +13091,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   // renders the full Cupertino floating-bubble toolbar (Select All,
                   // Look Up, Share, etc.) regardless of platform — matching the Notes
                   // tab and every other CupertinoTextField in the app.
-                  placeholder: 'Title',
+                  placeholder: '',
                   placeholderStyle: _kPlaceholderStyle,
                   style:
                       _isSmart
@@ -13226,6 +13193,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     kHorizontalFadeContentGap +
                     kModalRowHorizontalInset +
                     scaledSearchIconSize(context, 18),
+                placeholderText: 'Subtitle',
+                placeholderTextStyle: _kPlaceholderStyle,
+                placeholderTextAlign: TextAlign.center,
+                placeholderFocusNode: _descFocus,
                 controller: _descCtrl,
                 scrollController: _descScrollCtrl,
                 child: CupertinoTextField(
@@ -13236,7 +13207,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                    enableInteractiveSelection: !_isSmart,
                   showCursor: !_isSmart,
                   selectionControls: _selectionControls,
-                  placeholder: 'Subtitle',
+                  placeholder: '',
                   placeholderStyle: _kPlaceholderStyle,
                   style:
                       _isSmart
@@ -13570,39 +13541,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         child: Stack(
           alignment: Alignment.centerLeft,
           children: [
-            // Animated placeholder: slides 4 px right on focus, matching the
-            // NativeTextInput behaviour used everywhere else in the app.
-            AnimatedBuilder(
-              animation: Listenable.merge([ctrl, focusNode]),
-              builder: (_, __) {
-                if (ctrl.text.isNotEmpty) return const SizedBox.shrink();
-                return Positioned.fill(
-                  child: IgnorePointer(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        left: kHorizontalFadeEdgeGap,
-                        right: _locationClearFieldGap(),
-                        top: 14,
-                        bottom: 14,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          curve: Curves.easeOut,
-                          transform: Matrix4.translationValues(
-                            focusNode.hasFocus ? 4.0 : 0.0,
-                            0,
-                            0,
-                          ),
-                          child: Text(hint, style: _kPlaceholderStyle),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
             // The actual text field with an empty placeholder string so our
             // animated overlay above is the only placeholder the user sees.
             HorizontalEdgeFade(
@@ -13610,6 +13548,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               fadeOnRubberbandWhenContentFits: true,
               leadingInset: kHorizontalFadeEdgeGap,
               trailingInset: _locationClearFieldGap(),
+              placeholderText: hint,
+              placeholderTextStyle: _kPlaceholderStyle,
+              placeholderFocusNode: focusNode,
               controller: ctrl,
               scrollController: scrollController,
               child: CupertinoTheme(
@@ -16720,34 +16661,42 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
                   ).copyWith(primaryColor: widget.accentColor),
                   child: DefaultSelectionStyle(
                     selectionColor: widget.accentColor.withOpacity(0.20),
-                    child: CupertinoTextField(
+                    child: HorizontalEdgeFade(
+                      fadeColor: resolveThemeColor(kModalCard, context),
+                      fadeOnRubberbandWhenContentFits: true,
+                      placeholderText: 'New Section',
+                      placeholderTextStyle: placeholderStyle,
+                      placeholderFocusNode: _focusNode,
                       controller: _controller,
-                      focusNode: _focusNode,
-                      autofocus: false,
-                      decoration: null,
-                      padding: EdgeInsets.zero,
-                      minLines: 1,
-                      maxLines: null,
-                      textAlignVertical: TextAlignVertical.top,
-                      textInputAction: TextInputAction.done,
-                      textCapitalization: TextCapitalization.sentences,
-                      selectionControls: _selectionControls,
-                      placeholder: 'New Section',
-                      placeholderStyle: placeholderStyle,
-                      style: labelStyle,
-                      cursorColor: widget.accentColor,
-                      onTap: _scheduleEnsureVisible,
-                      onChanged: (_) {
-                        setState(() {});
-                        widget.onChanged?.call(_controller.text.trim());
-                        _scheduleEnsureVisible();
-                      },
-                      // Some phone keyboards deliver their check/Done key
-                      // through editingComplete rather than submitted.
-                      // Commit through the same path in either case so the
-                      // saved name is ready when Edit Sections is opened.
-                      onEditingComplete: _submit,
-                      onSubmitted: (_) => _submit(),
+                      child: CupertinoTextField(
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        autofocus: false,
+                        decoration: null,
+                        padding: EdgeInsets.zero,
+                        minLines: 1,
+                        maxLines: null,
+                        textAlignVertical: TextAlignVertical.top,
+                        textInputAction: TextInputAction.done,
+                        textCapitalization: TextCapitalization.sentences,
+                        selectionControls: _selectionControls,
+                        placeholder: '',
+                        placeholderStyle: placeholderStyle,
+                        style: labelStyle,
+                        cursorColor: widget.accentColor,
+                        onTap: _scheduleEnsureVisible,
+                        onChanged: (_) {
+                          setState(() {});
+                          widget.onChanged?.call(_controller.text.trim());
+                          _scheduleEnsureVisible();
+                        },
+                        // Some phone keyboards deliver their check/Done key
+                        // through editingComplete rather than submitted.
+                        // Commit through the same path in either case so the
+                        // saved name is ready when Edit Sections is opened.
+                        onEditingComplete: _submit,
+                        onSubmitted: (_) => _submit(),
+                      ),
                     ),
                   ),
                 ),

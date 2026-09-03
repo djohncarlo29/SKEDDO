@@ -6392,30 +6392,31 @@ class _NewEventSheetState extends State<_NewEventSheet>
       child: Stack(
         alignment: Alignment.topLeft,
         children: [
-          // Animated placeholder: hides when text present, slides 4 px on focus.
-          AnimatedBuilder(
-            animation: Listenable.merge([ctrl, focus]),
-            builder: (_, __) {
-              if (ctrl.text.isNotEmpty) return const SizedBox.shrink();
-              return IgnorePointer(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOut,
-                  transform: Matrix4.translationValues(
-                    focus.hasFocus ? 4.0 : 0.0,
-                    0,
-                    0,
+          if (multiline)
+            // Multiline placeholders wrap normally; the horizontal wrapper
+            // below owns the intrinsic one-line placeholder treatment.
+            AnimatedBuilder(
+              animation: Listenable.merge([ctrl, focus]),
+              builder: (_, __) {
+                if (ctrl.text.isNotEmpty) return const SizedBox.shrink();
+                return IgnorePointer(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOut,
+                    transform: Matrix4.translationValues(
+                      focus.hasFocus ? 4.0 : 0.0,
+                      0,
+                      0,
+                    ),
+                    child: Text(
+                      placeholder,
+                      style: _kPlaceholderStyle,
+                      overflow: TextOverflow.clip,
+                    ),
                   ),
-                   child: Padding(
-                     padding: EdgeInsets.only(
-                       left: 0,
-                     ),
-                     child: Text(placeholder, style: _kPlaceholderStyle),
-                   ),
-                ),
-              );
-            },
-          ),
+                );
+              },
+            ),
           multiline
               ? VerticalEdgeFade(
                   fadeColor: resolvedSurface,
@@ -6432,6 +6433,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
                   // outer row padding, so the card-edge fade begins here.
                    leadingInset: 0,
                    trailingInset: clearIconSize + kHorizontalFadeContentGap,
+                   placeholderText: multiline ? null : placeholder,
+                   placeholderTextStyle: multiline
+                       ? null
+                       : _kPlaceholderStyle,
+                   placeholderFocusNode: multiline ? null : focus,
                   controller: ctrl,
                   scrollController: scrollController,
                   child: textField,
@@ -8063,42 +8069,14 @@ class _NewEventSheetState extends State<_NewEventSheet>
         child: Stack(
           alignment: Alignment.centerLeft,
           children: [
-            AnimatedBuilder(
-              animation: Listenable.merge([ctrl, focusNode]),
-              builder: (_, __) {
-                if (ctrl.text.isNotEmpty) return const SizedBox.shrink();
-                return Positioned.fill(
-                  child: IgnorePointer(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        left: kHorizontalFadeEdgeGap,
-                        right: _locationClearFieldGap(),
-                        top: 14,
-                        bottom: 14,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          curve: Curves.easeOut,
-                          transform: Matrix4.translationValues(
-                            focusNode.hasFocus ? 4.0 : 0.0,
-                            0,
-                            0,
-                          ),
-                          child: Text(hint, style: _kPlaceholderStyle),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
             HorizontalEdgeFade(
               fadeColor: resolveThemeColor(kModalCard, context),
               fadeOnRubberbandWhenContentFits: true,
               leadingInset: kHorizontalFadeEdgeGap,
               trailingInset: _locationClearFieldGap(),
+              placeholderText: hint,
+              placeholderTextStyle: _kPlaceholderStyle,
+              placeholderFocusNode: focusNode,
               controller: ctrl,
               scrollController: scrollController,
               child: CupertinoTheme(

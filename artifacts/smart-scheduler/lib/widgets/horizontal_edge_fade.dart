@@ -46,6 +46,7 @@ class HorizontalEdgeFade extends StatefulWidget {
   final String? placeholderText;
   final TextStyle? placeholderTextStyle;
   final TextAlign placeholderTextAlign;
+  final Alignment placeholderAlignment;
   final FocusNode? placeholderFocusNode;
 
   const HorizontalEdgeFade({
@@ -66,6 +67,7 @@ class HorizontalEdgeFade extends StatefulWidget {
     this.placeholderText,
     this.placeholderTextStyle,
     this.placeholderTextAlign = TextAlign.left,
+    this.placeholderAlignment = Alignment.centerLeft,
     this.placeholderFocusNode,
   });
 
@@ -411,20 +413,23 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
               left: widget.leadingInset,
               right: widget.trailingInset,
             ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const NeverScrollableScrollPhysics(),
-              child: Transform.translate(
-                offset: Offset(focusedOffset - _rubberbandOffset, 0),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: availableWidth),
-                  child: Text(
-                    text,
-                    style: style,
-                    textAlign: widget.placeholderTextAlign,
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.clip,
+            child: Align(
+              alignment: widget.placeholderAlignment,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                child: Transform.translate(
+                  offset: Offset(focusedOffset - _rubberbandOffset, 0),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: availableWidth),
+                    child: Text(
+                      text,
+                      style: style,
+                      textAlign: widget.placeholderTextAlign,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.clip,
+                    ),
                   ),
                 ),
               ),
