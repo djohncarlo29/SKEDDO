@@ -1549,6 +1549,8 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                               child: HorizontalEdgeFade(
                                 fadeColor: cardColor,
                                 fadeOnRubberbandWhenContentFits: true,
+                                leadingInset: kHorizontalFadeEdgeGap,
+                                trailingInset: kHorizontalFadeEdgeGap,
                                 child: SingleChildScrollView(
                                   controller: _categoryScrollCtrl,
                                   primary: false,
