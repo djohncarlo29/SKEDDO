@@ -18474,41 +18474,44 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     // positional flash on Flutter web before the sliver settled to center.
     final content = Center(
       key: ValueKey('placeholder_${widget.label}'),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          RepaintBoundary(child: _buildIcon()),
-          SizedBox(height: 16),
-          Text(
-            _emptyStateTitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              inherit: false,
-              color: primaryLabel,
-              fontSize: 22,
-              fontFamily: kSFProText,
-              fontWeight: FontWeight.w700,
-              fontStyle: FontStyle.normal,
-              letterSpacing: -0.3,
-              height: 1.15,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RepaintBoundary(child: _buildIcon()),
+            SizedBox(height: 16),
+            Text(
+              _emptyStateTitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                inherit: false,
+                color: primaryLabel,
+                fontSize: 22,
+                fontFamily: kSFProText,
+                fontWeight: FontWeight.w700,
+                fontStyle: FontStyle.normal,
+                letterSpacing: -0.3,
+                height: 1.15,
+              ),
             ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            _emptyStateSubtitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              inherit: false,
-              color: secondaryLabel,
-              fontSize: 15,
-              fontFamily: kSFProText,
-              fontWeight: FontWeight.w400,
-              fontStyle: FontStyle.normal,
-              letterSpacing: kTracking16,
-              height: kLineHeight,
+            SizedBox(height: 8),
+            Text(
+              _emptyStateSubtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                inherit: false,
+                color: secondaryLabel,
+                fontSize: 15,
+                fontFamily: kSFProText,
+                fontWeight: FontWeight.w400,
+                fontStyle: FontStyle.normal,
+                letterSpacing: kTracking16,
+                height: kLineHeight,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
     final emptyStateContent = Padding(

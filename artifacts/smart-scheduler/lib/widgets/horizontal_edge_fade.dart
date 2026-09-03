@@ -35,6 +35,10 @@ class HorizontalEdgeFade extends StatefulWidget {
   /// Shows the leading edge treatment at rest when content fits. This is
   /// useful for static labels whose two ends should share the same treatment.
   final bool showLeadingFadeWhenContentFits;
+  /// Optional one-line placeholder content whose intrinsic width should also
+  /// participate in trailing overflow fades while the field is empty.
+  final String? overflowText;
+  final TextStyle? overflowTextStyle;
 
   const HorizontalEdgeFade({
     super.key,
@@ -49,6 +53,8 @@ class HorizontalEdgeFade extends StatefulWidget {
     this.fadeWhenContentFits = false,
     this.fadeOnRubberbandWhenContentFits = false,
     this.showLeadingFadeWhenContentFits = false,
+    this.overflowText,
+    this.overflowTextStyle,
   });
 
   @override
@@ -308,48 +314,80 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     );
   }
 
+  bool _placeholderOverflows(BuildContext context, double width) {
+    final text = widget.overflowText;
+    final style = widget.overflowTextStyle;
+    if (text == null ||
+        style == null ||
+        widget.controller?.text.isEmpty != true ||
+        !width.isFinite) {
+      return false;
+    }
+    final availableWidth =
+        width - widget.leadingInset - widget.trailingInset;
+    if (availableWidth <= 0) return false;
+
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    return painter.width > availableWidth + 0.5;
+  }
+
   @override
   Widget build(BuildContext context) {
-    // The child is painted first and the fades are painted above it. The
-    // gradient is the edge treatment; this wrapper must not add a second
-    // ClipRect boundary before the fade. TextField/scroll-view children still
-    // own their normal viewport clipping.
-    return NotificationListener<ScrollNotification>(
-      onNotification: _handleScrollNotification,
-      child: NotificationListener<ScrollMetricsNotification>(
-        onNotification: _handleMetricsNotification,
-        child: Stack(
-          clipBehavior: Clip.none,
-          // Let one-line fields establish their natural height. Expanding
-          // this stack in an unbounded modal Column can make the entire
-          // sheet body fail layout while its header still renders.
-          children: [
-            widget.child,
-            Positioned(
-              left: widget.leadingInset,
-              top: 0,
-              bottom: 0,
-              child: _fade(
-                visible: _showLeadingFade,
-                opaqueAtStart: true,
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final placeholderOverflow = _placeholderOverflows(
+          context,
+          constraints.maxWidth,
+        );
+        final showTrailingFade =
+            _showTrailingFade || placeholderOverflow;
+        // The child is painted first and the fades are painted above it. The
+        // gradient is the edge treatment; this wrapper must not add a second
+        // ClipRect boundary before the fade. TextField/scroll-view children
+        // still own their normal viewport clipping.
+        return NotificationListener<ScrollNotification>(
+          onNotification: _handleScrollNotification,
+          child: NotificationListener<ScrollMetricsNotification>(
+            onNotification: _handleMetricsNotification,
+            child: Stack(
+              clipBehavior: Clip.none,
+              // Let one-line fields establish their natural height. Expanding
+              // this stack in an unbounded modal Column can make the entire
+              // sheet body fail layout while its header still renders.
+              children: [
+                widget.child,
+                Positioned(
+                  left: widget.leadingInset,
+                  top: 0,
+                  bottom: 0,
+                  child: _fade(
+                    visible: _showLeadingFade,
+                    opaqueAtStart: true,
+                  ),
+                ),
+                Positioned(
+                  // Run the trailing gradient continuously through the inset.
+                  // A hard stop at a fractional inset creates the visible slit
+                  // between the fade and the text field's action reservation.
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: _fade(
+                    visible: showTrailingFade,
+                    opaqueAtStart: false,
+                    solidTailWidth: widget.trailingInset,
+                  ),
+                ),
+              ],
             ),
-            Positioned(
-              // Run the trailing gradient continuously through the inset.
-              // A hard stop at a fractional inset creates the visible slit
-              // between the fade and the text field's action reservation.
-              right: 0,
-              top: 0,
-              bottom: 0,
-              child: _fade(
-                visible: _showTrailingFade,
-                opaqueAtStart: false,
-                solidTailWidth: widget.trailingInset,
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

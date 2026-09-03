@@ -4112,46 +4112,49 @@ class _DayListPlaceholder extends StatelessWidget {
         SliverFillRemaining(
           hasScrollBody: false,
           child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FixedSFIcon(
-                  SFIcons.sf_list_bullet,
-                  fontSize: 65,
-                  color: emptyIcon,
-                  fontWeight: FontWeight.w600,
-                ),
-                SizedBox(height: 18),
-                Text(
-                  'No Events',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    inherit: false,
-                    color: primaryLabel,
-                    fontSize: 22,
-                    fontFamily: kSFProText,
-                    fontWeight: FontWeight.w700,
-                    fontStyle: FontStyle.normal,
-                    letterSpacing: -0.3,
-                    height: 1.15,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FixedSFIcon(
+                    SFIcons.sf_list_bullet,
+                    fontSize: 65,
+                    color: emptyIcon,
+                    fontWeight: FontWeight.w600,
                   ),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Add a new event by tapping + button',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    inherit: false,
-                    color: secondaryLabel,
-                    fontSize: 15,
-                    fontFamily: kSFProText,
-                    fontWeight: FontWeight.w400,
-                    fontStyle: FontStyle.normal,
-                    letterSpacing: kTracking16,
-                    height: kLineHeight,
+                  SizedBox(height: 18),
+                  Text(
+                    'No Events',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      inherit: false,
+                      color: primaryLabel,
+                      fontSize: 22,
+                      fontFamily: kSFProText,
+                      fontWeight: FontWeight.w700,
+                      fontStyle: FontStyle.normal,
+                      letterSpacing: -0.3,
+                      height: 1.15,
+                    ),
                   ),
-                ),
-              ],
+                  SizedBox(height: 6),
+                  Text(
+                    'Add a new event by tapping + button',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      inherit: false,
+                      color: secondaryLabel,
+                      fontSize: 15,
+                      fontFamily: kSFProText,
+                      fontWeight: FontWeight.w400,
+                      fontStyle: FontStyle.normal,
+                      letterSpacing: kTracking16,
+                      height: kLineHeight,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -407,6 +407,15 @@ class AppSearchBarState extends State<AppSearchBar>
     final selectionTint = widget.selectionTint ?? resolveAccentColor(context);
     final textScaler = MediaQuery.textScalerOf(context);
     final textLineHeight = searchBarTextLineHeight(context);
+    final placeholderStyle = TextStyle(
+      inherit: false,
+      color: secondaryLabel,
+      fontSize: kSearchBarTextFontSize,
+      fontFamily: kSFProText,
+      fontWeight: FontWeight.w400,
+      fontStyle: FontStyle.normal,
+      letterSpacing: kTracking16,
+    );
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
@@ -458,6 +467,8 @@ class AppSearchBarState extends State<AppSearchBar>
                         // boundaries.
                         leadingInset: kSearchFieldFadeEdgeGap,
                         trailingInset: kSearchFieldFadeEdgeGap,
+                        overflowText: widget.placeholder,
+                        overflowTextStyle: placeholderStyle,
                         controller: widget.controller,
                         scrollController: _scrollController,
                         child: NativeTextInput(
@@ -465,15 +476,7 @@ class AppSearchBarState extends State<AppSearchBar>
                           scrollController: _scrollController,
                           onFocusChanged: widget.onFocusChanged,
                           placeholder: widget.placeholder,
-                          placeholderStyle: TextStyle(
-                            inherit: false,
-                            color: secondaryLabel,
-                            fontSize: kSearchBarTextFontSize,
-                            fontFamily: kSFProText,
-                            fontWeight: FontWeight.w400,
-                            fontStyle: FontStyle.normal,
-                            letterSpacing: kTracking16,
-                          ),
+                          placeholderStyle: placeholderStyle,
                           style: TextStyle(
                             inherit: false,
                             fontSize: kSearchBarTextFontSize,
