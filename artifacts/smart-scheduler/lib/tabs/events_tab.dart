@@ -14756,17 +14756,18 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 _iconColumnsWasPinched = false;
               }
               final cols = _iconColumns;
-              final itemSize =
-                  _iconColumnsWasPinched
-                      ? (constraints.maxWidth -
-                              minimumSpacing * (cols - 1)) /
-                          cols
-                      : targetItemSize;
-              final spacing =
-                  cols > 1
-                      ? (constraints.maxWidth - cols * itemSize) /
-                          (cols - 1)
-                      : 0.0;
+              // Once the OS-scaled column count is chosen, use the full row
+              // width with the scaled minimum gap. This prevents a discrete
+              // column drop from leaving undersized circles and oversized
+              // empty gaps; it also keeps automatic mode identical to pinch
+              // mode once both settle on the same column count.
+              final itemSize = max(
+                1.0,
+                (constraints.maxWidth -
+                        minimumSpacing * (cols - 1)) /
+                    cols,
+              );
+              final spacing = minimumSpacing;
               final rowCount = (_kIconOptions.length / cols).ceil();
               // Height of the Stack follows both the scaled tile size and the
               // scaled column count, so accessibility changes also resize the
