@@ -230,12 +230,12 @@ const List<_EmojiCat> kEmojiCategories = [
       '👫🏻',
       '👬🏻',
       '👭🏻',
-      // These family ZWJ sequences have no standardized skin-tone variants.
-      // Keep the native composite glyphs intact instead of decomposing them
-      // into oversized heads on Android.
-      '👨‍👩‍👦',
-      '👨‍👩‍👧',
-      '👨‍👩‍👧‍👦',
+      // Android and iOS render these per-person light-tone modifiers as the
+      // native family glyph where supported, while avoiding the default
+      // yellow family presentation.
+      '👨🏻‍👩🏻‍👦🏻',
+      '👨🏻‍👩🏻‍👧🏻',
+      '👨🏻‍👩🏻‍👧🏻‍👦🏻',
     ],
   ),
   (
@@ -1007,11 +1007,17 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   }
 
   void _switchCategory(int i) {
+    if (i < 0 || i >= kEmojiCategories.length) return;
     // A prior swipe may still be animating the tab strip, and its queued
     // ensureVisible callback can otherwise overwrite this newer selection.
     _categoryTabVisibilityRequest++;
     if (_categoryScrollCtrl.hasClients) {
-      _categoryScrollCtrl.jumpTo(_categoryScrollCtrl.offset);
+      // Stop the existing ballistic/ensureVisible activity first. A no-op
+      // jumpTo(offset) does not reliably interrupt every scroll activity on
+      // all Flutter platform implementations.
+      final position = _categoryScrollCtrl.position;
+      position.stop();
+      position.jumpTo(position.pixels);
     }
     _emojiRubberbandTimer?.cancel();
     _emojiRubberbandTimer = null;
@@ -1786,38 +1792,68 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                           textScaler.scale(
                                                         sel ? 24.0 : 20.0,
                                                       );
-                                                      return GestureDetector(
+                                                      return SizedBox(
                                                         key:
                                                             _categoryTabKeys[i],
-                                                        onTap: () =>
-                                                            _switchCategory(i),
-                                                        behavior:
-                                                            HitTestBehavior
-                                                                .opaque,
-                                                        child: SizedBox(
-                                                          width:
-                                                              categorySlotWidth,
+                                                        width:
+                                                            categorySlotWidth,
+                                                        child: GestureDetector(
+                                                          onTap: () =>
+                                                              _switchCategory(i),
+                                                          behavior:
+                                                              HitTestBehavior
+                                                                  .opaque,
                                                           child: Center(
-                                                            child: Text(
-                                                              kEmojiCategories[
-                                                                      i]
-                                                                  .icon,
-                                                              style: TextStyle(
-                                                                inherit: false,
-                                                                fontSize:
-                                                                    fontSize,
-                                                                color: sel
-                                                                    ? labelColor
-                                                                    : labelColor
-                                                                        .withValues(
-                                                                          alpha:
-                                                                              0.42,
-                                                                        ),
-                                                              ),
-                                                              textScaler:
-                                                                  TextScaler
-                                                                      .noScaling,
-                                                            ),
+                                                            // Tie the visual
+                                                            // subtree identity
+                                                            // to selection.
+                                                            // This prevents a
+                                                            // tab that was
+                                                            // scrolled out and
+                                                            // back in from
+                                                            // retaining the
+                                                            // previous emoji
+                                                            // paint state.
+                                                             child: KeyedSubtree(
+                                                               key: ValueKey(
+                                                                 'emoji-category-$i-${sel ? 'selected' : 'idle'}',
+                                                               ),
+                                                               child:
+                                                                   AnimatedOpacity(
+                                                                 // Keep selection as an explicit compositing property. Color
+                                                                 // alpha alone can be retained by a cached color-emoji layer
+                                                                 // when a tab is scrolled out and then back into the viewport.
+                                                                 key: ValueKey<bool>(
+                                                                   sel,
+                                                                 ),
+                                                                 opacity:
+                                                                     sel
+                                                                         ? 1.0
+                                                                         : 0.42,
+                                                                 duration:
+                                                                     const Duration(
+                                                                   milliseconds:
+                                                                       120,
+                                                                 ),
+                                                                 child: Text(
+                                                                   kEmojiCategories[
+                                                                           i]
+                                                                       .icon,
+                                                                   style:
+                                                                       TextStyle(
+                                                                     inherit:
+                                                                         false,
+                                                                     fontSize:
+                                                                         fontSize,
+                                                                     color:
+                                                                         labelColor,
+                                                                   ),
+                                                                   textScaler:
+                                                                       TextScaler
+                                                                           .noScaling,
+                                                                 ),
+                                                               ),
+                                                             ),
                                                           ),
                                                         ),
                                                       );
