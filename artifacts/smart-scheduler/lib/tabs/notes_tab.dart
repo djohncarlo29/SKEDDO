@@ -727,6 +727,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
     with TickerProviderStateMixin {
   bool _micPressed = false;
   bool _noteFocused = false;
+  late final ValueNotifier<bool> _placeholderFocusNotifier;
 
   // ── Plus button opacity animation ──────────────────────────────────────────
   // Dims to 0.45 on tap-down / while attach menu is open; restores on dismiss.
@@ -1235,6 +1236,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
       lowerBound: 0.4,
       upperBound: 1.0,
     );
+    _placeholderFocusNotifier = ValueNotifier<bool>(false);
     widget.controller.addListener(_onControllerChanged);
   }
 
@@ -1244,6 +1246,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
     _plusScaleCtrl.dispose();
     _clearScaleCtrl.dispose();
     _pulseCtrl.dispose();
+    _placeholderFocusNotifier.dispose();
     _attachOverlay?.remove();
     _attachClosing.dispose();
     super.dispose();
@@ -1346,6 +1349,8 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                       height: kLineHeight,
                                     ),
                                     placeholderAlignment: Alignment.topLeft,
+                                    placeholderFocusListenable:
+                                        _placeholderFocusNotifier,
                                     child: NativeTextInput(
                                       controller: widget.controller,
                                       placeholder: '',
@@ -1368,8 +1373,13 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                       scrollController: widget.scrollController,
                                       metricsListenable:
                                           widget.metricsListenable,
-                                      onFocusChanged: (focused) =>
-                                          setState(() => _noteFocused = focused),
+                                      onFocusChanged: (focused) {
+                                        _placeholderFocusNotifier.value =
+                                            focused;
+                                        setState(
+                                          () => _noteFocused = focused,
+                                        );
+                                      },
                                       style: TextStyle(
                                         inherit: false,
                                         fontSize: 17,

@@ -193,6 +193,7 @@ class AppSearchBarState extends State<AppSearchBar>
 
   late final AnimationController _pulseCtrl;
   late final ScrollController _scrollController;
+  late final ValueNotifier<bool> _placeholderFocusNotifier;
   late final ValueNotifier<Color> _selectionColorNotifier;
   late final TintedCupertinoTextSelectionControls _selectionControls;
 
@@ -202,6 +203,7 @@ class AppSearchBarState extends State<AppSearchBar>
     _selectionColorNotifier = ValueNotifier<Color>(
       widget.selectionTint ?? kAccentColor,
     );
+    _placeholderFocusNotifier = ValueNotifier<bool>(false);
     _selectionControls = TintedCupertinoTextSelectionControls(
       _selectionColorNotifier,
     );
@@ -218,6 +220,7 @@ class AppSearchBarState extends State<AppSearchBar>
   void dispose() {
     _pulseCtrl.dispose();
     _scrollController.dispose();
+    _placeholderFocusNotifier.dispose();
     _selectionColorNotifier.dispose();
     super.dispose();
   }
@@ -469,12 +472,16 @@ class AppSearchBarState extends State<AppSearchBar>
                         trailingInset: kSearchFieldFadeEdgeGap,
                         placeholderText: widget.placeholder,
                         placeholderTextStyle: placeholderStyle,
+                        placeholderFocusListenable: _placeholderFocusNotifier,
                         controller: widget.controller,
                         scrollController: _scrollController,
                         child: NativeTextInput(
                           controller: widget.controller,
                           scrollController: _scrollController,
-                          onFocusChanged: widget.onFocusChanged,
+                          onFocusChanged: (focused) {
+                            _placeholderFocusNotifier.value = focused;
+                            widget.onFocusChanged?.call(focused);
+                          },
                           // HorizontalEdgeFade paints the full intrinsic
                           // placeholder so it can fade and rubberband like
                           // normal one-line content.

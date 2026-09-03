@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 
 /// Adds the same edge treatment used by the large header title scroller to a
 /// one-line horizontal content surface.
@@ -48,6 +49,7 @@ class HorizontalEdgeFade extends StatefulWidget {
   final TextAlign placeholderTextAlign;
   final Alignment placeholderAlignment;
   final FocusNode? placeholderFocusNode;
+  final ValueListenable<bool>? placeholderFocusListenable;
 
   const HorizontalEdgeFade({
     super.key,
@@ -69,6 +71,7 @@ class HorizontalEdgeFade extends StatefulWidget {
     this.placeholderTextAlign = TextAlign.left,
     this.placeholderAlignment = Alignment.centerLeft,
     this.placeholderFocusNode,
+    this.placeholderFocusListenable,
   });
 
   @override
@@ -86,6 +89,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   TextEditingValue? _lastControllerValue;
   ScrollController? _attachedScrollController;
   FocusNode? _attachedPlaceholderFocusNode;
+  ValueListenable<bool>? _attachedPlaceholderFocusListenable;
   double _rubberbandOffset = 0;
   int _editSyncTicket = 0;
 
@@ -95,6 +99,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     _lastControllerValue = widget.controller?.value;
     widget.controller?.addListener(_handleControllerChanged);
     _attachPlaceholderFocusNode();
+    _attachPlaceholderFocusListenable();
     _attachScrollController();
   }
 
@@ -113,6 +118,11 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     if (oldWidget.placeholderFocusNode != widget.placeholderFocusNode) {
       _detachPlaceholderFocusNode();
       _attachPlaceholderFocusNode();
+    }
+    if (oldWidget.placeholderFocusListenable !=
+        widget.placeholderFocusListenable) {
+      _detachPlaceholderFocusListenable();
+      _attachPlaceholderFocusListenable();
     }
     if (oldWidget.fadeColor != widget.fadeColor ||
         oldWidget.showTrailingFade != widget.showTrailingFade ||
@@ -133,6 +143,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   void dispose() {
     widget.controller?.removeListener(_handleControllerChanged);
     _detachPlaceholderFocusNode();
+    _detachPlaceholderFocusListenable();
     _detachScrollController();
     super.dispose();
   }
@@ -152,6 +163,24 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   void _handlePlaceholderFocusChanged() {
     if (mounted) setState(() {});
   }
+
+  void _attachPlaceholderFocusListenable() {
+    final listenable = widget.placeholderFocusListenable;
+    if (listenable == null) return;
+    _attachedPlaceholderFocusListenable = listenable;
+    listenable.addListener(_handlePlaceholderFocusChanged);
+  }
+
+  void _detachPlaceholderFocusListenable() {
+    _attachedPlaceholderFocusListenable?.removeListener(
+      _handlePlaceholderFocusChanged,
+    );
+    _attachedPlaceholderFocusListenable = null;
+  }
+
+  bool get _placeholderIsFocused =>
+      widget.placeholderFocusNode?.hasFocus == true ||
+      widget.placeholderFocusListenable?.value == true;
 
   void _attachScrollController() {
     final controller = widget.scrollController;
@@ -414,9 +443,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
       0.0,
       width - widget.leadingInset - widget.trailingInset,
     );
-    final focusedOffset = widget.placeholderFocusNode?.hasFocus == true
-        ? 4.0
-        : 0.0;
+    final focusedOffset = _placeholderIsFocused ? 4.0 : 0.0;
     return Positioned.fill(
       child: IgnorePointer(
         child: ClipRect(
@@ -431,16 +458,29 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
                 scrollDirection: Axis.horizontal,
                 physics: const NeverScrollableScrollPhysics(),
                 child: Transform.translate(
-                  offset: Offset(focusedOffset - _rubberbandOffset, 0),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minWidth: availableWidth),
-                    child: Text(
-                      text,
-                      style: style,
-                      textAlign: widget.placeholderTextAlign,
-                      maxLines: 1,
-                      softWrap: false,
-                      overflow: TextOverflow.clip,
+                  // Keep rubberband movement immediate so the placeholder
+                  // tracks the field's native scroll gesture, while the
+                  // focus-only 4 px nudge gets the same tap-time animation
+                  // as the native text input.
+                  offset: Offset(-_rubberbandOffset, 0),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOut,
+                    transform: Matrix4.translationValues(
+                      focusedOffset,
+                      0,
+                      0,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minWidth: availableWidth),
+                      child: Text(
+                        text,
+                        style: style,
+                        textAlign: widget.placeholderTextAlign,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.clip,
+                      ),
                     ),
                   ),
                 ),

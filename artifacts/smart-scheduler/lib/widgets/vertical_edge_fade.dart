@@ -25,6 +25,7 @@ class VerticalEdgeFade extends StatefulWidget {
   final TextStyle? placeholderTextStyle;
   final Alignment placeholderAlignment;
   final FocusNode? placeholderFocusNode;
+  final ValueListenable<bool>? placeholderFocusListenable;
 
   const VerticalEdgeFade({
     super.key,
@@ -44,6 +45,7 @@ class VerticalEdgeFade extends StatefulWidget {
     this.placeholderTextStyle,
     this.placeholderAlignment = Alignment.topLeft,
     this.placeholderFocusNode,
+    this.placeholderFocusListenable,
   });
 
   @override
@@ -58,6 +60,7 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
   TextEditingValue? _lastControllerValue;
   ScrollController? _attachedScrollController;
   FocusNode? _attachedPlaceholderFocusNode;
+  ValueListenable<bool>? _attachedPlaceholderFocusListenable;
   double _rubberbandOffset = 0;
   int _editSyncTicket = 0;
 
@@ -68,6 +71,7 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
     widget.controller?.addListener(_handleControllerChanged);
     widget.metricsListenable?.addListener(_handleExternalMetricsChanged);
     _attachPlaceholderFocusNode();
+    _attachPlaceholderFocusListenable();
     _attachScrollController();
   }
 
@@ -91,6 +95,11 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
       _detachPlaceholderFocusNode();
       _attachPlaceholderFocusNode();
     }
+    if (oldWidget.placeholderFocusListenable !=
+        widget.placeholderFocusListenable) {
+      _detachPlaceholderFocusListenable();
+      _attachPlaceholderFocusListenable();
+    }
     if (oldWidget.fadeColor != widget.fadeColor ||
         oldWidget.showBottomFade != widget.showBottomFade ||
         oldWidget.fadeWhenContentFits != widget.fadeWhenContentFits ||
@@ -111,6 +120,7 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
     widget.controller?.removeListener(_handleControllerChanged);
     widget.metricsListenable?.removeListener(_handleExternalMetricsChanged);
     _detachPlaceholderFocusNode();
+    _detachPlaceholderFocusListenable();
     _detachScrollController();
     super.dispose();
   }
@@ -130,6 +140,24 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
   void _handlePlaceholderFocusChanged() {
     if (mounted) setState(() {});
   }
+
+  void _attachPlaceholderFocusListenable() {
+    final listenable = widget.placeholderFocusListenable;
+    if (listenable == null) return;
+    _attachedPlaceholderFocusListenable = listenable;
+    listenable.addListener(_handlePlaceholderFocusChanged);
+  }
+
+  void _detachPlaceholderFocusListenable() {
+    _attachedPlaceholderFocusListenable?.removeListener(
+      _handlePlaceholderFocusChanged,
+    );
+    _attachedPlaceholderFocusListenable = null;
+  }
+
+  bool get _placeholderIsFocused =>
+      widget.placeholderFocusNode?.hasFocus == true ||
+      widget.placeholderFocusListenable?.value == true;
 
   void _attachScrollController() {
     final controller = widget.scrollController;
@@ -319,23 +347,32 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
         size.width <= 0) {
       return const SizedBox.shrink();
     }
-    final focusedOffset = widget.placeholderFocusNode?.hasFocus == true
-        ? 4.0
-        : 0.0;
+    final focusedOffset = _placeholderIsFocused ? 4.0 : 0.0;
     return Positioned.fill(
       child: IgnorePointer(
         child: ClipRect(
           child: Align(
             alignment: widget.placeholderAlignment,
             child: Transform.translate(
-              offset: Offset(0, focusedOffset - _rubberbandOffset),
-              child: SizedBox(
-                width: size.width,
-                child: Text(
-                  text,
-                  style: style,
-                  softWrap: true,
-                  overflow: TextOverflow.clip,
+              // Rubberband movement remains immediate, while the focus-only
+              // nudge animates when the field is tapped or dismissed.
+              offset: Offset(0, -_rubberbandOffset),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                transform: Matrix4.translationValues(
+                  0,
+                  focusedOffset,
+                  0,
+                ),
+                child: SizedBox(
+                  width: size.width,
+                  child: Text(
+                    text,
+                    style: style,
+                    softWrap: true,
+                    overflow: TextOverflow.clip,
+                   ),
                 ),
               ),
             ),

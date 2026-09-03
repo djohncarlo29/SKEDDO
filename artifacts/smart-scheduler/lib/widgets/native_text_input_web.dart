@@ -86,6 +86,8 @@ class _NativeTextInputState extends State<NativeTextInput> {
   late final html.HtmlElement _element;
   StreamSubscription<html.Event>? _inputSub;
   StreamSubscription<html.Event>? _scrollSub;
+  StreamSubscription<html.Event>? _focusSub;
+  StreamSubscription<html.Event>? _blurSub;
   bool _updatingFromNative = false;
   bool _metricsScheduled = false;
 
@@ -101,6 +103,12 @@ class _NativeTextInputState extends State<NativeTextInput> {
     _setNativeText(widget.controller.text);
     _inputSub = _element.onInput.listen((_) => _syncTextFromNative());
     _scrollSub = _element.onScroll.listen((_) => _publishScrollMetrics());
+    _focusSub = _element.onFocus.listen((_) {
+      widget.onFocusChanged?.call(true);
+    });
+    _blurSub = _element.onBlur.listen((_) {
+      widget.onFocusChanged?.call(false);
+    });
     widget.controller.addListener(_syncTextToNative);
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (_) => _element);
     NativeTextInput._instances.add(this);
@@ -131,6 +139,8 @@ class _NativeTextInputState extends State<NativeTextInput> {
     widget.controller.removeListener(_syncTextToNative);
     _inputSub?.cancel();
     _scrollSub?.cancel();
+    _focusSub?.cancel();
+    _blurSub?.cancel();
     _element.remove();
     super.dispose();
   }
