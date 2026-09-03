@@ -913,8 +913,12 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
 
   static const double _emojiGestureSlop = 12.0;
   static const double _emojiAxisBias = 6.0;
-  static const double _emojiRubberbandResistance = 0.15;
   static const double _emojiPageVelocity = 700.0;
+  static const double _emojiCategoryInset = 16.0;
+  static const double _emojiCategoryItemHorizontalPadding = 8.0;
+  static const ScrollPhysics _emojiRubberbandPhysics = BouncingScrollPhysics(
+    parent: AlwaysScrollableScrollPhysics(),
+  );
 
   @override
   void dispose() {
@@ -976,7 +980,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     }
   }
 
-  void _onEmojiPointerMove(PointerMoveEvent event) {
+  void _onEmojiPointerMove(PointerMoveEvent event, double panelWidth) {
     if (!_emojiPointers.containsKey(event.pointer)) return;
     _emojiPointers[event.pointer] = event.position;
     if (!_emojiPinchActive && _emojiPointers.length == 1) {
@@ -1001,9 +1005,13 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
             _EmojiHorizontalGesture.rubberband) {
           _emojiRubberbandTimer?.cancel();
           _emojiEdgeRubberbanding = true;
+          final rubberbandOffset = _applyEmojiRubberbandUserOffset(
+            event.delta.dx,
+            panelWidth,
+          );
           setState(() {
             _isEmojiDragging = true;
-            _dragOffset = delta.dx * _emojiRubberbandResistance;
+            _dragOffset = rubberbandOffset;
           });
         }
       }
@@ -1062,6 +1070,35 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     });
   }
 
+  // Model the horizontal edge as a one-dimensional scroll position so the
+  // emoji picker uses the same distance-dependent friction as the vertical
+  // emoji grid. The virtual scrollable has no content outside its viewport:
+  // pixels below zero represent leading-edge overscroll and positive pixels
+  // represent trailing-edge overscroll.
+  double _applyEmojiRubberbandUserOffset(
+    double userOffset,
+    double viewportDimension,
+  ) {
+    if (userOffset == 0.0) {
+      return -_emojiScrollRubberbandOffset;
+    }
+
+    final metrics = FixedScrollMetrics(
+      minScrollExtent: 0.0,
+      maxScrollExtent: 0.0,
+      pixels: _emojiScrollRubberbandOffset,
+      viewportDimension: viewportDimension,
+      axisDirection: AxisDirection.right,
+      devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
+    );
+    final physicsOffset = _emojiRubberbandPhysics.applyPhysicsToUserOffset(
+      metrics,
+      userOffset,
+    );
+    _emojiScrollRubberbandOffset -= physicsOffset;
+    return -_emojiScrollRubberbandOffset;
+  }
+
   void _onDragStart(DragStartDetails d) {
     if (_emojiPinchActive) return;
     _emojiSwipeStartOffset = _dragOffset;
@@ -1094,10 +1131,13 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
               : _EmojiHorizontalGesture.paging;
       if (_emojiHorizontalGesture == _EmojiHorizontalGesture.rubberband) {
         _emojiEdgeRubberbanding = true;
+        final rubberbandOffset = _applyEmojiRubberbandUserOffset(
+          d.delta.dx,
+          panelWidth,
+        );
         setState(() {
           _isEmojiDragging = true;
-          _dragOffset =
-              deltaFromStart.dx * _emojiRubberbandResistance;
+          _dragOffset = rubberbandOffset;
         });
         return;
       }
@@ -1174,34 +1214,33 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     });
   }
 
-  void _onEmojiPointerSignal(PointerSignalEvent event) {
+  void _onEmojiPointerSignal(PointerSignalEvent event, double panelWidth) {
     if (_emojiPinchActive || event is! PointerScrollEvent) return;
     final deltaX = event.scrollDelta.dx;
     if (deltaX == 0) return;
 
     // Scroll deltas move content opposite to the user's scroll direction.
-    // Convert that into the same page offset used by touch swipes.
-    final attemptedOffset = _emojiScrollRubberbandOffset - deltaX;
-    final atLeadingEdge = _catIndex == 0 && attemptedOffset > 0;
+    // Convert that into the same user offset used by touch swipes. Keep
+    // applying the physics while an existing overscroll is easing back.
+    final attemptedPixels = _emojiScrollRubberbandOffset + deltaX;
+    final atLeadingEdge = _catIndex == 0 && attemptedPixels < 0;
     final atTrailingEdge =
-        _catIndex == kEmojiCategories.length - 1 && attemptedOffset < 0;
-    if (!atLeadingEdge && !atTrailingEdge) {
-      if (_emojiScrollRubberbandOffset != 0) {
-        _emojiScrollRubberbandOffset = 0;
-        setState(() {
-          _dragOffset = 0;
-          _isEmojiDragging = false;
-        });
-      }
+        _catIndex == kEmojiCategories.length - 1 && attemptedPixels > 0;
+    if (!atLeadingEdge &&
+        !atTrailingEdge &&
+        _emojiScrollRubberbandOffset == 0) {
       return;
     }
 
     _emojiRubberbandTimer?.cancel();
-    _emojiScrollRubberbandOffset = attemptedOffset;
     _emojiHorizontalGesture = _EmojiHorizontalGesture.rubberband;
+    final rubberbandOffset = _applyEmojiRubberbandUserOffset(
+      -deltaX,
+      panelWidth,
+    );
     setState(() {
       _isEmojiDragging = true;
-      _dragOffset = attemptedOffset * _emojiRubberbandResistance;
+      _dragOffset = rubberbandOffset;
     });
     _emojiRubberbandTimer = Timer(const Duration(milliseconds: 90), () {
       if (!mounted) return;
@@ -1462,10 +1501,12 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                   return Listener(
                                     behavior: HitTestBehavior.opaque,
                                     onPointerDown: _onEmojiPointerDown,
-                                    onPointerMove: _onEmojiPointerMove,
+                                    onPointerMove: (event) =>
+                                        _onEmojiPointerMove(event, w),
                                     onPointerUp: _onEmojiPointerEnd,
                                     onPointerCancel: _onEmojiPointerEnd,
-                                    onPointerSignal: _onEmojiPointerSignal,
+                                    onPointerSignal: (event) =>
+                                        _onEmojiPointerSignal(event, w),
                                     child: GestureDetector(
                                       behavior: HitTestBehavior.opaque,
                                       onHorizontalDragStart: _onDragStart,
@@ -1544,13 +1585,20 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                             // Separator between the two rows
                             Container(height: 0.5, color: sepLineColor),
                             // Row 2 — category strip
-                            SizedBox(
-                              height: textScaler.scale(52.0),
+                            Padding(
+                              padding: const EdgeInsets.all(
+                                _emojiCategoryInset,
+                              ),
                               child: HorizontalEdgeFade(
                                 fadeColor: cardColor,
-                                fadeOnRubberbandWhenContentFits: true,
-                                leadingInset: kHorizontalFadeEdgeGap,
-                                trailingInset: kHorizontalFadeEdgeGap,
+                                // At the default text size all eight category
+                                // tabs fit inside the fixed side insets, so
+                                // there is no edge fade to show. If Dynamic
+                                // Type makes the strip overflow, the normal
+                                // scroll-edge fades appear.
+                                fadeOnRubberbandWhenContentFits: false,
+                                leadingInset: 0,
+                                trailingInset: 0,
                                 child: SingleChildScrollView(
                                   controller: _categoryScrollCtrl,
                                   primary: false,
@@ -1570,8 +1618,8 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                           behavior: HitTestBehavior.opaque,
                                           child: Padding(
                                             padding: EdgeInsets.symmetric(
-                                              horizontal: textScaler.scale(8.0),
-                                              vertical: textScaler.scale(8.0),
+                                              horizontal:
+                                                  _emojiCategoryItemHorizontalPadding,
                                             ),
                                             child: Text(
                                               kEmojiCategories[i].icon,
