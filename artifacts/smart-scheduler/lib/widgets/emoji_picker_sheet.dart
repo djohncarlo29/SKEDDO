@@ -938,42 +938,75 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   // Only the active grid is tappable; peeking grids are visual only.
   Widget _buildGrid(int idx, {bool active = false}) {
     final emojis = kEmojiCategories[idx].emojis;
-    return GridView.builder(
-      controller: active ? _scrollCtrl : null,
-      physics: active
-          ? const BouncingScrollPhysics(
-              decelerationRate: ScrollDecelerationRate.fast,
-              parent: AlwaysScrollableScrollPhysics(),
-            )
-          : const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 8,
-        mainAxisSpacing: 2,
-        crossAxisSpacing: 2,
-      ),
-      itemCount: emojis.length,
-      itemBuilder: (_, i) {
-        if (!active) {
-          return Center(
-            child: Text(
-              emojis[i],
-              style: const TextStyle(fontSize: 26, height: 1.0),
-              textScaler: TextScaler.noScaling,
-            ),
-          );
-        }
-        return CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: () {
-            _close();
-            widget.onEmojiSelected(emojis[i]);
-          },
-          child: Text(
-            emojis[i],
-            style: const TextStyle(fontSize: 26, height: 1.0),
-            textScaler: TextScaler.noScaling,
+    final textScaler = MediaQuery.textScalerOf(context);
+    final gridInset = textScaler.scale(6.0);
+    final minimumSpacing = textScaler.scale(2.0);
+    final emojiFontSize = textScaler.scale(26.0);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const authoredColumns = 8;
+        final contentWidth = math.max(
+          1.0,
+          constraints.maxWidth - 2 * gridInset,
+        );
+        final defaultCellSize =
+            (contentWidth -
+                    minimumSpacing * (authoredColumns - 1)) /
+                authoredColumns;
+        final targetCellSize = math.max(
+          1.0,
+          defaultCellSize * (emojiFontSize / 26.0),
+        );
+        final columns = math.max(
+          1,
+          ((contentWidth + minimumSpacing + 0.001) /
+                  (targetCellSize + minimumSpacing))
+              .floor(),
+        );
+        final crossAxisSpacing =
+            columns > 1
+                ? (contentWidth - columns * targetCellSize) /
+                    (columns - 1)
+                : 0.0;
+
+        return GridView.builder(
+          controller: active ? _scrollCtrl : null,
+          physics: active
+              ? const BouncingScrollPhysics(
+                  decelerationRate: ScrollDecelerationRate.fast,
+                  parent: AlwaysScrollableScrollPhysics(),
+                )
+              : const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.symmetric(
+            horizontal: gridInset,
+            vertical: gridInset,
           ),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisSpacing: minimumSpacing,
+            crossAxisSpacing: crossAxisSpacing,
+            childAspectRatio: 1.0,
+          ),
+          itemCount: emojis.length,
+          itemBuilder: (_, i) {
+            final emoji = Text(
+              emojis[i],
+              style: TextStyle(fontSize: emojiFontSize, height: 1.0),
+              textScaler: TextScaler.noScaling,
+            );
+            if (!active) {
+              return Center(child: emoji);
+            }
+            return CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: () {
+                _close();
+                widget.onEmojiSelected(emojis[i]);
+              },
+              child: emoji,
+            );
+          },
         );
       },
     );
@@ -986,6 +1019,8 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     final sepLineColor = kSeparatorColor.resolveFrom(context);
     final labelColor = kPrimaryLabel.resolveFrom(context);
     final cardColor = resolveThemeColor(kModalCard, context);
+    final textScaler = MediaQuery.textScalerOf(context);
+    final headerInset = textScaler.scale(16.0);
 
     // Back chevron — replaces xmark in sub-sheets to indicate navigation back.
     // Uses chevron_left to match the DCV header back indicator.
@@ -1043,9 +1078,9 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
           // ── Navigation bar ───────────────────────────────────────────────
           RoundedCupertinoSheetHeader(
             child: SizedBox(
-              height: 64,
+              height: textScaler.scale(64.0),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: headerInset),
                 child: Row(
                   children: [
                     xBtn,
@@ -1085,11 +1120,11 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                     hasScrollBody: false,
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(
-                        16,
-                        8,
-                        16,
+                        headerInset,
+                        textScaler.scale(8.0),
+                        headerInset,
                         math.max(
-                          16,
+                          headerInset,
                           systemSafeAreaBottomInset(context),
                         ),
                       ),
@@ -1144,7 +1179,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                             Container(height: 0.5, color: sepLineColor),
                             // Row 2 — category strip
                             SizedBox(
-                              height: 52,
+                              height: textScaler.scale(52.0),
                               child: Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceAround,
@@ -1156,14 +1191,16 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                       onTap: () => _switchCategory(i),
                                       behavior: HitTestBehavior.opaque,
                                       child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 4,
-                                          vertical: 8,
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: textScaler.scale(4.0),
+                                          vertical: textScaler.scale(8.0),
                                         ),
                                         child: Text(
                                           kEmojiCategories[i].icon,
                                           style: TextStyle(
-                                            fontSize: sel ? 24.0 : 20.0,
+                                            fontSize: textScaler.scale(
+                                              sel ? 24.0 : 20.0,
+                                            ),
                                             height: 1.0,
                                             color: sel
                                                 ? null

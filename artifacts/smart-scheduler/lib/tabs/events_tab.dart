@@ -14669,10 +14669,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   static const _kIconGlyph = 20.0; // icon glyph size
 
   // ── Icon-grid pinch-to-resize state ───────────────────────────────────────
-  // Three discrete tiers: 6 | 7 | 8 icons per row.
-  // Pinch open (spread) → fewer columns; pinch close (squeeze) → more columns.
-  // From an edge tier the only gesture available is the one that returns to 7.
+  // OS text scaling chooses the starting column count around the authored
+  // seven-column layout. Pinch open (spread) → fewer columns; pinch close
+  // (squeeze) → more columns.
   int _iconColumns = 7;
+  bool _iconColumnsWasPinched = false;
   bool _pinchHandled = false; // only one tier-change per gesture
 
   void _onIconPinchStart(ScaleStartDetails _) => _pinchHandled = false;
@@ -14680,21 +14681,29 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   void _onIconPinchUpdate(ScaleUpdateDetails d) {
     if (_pinchHandled) return;
     if (d.pointerCount < 2) return; // require a true two-finger pinch
-    if (d.scale > 1.18 && _iconColumns > 6) {
+    if (d.scale > 1.18 && _iconColumns > 1) {
       // Pinch open → zoom in → fewer per row
-      setState(() => _iconColumns -= 1);
+      setState(() {
+        _iconColumns -= 1;
+        _iconColumnsWasPinched = true;
+      });
       _pinchHandled = true;
     } else if (d.scale < 0.84 && _iconColumns < 8) {
       // Pinch close → zoom out → more per row
-      setState(() => _iconColumns += 1);
+      setState(() {
+        _iconColumns += 1;
+        _iconColumnsWasPinched = true;
+      });
       _pinchHandled = true;
     }
   }
 
   Widget _buildIconCard() {
-    const spacing = 6.0;
     const duration = Duration(milliseconds: 280);
     const curve = Curves.easeInOut;
+    final textScaler = MediaQuery.textScalerOf(context);
+    final cardInset = textScaler.scale(12.0);
+    final minimumSpacing = textScaler.scale(6.0);
     return RawGestureDetector(
       gestures: {
         ScaleGestureRecognizer:
@@ -14709,16 +14718,48 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       },
       child: _card([
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(cardInset),
           child: LayoutBuilder(
             builder: (context, constraints) {
+              const authoredColumns = 7;
+              final defaultItemSize =
+                  (constraints.maxWidth -
+                      minimumSpacing * (authoredColumns - 1)) /
+                  authoredColumns;
+              final scaleRatio =
+                  textScaler.scale(_kIconCircle) / _kIconCircle;
+              final targetItemSize = max(
+                1.0,
+                defaultItemSize * scaleRatio,
+              );
+              final automaticColumns = max(
+                1,
+                min(
+                  8,
+                  ((constraints.maxWidth + minimumSpacing + 0.001) /
+                          (targetItemSize + minimumSpacing))
+                      .floor(),
+                ),
+              );
+              if (!_iconColumnsWasPinched) {
+                _iconColumns = automaticColumns;
+              }
               final cols = _iconColumns;
               final itemSize =
-                  (constraints.maxWidth - spacing * (cols - 1)) / cols;
+                  _iconColumnsWasPinched
+                      ? (constraints.maxWidth -
+                              minimumSpacing * (cols - 1)) /
+                          cols
+                      : targetItemSize;
+              final spacing =
+                  cols > 1
+                      ? (constraints.maxWidth - cols * itemSize) /
+                          (cols - 1)
+                      : 0.0;
               final rowCount = (_kIconOptions.length / cols).ceil();
-              // Height of the Stack: rows × cell + gaps between rows.
-              // AnimatedContainer animates this smoothly so the card stretches
-              // or shrinks without a hard jump.
+              // Height of the Stack follows both the scaled tile size and the
+              // scaled column count, so accessibility changes also resize the
+              // card instead of leaving stale empty space.
               final stackH = rowCount * itemSize + (rowCount - 1) * spacing;
               return AnimatedContainer(
                 duration: duration,
