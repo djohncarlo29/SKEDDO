@@ -889,6 +889,11 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   int _catIndex = 0;
   double _dragOffset = 0.0;
   final _scrollCtrl = ScrollController();
+  final _categoryScrollCtrl = ScrollController();
+  final List<GlobalKey> _categoryTabKeys = List<GlobalKey>.generate(
+    kEmojiCategories.length,
+    (_) => GlobalKey(),
+  );
   int _emojiColumns = 7;
   int _automaticEmojiColumns = 7;
   bool _emojiColumnsWasPinched = false;
@@ -914,7 +919,22 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   void dispose() {
     _emojiRubberbandTimer?.cancel();
     _scrollCtrl.dispose();
+    _categoryScrollCtrl.dispose();
     super.dispose();
+  }
+
+  void _ensureCategoryTabVisible(int index) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final tabContext = _categoryTabKeys[index].currentContext;
+      if (tabContext == null) return;
+      Scrollable.ensureVisible(
+        tabContext,
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeInOut,
+      );
+    });
   }
 
   void _switchCategory(int i) {
@@ -923,6 +943,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
       _dragOffset = 0.0;
     });
     _scrollCtrl.jumpTo(0);
+    _ensureCategoryTabVisible(i);
   }
 
   double _currentEmojiPointerDistance() {
@@ -1130,6 +1151,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
         _emojiHorizontalGesture = _EmojiHorizontalGesture.undecided;
       });
       _scrollCtrl.jumpTo(0);
+      _ensureCategoryTabVisible(nextCategory);
     } else {
       setState(() {
         _dragOffset = 0;
@@ -1523,37 +1545,45 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                             // Row 2 — category strip
                             SizedBox(
                               height: textScaler.scale(52.0),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
-                                children: List.generate(
-                                  kEmojiCategories.length,
-                                  (i) {
-                                    final sel = i == _catIndex;
-                                    return GestureDetector(
-                                      onTap: () => _switchCategory(i),
-                                      behavior: HitTestBehavior.opaque,
-                                      child: Padding(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: textScaler.scale(4.0),
-                                          vertical: textScaler.scale(8.0),
-                                        ),
-                                        child: Text(
-                                          kEmojiCategories[i].icon,
-                                          style: TextStyle(
-                                            fontSize: textScaler.scale(
-                                              sel ? 24.0 : 20.0,
-                                            ),
-                                            height: 1.0,
-                                            color: sel
-                                                ? null
-                                                : const Color(0x66000000),
+                              child: SingleChildScrollView(
+                                controller: _categoryScrollCtrl,
+                                primary: false,
+                                scrollDirection: Axis.horizontal,
+                                physics: const BouncingScrollPhysics(
+                                  parent: AlwaysScrollableScrollPhysics(),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: List.generate(
+                                    kEmojiCategories.length,
+                                    (i) {
+                                      final sel = i == _catIndex;
+                                      return GestureDetector(
+                                        key: _categoryTabKeys[i],
+                                        onTap: () => _switchCategory(i),
+                                        behavior: HitTestBehavior.opaque,
+                                        child: Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: textScaler.scale(8.0),
+                                            vertical: textScaler.scale(8.0),
                                           ),
-                                          textScaler: TextScaler.noScaling,
+                                          child: Text(
+                                            kEmojiCategories[i].icon,
+                                            style: TextStyle(
+                                              fontSize: textScaler.scale(
+                                                sel ? 24.0 : 20.0,
+                                              ),
+                                              height: 1.0,
+                                              color: sel
+                                                  ? null
+                                                  : const Color(0x66000000),
+                                            ),
+                                            textScaler: TextScaler.noScaling,
+                                          ),
                                         ),
-                                      ),
-                                    );
-                                  },
+                                      );
+                                    },
+                                  ),
                                 ),
                               ),
                             ),
