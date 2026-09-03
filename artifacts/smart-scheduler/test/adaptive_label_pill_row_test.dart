@@ -99,4 +99,37 @@ void main() {
       expect(valueSize.height, greaterThan(30));
     },
   );
+
+  testWidgets(
+    'preserves a generic chevron-row label before wrapping its value',
+    (tester) async {
+      const labelStyle = TextStyle(fontSize: 17);
+      const valueStyle = TextStyle(fontSize: 15);
+
+      await tester.pumpWidget(
+        const CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: SizedBox(
+              width: 220,
+              child: MinGapLabelValueRow(
+                label: 'Long Label',
+                labelStyle: labelStyle,
+                value: 'First Second Third',
+                valueStyle: valueStyle,
+                trailing: Text('First Second Third', style: valueStyle),
+                alignTrailing: false,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final labelSize = tester.getSize(find.text('Long Label'));
+      final valueSize = tester.getSize(find.text('First Second Third'));
+      // The app's default 17 px text style resolves to a 34 px line height.
+      expect(labelSize.height, lessThan(40));
+      expect(valueSize.height, greaterThan(labelSize.height));
+    },
+  );
 }
