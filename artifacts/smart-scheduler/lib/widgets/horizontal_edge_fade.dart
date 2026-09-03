@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 
 /// Adds the same edge treatment used by the large header title scroller to a
@@ -39,6 +41,12 @@ class HorizontalEdgeFade extends StatefulWidget {
   /// participate in trailing overflow fades while the field is empty.
   final String? overflowText;
   final TextStyle? overflowTextStyle;
+  /// When supplied, the wrapper paints this placeholder itself above the
+  /// field. This is used for fields whose native placeholder would ellipsize.
+  final String? placeholderText;
+  final TextStyle? placeholderTextStyle;
+  final TextAlign placeholderTextAlign;
+  final FocusNode? placeholderFocusNode;
 
   const HorizontalEdgeFade({
     super.key,
@@ -55,6 +63,10 @@ class HorizontalEdgeFade extends StatefulWidget {
     this.showLeadingFadeWhenContentFits = false,
     this.overflowText,
     this.overflowTextStyle,
+    this.placeholderText,
+    this.placeholderTextStyle,
+    this.placeholderTextAlign = TextAlign.left,
+    this.placeholderFocusNode,
   });
 
   @override
@@ -71,6 +83,8 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   bool _showTrailingFade = false;
   TextEditingValue? _lastControllerValue;
   ScrollController? _attachedScrollController;
+  FocusNode? _attachedPlaceholderFocusNode;
+  double _rubberbandOffset = 0;
   int _editSyncTicket = 0;
 
   @override
@@ -78,6 +92,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     super.initState();
     _lastControllerValue = widget.controller?.value;
     widget.controller?.addListener(_handleControllerChanged);
+    _attachPlaceholderFocusNode();
     _attachScrollController();
   }
 
@@ -92,6 +107,10 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
     if (oldWidget.scrollController != widget.scrollController) {
       _detachScrollController();
       _attachScrollController();
+    }
+    if (oldWidget.placeholderFocusNode != widget.placeholderFocusNode) {
+      _detachPlaceholderFocusNode();
+      _attachPlaceholderFocusNode();
     }
     if (oldWidget.fadeColor != widget.fadeColor ||
         oldWidget.showTrailingFade != widget.showTrailingFade ||
@@ -111,8 +130,25 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   @override
   void dispose() {
     widget.controller?.removeListener(_handleControllerChanged);
+    _detachPlaceholderFocusNode();
     _detachScrollController();
     super.dispose();
+  }
+
+  void _attachPlaceholderFocusNode() {
+    final focusNode = widget.placeholderFocusNode;
+    if (focusNode == null) return;
+    _attachedPlaceholderFocusNode = focusNode;
+    focusNode.addListener(_handlePlaceholderFocusChanged);
+  }
+
+  void _detachPlaceholderFocusNode() {
+    _attachedPlaceholderFocusNode?.removeListener(_handlePlaceholderFocusChanged);
+    _attachedPlaceholderFocusNode = null;
+  }
+
+  void _handlePlaceholderFocusChanged() {
+    if (mounted) setState(() {});
   }
 
   void _attachScrollController() {
@@ -220,15 +256,27 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
 
   void _sync(ScrollMetrics metrics) {
     if (_resetting) return;
+    final rubberbandOffset = metrics.pixels - metrics.minScrollExtent;
     // Metrics can lag behind a controller clear by a frame. Text itself is
     // authoritative: an empty field cannot have hidden content on either end.
     if (widget.controller?.text.isEmpty == true) {
-      if (_canScroll || _showLeadingFade || _showTrailingFade) {
+      final showLeading =
+          widget.fadeOnRubberbandWhenContentFits &&
+          rubberbandOffset > 1.0;
+      final showTrailing =
+          widget.fadeOnRubberbandWhenContentFits &&
+          widget.showTrailingFade &&
+          rubberbandOffset < -1.0;
+      if (_canScroll != false ||
+          _showLeadingFade != showLeading ||
+          _showTrailingFade != showTrailing ||
+          (_rubberbandOffset - rubberbandOffset).abs() > 0.1) {
         if (!mounted) return;
         setState(() {
           _canScroll = false;
-          _showLeadingFade = false;
-          _showTrailingFade = false;
+          _showLeadingFade = showLeading;
+          _showTrailingFade = showTrailing;
+          _rubberbandOffset = rubberbandOffset;
         });
       }
       return;
@@ -261,7 +309,8 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
 
     if (_canScroll == canScroll &&
         _showLeadingFade == showLeading &&
-        _showTrailingFade == showTrailing) {
+        _showTrailingFade == showTrailing &&
+        (_rubberbandOffset - rubberbandOffset).abs() <= 0.1) {
       return;
     }
     if (!mounted) return;
@@ -269,6 +318,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
       _canScroll = canScroll;
       _showLeadingFade = showLeading;
       _showTrailingFade = showTrailing;
+      _rubberbandOffset = rubberbandOffset;
     });
   }
 
@@ -315,8 +365,8 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
   }
 
   bool _placeholderOverflows(BuildContext context, double width) {
-    final text = widget.overflowText;
-    final style = widget.overflowTextStyle;
+    final text = widget.placeholderText ?? widget.overflowText;
+    final style = widget.placeholderTextStyle ?? widget.overflowTextStyle;
     if (text == null ||
         style == null ||
         widget.controller?.text.isEmpty != true ||
@@ -334,6 +384,55 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
       maxLines: 1,
     )..layout();
     return painter.width > availableWidth + 0.5;
+  }
+
+  Widget _buildPlaceholder(BuildContext context, double width) {
+    final text = widget.placeholderText;
+    final style = widget.placeholderTextStyle;
+    if (text == null ||
+        text.isEmpty ||
+        style == null ||
+        widget.controller?.text.isEmpty != true ||
+        !width.isFinite) {
+      return const SizedBox.shrink();
+    }
+    final availableWidth = math.max(
+      0.0,
+      width - widget.leadingInset - widget.trailingInset,
+    );
+    final focusedOffset = widget.placeholderFocusNode?.hasFocus == true
+        ? 4.0
+        : 0.0;
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: ClipRect(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: widget.leadingInset,
+              right: widget.trailingInset,
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const NeverScrollableScrollPhysics(),
+              child: Transform.translate(
+                offset: Offset(focusedOffset - _rubberbandOffset, 0),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: availableWidth),
+                  child: Text(
+                    text,
+                    style: style,
+                    textAlign: widget.placeholderTextAlign,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.clip,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -361,6 +460,7 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
               // sheet body fail layout while its header still renders.
               children: [
                 widget.child,
+                _buildPlaceholder(context, constraints.maxWidth),
                 Positioned(
                   left: widget.leadingInset,
                   top: 0,

@@ -467,15 +467,18 @@ class AppSearchBarState extends State<AppSearchBar>
                         // boundaries.
                         leadingInset: kSearchFieldFadeEdgeGap,
                         trailingInset: kSearchFieldFadeEdgeGap,
-                        overflowText: widget.placeholder,
-                        overflowTextStyle: placeholderStyle,
+                        placeholderText: widget.placeholder,
+                        placeholderTextStyle: placeholderStyle,
                         controller: widget.controller,
                         scrollController: _scrollController,
                         child: NativeTextInput(
                           controller: widget.controller,
                           scrollController: _scrollController,
                           onFocusChanged: widget.onFocusChanged,
-                          placeholder: widget.placeholder,
+                          // HorizontalEdgeFade paints the full intrinsic
+                          // placeholder so it can fade and rubberband like
+                          // normal one-line content.
+                          placeholder: '',
                           placeholderStyle: placeholderStyle,
                           style: TextStyle(
                             inherit: false,

@@ -221,9 +221,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
                         widget.placeholder,
                         style: widget.placeholderStyle,
                         maxLines: widget.multiline ? null : 1,
-                        overflow: widget.multiline
-                            ? TextOverflow.clip
-                            : TextOverflow.ellipsis,
+                        overflow: TextOverflow.clip,
                       ),
                     ),
                   ),
