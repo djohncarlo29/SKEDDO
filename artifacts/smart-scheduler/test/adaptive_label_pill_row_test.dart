@@ -132,4 +132,97 @@ void main() {
       expect(valueSize.height, greaterThan(labelSize.height));
     },
   );
+
+  testWidgets(
+    'keeps one-character word values together while the label wraps first',
+    (tester) async {
+      const labelStyle = TextStyle(fontSize: 17);
+      const valueStyle = TextStyle(fontSize: 15);
+      const valueKey = Key('protected-short-pair-value');
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: SizedBox(
+              width: 140,
+              child: const MinGapLabelValueRow(
+                label: 'Long Label',
+                labelStyle: labelStyle,
+                value: '1 hour',
+                valueStyle: valueStyle,
+                trailing: _ProtectedPairText(
+                  valueKey: valueKey,
+                  valueStyle: valueStyle,
+                ),
+                trailingExtraWidth: 0,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final labelSize = tester.getSize(find.text('Long Label'));
+      final valueSize = tester.getSize(find.byKey(valueKey));
+      expect(labelSize.height, greaterThan(valueSize.height));
+      final valueContext = tester.element(find.byKey(valueKey));
+      expect(
+        chevronValueTextForWidth(
+          valueContext,
+          '1 hour',
+          valueStyle,
+          valueSize.width,
+        ),
+        isNot(contains(' ')),
+      );
+      expect(
+        chevronValueTextForWidth(
+          valueContext,
+          '1 hour',
+          valueStyle,
+          1,
+        ),
+        contains(' '),
+      );
+    },
+  );
+
+  test(
+    'allows a protected short pair to unwrap only below its full width',
+    () {
+      expect(
+        smartWrapChevronValueAsProtectedPair('1 hour'),
+        isNot(contains(' ')),
+      );
+      expect(
+        smartWrapChevronValueAsProtectedPair('10 hours'),
+        contains(' '),
+      );
+    },
+  );
+}
+
+class _ProtectedPairText extends StatelessWidget {
+  final Key valueKey;
+  final TextStyle valueStyle;
+
+  const _ProtectedPairText({
+    required this.valueKey,
+    required this.valueStyle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => Text(
+        chevronValueTextForWidth(
+          context,
+          '1 hour',
+          valueStyle,
+          constraints.maxWidth,
+        ),
+        key: valueKey,
+      ),
+    );
+  }
 }

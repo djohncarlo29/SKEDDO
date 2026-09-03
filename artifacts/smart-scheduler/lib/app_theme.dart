@@ -707,6 +707,51 @@ String smartWrapChevronValue(String value) {
   );
 }
 
+bool _hasSingleCharacterWordPair(String value) {
+  final words = value.trim().split(RegExp(r'\s+'));
+  if (words.length != 2) return false;
+  return words.any((word) => word.runes.length == 1);
+}
+
+String _joinWordCharacters(String word) {
+  return word.runes.map(String.fromCharCode).join('\u2060');
+}
+
+/// Keeps values such as "1 hour" together for the first layout decision.
+///
+/// The ordinary [smartWrapChevronValue] form remains the fallback when the
+/// complete pair cannot fit beside a wrapped label.
+String smartWrapChevronValueAsProtectedPair(String value) {
+  if (!_hasSingleCharacterWordPair(value)) {
+    return smartWrapChevronValue(value);
+  }
+  final words = value.trim().split(RegExp(r'\s+'));
+  return '${_joinWordCharacters(words[0])}\u2060${_joinWordCharacters(words[1])}';
+}
+
+/// Chooses the protected short pair until its available text width is too
+/// narrow, then permits ordinary word-boundary wrapping as a last resort.
+String chevronValueTextForWidth(
+  BuildContext context,
+  String value,
+  TextStyle style,
+  double maxWidth,
+) {
+  final protectedValue = smartWrapChevronValueAsProtectedPair(value);
+  if (!maxWidth.isFinite || !_hasSingleCharacterWordPair(value)) {
+    return protectedValue;
+  }
+  final painter = TextPainter(
+    text: TextSpan(text: protectedValue, style: style),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  return painter.width <= maxWidth + kTextLayoutEpsilon
+      ? protectedValue
+      : smartWrapChevronValue(value);
+}
+
 class _WrappedTextMetrics {
   const _WrappedTextMetrics({required this.height, required this.lineCount});
 
@@ -834,8 +879,13 @@ class MinGapLabelValueRow extends StatelessWidget {
       builder: (context, constraints) {
         final labelWidth = _singleLineWidth(context, label, labelStyle);
         final wrappedValue = smartWrapChevronValue(value);
+        final hasProtectedPair = _hasSingleCharacterWordPair(value);
+        final protectedPairValue = smartWrapChevronValueAsProtectedPair(value);
+        final layoutValue = hasProtectedPair
+            ? protectedPairValue
+            : wrappedValue;
         final valueWidth =
-            _singleLineWidth(context, wrappedValue, valueStyle) +
+            _singleLineWidth(context, layoutValue, valueStyle) +
             trailingExtraWidth;
         final leadingTotal = leading == null ? 0.0 : leadingWidth + leadingGap;
         final fitsOnOneLine =
@@ -855,16 +905,60 @@ class MinGapLabelValueRow extends StatelessWidget {
           label,
           labelStyle,
         );
+
+        final availableAfterGap = math.max(
+          0.0,
+          constraints.maxWidth - leadingTotal - kLabelValueGap,
+        );
+
+        // A value with a one-character word (for example, "1 hour") is
+        // treated as one word while deciding which side should wrap. Keep the
+        // value whole and give the label the first chance to wrap. Only when
+        // even the label's readable minimum cannot coexist with that value do
+        // we fall through to the ordinary shared-wrap algorithm.
+        if (hasProtectedPair &&
+            !fitsOnOneLine &&
+            constraints.maxWidth.isFinite) {
+          final protectedValueSlot =
+              trailingExtraWidth +
+              _singleLineWidth(context, protectedPairValue, valueStyle);
+          final labelSlot = availableAfterGap - protectedValueSlot;
+          if (labelSlot + kTextLayoutEpsilon >= minimumLabelWidth &&
+              _hasMultipleWords(label)) {
+            final protectedRow = Row(
+              mainAxisSize: MainAxisSize.max,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (leading != null) ...[
+                  SizedBox(width: leadingWidth, child: leading!),
+                  SizedBox(width: leadingGap),
+                ],
+                SizedBox(
+                  width: labelSlot,
+                  child: Text(label, style: labelStyle, softWrap: true),
+                ),
+                const SizedBox(width: kLabelValueGap),
+                SizedBox(width: protectedValueSlot, child: trailing),
+              ],
+            );
+            return _animateRowHeight(
+              protectedRow,
+              alignment: leading == null
+                  ? Alignment.topCenter
+                  : Alignment.center,
+            );
+          }
+        }
+
+        // A compact two-column row is only valid when both columns can keep
+        // their widest word intact. If that is impossible, stack the value
+        // below the label and give both blocks the full text width.
         final minimumValueTextWidth = _minimumReadableWidth(
           context,
           wrappedValue,
           valueStyle,
         );
         final minimumValueSlot = trailingExtraWidth + minimumValueTextWidth;
-
-        // A compact two-column row is only valid when both columns can keep
-        // their widest word intact. If that is impossible, stack the value
-        // below the label and give both blocks the full text width.
         final compactAvailableAfterGap = math.max(
           0.0,
           availableForText - kLabelValueGap,
@@ -908,6 +1002,7 @@ class MinGapLabelValueRow extends StatelessWidget {
 
         final labelCanKeepSingleLineWithWrappedValue =
             !fitsOnOneLine &&
+            !hasProtectedPair &&
             _hasMultipleWords(wrappedValue) &&
             singleLineLabelSlot +
                     kLabelValueGap +
@@ -951,10 +1046,6 @@ class MinGapLabelValueRow extends StatelessWidget {
         // Both sides are flexible once the one-line layout no longer fits.
         // Leave the gap out of the search space, and reserve the trailing
         // group's non-text width from the value side.
-        final availableAfterGap = math.max(
-          0.0,
-          constraints.maxWidth - leadingTotal - kLabelValueGap,
-        );
         final minLabelWidth = _minimumReadableWidth(context, label, labelStyle);
         final minValueTextWidth = _minimumReadableWidth(
           context,
@@ -2103,14 +2194,21 @@ class ModalSheetPickerTrailing extends StatelessWidget {
       children: [
         if (valuePrefix != null) ...[valuePrefix!, const SizedBox(width: 6)],
         Flexible(
-          child: Text(
-            smartWrapChevronValue(value),
-            style: style,
-            textAlign: TextAlign.right,
-            softWrap: true,
-            // Let the prefix sit beside the painted text block instead of
-            // beside the full flexible slot when the value wraps.
-            textWidthBasis: TextWidthBasis.longestLine,
+          child: LayoutBuilder(
+            builder: (context, constraints) => Text(
+              chevronValueTextForWidth(
+                context,
+                value,
+                style,
+                constraints.maxWidth,
+              ),
+              style: style,
+              textAlign: TextAlign.right,
+              softWrap: true,
+              // Let the prefix sit beside the painted text block instead of
+              // beside the full flexible slot when the value wraps.
+              textWidthBasis: TextWidthBasis.longestLine,
+            ),
           ),
         ),
         if (showChevron) ...[

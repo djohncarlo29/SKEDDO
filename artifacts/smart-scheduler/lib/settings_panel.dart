@@ -1950,11 +1950,13 @@ class _WrappingValueText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      smartWrapChevronValue(text),
-      textAlign: TextAlign.right,
-      softWrap: true,
-      style: style,
+    return LayoutBuilder(
+      builder: (context, constraints) => Text(
+        chevronValueTextForWidth(context, text, style, constraints.maxWidth),
+        textAlign: TextAlign.right,
+        softWrap: true,
+        style: style,
+      ),
     );
   }
 }
@@ -1981,15 +1983,27 @@ class _ColorTrailing extends StatelessWidget {
         const SizedBox(width: 6),
         // Color name label in secondary gray.
         Flexible(
-          child: Text(
-            smartWrapChevronValue(name),
-            textAlign: TextAlign.right,
-            softWrap: true,
-            style: TextStyle(
-              fontFamily: kSFProText,
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
-              color: resolveThemeColor(kSecondaryLabel, context),
+          child: LayoutBuilder(
+            builder: (context, constraints) => Text(
+              chevronValueTextForWidth(
+                context,
+                name,
+                TextStyle(
+                  fontFamily: kSFProText,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                  color: resolveThemeColor(kSecondaryLabel, context),
+                ),
+                constraints.maxWidth,
+              ),
+              textAlign: TextAlign.right,
+              softWrap: true,
+              style: TextStyle(
+                fontFamily: kSFProText,
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+                color: resolveThemeColor(kSecondaryLabel, context),
+              ),
             ),
           ),
         ),
