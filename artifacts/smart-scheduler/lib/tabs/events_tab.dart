@@ -14584,22 +14584,25 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     final textScaler = MediaQuery.textScalerOf(context);
     final swatchSlotSize = textScaler.scale(52);
 
-    return _card([
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          runSpacing: 8,
-          children: [
-            for (final color in _kColorOptions)
-              SizedBox(
-                width: swatchSlotSize,
-                child: _colorSwatch(color),
-              ),
-          ],
+    return SizedBox(
+      width: double.infinity,
+      child: _card([
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            runSpacing: 8,
+            children: [
+              for (final color in _kColorOptions)
+                SizedBox(
+                  width: swatchSlotSize,
+                  child: _colorSwatch(color),
+                ),
+            ],
+          ),
         ),
-      ),
-    ]);
+      ]),
+    );
   }
 
   // ── Card 7: Icon picker ───────────────────────────────────────────────────
