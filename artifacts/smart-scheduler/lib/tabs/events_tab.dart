@@ -14513,7 +14513,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
 
   // ── Card 6: Color picker ──────────────────────────────────────────────────
 
-  Widget _colorSwatch(Color c) {
+  Widget _colorSwatch(Color c, double size) {
     // Resolve both colours to the current brightness before comparing so that
     // the ring correctly tracks the live accent even when _selectedColor is
     // still stored as kCatBlue (the default-accent sentinel value).
@@ -14539,36 +14539,27 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         _handleColorNotifier.value = renderCategoryColor(c, context);
       },
       peakScale: 1.10,
-      child: AspectRatio(
-        aspectRatio: 1,
+      child: SizedBox.square(
+        dimension: size,
         child:
             selected
-                // Ring sits outside the circle. Values are doubled from the
-                // initial design: 1.0 outer + 4.0 ring + 4.0 gap each side.
-                ? Padding(
-                  padding: const EdgeInsets.all(1.0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: ringColor, width: 3.0),
-                    ),
-                    padding: const EdgeInsets.all(3.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: resolveThemeColor(c, context),
-                      ),
-                    ),
+                ? Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: ringColor, width: 3.0),
                   ),
-                )
-                // Unselected: plain circle with 4.5 px breathing room.
-                : Padding(
-                  padding: const EdgeInsets.all(4.5),
+                  padding: const EdgeInsets.all(3.0),
                   child: Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: resolveThemeColor(c, context),
                     ),
+                  ),
+                )
+                : Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: resolveThemeColor(c, context),
                   ),
                 ),
       ),
@@ -14576,13 +14567,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   }
 
   Widget _buildColorCard() {
-    // 52 px is the authored slot width of the previous six-column layout:
-    // (card width - 28 px padding - 30 px gaps) / 6 at the reference width.
-    // Scaling the slot, rather than only the painted circle, lets Wrap choose
-    // fewer columns as Dynamic Type grows without changing the circle-to-hit
-    // target relationship.
+    // 44 px preserves the previous unselected circle's visual diameter while
+    // making the painted circle itself the layout unit. Scaling the complete
+    // unit lets the grid respond to Dynamic Type without adding hidden outer
+    // padding that would move the visible edge away from the card inset.
     final textScaler = MediaQuery.textScalerOf(context);
-    final swatchSlotSize = textScaler.scale(52);
+    final swatchSize = textScaler.scale(44);
 
     return SizedBox(
       width: double.infinity,
@@ -14595,8 +14585,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               final columns = max(
                 1,
                 min(
-                  _kColorOptions.length,
-                  (availableWidth / swatchSlotSize).floor(),
+                  6,
+                  min(
+                    _kColorOptions.length,
+                    (availableWidth / swatchSize).floor(),
+                  ),
                 ),
               );
               // Calculate one fixed gap for the current full row. Full rows
@@ -14605,7 +14598,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               // instead of spreading its first and last swatches apart.
               final gap =
                   columns > 1
-                      ? (availableWidth - columns * swatchSlotSize) /
+                      ? (availableWidth - columns * swatchSize) /
                           (columns - 1)
                       : 0.0;
 
@@ -14616,8 +14609,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 children: [
                   for (final color in _kColorOptions)
                     SizedBox(
-                      width: swatchSlotSize,
-                      child: _colorSwatch(color),
+                      width: swatchSize,
+                      child: _colorSwatch(color, swatchSize),
                     ),
                 ],
               );
