@@ -230,9 +230,12 @@ const List<_EmojiCat> kEmojiCategories = [
       '👫🏻',
       '👬🏻',
       '👭🏻',
-      '👨🏻‍👩🏻‍👦🏻',
-      '👨🏻‍👩🏻‍👧🏻',
-      '👨🏻‍👩🏻‍👧🏻‍👦🏻',
+      // These family ZWJ sequences have no standardized skin-tone variants.
+      // Keep the native composite glyphs intact instead of decomposing them
+      // into oversized heads on Android.
+      '👨‍👩‍👦',
+      '👨‍👩‍👧',
+      '👨‍👩‍👧‍👦',
     ],
   ),
   (
