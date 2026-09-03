@@ -12170,8 +12170,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   late Object _selectedIcon =
       widget.initial?.iconOrSvg ?? SFIcons.sf_list_bullet;
 
-  // 12 swatches — 2 rows of 6. See app_theme.dart for the dynamic light/dark
-  // hex pair behind each swatch.
+  // 12 swatches. See app_theme.dart for the dynamic light/dark hex pair behind
+  // each swatch. The color card wraps them according to the active text scale.
   static const _kColorOptions = kCategorySwatches;
 
   // 77 icons — 10 rows of 7 + 1 row of 2
@@ -14575,29 +14575,32 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     );
   }
 
-  Widget _buildColorCard() => _card([
-    Padding(
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        // Use explicit SizedBox gaps so every Expanded column gets equal width
-        // and AspectRatio(1) produces identical circle diameters.
-        children: [
-          for (int col = 0; col < 6; col++) ...[
-            if (col > 0) const SizedBox(width: 6),
-            Expanded(
-              child: Column(
-                children: [
-                  _colorSwatch(_kColorOptions[col]),
-                  const SizedBox(height: 8),
-                  _colorSwatch(_kColorOptions[col + 6]),
-                ],
+  Widget _buildColorCard() {
+    // 52 px is the authored slot width of the previous six-column layout:
+    // (card width - 28 px padding - 30 px gaps) / 6 at the reference width.
+    // Scaling the slot, rather than only the painted circle, lets Wrap choose
+    // fewer columns as Dynamic Type grows without changing the circle-to-hit
+    // target relationship.
+    final textScaler = MediaQuery.textScalerOf(context);
+    final swatchSlotSize = textScaler.scale(52);
+
+    return _card([
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          runSpacing: 8,
+          children: [
+            for (final color in _kColorOptions)
+              SizedBox(
+                width: swatchSlotSize,
+                child: _colorSwatch(color),
               ),
-            ),
           ],
-        ],
+        ),
       ),
-    ),
-  ]);
+    ]);
+  }
 
   // ── Card 7: Icon picker ───────────────────────────────────────────────────
 
