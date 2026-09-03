@@ -892,6 +892,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   double? _emojiPinchStartDistance;
   bool _emojiPinchActive = false;
   bool _emojiPinchHandled = false;
+  bool _isEmojiDragging = false;
 
   @override
   void dispose() {
@@ -963,6 +964,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   void _onDragUpdate(DragUpdateDetails d, double panelWidth) {
     if (_emojiPinchActive) return;
     setState(() {
+      _isEmojiDragging = true;
       double next = _dragOffset + d.delta.dx;
       // Rubber-band resistance at left/right edges
       if ((_catIndex == 0 && next > 0) ||
@@ -983,16 +985,21 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
       setState(() {
         _catIndex++;
         _dragOffset = 0;
+        _isEmojiDragging = false;
       });
       _scrollCtrl.jumpTo(0);
     } else if ((_dragOffset > threshold || vel > 400) && _catIndex > 0) {
       setState(() {
         _catIndex--;
         _dragOffset = 0;
+        _isEmojiDragging = false;
       });
       _scrollCtrl.jumpTo(0);
     } else {
-      setState(() => _dragOffset = 0);
+      setState(() {
+        _dragOffset = 0;
+        _isEmojiDragging = false;
+      });
     }
   }
 
@@ -1046,8 +1053,13 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                 ? (contentWidth - columns * cellSize) /
                     (columns - 1)
                 : 0.0;
+        final rowCount = (emojis.length / columns).ceil();
+        final gridHeight =
+            2 * gridInset +
+            rowCount * cellSize +
+            math.max(0, rowCount - 1) * minimumSpacing;
 
-        return GridView.builder(
+        return SingleChildScrollView(
           controller: active ? _scrollCtrl : null,
           physics: active
               ? const BouncingScrollPhysics(
@@ -1055,35 +1067,47 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                   parent: AlwaysScrollableScrollPhysics(),
                 )
               : const NeverScrollableScrollPhysics(),
-          padding: EdgeInsets.symmetric(
-            horizontal: gridInset,
-            vertical: gridInset,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeInOut,
+            width: constraints.maxWidth,
+            height: gridHeight,
+            child: Stack(
+              children: List.generate(emojis.length, (i) {
+                final emoji = Text(
+                  emojis[i],
+                  style: TextStyle(fontSize: emojiFontSize, height: 1.0),
+                  textScaler: TextScaler.noScaling,
+                );
+                final child =
+                    active
+                        ? CupertinoButton(
+                          padding: EdgeInsets.zero,
+                          onPressed: () {
+                            _close();
+                            widget.onEmojiSelected(emojis[i]);
+                          },
+                          child: emoji,
+                        )
+                        : Center(child: emoji);
+
+                return AnimatedPositioned(
+                  key: ValueKey(i),
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeInOut,
+                  left:
+                      gridInset +
+                      (i % columns) * (cellSize + crossAxisSpacing),
+                  top:
+                      gridInset +
+                      (i ~/ columns) * (cellSize + minimumSpacing),
+                  width: cellSize,
+                  height: cellSize,
+                  child: child,
+                );
+              }),
+            ),
           ),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            mainAxisSpacing: minimumSpacing,
-            crossAxisSpacing: crossAxisSpacing,
-            childAspectRatio: 1.0,
-          ),
-          itemCount: emojis.length,
-          itemBuilder: (_, i) {
-            final emoji = Text(
-              emojis[i],
-              style: TextStyle(fontSize: emojiFontSize, height: 1.0),
-              textScaler: TextScaler.noScaling,
-            );
-            if (!active) {
-              return Center(child: emoji);
-            }
-            return CupertinoButton(
-              padding: EdgeInsets.zero,
-              onPressed: () {
-                _close();
-                widget.onEmojiSelected(emojis[i]);
-              },
-              child: emoji,
-            );
-          },
         );
       },
     );
@@ -1219,42 +1243,81 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
                                   final w = constraints.maxWidth;
-                return Listener(
-                  behavior: HitTestBehavior.opaque,
-                  onPointerDown: _onEmojiPointerDown,
-                  onPointerMove: _onEmojiPointerMove,
-                  onPointerUp: _onEmojiPointerEnd,
-                  onPointerCancel: _onEmojiPointerEnd,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onHorizontalDragUpdate: (d) =>
-                        _onDragUpdate(d, w),
-                    onHorizontalDragEnd: (d) =>
-                        _onDragEnd(d, w),
-                    child: Stack(
-                      clipBehavior: Clip.hardEdge,
-                      children: [
-                        if (_catIndex > 0)
-                          Transform.translate(
-                            offset: Offset(_dragOffset - w, 0),
-                            child: _buildGrid(_catIndex - 1),
-                          ),
-                        Transform.translate(
-                          offset: Offset(_dragOffset, 0),
-                          child: _buildGrid(
-                            _catIndex,
-                            active: true,
-                          ),
-                        ),
-                        if (_catIndex <
-                            kEmojiCategories.length - 1)
-                          Transform.translate(
-                            offset: Offset(_dragOffset + w, 0),
-                            child: _buildGrid(_catIndex + 1),
-                          ),
-                      ],
-                    ),
-                  ),
+                                  return Listener(
+                                    behavior: HitTestBehavior.opaque,
+                                    onPointerDown: _onEmojiPointerDown,
+                                    onPointerMove: _onEmojiPointerMove,
+                                    onPointerUp: _onEmojiPointerEnd,
+                                    onPointerCancel: _onEmojiPointerEnd,
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onHorizontalDragUpdate: (d) =>
+                                          _onDragUpdate(d, w),
+                                      onHorizontalDragEnd: (d) =>
+                                          _onDragEnd(d, w),
+                                      child: Stack(
+                                        clipBehavior: Clip.hardEdge,
+                                        children: [
+                                          if (_catIndex > 0)
+                                            AnimatedPositioned(
+                                              key: ValueKey(
+                                                'emoji-grid-${_catIndex - 1}',
+                                              ),
+                                              duration:
+                                                  _isEmojiDragging
+                                                      ? Duration.zero
+                                                      : const Duration(
+                                                        milliseconds: 280,
+                                                      ),
+                                              curve: Curves.easeOutBack,
+                                              left: _dragOffset - w,
+                                              top: 0,
+                                              bottom: 0,
+                                              width: w,
+                                              child: _buildGrid(_catIndex - 1),
+                                            ),
+                                          AnimatedPositioned(
+                                            key: ValueKey(
+                                              'emoji-grid-$_catIndex',
+                                            ),
+                                            duration:
+                                                _isEmojiDragging
+                                                    ? Duration.zero
+                                                    : const Duration(
+                                                      milliseconds: 280,
+                                                    ),
+                                            curve: Curves.easeOutBack,
+                                            left: _dragOffset,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: w,
+                                            child: _buildGrid(
+                                              _catIndex,
+                                              active: true,
+                                            ),
+                                          ),
+                                          if (_catIndex <
+                                              kEmojiCategories.length - 1)
+                                            AnimatedPositioned(
+                                              key: ValueKey(
+                                                'emoji-grid-${_catIndex + 1}',
+                                              ),
+                                              duration:
+                                                  _isEmojiDragging
+                                                      ? Duration.zero
+                                                      : const Duration(
+                                                        milliseconds: 280,
+                                                      ),
+                                              curve: Curves.easeOutBack,
+                                              left: _dragOffset + w,
+                                              top: 0,
+                                              bottom: 0,
+                                              width: w,
+                                              child: _buildGrid(_catIndex + 1),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
                                   );
                                 },
                               ),
