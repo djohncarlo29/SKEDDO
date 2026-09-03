@@ -916,6 +916,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     kEmojiCategories.length,
     (_) => GlobalKey(),
   );
+  int _categoryTabVisibilityRequest = 0;
   int _emojiColumns = 7;
   int _automaticEmojiColumns = 7;
   bool _emojiColumnsWasPinched = false;
@@ -982,8 +983,14 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   }
 
   void _ensureCategoryTabVisible(int index, {bool animate = true}) {
+    if (index < 0 || index >= _categoryTabKeys.length) return;
+    final request = ++_categoryTabVisibilityRequest;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      if (!mounted ||
+          request != _categoryTabVisibilityRequest ||
+          index != _catIndex) {
+        return;
+      }
       final tabContext = _categoryTabKeys[index].currentContext;
       if (tabContext == null) return;
       Scrollable.ensureVisible(
@@ -997,6 +1004,18 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   }
 
   void _switchCategory(int i) {
+    // A prior swipe may still be animating the tab strip, and its queued
+    // ensureVisible callback can otherwise overwrite this newer selection.
+    _categoryTabVisibilityRequest++;
+    if (_categoryScrollCtrl.hasClients) {
+      _categoryScrollCtrl.jumpTo(_categoryScrollCtrl.offset);
+    }
+    _emojiRubberbandTimer?.cancel();
+    _emojiRubberbandTimer = null;
+    _emojiEdgeRubberbanding = false;
+    _emojiHorizontalGesture = _EmojiHorizontalGesture.undecided;
+    _emojiSwipeStartOffset = 0.0;
+    _emojiScrollRubberbandOffset = 0.0;
     setState(() {
       _catIndex = i;
       _dragOffset = 0.0;
