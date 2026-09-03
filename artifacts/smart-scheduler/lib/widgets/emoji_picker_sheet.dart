@@ -1,6 +1,8 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
 import '../app_theme.dart';
 import 'rounded_cupertino_sheet.dart';
 
@@ -893,9 +895,11 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   bool _emojiPinchActive = false;
   bool _emojiPinchHandled = false;
   bool _isEmojiDragging = false;
+  Timer? _emojiRubberbandTimer;
 
   @override
   void dispose() {
+    _emojiRubberbandTimer?.cancel();
     _scrollCtrl.dispose();
     super.dispose();
   }
@@ -1001,6 +1005,33 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
         _isEmojiDragging = false;
       });
     }
+  }
+
+  void _onEmojiPointerSignal(PointerSignalEvent event) {
+    if (_emojiPinchActive || event is! PointerScrollEvent) return;
+    final deltaX = event.scrollDelta.dx;
+    if (deltaX == 0) return;
+
+    // Scroll deltas move content opposite to the user's scroll direction.
+    // Convert that into the same page offset used by touch swipes.
+    final attemptedOffset = _dragOffset - deltaX;
+    final atLeadingEdge = _catIndex == 0 && attemptedOffset > 0;
+    final atTrailingEdge =
+        _catIndex == kEmojiCategories.length - 1 && attemptedOffset < 0;
+    if (!atLeadingEdge && !atTrailingEdge) return;
+
+    _emojiRubberbandTimer?.cancel();
+    setState(() {
+      _isEmojiDragging = true;
+      _dragOffset = attemptedOffset * 0.15;
+    });
+    _emojiRubberbandTimer = Timer(const Duration(milliseconds: 90), () {
+      if (!mounted) return;
+      setState(() {
+        _dragOffset = 0;
+        _isEmojiDragging = false;
+      });
+    });
   }
 
   // Builds the emoji grid for a given category index.
@@ -1249,6 +1280,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                     onPointerMove: _onEmojiPointerMove,
                                     onPointerUp: _onEmojiPointerEnd,
                                     onPointerCancel: _onEmojiPointerEnd,
+                                    onPointerSignal: _onEmojiPointerSignal,
                                     child: GestureDetector(
                                       behavior: HitTestBehavior.opaque,
                                       onHorizontalDragUpdate: (d) =>
