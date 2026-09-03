@@ -5588,6 +5588,18 @@ class _NewEventCategory {
   });
 }
 
+// These are navigation-only utility rows in the Events tab, not storage
+// categories. They can exist in persisted category data because the Events
+// tab owns their lifecycle, but they must never be selectable for an event.
+const _kEventPickerUtilityCategoryIds = {
+  'sys-archived-categories',
+  'sys-recently-deleted',
+};
+const _kEventPickerUtilityCategoryNames = {
+  'Archived Categories',
+  'Recently Deleted',
+};
+
 // ══════════════════════════════════════════════════════════════════════════════
 // _NewEventSheet
 // Modal sheet opened by the + button in the Calendar tab header.
@@ -7505,6 +7517,15 @@ class _NewEventSheetState extends State<_NewEventSheet>
         if ((m['archived'] as bool?) == true) continue;
         final id = (m['id'] as String?) ?? '';
         final name = (m['name'] as String?) ?? '';
+        // Archived Categories and Recently Deleted are utility/navigation
+        // entries, not places where an event can be stored. Check the
+        // persisted marker, reserved IDs, and display names so this remains
+        // correct for both current and legacy records.
+        if (m['isSystemUtility'] == true ||
+            _kEventPickerUtilityCategoryIds.contains(id) ||
+            _kEventPickerUtilityCategoryNames.contains(name)) {
+          continue;
+        }
         final color = resolveCategorySwatch(
           Color((m['colorValue'] as int?) ?? kAccentColor.value),
         );
