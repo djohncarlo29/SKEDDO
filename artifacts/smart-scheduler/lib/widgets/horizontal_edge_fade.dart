@@ -342,10 +342,16 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
               colors: opaqueAtStart
-                  ? [
-                      widget.fadeColor,
-                      widget.fadeColor.withValues(alpha: 0),
-                    ]
+                  ? solidTailWidth > 0
+                      ? [
+                          widget.fadeColor,
+                          widget.fadeColor,
+                          widget.fadeColor.withValues(alpha: 0),
+                        ]
+                      : [
+                          widget.fadeColor,
+                          widget.fadeColor.withValues(alpha: 0),
+                        ]
                   : hasOpaqueTail
                   ? [
                       widget.fadeColor.withValues(alpha: 0),
@@ -356,8 +362,14 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
                       widget.fadeColor.withValues(alpha: 0),
                       widget.fadeColor,
                     ],
-              stops: !opaqueAtStart && hasOpaqueTail
-                  ? [0.0, fadeEnd, 1.0]
+              stops: hasOpaqueTail
+                  ? opaqueAtStart
+                      ? [
+                          0.0,
+                          (solidTailWidth / totalWidth).clamp(0.0, 1.0),
+                          1.0,
+                        ]
+                      : [0.0, fadeEnd, 1.0]
                   : null,
             ),
           ),
@@ -467,12 +479,17 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
                 widget.child,
                 _buildPlaceholder(context, constraints.maxWidth),
                 Positioned(
-                  left: widget.leadingInset,
+                  // Paint the leading fade from the wrapper edge. Its opaque
+                  // tail covers the reserved control gap before the text
+                  // viewport, so rubberbanded text cannot leak through that
+                  // otherwise transparent padding.
+                  left: 0,
                   top: 0,
                   bottom: 0,
                   child: _fade(
                     visible: _showLeadingFade,
                     opaqueAtStart: true,
+                    solidTailWidth: widget.leadingInset,
                   ),
                 ),
                 Positioned(

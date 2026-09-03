@@ -22,7 +22,6 @@ import '../widgets/native_text_input.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/vertical_edge_fade.dart';
-import '../widgets/horizontal_edge_fade.dart';
 import '../widgets/edge_fade_metrics.dart';
 import '../ai/search/search_service.dart';
 import '../services/event_store.dart' show EventStore;
@@ -1334,26 +1333,22 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                     controller: widget.controller,
                                     scrollController: widget.scrollController,
                                     metricsListenable: widget.metricsListenable,
-                                    child: HorizontalEdgeFade(
-                                      fadeColor: surfaceColor,
-                                      fadeOnRubberbandWhenContentFits: true,
+                                    placeholderText:
+                                        'Type your schedule here...',
+                                    placeholderTextStyle: TextStyle(
+                                      inherit: false,
+                                      color: secondaryLabel,
+                                      fontSize: 17,
+                                      fontFamily: 'SFProText',
+                                      fontWeight: FontWeight.w400,
+                                      fontStyle: FontStyle.normal,
+                                      letterSpacing: kTracking16,
+                                      height: kLineHeight,
+                                    ),
+                                    placeholderAlignment: Alignment.topLeft,
+                                    child: NativeTextInput(
                                       controller: widget.controller,
-                                      placeholderText:
-                                          'Type your schedule here...',
-                                      placeholderTextStyle: TextStyle(
-                                        inherit: false,
-                                        color: secondaryLabel,
-                                        fontSize: 17,
-                                        fontFamily: 'SFProText',
-                                        fontWeight: FontWeight.w400,
-                                        fontStyle: FontStyle.normal,
-                                        letterSpacing: kTracking16,
-                                        height: kLineHeight,
-                                      ),
-                                      placeholderAlignment: Alignment.topLeft,
-                                      child: NativeTextInput(
-                                        controller: widget.controller,
-                                        placeholder: '',
+                                      placeholder: '',
                                       multiline: true,
                                       // The card stays 155 px tall. Seven lines
                                       // at the field's 17 px / 1.3 line-height
@@ -1396,7 +1391,6 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                         height: kLineHeight,
                                       ),
                                         cursorColor: resolveAccentColor(context),
-                                      ),
                                     ),
                                   ),
                                 ),

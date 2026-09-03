@@ -6392,31 +6392,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
       child: Stack(
         alignment: Alignment.topLeft,
         children: [
-          if (multiline)
-            // Multiline placeholders wrap normally; the horizontal wrapper
-            // below owns the intrinsic one-line placeholder treatment.
-            AnimatedBuilder(
-              animation: Listenable.merge([ctrl, focus]),
-              builder: (_, __) {
-                if (ctrl.text.isNotEmpty) return const SizedBox.shrink();
-                return IgnorePointer(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOut,
-                    transform: Matrix4.translationValues(
-                      focus.hasFocus ? 4.0 : 0.0,
-                      0,
-                      0,
-                    ),
-                    child: Text(
-                      placeholder,
-                      style: _kPlaceholderStyle,
-                      overflow: TextOverflow.clip,
-                    ),
-                  ),
-                );
-              },
-            ),
           multiline
               ? VerticalEdgeFade(
                   fadeColor: resolvedSurface,
@@ -6424,6 +6399,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
                   fadeOnRubberbandWhenContentFits: true,
                   controller: ctrl,
                   scrollController: scrollController,
+                  placeholderText: placeholder,
+                  placeholderTextStyle: _kPlaceholderStyle,
+                  placeholderAlignment: Alignment.topLeft,
+                  placeholderFocusNode: focus,
                   child: textField,
                 )
               : HorizontalEdgeFade(

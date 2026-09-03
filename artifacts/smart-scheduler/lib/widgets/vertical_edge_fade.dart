@@ -21,6 +21,10 @@ class VerticalEdgeFade extends StatefulWidget {
   final bool fadeWhenContentFits;
   final bool fadeOnRubberbandWhenContentFits;
   final bool showTopFadeWhenContentFits;
+  final String? placeholderText;
+  final TextStyle? placeholderTextStyle;
+  final Alignment placeholderAlignment;
+  final FocusNode? placeholderFocusNode;
 
   const VerticalEdgeFade({
     super.key,
@@ -36,6 +40,10 @@ class VerticalEdgeFade extends StatefulWidget {
     this.fadeWhenContentFits = false,
     this.fadeOnRubberbandWhenContentFits = false,
     this.showTopFadeWhenContentFits = false,
+    this.placeholderText,
+    this.placeholderTextStyle,
+    this.placeholderAlignment = Alignment.topLeft,
+    this.placeholderFocusNode,
   });
 
   @override
@@ -49,6 +57,8 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
   bool _showBottomFade = false;
   TextEditingValue? _lastControllerValue;
   ScrollController? _attachedScrollController;
+  FocusNode? _attachedPlaceholderFocusNode;
+  double _rubberbandOffset = 0;
   int _editSyncTicket = 0;
 
   @override
@@ -57,6 +67,7 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
     _lastControllerValue = widget.controller?.value;
     widget.controller?.addListener(_handleControllerChanged);
     widget.metricsListenable?.addListener(_handleExternalMetricsChanged);
+    _attachPlaceholderFocusNode();
     _attachScrollController();
   }
 
@@ -75,6 +86,10 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
     if (oldWidget.scrollController != widget.scrollController) {
       _detachScrollController();
       _attachScrollController();
+    }
+    if (oldWidget.placeholderFocusNode != widget.placeholderFocusNode) {
+      _detachPlaceholderFocusNode();
+      _attachPlaceholderFocusNode();
     }
     if (oldWidget.fadeColor != widget.fadeColor ||
         oldWidget.showBottomFade != widget.showBottomFade ||
@@ -95,8 +110,25 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
   void dispose() {
     widget.controller?.removeListener(_handleControllerChanged);
     widget.metricsListenable?.removeListener(_handleExternalMetricsChanged);
+    _detachPlaceholderFocusNode();
     _detachScrollController();
     super.dispose();
+  }
+
+  void _attachPlaceholderFocusNode() {
+    final focusNode = widget.placeholderFocusNode;
+    if (focusNode == null) return;
+    _attachedPlaceholderFocusNode = focusNode;
+    focusNode.addListener(_handlePlaceholderFocusChanged);
+  }
+
+  void _detachPlaceholderFocusNode() {
+    _attachedPlaceholderFocusNode?.removeListener(_handlePlaceholderFocusChanged);
+    _attachedPlaceholderFocusNode = null;
+  }
+
+  void _handlePlaceholderFocusChanged() {
+    if (mounted) setState(() {});
   }
 
   void _attachScrollController() {
@@ -200,13 +232,23 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
 
   void _sync(dynamic metrics) {
     if (_resetting) return;
+    final rubberbandOffset = metrics.pixels - metrics.minScrollExtent;
     if (widget.controller?.text.isEmpty == true) {
-      if (_canScroll || _showTopFade || _showBottomFade) {
+      final showTop = widget.fadeOnRubberbandWhenContentFits &&
+          rubberbandOffset > 1.0;
+      final showBottom = widget.fadeOnRubberbandWhenContentFits &&
+          widget.showBottomFade &&
+          rubberbandOffset < -1.0;
+      if (_canScroll ||
+          _showTopFade != showTop ||
+          _showBottomFade != showBottom ||
+          (_rubberbandOffset - rubberbandOffset).abs() > 0.1) {
         if (!mounted) return;
         setState(() {
           _canScroll = false;
-          _showTopFade = false;
-          _showBottomFade = false;
+          _showTopFade = showTop;
+          _showBottomFade = showBottom;
+          _rubberbandOffset = rubberbandOffset;
         });
       }
       return;
@@ -240,7 +282,67 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
       _canScroll = canScroll;
       _showTopFade = showTop;
       _showBottomFade = showBottom;
+      _rubberbandOffset = rubberbandOffset;
     });
+  }
+
+  bool _placeholderOverflows(BuildContext context, Size size) {
+    final text = widget.placeholderText;
+    final style = widget.placeholderTextStyle;
+    if (text == null ||
+        text.isEmpty ||
+        style == null ||
+        widget.controller?.text.isNotEmpty == true ||
+        !size.width.isFinite ||
+        size.width <= 0) {
+      return false;
+    }
+    final availableHeight =
+        size.height - widget.topInset - widget.bottomInset;
+    if (availableHeight <= 0) return false;
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout(maxWidth: size.width);
+    return painter.height > availableHeight + 0.5;
+  }
+
+  Widget _buildPlaceholder(BuildContext context, Size size) {
+    final text = widget.placeholderText;
+    final style = widget.placeholderTextStyle;
+    if (text == null ||
+        text.isEmpty ||
+        style == null ||
+        widget.controller?.text.isNotEmpty == true ||
+        !size.width.isFinite ||
+        size.width <= 0) {
+      return const SizedBox.shrink();
+    }
+    final focusedOffset = widget.placeholderFocusNode?.hasFocus == true
+        ? 4.0
+        : 0.0;
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: ClipRect(
+          child: Align(
+            alignment: widget.placeholderAlignment,
+            child: Transform.translate(
+              offset: Offset(0, focusedOffset - _rubberbandOffset),
+              child: SizedBox(
+                width: size.width,
+                child: Text(
+                  text,
+                  style: style,
+                  softWrap: true,
+                  overflow: TextOverflow.clip,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _fade({
@@ -292,33 +394,48 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
       onNotification: _handleScrollNotification,
       child: NotificationListener<ScrollMetricsNotification>(
         onNotification: _handleMetricsNotification,
-        child: Stack(
-          // Let multiline fields establish their natural height. Expanding
-          // this stack inside the modal's unbounded scroll column can make
-          // the entire sheet body fail layout while its header still renders.
-          clipBehavior: Clip.none,
-          children: [
-            widget.child,
-            Positioned(
-              left: 0,
-              right: 0,
-              top: widget.topInset,
-              child: _fade(
-                visible: _showTopFade,
-                opaqueAtStart: true,
-              ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _fade(
-                visible: _showBottomFade,
-                opaqueAtStart: false,
-                solidTailHeight: widget.bottomInset,
-              ),
-            ),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final size = Size(
+              constraints.maxWidth,
+              constraints.maxHeight,
+            );
+            final placeholderOverflow = _placeholderOverflows(context, size);
+            // A long empty placeholder is content too: it needs the same
+            // bottom fade as a long note, while a fitting placeholder only
+            // reveals fades during rubberband motion.
+            final showBottomFade =
+                _showBottomFade || placeholderOverflow;
+            return Stack(
+              // Let multiline fields establish their natural height. Expanding
+              // this stack inside the modal's unbounded scroll column can make
+              // the entire sheet body fail layout while its header still renders.
+              clipBehavior: Clip.none,
+              children: [
+                widget.child,
+                _buildPlaceholder(context, size),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: widget.topInset,
+                  child: _fade(
+                    visible: _showTopFade,
+                    opaqueAtStart: true,
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: _fade(
+                    visible: showBottomFade,
+                    opaqueAtStart: false,
+                    solidTailHeight: widget.bottomInset,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
