@@ -31,9 +31,9 @@
   <script>
     (function() {
       if (!('serviceWorker' in navigator)) return;
-      var cleaned = sessionStorage.getItem('sw_cleaned_v5');
+      var cleaned = sessionStorage.getItem('sw_cleaned_v6');
       if (!cleaned) {
-        sessionStorage.setItem('sw_cleaned_v5', '1');
+        sessionStorage.setItem('sw_cleaned_v6', '1');
         navigator.serviceWorker.getRegistrations().then(function(regs) {
           return Promise.all(regs.map(function(r) { return r.unregister(); }));
         }).then(function() {

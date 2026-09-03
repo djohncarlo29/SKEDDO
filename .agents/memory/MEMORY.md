@@ -97,3 +97,4 @@
 - [Dart2JS thread-limit retry](dart2js-thread-limit.md) — a DartWorker thread-creation failure during Flutter web compilation is transient; retry before debugging source.
 - [Dart formatter drift](dart-formatter-drift.md) — the workspace’s hand-formatted Dart can receive broad unrelated churn from the installed formatter; avoid formatting whole legacy files casually.
 - [Intrinsic placeholder rendering](intrinsic-placeholder-rendering.md) — placeholders must be clipped intrinsic-width content with edge fades, never ellipsis, and must track one-line rubberband offsets.
+- [Flutter preview build directory](flutter-preview-build-directory.md) — native clean/build can remove build/web; restart the managed preview before debugging a resulting 404 or blank page.
