@@ -99,3 +99,4 @@
 - [Intrinsic placeholder rendering](intrinsic-placeholder-rendering.md) — placeholders must be clipped intrinsic-width content with edge fades, never ellipsis, and must track one-line rubberband offsets.
 - [Flutter preview build directory](flutter-preview-build-directory.md) — native clean/build can remove build/web; restart the managed preview before debugging a resulting 404 or blank page.
 - [Family emoji skin-tone support](family-emoji-skin-tone-support.md) — gendered family ZWJ glyphs have no standardized skin-tone variants; per-person modifiers can decompose on Android.
+- [Screen-captured emoji transparency](emoji-sprite-transparency.md) — validate screenshot-derived sprites on a contrasting background; aggressive flood-fill can erase dark hair and body pixels.
