@@ -635,33 +635,60 @@ class SearchCancelButton extends StatefulWidget {
 }
 
 class _SearchCancelButtonState extends State<SearchCancelButton> {
-  static const double _kFullWidth = 50.0;
+  // Preserve the existing default proportion: the X glyph was 20 pt inside
+  // the 40 pt Liquid Glass circle. Both now scale as one unit with the search
+  // bar instead of scaling the glyph independently.
+  static const double _kDefaultCircleSize = 40.0;
+  static const double _kDefaultXmarkSize = 20.0;
+
+  double _circleSize(BuildContext context) => searchBarHeight(context);
+
+  double _rowHeight(BuildContext context, double circleSize) =>
+      math.max(circleSize, kSearchBarSideControlHeight);
+
+  Widget _scaledCircle({
+    required Widget circle,
+    required double scale,
+  }) {
+    return Transform.scale(
+      alignment: Alignment.centerLeft,
+      scale: scale,
+      child: circle,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final circle = _buildCircle(context);
+    final circleSize = _circleSize(context);
+    final rowHeight = _rowHeight(context, circleSize);
+    final circle = _buildCircle(context, circleSize: circleSize);
     if (widget.animation != null) {
       return AnimatedBuilder(
         animation: widget.animation!,
         builder: (context, child) {
           final t = widget.animation!.value.clamp(0.0, 1.0);
-          if (t < 0.005) return const SizedBox(height: 40);
+          if (t < 0.005) return SizedBox(height: rowHeight);
           return SizedBox(
-            width: _kFullWidth * t,
-            height: 40,
-            // Keep the glass lens at its authored 50 px slot.  Do not clip it
-            // to this animated layout slot: ClipRect creates a visible
-            // rectangle around the circular capture surface and also clips
-            // the GelBloomButton's intentional overshoot.  Scaling the fixed
-            // lens gives us a clean reveal while preserving its capture size.
-            child: OverflowBox(
-              alignment: Alignment.centerLeft,
-              minWidth: _kFullWidth,
-              maxWidth: _kFullWidth,
-              child: Transform.scale(
+            // The fixed gap is outside the scaled unit, so it remains fixed
+            // while the circle and X reveal together.
+            width: kSearchBarCancelGap + circleSize * t,
+            height: rowHeight,
+            child: Padding(
+              padding: const EdgeInsets.only(left: kSearchBarCancelGap),
+              child: Align(
                 alignment: Alignment.centerLeft,
-                scale: t,
-                child: child,
+                // Keep the glass lens at its full authored size while
+                // revealing it with an overflow-safe scale. Do not clip the
+                // lens: its bloom and optical capture intentionally overflow.
+                child: OverflowBox(
+                  alignment: Alignment.centerLeft,
+                  minWidth: circleSize,
+                  maxWidth: circleSize,
+                  child: _scaledCircle(
+                    circle: child!,
+                    scale: t,
+                  ),
+                ),
               ),
             ),
           );
@@ -673,30 +700,49 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOutCubic,
       alignment: Alignment.centerLeft,
-      child: widget.searchFocused ? circle : const SizedBox(height: 40),
+      child: widget.searchFocused
+          ? SizedBox(
+              width: kSearchBarCancelGap + circleSize,
+              height: rowHeight,
+              child: Padding(
+                padding: const EdgeInsets.only(left: kSearchBarCancelGap),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: circle,
+                ),
+              ),
+            )
+          : SizedBox(height: rowHeight),
     );
   }
 
-  Widget _buildCircle(BuildContext context) {
+  Widget _buildCircle(
+    BuildContext context, {
+    required double circleSize,
+  }) {
     final surfaceColor = resolveThemeColor(kCardColor, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     return TapRegion(
       groupId: kSbGroupId,
-      child: Padding(
-        padding: const EdgeInsets.only(left: 10),
-        child: GelBloomButton(
-          peakScale: 1.15,
-          tapDelay: const Duration(milliseconds: 130),
-          onTap: widget.onTap,
-          child: LiquidGlassGelCircle(
-            color: surfaceColor,
-            child: Center(
-              child: SearchWeightedIcon(
-                CupertinoIcons.xmark,
-                size: scaledSearchIconSize(context, 20),
-                color: primaryLabel,
-                weight: kGelBloomIconWeight,
-              ),
+      child: GelBloomButton(
+        peakScale: 1.15,
+        tapDelay: const Duration(milliseconds: 130),
+        onTap: widget.onTap,
+        child: LiquidGlassGelCircle(
+          size: circleSize,
+          color: surfaceColor,
+          child: Center(
+            child: SearchWeightedIcon(
+              CupertinoIcons.xmark,
+              // Keep the default 20:40 glyph-to-circle ratio as one united
+              // element. The circle size already follows the search bar's
+              // Dynamic Type height, so the X follows it without a second
+              // independent scaler.
+              size:
+                  circleSize *
+                  (_kDefaultXmarkSize / _kDefaultCircleSize),
+              color: primaryLabel,
+              weight: kGelBloomIconWeight,
             ),
           ),
         ),

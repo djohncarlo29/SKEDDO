@@ -588,6 +588,9 @@ const double kSearchBarSideControlHeight = 40.0;
 const double kSearchBarSearchIconSize = 17.0;
 const double kSearchBarMicIconSize = 15.0;
 const double kSearchBarClearIconSize = 18.0;
+// The cancel control is a separate sibling of the search bar. This gap is
+// layout spacing, not part of the scaled glass control.
+const double kSearchBarCancelGap = 8.0;
 // Edge insets are authored layout values, not text-sized values. They stay at
 // 16 pt while the icons and text line respond to the ambient OS text scaler.
 const double kSearchBarHorizontalEdgePadding = 16.0;
