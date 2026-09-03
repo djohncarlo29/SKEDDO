@@ -7,6 +7,27 @@ import '../app_theme.dart';
 import 'horizontal_edge_fade.dart';
 import 'rounded_cupertino_sheet.dart';
 
+class _HorizontalInsetClipper extends CustomClipper<Rect> {
+  final double inset;
+
+  const _HorizontalInsetClipper({required this.inset});
+
+  @override
+  Rect getClip(Size size) {
+    return Rect.fromLTRB(
+      inset,
+      -size.height,
+      math.max(inset, size.width - inset),
+      size.height * 2,
+    );
+  }
+
+  @override
+  bool shouldReclip(covariant _HorizontalInsetClipper oldClipper) {
+    return oldClipper.inset != inset;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Emoji category data
 // ─────────────────────────────────────────────────────────────────────────────
@@ -449,7 +470,9 @@ const List<_EmojiCat> kEmojiCategories = [
     ],
   ),
   (
-    icon: '⚽',
+    // The variation selector keeps Flutter web from briefly treating the
+    // ball as a text glyph while the emoji font is settling.
+    icon: '⚽️',
     name: 'Activities',
     emojis: [
       '⚽',
@@ -1586,77 +1609,89 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                             Container(height: 0.5, color: sepLineColor),
                             // Row 2 — category strip
                             Padding(
-                              padding: const EdgeInsets.all(
-                                _emojiCategoryInset,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: _emojiCategoryInset,
                               ),
                               child: HorizontalEdgeFade(
                                 fadeColor: cardColor,
-                                // At the default text size all eight category
-                                // tabs fit inside the fixed side insets, so
-                                // there is no edge fade to show. If Dynamic
-                                // Type makes the strip overflow, the normal
-                                // scroll-edge fades appear.
+                                // The fade belongs to the full card edge.
+                                // Keeping its opaque tail at the 16pt inset
+                                // prevents rubberbanded content from showing
+                                // in the reserved side padding.
                                 fadeOnRubberbandWhenContentFits: false,
-                                leadingInset: 0,
-                                trailingInset: 0,
-                                child: LayoutBuilder(
-                                  builder: (context, constraints) {
-                                    return SingleChildScrollView(
-                                      controller: _categoryScrollCtrl,
-                                      primary: false,
-                                      scrollDirection: Axis.horizontal,
-                                      clipBehavior: Clip.none,
-                                      physics: const BouncingScrollPhysics(
-                                        parent: AlwaysScrollableScrollPhysics(),
-                                      ),
-                                      child: ConstrainedBox(
-                                        constraints: BoxConstraints(
-                                          minWidth: constraints.maxWidth,
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: List.generate(
-                                            kEmojiCategories.length,
-                                            (i) {
-                                              final sel = i == _catIndex;
-                                              return GestureDetector(
-                                                key: _categoryTabKeys[i],
-                                                onTap: () =>
-                                                    _switchCategory(i),
-                                                behavior:
-                                                    HitTestBehavior.opaque,
-                                                child: Padding(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                    horizontal:
-                                                        _emojiCategoryItemHorizontalPadding,
-                                                  ),
-                                                  child: Text(
-                                                    kEmojiCategories[i].icon,
-                                                    style: TextStyle(
-                                                      fontSize: textScaler
-                                                          .scale(
-                                                        sel ? 24.0 : 20.0,
-                                                      ),
-                                                      color: sel
-                                                          ? null
-                                                          : const Color(
-                                                              0x66000000,
-                                                            ),
-                                                    ),
-                                                    textScaler:
-                                                        TextScaler.noScaling,
-                                                  ),
-                                                ),
-                                              );
-                                            },
+                                leadingInset: _emojiCategoryInset,
+                                trailingInset: _emojiCategoryInset,
+                                child: ClipRect(
+                                  clipper: const _HorizontalInsetClipper(
+                                    inset: _emojiCategoryInset,
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: _emojiCategoryInset,
+                                    ),
+                                    child: LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        return SingleChildScrollView(
+                                          controller: _categoryScrollCtrl,
+                                          primary: false,
+                                          scrollDirection: Axis.horizontal,
+                                          clipBehavior: Clip.none,
+                                          physics:
+                                              const BouncingScrollPhysics(
+                                            parent:
+                                                AlwaysScrollableScrollPhysics(),
                                           ),
-                                        ),
-                                      ),
-                                    );
-                                  },
+                                          child: ConstrainedBox(
+                                            constraints: BoxConstraints(
+                                              minWidth: constraints.maxWidth,
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceBetween,
+                                              children: List.generate(
+                                                kEmojiCategories.length,
+                                                (i) {
+                                                  final sel = i == _catIndex;
+                                                  return GestureDetector(
+                                                    key: _categoryTabKeys[i],
+                                                    onTap: () =>
+                                                        _switchCategory(i),
+                                                    behavior:
+                                                        HitTestBehavior.opaque,
+                                                    child: Padding(
+                                                      padding:
+                                                          const EdgeInsets
+                                                              .symmetric(
+                                                        horizontal:
+                                                            _emojiCategoryItemHorizontalPadding,
+                                                      ),
+                                                      child: Text(
+                                                        kEmojiCategories[i].icon,
+                                                        style: TextStyle(
+                                                          fontSize: textScaler
+                                                              .scale(
+                                                            sel ? 24.0 : 20.0,
+                                                          ),
+                                                          color: sel
+                                                              ? null
+                                                              : const Color(
+                                                                  0x66000000,
+                                                                ),
+                                                        ),
+                                                        textScaler:
+                                                            TextScaler.noScaling,
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
