@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' show max, min;
-import 'dart:ui' as ui;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -20,7 +19,6 @@ import 'tabs/events_tab.dart';
 import 'tabs/notes_tab.dart';
 import 'widgets/action_panel.dart';
 import 'widgets/accent_tinted_image.dart';
-import 'widgets/events_header_icon.dart';
 import 'widgets/floating_tab_pill.dart';
 import 'widgets/header_title_scroller.dart';
 import 'widgets/native_text_input.dart';
@@ -778,11 +776,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   bool get _calendarShowsDayTitle =>
       _calendarTitle.isNotEmpty && _calendarTitle.contains(' ');
 
-  // True while the Calendar header is showing a year number, including the
-  // title-snap portion of a Year↔Month transition.
-  bool get _calendarShowsYearTitle =>
-      _calendarTitle.isNotEmpty && int.tryParse(_calendarTitle) != null;
-
   // Driven by CalendarTab.onStripSlide — slides the calendar header row in
   // lock-step with the week strip in Day View.  Starts and ends at 0.0.
   final _calendarStripSlide = ValueNotifier<double>(0.0);
@@ -934,10 +927,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   OverlayEntry? _dayViewModeOverlay;
   bool _dayViewModeMenuOpen = false;
   DayViewSubMode _activeDaySubMode = DayViewSubMode.singleDay;
-
-  void _showEventsAddCategory() {
-    _eventsTabKey.currentState?.addCategory();
-  }
 
   void _showDcvMenu() {
     if (_dcvMenuOpen) return;
@@ -2113,20 +2102,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                           ),
                                                           // Shared slot for the mutually-exclusive secondary header
                                                           // actions:
-                                                          //   • Ellipsis     — visible in DCV mode
-                                                          //   • Add Category — visible on the main Events tab
-                                                          //   • Today        — visible on Calendar → Year view
-                                                          //   • View-mode    — visible on Calendar → Month/Day view
+                                                          //   • Ellipsis  — visible in DCV mode
+                                                          //   • View-mode — visible on Calendar → Month/Day view
                                                           //
-                                                          // Both icons live in the SAME SizedBox+Stack so their layout
-                                                          // rect sits at x:36 (right after the hamburger).  Previously
-                                                          // each was a separate Row child with a large Transform.translate
-                                                          // to shift it leftward — but Transform does not move the
-                                                          // parent widget's layout rect, so the Opacity wrapper's rect
-                                                          // stayed at x:66+ while the icon painted at x:36.  A tap at
-                                                          // the icon's visual position never landed inside the Opacity's
-                                                          // rect → the tap fell through and was lost.  Sharing one slot
-                                                          // eliminates the mismatch entirely.
+                                                          // Both icons live in the same slot immediately after the
+                                                          // hamburger so their layout and alignment stay consistent.
                                                           SizedBox(
                                                             width: 36,
                                                             height: 38,
@@ -2190,110 +2170,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                 weight: 0.0,
                                                                               ),
                                                                             ),
-                                                                          ),
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                                // ── Add Category (Events tab) ───────────────────────
-                                                                Opacity(
-                                                                  opacity:
-                                                                      (!isDCVVisual &&
-                                                                          _selectedIndex ==
-                                                                              2)
-                                                                      ? 1.0
-                                                                      : 0.0,
-                                                                  child: IgnorePointer(
-                                                                    ignoring:
-                                                                        !(!isDCVVisual &&
-                                                                            _selectedIndex ==
-                                                                                2),
-                                                                    child: Align(
-                                                                      alignment:
-                                                                          Alignment
-                                                                              .bottomLeft,
-                                                                      child: AnimatedTapIcon(
-                                                                        scaleEnabled:
-                                                                            false,
-                                                                        padding:
-                                                                            const EdgeInsets.fromLTRB(
-                                                                              0,
-                                                                              10,
-                                                                              4,
-                                                                              0,
-                                                                            ),
-                                                                        onTap:
-                                                                            _showEventsAddCategory,
-                                                                        child: Transform.translate(
-                                                                          offset: const Offset(
-                                                                            11.0,
-                                                                            1,
-                                                                          ),
-                                                                          child: ImageFiltered(
-                                                                            imageFilter: ui.ImageFilter.erode(
-                                                                              radiusX: 0.20,
-                                                                              radiusY: 0.20,
-                                                                            ),
-                                                                            child: SizedBox(
-                                                                              width: 25,
-                                                                              height: 25,
-                                                                              child: SvgPicture.asset(
-                                                                                'assets/icons/add_category.svg',
-                                                                                colorFilter: ColorFilter.mode(
-                                                                                  accent,
-                                                                                  BlendMode.srcIn,
-                                                                                ),
-                                                                              ),
-                                                                            ),
-                                                                          ),
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                                // ── Today (Calendar → Year View) ───────────────────
-                                                                Opacity(
-                                                                  opacity:
-                                                                      (!isDCVVisual &&
-                                                                          _selectedIndex ==
-                                                                              1 &&
-                                                                          _calendarShowsYearTitle)
-                                                                      ? 1.0
-                                                                      : 0.0,
-                                                                  child: IgnorePointer(
-                                                                    ignoring:
-                                                                        !(!isDCVVisual &&
-                                                                            _selectedIndex ==
-                                                                                1 &&
-                                                                            _calendarShowsYearTitle),
-                                                                    child: Align(
-                                                                      alignment:
-                                                                          Alignment
-                                                                              .bottomLeft,
-                                                                      child: AnimatedTapIcon(
-                                                                        scaleEnabled:
-                                                                            false,
-                                                                        padding:
-                                                                            const EdgeInsets.fromLTRB(
-                                                                              8,
-                                                                              10,
-                                                                              4,
-                                                                              0,
-                                                                            ),
-                                                                        onTap: () => _calendarTabKey
-                                                                            .currentState
-                                                                            ?.goToToday(),
-                                                                        child: Transform.translate(
-                                                                          offset: const Offset(
-                                                                            3,
-                                                                            -1,
-                                                                          ),
-                                                                          child: TodayFillIcon(
-                                                                            size:
-                                                                                26,
-                                                                            color:
-                                                                                accent,
                                                                           ),
                                                                         ),
                                                                       ),

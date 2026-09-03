@@ -682,50 +682,6 @@ class CalendarTabState extends State<CalendarTab>
   void navigatePrev() => _swipeNavigate(1);
   void navigateNext() => _swipeNavigate(-1);
 
-  /// Snaps directly from Year View into Day View for the current date.
-  /// This is exposed for the Year View header's Framework7 Today action.
-  void goToToday() {
-    if (_view != CalendarView.year) return;
-    final now = DateTime.now();
-
-    _snapCtrl.stop();
-    _zoomCtrl.stop();
-    _collapseCtrl.stop();
-    _zoomPrevT = 1.0;
-
-    // Day View expects the month scroll position to be zero after a direct
-    // snap. Recreate the controller so the newly mounted month panel cannot
-    // inherit a stale initial offset from a previous Month/Day excursion.
-    _monthViewScrollCtrl.removeListener(_syncPreviewScrollToCurrent);
-    _monthViewScrollCtrl.dispose();
-    _monthViewScrollCtrl = ScrollController()
-      ..addListener(_syncPreviewScrollToCurrent);
-
-    _yearScrollCtrl.removeListener(_syncYearPreviewScrollToCurrent);
-    _yearScrollCtrl.dispose();
-    _yearScrollCtrl = ScrollController()
-      ..addListener(_syncYearPreviewScrollToCurrent);
-
-    setState(() {
-      _today = now;
-      _selected = now;
-      _dispYear = now.year;
-      _dispMonth = now.month;
-      _zoomMonthIdx = now.month - 1;
-      _collapseRow = _weekRowForDate(now);
-      _savedMonthScrollOffset = 0.0;
-      _collapseScrollOffset = 0.0;
-      _slideX = 0.0;
-      _view = CalendarView.day;
-    });
-
-    // Skip Year→Month and Month→Day animations entirely: mount the current
-    // month at full collapse so the current day is immediately the Day View.
-    _zoomCtrl.value = 1.0;
-    _collapseCtrl.value = 1.0;
-    _notify();
-  }
-
   // dir = +1: content slides RIGHT → previous appears from the left
   // dir = -1: content slides LEFT  → next appears from the right
   void _swipeNavigate(int dir) {

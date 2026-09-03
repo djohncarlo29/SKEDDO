@@ -2,7 +2,7 @@ name: smart_scheduler
 description: "SKEDDO"
 publish_to: 'none'
 
-version: 1.0.0+30
+version: 1.0.0+31
 
 environment:
   # Support both the workspace Flutter toolchain and Shorebird's newer Dart

@@ -10879,30 +10879,18 @@ class _AddCategoryButtonState extends State<_AddCategoryButton>
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SearchWeightedIcon(
-                    CupertinoIcons.add,
-                    size: 18,
-                    color: resolveAccentColor(context),
-                    weight: 0.25,
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    'Add Category',
-                    style: TextStyle(
-                      inherit: false,
-                      color: resolveAccentColor(context),
-                      fontSize: 17,
-                      fontFamily: kSFProText,
-                      fontWeight: FontWeight.w600,
-                      fontStyle: FontStyle.normal,
-                      letterSpacing: kTracking17,
-                      height: kLineHeight,
-                    ),
-                  ),
-                ],
+              child: Text(
+                'Add Category',
+                style: TextStyle(
+                  inherit: false,
+                  color: resolveAccentColor(context),
+                  fontSize: 17,
+                  fontFamily: kSFProText,
+                  fontWeight: FontWeight.w600,
+                  fontStyle: FontStyle.normal,
+                  letterSpacing: kTracking17,
+                  height: kLineHeight,
+                ),
               ),
             ),
           ),
