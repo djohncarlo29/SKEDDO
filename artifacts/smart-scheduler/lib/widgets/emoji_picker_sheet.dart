@@ -937,7 +937,9 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   static const double _emojiAxisBias = 6.0;
   static const double _emojiPageVelocity = 700.0;
   static const double _emojiCategoryInset = 16.0;
-  static const double _emojiCategoryItemHorizontalPadding = 4.0;
+  // Four points of breathing room on each side of a category slot gives the
+  // strip an authored 8pt minimum gap between neighboring emoji glyphs.
+  static const double _emojiCategoryMinimumGap = 8.0;
   static const ScrollPhysics _emojiRubberbandPhysics = BouncingScrollPhysics(
     parent: AlwaysScrollableScrollPhysics(),
   );
@@ -979,7 +981,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     super.dispose();
   }
 
-  void _ensureCategoryTabVisible(int index) {
+  void _ensureCategoryTabVisible(int index, {bool animate = true}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final tabContext = _categoryTabKeys[index].currentContext;
@@ -987,8 +989,9 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
       Scrollable.ensureVisible(
         tabContext,
         alignment: 0.5,
-        duration: const Duration(milliseconds: 260),
-        curve: Curves.easeInOut,
+        duration:
+            animate ? const Duration(milliseconds: 260) : Duration.zero,
+        curve: animate ? Curves.easeInOut : Curves.linear,
       );
     });
   }
@@ -997,9 +1000,16 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     setState(() {
       _catIndex = i;
       _dragOffset = 0.0;
+      // Category selection is a direct navigation action. The animated
+      // position is reserved for a completed horizontal swipe below.
+      _isEmojiDragging = true;
     });
     _scrollCtrl.jumpTo(0);
-    _ensureCategoryTabVisible(i);
+    _ensureCategoryTabVisible(i, animate: false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _isEmojiDragging = false);
+    });
   }
 
   double _currentEmojiPointerDistance() {
@@ -1419,29 +1429,44 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     );
   }
 
-  double _defaultCategoryGap(BuildContext context, double availableWidth) {
-    final defaultItemWidth = List<double>.generate(
-      kEmojiCategories.length,
-      (i) {
-        final fontSize = i == _catIndex ? 24.0 : 20.0;
-        final glyphWidth =
-            (TextPainter(
-              text: TextSpan(
-                text: kEmojiCategories[i].icon,
-                style: TextStyle(fontSize: fontSize),
-              ),
-              textDirection: Directionality.of(context),
-              textScaler: TextScaler.noScaling,
-              maxLines: 1,
-            )..layout()).width;
-        return glyphWidth + 2 * _emojiCategoryItemHorizontalPadding;
-      },
+  // The category strip and the grid use different visual slot sizes. Align
+  // their endpoint *centers* rather than aligning their slot edges: the first
+  // and last category icons then sit directly above the first and last emoji
+  // in every grid, including after Dynamic Type or a one-column pinch change.
+  double _categoryHorizontalInset(
+    double cardWidth,
+    TextScaler textScaler,
+  ) {
+    final gridInset = textScaler.scale(6.0);
+    final minimumSpacing = textScaler.scale(2.0);
+    final emojiFontSize = textScaler.scale(26.0);
+    const authoredColumns = 7;
+    final contentWidth = math.max(1.0, cardWidth - 2 * gridInset);
+    final defaultCellSize =
+        (contentWidth - minimumSpacing * (authoredColumns - 1)) /
+        authoredColumns;
+    final targetCellSize =
+        math.max(1.0, defaultCellSize * (emojiFontSize / 26.0));
+    final automaticColumns = math.max(
+      1,
+      ((contentWidth + minimumSpacing + 0.001) /
+              (targetCellSize + minimumSpacing))
+          .floor(),
     );
-    final freeSpace =
-        availableWidth - defaultItemWidth.fold(0.0, (sum, width) => sum + width);
+    final columns =
+        _emojiColumnsWasPinched ? _emojiColumns : automaticColumns;
+    final cellSize = math.max(
+      1.0,
+      _emojiColumnsWasPinched
+          ? (contentWidth - minimumSpacing * (columns - 1)) / columns
+          : targetCellSize,
+    );
+    final categorySlotWidth =
+        math.max(28.0, textScaler.scale(28.0));
+
     return math.max(
       0.0,
-      freeSpace / (kEmojiCategories.length - 1),
+      gridInset + cellSize / 2 - categorySlotWidth / 2,
     );
   }
 
@@ -1540,7 +1565,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
               ),
             ),
           ),
-          // ── Card: grid (row 1) + separator + category strip (row 2) ─────
+      // ── Card: grid (row 1) + separator + category strip (row 2) ─────
           Expanded(
             child: CustomScrollView(
               physics: const BouncingScrollPhysics(
@@ -1666,100 +1691,125 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                               padding: const EdgeInsets.symmetric(
                                 vertical: _emojiCategoryInset,
                               ),
-                              child: HorizontalEdgeFade(
-                                fadeColor: cardColor,
-                                // The fade belongs to the full card edge.
-                                // Keeping its opaque tail at the 16pt inset
-                                // prevents rubberbanded content from showing
-                                // in the reserved side padding.
-                                fadeOnRubberbandWhenContentFits: true,
-                                leadingInset: _emojiCategoryInset,
-                                trailingInset: _emojiCategoryInset,
-                                child: ClipRect(
-                                  clipper: const _HorizontalInsetClipper(
-                                    inset: _emojiCategoryInset,
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: _emojiCategoryInset,
-                                    ),
-                                    child: LayoutBuilder(
-                                      builder: (context, constraints) {
-                                        final largerThanDefault =
-                                            textScaler.scale(20.0) > 20.0;
-                                        final categoryMinimumGap =
-                                            largerThanDefault
-                                                ? _defaultCategoryGap(
-                                                  context,
-                                                  constraints.maxWidth,
-                                                )
-                                                : 0.0;
-                                        return SingleChildScrollView(
-                                          controller: _categoryScrollCtrl,
-                                          primary: false,
-                                          scrollDirection: Axis.horizontal,
-                                          clipBehavior: Clip.none,
-                                          physics:
-                                              const BouncingScrollPhysics(
-                                            parent:
-                                                AlwaysScrollableScrollPhysics(),
-                                          ),
-                                          child: ConstrainedBox(
-                                            constraints: BoxConstraints(
-                                              minWidth: constraints.maxWidth,
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.spaceBetween,
-                                              spacing: categoryMinimumGap,
-                                              children: List.generate(
-                                                kEmojiCategories.length,
-                                                (i) {
-                                                  final sel = i == _catIndex;
-                                                  final fontSize = textScaler
-                                                      .scale(
-                                                    sel ? 24.0 : 20.0,
-                                                  );
-                                                  return GestureDetector(
-                                                    key: _categoryTabKeys[i],
-                                                    onTap: () =>
-                                                        _switchCategory(i),
-                                                    behavior:
-                                                        HitTestBehavior.opaque,
-                                                    child: Padding(
-                                                      padding:
-                                                          const EdgeInsets
-                                                              .symmetric(
-                                                        horizontal:
-                                                            _emojiCategoryItemHorizontalPadding,
-                                                      ),
-                                                      child: Text(
-                                                        kEmojiCategories[i].icon,
-                                                        style: TextStyle(
-                                                          inherit: false,
-                                                          fontSize: fontSize,
-                                                          color: sel
-                                                              ? labelColor
-                                                              : labelColor
-                                                                  .withValues(
-                                                                    alpha: 0.42,
-                                                                  ),
-                                                        ),
-                                                        textScaler:
-                                                            TextScaler.noScaling,
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                            ),
-                                          ),
+                              child: LayoutBuilder(
+                                builder: (context, cardConstraints) {
+                                  final categoryHorizontalInset =
+                                      _categoryHorizontalInset(
+                                        cardConstraints.maxWidth,
+                                        textScaler,
+                                      );
+                                  return HorizontalEdgeFade(
+                                    fadeColor: cardColor,
+                                    // The fade belongs to the full card edge.
+                                    // Keep its opaque tail at the same inset as
+                                    // the endpoint icon slot.
+                                    fadeOnRubberbandWhenContentFits: true,
+                                    leadingInset: categoryHorizontalInset,
+                                    trailingInset: categoryHorizontalInset,
+                                    child: ClipRect(
+                                      clipper: _HorizontalInsetClipper(
+                                        inset: categoryHorizontalInset,
+                                      ),
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal:
+                                              categoryHorizontalInset,
+                                        ),
+                                        child: LayoutBuilder(
+                                          builder: (context, constraints) {
+                                        // Keep every category centered in the
+                                        // same slot. Without this, the
+                                        // selected 24pt glyph makes the first
+                                        // or last tab move inward by 2pt,
+                                        // while the grid keeps its cell center
+                                        // fixed.
+                                        final categorySlotWidth = math.max(
+                                          28.0,
+                                          textScaler.scale(28.0),
                                         );
-                                      },
+                                            return SingleChildScrollView(
+                                              controller:
+                                                  _categoryScrollCtrl,
+                                              primary: false,
+                                              scrollDirection: Axis.horizontal,
+                                              clipBehavior: Clip.none,
+                                              physics:
+                                                  const BouncingScrollPhysics(
+                                                parent:
+                                                    AlwaysScrollableScrollPhysics(),
+                                              ),
+                                              child: ConstrainedBox(
+                                                constraints: BoxConstraints(
+                                                  minWidth:
+                                                      constraints.maxWidth,
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  // Keep this gap at all text
+                                                  // scales. spaceBetween may
+                                                  // add more when the strip
+                                                  // fits, but never less.
+                                                  spacing:
+                                                      _emojiCategoryMinimumGap,
+                                                  children: List.generate(
+                                                    kEmojiCategories.length,
+                                                    (i) {
+                                                      final sel =
+                                                          i == _catIndex;
+                                                      final fontSize =
+                                                          textScaler.scale(
+                                                        sel ? 24.0 : 20.0,
+                                                      );
+                                                      return GestureDetector(
+                                                        key:
+                                                            _categoryTabKeys[i],
+                                                        onTap: () =>
+                                                            _switchCategory(i),
+                                                        behavior:
+                                                            HitTestBehavior
+                                                                .opaque,
+                                                        child: SizedBox(
+                                                          width:
+                                                              categorySlotWidth,
+                                                          child: Center(
+                                                            child: Text(
+                                                              kEmojiCategories[
+                                                                      i]
+                                                                  .icon,
+                                                              style: TextStyle(
+                                                                inherit: false,
+                                                                fontSize:
+                                                                    fontSize,
+                                                                color: sel
+                                                                    ? labelColor
+                                                                    : labelColor
+                                                                        .withValues(
+                                                                          alpha:
+                                                                              0.42,
+                                                                        ),
+                                                              ),
+                                                              textScaler:
+                                                                  TextScaler
+                                                                      .noScaling,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
+                                  );
+                                },
                               ),
                             ),
                           ],
