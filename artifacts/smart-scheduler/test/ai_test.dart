@@ -18,6 +18,7 @@ import 'package:smart_scheduler/services/recurrence_expander.dart';
 import 'package:smart_scheduler/services/event_model.dart';
 import 'package:smart_scheduler/services/event_store.dart';
 import 'package:smart_scheduler/services/local_storage.dart';
+import 'package:smart_scheduler/app_settings.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SharedPreferences stub stores for save-failure tests.
@@ -2133,4 +2134,101 @@ void main() {
       );
     },
   );
+
+  // ── G. Category lifecycle event placement ───────────────────────────────────
+  //
+  // Archived contents must be absent from the active event corpus, while
+  // category-only actions must keep events active and reassign them.
+  group('EventStore category lifecycle event placement', () {
+    late EventStore store;
+    late String originalDefaultId;
+
+    setUp(() {
+      store = EventStore.instance;
+      originalDefaultId = appDefaultCategoryNotifier.value;
+      store.events.value = [];
+      store.archivedEvents.value = [];
+      store.deletedEvents.value = [];
+    });
+
+    tearDown(() {
+      store.events.value = [];
+      store.archivedEvents.value = [];
+      store.deletedEvents.value = [];
+      appDefaultCategoryNotifier.value = originalDefaultId;
+    });
+
+    test('archive with contents removes events from active storage', () {
+      final event = store.create(
+        title: 'Archived meeting',
+        categoryId: 'category-work',
+      );
+
+      expect(store.archiveEventsForCategory('category-work'), 1);
+      expect(store.events.value, isEmpty);
+      expect(store.archivedEvents.value.single.id, event.id);
+      expect(store.archivedEvents.value.single.categoryId, 'category-work');
+      expect(store.deletedEvents.value, isEmpty);
+    });
+
+    test('recovering an archived category restores its events there', () {
+      final event = store.create(
+        title: 'Recoverable meeting',
+        categoryId: 'category-work',
+      );
+      store.archiveEventsForCategory('category-work');
+
+      expect(store.restoreArchivedEventsForCategory('category-work'), 1);
+      expect(store.archivedEvents.value, isEmpty);
+      expect(store.events.value.single.id, event.id);
+      expect(store.events.value.single.categoryId, 'category-work');
+      expect(store.restoreArchivedEventsForCategory('category-work'), 0);
+    });
+
+    test('category-only reassignment keeps events active in the default', () {
+      appDefaultCategoryNotifier.value = 'category-default';
+      final event = store.create(
+        title: 'Reassigned meeting',
+        categoryId: 'category-work',
+      );
+
+      store.reassignCategories(fromCategoryIds: {'category-work'});
+
+      expect(store.events.value.single.id, event.id);
+      expect(store.events.value.single.categoryId, 'category-default');
+      expect(store.archivedEvents.value, isEmpty);
+    });
+
+    test('deleting an archived category moves its contents to deleted storage', () {
+      final event = store.create(
+        title: 'Deleted archived meeting',
+        categoryId: 'category-work',
+      );
+      store.archiveEventsForCategory('category-work');
+
+      expect(store.deleteArchivedEventsForCategory('category-work'), 1);
+      expect(store.events.value, isEmpty);
+      expect(store.archivedEvents.value, isEmpty);
+      expect(store.deletedEvents.value.single.id, event.id);
+      expect(store.deletedEvents.value.single.categoryId, 'category-work');
+    });
+
+    test('archived contents survive a reload from local storage', () async {
+      final event = store.create(
+        title: 'Persistent archived meeting',
+        categoryId: 'category-work',
+      );
+      store.archiveEventsForCategory('category-work');
+
+      store.events.value = [];
+      store.archivedEvents.value = [];
+      store.deletedEvents.value = [];
+      await store.loadFromStorage();
+
+      expect(store.events.value, isEmpty);
+      expect(store.archivedEvents.value.single.id, event.id);
+      expect(store.archivedEvents.value.single.title, event.title);
+      expect(store.archivedEvents.value.single.categoryId, 'category-work');
+    });
+  });
 }

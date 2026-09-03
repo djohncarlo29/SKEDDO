@@ -286,7 +286,7 @@ class _FloatingTabBarGlassPreviewState
                                 items: [
                                   _previewItem(SFIcons.sf_trash),
                                   _previewItem(SFIcons.sf_folder, size: 23),
-                                  _previewItem(SFIcons.sf_arrow_uturn_left),
+                                  _previewItem(SFIcons.sf_arrowshape_turn_up_left),
                                 ],
                                 selectedIndex: 0,
                                 onChanged: (_) {},

@@ -18,6 +18,7 @@ class LocalStorage {
   static final LocalStorage instance = LocalStorage._();
 
   static const _kEventsKey = 'skeddo_events_v1';
+  static const _kArchivedEventsKey = 'skeddo_archived_events_v1';
   static const _kDeletedEventsKey = 'skeddo_deleted_events_v1';
   static const _kEmbVersionsKey = 'skeddo_emb_versions_v1';
 
@@ -43,6 +44,41 @@ class LocalStorage {
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getStringList(_kEventsKey) ?? [];
+      return raw
+          .map((s) {
+            try {
+              return ScheduledEvent.fromJson(
+                jsonDecode(s) as Map<String, dynamic>,
+              );
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<ScheduledEvent>()
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Persist events removed from the active schedule because their category
+  /// was archived together with its contents.
+  Future<bool> saveArchivedEvents(List<ScheduledEvent> events) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonList = events.map((e) => jsonEncode(e.toJson())).toList();
+      return await prefs.setStringList(_kArchivedEventsKey, jsonList);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Load events belonging to archived categories, or an empty list on
+  /// failure.
+  Future<List<ScheduledEvent>> loadArchivedEvents() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getStringList(_kArchivedEventsKey) ?? [];
       return raw
           .map((s) {
             try {

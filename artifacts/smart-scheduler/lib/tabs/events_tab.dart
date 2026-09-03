@@ -2492,6 +2492,9 @@ class EventsTabState extends State<EventsTab>
         categories.map((category) => category.id).toSet(),
       );
       for (final category in categories) {
+        if (deleteEvents) {
+          EventStore.instance.deleteArchivedEventsForCategory(category.id);
+        }
         _removeCategoryEvents(category.id, deleteEvents: deleteEvents);
       }
       setState(() {
@@ -2709,8 +2712,9 @@ class EventsTabState extends State<EventsTab>
     if (!mounted || confirmed != true) return;
     _ensureDefaultCategoryAvailable({category.id});
     // An archived category can contain events that were deliberately kept
-    // with it. Deleting it must move that bundle to Recently Deleted rather
-    // than silently reassigning those events to the default category.
+    // with it. Move both active remnants and archived contents to Recently
+    // Deleted rather than silently reassigning either set.
+    EventStore.instance.deleteArchivedEventsForCategory(category.id);
     _removeCategoryEvents(category.id, deleteEvents: true);
     setState(() {
       _recentlyDeletedCategories
@@ -2930,6 +2934,7 @@ class EventsTabState extends State<EventsTab>
     );
     if (!isInList && !isInGrid) return;
 
+    EventStore.instance.restoreArchivedEventsForCategory(category.id);
     final restored = category.copyWith(archived: false);
     setState(() {
       _userCategories.removeWhere((candidate) => candidate.id == category.id);
@@ -5301,6 +5306,8 @@ class EventsTabState extends State<EventsTab>
         _dcvCustomSectionEventIds.remove(cat.name);
       });
       _saveCategories();
+    } else {
+      EventStore.instance.archiveEventsForCategory(cat.id);
     }
     _archiveCategoryAfterChoice(cat);
   }
@@ -6088,6 +6095,7 @@ class EventsTabState extends State<EventsTab>
       if (mounted) setState(() {});
     });
     EventStore.instance.events.addListener(_onEventsChanged);
+    EventStore.instance.archivedEvents.addListener(_onEventsChanged);
     _scrollController.addListener(_enforceScrollLock);
     // Seed smart category display order from the fixed tile list.
     // _loadCategories() will override this from persisted prefs if they exist.
@@ -6138,6 +6146,7 @@ class EventsTabState extends State<EventsTab>
     _gridDragOverlayEntry?.remove();
     _gridDragOverlayEntry = null;
     EventStore.instance.events.removeListener(_onEventsChanged);
+    EventStore.instance.archivedEvents.removeListener(_onEventsChanged);
     WidgetsBinding.instance.removeObserver(this);
     _searchController.removeListener(_onSearchTextChanged);
     _scrollController.dispose();

@@ -25,6 +25,7 @@ class EventStore {
   static final EventStore instance = EventStore._();
 
   final events = ValueNotifier<List<ScheduledEvent>>([]);
+  final archivedEvents = ValueNotifier<List<ScheduledEvent>>([]);
   final deletedEvents = ValueNotifier<List<ScheduledEvent>>([]);
 
   int _nextId = 1;
@@ -81,13 +82,19 @@ class EventStore {
   /// defensive gate.
   Future<void> loadFromStorage() async {
     final saved = await LocalStorage.instance.loadEvents();
+    archivedEvents.value = await LocalStorage.instance.loadArchivedEvents();
     deletedEvents.value = await LocalStorage.instance.loadDeletedEvents();
+    final allSavedEvents = [
+      ...saved,
+      ...archivedEvents.value,
+      ...deletedEvents.value,
+    ];
+    _nextId = allSavedEvents.fold(1, (max, e) {
+      final n = int.tryParse(e.id) ?? 0;
+      return n >= max ? n + 1 : max;
+    });
     if (saved.isNotEmpty) {
       // Advance the ID counter past all existing IDs to prevent collisions.
-      _nextId = saved.fold(1, (max, e) {
-        final n = int.tryParse(e.id) ?? 0;
-        return n >= max ? n + 1 : max;
-      });
       // Upgrade any legacy 24-hour time strings to 12-hour AM/PM.
       var anyChanged = false;
       final normalised = saved.map((e) {
@@ -526,6 +533,73 @@ class EventStore {
     }
   }
 
+  /// Moves active events into the archived-event store while preserving their
+  /// original category IDs. Archived events are excluded from All Events and
+  /// all active category views until the category is recovered.
+  int archiveEventsForCategory(String categoryId) {
+    final moving = events.value
+        .where((event) => event.categoryId == categoryId)
+        .toList();
+    if (moving.isEmpty) return 0;
+
+    final movingIds = {for (final event in moving) event.id};
+    events.value = events.value
+        .where((event) => !movingIds.contains(event.id))
+        .toList();
+    archivedEvents.value = [
+      ...archivedEvents.value.where((event) => !movingIds.contains(event.id)),
+      ...moving,
+    ];
+    LocalStorage.instance.saveEvents(events.value);
+    LocalStorage.instance.saveArchivedEvents(archivedEvents.value);
+    return moving.length;
+  }
+
+  /// Restores all archived events owned by [categoryId] to the active store.
+  int restoreArchivedEventsForCategory(String categoryId) {
+    final moving = archivedEvents.value
+        .where((event) => event.categoryId == categoryId)
+        .toList();
+    if (moving.isEmpty) return 0;
+
+    final movingIds = {for (final event in moving) event.id};
+    archivedEvents.value = archivedEvents.value
+        .where((event) => !movingIds.contains(event.id))
+        .toList();
+    final activeIds = {for (final event in events.value) event.id};
+    events.value = [
+      ...events.value,
+      ...moving.where((event) => !activeIds.contains(event.id)),
+    ];
+    LocalStorage.instance.saveArchivedEvents(archivedEvents.value);
+    LocalStorage.instance.saveEvents(events.value);
+    for (final event in moving.where((event) => !activeIds.contains(event.id))) {
+      _onAdded?.call(event, events.value); // fire-and-forget
+    }
+    return moving.length;
+  }
+
+  /// Moves archived events into Recently Deleted when their category is
+  /// deleted. Their category IDs remain intact for category-bundle recovery.
+  int deleteArchivedEventsForCategory(String categoryId) {
+    final moving = archivedEvents.value
+        .where((event) => event.categoryId == categoryId)
+        .toList();
+    if (moving.isEmpty) return 0;
+
+    final movingIds = {for (final event in moving) event.id};
+    archivedEvents.value = archivedEvents.value
+        .where((event) => !movingIds.contains(event.id))
+        .toList();
+    deletedEvents.value = [
+      ...deletedEvents.value.where((event) => !movingIds.contains(event.id)),
+      ...moving,
+    ];
+    LocalStorage.instance.saveArchivedEvents(archivedEvents.value);
+    LocalStorage.instance.saveDeletedEvents(deletedEvents.value);
+    return moving.length;
+  }
+
   /// Update only the [priority] field for [id] without firing pipeline hooks.
   /// Called exclusively by EventPipeline after AI classification to avoid
   /// triggering a re-embed loop.
@@ -651,6 +725,19 @@ class EventStore {
         for (final event in events.value) event.id: event,
       };
       deletedEvents.value = byId.values.toList();
+      LocalStorage.instance.saveDeletedEvents(deletedEvents.value);
+    }
+    if (archivedEvents.value.isNotEmpty) {
+      deletedEvents.value = [
+        ...deletedEvents.value,
+        ...archivedEvents.value.where(
+          (archived) => !deletedEvents.value.any(
+            (deleted) => deleted.id == archived.id,
+          ),
+        ),
+      ];
+      archivedEvents.value = [];
+      LocalStorage.instance.saveArchivedEvents(const []);
       LocalStorage.instance.saveDeletedEvents(deletedEvents.value);
     }
     events.value = [];
