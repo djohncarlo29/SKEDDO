@@ -15202,26 +15202,12 @@ Widget _renderCatIcon(
 
   Widget inner;
   if (_isEmojiIcon(iconOrSvg)) {
-    final familyAsset = emojiFamilyAssetFor(iconOrSvg);
-    if (familyAsset != null) {
-      // Family sprites preserve the exact picker artwork while the original
-      // Unicode value remains the category's stored selection.
-      inner = Image.asset(
-        familyAsset,
-        width: iconSz,
-        height: iconSz,
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.high,
-        excludeFromSemantics: true,
-      );
-    } else {
-      // Emoji: render as native Unicode text — no color tint, fills circle naturally.
-      inner = Text(
-        iconOrSvg as String,
-        style: TextStyle(fontSize: iconSz, height: 1.0),
-        textScaler: TextScaler.noScaling,
-      );
-    }
+    // Emoji: render as native Unicode text — no color tint, fills circle naturally.
+    inner = Text(
+      iconOrSvg as String,
+      style: TextStyle(fontSize: iconSz, height: 1.0),
+      textScaler: TextScaler.noScaling,
+    );
     return SizedBox(
       width: containerSize,
       height: containerSize,
@@ -15286,20 +15272,6 @@ Widget _buildDcvCatIcon(Object iconOrSvg, Color color, {BuildContext? ctx}) {
 
   Widget inner;
   if (_isEmojiIcon(iconOrSvg)) {
-    final familyAsset = emojiFamilyAssetFor(iconOrSvg);
-    if (familyAsset != null) {
-      return Transform.translate(
-        offset: offset,
-        child: Image.asset(
-          familyAsset,
-          width: iconSz,
-          height: iconSz,
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.high,
-          excludeFromSemantics: true,
-        ),
-      );
-    }
     // Emoji: render as native Unicode text without colour tint.
     return Transform.translate(
       offset: offset,
@@ -15378,17 +15350,6 @@ Widget _buildPickerIcon(Object iconOrSvg, Color color, {BuildContext? ctx}) {
 // Raw icon widget — no positional offset applied.
 Widget _buildPickerIconRaw(Object iconOrSvg, Color color, {BuildContext? ctx}) {
   if (_isEmojiIcon(iconOrSvg)) {
-    final familyAsset = emojiFamilyAssetFor(iconOrSvg);
-    if (familyAsset != null) {
-      return Image.asset(
-        familyAsset,
-        width: _kEmojiGlyphSize,
-        height: _kEmojiGlyphSize,
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.high,
-        excludeFromSemantics: true,
-      );
-    }
     // Emoji: render as native Unicode text at the shared reference size.
     return Text(
       iconOrSvg as String,

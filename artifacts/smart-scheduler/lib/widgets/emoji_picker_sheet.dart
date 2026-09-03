@@ -890,17 +890,6 @@ const List<_EmojiCat> kEmojiCategories = [
   ),
 ];
 
-const Map<String, String> _familyEmojiAssets = {
-  '👨‍👩‍👦': 'assets/emoji_family/family_boy_complete.png',
-  '👨‍👩‍👧': 'assets/emoji_family/family_girl_complete.png',
-  '👨‍👩‍👧‍👦': 'assets/emoji_family/family_two_children_complete.png',
-};
-
-/// Returns the display-only asset for a family emoji whose original Unicode
-/// value must remain unchanged for selection and persistence.
-String? emojiFamilyAssetFor(Object value) =>
-    value is String ? _familyEmojiAssets[value] : null;
-
 // ─────────────────────────────────────────────────────────────────────────────
 // EmojiPickerSheet — full-page sheet content for showRoundedCupertinoSheet
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1425,25 +1414,11 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
             height: gridHeight,
             child: Stack(
               children: List.generate(emojis.length, (i) {
-                final familyAsset = _familyEmojiAssets[emojis[i]];
-                final emoji =
-                    familyAsset == null
-                        ? Text(
-                          emojis[i],
-                          style: TextStyle(fontSize: cellFontSize, height: 1.0),
-                          textScaler: TextScaler.noScaling,
-                        )
-                        : Image.asset(
-                          familyAsset,
-                          // Match the visual footprint of the normal emoji
-                          // Text. The cell remains the full tap target, but
-                          // the sprite must not stretch to fill it.
-                          width: cellFontSize,
-                          height: cellFontSize,
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.high,
-                          excludeFromSemantics: true,
-                        );
+                final emoji = Text(
+                  emojis[i],
+                  style: TextStyle(fontSize: cellFontSize, height: 1.0),
+                  textScaler: TextScaler.noScaling,
+                );
                 final child =
                     active
                         ? CupertinoButton(
