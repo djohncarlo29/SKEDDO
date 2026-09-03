@@ -895,12 +895,10 @@ class _DefaultCategoryRowState extends State<_DefaultCategoryRow> {
                 ),
               ),
             ),
-            if (widget.selected)
-              Icon(
-                CupertinoIcons.checkmark,
-                size: 20,
-                color: widget.accentColor,
-              ),
+            _SettingsCheckmarkSlot(
+              selected: widget.selected,
+              accentColor: widget.accentColor,
+            ),
           ],
         ),
       ),
@@ -1697,17 +1695,10 @@ class _OptionRowState extends State<_OptionRow> {
                 ),
               ),
             ),
-            // Checkmark — only visible for the selected option.
-            // Match the action-panel checkmark size and weight.
-            if (widget.selected)
-              FixedSFIcon(
-                SFIcons.sf_checkmark,
-                fontSize: _settingsScaledFontSize(context, 17),
-                fontWeight: FontWeight.w500,
-                color: widget.accentColor,
-              ),
-            // Reserve checkmark width when unselected so the text column is stable.
-            if (!widget.selected) const SizedBox(width: 18),
+            _SettingsCheckmarkSlot(
+              selected: widget.selected,
+              accentColor: widget.accentColor,
+            ),
           ],
         ),
       ),
@@ -1842,18 +1833,10 @@ class _AccentSwatchRowState extends State<_AccentSwatchRow> {
                 ),
               ),
             ),
-            // Checkmark — only for the selected swatch.
-            // Match the action-panel checkmark size and weight.
-            // Reserve width for unselected rows so the text column is stable.
-            if (widget.selected)
-              FixedSFIcon(
-                SFIcons.sf_checkmark,
-                fontSize: _settingsScaledFontSize(context, 17),
-                fontWeight: FontWeight.w500,
-                color: widget.accentColor,
-              )
-            else
-              const SizedBox(width: 18),
+            _SettingsCheckmarkSlot(
+              selected: widget.selected,
+              accentColor: widget.accentColor,
+            ),
           ],
         ),
       ),
@@ -1864,6 +1847,47 @@ class _AccentSwatchRowState extends State<_AccentSwatchRow> {
 // ── Trailing widgets ──────────────────────────────────────────────────────────
 double _settingsScaledFontSize(BuildContext context, double baseSize) {
   return MediaQuery.textScalerOf(context).scale(baseSize);
+}
+
+const double _kSettingsCheckmarkGap = 16.0;
+const double _kSettingsCheckmarkBaseSize = 17.0;
+
+/// Reserves the trailing checkmark column for every selectable subscreen row.
+///
+/// The slot includes the fixed 16 pt label-to-checkmark gap and the scaled
+/// checkmark width. The row's own 16 pt horizontal padding supplies the fixed
+/// checkmark-to-edge inset. Keeping the slot present for unselected rows also
+/// prevents labels from changing width as selection moves.
+class _SettingsCheckmarkSlot extends StatelessWidget {
+  final bool selected;
+  final Color accentColor;
+
+  const _SettingsCheckmarkSlot({
+    required this.selected,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final checkmarkSize = _settingsScaledFontSize(
+      context,
+      _kSettingsCheckmarkBaseSize,
+    );
+    return SizedBox(
+      width: _kSettingsCheckmarkGap + checkmarkSize,
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: selected
+            ? FixedSFIcon(
+                SFIcons.sf_checkmark,
+                fontSize: checkmarkSize,
+                fontWeight: FontWeight.w500,
+                color: accentColor,
+              )
+            : SizedBox(width: checkmarkSize, height: checkmarkSize),
+      ),
+    );
+  }
 }
 
 double _settingsChevronFontSize(BuildContext context) {
