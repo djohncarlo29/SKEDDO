@@ -1141,7 +1141,7 @@ class MinGapLabelValueRow extends StatelessWidget {
                         softWrap: true,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
                       child: Align(
