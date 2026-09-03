@@ -1800,47 +1800,38 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                               HitTestBehavior
                                                                   .opaque,
                                                           child: Center(
-                                                            // Tie the visual
-                                                            // subtree identity
-                                                            // to selection.
-                                                            // Recreate the
-                                                            // visual subtree when
-                                                            // selection changes.
-                                                            // A synchronous
-                                                            // opacity avoids an
-                                                            // old AnimatedOpacity
-                                                            // compositing layer
-                                                            // being reused for a
-                                                            // tab that was
-                                                            // scrolled out and
-                                                            // back into view.
-                                                            child: KeyedSubtree(
-                                                              key: ValueKey(
-                                                                'emoji-category-$i-${sel ? 'selected' : 'idle'}',
-                                                              ),
-                                                              child: Opacity(
-                                                                opacity:
-                                                                    sel
-                                                                        ? 1.0
-                                                                        : 0.42,
-                                                                child: Text(
-                                                                  kEmojiCategories[
-                                                                          i]
-                                                                      .icon,
-                                                                  style:
-                                                                      TextStyle(
-                                                                    inherit:
-                                                                        false,
-                                                                    fontSize:
-                                                                        fontSize,
-                                                                    color:
-                                                                        labelColor,
-                                                                  ),
-                                                                  textScaler:
-                                                                      TextScaler
-                                                                          .noScaling,
+                                                            // Put the selection
+                                                            // alpha on the text
+                                                            // paint itself. An
+                                                            // Opacity layer around
+                                                            // a color-emoji glyph
+                                                            // can retain the
+                                                            // previous rasterized
+                                                            // appearance when the
+                                                            // horizontally
+                                                            // scrollable strip
+                                                            // repositions its
+                                                            // children. This was
+                                                            // observable only for
+                                                            // the heart because
+                                                            // its variation
+                                                            // selector makes it
+                                                            // a distinct color
+                                                            // glyph sequence.
+                                                            child: Text(
+                                                              kEmojiCategories[i]
+                                                                  .icon,
+                                                              style: TextStyle(
+                                                                inherit: false,
+                                                                fontSize: fontSize,
+                                                                color: labelColor
+                                                                    .withOpacity(
+                                                                  sel ? 1.0 : 0.42,
                                                                 ),
                                                               ),
+                                                              textScaler:
+                                                                  TextScaler
+                                                                      .noScaling,
                                                             ),
                                                           ),
                                                         ),
