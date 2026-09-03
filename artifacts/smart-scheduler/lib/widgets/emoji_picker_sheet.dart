@@ -230,13 +230,6 @@ const List<_EmojiCat> kEmojiCategories = [
       '👫🏻',
       '👬🏻',
       '👭🏻',
-      // These are the exact native family sequences. They have no official
-      // Unicode light-tone variant; the grid uses matching light-tone artwork
-      // for these three entries while keeping these original values for
-      // selection and persistence.
-      '👨‍👩‍👦',
-      '👨‍👩‍👧',
-      '👨‍👩‍👧‍👦',
     ],
   ),
   (
@@ -898,9 +891,9 @@ const List<_EmojiCat> kEmojiCategories = [
 ];
 
 const Map<String, String> _familyEmojiAssets = {
-  '👨‍👩‍👦': 'assets/emoji_family/family_boy.png',
-  '👨‍👩‍👧': 'assets/emoji_family/family_girl.png',
-  '👨‍👩‍👧‍👦': 'assets/emoji_family/family_two_children.png',
+  '👨‍👩‍👦': 'assets/emoji_family/family_boy_complete.png',
+  '👨‍👩‍👧': 'assets/emoji_family/family_girl_complete.png',
+  '👨‍👩‍👧‍👦': 'assets/emoji_family/family_two_children_complete.png',
 };
 
 /// Returns the display-only asset for a family emoji whose original Unicode
