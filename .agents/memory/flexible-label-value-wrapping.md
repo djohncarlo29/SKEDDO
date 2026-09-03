@@ -15,11 +15,13 @@ gap/readability rules should both blocks share wrapping.
 Words must never be allowed to split at a character boundary. Reject any
 side-by-side allocation narrower than either block's widest word; if no valid
 allocation remains, stack the value below the label and let the row grow.
+When protecting a short two-word value, preserve its visible normal-looking
+space; only the break opportunity changes.
 
 **Why:** Reserving the value's remaining width after a preferred or fixed label
 can make a short label force a long value into an unnecessary extra line, while
 splitting a compact value such as "1 hour" creates an awkward one-character
-line break.
+line break. Removing the visible space would also change the displayed value.
 
 **How to apply:** Reuse the shared label-first row layout for every chevron-value
 row, including picker/modal and settings rows. Keep words intact; if no

@@ -726,7 +726,9 @@ String smartWrapChevronValueAsProtectedPair(String value) {
     return smartWrapChevronValue(value);
   }
   final words = value.trim().split(RegExp(r'\s+'));
-  return '${_joinWordCharacters(words[0])}\u2060${_joinWordCharacters(words[1])}';
+  // NBSP keeps the visible space between the two words while preventing a
+  // break at that boundary during the label-first layout attempt.
+  return '${_joinWordCharacters(words[0])}\u00a0${_joinWordCharacters(words[1])}';
 }
 
 /// Chooses the protected short pair until its available text width is too

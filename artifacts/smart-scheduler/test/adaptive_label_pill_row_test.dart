@@ -173,7 +173,7 @@ void main() {
           valueStyle,
           valueSize.width,
         ),
-        isNot(contains(' ')),
+        contains('\u00a0'),
       );
       expect(
         chevronValueTextForWidth(
@@ -192,7 +192,7 @@ void main() {
     () {
       expect(
         smartWrapChevronValueAsProtectedPair('1 hour'),
-        isNot(contains(' ')),
+        contains('\u00a0'),
       );
       expect(
         smartWrapChevronValueAsProtectedPair('10 hours'),
