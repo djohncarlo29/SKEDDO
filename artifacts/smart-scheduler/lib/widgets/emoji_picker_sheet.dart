@@ -1789,79 +1789,41 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                         sel ? 24.0 : 20.0,
                                                       );
                                                       return SizedBox(
+                                                        key:
+                                                            _categoryTabKeys[i],
                                                         width:
                                                             categorySlotWidth,
-                                                        child: Stack(
-                                                          fit: StackFit.expand,
-                                                          children: [
-                                                            // This key exists only
-                                                            // as a stable geometry
-                                                            // target for
-                                                            // ensureVisible. It has
-                                                            // no painted descendants,
-                                                            // so it cannot preserve
-                                                            // an old emoji render
-                                                            // subtree.
-                                                            IgnorePointer(
-                                                              child: SizedBox.expand(
-                                                                key:
-                                                                    _categoryTabKeys[
-                                                                        i],
-                                                              ),
-                                                            ),
-                                                            KeyedSubtree(
-                                                              // The selection
-                                                              // identity belongs to
-                                                              // the complete painted
-                                                              // tab. Switching this
-                                                              // key tears down the
-                                                              // old Opacity/Text
-                                                              // subtree instead of
-                                                              // allowing a moved
-                                                              // color-emoji layer to
-                                                              // be reused.
+                                                        child: GestureDetector(
+                                                          onTap: () =>
+                                                              _switchCategory(i),
+                                                          behavior:
+                                                              HitTestBehavior
+                                                                  .opaque,
+                                                          child: Center(
+                                                            child: KeyedSubtree(
                                                               key: ValueKey(
                                                                 'emoji-category-$i-${sel ? 'selected' : 'idle'}',
                                                               ),
-                                                              child:
-                                                                  GestureDetector(
-                                                                onTap: () =>
-                                                                    _switchCategory(
-                                                                      i,
-                                                                    ),
-                                                                behavior:
-                                                                    HitTestBehavior
-                                                                        .opaque,
-                                                                child: Center(
-                                                                  child:
-                                                                      RepaintBoundary(
-                                                                    child: Opacity(
-                                                                      opacity:
-                                                                          sel
-                                                                              ? 1.0
-                                                                              : 0.42,
-                                                                      child: Text(
-                                                                        kEmojiCategories[
-                                                                                i]
-                                                                            .icon,
-                                                                        style: TextStyle(
-                                                                          inherit:
-                                                                              false,
-                                                                          fontSize:
-                                                                              fontSize,
-                                                                          color:
-                                                                              labelColor,
-                                                                        ),
-                                                                        textScaler:
-                                                                            TextScaler
-                                                                                .noScaling,
-                                                                      ),
-                                                                    ),
+                                                              child: Opacity(
+                                                                opacity:
+                                                                    sel ? 1.0 : 0.42,
+                                                                child: Text(
+                                                                  kEmojiCategories[i]
+                                                                      .icon,
+                                                                  style: TextStyle(
+                                                                    inherit: false,
+                                                                    fontSize:
+                                                                        fontSize,
+                                                                    color:
+                                                                        labelColor,
                                                                   ),
+                                                                  textScaler:
+                                                                      TextScaler
+                                                                          .noScaling,
                                                                 ),
                                                               ),
                                                             ),
-                                                          ],
+                                                          ),
                                                         ),
                                                       );
                                                     },

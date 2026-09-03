@@ -3,15 +3,16 @@ name: Emoji category selection repaint
 description: Selection rendering for variation-selector emoji in the category strip.
 ---
 
-Category-tab selection must keep the scroll target separate from the painted
-emoji subtree. Variation-selector color emoji such as the heart need a real
-Opacity layer for dimming, but that painted subtree must be replaced as a whole
-when selection changes.
+Category-tab selection should keep the existing tab layout intact while
+replacing only the painted emoji child when its selected/idle state changes.
+Variation-selector color emoji such as the heart need a real Opacity layer for
+dimming.
 
-**Why:** The picker could switch its grid data correctly while one or more old
-tab layers continued to look selected after navigating away from them.
+**Why:** A larger Stack-based separation caused the picker itself to disappear,
+while a stale platform color-emoji layer could still preserve the wrong
+selection appearance.
 
-**How to apply:** Use a stable, non-painted GlobalKey target for
-ensureVisible, and put a selection-dependent key around the complete painted
-tab. Keep Opacity around the emoji text because platform color emoji may ignore
-alpha in TextStyle.color.
+**How to apply:** Keep the category slot and its existing GlobalKey as-is. Put
+a selection-dependent KeyedSubtree around the existing Center's emoji content,
+and keep Opacity around the Text because platform color emoji may ignore alpha
+in TextStyle.color. Do not add a StackFit.expand geometry layer.
