@@ -12992,44 +12992,53 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
           // The circle itself owns the resolved OS scale. The icon unit inside
           // it receives that same scale, avoiding a second modal-only
           // FittedBox whose constraints can mask the intended growth.
-          child: Container(
-            width: circleSize,
-            height: circleSize,
-            decoration: BoxDecoration(
-              color: previewColor,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: previewColor.withOpacity(0.32),
-                  blurRadius: 16 * circleScale,
-                  spreadRadius: 0,
-                  offset: Offset.zero,
-                ),
-              ],
-            ),
-            child: ClipOval(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Emoji circles and utility previews use only their flat
-                  // swatch. Keep the add-blend highlight for other previews.
-                  if (!_isEmojiIcon(_effectiveIcon) && !widget.smartUtility)
-                    CustomPaint(
-                      painter: _CircleAddHighlightPainter(previewColor),
-                    ),
-                  Center(
-                    child:
-                        _isSmart
-                            ? _smartPreviewIcon(widget.smartData!)
-                            : _renderCatIcon(
-                              _effectiveIcon,
-                              64 * circleScale,
-                              CupertinoColors.white,
-                              emojiOffsetY: 2 * circleScale,
-                              ctx: context,
-                            ),
+          child: GelBloomButton(
+            // The preview is intentionally a no-op interaction: tapping it
+            // should still give the user the same tactile response as the
+            // picker circles without changing the selected icon or category.
+            // GelBloomButton restarts from the current tap, so fast repeated
+            // taps retrigger the bloom instead of waiting for a prior cycle.
+            peakScale: 1.12,
+            onTap: () {},
+            child: Container(
+              width: circleSize,
+              height: circleSize,
+              decoration: BoxDecoration(
+                color: previewColor,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: previewColor.withOpacity(0.32),
+                    blurRadius: 16 * circleScale,
+                    spreadRadius: 0,
+                    offset: Offset.zero,
                   ),
                 ],
+              ),
+              child: ClipOval(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Emoji circles and utility previews use only their flat
+                    // swatch. Keep the add-blend highlight for other previews.
+                    if (!_isEmojiIcon(_effectiveIcon) && !widget.smartUtility)
+                      CustomPaint(
+                        painter: _CircleAddHighlightPainter(previewColor),
+                      ),
+                    Center(
+                      child:
+                          _isSmart
+                              ? _smartPreviewIcon(widget.smartData!)
+                              : _renderCatIcon(
+                                _effectiveIcon,
+                                64 * circleScale,
+                                CupertinoColors.white,
+                                emojiOffsetY: 2 * circleScale,
+                                ctx: context,
+                              ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
