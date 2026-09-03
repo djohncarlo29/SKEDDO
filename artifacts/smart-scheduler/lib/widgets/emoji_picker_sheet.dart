@@ -1828,53 +1828,45 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                             // Tie the visual
                                                             // subtree identity
                                                             // to selection.
-                                                            // This prevents a
+                                                            // Recreate the
+                                                            // visual subtree when
+                                                            // selection changes.
+                                                            // A synchronous
+                                                            // opacity avoids an
+                                                            // old AnimatedOpacity
+                                                            // compositing layer
+                                                            // being reused for a
                                                             // tab that was
                                                             // scrolled out and
-                                                            // back in from
-                                                            // retaining the
-                                                            // previous emoji
-                                                            // paint state.
-                                                             child: KeyedSubtree(
-                                                               key: ValueKey(
-                                                                 'emoji-category-$i-${sel ? 'selected' : 'idle'}',
-                                                               ),
-                                                               child:
-                                                                   AnimatedOpacity(
-                                                                 // Keep selection as an explicit compositing property. Color
-                                                                 // alpha alone can be retained by a cached color-emoji layer
-                                                                 // when a tab is scrolled out and then back into the viewport.
-                                                                 key: ValueKey<bool>(
-                                                                   sel,
-                                                                 ),
-                                                                 opacity:
-                                                                     sel
-                                                                         ? 1.0
-                                                                         : 0.42,
-                                                                 duration:
-                                                                     const Duration(
-                                                                   milliseconds:
-                                                                       120,
-                                                                 ),
-                                                                 child: Text(
-                                                                   kEmojiCategories[
-                                                                           i]
-                                                                       .icon,
-                                                                   style:
-                                                                       TextStyle(
-                                                                     inherit:
-                                                                         false,
-                                                                     fontSize:
-                                                                         fontSize,
-                                                                     color:
-                                                                         labelColor,
-                                                                   ),
-                                                                   textScaler:
-                                                                       TextScaler
-                                                                           .noScaling,
-                                                                 ),
-                                                               ),
-                                                             ),
+                                                            // back into view.
+                                                            child: KeyedSubtree(
+                                                              key: ValueKey(
+                                                                'emoji-category-$i-${sel ? 'selected' : 'idle'}',
+                                                              ),
+                                                              child: Opacity(
+                                                                opacity:
+                                                                    sel
+                                                                        ? 1.0
+                                                                        : 0.42,
+                                                                child: Text(
+                                                                  kEmojiCategories[
+                                                                          i]
+                                                                      .icon,
+                                                                  style:
+                                                                      TextStyle(
+                                                                    inherit:
+                                                                        false,
+                                                                    fontSize:
+                                                                        fontSize,
+                                                                    color:
+                                                                        labelColor,
+                                                                  ),
+                                                                  textScaler:
+                                                                      TextScaler
+                                                                          .noScaling,
+                                                                ),
+                                                              ),
+                                                            ),
                                                           ),
                                                         ),
                                                       );
