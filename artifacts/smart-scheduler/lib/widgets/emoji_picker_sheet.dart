@@ -887,13 +887,16 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   int _catIndex = 0;
   double _dragOffset = 0.0;
   final _scrollCtrl = ScrollController();
-  int _emojiColumns = 8;
-  int _automaticEmojiColumns = 8;
+  int _emojiColumns = 7;
+  int _automaticEmojiColumns = 7;
   bool _emojiColumnsWasPinched = false;
   final Map<int, Offset> _emojiPointers = {};
   double? _emojiPinchStartDistance;
   bool _emojiPinchActive = false;
   bool _emojiPinchHandled = false;
+  int? _emojiEdgePointer;
+  Offset? _emojiEdgeStart;
+  bool _emojiEdgeRubberbanding = false;
   bool _isEmojiDragging = false;
   Timer? _emojiRubberbandTimer;
 
@@ -920,7 +923,14 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
 
   void _onEmojiPointerDown(PointerDownEvent event) {
     _emojiPointers[event.pointer] = event.position;
+    if (_emojiPointers.length == 1) {
+      _emojiEdgePointer = event.pointer;
+      _emojiEdgeStart = event.position;
+      _emojiEdgeRubberbanding = false;
+    }
     if (_emojiPointers.length == 2) {
+      _emojiEdgePointer = null;
+      _emojiEdgeStart = null;
       _emojiPinchStartDistance = _currentEmojiPointerDistance();
       _emojiPinchActive = true;
       _emojiPinchHandled = false;
@@ -933,6 +943,26 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   void _onEmojiPointerMove(PointerMoveEvent event) {
     if (!_emojiPointers.containsKey(event.pointer)) return;
     _emojiPointers[event.pointer] = event.position;
+    if (!_emojiPinchActive && _emojiPointers.length == 1) {
+      final start = _emojiEdgeStart;
+      if (event.pointer == _emojiEdgePointer && start != null) {
+        final delta = event.position - start;
+        final isHorizontal =
+            delta.dx.abs() > 8 && delta.dx.abs() > delta.dy.abs();
+        final pullingPastLeadingEdge = _catIndex == 0 && delta.dx > 0;
+        final pullingPastTrailingEdge =
+            _catIndex == kEmojiCategories.length - 1 && delta.dx < 0;
+        if (isHorizontal &&
+            (pullingPastLeadingEdge || pullingPastTrailingEdge)) {
+          _emojiRubberbandTimer?.cancel();
+          _emojiEdgeRubberbanding = true;
+          setState(() {
+            _isEmojiDragging = true;
+            _dragOffset = delta.dx * 0.15;
+          });
+        }
+      }
+    }
     if (!_emojiPinchActive || _emojiPinchHandled) return;
 
     final startDistance = _emojiPinchStartDistance;
@@ -958,11 +988,30 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
 
   void _onEmojiPointerEnd(PointerEvent event) {
     _emojiPointers.remove(event.pointer);
+    if (_emojiEdgeRubberbanding &&
+        event.pointer == _emojiEdgePointer) {
+      _emojiRubberbandTimer?.cancel();
+      _emojiRubberbandTimer = Timer(
+        const Duration(milliseconds: 90),
+        _resetEmojiRubberband,
+      );
+    }
+    _emojiEdgePointer = null;
+    _emojiEdgeStart = null;
     if (_emojiPointers.length < 2) {
       _emojiPinchStartDistance = null;
       _emojiPinchActive = false;
       _emojiPinchHandled = false;
     }
+  }
+
+  void _resetEmojiRubberband() {
+    if (!mounted) return;
+    setState(() {
+      _dragOffset = 0;
+      _isEmojiDragging = false;
+      _emojiEdgeRubberbanding = false;
+    });
   }
 
   void _onDragUpdate(DragUpdateDetails d, double panelWidth) {
@@ -1045,7 +1094,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        const authoredColumns = 8;
+        const authoredColumns = 7;
         final contentWidth = math.max(
           1.0,
           constraints.maxWidth - 2 * gridInset,
