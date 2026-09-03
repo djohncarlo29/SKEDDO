@@ -1016,7 +1016,9 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
       // jumpTo(offset) does not reliably interrupt every scroll activity on
       // all Flutter platform implementations.
       final position = _categoryScrollCtrl.position;
-      position.stop();
+      if (position is ScrollPositionWithSingleContext) {
+        position.goIdle();
+      }
       position.jumpTo(position.pixels);
     }
     _emojiRubberbandTimer?.cancel();
