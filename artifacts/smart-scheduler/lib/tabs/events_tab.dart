@@ -14670,9 +14670,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
 
   // ── Icon-grid pinch-to-resize state ───────────────────────────────────────
   // OS text scaling chooses the starting column count around the authored
-  // seven-column layout. Pinch open (spread) → fewer columns; pinch close
-  // (squeeze) → more columns.
+  // seven-column layout. A pinch can move only one adjacent column from that
+  // starting point in either direction.
   int _iconColumns = 7;
+  int _automaticIconColumns = 7;
   bool _iconColumnsWasPinched = false;
   bool _pinchHandled = false; // only one tier-change per gesture
 
@@ -14681,14 +14682,19 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   void _onIconPinchUpdate(ScaleUpdateDetails d) {
     if (_pinchHandled) return;
     if (d.pointerCount < 2) return; // require a true two-finger pinch
-    if (d.scale > 1.18 && _iconColumns > 1) {
+    final minimumPinchColumns = max(1, _automaticIconColumns - 1);
+    final maximumPinchColumns = min(
+      _kIconOptions.length,
+      _automaticIconColumns + 1,
+    );
+    if (d.scale > 1.18 && _iconColumns > minimumPinchColumns) {
       // Pinch open → zoom in → fewer per row
       setState(() {
         _iconColumns -= 1;
         _iconColumnsWasPinched = true;
       });
       _pinchHandled = true;
-    } else if (d.scale < 0.84 && _iconColumns < 8) {
+    } else if (d.scale < 0.84 && _iconColumns < maximumPinchColumns) {
       // Pinch close → zoom out → more per row
       setState(() {
         _iconColumns += 1;
@@ -14735,14 +14741,19 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               final automaticColumns = max(
                 1,
                 min(
-                  8,
+                  _kIconOptions.length,
                   ((constraints.maxWidth + minimumSpacing + 0.001) /
                           (targetItemSize + minimumSpacing))
                       .floor(),
                 ),
               );
-              if (!_iconColumnsWasPinched) {
+              // If the OS-derived baseline changes, discard the previous
+              // manual offset so pinch remains adjacent to the new baseline.
+              if (!_iconColumnsWasPinched ||
+                  automaticColumns != _automaticIconColumns) {
+                _automaticIconColumns = automaticColumns;
                 _iconColumns = automaticColumns;
+                _iconColumnsWasPinched = false;
               }
               final cols = _iconColumns;
               final itemSize =
