@@ -14567,13 +14567,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   }
 
   Widget _buildColorCard() {
-    // 43 px preserves the previous unselected circle's visual diameter while
-    // making the painted circle itself the layout unit. Scaling the complete
-    // unit lets the grid respond to Dynamic Type without adding hidden outer
-    // padding that would move the visible edge away from the card inset.
-    final textScaler = MediaQuery.textScalerOf(context);
-    final swatchSize = textScaler.scale(43);
-
     return SizedBox(
       width: double.infinity,
       child: _card([
@@ -14582,25 +14575,33 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
           child: LayoutBuilder(
             builder: (context, constraints) {
               final availableWidth = constraints.maxWidth;
-              const minSwatchGap = 16.0;
+              const swatchCountPerRow = 6;
+              const swatchGap = 16.0;
+              const baseSwatchSize = 43.0;
+              final textScaledSize = MediaQuery.textScalerOf(
+                context,
+              ).scale(baseSwatchSize);
+              // The circle follows the OS text-size profile without being
+              // shrunk to preserve six columns. Once six scaled circles no
+              // longer fit with the minimum 16pt gap, the next whole number
+              // of columns is used instead.
+              final swatchSize = textScaledSize;
               final columns = max(
                 1,
                 min(
-                  6,
+                  swatchCountPerRow,
                   min(
                     _kColorOptions.length,
-                    ((availableWidth + minSwatchGap) /
-                            (swatchSize + minSwatchGap))
+                    ((availableWidth + swatchGap) /
+                            (swatchSize + swatchGap))
                         .floor(),
                   ),
                 ),
               );
-              // Calculate one fixed gap for the current full row. It is never
-              // below 16 px, so the grid drops a column before the swatches
-              // become crowded. Full rows reach both card insets exactly. The
-              // Wrap is start-aligned so a partial final row stays
-              // left-to-right instead of spreading its first and last
-              // swatches apart.
+
+              // Full rows fill the card so their outside circles stay 16pt
+              // from the card edges. A partial final row keeps this same
+              // spacing and remains left-aligned instead of stretching.
               final gap =
                   columns > 1
                       ? (availableWidth - columns * swatchSize) /
@@ -14610,7 +14611,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               return Wrap(
                 alignment: WrapAlignment.start,
                 spacing: gap,
-                runSpacing: minSwatchGap,
+                runSpacing: swatchGap,
                 children: [
                   for (final color in _kColorOptions)
                     SizedBox(
