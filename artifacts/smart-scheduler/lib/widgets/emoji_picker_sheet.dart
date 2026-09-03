@@ -903,6 +903,11 @@ const Map<String, String> _familyEmojiAssets = {
   '👨‍👩‍👧‍👦': 'assets/emoji_family/family_two_children.png',
 };
 
+/// Returns the display-only asset for a family emoji whose original Unicode
+/// value must remain unchanged for selection and persistence.
+String? emojiFamilyAssetFor(Object value) =>
+    value is String ? _familyEmojiAssets[value] : null;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // EmojiPickerSheet — full-page sheet content for showRoundedCupertinoSheet
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1437,8 +1442,11 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                         )
                         : Image.asset(
                           familyAsset,
-                          width: cellSize,
-                          height: cellSize,
+                          // Match the visual footprint of the normal emoji
+                          // Text. The cell remains the full tap target, but
+                          // the sprite must not stretch to fill it.
+                          width: cellFontSize,
+                          height: cellFontSize,
                           fit: BoxFit.contain,
                           filterQuality: FilterQuality.high,
                           excludeFromSemantics: true,
