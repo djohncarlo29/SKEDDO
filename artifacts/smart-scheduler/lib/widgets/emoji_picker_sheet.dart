@@ -875,6 +875,8 @@ const List<_EmojiCat> kEmojiCategories = [
 // EmojiPickerSheet — full-page sheet content for showRoundedCupertinoSheet
 // ─────────────────────────────────────────────────────────────────────────────
 
+enum _EmojiHorizontalGesture { undecided, paging, rubberband }
+
 class EmojiPickerSheet extends StatefulWidget {
   final ValueChanged<String> onEmojiSelected;
   const EmojiPickerSheet({super.key, required this.onEmojiSelected});
@@ -897,8 +899,16 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   int? _emojiEdgePointer;
   Offset? _emojiEdgeStart;
   bool _emojiEdgeRubberbanding = false;
+  _EmojiHorizontalGesture _emojiHorizontalGesture =
+      _EmojiHorizontalGesture.undecided;
   bool _isEmojiDragging = false;
   Timer? _emojiRubberbandTimer;
+  double _emojiScrollRubberbandOffset = 0.0;
+
+  static const double _emojiGestureSlop = 12.0;
+  static const double _emojiAxisBias = 6.0;
+  static const double _emojiRubberbandResistance = 0.15;
+  static const double _emojiPageVelocity = 700.0;
 
   @override
   void dispose() {
@@ -922,15 +932,19 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   }
 
   void _onEmojiPointerDown(PointerDownEvent event) {
+    _emojiRubberbandTimer?.cancel();
     _emojiPointers[event.pointer] = event.position;
     if (_emojiPointers.length == 1) {
       _emojiEdgePointer = event.pointer;
       _emojiEdgeStart = event.position;
       _emojiEdgeRubberbanding = false;
+      _emojiHorizontalGesture = _EmojiHorizontalGesture.undecided;
+      _emojiScrollRubberbandOffset = 0.0;
     }
     if (_emojiPointers.length == 2) {
       _emojiEdgePointer = null;
       _emojiEdgeStart = null;
+      _emojiHorizontalGesture = _EmojiHorizontalGesture.undecided;
       _emojiPinchStartDistance = _currentEmojiPointerDistance();
       _emojiPinchActive = true;
       _emojiPinchHandled = false;
@@ -948,17 +962,26 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
       if (event.pointer == _emojiEdgePointer && start != null) {
         final delta = event.position - start;
         final isHorizontal =
-            delta.dx.abs() > 8 && delta.dx.abs() > delta.dy.abs();
+            delta.dx.abs() >= _emojiGestureSlop &&
+            delta.dx.abs() > delta.dy.abs() + _emojiAxisBias;
         final pullingPastLeadingEdge = _catIndex == 0 && delta.dx > 0;
         final pullingPastTrailingEdge =
             _catIndex == kEmojiCategories.length - 1 && delta.dx < 0;
+
         if (isHorizontal &&
-            (pullingPastLeadingEdge || pullingPastTrailingEdge)) {
+            _emojiHorizontalGesture == _EmojiHorizontalGesture.undecided) {
+          _emojiHorizontalGesture =
+              pullingPastLeadingEdge || pullingPastTrailingEdge
+                  ? _EmojiHorizontalGesture.rubberband
+                  : _EmojiHorizontalGesture.paging;
+        }
+        if (_emojiHorizontalGesture ==
+            _EmojiHorizontalGesture.rubberband) {
           _emojiRubberbandTimer?.cancel();
           _emojiEdgeRubberbanding = true;
           setState(() {
             _isEmojiDragging = true;
-            _dragOffset = delta.dx * 0.15;
+            _dragOffset = delta.dx * _emojiRubberbandResistance;
           });
         }
       }
@@ -988,8 +1011,9 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
 
   void _onEmojiPointerEnd(PointerEvent event) {
     _emojiPointers.remove(event.pointer);
-    if (_emojiEdgeRubberbanding &&
-        event.pointer == _emojiEdgePointer) {
+    final endedRubberbandPointer =
+        _emojiEdgeRubberbanding && event.pointer == _emojiEdgePointer;
+    if (endedRubberbandPointer) {
       _emojiRubberbandTimer?.cancel();
       _emojiRubberbandTimer = Timer(
         const Duration(milliseconds: 90),
@@ -1011,49 +1035,120 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
       _dragOffset = 0;
       _isEmojiDragging = false;
       _emojiEdgeRubberbanding = false;
+      _emojiHorizontalGesture = _EmojiHorizontalGesture.undecided;
+      _emojiScrollRubberbandOffset = 0.0;
     });
   }
 
-  void _onDragUpdate(DragUpdateDetails d, double panelWidth) {
+  void _onDragStart(DragStartDetails d) {
     if (_emojiPinchActive) return;
+    _emojiSwipeStartOffset = _dragOffset;
+  }
+
+  double _emojiSwipeStartOffset = 0.0;
+
+  void _onDragUpdate(DragUpdateDetails d, double panelWidth) {
+    if (_emojiPinchActive ||
+        _emojiHorizontalGesture == _EmojiHorizontalGesture.rubberband) {
+      return;
+    }
+
+    if (_emojiHorizontalGesture == _EmojiHorizontalGesture.undecided) {
+      final start = _emojiEdgeStart;
+      final deltaFromStart =
+          start == null ? Offset.zero : d.globalPosition - start;
+      final isHorizontal =
+          deltaFromStart.dx.abs() >= _emojiGestureSlop &&
+          deltaFromStart.dx.abs() >
+              deltaFromStart.dy.abs() + _emojiAxisBias;
+      if (!isHorizontal) return;
+
+      final pullingPastLeadingEdge = _catIndex == 0 && deltaFromStart.dx > 0;
+      final pullingPastTrailingEdge =
+          _catIndex == kEmojiCategories.length - 1 && deltaFromStart.dx < 0;
+      _emojiHorizontalGesture =
+          pullingPastLeadingEdge || pullingPastTrailingEdge
+              ? _EmojiHorizontalGesture.rubberband
+              : _EmojiHorizontalGesture.paging;
+      if (_emojiHorizontalGesture == _EmojiHorizontalGesture.rubberband) {
+        _emojiEdgeRubberbanding = true;
+        setState(() {
+          _isEmojiDragging = true;
+          _dragOffset =
+              deltaFromStart.dx * _emojiRubberbandResistance;
+        });
+        return;
+      }
+    }
+
     setState(() {
       _isEmojiDragging = true;
-      double next = _dragOffset + d.delta.dx;
-      // Rubber-band resistance at left/right edges
-      if ((_catIndex == 0 && next > 0) ||
-          (_catIndex == kEmojiCategories.length - 1 && next < 0)) {
-        next = next * 0.15;
-      }
-      _dragOffset = next;
+      _dragOffset += d.delta.dx;
     });
   }
 
   void _onDragEnd(DragEndDetails d, double panelWidth) {
     if (_emojiPinchActive) return;
-    final vel = d.primaryVelocity ?? 0;
-    final threshold = panelWidth / 2;
+    if (_emojiHorizontalGesture == _EmojiHorizontalGesture.rubberband ||
+        _emojiEdgeRubberbanding) {
+      if (_emojiRubberbandTimer == null) {
+        _emojiRubberbandTimer = Timer(
+          const Duration(milliseconds: 90),
+          _resetEmojiRubberband,
+        );
+      }
+      return;
+    }
 
-    if ((_dragOffset < -threshold || vel < -400) &&
-        _catIndex < kEmojiCategories.length - 1) {
+    final vel = d.primaryVelocity ?? 0;
+    final pageOffset = _dragOffset - _emojiSwipeStartOffset;
+    final distanceThreshold = math.max(56.0, panelWidth * 0.24);
+    final flickDistanceThreshold =
+        math.max(_emojiGestureSlop * 2, panelWidth * 0.06);
+    final hasEnoughFlickDistance =
+        pageOffset.abs() >= flickDistanceThreshold;
+    final outwardAtEdge =
+        (_catIndex == 0 && pageOffset > 0) ||
+        (_catIndex == kEmojiCategories.length - 1 && pageOffset < 0);
+    final goNext =
+        !outwardAtEdge &&
+        _catIndex < kEmojiCategories.length - 1 &&
+        (pageOffset <= -distanceThreshold ||
+            (vel <= -_emojiPageVelocity && hasEnoughFlickDistance));
+    final goPrevious =
+        !outwardAtEdge &&
+        _catIndex > 0 &&
+        (pageOffset >= distanceThreshold ||
+            (vel >= _emojiPageVelocity && hasEnoughFlickDistance));
+
+    if (goNext || goPrevious) {
+      final nextCategory = _catIndex + (goNext ? 1 : -1);
       setState(() {
-        _catIndex++;
+        _catIndex = nextCategory;
         _dragOffset = 0;
         _isEmojiDragging = false;
-      });
-      _scrollCtrl.jumpTo(0);
-    } else if ((_dragOffset > threshold || vel > 400) && _catIndex > 0) {
-      setState(() {
-        _catIndex--;
-        _dragOffset = 0;
-        _isEmojiDragging = false;
+        _emojiHorizontalGesture = _EmojiHorizontalGesture.undecided;
       });
       _scrollCtrl.jumpTo(0);
     } else {
       setState(() {
         _dragOffset = 0;
         _isEmojiDragging = false;
+        _emojiHorizontalGesture = _EmojiHorizontalGesture.undecided;
       });
     }
+  }
+
+  void _onDragCancel() {
+    if (_emojiPinchActive ||
+        _emojiHorizontalGesture == _EmojiHorizontalGesture.rubberband) {
+      return;
+    }
+    setState(() {
+      _dragOffset = 0;
+      _isEmojiDragging = false;
+      _emojiHorizontalGesture = _EmojiHorizontalGesture.undecided;
+    });
   }
 
   void _onEmojiPointerSignal(PointerSignalEvent event) {
@@ -1063,22 +1158,35 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
 
     // Scroll deltas move content opposite to the user's scroll direction.
     // Convert that into the same page offset used by touch swipes.
-    final attemptedOffset = _dragOffset - deltaX;
+    final attemptedOffset = _emojiScrollRubberbandOffset - deltaX;
     final atLeadingEdge = _catIndex == 0 && attemptedOffset > 0;
     final atTrailingEdge =
         _catIndex == kEmojiCategories.length - 1 && attemptedOffset < 0;
-    if (!atLeadingEdge && !atTrailingEdge) return;
+    if (!atLeadingEdge && !atTrailingEdge) {
+      if (_emojiScrollRubberbandOffset != 0) {
+        _emojiScrollRubberbandOffset = 0;
+        setState(() {
+          _dragOffset = 0;
+          _isEmojiDragging = false;
+        });
+      }
+      return;
+    }
 
     _emojiRubberbandTimer?.cancel();
+    _emojiScrollRubberbandOffset = attemptedOffset;
+    _emojiHorizontalGesture = _EmojiHorizontalGesture.rubberband;
     setState(() {
       _isEmojiDragging = true;
-      _dragOffset = attemptedOffset * 0.15;
+      _dragOffset = attemptedOffset * _emojiRubberbandResistance;
     });
     _emojiRubberbandTimer = Timer(const Duration(milliseconds: 90), () {
       if (!mounted) return;
       setState(() {
         _dragOffset = 0;
         _isEmojiDragging = false;
+        _emojiHorizontalGesture = _EmojiHorizontalGesture.undecided;
+        _emojiScrollRubberbandOffset = 0.0;
       });
     });
   }
@@ -1123,11 +1231,16 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
         }
         final columns =
             _emojiColumnsWasPinched ? _emojiColumns : automaticColumns;
-        final cellSize =
-            _emojiColumnsWasPinched
-                ? (contentWidth - minimumSpacing * (columns - 1)) /
-                    columns
-                : targetCellSize;
+        final cellSize = math.max(
+          1.0,
+          _emojiColumnsWasPinched
+              ? (contentWidth - minimumSpacing * (columns - 1)) / columns
+              : targetCellSize,
+        );
+        final cellFontSize = math.max(
+          1.0,
+          emojiFontSize * (cellSize / targetCellSize),
+        );
         final crossAxisSpacing =
             columns > 1
                 ? (contentWidth - columns * cellSize) /
@@ -1156,7 +1269,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
               children: List.generate(emojis.length, (i) {
                 final emoji = Text(
                   emojis[i],
-                  style: TextStyle(fontSize: emojiFontSize, height: 1.0),
+                  style: TextStyle(fontSize: cellFontSize, height: 1.0),
                   textScaler: TextScaler.noScaling,
                 );
                 final child =
@@ -1332,10 +1445,12 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                     onPointerSignal: _onEmojiPointerSignal,
                                     child: GestureDetector(
                                       behavior: HitTestBehavior.opaque,
+                                      onHorizontalDragStart: _onDragStart,
                                       onHorizontalDragUpdate: (d) =>
                                           _onDragUpdate(d, w),
                                       onHorizontalDragEnd: (d) =>
                                           _onDragEnd(d, w),
+                                      onHorizontalDragCancel: _onDragCancel,
                                       child: Stack(
                                         clipBehavior: Clip.hardEdge,
                                         children: [
