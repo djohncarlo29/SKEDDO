@@ -50,6 +50,11 @@ class HorizontalEdgeFade extends StatefulWidget {
   final Alignment placeholderAlignment;
   final FocusNode? placeholderFocusNode;
   final ValueListenable<bool>? placeholderFocusListenable;
+  /// Whether the empty placeholder receives the small focus-time nudge.
+  ///
+  /// Centered placeholders can opt out so focus does not change their visual
+  /// alignment.
+  final bool placeholderMovesOnFocus;
 
   const HorizontalEdgeFade({
     super.key,
@@ -72,6 +77,7 @@ class HorizontalEdgeFade extends StatefulWidget {
     this.placeholderAlignment = Alignment.centerLeft,
     this.placeholderFocusNode,
     this.placeholderFocusListenable,
+    this.placeholderMovesOnFocus = true,
   });
 
   @override
@@ -443,7 +449,8 @@ class _HorizontalEdgeFadeState extends State<HorizontalEdgeFade> {
       0.0,
       width - widget.leadingInset - widget.trailingInset,
     );
-    final focusedOffset = _placeholderIsFocused ? 4.0 : 0.0;
+    final focusedOffset =
+        widget.placeholderMovesOnFocus && _placeholderIsFocused ? 4.0 : 0.0;
     return Positioned.fill(
       child: IgnorePointer(
         child: ClipRect(

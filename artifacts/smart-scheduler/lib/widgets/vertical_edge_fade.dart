@@ -361,8 +361,8 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOut,
                 transform: Matrix4.translationValues(
-                  0,
                   focusedOffset,
+                  0,
                   0,
                 ),
                 child: SizedBox(

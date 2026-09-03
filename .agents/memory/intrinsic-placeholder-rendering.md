@@ -7,4 +7,4 @@ One-line placeholders are rendered at their intrinsic width inside the field vie
 
 **Why:** Native placeholder ellipsizing hides the actual product copy and does not participate in the same edge treatment or rubberband motion as normal text.
 
-**How to apply:** Route visible one-line placeholders through the shared horizontal edge-fade wrapper and visible multiline placeholders through the vertical wrapper; keep the native field placeholder empty and resolve the fade surface from the exact card/sheet behind the field. Animate only the small focus nudge; apply rubberband translation immediately so it tracks the native gesture without lag.
+**How to apply:** Route visible one-line placeholders through the shared horizontal edge-fade wrapper and visible multiline placeholders through the vertical wrapper; keep the native field placeholder empty and resolve the fade surface from the exact card/sheet behind the field. Animate only the small horizontal focus nudge; apply rubberband translation immediately so it tracks the native gesture without lag. Centered placeholders can opt out of the nudge.
