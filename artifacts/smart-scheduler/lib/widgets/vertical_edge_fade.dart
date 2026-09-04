@@ -401,10 +401,16 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: opaqueAtStart
-                  ? [
-                      widget.fadeColor,
-                      widget.fadeColor.withValues(alpha: 0),
-                    ]
+                  ? hasOpaqueTail
+                      ? [
+                          widget.fadeColor,
+                          widget.fadeColor,
+                          widget.fadeColor.withValues(alpha: 0),
+                        ]
+                      : [
+                          widget.fadeColor,
+                          widget.fadeColor.withValues(alpha: 0),
+                        ]
                   : hasOpaqueTail
                   ? [
                       widget.fadeColor.withValues(alpha: 0),
@@ -415,8 +421,10 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
                       widget.fadeColor.withValues(alpha: 0),
                       widget.fadeColor,
                     ],
-              stops: !opaqueAtStart && hasOpaqueTail
-                  ? [0.0, fadeEnd, 1.0]
+              stops: hasOpaqueTail
+                  ? opaqueAtStart
+                      ? [0.0, (solidTailHeight / totalHeight), 1.0]
+                      : [0.0, fadeEnd, 1.0]
                   : null,
             ),
           ),
@@ -454,10 +462,11 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
                 Positioned(
                   left: 0,
                   right: 0,
-                  top: widget.topInset,
+                  top: 0,
                   child: _fade(
                     visible: _showTopFade,
                     opaqueAtStart: true,
+                    solidTailHeight: widget.topInset,
                   ),
                 ),
                 Positioned(

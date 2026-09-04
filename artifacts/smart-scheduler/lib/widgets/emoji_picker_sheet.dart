@@ -6,6 +6,7 @@ import 'package:flutter/gestures.dart';
 import '../app_theme.dart';
 import 'horizontal_edge_fade.dart';
 import 'rounded_cupertino_sheet.dart';
+import 'vertical_edge_fade.dart';
 
 class _HorizontalInsetClipper extends CustomClipper<Rect> {
   final double inset;
@@ -1636,9 +1637,15 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                       onHorizontalDragEnd: (d) =>
                                           _onDragEnd(d, w),
                                       onHorizontalDragCancel: _onDragCancel,
-                                      child: Stack(
-                                        clipBehavior: Clip.hardEdge,
-                                        children: [
+                                      child: VerticalEdgeFade(
+                                        fadeColor: cardColor,
+                                        topInset: 16.0,
+                                        bottomInset: 16.0,
+                                        fadeOnRubberbandWhenContentFits: true,
+                                        scrollController: _scrollCtrl,
+                                        child: Stack(
+                                          clipBehavior: Clip.hardEdge,
+                                          children: [
                                           if (_catIndex > 0)
                                             AnimatedPositioned(
                                               key: ValueKey(
@@ -1696,7 +1703,8 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                               width: w,
                                               child: _buildGrid(_catIndex + 1),
                                             ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   );
