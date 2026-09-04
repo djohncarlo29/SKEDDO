@@ -1241,7 +1241,7 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
   @override
   Widget build(BuildContext context) {
     final inactiveColor = resolveThemeColor(kTertiaryLabel, context);
-    final secondaryLabelColor = resolveThemeColor(kSecondaryLabel, context);
+    final emptyStateGreyColor = resolveThemeColor(kEmptyStateIcon, context);
     return Padding(
       // The 52 pt control box is the complete compact slider row. Do not add
       // a second vertical row padding around the lifted-thumb capture.
@@ -1278,12 +1278,12 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                   minimumIcon: Icon(
                     SFIcons.sf_textformat_size_smaller,
                     size: 20,
-                    color: secondaryLabelColor,
+                    color: emptyStateGreyColor,
                   ),
                   maximumIcon: Icon(
                     SFIcons.sf_textformat_size_larger,
                     size: 20,
-                    color: secondaryLabelColor,
+                    color: emptyStateGreyColor,
                   ),
                   onChangeStart: (_) {
                     if (!_isDragging) {
@@ -1321,7 +1321,7 @@ class _LiquidGlassSection extends StatelessWidget {
     final shadowColor = resolveThemeColor(kCardShadowColor, context);
     final accent = resolveAccentColor(context);
     final inactive = resolveThemeColor(kTertiaryLabel, context);
-    final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
+    final emptyStateGrey = resolveThemeColor(kEmptyStateIcon, context);
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
     final backgroundAsset = isDark
         ? 'assets/liquid_glass_background_dark.webp'
@@ -1390,7 +1390,7 @@ class _LiquidGlassSection extends StatelessWidget {
                       child: _LiquidGlassTestIcons(
                         value: normalized,
                         surfaceColor: cardBg,
-                        secondaryColor: secondaryLabel,
+                        secondaryColor: emptyStateGrey,
                         activeColor: accent,
                         inactiveColor: inactive,
                         onChanged: _setLiquidGlassOpacityLive,
