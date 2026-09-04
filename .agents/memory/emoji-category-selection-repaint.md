@@ -15,4 +15,7 @@ selection appearance.
 **How to apply:** Keep the category slot and its existing GlobalKey as-is. Put
 a selection-dependent KeyedSubtree around the existing Center's emoji content,
 and keep Opacity around the Text because platform color emoji may ignore alpha
-in TextStyle.color. Do not add a StackFit.expand geometry layer.
+in TextStyle.color. For overflowing strips, do not write the current pixels
+back with a no-op jumpTo during tap handling; cancel active scroll activity
+without forcing an immediate scroll-position update. Do not add a
+StackFit.expand geometry layer.

@@ -1007,13 +1007,12 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     _categoryTabVisibilityRequest++;
     if (_categoryScrollCtrl.hasClients) {
       // Stop the existing ballistic/ensureVisible activity first. A no-op
-      // jumpTo(offset) does not reliably interrupt every scroll activity on
-      // all Flutter platform implementations.
+      // jumpTo(offset) is not needed here and can invalidate the horizontally
+      // scrolling emoji layers immediately before the selection repaint.
       final position = _categoryScrollCtrl.position;
       if (position is ScrollPositionWithSingleContext) {
         position.goIdle();
       }
-      position.jumpTo(position.pixels);
     }
     _emojiRubberbandTimer?.cancel();
     _emojiRubberbandTimer = null;
