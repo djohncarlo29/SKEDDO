@@ -1441,6 +1441,7 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
     rootBundle.loadString('assets/icons/Liquid_Glass_left.svg'),
     rootBundle.loadString('assets/icons/Liquid_Glass_right.svg'),
   ]);
+  double _testSliderValue = 0.5;
 
   String _svgColor(Color color) {
     final red = (color.r * 255.0).round() & 0xff;
@@ -1467,20 +1468,44 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
         if (sources == null || sources.length != 2) {
           return const SizedBox.expand();
         }
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            SvgPicture.string(
-              _withThemeColors(sources[0]),
-              width: 34,
-              height: 34,
-            ),
-            SvgPicture.string(
-              _withThemeColors(sources[1]),
-              width: 34,
-              height: 34,
-            ),
-          ],
+        return Center(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return LiquidGlassSlider(
+                value: _testSliderValue,
+                minimumValue: 0,
+                maximumValue: 1,
+                width: constraints.maxWidth,
+                height: _kSettingsRowHeight,
+                layout: const LiquidGlassSliderLayout(
+                  iconSize: 34,
+                  iconGap: 8,
+                  horizontalInset: 0,
+                ),
+                // This is intentionally a free-flowing visual test control.
+                // It has no setting or other app behavior attached yet.
+                divisions: 0,
+                activeColor: widget.secondaryColor,
+                inactiveColor: widget.secondaryColor.withValues(alpha: 0.22),
+                thumbColor: const Color(0xFFFDFDFD),
+                minimumIcon: SvgPicture.string(
+                  _withThemeColors(sources[0]),
+                  width: 34,
+                  height: 34,
+                ),
+                maximumIcon: SvgPicture.string(
+                  _withThemeColors(sources[1]),
+                  width: 34,
+                  height: 34,
+                ),
+                onChanged: (value) {
+                  if (value != _testSliderValue) {
+                    setState(() => _testSliderValue = value);
+                  }
+                },
+              );
+            },
+          ),
         );
       },
     );
