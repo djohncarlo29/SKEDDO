@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56">
   <g transform="translate(-152 -332)">
-    <g fill="__SURFACE__" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <g fill="__SURFACE__" stroke="__SECONDARY__" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M177.57 355.35c-4.5 0-9 4.5-9 9v2.47c0 1.24.31 2.35.31 2.35l-3.31.06c-2 0-4-2-4-4v-13.31c0-2 2-4 4-4h19.47c2 0 4 2 4 4 0 0 .002 1.87.006 3.44"/>
       <path d="M177.57 375.82c-4.5 0-9-4.5-9-9v-2.47c0-4.5 4.5-9 9-9h10.37c4.5 0 9 4.5 9 9v2.47c0 4.5-4.5 9-9 9z"/>
     </g>
     <path d="M188.85 362.01l-.01 4.66c0 1.07-1.42 2.14-2.84 2.14l-10.17-.02"
-          fill="none" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M168.56 369.23l-3.08.03z" fill="#000"/>
+          fill="none" stroke="__SECONDARY__" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M168.56 369.23l-3.08.03z" fill="__SECONDARY__"/>
     <path d="M179.63 369.04a.2.2 0 0 0-.15-.21l-1-.18-1-.17-1.03-.12-1.02-.1-1.12.16-1.09.63-.67 1.21.19 1.15.41.96.5.89-.19-.99-.09-.98.11-.83.46-.37.75-.14.85-.11.97-.2.97-.18.99-.12z"
-          fill="#000"/>
+          fill="__SECONDARY__"/>
     <path d="M188.58 366.71l.18-.99.17-.99.17-1 .16-1 .14-1.03-.22-1.21-.52-.91-.54-.87-.76-.87-.88-.49-.88-.5.7.73.7.73.31.76.26.96.21.95.14.74.12.97.1 1 .09 1 .08 1z"
-          fill="#000"/>
+          fill="__SECONDARY__"/>
   </g>
 </svg>

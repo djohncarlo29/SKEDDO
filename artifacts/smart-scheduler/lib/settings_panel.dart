@@ -1274,6 +1274,7 @@ class _LiquidGlassSection extends StatelessWidget {
     final shadowColor = resolveThemeColor(kCardShadowColor, context);
     final accent = resolveAccentColor(context);
     final inactive = resolveThemeColor(kTertiaryLabel, context);
+    final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
     final backgroundAsset = isDark
         ? 'assets/liquid_glass_background_dark.webp'
@@ -1407,6 +1408,7 @@ class _LiquidGlassSection extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: _LiquidGlassTestIcons(
                       surfaceColor: cardBg,
+                      secondaryColor: secondaryLabel,
                     ),
                 ),
               ),
@@ -1419,11 +1421,16 @@ class _LiquidGlassSection extends StatelessWidget {
 }
 
 const _kLiquidGlassSurfaceToken = '__SURFACE__';
+const _kLiquidGlassSecondaryToken = '__SECONDARY__';
 
 class _LiquidGlassTestIcons extends StatefulWidget {
   final Color surfaceColor;
+  final Color secondaryColor;
 
-  const _LiquidGlassTestIcons({required this.surfaceColor});
+  const _LiquidGlassTestIcons({
+    required this.surfaceColor,
+    required this.secondaryColor,
+  });
 
   @override
   State<_LiquidGlassTestIcons> createState() => _LiquidGlassTestIconsState();
@@ -1435,15 +1442,22 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
     rootBundle.loadString('assets/icons/Liquid_Glass_right.svg'),
   ]);
 
-  String _withSurfaceColor(String svg) {
-    final color = widget.surfaceColor;
+  String _colorHex(Color color) {
     final red = (color.r * 255.0).round() & 0xff;
     final green = (color.g * 255.0).round() & 0xff;
     final blue = (color.b * 255.0).round() & 0xff;
-    final hex = '#${red.toRadixString(16).padLeft(2, '0')}'
+    return '#${red.toRadixString(16).padLeft(2, '0')}'
         '${green.toRadixString(16).padLeft(2, '0')}'
         '${blue.toRadixString(16).padLeft(2, '0')}';
-    return svg.replaceAll(_kLiquidGlassSurfaceToken, hex);
+  }
+
+  String _withThemeColors(String svg) {
+    return svg
+        .replaceAll(_kLiquidGlassSurfaceToken, _colorHex(widget.surfaceColor))
+        .replaceAll(
+          _kLiquidGlassSecondaryToken,
+          _colorHex(widget.secondaryColor),
+        );
   }
 
   @override
@@ -1459,14 +1473,14 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             SvgPicture.string(
-              _withSurfaceColor(sources[0]),
-              width: 30,
-              height: 30,
+              _withThemeColors(sources[0]),
+              width: 34,
+              height: 34,
             ),
             SvgPicture.string(
-              _withSurfaceColor(sources[1]),
-              width: 30,
-              height: 30,
+              _withThemeColors(sources[1]),
+              width: 34,
+              height: 34,
             ),
           ],
         );
