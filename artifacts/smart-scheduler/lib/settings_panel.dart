@@ -1120,9 +1120,9 @@ class _TextSizeSection extends StatelessWidget {
           if (value) {
             selectSystem();
           } else {
-            // Turning System off keeps the currently displayed position as the
-            // starting Custom value, just like moving the slider does.
-            selectCustomTextScaleIndex(systemScaleIndex);
+            // Restore the last Custom position so the slider can animate away
+            // from the System position instead of jumping to the same value.
+            selectCustomTextScaleIndex(appTextSizeIndexNotifier.value);
             saveAppSetting('Text Size', 'Custom');
           }
         }
@@ -1150,12 +1150,12 @@ class _TextSizeSection extends StatelessWidget {
                   title: 'System',
                   value: usesSystem,
                   accentColor: accentColor,
-                  onTap: selectSystem,
+                  onTap: () => toggleSystem(!usesSystem),
                   onChanged: toggleSystem,
                 ),
                 _TextSizeSliderRow(
                   index: customIndex,
-                  animateValue: usesSystem,
+                  animateChanges: true,
                   accentColor: accentColor,
                   onChanged: previewCustom,
                   onChangeEnd: selectCustom,
@@ -1173,14 +1173,14 @@ class _TextSizeSection extends StatelessWidget {
 
 class _TextSizeSliderRow extends StatefulWidget {
   final int index;
-  final bool animateValue;
+  final bool animateChanges;
   final Color accentColor;
   final ValueChanged<double> onChanged;
   final ValueChanged<double> onChangeEnd;
 
   const _TextSizeSliderRow({
     required this.index,
-    required this.animateValue,
+    required this.animateChanges,
     required this.accentColor,
     required this.onChanged,
     required this.onChangeEnd,
@@ -1216,7 +1216,7 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
     if (oldWidget.index != widget.index) {
       _dragValue = null;
     }
-    if (widget.animateValue && oldWidget.index != widget.index) {
+    if (widget.animateChanges && oldWidget.index != widget.index) {
       final begin = _indexAnimation.value;
       _indexAnimation =
           Tween<double>(begin: begin, end: widget.index.toDouble()).animate(
@@ -1817,27 +1817,27 @@ class _TextSizeSystemRowState extends State<_TextSizeSystemRow> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 80),
-      color: _pressed ? kActionPanelGroupBreak : const Color(0x00000000),
-      constraints: const BoxConstraints(minHeight: _kSettingsRowHeight),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: _kSettingsRowVerticalPadding,
-      ),
-      alignment: Alignment.centerLeft,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTapDown: (_) => setState(() => _pressed = true),
-              onTapUp: (_) {
-                setState(() => _pressed = false);
-                widget.onTap();
-              },
-              onTapCancel: () => setState(() => _pressed = false),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 80),
+        color: _pressed ? kActionPanelGroupBreak : const Color(0x00000000),
+        constraints: const BoxConstraints(minHeight: _kSettingsRowHeight),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: _kSettingsRowVerticalPadding,
+        ),
+        alignment: Alignment.centerLeft,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -1851,26 +1851,26 @@ class _TextSizeSystemRowState extends State<_TextSizeSystemRow> {
                 ),
               ),
             ),
-          ),
-          SizedBox(
-            width: 70 * 0.80,
-            height: 30,
-            child: OverflowBox(
-              maxWidth: 70,
-              maxHeight: 31,
-              alignment: Alignment.center,
-              child: Transform.scale(
-                scale: 0.80,
-                child: AppSwitch(
-                  value: widget.value,
-                  color: widget.accentColor,
-                  height: 31,
-                  onChanged: widget.onChanged,
+            SizedBox(
+              width: 70 * 0.80,
+              height: 30,
+              child: OverflowBox(
+                maxWidth: 70,
+                maxHeight: 31,
+                alignment: Alignment.center,
+                child: Transform.scale(
+                  scale: 0.80,
+                  child: AppSwitch(
+                    value: widget.value,
+                    color: widget.accentColor,
+                    height: 31,
+                    onChanged: widget.onChanged,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
