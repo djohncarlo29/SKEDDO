@@ -1120,9 +1120,10 @@ class _TextSizeSection extends StatelessWidget {
           if (value) {
             selectSystem();
           } else {
-            // Restore the last Custom position so the slider can animate away
-            // from the System position instead of jumping to the same value.
-            selectCustomTextScaleIndex(appTextSizeIndexNotifier.value);
+            // Keep the thumb at the current System position. Turning the
+            // switch off changes only the active mode; it does not restore an
+            // older Custom position.
+            selectCustomTextScaleIndex(systemScaleIndex);
             saveAppSetting('Text Size', 'Custom');
           }
         }
@@ -1155,7 +1156,7 @@ class _TextSizeSection extends StatelessWidget {
                 ),
                 _TextSizeSliderRow(
                   index: customIndex,
-                  animateChanges: true,
+                  animateChanges: usesSystem,
                   accentColor: accentColor,
                   onChanged: previewCustom,
                   onChangeEnd: selectCustom,
