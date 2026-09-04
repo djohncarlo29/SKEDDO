@@ -1496,6 +1496,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     final sepLineColor = kSeparatorColor.resolveFrom(context);
     final labelColor = kPrimaryLabel.resolveFrom(context);
     final cardColor = resolveThemeColor(kModalCard, context);
+    final opaqueSeparatorColor = Color.alphaBlend(sepLineColor, cardColor);
     final textScaler = MediaQuery.textScalerOf(context);
     const headerInset = _emojiSheetHorizontalInset;
 
@@ -1711,7 +1712,13 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                               ),
                             ),
                             // Separator between the two rows
-                            Container(height: 0.5, color: sepLineColor),
+                            // Pre-compose the translucent separator over the
+                            // card surface so grid pixels can never show
+                            // through it during scroll/rubberband motion.
+                            Container(
+                              height: 0.5,
+                              color: opaqueSeparatorColor,
+                            ),
                             // Row 2 — category strip
                             Padding(
                               padding: const EdgeInsets.symmetric(

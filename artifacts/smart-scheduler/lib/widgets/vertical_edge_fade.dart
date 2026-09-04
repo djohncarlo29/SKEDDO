@@ -63,6 +63,7 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
   ValueListenable<bool>? _attachedPlaceholderFocusListenable;
   double _rubberbandOffset = 0;
   int _editSyncTicket = 0;
+  int _layoutSyncTicket = 0;
 
   @override
   void initState() {
@@ -164,10 +165,30 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
     if (controller == null) return;
     _attachedScrollController = controller;
     controller.addListener(_handleScrollControllerChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _attachedScrollController != controller) return;
-      if (controller.hasClients) _sync(controller.position);
-    });
+    _scheduleLayoutSync();
+  }
+
+  void _scheduleLayoutSync() {
+    final ticket = ++_layoutSyncTicket;
+
+    void syncAfterLayout(int attempt) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || ticket != _layoutSyncTicket) return;
+        final controller = _attachedScrollController;
+        if (controller?.hasClients != true) {
+          if (attempt < 2) syncAfterLayout(attempt + 1);
+          return;
+        }
+        final position = controller!.position;
+        if (!position.hasContentDimensions) {
+          if (attempt < 2) syncAfterLayout(attempt + 1);
+          return;
+        }
+        _sync(position);
+      });
+    }
+
+    syncAfterLayout(0);
   }
 
   void _detachScrollController() {
@@ -435,6 +456,10 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
 
   @override
   Widget build(BuildContext context) {
+    // Scroll metrics can be established after this wrapper's first build,
+    // especially when the grid is rebuilt after a category or pinch change.
+    // Synchronize proactively instead of waiting for the first user scroll.
+    _scheduleLayoutSync();
     return NotificationListener<ScrollNotification>(
       onNotification: _handleScrollNotification,
       child: NotificationListener<ScrollMetricsNotification>(
