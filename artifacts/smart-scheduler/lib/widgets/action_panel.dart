@@ -144,6 +144,83 @@ class NewSectionIcon extends StatelessWidget {
   }
 }
 
+/// The small circular plus badge used by [NewSectionIcon].
+///
+/// This standalone form is used when another icon needs the same badge
+/// treatment without also painting the New Section list geometry.
+class NewSectionPlusBadge extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const NewSectionPlusBadge({
+    super.key,
+    this.size = 12,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size.square(size),
+      painter: _NewSectionPlusBadgePainter(color),
+    );
+  }
+}
+
+class _NewSectionPlusBadgePainter extends CustomPainter {
+  final Color color;
+
+  const _NewSectionPlusBadgePainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // These proportions match the badge in _NewSectionIconPainter at its
+    // native 16 px action-panel scale.
+    final scale = size.shortestSide / 12.0;
+    final center = Offset(size.width / 2, size.height / 2);
+    final badgeRadius = 4.5 * scale;
+    final badgeGapRadius = 6.625 * scale;
+    final clear = Paint()
+      ..blendMode = BlendMode.clear
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+
+    // Clear the separation ring and plus knockout through the icon beneath.
+    canvas.drawCircle(center, badgeGapRadius, clear);
+    canvas.drawCircle(
+      center,
+      badgeRadius,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.fill
+        ..isAntiAlias = true,
+    );
+
+    final plusWidth = 5.5 * scale;
+    final plusThickness = 1.375 * scale;
+    final plus = Path()
+      ..addRect(
+        Rect.fromCenter(
+          center: center,
+          width: plusThickness,
+          height: plusWidth,
+        ),
+      )
+      ..addRect(
+        Rect.fromCenter(
+          center: center,
+          width: plusWidth,
+          height: plusThickness,
+        ),
+      );
+    canvas.drawPath(plus, clear);
+  }
+
+  @override
+  bool shouldRepaint(covariant _NewSectionPlusBadgePainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
 class _NewSectionIconPainter extends CustomPainter {
   final Color color;
   final bool showPlusBadge;
