@@ -1028,7 +1028,11 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
       _isEmojiDragging = true;
     });
     _scrollCtrl.jumpTo(0);
-    _ensureCategoryTabVisible(i, animate: false);
+    // Keep tap navigation consistent with swipe navigation: when the strip
+    // overflows, bring the selected tab into view with a smooth scroll. The
+    // selection repaint remains independent because the tab uses its
+    // selection-dependent keyed child and Opacity layer above.
+    _ensureCategoryTabVisible(i);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       setState(() => _isEmojiDragging = false);
