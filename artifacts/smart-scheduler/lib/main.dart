@@ -2159,19 +2159,21 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                  // Compose the SVG and badge before any modal-sheet
                                                                                  // shell transform so BlendMode.clear remains a real
                                                                                  // transparent knockout in every animation state.
-                                                                                 child: SizedBox(
-                                                                                   width: 32,
-                                                                                   height: 32,
-                                                                                   child: Stack(
-                                                                                     clipBehavior: Clip.none,
-                                                                                     children: [
-                                                                                       Positioned.fill(
-                                                                                         child: ClipPath(
-                                                                                           clipper:
-                                                                                               const NewSectionBadgeExclusionClipper(
-                                                                                             center: Offset(22, 22),
-                                                                                             gapRadius: 6.25,
-                                                                                           ),
+                                                                                 child: CustomPaint(
+                                                                                   foregroundPainter:
+                                                                                       const NewSectionBadgePunchPainter(
+                                                                                     center: Offset(22, 22),
+                                                                                     gapRadius: 6.25,
+                                                                                     plusWidth: 5.5,
+                                                                                     plusThickness: 1.375,
+                                                                                   ),
+                                                                                   child: SizedBox(
+                                                                                     width: 32,
+                                                                                     height: 32,
+                                                                                     child: Stack(
+                                                                                       clipBehavior: Clip.none,
+                                                                                       children: [
+                                                                                         Positioned.fill(
                                                                                            child: SvgPicture.asset(
                                                                                              'assets/icons/base_Add_Category.svg',
                                                                                              colorFilter:
@@ -2181,16 +2183,16 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                              ),
                                                                                            ),
                                                                                          ),
-                                                                                       ),
-                                                                                       Positioned(
-                                                                                         left: 16,
-                                                                                         top: 16,
-                                                                                         child: NewSectionPlusBadge(
-                                                                                           size: 12,
-                                                                                           color: accent,
+                                                                                         Positioned(
+                                                                                           left: 16,
+                                                                                           top: 16,
+                                                                                           child: NewSectionPlusBadge(
+                                                                                             size: 12,
+                                                                                             color: accent,
+                                                                                           ),
                                                                                          ),
-                                                                                       ),
-                                                                                     ],
+                                                                                       ],
+                                                                                     ),
                                                                                    ),
                                                                                  ),
                                                                                ),

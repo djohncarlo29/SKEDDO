@@ -167,31 +167,58 @@ class NewSectionPlusBadge extends StatelessWidget {
   }
 }
 
-/// Removes the badge's full separation circle from an icon painted beneath it.
-///
-/// This is a geometric exclusion rather than a blend-mode operation, so the
-/// transparent ring remains transparent when the complete icon is transformed
-/// or composited by a modal-sheet transition.
-class NewSectionBadgeExclusionClipper extends CustomClipper<Path> {
+/// Punches the badge's separation ring and plus through the complete icon
+/// composition. The painter is used as a foreground painter on the same
+/// isolated canvas as the SVG and badge.
+class NewSectionBadgePunchPainter extends CustomPainter {
   final Offset center;
   final double gapRadius;
+  final double plusWidth;
+  final double plusThickness;
 
-  const NewSectionBadgeExclusionClipper({
+  const NewSectionBadgePunchPainter({
     required this.center,
     required this.gapRadius,
+    required this.plusWidth,
+    required this.plusThickness,
   });
 
   @override
-  Path getClip(Size size) {
-    final bounds = Path()..addRect(Offset.zero & size);
-    final exclusion = Path()
-      ..addOval(Rect.fromCircle(center: center, radius: gapRadius));
-    return Path.combine(PathOperation.difference, bounds, exclusion);
+  void paint(Canvas canvas, Size size) {
+    final punch = Paint()
+      ..blendMode = BlendMode.dstOut
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+
+    // Remove the full separation ring from the composed SVG + badge layer.
+    canvas.drawCircle(center, gapRadius, punch);
+
+    // Remove the plus from that same layer. Drawing the two arms separately
+    // keeps the knockout a true union even where the arms overlap.
+    canvas.drawRect(
+      Rect.fromCenter(
+        center: center,
+        width: plusThickness,
+        height: plusWidth,
+      ),
+      punch,
+    );
+    canvas.drawRect(
+      Rect.fromCenter(
+        center: center,
+        width: plusWidth,
+        height: plusThickness,
+      ),
+      punch,
+    );
   }
 
   @override
-  bool shouldReclip(covariant NewSectionBadgeExclusionClipper oldClipper) =>
-      oldClipper.center != center || oldClipper.gapRadius != gapRadius;
+  bool shouldRepaint(covariant NewSectionBadgePunchPainter oldDelegate) =>
+      oldDelegate.center != center ||
+      oldDelegate.gapRadius != gapRadius ||
+      oldDelegate.plusWidth != plusWidth ||
+      oldDelegate.plusThickness != plusThickness;
 }
 
 class _NewSectionPlusBadgePainter extends CustomPainter {
