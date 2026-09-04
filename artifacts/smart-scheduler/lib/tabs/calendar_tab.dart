@@ -88,6 +88,9 @@ const double _kHourHeight = 64.0;
 const double _kTimelinePad =
     8.0; // breathing room above 12 am and below midnight
 const double _kDayBannerHeight = 36.0;
+// Fixed breathing room between the large app header and the Month/Day DOW
+// row. This is layout spacing, so it must not grow with OS text scaling.
+const double _kCalendarHeaderToDowGap = kFixedVerticalPadding;
 
 // ── Date utilities ────────────────────────────────────────────────────────────
 int _daysInMonth(int year, int month) => DateTime(year, month + 1, 0).day;
@@ -1583,7 +1586,10 @@ class CalendarTabState extends State<CalendarTab>
             // Multiplied by colT so the offset is zero in Month/Year View.
             final double listModeT = colT * _listModeCtrl.value;
             final double stripSlideY =
-                -listModeT * (_kDayLabelHeight + _kRowHeightList);
+                -listModeT *
+                    (_kCalendarHeaderToDowGap +
+                        _kDayLabelHeight +
+                        _kRowHeightList);
             // During a snap animation use the interpolated value; during a
             // free drag use the raw _slideX field.
             final slideX = _snapCtrl.isAnimating ? _snapAnim.value : _slideX;
@@ -1932,7 +1938,10 @@ class CalendarTabState extends State<CalendarTab>
                       Positioned(
                         left: 0,
                         right: 0,
-                        top: _kDayLabelHeight + _kRowHeightList,
+                        top:
+                            _kCalendarHeaderToDowGap +
+                            _kDayLabelHeight +
+                            _kRowHeightList,
                         height: _kDayBannerHeight,
                         child: Opacity(
                           opacity: ((colT - 0.55) / 0.45).clamp(0.0, 1.0),
@@ -2006,6 +2015,7 @@ class CalendarTabState extends State<CalendarTab>
                         left: 0,
                         right: 0,
                         top:
+                            _kCalendarHeaderToDowGap +
                             _kDayLabelHeight +
                             _kRowHeightList +
                             _kDayBannerHeight,
@@ -2791,10 +2801,11 @@ class _MorphPainter extends CustomPainter {
       // matches the _MonthView that is scrolled to _savedMonthScrollOffset.
       final monthCX = mCellW * (dow + 1.5);
       final monthCY =
-          _kDayLabelHeight +
-          weekRow * viewModeRowHeight +
-          kDayCircleOffset -
-          monthScrollOffset;
+          _kCalendarHeaderToDowGap +
+              _kDayLabelHeight +
+              weekRow * viewModeRowHeight +
+              kDayCircleOffset -
+              monthScrollOffset;
 
       final cx = lerpDouble(yearCX, monthCX, t)!;
       final cy = lerpDouble(yearCY, monthCY, t)!;
@@ -2843,7 +2854,8 @@ class _MorphPainter extends CustomPainter {
       final wkCX = lerpDouble(focalX, mCellW / 2, t)!;
       final wkCY = lerpDouble(
         focalY + (wr + 1) * cellSz + cellSz / 2,
-        _kDayLabelHeight +
+        _kCalendarHeaderToDowGap +
+            _kDayLabelHeight +
             wr * viewModeRowHeight +
             kDayCircleOffset -
             monthScrollOffset,
@@ -2862,7 +2874,10 @@ class _MorphPainter extends CustomPainter {
 
       final sepY = lerpDouble(
         focalY + (wr + 1) * cellSz,
-        _kDayLabelHeight + (wr + 1) * viewModeRowHeight - monthScrollOffset,
+        _kCalendarHeaderToDowGap +
+            _kDayLabelHeight +
+            (wr + 1) * viewModeRowHeight -
+            monthScrollOffset,
         t,
       )!;
       final sepLeft = lerpDouble(focalX, 0.0, t)!;
@@ -2879,11 +2894,16 @@ class _MorphPainter extends CustomPainter {
     // shifted up by monthScrollOffset (the row may be partially or fully above
     // the viewport when the user had scrolled in Details mode).  Lerp the top-y
     // from 0 (natural, at the moment the rect starts appearing, hdrBgA=0) to
-    // -monthScrollOffset (fully at the month-view scrolled position, hdrBgA=1).
+    // the fixed DOW-row position minus monthScrollOffset (fully at the
+    // month-view scrolled position, hdrBgA=1).
     // ClipRect clips any portion that extends above y=0.
     final hdrBgA = ((t - 0.5) / 0.5).clamp(0.0, 1.0);
     if (hdrBgA > 0) {
-      final dowTopY = lerpDouble(0.0, -monthScrollOffset, hdrBgA)!;
+      final dowTopY = lerpDouble(
+        0.0,
+        _kCalendarHeaderToDowGap - monthScrollOffset,
+        hdrBgA,
+      )!;
       _p.color = _fade(bgColor, hdrBgA);
       canvas.drawRect(Rect.fromLTWH(0, dowTopY, sw, _kDayLabelHeight), _p);
     }
@@ -2907,7 +2927,9 @@ class _MorphPainter extends CustomPainter {
         // at the same visual position as in the scrolled _MonthView.
         final cy = lerpDouble(
           focalY + cellSz / 2,
-          _kDayLabelHeight / 2 - monthScrollOffset,
+          _kCalendarHeaderToDowGap +
+              _kDayLabelHeight / 2 -
+              monthScrollOffset,
           t,
         )!;
         final fSz = lerpDouble(cellSz * 0.55, 11.0, t)!.clamp(1.0, 200.0);
@@ -3009,7 +3031,8 @@ class _MonthView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final totalRows = _totalWeekRows(year, month);
-    final gridH = _kDayLabelHeight + totalRows * rowHeight;
+    final gridH =
+        _kCalendarHeaderToDowGap + _kDayLabelHeight + totalRows * rowHeight;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -3044,6 +3067,7 @@ class _MonthView extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      const SizedBox(height: _kCalendarHeaderToDowGap),
                       SizedBox(height: _kDayLabelHeight),
                       SizedBox(
                         height: totalRows * rowHeight,
@@ -3128,12 +3152,13 @@ class _MonthView extends StatelessWidget {
                   // Scroll-offset compensation: when entering Day View from a
                   // scrolled Month View the viewport scroll stays at
                   // capturedOffset during the animation.  The DOW header sits
-                  // at content-y=0, so its viewport-y = -capturedOffset
+                  // at content-y=the fixed header gap, so its viewport-y is
+                  // fixed relative to the header (minus capturedOffset)
                   // (above the fold, invisible).  Translating it DOWN by
                   // collapseScrollOffset × collapseProgress brings it into
                   // view in lock-step with the week strip arriving at y=28.
                   Positioned(
-                    top: 0,
+                    top: _kCalendarHeaderToDowGap,
                     left: 0,
                     right: 0,
                     height: _kDayLabelHeight,
