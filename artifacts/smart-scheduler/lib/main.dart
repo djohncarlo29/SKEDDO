@@ -2148,7 +2148,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                           // viewBox, and this header slot constrains the child
                                                                           // before layout. Scale after layout so the visible
                                                                           // symbol can grow without widening the slot.
-                                                                          scale: 1.5,
+                                                                           scale: 1.3,
                                                                           child: SvgPicture.asset(
                                                                             'assets/icons/base_Add_Category.svg',
                                                                             width:
