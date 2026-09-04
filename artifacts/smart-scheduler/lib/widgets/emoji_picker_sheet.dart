@@ -500,7 +500,7 @@ const List<_EmojiCat> kEmojiCategories = [
       '🏋🏻',
       '🤼🏻',
       '🤸🏻',
-      '🤺🏻',
+      '🤺',
       '🏇🏻',
       '⛹🏻',
       '🤾🏻',
