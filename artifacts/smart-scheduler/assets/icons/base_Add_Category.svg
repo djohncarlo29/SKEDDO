@@ -1,8 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56">
-  <g fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <!-- The badge is authored into the same vector layer as the icon so the
+         separation ring and plus remain transparent through shell transitions. -->
+    <mask id="add-category-badge-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="56" height="56">
+      <rect width="56" height="56" fill="#fff"/>
+      <circle cx="38.5" cy="38.5" r="10.9375" fill="#000"/>
+      <circle cx="38.5" cy="38.5" r="7.875" fill="#fff"/>
+      <path d="M33.6875 38.5h9.625M38.5 33.6875v9.625" stroke="#000" stroke-width="2.40625" stroke-linecap="round"/>
+    </mask>
+  </defs>
+  <g mask="url(#add-category-badge-mask)" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
     <rect x="13.28" y="13.06" width="28.72" height="28.72" rx="6" stroke-width="2"/>
     <circle cx="21.37" cy="23.07" r="3.07" fill="#000" stroke-width="1.5"/>
     <circle cx="21.37" cy="32.38" r="3.07" stroke-width="1.5"/>
     <path d="M28.39 23.07h7.16M28.39 32.38h7.16" stroke-width="2"/>
+    <circle cx="38.5" cy="38.5" r="7.875" fill="#000" stroke="none"/>
   </g>
 </svg>

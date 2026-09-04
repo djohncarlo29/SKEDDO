@@ -2155,31 +2155,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                // before layout. Scale after layout so the visible
                                                                                // symbol can grow without widening the slot.
                                                                                scale: 1.15,
-                                                                               child: SizedBox(
+                                                                               child: SvgPicture.asset(
+                                                                                 'assets/icons/base_Add_Category.svg',
                                                                                  width: 32,
                                                                                  height: 32,
-                                                                                 child: Stack(
-                                                                                   clipBehavior: Clip.none,
-                                                                                   children: [
-                                                                                     Positioned.fill(
-                                                                                       child: SvgPicture.asset(
-                                                                                         'assets/icons/base_Add_Category.svg',
-                                                                                         colorFilter:
-                                                                                             ColorFilter.mode(
-                                                                                           accent,
-                                                                                           BlendMode.srcIn,
-                                                                                         ),
-                                                                                       ),
-                                                                                     ),
-                                                                                     Positioned(
-                                                                                       left: 16,
-                                                                                       top: 16,
-                                                                                       child: NewSectionPlusBadge(
-                                                                                         size: 12,
-                                                                                         color: accent,
-                                                                                       ),
-                                                                                     ),
-                                                                                   ],
+                                                                                 colorFilter:
+                                                                                     ColorFilter.mode(
+                                                                                   accent,
+                                                                                   BlendMode.srcIn,
                                                                                  ),
                                                                                ),
                                                                              ),
