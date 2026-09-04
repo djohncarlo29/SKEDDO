@@ -1464,7 +1464,8 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   // The category strip and the grid use different visual slot sizes. Align
   // their endpoint *centers* rather than aligning their slot edges: the first
   // and last category icons then sit directly above the first and last emoji
-  // in every grid, including after Dynamic Type or a one-column pinch change.
+  // in the OS-sized grid. The strip deliberately ignores the manual pinch
+  // column count so pinching the list cannot move or resize the category tabs.
   double _categoryHorizontalInset(
     double cardWidth,
     TextScaler textScaler,
@@ -1479,26 +1480,12 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
         authoredColumns;
     final targetCellSize =
         math.max(1.0, defaultCellSize * (emojiFontSize / 26.0));
-    final automaticColumns = math.max(
-      1,
-      ((contentWidth + minimumSpacing + 0.001) /
-              (targetCellSize + minimumSpacing))
-          .floor(),
-    );
-    final columns =
-        _emojiColumnsWasPinched ? _emojiColumns : automaticColumns;
-    final cellSize = math.max(
-      1.0,
-      _emojiColumnsWasPinched
-          ? (contentWidth - minimumSpacing * (columns - 1)) / columns
-          : targetCellSize,
-    );
     final categorySlotWidth =
         math.max(28.0, textScaler.scale(28.0));
 
     return math.max(
       0.0,
-      gridInset + cellSize / 2 - categorySlotWidth / 2,
+      gridInset + targetCellSize / 2 - categorySlotWidth / 2,
     );
   }
 
