@@ -1127,22 +1127,22 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     switch (_activeViewMode) {
       case CalendarViewMode.compact:
         return Transform.translate(
-          offset: const Offset(1, -1),
+          offset: const Offset(1.5, -1),
           child: CompactViewIcon(color: c, size: 24),
         );
       case CalendarViewMode.stacked:
         return Transform.translate(
-          offset: const Offset(1, -1),
+          offset: const Offset(1.5, -1),
           child: StackedViewIcon(color: c, size: 24),
         );
       case CalendarViewMode.details:
         return Transform.translate(
-          offset: const Offset(1.5, 0),
+          offset: const Offset(2.0, 0),
           child: DetailsViewIcon(color: c, size: 24),
         );
       case CalendarViewMode.list:
         return Transform.translate(
-          offset: const Offset(1.5, 0),
+          offset: const Offset(2.0, 0),
           child: ListViewIcon(color: c, size: 24),
         );
     }
