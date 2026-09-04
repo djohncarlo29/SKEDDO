@@ -1406,10 +1406,10 @@ class _LiquidGlassSection extends StatelessWidget {
                 height: _kSettingsRowHeight,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _LiquidGlassTestIcons(
-                      surfaceColor: cardBg,
-                      secondaryColor: secondaryLabel,
-                    ),
+                  child: _LiquidGlassTestIcons(
+                    surfaceColor: cardBg,
+                    secondaryColor: secondaryLabel,
+                  ),
                 ),
               ),
             ),

@@ -137,6 +137,12 @@ class LiquidGlassView extends StatefulWidget {
   /// anywhere `child` lenses.
   final bool honorBackdropAlpha;
 
+  /// Whether descendants may paint outside this view's resting bounds.
+  ///
+  /// Useful for controls whose content deliberately moves outward while
+  /// animating, such as slider end icons.
+  final bool allowChildOverflow;
+
   /// Creates a liquid-glass view: a background-capture / refraction
   /// provider. Place `LiquidGlassLens` widgets anywhere inside [child] —
   /// they connect to this view automatically. There is no positioned-lens
@@ -151,7 +157,8 @@ class LiquidGlassView extends StatefulWidget {
       this.useSync = true,
       this.refreshRate = LiquidGlassRefreshRate.deviceRefreshRate,
       this.useImpellerBackdrop,
-      this.regionCapture = false})
+      this.regionCapture = false,
+      this.allowChildOverflow = false})
       : children = const [],
         honorBackdropAlpha = false;
 
@@ -172,7 +179,8 @@ class LiquidGlassView extends StatefulWidget {
       this.refreshRate = LiquidGlassRefreshRate.deviceRefreshRate,
       this.useImpellerBackdrop,
       this.regionCapture = false,
-      this.honorBackdropAlpha = false});
+      this.honorBackdropAlpha = false,
+      this.allowChildOverflow = false});
 
   @override
   State<LiquidGlassView> createState() => _LiquidGlassViewState();
@@ -674,6 +682,7 @@ class _LiquidGlassViewState extends State<LiquidGlassView>
   Widget build(BuildContext context) {
     _devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
     return Stack(
+      clipBehavior: widget.allowChildOverflow ? Clip.none : Clip.hardEdge,
       // Tight constraints for both the captured background and the
       // lens-rendering layer. Without this, in a loose Stack, the
       // RepaintBoundary and the LayoutBuilder can end up at

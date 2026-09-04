@@ -674,12 +674,17 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
               controller: _viewController,
               honorBackdropAlpha: true,
               pixelRatio: widget.pixelRatio,
+              allowChildOverflow: true,
               // The capture lives exactly as long as the glass does: off
               // at rest, started on touch, stopped once the pill is
               // covered again. The view still takes one snapshot on mount.
               realTimeCapture: false,
               useSync: true,
+              // End icons begin at the slider's normal inset, but their
+              // active-state separation can move them outward past this
+              // view's bounds. Do not clip that intentional overflow.
               backgroundWidget: Stack(
+                clipBehavior: Clip.none,
                 children: [
                   // One coherent track geometry: the endpoint ticks are
                   // unioned with the track before it is painted, so neither
