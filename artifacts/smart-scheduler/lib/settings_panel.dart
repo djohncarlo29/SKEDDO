@@ -1483,9 +1483,9 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
                   activeIconGap: 4,
                   horizontalInset: 0,
                 ),
-                // This is intentionally a free-flowing visual test control.
-                // It has no setting or other app behavior attached yet.
-                divisions: 0,
+                // Match the real Liquid Glass opacity slider's ten tick
+                // intervals while keeping this control visually independent.
+                divisions: 10,
                 activeColor: widget.secondaryColor,
                 inactiveColor: widget.secondaryColor.withValues(alpha: 0.22),
                 thumbColor: const Color(0xFFFDFDFD),
