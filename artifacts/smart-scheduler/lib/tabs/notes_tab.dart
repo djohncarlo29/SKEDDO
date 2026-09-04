@@ -1283,8 +1283,8 @@ class _NoteInputCardState extends State<_NoteInputCard>
   Widget build(BuildContext context) {
     final textScaler = MediaQuery.textScalerOf(context);
     final actionIconSize = textScaler.scale(kSearchBarMicIconSize);
-    final plusIconSize = actionIconSize;
-    final clearIconSize = actionIconSize;
+    final plusIconSize = textScaler.scale(kSearchBarMicIconSize + 1.0);
+    final clearIconSize = textScaler.scale(kSearchBarMicIconSize + 0.5);
     final micIconSize = actionIconSize;
     final surfaceColor = resolveThemeColor(kSbSurface, context);
     final cardShadows = resolveThemeShadows(kCardShadow, context);
@@ -1456,6 +1456,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                   child: FixedSFIcon(
                                     SFIcons.sf_xmark,
                                     fontSize: clearIconSize,
+                                    fontWeight: FontWeight.w500,
                                     color: secondaryLabel,
                                   ),
                                 ),
@@ -1496,6 +1497,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                             child: FixedSFIcon(
                               SFIcons.sf_plus,
                               fontSize: plusIconSize,
+                              fontWeight: FontWeight.w500,
                               color: secondaryLabel,
                             ),
                           ),
