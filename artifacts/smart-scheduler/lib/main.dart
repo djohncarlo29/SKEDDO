@@ -1158,11 +1158,19 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     return Transform.translate(
       // Match the Month View icon slot's optical centre.
       offset: const Offset(2.4, 0),
-      child: FixedSFIcon(
-        SFIcons.sf_calendar,
-        fontSize: 24,
-        fontWeight: FontWeight.w500,
-        color: resolveAccentColor(context),
+      child: SizedBox(
+        // Preserve the same 24×24 alignment box as the Month View icon while
+        // rendering the calendar glyph slightly smaller inside it.
+        width: 24,
+        height: 24,
+        child: Center(
+          child: FixedSFIcon(
+            SFIcons.sf_calendar,
+            fontSize: 20,
+            fontWeight: FontWeight.w500,
+            color: resolveAccentColor(context),
+          ),
+        ),
       ),
     );
   }
