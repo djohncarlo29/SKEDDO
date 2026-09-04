@@ -2100,14 +2100,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                             width: 36,
                                                             height: 38,
                                                           ),
-                                                          // Shared slot for the mutually-exclusive secondary header
-                                                          // actions:
-                                                          //   • Add Category — visible on the Events tab
-                                                          //   • Ellipsis     — visible in DCV mode
-                                                          //   • View-mode    — visible on Calendar → Month/Day view
-                                                          //
-                                                          // All three icons live in the same slot immediately after
-                                                          // the hamburger so their layout and alignment stay consistent.
+                                                           // Shared slot for the mutually-exclusive secondary header
+                                                           // actions. Add Category is painted as a shell overlay below
+                                                           // so its transparent badge can punch through the header layer;
+                                                           // this slot preserves the header's layout for the other actions.
                                                           SizedBox(
                                                             width: 36,
                                                             height: 38,
@@ -2115,80 +2111,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                               clipBehavior:
                                                                   Clip.none,
                                                               children: [
-                                                                // ── Add Category (Events) ───────────────────────────
-                                                                Opacity(
-                                                                  opacity:
-                                                                      !isDCVVisual &&
-                                                                          _selectedIndex ==
-                                                                              2
-                                                                      ? 1.0
-                                                                      : 0.0,
-                                                                  child: IgnorePointer(
-                                                                    ignoring:
-                                                                        isDCVVisual ||
-                                                                        _selectedIndex !=
-                                                                            2,
-                                                                    child: Align(
-                                                                      alignment:
-                                                                          Alignment.bottomLeft,
-                                                                       child: MediaQuery(
-                                                                         data: MediaQuery.of(context).copyWith(
-                                                                           textScaler: TextScaler.noScaling,
-                                                                         ),
-                                                                         child: AnimatedTapIcon(
-                                                                           scaleEnabled:
-                                                                               false,
-                                                                           padding: const EdgeInsets.fromLTRB(
-                                                                             6,
-                                                                             8,
-                                                                             0,
-                                                                             0,
-                                                                           ),
-                                                                           onTap: () => _eventsTabKey
-                                                                               .currentState
-                                                                               ?.addCategory(),
-                                                                           child: Transform.translate(
-                                                                             offset: const Offset(0, 2),
-                                                                             child: Transform.scale(
-                                                                               // The artwork has transparent padding in its 56 px
-                                                                               // viewBox, and this header slot constrains the child
-                                                                               // before layout. Scale after layout so the visible
-                                                                               // symbol can grow without widening the slot.
-                                                                               scale: 1.15,
-                                                                               child: SizedBox(
-                                                                                 width: 32,
-                                                                                 height: 32,
-                                                                                 child: Stack(
-                                                                                   clipBehavior: Clip.none,
-                                                                                   children: [
-                                                                                     Positioned.fill(
-                                                                                       child: SvgPicture.asset(
-                                                                                         'assets/icons/base_Add_Category.svg',
-                                                                                         colorFilter:
-                                                                                             ColorFilter.mode(
-                                                                                           accent,
-                                                                                           BlendMode.srcIn,
-                                                                                         ),
-                                                                                       ),
-                                                                                     ),
-                                                                                     Positioned(
-                                                                                       left: 16,
-                                                                                       top: 16,
-                                                                                       child: NewSectionPlusBadge(
-                                                                                         size: 12,
-                                                                                         color: accent,
-                                                                                       ),
-                                                                                     ),
-                                                                                   ],
-                                                                                 ),
-                                                                               ),
-                                                                             ),
-                                                                           ),
-                                                                         ),
-                                                                       ),
-                                                                    ),
-                                                                  ),
-                                                                ),
                                                                 // ── Ellipsis (DCV) ─────────────────────────────────
                                                                 // Align.bottomLeft anchors the icon to the slot
                                                                 // bottom, matching the hamburger's Positioned(bottom:0)
@@ -2524,6 +2446,62 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                     ),
                   ),
                 ],
+              ),
+
+              // Add Category overlay — the CustomPaint must remain on the
+              // AppShell canvas.  Do not put this icon below an Opacity or
+              // Transform layer: BlendMode.clear must see the header/content
+              // destination to create a real hole in both themes and during a
+              // sheet's scale/color-filter transition.
+              AnimatedBuilder(
+                animation: Listenable.merge([
+                  _dcvSlideController,
+                  _searchModeAnim,
+                ]),
+                builder: (context, _) {
+                  final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
+                  final isDCVVisual =
+                      pageP >= _dcvColorSnapThreshold && _selectedIndex == 2;
+                  final opacity = !isDCVVisual && _selectedIndex == 2
+                      ? (1.0 - _searchModeAnim.value).clamp(0.0, 1.0)
+                      : 0.0;
+                  if (opacity <= 0.0) return const SizedBox.shrink();
+                  return Positioned(
+                    left: 42,
+                    top: topInset,
+                    child: IgnorePointer(
+                      ignoring: opacity < 0.01,
+                      child: SizedBox(
+                        width: 42,
+                        height: 46,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () =>
+                              _eventsTabKey.currentState?.addCategory(),
+                          child: Padding(
+                            // These are the old header slot's visual
+                            // coordinates, expressed as layout instead of
+                            // Transform/Opacity layers.
+                            padding: const EdgeInsets.only(
+                              left: 3.6,
+                              top: 7.6,
+                            ),
+                            child: MediaQuery(
+                              data: MediaQuery.of(context).copyWith(
+                                textScaler: TextScaler.noScaling,
+                              ),
+                              child: AddCategoryHeaderIcon(
+                                size: 36.8,
+                                opacity: opacity,
+                                color: resolveAccentColor(context),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
 
               // The tab bar is now a floating shell control. It is placed

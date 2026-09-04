@@ -167,6 +167,132 @@ class NewSectionPlusBadge extends StatelessWidget {
   }
 }
 
+/// Header-sized Add Category artwork with a true transparent plus badge.
+///
+/// The base icon and badge are intentionally painted together. That keeps the
+/// clear ring and plus in the same canvas as the base artwork so they can punch
+/// through the AppShell layer during modal-sheet transitions.
+class AddCategoryHeaderIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+  final double opacity;
+
+  const AddCategoryHeaderIcon({
+    super.key,
+    this.size = 32,
+    required this.color,
+    this.opacity = 1.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size.square(size),
+      painter: _AddCategoryHeaderIconPainter(color, opacity),
+    );
+  }
+}
+
+class _AddCategoryHeaderIconPainter extends CustomPainter {
+  final Color color;
+  final double opacity;
+
+  const _AddCategoryHeaderIconPainter(this.color, this.opacity);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.shortestSide / 56.0;
+    canvas.save();
+    canvas.scale(scale, scale);
+
+    final outline = Paint()
+      ..color = color.withValues(alpha: opacity)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..isAntiAlias = true;
+
+    // This is the authored geometry from base_Add_Category.svg.
+    outline.strokeWidth = 2.0;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(13.28, 13.06, 28.72, 28.72),
+        const Radius.circular(6.0),
+      ),
+      outline,
+    );
+
+    final filledBullet = Paint()
+      ..color = color.withValues(alpha: opacity)
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+    final bulletOutline = Paint()
+      ..color = color.withValues(alpha: opacity)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..isAntiAlias = true;
+    canvas.drawCircle(const Offset(21.37, 23.07), 3.07, filledBullet);
+    canvas.drawCircle(const Offset(21.37, 23.07), 3.07, bulletOutline);
+    canvas.drawCircle(const Offset(21.37, 32.38), 3.07, bulletOutline);
+
+    final listLine = Paint()
+      ..color = color.withValues(alpha: opacity)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round
+      ..isAntiAlias = true;
+    canvas.drawLine(
+      const Offset(28.39, 23.07),
+      const Offset(35.55, 23.07),
+      listLine,
+    );
+    canvas.drawLine(
+      const Offset(28.39, 32.38),
+      const Offset(35.55, 32.38),
+      listLine,
+    );
+
+    // The badge is positioned at the same lower-right location as the
+    // existing 12px overlay inside the 32px artwork box.
+    const badgeCenter = Offset(38.5, 38.5);
+    const badgeRadius = 7.875;
+    const badgeGapRadius = 10.9375;
+    const plusWidth = 9.625;
+    const plusThickness = 2.40625;
+    final clear = Paint()
+      ..blendMode = BlendMode.clear
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+
+    // Clear directly on the AppShell canvas, not into a surface-colored
+    // overlay. This remains transparent through Light/Dark and sheet scaling.
+    canvas.drawCircle(badgeCenter, badgeGapRadius, clear);
+    canvas.drawCircle(badgeCenter, badgeRadius, filledBullet);
+
+    final plus = Path()
+      ..addRect(
+        Rect.fromCenter(
+          center: badgeCenter,
+          width: plusThickness,
+          height: plusWidth,
+        ),
+      )
+      ..addRect(
+        Rect.fromCenter(
+          center: badgeCenter,
+          width: plusWidth,
+          height: plusThickness,
+        ),
+      );
+    canvas.drawPath(plus, clear);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _AddCategoryHeaderIconPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.opacity != opacity;
+}
+
 class _NewSectionPlusBadgePainter extends CustomPainter {
   final Color color;
 
