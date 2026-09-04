@@ -1228,6 +1228,7 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
   @override
   Widget build(BuildContext context) {
     final inactiveColor = resolveThemeColor(kTertiaryLabel, context);
+    final secondaryLabelColor = resolveThemeColor(kSecondaryLabel, context);
     return Padding(
       // The 52 pt control box is the complete compact slider row. Do not add
       // a second vertical row padding around the lifted-thumb capture.
@@ -1264,12 +1265,12 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                   minimumIcon: Icon(
                     SFIcons.sf_textformat_size_smaller,
                     size: 20,
-                    color: inactiveColor,
+                    color: secondaryLabelColor,
                   ),
                   maximumIcon: Icon(
                     SFIcons.sf_textformat_size_larger,
                     size: 20,
-                    color: inactiveColor,
+                    color: secondaryLabelColor,
                   ),
                   onChangeStart: (_) {
                     if (!_isDragging) {
