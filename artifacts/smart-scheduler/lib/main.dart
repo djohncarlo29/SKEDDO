@@ -2168,8 +2168,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                      ),
                                                                                    ),
                                                                                    Positioned(
-                                                                                     left: 17,
-                                                                                     top: 17,
+                                                                                     left: 16,
+                                                                                     top: 16,
                                                                                      child: NewSectionPlusBadge(
                                                                                        size: 12,
                                                                                        color: accent,

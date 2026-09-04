@@ -184,7 +184,7 @@ class _NewSectionPlusBadgePainter extends CustomPainter {
     final badgeRadius = 4.5 * scale;
     // Use a narrower separation band for the header badge than the action
     // panel's larger knockout ring.
-    final badgeGapRadius = 6.0 * scale;
+    final badgeGapRadius = 6.25 * scale;
     final separation = Paint()
       ..color = separationColor
       ..style = PaintingStyle.fill
