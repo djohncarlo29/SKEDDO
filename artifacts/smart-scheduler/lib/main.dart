@@ -2157,8 +2157,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                scale: 1.15,
                                                                                child: RepaintBoundary(
                                                                                  // Compose the SVG and badge before any modal-sheet
-                                                                                 // shell transform so BlendMode.clear remains a real
-                                                                                 // transparent knockout in every animation state.
+                                                                                  // shell transform so the badge punch remains a real
+                                                                                  // transparent knockout in every animation state.
                                                                                  child: CustomPaint(
                                                                                    foregroundPainter:
                                                                                        const NewSectionBadgePunchPainter(
