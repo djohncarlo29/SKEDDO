@@ -167,6 +167,32 @@ class NewSectionPlusBadge extends StatelessWidget {
   }
 }
 
+/// Removes the badge's full separation circle from an icon painted beneath it.
+///
+/// This is a geometric exclusion rather than a blend-mode operation, so the
+/// transparent ring remains transparent when the complete icon is transformed
+/// or composited by a modal-sheet transition.
+class NewSectionBadgeExclusionClipper extends CustomClipper<Path> {
+  final Offset center;
+  final double gapRadius;
+
+  const NewSectionBadgeExclusionClipper({
+    required this.center,
+    required this.gapRadius,
+  });
+
+  @override
+  Path getClip(Size size) {
+    final bounds = Path()..addRect(Offset.zero & size);
+    final exclusion = Path()..addCircle(center, gapRadius);
+    return Path.combine(PathOperation.difference, bounds, exclusion);
+  }
+
+  @override
+  bool shouldReclip(covariant NewSectionBadgeExclusionClipper oldClipper) =>
+      oldClipper.center != center || oldClipper.gapRadius != gapRadius;
+}
+
 class _NewSectionPlusBadgePainter extends CustomPainter {
   final Color color;
 
@@ -179,35 +205,22 @@ class _NewSectionPlusBadgePainter extends CustomPainter {
     final scale = size.shortestSide / 12.0;
     final center = Offset(size.width / 2, size.height / 2);
     final badgeRadius = 4.5 * scale;
-    // Keep the current slightly-thicker ring while restoring the true
-    // transparent knockout treatment.
-    final badgeGapRadius = 6.25 * scale;
-    final clear = Paint()
-      ..blendMode = BlendMode.clear
+    final fill = Paint()
+      ..color = color
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
 
-    // Punch the separation ring and plus through the badge and icon beneath.
-    canvas.drawCircle(center, badgeGapRadius, clear);
-    canvas.drawCircle(
-      center,
-      badgeRadius,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.fill
-        ..isAntiAlias = true,
-    );
-
     final plusWidth = 5.5 * scale;
     final plusThickness = 1.375 * scale;
-    final plus = Path()
+    final plusVertical = Path()
       ..addRect(
         Rect.fromCenter(
           center: center,
           width: plusThickness,
           height: plusWidth,
         ),
-      )
+      );
+    final plusHorizontal = Path()
       ..addRect(
         Rect.fromCenter(
           center: center,
@@ -215,7 +228,14 @@ class _NewSectionPlusBadgePainter extends CustomPainter {
           height: plusThickness,
         ),
       );
-    canvas.drawPath(plus, clear);
+    final plus = Path.combine(PathOperation.union, plusVertical, plusHorizontal);
+    final badge = Path.combine(
+      PathOperation.difference,
+      Path()..addCircle(center, badgeRadius),
+      plus,
+    );
+    // The badge is a solid circle with a geometric transparent plus hole.
+    canvas.drawPath(badge, fill);
   }
 
   @override

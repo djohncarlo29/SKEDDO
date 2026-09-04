@@ -2166,12 +2166,19 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                      clipBehavior: Clip.none,
                                                                                      children: [
                                                                                        Positioned.fill(
-                                                                                         child: SvgPicture.asset(
-                                                                                           'assets/icons/base_Add_Category.svg',
-                                                                                           colorFilter:
-                                                                                               ColorFilter.mode(
-                                                                                             accent,
-                                                                                             BlendMode.srcIn,
+                                                                                         child: ClipPath(
+                                                                                           clipper:
+                                                                                               const NewSectionBadgeExclusionClipper(
+                                                                                             center: Offset(22, 22),
+                                                                                             gapRadius: 6.25,
+                                                                                           ),
+                                                                                           child: SvgPicture.asset(
+                                                                                             'assets/icons/base_Add_Category.svg',
+                                                                                             colorFilter:
+                                                                                                 ColorFilter.mode(
+                                                                                               accent,
+                                                                                               BlendMode.srcIn,
+                                                                                             ),
                                                                                            ),
                                                                                          ),
                                                                                        ),
