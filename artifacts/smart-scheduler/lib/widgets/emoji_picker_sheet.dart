@@ -1639,6 +1639,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                       onHorizontalDragCancel: _onDragCancel,
                                       child: VerticalEdgeFade(
                                         fadeColor: cardColor,
+                                        fadeHeight: textScaler.scale(36.0),
                                         topInset: 16.0,
                                         bottomInset: 16.0,
                                         fadeOnRubberbandWhenContentFits: true,

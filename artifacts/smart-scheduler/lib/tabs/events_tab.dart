@@ -12981,13 +12981,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
           // it receives that same scale, avoiding a second modal-only
           // FittedBox whose constraints can mask the intended growth.
           child: GelBloomButton(
-            // The preview is intentionally a no-op interaction: tapping it
-            // should still give the user the same tactile response as the
-            // picker circles without changing the selected icon or category.
+            // Tapping the preview does not change the selection, but it should
+            // dismiss any active title-field keyboard focus.
             // GelBloomButton restarts from the current tap, so fast repeated
             // taps retrigger the bloom instead of waiting for a prior cycle.
             peakScale: 1.12,
-            onTap: () {},
+            onTap: _dismissModalSheetFocus,
             child: Container(
               width: circleSize,
               height: circleSize,
