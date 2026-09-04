@@ -151,29 +151,26 @@ class NewSectionIcon extends StatelessWidget {
 class NewSectionPlusBadge extends StatelessWidget {
   final double size;
   final Color color;
-  final Color separationColor;
 
   const NewSectionPlusBadge({
     super.key,
     this.size = 12,
     required this.color,
-    required this.separationColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
       size: Size.square(size),
-      painter: _NewSectionPlusBadgePainter(color, separationColor),
+      painter: _NewSectionPlusBadgePainter(color),
     );
   }
 }
 
 class _NewSectionPlusBadgePainter extends CustomPainter {
   final Color color;
-  final Color separationColor;
 
-  const _NewSectionPlusBadgePainter(this.color, this.separationColor);
+  const _NewSectionPlusBadgePainter(this.color);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -182,17 +179,16 @@ class _NewSectionPlusBadgePainter extends CustomPainter {
     final scale = size.shortestSide / 12.0;
     final center = Offset(size.width / 2, size.height / 2);
     final badgeRadius = 4.5 * scale;
-    // Use a narrower separation band for the header badge than the action
-    // panel's larger knockout ring.
+    // Keep the current slightly-thicker ring while restoring the true
+    // transparent knockout treatment.
     final badgeGapRadius = 6.25 * scale;
-    final separation = Paint()
-      ..color = separationColor
+    final clear = Paint()
+      ..blendMode = BlendMode.clear
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
 
-    // Paint the separation ring over the icon beneath so it reads as the
-    // resolved header surface rather than transparent artwork.
-    canvas.drawCircle(center, badgeGapRadius, separation);
+    // Punch the separation ring and plus through the badge and icon beneath.
+    canvas.drawCircle(center, badgeGapRadius, clear);
     canvas.drawCircle(
       center,
       badgeRadius,
@@ -219,13 +215,12 @@ class _NewSectionPlusBadgePainter extends CustomPainter {
           height: plusThickness,
         ),
       );
-    canvas.drawPath(plus, separation);
+    canvas.drawPath(plus, clear);
   }
 
   @override
   bool shouldRepaint(covariant _NewSectionPlusBadgePainter oldDelegate) =>
-      oldDelegate.color != color ||
-      oldDelegate.separationColor != separationColor;
+      oldDelegate.color != color;
 }
 
 class _NewSectionIconPainter extends CustomPainter {
