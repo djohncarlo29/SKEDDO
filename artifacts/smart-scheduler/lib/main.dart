@@ -2102,11 +2102,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                           ),
                                                           // Shared slot for the mutually-exclusive secondary header
                                                           // actions:
-                                                          //   • Ellipsis  — visible in DCV mode
-                                                          //   • View-mode — visible on Calendar → Month/Day view
+                                                          //   • Add Category — visible on the Events tab
+                                                          //   • Ellipsis     — visible in DCV mode
+                                                          //   • View-mode    — visible on Calendar → Month/Day view
                                                           //
-                                                          // Both icons live in the same slot immediately after the
-                                                          // hamburger so their layout and alignment stay consistent.
+                                                          // All three icons live in the same slot immediately after
+                                                          // the hamburger so their layout and alignment stay consistent.
                                                           SizedBox(
                                                             width: 36,
                                                             height: 38,
@@ -2114,6 +2115,50 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                               clipBehavior:
                                                                   Clip.none,
                                                               children: [
+                                                                // ── Add Category (Events) ───────────────────────────
+                                                                Opacity(
+                                                                  opacity:
+                                                                      !isDCVVisual &&
+                                                                          _selectedIndex ==
+                                                                              2
+                                                                      ? 1.0
+                                                                      : 0.0,
+                                                                  child: IgnorePointer(
+                                                                    ignoring:
+                                                                        isDCVVisual ||
+                                                                        _selectedIndex !=
+                                                                            2,
+                                                                    child: Align(
+                                                                      alignment:
+                                                                          Alignment.bottomLeft,
+                                                                      child: AnimatedTapIcon(
+                                                                        scaleEnabled:
+                                                                            false,
+                                                                        padding: const EdgeInsets.fromLTRB(
+                                                                          8,
+                                                                          10,
+                                                                          4,
+                                                                          0,
+                                                                        ),
+                                                                        onTap: () => _eventsTabKey
+                                                                            .currentState
+                                                                            ?.addCategory(),
+                                                                        child: SvgPicture.asset(
+                                                                          'assets/icons/base_Add_Category.svg',
+                                                                          width:
+                                                                              26,
+                                                                          height:
+                                                                              26,
+                                                                          colorFilter:
+                                                                              ColorFilter.mode(
+                                                                            accent,
+                                                                            BlendMode.srcIn,
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ),
                                                                 // ── Ellipsis (DCV) ─────────────────────────────────
                                                                 // Align.bottomLeft anchors the icon to the slot
                                                                 // bottom, matching the hamburger's Positioned(bottom:0)

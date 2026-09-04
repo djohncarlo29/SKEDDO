@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
@@ -1382,6 +1383,41 @@ class _LiquidGlassSection extends StatelessWidget {
                         },
                       );
                     },
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            DecoratedBox(
+              decoration: ShapeDecoration(
+                color: cardBg,
+                shadows: resolveThemeShadows([
+                  BoxShadow(
+                    color: shadowColor,
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ], context),
+                shape: const BoundedSquircleStadiumBorder(),
+              ),
+              child: SizedBox(
+                height: _kSettingsRowHeight,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      SvgPicture.asset(
+                        'assets/icons/Liquid_Glass.svg',
+                        width: 26,
+                        height: 26,
+                      ),
+                      SvgPicture.asset(
+                        'assets/icons/Liquid_Glass.svg',
+                        width: 26,
+                        height: 26,
+                      ),
+                    ],
                   ),
                 ),
               ),
