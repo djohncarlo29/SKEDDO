@@ -88,9 +88,10 @@ const double _kHourHeight = 64.0;
 const double _kTimelinePad =
     8.0; // breathing room above 12 am and below midnight
 const double _kDayBannerHeight = 36.0;
-// Fixed breathing room between the large app header and the Month/Day DOW
-// row. This is layout spacing, so it must not grow with OS text scaling.
-const double _kCalendarHeaderToDowGap = kFixedVerticalPadding;
+// Fixed 8 pt breathing room between the large app header and the Month/Day
+// DOW row. Keep this independent from text scaling and the shared 16 pt
+// vertical padding token.
+const double _kCalendarHeaderToDowGap = 8.0;
 
 // ── Date utilities ────────────────────────────────────────────────────────────
 int _daysInMonth(int year, int month) => DateTime(year, month + 1, 0).day;
