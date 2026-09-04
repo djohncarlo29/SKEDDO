@@ -1442,21 +1442,19 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
     rootBundle.loadString('assets/icons/Liquid_Glass_right.svg'),
   ]);
 
-  String _colorHex(Color color) {
+  String _svgColor(Color color) {
     final red = (color.r * 255.0).round() & 0xff;
     final green = (color.g * 255.0).round() & 0xff;
     final blue = (color.b * 255.0).round() & 0xff;
-    return '#${red.toRadixString(16).padLeft(2, '0')}'
-        '${green.toRadixString(16).padLeft(2, '0')}'
-        '${blue.toRadixString(16).padLeft(2, '0')}';
+    return 'rgba($red, $green, $blue, ${color.a.toStringAsFixed(3)})';
   }
 
   String _withThemeColors(String svg) {
     return svg
-        .replaceAll(_kLiquidGlassSurfaceToken, _colorHex(widget.surfaceColor))
+        .replaceAll(_kLiquidGlassSurfaceToken, _svgColor(widget.surfaceColor))
         .replaceAll(
           _kLiquidGlassSecondaryToken,
-          _colorHex(widget.secondaryColor),
+          _svgColor(widget.secondaryColor),
         );
   }
 

@@ -2146,9 +2146,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                         child: SvgPicture.asset(
                                                                           'assets/icons/base_Add_Category.svg',
                                                                           width:
-                                                                              32,
+                                                                              40,
                                                                           height:
-                                                                              32,
+                                                                              40,
                                                                           colorFilter:
                                                                               ColorFilter.mode(
                                                                             accent,
