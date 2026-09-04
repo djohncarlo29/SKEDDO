@@ -1331,87 +1331,26 @@ class _LiquidGlassSection extends StatelessWidget {
               ),
               child: SizedBox(
                 height: _kSettingsRowHeight,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: ValueListenableBuilder<double>(
-                    valueListenable: appLiquidGlassOpacityNotifier,
-                    builder: (context, value, _) {
-                      return LayoutBuilder(
-                        builder: (context, constraints) {
-                          // The slider sits inside the row's fixed 18 px
-                          // horizontal content inset.  Widen it only by the
-                          // difference between that inset and the required
-                          // settled-thumb edge inset, so the package's thumb
-                          // centers resolve to:
-                          //   rowLeft + 16 + thumbWidth / 2
-                          //   rowRight - 16 - thumbWidth / 2
-                          final sliderWidth =
-                              constraints.maxWidth +
-                              2 *
-                                  (_kLiquidGlassRowHorizontalPadding -
-                                      _kLiquidGlassSettledEdgeInset);
-                          return OverflowBox(
-                            alignment: Alignment.center,
-                            minWidth: sliderWidth,
-                            maxWidth: sliderWidth,
-                            child: LiquidGlassSlider(
-                              value:
-                                  ((value - kLiquidGlassMinimumOpacity) /
-                                          (kLiquidGlassMaximumOpacity -
-                                              kLiquidGlassMinimumOpacity))
-                                      .clamp(0.0, 1.0),
-                              minimumValue: 0,
-                              maximumValue: 1,
-                              // Extend the package's internal geometry by one
-                              // resting-thumb width and center it. Its built-in
-                              // half-thumb center offsets then place the 0.0
-                              // and 1.0 centers on the visible row edges.
-                              width: sliderWidth,
-                              height: _kSettingsRowHeight,
-                              layout: _liquidGlassSliderLayout,
-                              // Publish every drag update so the preview and
-                              // the rest of the app track the slider in real
-                              // time. The endpoint callback still commits the
-                              // final snapped value after the drag settles.
-                              isContinuous: true,
-                              divisions: 10,
-                              activeColor: accent,
-                              inactiveColor: inactive,
-                              thumbColor: const Color(0xFFFDFDFD),
-                              onChanged: _setLiquidGlassOpacity,
-                              onChangeEnd: _setLiquidGlassOpacity,
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            DecoratedBox(
-              decoration: ShapeDecoration(
-                color: cardBg,
-                shadows: resolveThemeShadows([
-                  BoxShadow(
-                    color: shadowColor,
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ], context),
-                shape: const BoundedSquircleStadiumBorder(),
-              ),
-              child: SizedBox(
-                height: _kSettingsRowHeight,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _LiquidGlassTestIcons(
-                    surfaceColor: cardBg,
-                    secondaryColor: secondaryLabel,
-                    activeColor: accent,
-                    inactiveColor: inactive,
-                  ),
+                child: ValueListenableBuilder<double>(
+                  valueListenable: appLiquidGlassOpacityNotifier,
+                  builder: (context, value, _) {
+                    final normalized = ((value - kLiquidGlassMinimumOpacity) /
+                            (kLiquidGlassMaximumOpacity -
+                                kLiquidGlassMinimumOpacity))
+                        .clamp(0.0, 1.0);
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _LiquidGlassTestIcons(
+                        value: normalized,
+                        surfaceColor: cardBg,
+                        secondaryColor: secondaryLabel,
+                        activeColor: accent,
+                        inactiveColor: inactive,
+                        onChanged: _setLiquidGlassOpacityLive,
+                        onChangeEnd: _setLiquidGlassOpacity,
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -1426,16 +1365,22 @@ const _kLiquidGlassSurfaceToken = '__SURFACE__';
 const _kLiquidGlassSecondaryToken = '__SECONDARY__';
 
 class _LiquidGlassTestIcons extends StatefulWidget {
+  final double value;
   final Color surfaceColor;
   final Color secondaryColor;
   final Color activeColor;
   final Color inactiveColor;
+  final ValueChanged<double> onChanged;
+  final ValueChanged<double> onChangeEnd;
 
   const _LiquidGlassTestIcons({
+    required this.value,
     required this.surfaceColor,
     required this.secondaryColor,
     required this.activeColor,
     required this.inactiveColor,
+    required this.onChanged,
+    required this.onChangeEnd,
   });
 
   @override
@@ -1447,7 +1392,6 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
     rootBundle.loadString('assets/icons/Liquid_Glass_left.svg'),
     rootBundle.loadString('assets/icons/Liquid_Glass_right.svg'),
   ]);
-  double _testSliderValue = 0.5;
 
   String _svgColor(Color color) {
     final red = (color.r * 255.0).round() & 0xff;
@@ -1478,7 +1422,7 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               return LiquidGlassSlider(
-                value: _testSliderValue,
+                value: widget.value,
                 minimumValue: 0,
                 maximumValue: 1,
                 width: constraints.maxWidth,
@@ -1505,19 +1449,8 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
                   width: 34,
                   height: 34,
                 ),
-                onChanged: (value) {
-                  if (value != _testSliderValue) {
-                    setState(() => _testSliderValue = value);
-                  }
-                },
-                onChangeEnd: (value) {
-                  // Keep the free-flowing drag, but adopt the slider's
-                  // division-snapped value after release so the visual
-                  // position settles on — and remains at — a tick.
-                  if (value != _testSliderValue) {
-                    setState(() => _testSliderValue = value);
-                  }
-                },
+                onChanged: widget.onChanged,
+                onChangeEnd: widget.onChangeEnd,
               );
             },
           ),
@@ -1535,6 +1468,16 @@ const double _kLiquidGlassSettledEdgeInset = 16.0;
 const double _kLiquidGlassSliderInset = 0.0;
 const LiquidGlassSliderLayout _liquidGlassSliderLayout =
     LiquidGlassSliderLayout(horizontalInset: _kLiquidGlassSliderInset);
+
+void _setLiquidGlassOpacityLive(double raw) {
+  final normalized = raw.clamp(0.0, 1.0);
+  final liveValue =
+      kLiquidGlassMinimumOpacity +
+      normalized * (kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity);
+  if (liveValue != appLiquidGlassOpacityNotifier.value) {
+    appLiquidGlassOpacityNotifier.value = liveValue;
+  }
+}
 
 void _setLiquidGlassOpacity(double raw) {
   final normalized = (raw.clamp(0.0, 1.0) * 10).round() / 10;
