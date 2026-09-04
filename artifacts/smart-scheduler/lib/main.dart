@@ -2131,56 +2131,61 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                     child: Align(
                                                                       alignment:
                                                                           Alignment.bottomLeft,
-                                                                      child: AnimatedTapIcon(
-                                                                        scaleEnabled:
-                                                                            false,
-                                                                        padding: const EdgeInsets.fromLTRB(
-                                                                          6,
-                                                                          8,
-                                                                          0,
-                                                                          0,
-                                                                        ),
-                                                                        onTap: () => _eventsTabKey
-                                                                            .currentState
-                                                                            ?.addCategory(),
-                                                                         child: Transform.translate(
-                                                                           offset: const Offset(0, 2),
-                                                                           child: Transform.scale(
-                                                                             // The artwork has transparent padding in its 56 px
-                                                                             // viewBox, and this header slot constrains the child
-                                                                             // before layout. Scale after layout so the visible
-                                                                             // symbol can grow without widening the slot.
-                                                                             scale: 1.15,
-                                                                             child: SizedBox(
-                                                                               width: 32,
-                                                                               height: 32,
-                                                                               child: Stack(
-                                                                                 clipBehavior: Clip.none,
-                                                                                 children: [
-                                                                                   Positioned.fill(
-                                                                                     child: SvgPicture.asset(
-                                                                                       'assets/icons/base_Add_Category.svg',
-                                                                                       colorFilter:
-                                                                                           ColorFilter.mode(
-                                                                                         accent,
-                                                                                         BlendMode.srcIn,
+                                                                       child: MediaQuery(
+                                                                         data: MediaQuery.of(context).copyWith(
+                                                                           textScaler: TextScaler.noScaling,
+                                                                         ),
+                                                                         child: AnimatedTapIcon(
+                                                                           scaleEnabled:
+                                                                               false,
+                                                                           padding: const EdgeInsets.fromLTRB(
+                                                                             6,
+                                                                             8,
+                                                                             0,
+                                                                             0,
+                                                                           ),
+                                                                           onTap: () => _eventsTabKey
+                                                                               .currentState
+                                                                               ?.addCategory(),
+                                                                           child: Transform.translate(
+                                                                             offset: const Offset(0, 2),
+                                                                             child: Transform.scale(
+                                                                               // The artwork has transparent padding in its 56 px
+                                                                               // viewBox, and this header slot constrains the child
+                                                                               // before layout. Scale after layout so the visible
+                                                                               // symbol can grow without widening the slot.
+                                                                               scale: 1.15,
+                                                                               child: SizedBox(
+                                                                                 width: 32,
+                                                                                 height: 32,
+                                                                                 child: Stack(
+                                                                                   clipBehavior: Clip.none,
+                                                                                   children: [
+                                                                                     Positioned.fill(
+                                                                                       child: SvgPicture.asset(
+                                                                                         'assets/icons/base_Add_Category.svg',
+                                                                                         colorFilter:
+                                                                                             ColorFilter.mode(
+                                                                                           accent,
+                                                                                           BlendMode.srcIn,
+                                                                                         ),
                                                                                        ),
                                                                                      ),
-                                                                                   ),
-                                                                                   Positioned(
-                                                                                     left: 16,
-                                                                                     top: 16,
-                                                                                     child: NewSectionPlusBadge(
-                                                                                       size: 12,
-                                                                                       color: accent,
+                                                                                     Positioned(
+                                                                                       left: 16,
+                                                                                       top: 16,
+                                                                                       child: NewSectionPlusBadge(
+                                                                                         size: 12,
+                                                                                         color: accent,
+                                                                                       ),
                                                                                      ),
-                                                                                   ),
-                                                                                 ],
+                                                                                   ],
+                                                                                 ),
                                                                                ),
                                                                              ),
                                                                            ),
                                                                          ),
-                                                                      ),
+                                                                       ),
                                                                     ),
                                                                   ),
                                                                 ),
