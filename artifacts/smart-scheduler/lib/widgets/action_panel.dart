@@ -202,6 +202,11 @@ class _AddCategoryHeaderIconPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final scale = size.shortestSide / 56.0;
+    // Keep the knockout in a transparent offscreen layer.  BlendMode.clear
+    // must clear the icon artwork layer before it is composited over the
+    // AppShell header; drawing it directly on the Android scene canvas can
+    // leave the badge's old pixels visible in Dark Mode.
+    canvas.saveLayer(Offset.zero & size, Paint());
     canvas.save();
     canvas.scale(scale, scale);
 
@@ -285,6 +290,7 @@ class _AddCategoryHeaderIconPainter extends CustomPainter {
         ),
       );
     canvas.drawPath(plus, clear);
+    canvas.restore();
     canvas.restore();
   }
 
