@@ -184,7 +184,8 @@ class NewSectionBadgeExclusionClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     final bounds = Path()..addRect(Offset.zero & size);
-    final exclusion = Path()..addCircle(center, gapRadius);
+    final exclusion = Path()
+      ..addOval(Rect.fromCircle(center: center, radius: gapRadius));
     return Path.combine(PathOperation.difference, bounds, exclusion);
   }
 
@@ -231,7 +232,7 @@ class _NewSectionPlusBadgePainter extends CustomPainter {
     final plus = Path.combine(PathOperation.union, plusVertical, plusHorizontal);
     final badge = Path.combine(
       PathOperation.difference,
-      Path()..addCircle(center, badgeRadius),
+      Path()..addOval(Rect.fromCircle(center: center, radius: badgeRadius)),
       plus,
     );
     // The badge is a solid circle with a geometric transparent plus hole.
