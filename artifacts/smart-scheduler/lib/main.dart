@@ -2143,25 +2143,28 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                         onTap: () => _eventsTabKey
                                                                             .currentState
                                                                             ?.addCategory(),
-                                                                        child: Transform.scale(
-                                                                          // The artwork has transparent padding in its 56 px
-                                                                          // viewBox, and this header slot constrains the child
-                                                                          // before layout. Scale after layout so the visible
-                                                                          // symbol can grow without widening the slot.
-                                                                           scale: 1.15,
-                                                                          child: SvgPicture.asset(
-                                                                            'assets/icons/base_Add_Category.svg',
-                                                                            width:
-                                                                                32,
-                                                                            height:
-                                                                                32,
-                                                                          colorFilter:
-                                                                              ColorFilter.mode(
-                                                                            accent,
-                                                                            BlendMode.srcIn,
-                                                                          ),
-                                                                          ),
-                                                                        ),
+                                                                         child: Transform.translate(
+                                                                           offset: const Offset(0, 2),
+                                                                           child: Transform.scale(
+                                                                             // The artwork has transparent padding in its 56 px
+                                                                             // viewBox, and this header slot constrains the child
+                                                                             // before layout. Scale after layout so the visible
+                                                                             // symbol can grow without widening the slot.
+                                                                             scale: 1.15,
+                                                                             child: SvgPicture.asset(
+                                                                               'assets/icons/base_Add_Category.svg',
+                                                                               width:
+                                                                                   32,
+                                                                               height:
+                                                                                   32,
+                                                                             colorFilter:
+                                                                                 ColorFilter.mode(
+                                                                               accent,
+                                                                               BlendMode.srcIn,
+                                                                             ),
+                                                                             ),
+                                                                           ),
+                                                                         ),
                                                                       ),
                                                                     ),
                                                                   ),
