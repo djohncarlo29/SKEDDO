@@ -1116,6 +1116,17 @@ class _TextSizeSection extends StatelessWidget {
           }
         }
 
+        void toggleSystem(bool value) {
+          if (value) {
+            selectSystem();
+          } else {
+            // Turning System off keeps the currently displayed position as the
+            // starting Custom value, just like moving the slider does.
+            selectCustomTextScaleIndex(systemScaleIndex);
+            saveAppSetting('Text Size', 'Custom');
+          }
+        }
+
         void selectCustom(double value) {
           final index = value.round().clamp(0, 6);
           selectCustomTextScaleIndex(index);
@@ -1135,11 +1146,12 @@ class _TextSizeSection extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: _SettingsCard(
               rows: [
-                _OptionRow(
+                _TextSizeSystemRow(
                   title: 'System',
-                  selected: usesSystem,
+                  value: usesSystem,
                   accentColor: accentColor,
                   onTap: selectSystem,
+                  onChanged: toggleSystem,
                 ),
                 _TextSizeSliderRow(
                   index: customIndex,
@@ -1781,6 +1793,89 @@ class _SettingsToggleRowState extends State<_SettingsToggleRow> {
 // ── Option row (sub-screen) ───────────────────────────────────────────────────
 // Renders a tappable row with an SF checkmark on the right when selected.
 // Row label always stays kPrimaryLabel; only the checkmark takes accent color.
+class _TextSizeSystemRow extends StatefulWidget {
+  final String title;
+  final bool value;
+  final Color accentColor;
+  final VoidCallback onTap;
+  final ValueChanged<bool> onChanged;
+
+  const _TextSizeSystemRow({
+    required this.title,
+    required this.value,
+    required this.accentColor,
+    required this.onTap,
+    required this.onChanged,
+  });
+
+  @override
+  State<_TextSizeSystemRow> createState() => _TextSizeSystemRowState();
+}
+
+class _TextSizeSystemRowState extends State<_TextSizeSystemRow> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 80),
+      color: _pressed ? kActionPanelGroupBreak : const Color(0x00000000),
+      constraints: const BoxConstraints(minHeight: _kSettingsRowHeight),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: _kSettingsRowVerticalPadding,
+      ),
+      alignment: Alignment.centerLeft,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (_) => setState(() => _pressed = true),
+              onTapUp: (_) {
+                setState(() => _pressed = false);
+                widget.onTap();
+              },
+              onTapCancel: () => setState(() => _pressed = false),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  widget.title,
+                  style: TextStyle(
+                    fontFamily: kSFProText,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w400,
+                    color: resolveThemeColor(kPrimaryLabel, context),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 70 * 0.80,
+            height: 30,
+            child: OverflowBox(
+              maxWidth: 70,
+              maxHeight: 31,
+              alignment: Alignment.center,
+              child: Transform.scale(
+                scale: 0.80,
+                child: AppSwitch(
+                  value: widget.value,
+                  color: widget.accentColor,
+                  height: 31,
+                  onChanged: widget.onChanged,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _OptionRow extends StatefulWidget {
   final String title;
   final bool selected;
