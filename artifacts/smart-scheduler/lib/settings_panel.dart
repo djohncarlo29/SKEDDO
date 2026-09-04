@@ -1185,6 +1185,8 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
     duration: const Duration(milliseconds: 420),
   );
   late Animation<double> _indexAnimation;
+  double? _dragValue;
+  bool _isDragging = false;
 
   @override
   void initState() {
@@ -1195,6 +1197,13 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
   @override
   void didUpdateWidget(_TextSizeSliderRow oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Previewing a text-size position updates the parent while the finger is
+    // still down. Keep the slider's raw finger position until release so that
+    // those discrete text-size updates do not lock the thumb to a tick.
+    if (_isDragging) return;
+    if (oldWidget.index != widget.index) {
+      _dragValue = null;
+    }
     if (widget.animateValue && oldWidget.index != widget.index) {
       final begin = _indexAnimation.value;
       _indexAnimation =
@@ -1241,7 +1250,7 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                 minWidth: sliderWidth,
                 maxWidth: sliderWidth,
                 child: LiquidGlassSlider(
-                  value: _indexAnimation.value / 6,
+                  value: _dragValue ?? _indexAnimation.value / 6,
                   minimumValue: 0,
                   maximumValue: 1,
                   width: sliderWidth,
@@ -1252,8 +1261,32 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                   activeColor: widget.accentColor,
                   inactiveColor: inactiveColor,
                   thumbColor: const Color(0xFFFDFDFD),
-                  onChanged: (raw) => widget.onChanged(raw * 6),
-                  onChangeEnd: (raw) => widget.onChangeEnd(raw * 6),
+                  minimumIcon: Icon(
+                    SFIcons.sf_textformat_size_smaller,
+                    size: 20,
+                    color: inactiveColor,
+                  ),
+                  maximumIcon: Icon(
+                    SFIcons.sf_textformat_size_larger,
+                    size: 20,
+                    color: inactiveColor,
+                  ),
+                  onChangeStart: (_) {
+                    if (!_isDragging) {
+                      setState(() => _isDragging = true);
+                    }
+                  },
+                  onChanged: (raw) {
+                    setState(() => _dragValue = raw);
+                    widget.onChanged(raw * 6);
+                  },
+                  onChangeEnd: (raw) {
+                    setState(() {
+                      _dragValue = raw;
+                      _isDragging = false;
+                    });
+                    widget.onChangeEnd(raw * 6);
+                  },
                 ),
               );
             },
