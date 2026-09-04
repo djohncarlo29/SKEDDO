@@ -128,6 +128,11 @@ class LiquidGlassMotionPill extends StatefulWidget {
   /// runs its background capture exactly across this window.
   final ValueChanged<bool>? onGlassVisibilityChanged;
 
+  /// Reports the live rendered envelope on every motion frame. This includes
+  /// both the morph between [restSize] and [activeSize] and the horizontal
+  /// squash/stretch from [motion].
+  final ValueChanged<Size>? onVisualSizeChanged;
+
   const LiquidGlassMotionPill({
     super.key,
     required this.center,
@@ -144,6 +149,7 @@ class LiquidGlassMotionPill extends StatefulWidget {
     this.shadow,
     this.honorBackdropAlpha = true,
     this.onGlassVisibilityChanged,
+    this.onVisualSizeChanged,
   });
 
   @override
@@ -249,6 +255,15 @@ class _LiquidGlassMotionPillState extends State<LiquidGlassMotionPill>
           now: elapsed.inMicroseconds / 1e6, dt: dt);
       busy = true;
     }
+
+    final morphW = widget.restSize.width +
+        (widget.activeSize.width - widget.restSize.width) * _morph;
+    final morphH = widget.restSize.height +
+        (widget.activeSize.height - widget.restSize.height) * _morph;
+    final deviation = _motion.deviation;
+    widget.onVisualSizeChanged?.call(
+      Size(morphW * (1 + deviation), morphH * (1 - deviation)),
+    );
 
     if (!busy) _ticker?.stop();
     if (mounted) setState(() {});

@@ -30,6 +30,11 @@ class LiquidGlassSliderLayout {
   final double iconSize;
   final double iconGap;
 
+  /// The minimum gap between an end icon and the lifted thumb when the thumb
+  /// reaches that end. The icon moves outward only when the resting geometry
+  /// would otherwise let the expanded glass overlap it.
+  final double activeIconGap;
+
   /// Horizontal breathing room reserved at each end, and the control's
   /// total height.
   ///
@@ -54,6 +59,7 @@ class LiquidGlassSliderLayout {
     this.liftedThumbHeight = 38.333,
     this.iconSize = 20,
     this.iconGap = 8,
+    this.activeIconGap = 4,
     this.horizontalInset,
     this.height,
   });
@@ -91,6 +97,7 @@ class LiquidGlassSliderLayout {
     double? liftedThumbHeight,
     double? iconSize,
     double? iconGap,
+    double? activeIconGap,
     double? horizontalInset,
     double? height,
   }) {
@@ -103,6 +110,7 @@ class LiquidGlassSliderLayout {
       liftedThumbHeight: liftedThumbHeight ?? this.liftedThumbHeight,
       iconSize: iconSize ?? this.iconSize,
       iconGap: iconGap ?? this.iconGap,
+      activeIconGap: activeIconGap ?? this.activeIconGap,
       horizontalInset: horizontalInset ?? this.horizontalInset,
       height: height ?? this.height,
     );

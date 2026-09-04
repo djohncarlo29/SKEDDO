@@ -240,6 +240,7 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
   double get _expandedH => _layout.liftedThumbHeight;
   double get _iconSize => _layout.iconSize;
   double get _iconPadding => _layout.iconGap;
+  double get _activeIconGap => _layout.activeIconGap;
 
   /// Room at each end for the lifted thumb's overhang, the rubber-band
   /// overshoot and the squash — all of which must fit the glass capture.
@@ -275,6 +276,8 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
 
   bool _pointerDown = false;
   bool _isDragging = false;
+  bool _glassVisible = false;
+  double _visualThumbWidth = 0;
   DateTime _downTime = DateTime.now();
   double _startFingerX = 0;
   double _startThumbCX = 0;
@@ -309,6 +312,23 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
   double get _minThumbCX => _trackMinX + _contractedW / 2;
   double get _maxThumbCX => _trackMaxX - _contractedW / 2;
   double get _thumbRange => math.max(1.0, _maxThumbCX - _minThumbCX);
+
+  double get _minimumIconLeft {
+    final baseLeft = _padX;
+    if (!_glassVisible || widget.minimumIcon == null) return baseLeft;
+    final baseRight = baseLeft + _iconSize;
+    final liftedThumbLeft = _thumbCX - _visualThumbWidth / 2;
+    final allowedRight = liftedThumbLeft - _activeIconGap;
+    return math.min(baseRight, allowedRight) - _iconSize;
+  }
+
+  double get _maximumIconLeft {
+    final baseLeft = _layout.width - _padX - _iconSize;
+    if (!_glassVisible || widget.maximumIcon == null) return baseLeft;
+    final liftedThumbRight = _thumbCX + _visualThumbWidth / 2;
+    final allowedLeft = liftedThumbRight + _activeIconGap;
+    return math.max(baseLeft, allowedLeft);
+  }
 
   double get _normalizedValue {
     final span = widget.maximumValue - widget.minimumValue;
@@ -345,8 +365,27 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
   @override
   void initState() {
     super.initState();
+    _visualThumbWidth = _contractedW;
     _thumbCX = _targetThumbCX;
     _ticker = createTicker(_onTick);
+  }
+
+  void _handleGlassVisibility(bool visible) {
+    if (_glassVisible == visible) return;
+    _glassVisible = visible;
+    if (!visible) _visualThumbWidth = _contractedW;
+    if (mounted) setState(() {});
+    if (visible) {
+      _viewController.startRealtimeCapture();
+    } else {
+      _viewController.stopRealtimeCapture();
+    }
+  }
+
+  void _handleVisualThumbSize(Size size) {
+    if ((size.width - _visualThumbWidth).abs() < 0.01) return;
+    _visualThumbWidth = size.width;
+    if (mounted) setState(() {});
   }
 
   @override
@@ -665,7 +704,7 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
                   ),
                   if (widget.minimumIcon != null)
                     Positioned(
-                      left: _padX,
+                      left: _minimumIconLeft,
                       top: centerY - _iconSize / 2,
                       child: SizedBox(
                         width: _iconSize,
@@ -675,7 +714,7 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
                     ),
                   if (widget.maximumIcon != null)
                     Positioned(
-                      left: _layout.width - _padX - _iconSize,
+                      left: _maximumIconLeft,
                       top: centerY - _iconSize / 2,
                       child: SizedBox(
                         width: _iconSize,
@@ -706,9 +745,8 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
                 // The contraction outlives the release, so the pill —
                 // not the gesture — says when the glass is covered and
                 // the capture can stop.
-                onGlassVisibilityChanged: (visible) => visible
-                    ? _viewController.startRealtimeCapture()
-                    : _viewController.stopRealtimeCapture(),
+                onGlassVisibilityChanged: _handleGlassVisibility,
+                onVisualSizeChanged: _handleVisualThumbSize,
                 // A flat fill: the pill clips the cover to the same
                 // outline the glass wears, so a radius of its own here
                 // would only cut back inside it at the caps.

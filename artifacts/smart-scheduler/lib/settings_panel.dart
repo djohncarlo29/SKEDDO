@@ -1480,6 +1480,7 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
                 layout: const LiquidGlassSliderLayout(
                   iconSize: 34,
                   iconGap: 8,
+                  activeIconGap: 4,
                   horizontalInset: 0,
                 ),
                 // This is intentionally a free-flowing visual test control.
