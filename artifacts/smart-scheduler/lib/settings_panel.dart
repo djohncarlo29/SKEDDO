@@ -1409,6 +1409,8 @@ class _LiquidGlassSection extends StatelessWidget {
                   child: _LiquidGlassTestIcons(
                     surfaceColor: cardBg,
                     secondaryColor: secondaryLabel,
+                    activeColor: accent,
+                    inactiveColor: inactive,
                   ),
                 ),
               ),
@@ -1426,10 +1428,14 @@ const _kLiquidGlassSecondaryToken = '__SECONDARY__';
 class _LiquidGlassTestIcons extends StatefulWidget {
   final Color surfaceColor;
   final Color secondaryColor;
+  final Color activeColor;
+  final Color inactiveColor;
 
   const _LiquidGlassTestIcons({
     required this.surfaceColor,
     required this.secondaryColor,
+    required this.activeColor,
+    required this.inactiveColor,
   });
 
   @override
@@ -1486,8 +1492,8 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
                 // Match the real Liquid Glass opacity slider's ten tick
                 // intervals while keeping this control visually independent.
                 divisions: 10,
-                activeColor: widget.secondaryColor,
-                inactiveColor: widget.secondaryColor.withValues(alpha: 0.22),
+                activeColor: widget.activeColor,
+                inactiveColor: widget.inactiveColor,
                 thumbColor: const Color(0xFFFDFDFD),
                 minimumIcon: SvgPicture.string(
                   _withThemeColors(sources[0]),
@@ -1500,6 +1506,14 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
                   height: 34,
                 ),
                 onChanged: (value) {
+                  if (value != _testSliderValue) {
+                    setState(() => _testSliderValue = value);
+                  }
+                },
+                onChangeEnd: (value) {
+                  // Keep the free-flowing drag, but adopt the slider's
+                  // division-snapped value after release so the visual
+                  // position settles on — and remains at — a tick.
                   if (value != _testSliderValue) {
                     setState(() => _testSliderValue = value);
                   }
