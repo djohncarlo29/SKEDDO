@@ -1282,9 +1282,10 @@ class _NoteInputCardState extends State<_NoteInputCard>
   @override
   Widget build(BuildContext context) {
     final textScaler = MediaQuery.textScalerOf(context);
-    final plusIconSize = textScaler.scale(24);
-    final clearIconSize = textScaler.scale(20);
-    final micIconSize = textScaler.scale(17);
+    final actionIconSize = textScaler.scale(kSearchBarMicIconSize);
+    final plusIconSize = actionIconSize;
+    final clearIconSize = actionIconSize;
+    final micIconSize = actionIconSize;
     final surfaceColor = resolveThemeColor(kSbSurface, context);
     final cardShadows = resolveThemeShadows(kCardShadow, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
@@ -1452,10 +1453,9 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                   opacity:
                                       (hasText ? 1.0 : 0.45) *
                                       _clearOpacity.value,
-                                  child: Icon(
-                                    CupertinoIcons.clear,
-                                    size: clearIconSize,
-                                    weight: 300.0,
+                                  child: FixedSFIcon(
+                                    SFIcons.sf_xmark,
+                                    fontSize: clearIconSize,
                                     color: secondaryLabel,
                                   ),
                                 ),
@@ -1493,10 +1493,9 @@ class _NoteInputCardState extends State<_NoteInputCard>
                           animation: _plusScaleCtrl,
                           builder: (context, _) => Opacity(
                             opacity: _plusOpacity.value,
-                            child: Icon(
-                              CupertinoIcons.add,
-                              size: plusIconSize,
-                              weight: 300.0,
+                            child: FixedSFIcon(
+                              SFIcons.sf_plus,
+                              fontSize: plusIconSize,
                               color: secondaryLabel,
                             ),
                           ),
