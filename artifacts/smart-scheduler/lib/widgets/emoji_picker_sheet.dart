@@ -934,6 +934,11 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   static const double _emojiGestureSlop = 12.0;
   static const double _emojiAxisBias = 6.0;
   static const double _emojiPageVelocity = 700.0;
+  // These are layout dimensions, not text dimensions. Keep them fixed so
+  // Dynamic Type cannot stretch this card farther below the parent sheet's
+  // Card 1.
+  static const double _emojiSheetHeaderHeight = 64.0;
+  static const double _emojiSheetHorizontalInset = 16.0;
   static const double _emojiCategoryInset = 16.0;
   // Four points of breathing room on each side of a category slot gives the
   // strip an authored 8pt minimum gap between neighboring emoji glyphs.
@@ -1505,7 +1510,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     final labelColor = kPrimaryLabel.resolveFrom(context);
     final cardColor = resolveThemeColor(kModalCard, context);
     final textScaler = MediaQuery.textScalerOf(context);
-    final headerInset = textScaler.scale(16.0);
+    const headerInset = _emojiSheetHorizontalInset;
 
     // Back chevron — replaces xmark in sub-sheets to indicate navigation back.
     // Uses chevron_left to match the DCV header back indicator.
@@ -1563,7 +1568,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
           // ── Navigation bar ───────────────────────────────────────────────
           RoundedCupertinoSheetHeader(
             child: SizedBox(
-              height: textScaler.scale(64.0),
+              height: _emojiSheetHeaderHeight,
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: headerInset),
                 child: Row(
@@ -1606,7 +1611,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(
                         headerInset,
-                        textScaler.scale(8.0),
+                        12.0,
                         headerInset,
                         math.max(
                           headerInset,
