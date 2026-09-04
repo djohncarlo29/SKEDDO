@@ -1127,22 +1127,22 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     switch (_activeViewMode) {
       case CalendarViewMode.compact:
         return Transform.translate(
-          offset: const Offset(1.5, -1),
+          offset: const Offset(1.9, -1),
           child: CompactViewIcon(color: c, size: 24),
         );
       case CalendarViewMode.stacked:
         return Transform.translate(
-          offset: const Offset(1.5, -1),
+          offset: const Offset(1.9, -1),
           child: StackedViewIcon(color: c, size: 24),
         );
       case CalendarViewMode.details:
         return Transform.translate(
-          offset: const Offset(2.0, 0),
+          offset: const Offset(2.4, 0),
           child: DetailsViewIcon(color: c, size: 24),
         );
       case CalendarViewMode.list:
         return Transform.translate(
-          offset: const Offset(2.0, 0),
+          offset: const Offset(2.4, 0),
           child: ListViewIcon(color: c, size: 24),
         );
     }
@@ -1262,7 +1262,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         );
       case DayViewSubMode.list:
         return Transform.translate(
-          offset: const Offset(2, -0.5),
+          offset: const Offset(2, -0.3),
           child: SvgPicture.asset(
             'assets/icons/day_view_list.svg',
             width: sz,
@@ -2145,7 +2145,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                 false,
                                                                             // Keep layout padding unchanged so the icon is
                                                                             // never clipped by the 36 px slot SizedBox.
-                                                                            // Visual alignment (centre-X +11, centre-Y +3)
+                                                                            // Visual alignment (centre-X +12, centre-Y +3)
                                                                             // is applied via Transform, which is paint-only.
                                                                             padding: const EdgeInsets.fromLTRB(
                                                                               0,
@@ -2157,7 +2157,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                 _showDcvMenu,
                                                                             child: Transform.translate(
                                                                               offset: const Offset(
-                                                                                11,
+                                                                                12,
                                                                                 -3,
                                                                               ),
                                                                               child: SearchWeightedIcon(
@@ -2483,8 +2483,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                             // coordinates, expressed as layout instead of
                             // Transform/Opacity layers.
                             padding: const EdgeInsets.only(
-                              left: 3.4,
-                              top: 6.6,
+                              left: 3.2,
+                              top: 6.1,
                             ),
                             child: MediaQuery(
                               data: MediaQuery.of(context).copyWith(
