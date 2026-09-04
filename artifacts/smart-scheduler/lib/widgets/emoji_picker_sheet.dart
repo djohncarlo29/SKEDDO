@@ -35,6 +35,26 @@ class _HorizontalInsetClipper extends CustomClipper<Rect> {
 
 typedef _EmojiCat = ({String icon, String name, List<String> emojis});
 
+class _EmojiGridLayout {
+  final double gridInset;
+  final double minimumSpacing;
+  final double cellSize;
+  final double cellFontSize;
+  final double crossAxisSpacing;
+  final double gridHeight;
+  final int columns;
+
+  const _EmojiGridLayout({
+    required this.gridInset,
+    required this.minimumSpacing,
+    required this.cellSize,
+    required this.cellFontSize,
+    required this.crossAxisSpacing,
+    required this.gridHeight,
+    required this.columns,
+  });
+}
+
 const List<_EmojiCat> kEmojiCategories = [
   (
     icon: '😀',
@@ -1346,66 +1366,82 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     });
   }
 
+  _EmojiGridLayout _resolveEmojiGridLayout(
+    int emojiCount,
+    double maxWidth,
+    TextScaler textScaler,
+  ) {
+    final gridInset = textScaler.scale(6.0);
+    final minimumSpacing = textScaler.scale(2.0);
+    final emojiFontSize = textScaler.scale(26.0);
+    const authoredColumns = 7;
+    final contentWidth = math.max(
+      1.0,
+      maxWidth - 2 * gridInset,
+    );
+    final defaultCellSize =
+        (contentWidth - minimumSpacing * (authoredColumns - 1)) /
+        authoredColumns;
+    final targetCellSize =
+        math.max(1.0, defaultCellSize * (emojiFontSize / 26.0));
+    final automaticColumns = math.max(
+      1,
+      ((contentWidth + minimumSpacing + 0.001) /
+              (targetCellSize + minimumSpacing))
+          .floor(),
+    );
+    // The column count belongs to the entire subsheet, not this category.
+    // Reset a manual pinch offset if the OS-derived baseline changes.
+    if (!_emojiColumnsWasPinched ||
+        automaticColumns != _automaticEmojiColumns) {
+      _automaticEmojiColumns = automaticColumns;
+      _emojiColumns = automaticColumns;
+      _emojiColumnsWasPinched = false;
+    }
+    final columns =
+        _emojiColumnsWasPinched ? _emojiColumns : automaticColumns;
+    final cellSize = math.max(
+      1.0,
+      _emojiColumnsWasPinched
+          ? (contentWidth - minimumSpacing * (columns - 1)) / columns
+          : targetCellSize,
+    );
+    final cellFontSize =
+        math.max(1.0, emojiFontSize * (cellSize / targetCellSize));
+    final crossAxisSpacing =
+        columns > 1
+            ? (contentWidth - columns * cellSize) / (columns - 1)
+            : 0.0;
+    final rowCount = (emojiCount / columns).ceil();
+    final gridHeight =
+        2 * gridInset +
+        rowCount * cellSize +
+        math.max(0, rowCount - 1) * minimumSpacing;
+
+    return _EmojiGridLayout(
+      gridInset: gridInset,
+      minimumSpacing: minimumSpacing,
+      cellSize: cellSize,
+      cellFontSize: cellFontSize,
+      crossAxisSpacing: crossAxisSpacing,
+      gridHeight: gridHeight,
+      columns: columns,
+    );
+  }
+
   // Builds the emoji grid for a given category index.
   // Only the active grid is tappable; peeking grids are visual only.
   Widget _buildGrid(int idx, {bool active = false}) {
     final emojis = kEmojiCategories[idx].emojis;
     final textScaler = MediaQuery.textScalerOf(context);
-    final gridInset = textScaler.scale(6.0);
-    final minimumSpacing = textScaler.scale(2.0);
-    final emojiFontSize = textScaler.scale(26.0);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        const authoredColumns = 7;
-        final contentWidth = math.max(
-          1.0,
-          constraints.maxWidth - 2 * gridInset,
+        final layout = _resolveEmojiGridLayout(
+          emojis.length,
+          constraints.maxWidth,
+          textScaler,
         );
-        final defaultCellSize =
-            (contentWidth -
-                    minimumSpacing * (authoredColumns - 1)) /
-                authoredColumns;
-        final targetCellSize = math.max(
-          1.0,
-          defaultCellSize * (emojiFontSize / 26.0),
-        );
-        final automaticColumns = math.max(
-          1,
-          ((contentWidth + minimumSpacing + 0.001) /
-                  (targetCellSize + minimumSpacing))
-              .floor(),
-        );
-        // The column count belongs to the entire subsheet, not this category.
-        // Reset a manual pinch offset if the OS-derived baseline changes.
-        if (!_emojiColumnsWasPinched ||
-            automaticColumns != _automaticEmojiColumns) {
-          _automaticEmojiColumns = automaticColumns;
-          _emojiColumns = automaticColumns;
-          _emojiColumnsWasPinched = false;
-        }
-        final columns =
-            _emojiColumnsWasPinched ? _emojiColumns : automaticColumns;
-        final cellSize = math.max(
-          1.0,
-          _emojiColumnsWasPinched
-              ? (contentWidth - minimumSpacing * (columns - 1)) / columns
-              : targetCellSize,
-        );
-        final cellFontSize = math.max(
-          1.0,
-          emojiFontSize * (cellSize / targetCellSize),
-        );
-        final crossAxisSpacing =
-            columns > 1
-                ? (contentWidth - columns * cellSize) /
-                    (columns - 1)
-                : 0.0;
-        final rowCount = (emojis.length / columns).ceil();
-        final gridHeight =
-            2 * gridInset +
-            rowCount * cellSize +
-            math.max(0, rowCount - 1) * minimumSpacing;
 
         return SingleChildScrollView(
           controller: active ? _scrollCtrl : null,
@@ -1419,12 +1455,15 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
             duration: const Duration(milliseconds: 280),
             curve: Curves.easeInOut,
             width: constraints.maxWidth,
-            height: gridHeight,
+            height: layout.gridHeight,
             child: Stack(
               children: List.generate(emojis.length, (i) {
                 final emoji = Text(
                   emojis[i],
-                  style: TextStyle(fontSize: cellFontSize, height: 1.0),
+                  style: TextStyle(
+                    fontSize: layout.cellFontSize,
+                    height: 1.0,
+                  ),
                   textScaler: TextScaler.noScaling,
                 );
                 final child =
@@ -1444,13 +1483,15 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                   duration: const Duration(milliseconds: 280),
                   curve: Curves.easeInOut,
                   left:
-                      gridInset +
-                      (i % columns) * (cellSize + crossAxisSpacing),
+                      layout.gridInset +
+                      (i % layout.columns) *
+                          (layout.cellSize + layout.crossAxisSpacing),
                   top:
-                      gridInset +
-                      (i ~/ columns) * (cellSize + minimumSpacing),
-                  width: cellSize,
-                  height: cellSize,
+                      layout.gridInset +
+                      (i ~/ layout.columns) *
+                          (layout.cellSize + layout.minimumSpacing),
+                  width: layout.cellSize,
+                  height: layout.cellSize,
                   child: child,
                 );
               }),
