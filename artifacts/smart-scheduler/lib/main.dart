@@ -19,6 +19,7 @@ import 'tabs/events_tab.dart';
 import 'tabs/notes_tab.dart';
 import 'widgets/action_panel.dart';
 import 'widgets/accent_tinted_image.dart';
+import 'widgets/fixed_size_icon.dart';
 import 'widgets/floating_tab_pill.dart';
 import 'widgets/header_title_scroller.dart';
 import 'widgets/native_text_input.dart';
@@ -776,6 +777,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   bool get _calendarShowsDayTitle =>
       _calendarTitle.isNotEmpty && _calendarTitle.contains(' ');
 
+  // True when the header is displaying a year title — drives the Year View
+  // "today" calendar shortcut in the same shared slot as the Month/Day icons.
+  bool get _calendarShowsYearTitle =>
+      _calendarTitle.isNotEmpty && int.tryParse(_calendarTitle) != null;
+
   // Driven by CalendarTab.onStripSlide — slides the calendar header row in
   // lock-step with the week strip in Day View.  Starts and ends at 0.0.
   final _calendarStripSlide = ValueNotifier<double>(0.0);
@@ -1146,6 +1152,19 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           child: ListViewIcon(color: c, size: 24),
         );
     }
+  }
+
+  Widget _buildYearViewHeaderIcon() {
+    return Transform.translate(
+      // Match the Month View icon slot's optical centre.
+      offset: const Offset(2.4, 0),
+      child: FixedSFIcon(
+        SFIcons.sf_calendar,
+        fontSize: 24,
+        fontWeight: FontWeight.w500,
+        color: resolveAccentColor(context),
+      ),
+    );
   }
 
   void _showViewModeMenu() {
@@ -2173,6 +2192,45 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                     ),
                                                                   ),
                                                                 ),
+                                                                 // ── Today shortcut (Calendar → Year) ───────────────
+                                                                 // Shares the exact slot and alignment used by the
+                                                                 // Month/Day view-mode icons. Year View has no view-mode
+                                                                 // menu, so this snaps directly to today's Day View.
+                                                                 Opacity(
+                                                                   opacity:
+                                                                       (!isDCVVisual &&
+                                                                           _selectedIndex ==
+                                                                               1 &&
+                                                                           _calendarShowsYearTitle)
+                                                                       ? 1.0
+                                                                       : 0.0,
+                                                                   child: IgnorePointer(
+                                                                     ignoring:
+                                                                         !(!isDCVVisual &&
+                                                                             _selectedIndex ==
+                                                                                 1 &&
+                                                                             _calendarShowsYearTitle),
+                                                                     child: Align(
+                                                                       alignment:
+                                                                           Alignment.bottomLeft,
+                                                                       child: AnimatedTapIcon(
+                                                                         scaleEnabled:
+                                                                             false,
+                                                                         padding: const EdgeInsets.fromLTRB(
+                                                                           8,
+                                                                           10,
+                                                                           4,
+                                                                           0,
+                                                                         ),
+                                                                         onTap: () => _calendarTabKey
+                                                                             .currentState
+                                                                             ?.jumpToTodayDay(),
+                                                                         child:
+                                                                             _buildYearViewHeaderIcon(),
+                                                                       ),
+                                                                     ),
+                                                                   ),
+                                                                 ),
                                                                 // ── View-mode (Calendar → Month) ───────────────────
                                                                 // Visibility driven by _calendarShowsMonthTitle so
                                                                 // it syncs to the t=0.35/0.65 title-snap threshold

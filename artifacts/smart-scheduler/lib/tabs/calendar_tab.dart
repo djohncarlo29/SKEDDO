@@ -686,6 +686,35 @@ class CalendarTabState extends State<CalendarTab>
   void navigatePrev() => _swipeNavigate(1);
   void navigateNext() => _swipeNavigate(-1);
 
+  /// Immediately opens today's Day View, used by the Year View header shortcut.
+  /// This is intentionally a snap rather than the normal month/day collapse
+  /// animation because Year View has no selected month row to animate from.
+  void jumpToTodayDay() {
+    final today = DateTime.now();
+
+    _snapCtrl.stop();
+    _zoomCtrl.stop();
+    _collapseCtrl.stop();
+    _slideX = 0.0;
+    _weekStripDrag = false;
+    _navLocked = false;
+    _zoomPrevT = 1.0;
+
+    setState(() {
+      _view = CalendarView.day;
+      _selected = today;
+      _today = today;
+      _dispYear = today.year;
+      _dispMonth = today.month;
+      _collapseRow = _weekRowForDate(today);
+      _collapseScrollOffset = 0.0;
+      _savedMonthScrollOffset = 0.0;
+      _zoomCtrl.value = 1.0;
+      _collapseCtrl.value = 1.0;
+    });
+    _notify();
+  }
+
   // dir = +1: content slides RIGHT → previous appears from the left
   // dir = -1: content slides LEFT  → next appears from the right
   void _swipeNavigate(int dir) {
