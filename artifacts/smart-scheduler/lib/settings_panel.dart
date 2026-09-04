@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
@@ -1404,27 +1405,72 @@ class _LiquidGlassSection extends StatelessWidget {
                 height: _kSettingsRowHeight,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      SvgPicture.asset(
-                        'assets/icons/Liquid_Glass.svg',
-                        width: 26,
-                        height: 26,
-                      ),
-                      SvgPicture.asset(
-                        'assets/icons/Liquid_Glass.svg',
-                        width: 26,
-                        height: 26,
-                      ),
-                    ],
-                  ),
+                    child: _LiquidGlassTestIcons(
+                      surfaceColor: cardBg,
+                    ),
                 ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+const _kLiquidGlassSurfaceToken = '__SURFACE__';
+
+class _LiquidGlassTestIcons extends StatefulWidget {
+  final Color surfaceColor;
+
+  const _LiquidGlassTestIcons({required this.surfaceColor});
+
+  @override
+  State<_LiquidGlassTestIcons> createState() => _LiquidGlassTestIconsState();
+}
+
+class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
+  late final Future<List<String>> _svgSources = Future.wait([
+    rootBundle.loadString('assets/icons/Liquid_Glass_left.svg'),
+    rootBundle.loadString('assets/icons/Liquid_Glass_right.svg'),
+  ]);
+
+  String _withSurfaceColor(String svg) {
+    final color = widget.surfaceColor;
+    final red = (color.r * 255.0).round() & 0xff;
+    final green = (color.g * 255.0).round() & 0xff;
+    final blue = (color.b * 255.0).round() & 0xff;
+    final hex = '#${red.toRadixString(16).padLeft(2, '0')}'
+        '${green.toRadixString(16).padLeft(2, '0')}'
+        '${blue.toRadixString(16).padLeft(2, '0')}';
+    return svg.replaceAll(_kLiquidGlassSurfaceToken, hex);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<String>>(
+      future: _svgSources,
+      builder: (context, snapshot) {
+        final sources = snapshot.data;
+        if (sources == null || sources.length != 2) {
+          return const SizedBox.expand();
+        }
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            SvgPicture.string(
+              _withSurfaceColor(sources[0]),
+              width: 30,
+              height: 30,
+            ),
+            SvgPicture.string(
+              _withSurfaceColor(sources[1]),
+              width: 30,
+              height: 30,
+            ),
+          ],
+        );
+      },
     );
   }
 }

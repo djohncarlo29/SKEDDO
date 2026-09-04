@@ -2135,9 +2135,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                         scaleEnabled:
                                                                             false,
                                                                         padding: const EdgeInsets.fromLTRB(
+                                                                          6,
                                                                           8,
-                                                                          10,
-                                                                          4,
+                                                                          0,
                                                                           0,
                                                                         ),
                                                                         onTap: () => _eventsTabKey
@@ -2146,9 +2146,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                         child: SvgPicture.asset(
                                                                           'assets/icons/base_Add_Category.svg',
                                                                           width:
-                                                                              26,
+                                                                              30,
                                                                           height:
-                                                                              26,
+                                                                              30,
                                                                           colorFilter:
                                                                               ColorFilter.mode(
                                                                             accent,
