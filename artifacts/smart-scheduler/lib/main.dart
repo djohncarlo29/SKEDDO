@@ -2157,7 +2157,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                 _showDcvMenu,
                                                                             child: Transform.translate(
                                                                               offset: const Offset(
-                                                                                9,
+                                                                                11,
                                                                                 -3,
                                                                               ),
                                                                               child: SearchWeightedIcon(
@@ -2483,8 +2483,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                             // coordinates, expressed as layout instead of
                             // Transform/Opacity layers.
                             padding: const EdgeInsets.only(
-                              left: 3.6,
-                              top: 7.6,
+                              left: 3.4,
+                              top: 6.6,
                             ),
                             child: MediaQuery(
                               data: MediaQuery.of(context).copyWith(
