@@ -1157,7 +1157,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   Widget _buildYearViewHeaderIcon() {
     return Transform.translate(
       // Match the Month View icon slot's optical centre.
-      offset: const Offset(2.4, 0),
+      offset: const Offset(2.2, -0.5),
       child: SizedBox(
         // Preserve the same 24×24 alignment box as the Month View icon while
         // rendering the calendar glyph slightly smaller inside it.
