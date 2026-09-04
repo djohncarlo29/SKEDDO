@@ -167,60 +167,6 @@ class NewSectionPlusBadge extends StatelessWidget {
   }
 }
 
-/// Punches the badge's separation ring and plus through the complete icon
-/// composition. The painter is used as a foreground painter on the same
-/// isolated canvas as the SVG and badge.
-class NewSectionBadgePunchPainter extends CustomPainter {
-  final Offset center;
-  final double gapRadius;
-  final double plusWidth;
-  final double plusThickness;
-
-  const NewSectionBadgePunchPainter({
-    required this.center,
-    required this.gapRadius,
-    required this.plusWidth,
-    required this.plusThickness,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final punch = Paint()
-      ..blendMode = BlendMode.dstOut
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-
-    // Remove the full separation ring from the composed SVG + badge layer.
-    canvas.drawCircle(center, gapRadius, punch);
-
-    // Remove the plus from that same layer. Drawing the two arms separately
-    // keeps the knockout a true union even where the arms overlap.
-    canvas.drawRect(
-      Rect.fromCenter(
-        center: center,
-        width: plusThickness,
-        height: plusWidth,
-      ),
-      punch,
-    );
-    canvas.drawRect(
-      Rect.fromCenter(
-        center: center,
-        width: plusWidth,
-        height: plusThickness,
-      ),
-      punch,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant NewSectionBadgePunchPainter oldDelegate) =>
-      oldDelegate.center != center ||
-      oldDelegate.gapRadius != gapRadius ||
-      oldDelegate.plusWidth != plusWidth ||
-      oldDelegate.plusThickness != plusThickness;
-}
-
 class _NewSectionPlusBadgePainter extends CustomPainter {
   final Color color;
 
@@ -233,22 +179,35 @@ class _NewSectionPlusBadgePainter extends CustomPainter {
     final scale = size.shortestSide / 12.0;
     final center = Offset(size.width / 2, size.height / 2);
     final badgeRadius = 4.5 * scale;
-    final fill = Paint()
-      ..color = color
+    // Keep the current slightly-thicker ring while restoring the true
+    // transparent knockout treatment.
+    final badgeGapRadius = 6.25 * scale;
+    final clear = Paint()
+      ..blendMode = BlendMode.clear
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
 
+    // Punch the separation ring and plus through the badge and icon beneath.
+    canvas.drawCircle(center, badgeGapRadius, clear);
+    canvas.drawCircle(
+      center,
+      badgeRadius,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.fill
+        ..isAntiAlias = true,
+    );
+
     final plusWidth = 5.5 * scale;
     final plusThickness = 1.375 * scale;
-    final plusVertical = Path()
+    final plus = Path()
       ..addRect(
         Rect.fromCenter(
           center: center,
           width: plusThickness,
           height: plusWidth,
         ),
-      );
-    final plusHorizontal = Path()
+      )
       ..addRect(
         Rect.fromCenter(
           center: center,
@@ -256,14 +215,7 @@ class _NewSectionPlusBadgePainter extends CustomPainter {
           height: plusThickness,
         ),
       );
-    final plus = Path.combine(PathOperation.union, plusVertical, plusHorizontal);
-    final badge = Path.combine(
-      PathOperation.difference,
-      Path()..addOval(Rect.fromCircle(center: center, radius: badgeRadius)),
-      plus,
-    );
-    // The badge is a solid circle with a geometric transparent plus hole.
-    canvas.drawPath(badge, fill);
+    canvas.drawPath(plus, clear);
   }
 
   @override
