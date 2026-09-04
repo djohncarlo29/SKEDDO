@@ -1392,6 +1392,20 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
     rootBundle.loadString('assets/icons/Liquid_Glass_left.svg'),
     rootBundle.loadString('assets/icons/Liquid_Glass_right.svg'),
   ]);
+  double? _dragValue;
+  bool _isDragging = false;
+
+  @override
+  void didUpdateWidget(covariant _LiquidGlassTestIcons oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The live opacity notifier rebuilds this subtree on every drag frame.
+    // While the finger owns the slider, keep using its local raw position;
+    // otherwise the parent rebuild can feed a competing value back into the
+    // gesture and make the web control appear tick-locked.
+    if (!_isDragging && oldWidget.value != widget.value) {
+      _dragValue = null;
+    }
+  }
 
   String _svgColor(Color color) {
     final red = (color.r * 255.0).round() & 0xff;
@@ -1422,7 +1436,7 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               return LiquidGlassSlider(
-                value: widget.value,
+                value: _dragValue ?? widget.value,
                 minimumValue: 0,
                 maximumValue: 1,
                 width: constraints.maxWidth,
@@ -1449,8 +1463,22 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
                   width: 34,
                   height: 34,
                 ),
-                onChanged: widget.onChanged,
-                onChangeEnd: widget.onChangeEnd,
+                onChangeStart: (_) {
+                  if (!_isDragging) {
+                    setState(() => _isDragging = true);
+                  }
+                },
+                onChanged: (value) {
+                  setState(() => _dragValue = value);
+                  widget.onChanged(value);
+                },
+                onChangeEnd: (value) {
+                  setState(() {
+                    _dragValue = value;
+                    _isDragging = false;
+                  });
+                  widget.onChangeEnd(value);
+                },
               );
             },
           ),
