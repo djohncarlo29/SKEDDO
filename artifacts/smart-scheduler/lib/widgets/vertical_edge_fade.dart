@@ -17,6 +17,10 @@ class VerticalEdgeFade extends StatefulWidget {
   final double bottomInset;
   final TextEditingController? controller;
   final ScrollController? scrollController;
+  /// Identifies a meaningful change to the wrapped scrollable's content
+  /// geometry. A new value schedules one post-layout sync without tying the
+  /// fade to every animation-frame rebuild of the child.
+  final Object? contentKey;
   final ValueListenable<EdgeFadeMetrics?>? metricsListenable;
   final bool fadeWhenContentFits;
   final bool fadeOnRubberbandWhenContentFits;
@@ -37,6 +41,7 @@ class VerticalEdgeFade extends StatefulWidget {
     this.bottomInset = 0,
     this.controller,
     this.scrollController,
+    this.contentKey,
     this.metricsListenable,
     this.fadeWhenContentFits = false,
     this.fadeOnRubberbandWhenContentFits = false,
@@ -91,6 +96,9 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
     if (oldWidget.scrollController != widget.scrollController) {
       _detachScrollController();
       _attachScrollController();
+    }
+    if (oldWidget.contentKey != widget.contentKey) {
+      _scheduleLayoutSync();
     }
     if (oldWidget.placeholderFocusNode != widget.placeholderFocusNode) {
       _detachPlaceholderFocusNode();
@@ -456,10 +464,6 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
 
   @override
   Widget build(BuildContext context) {
-    // Scroll metrics can be established after this wrapper's first build,
-    // especially when the grid is rebuilt after a category or pinch change.
-    // Synchronize proactively instead of waiting for the first user scroll.
-    _scheduleLayoutSync();
     return NotificationListener<ScrollNotification>(
       onNotification: _handleScrollNotification,
       child: NotificationListener<ScrollMetricsNotification>(

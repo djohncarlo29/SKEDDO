@@ -1644,6 +1644,11 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                         bottomInset: 16.0,
                                         fadeOnRubberbandWhenContentFits: true,
                                         scrollController: _scrollCtrl,
+                                        contentKey: Object.hash(
+                                          _catIndex,
+                                          _emojiColumns,
+                                          textScaler.scale(26.0),
+                                        ),
                                         child: Stack(
                                           clipBehavior: Clip.hardEdge,
                                           children: [
