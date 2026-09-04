@@ -1661,6 +1661,17 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
                                   final w = constraints.maxWidth;
+                                  final activeGridLayout =
+                                      _resolveEmojiGridLayout(
+                                        kEmojiCategories[_catIndex]
+                                            .emojis
+                                            .length,
+                                        w,
+                                        textScaler,
+                                      );
+                                  final activeGridOverflows =
+                                      activeGridLayout.gridHeight >
+                                      constraints.maxHeight + 0.5;
                                   return Listener(
                                     behavior: HitTestBehavior.opaque,
                                     onPointerDown: _onEmojiPointerDown,
@@ -1685,10 +1696,13 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                         bottomInset: 16.0,
                                         fadeOnRubberbandWhenContentFits: true,
                                         scrollController: _scrollCtrl,
+                                        contentOverflows:
+                                            activeGridOverflows,
                                         contentKey: Object.hash(
                                           _catIndex,
-                                          _emojiColumns,
-                                          textScaler.scale(26.0),
+                                          activeGridLayout.columns,
+                                          activeGridLayout.gridHeight,
+                                          constraints.maxHeight,
                                         ),
                                         child: Stack(
                                           clipBehavior: Clip.hardEdge,

@@ -17,6 +17,10 @@ class VerticalEdgeFade extends StatefulWidget {
   final double bottomInset;
   final TextEditingController? controller;
   final ScrollController? scrollController;
+  /// Known overflow for content whose geometry is calculated by its owner.
+  /// When supplied, this is the source of truth instead of waiting for scroll
+  /// metrics to discover the content extent.
+  final bool? contentOverflows;
   /// Identifies a meaningful change to the wrapped scrollable's content
   /// geometry. A new value schedules one post-layout sync without tying the
   /// fade to every animation-frame rebuild of the child.
@@ -41,6 +45,7 @@ class VerticalEdgeFade extends StatefulWidget {
     this.bottomInset = 0,
     this.controller,
     this.scrollController,
+    this.contentOverflows,
     this.contentKey,
     this.metricsListenable,
     this.fadeWhenContentFits = false,
@@ -97,7 +102,16 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
       _detachScrollController();
       _attachScrollController();
     }
-    if (oldWidget.contentKey != widget.contentKey) {
+    if (oldWidget.contentKey != widget.contentKey ||
+        oldWidget.contentOverflows != widget.contentOverflows) {
+      final contentOverflows = widget.contentOverflows;
+      if (contentOverflows != null) {
+        _canScroll = contentOverflows;
+        _showTopFade = false;
+        _showBottomFade =
+            contentOverflows && widget.showBottomFade;
+        _rubberbandOffset = 0;
+      }
       _scheduleLayoutSync();
     }
     if (oldWidget.placeholderFocusNode != widget.placeholderFocusNode) {
@@ -311,7 +325,8 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
       return;
     }
 
-    final canScroll = metrics.maxScrollExtent > 1.0;
+    final knownOverflow = widget.contentOverflows;
+    final canScroll = knownOverflow ?? metrics.maxScrollExtent > 1.0;
     final fadeEdges =
         canScroll ||
         widget.fadeWhenContentFits ||
@@ -326,7 +341,9 @@ class _VerticalEdgeFadeState extends State<VerticalEdgeFade> {
     final showBottom = fadeEdges &&
         widget.showBottomFade &&
         (canScroll
-            ? metrics.extentAfter > 1.0
+            ? metrics.extentAfter > 1.0 ||
+                (knownOverflow == true &&
+                    metrics.pixels <= metrics.minScrollExtent + 1.0)
             : widget.fadeWhenContentFits || isPulledPastStart);
 
     if (_canScroll == canScroll &&
