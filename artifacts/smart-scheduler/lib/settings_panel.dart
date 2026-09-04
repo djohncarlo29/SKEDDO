@@ -1407,7 +1407,6 @@ class _LiquidGlassSection extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: _LiquidGlassTestIcons(
-                      surfaceColor: cardBg,
                       secondaryColor: secondaryLabel,
                     ),
                 ),
@@ -1420,15 +1419,13 @@ class _LiquidGlassSection extends StatelessWidget {
   }
 }
 
-const _kLiquidGlassSurfaceToken = '__SURFACE__';
+const _kLiquidGlassClearToken = '__CLEAR__';
 const _kLiquidGlassSecondaryToken = '__SECONDARY__';
 
 class _LiquidGlassTestIcons extends StatefulWidget {
-  final Color surfaceColor;
   final Color secondaryColor;
 
   const _LiquidGlassTestIcons({
-    required this.surfaceColor,
     required this.secondaryColor,
   });
 
@@ -1451,7 +1448,7 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
 
   String _withThemeColors(String svg) {
     return svg
-        .replaceAll(_kLiquidGlassSurfaceToken, _svgColor(widget.surfaceColor))
+        .replaceAll(_kLiquidGlassClearToken, 'none')
         .replaceAll(
           _kLiquidGlassSecondaryToken,
           _svgColor(widget.secondaryColor),
