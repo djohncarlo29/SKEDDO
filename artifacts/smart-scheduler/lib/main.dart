@@ -2157,7 +2157,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                                 _showDcvMenu,
                                                                             child: Transform.translate(
                                                                               offset: const Offset(
-                                                                                12,
+                                                                                11.5,
                                                                                 -3,
                                                                               ),
                                                                               child: SearchWeightedIcon(
