@@ -686,9 +686,10 @@ class CalendarTabState extends State<CalendarTab>
   void navigatePrev() => _swipeNavigate(1);
   void navigateNext() => _swipeNavigate(-1);
 
-  /// Immediately opens today's Day View, used by the Year View header shortcut.
-  /// This is intentionally a snap rather than the normal month/day collapse
-  /// animation because Year View has no selected month row to animate from.
+  /// Immediately opens today's Day View.
+  ///
+  /// This is kept as the fallback for callers that need a hard reset (for
+  /// example, when the shortcut is pressed while showing a different year).
   void jumpToTodayDay() {
     final today = DateTime.now();
 
@@ -715,6 +716,41 @@ class CalendarTabState extends State<CalendarTab>
     _notify();
   }
 
+  /// Opens today's Day View from Year View using the same hierarchy transition
+  /// as the current-date header title, but in the opposite direction:
+  /// Year → Month → Day.
+  Future<void> enterTodayDay() async {
+    if (_snapCtrl.isAnimating ||
+        _zoomCtrl.isAnimating ||
+        _collapseCtrl.isAnimating) {
+      return;
+    }
+
+    final today = DateTime.now();
+    if (_view != CalendarView.year) {
+      jumpToTodayDay();
+      return;
+    }
+    final displayedYear = _dispYear;
+
+    // Let the existing Year → Month morph fully land before starting the
+    // existing Month → Day collapse.  This keeps the two transitions visually
+    // continuous instead of replacing the year grid with a day timeline.
+    await _enterMonth(today.month - 1);
+    if (!mounted || _view != CalendarView.month) return;
+    if (displayedYear != today.year) {
+      // The shortcut always targets the real current day.  If the user was
+      // browsing another year, keep the animated hierarchy transition and
+      // switch the settled month panel to today's year before collapsing it.
+      setState(() {
+        _dispYear = today.year;
+        _dispMonth = today.month;
+      });
+      _notify();
+    }
+    _enterDay(today);
+  }
+
   /// Advances through today's calendar hierarchy when the current header title
   /// is tapped: Year → Month → Day → Year.
   ///
@@ -732,7 +768,7 @@ class CalendarTabState extends State<CalendarTab>
     switch (_view) {
       case CalendarView.year:
         if (_dispYear == today.year) {
-          _enterMonth(today.month - 1);
+          await _enterMonth(today.month - 1);
         }
         return;
       case CalendarView.month:
@@ -1124,7 +1160,7 @@ class CalendarTabState extends State<CalendarTab>
     if (tops.length == 4) _yearMeasuredRowTops = tops;
   }
 
-  void _enterMonth(int monthIdx) {
+  Future<void> _enterMonth(int monthIdx) async {
     // Capture exact row positions before the zoom animation hides the YearView.
     _measureYearRowTops();
     _zoomScrollOffset = _yearScrollCtrl.hasClients
@@ -1136,14 +1172,13 @@ class CalendarTabState extends State<CalendarTab>
       _view = CalendarView.month;
     });
     _notify();
-    _zoomCtrl
-        .animateWith(SpringSimulation(_kZoomSpring, _zoomCtrl.value, 1.0, 0.0))
-        .then((_) {
-          // Spring tolerance (~0.001) can leave the value just below 1.0.
-          // Snap to the exact target so the morph condition (zoomT < 1.0) is
-          // false and the overlay is cleared.
-          if (mounted) _zoomCtrl.value = 1.0;
-        });
+    await _zoomCtrl.animateWith(
+      SpringSimulation(_kZoomSpring, _zoomCtrl.value, 1.0, 0.0),
+    );
+    // Spring tolerance (~0.001) can leave the value just below 1.0.
+    // Snap to the exact target so the morph condition (zoomT < 1.0) is
+    // false and the overlay is cleared.
+    if (mounted) _zoomCtrl.value = 1.0;
   }
 
   Future<void> _exitToYear() async {

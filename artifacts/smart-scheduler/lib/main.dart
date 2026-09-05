@@ -1842,6 +1842,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     if (future != null) unawaited(future);
   }
 
+  void _enterTodayCalendarDay() {
+    final future = _calendarTabKey.currentState?.enterTodayDay();
+    if (future != null) unawaited(future);
+  }
+
   // Returns true when [title] matches the REAL-WORLD today period.
   // Detects title type by FORMAT rather than _calendarView so the accent colour
   // is correct during the year↔month zoom transition, when _calendarView may
@@ -2238,9 +2243,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                            4,
                                                                            0,
                                                                          ),
-                                                                         onTap: () => _calendarTabKey
-                                                                             .currentState
-                                                                             ?.jumpToTodayDay(),
+                                                                         onTap: _enterTodayCalendarDay,
                                                                          child:
                                                                              _buildYearViewHeaderIcon(),
                                                                        ),
