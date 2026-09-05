@@ -1740,51 +1740,59 @@ class _SettingsToggleRowState extends State<_SettingsToggleRow> {
     _value = widget.value;
   }
 
+  void _setValue(bool value) {
+    setState(() => _value = value);
+    widget.onChanged(value);
+  }
+
+  void _toggle() => _setValue(!_value);
+
   @override
   Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: _kSettingsRowHeight),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: _kSettingsRowVerticalPadding,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Text(
-                widget.title,
-                style: TextStyle(
-                  fontFamily: kSFProText,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w400,
-                  color: resolveThemeColor(kPrimaryLabel, context),
-                ),
-              ),
-            ),
-            SizedBox(
-              width: 70 * 0.80,
-              height: 30,
-              child: OverflowBox(
-                maxWidth: 70,
-                maxHeight: 31,
-                alignment: Alignment.center,
-                child: Transform.scale(
-                  scale: 0.80,
-                  child: AppSwitch(
-                    value: _value,
-                    color: resolveAccentColor(context),
-                    height: 31,
-                    onChanged: (v) {
-                      setState(() => _value = v);
-                      widget.onChanged(v);
-                    },
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _toggle,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: _kSettingsRowHeight),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: _kSettingsRowVerticalPadding,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: TextStyle(
+                    fontFamily: kSFProText,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w400,
+                    color: resolveThemeColor(kPrimaryLabel, context),
                   ),
                 ),
               ),
-            ),
-          ],
+              SizedBox(
+                width: 70 * 0.80,
+                height: 30,
+                child: OverflowBox(
+                  maxWidth: 70,
+                  maxHeight: 31,
+                  alignment: Alignment.center,
+                  child: Transform.scale(
+                    scale: 0.80,
+                    child: AppSwitch(
+                      value: _value,
+                      color: resolveAccentColor(context),
+                      height: 31,
+                      onChanged: _setValue,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
