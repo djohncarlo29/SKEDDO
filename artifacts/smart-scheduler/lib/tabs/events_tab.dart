@@ -5219,6 +5219,7 @@ class EventsTabState extends State<EventsTab>
                   cat.iconOrSvg,
                   circleSize,
                   _userCategoryIconColor(cat, context),
+                  containerColor: _userCategoryCircleColor(cat, context),
                   emojiOffsetY: 1,
                   ctx: context,
                 ),
@@ -8874,6 +8875,7 @@ class _PinnedUserTile extends StatelessWidget {
                   category.iconOrSvg,
                   circleSize,
                   _userCategoryIconColor(category, context),
+                  containerColor: _userCategoryCircleColor(category, context),
                   emojiOffsetY: 1,
                 ),
               ),
@@ -9318,6 +9320,7 @@ Widget _buildCategoryListRowBody(
         category.iconOrSvg,
         circleSize,
         _userCategoryIconColor(category, context),
+        containerColor: _userCategoryCircleColor(category, context),
         emojiOffsetY: 1,
       ),
     ),
@@ -11088,6 +11091,7 @@ class _DcvUtilityContent extends StatelessWidget {
         category.iconOrSvg,
         24,
         resolveThemeColor(kSecondaryLabel, context),
+        containerColor: _userCategoryCircleColor(category, context),
         ctx: context,
         emojiOffsetY: 1,
       );
@@ -13020,6 +13024,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                                 _effectiveIcon,
                                 64 * circleScale,
                                 CupertinoColors.white,
+                                containerColor: previewColor,
                                 emojiOffsetY: 2 * circleScale,
                                 ctx: context,
                               ),
@@ -14817,6 +14822,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                                 : (selected
                                     ? _resolvedSelectedColor
                                     : iconBackground);
+                        final soccerBallUsesContainerFill =
+                            selected || brightness == Brightness.dark;
+                        final soccerBallFillColor =
+                            soccerBallUsesContainerFill ? circleBg : iconColor;
+                        final soccerBallDetailColor =
+                            soccerBallUsesContainerFill ? iconColor : circleBg;
 
                         return AnimatedPositioned(
                           key: ValueKey(i),
@@ -14848,6 +14859,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                                       displayIcon,
                                       iconColor,
                                       ctx: context,
+                                      soccerBallFillColor:
+                                          soccerBallFillColor,
+                                      soccerBallDetailColor:
+                                          soccerBallDetailColor,
                                     ),
                                   ),
                                 ),
@@ -15182,6 +15197,7 @@ Widget _renderCatIcon(
   Color color, {
   BuildContext? ctx,
   double emojiOffsetY = 0,
+  Color? containerColor,
 }) {
   final double scale = containerSize / _kIconCircle;
   final double iconSz = _pickerIconBaseSize(iconOrSvg) * scale;
@@ -15191,7 +15207,13 @@ Widget _renderCatIcon(
   }
 
   Widget inner;
-  if (_isEmojiIcon(iconOrSvg)) {
+  if (_isSoccerBallIcon(iconOrSvg) && containerColor != null) {
+    inner = _buildSoccerBallIcon(
+      size: iconSz,
+      ballFillColor: containerColor,
+      detailColor: color,
+    );
+  } else if (_isEmojiIcon(iconOrSvg)) {
     // Emoji: render as native Unicode text — no color tint, fills circle naturally.
     inner = Text(
       iconOrSvg as String,
@@ -15247,6 +15269,68 @@ Widget _renderCatIcon(
     height: containerSize,
     child: Center(child: inner),
   );
+}
+
+Widget _buildSoccerBallIcon({
+  required double size,
+  required Color ballFillColor,
+  required Color detailColor,
+}) {
+  return SizedBox(
+    width: size,
+    height: size,
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        // The detail color sits behind the filled SVG so its transparent
+        // pentagons and seams become the intended second color.
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: detailColor,
+            shape: BoxShape.circle,
+          ),
+        ),
+        SvgPicture.asset(
+          _kSoccerBallSvg,
+          width: size,
+          height: size,
+          fit: BoxFit.contain,
+          alignment: Alignment.center,
+          colorFilter: ColorFilter.mode(ballFillColor, BlendMode.srcIn),
+        ),
+        Positioned.fill(
+          child: CustomPaint(
+            painter: _SoccerBallRingPainter(detailColor),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _SoccerBallRingPainter extends CustomPainter {
+  final Color color;
+
+  const _SoccerBallRingPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strokeWidth = max(0.5, min(1.6, size.shortestSide / 40));
+    final paint =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth;
+    canvas.drawCircle(
+      Offset(size.width / 2, size.height / 2),
+      min(size.width, size.height) / 2 - strokeWidth / 2,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_SoccerBallRingPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 // Renders a user-category icon for the DCV "No Events" placeholder.
@@ -15329,8 +15413,20 @@ Widget _buildDcvCatIcon(Object iconOrSvg, Color color, {BuildContext? ctx}) {
 //   Compass.svg   (portrait  0.66:1)        → 26 px square → 17×26 visual
 //   Wrench.svg    (viewBox x=40.94 clips
 //                  left edge of content)    → allowDrawingOutsideViewBox
-Widget _buildPickerIcon(Object iconOrSvg, Color color, {BuildContext? ctx}) {
-  Widget child = _buildPickerIconRaw(iconOrSvg, color, ctx: ctx);
+Widget _buildPickerIcon(
+  Object iconOrSvg,
+  Color color, {
+  BuildContext? ctx,
+  Color? soccerBallFillColor,
+  Color? soccerBallDetailColor,
+}) {
+  Widget child = _buildPickerIconRaw(
+    iconOrSvg,
+    color,
+    ctx: ctx,
+    soccerBallFillColor: soccerBallFillColor,
+    soccerBallDetailColor: soccerBallDetailColor,
+  );
   final offset = _pickerIconOffset(iconOrSvg);
   if (offset != Offset.zero)
     child = Transform.translate(offset: offset, child: child);
@@ -15338,7 +15434,13 @@ Widget _buildPickerIcon(Object iconOrSvg, Color color, {BuildContext? ctx}) {
 }
 
 // Raw icon widget — no positional offset applied.
-Widget _buildPickerIconRaw(Object iconOrSvg, Color color, {BuildContext? ctx}) {
+Widget _buildPickerIconRaw(
+  Object iconOrSvg,
+  Color color, {
+  BuildContext? ctx,
+  Color? soccerBallFillColor,
+  Color? soccerBallDetailColor,
+}) {
   if (_isEmojiIcon(iconOrSvg)) {
     // Emoji: render as native Unicode text at the shared reference size.
     return Text(
@@ -15348,7 +15450,6 @@ Widget _buildPickerIconRaw(Object iconOrSvg, Color color, {BuildContext? ctx}) {
     );
   }
   if (iconOrSvg is String) {
-    final isSoccerBall = _isSoccerBallIcon(iconOrSvg);
     final double sz =
         iconOrSvg.contains('Banknote')
             ? 18
@@ -15367,6 +15468,13 @@ Widget _buildPickerIconRaw(Object iconOrSvg, Color color, {BuildContext? ctx}) {
             : iconOrSvg.contains('Briefcase')
             ? 18
             : 20;
+    if (_isSoccerBallIcon(iconOrSvg)) {
+      return _buildSoccerBallIcon(
+        size: sz,
+        ballFillColor: soccerBallFillColor ?? color,
+        detailColor: soccerBallDetailColor ?? color,
+      );
+    }
     final String path =
         ctx != null
             ? _resolveIconSvg(iconOrSvg, CupertinoTheme.brightnessOf(ctx))
@@ -15377,11 +15485,7 @@ Widget _buildPickerIconRaw(Object iconOrSvg, Color color, {BuildContext? ctx}) {
       height: sz,
       fit: BoxFit.contain,
       alignment: Alignment.center,
-      // SoccerBall.svg intentionally keeps its black fill and light contour;
-      // applying the generic tint would flatten that contrast back to one
-      // color. All other picker SVGs retain their existing monochrome styling.
-      colorFilter:
-          isSoccerBall ? null : ColorFilter.mode(color, BlendMode.srcIn),
+      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
     );
   }
   final icon = iconOrSvg as IconData;
