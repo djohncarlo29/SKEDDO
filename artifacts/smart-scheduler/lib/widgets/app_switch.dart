@@ -50,3 +50,32 @@ class AppSwitch extends StatelessWidget {
     );
   }
 }
+
+/// Makes a row containing an [AppSwitch] toggle from any point in the row.
+///
+/// Keep the row's complete layout in [child]. The wrapper expands it to the
+/// available width and uses the same value callback as the switch itself, so
+/// future switch rows get consistent interaction behavior by construction.
+class AppSwitchRow extends StatelessWidget {
+  const AppSwitchRow({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    required this.child,
+    this.enabled = true,
+  });
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final Widget child;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: enabled ? () => onChanged(!value) : null,
+      child: SizedBox(width: double.infinity, child: child),
+    );
+  }
+}

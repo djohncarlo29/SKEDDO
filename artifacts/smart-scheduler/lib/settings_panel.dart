@@ -1745,13 +1745,11 @@ class _SettingsToggleRowState extends State<_SettingsToggleRow> {
     widget.onChanged(value);
   }
 
-  void _toggle() => _setValue(!_value);
-
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: _toggle,
+    return AppSwitchRow(
+      value: _value,
+      onChanged: _setValue,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: _kSettingsRowHeight),
         child: Padding(
