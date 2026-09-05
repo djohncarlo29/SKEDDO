@@ -9855,6 +9855,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             pageBuilder: (ctx) => _NewEventCustomRepeatSheet(
               accentColor: _resolvedCategoryColor,
               config: _savedReminderCustomConfig,
+              subjectLabel: 'Reminder',
             ),
           );
       if (result != null && mounted) {
@@ -11043,7 +11044,12 @@ class _PickerSelectionPillClipper extends CustomClipper<Rect> {
 class _NewEventCustomRepeatSheet extends StatefulWidget {
   final Color accentColor;
   final _NewEventCustomRepeatConfig? config;
-  const _NewEventCustomRepeatSheet({required this.accentColor, this.config});
+  final String subjectLabel;
+  const _NewEventCustomRepeatSheet({
+    required this.accentColor,
+    this.config,
+    this.subjectLabel = 'Event',
+  });
 
   @override
   State<_NewEventCustomRepeatSheet> createState() =>
@@ -11169,29 +11175,30 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
   }
 
   String get _footerText {
+    final subject = widget.subjectLabel;
     final unit = _everyUnit.toLowerCase();
     final every = _everyCount == 1 ? 'every $unit' : 'every $_everyCount $unit';
     if (_frequency == 'Weekly' && _selectedDays.isNotEmpty) {
-      return 'Event will occur $every on ${_joinDays(_orderedSelectedDays)}.';
+      return '$subject will occur $every on ${_joinDays(_orderedSelectedDays)}.';
     }
     if (_frequency == 'Monthly') {
       if (_monthlyMode == 'Each' && _selectedDates.isNotEmpty) {
         final sorted = _selectedDates.toList()..sort();
         final ordinals = sorted.map(_ordinal).toList();
-        return 'Event will occur $every on the ${_joinDays(ordinals)}.';
+        return '$subject will occur $every on the ${_joinDays(ordinals)}.';
       }
       if (_monthlyMode == 'OnThe') {
         final pos = _kPositions[_onThePositionIndex];
         final day = _kDays[_onTheDayIndex];
-        return 'Event will occur $every on the $pos $day.';
+        return '$subject will occur $every on the $pos $day.';
       }
     }
     if (_frequency == 'Yearly') {
       final sortedMonths = _selectedMonths.toList()..sort();
       final monthNames = sortedMonths.map((i) => _kMonthsFull[i - 1]).toList();
       final String base = monthNames.isEmpty
-          ? 'Event will occur $every'
-          : 'Event will occur $every in ${_joinDays(monthNames)}';
+          ? '$subject will occur $every'
+          : '$subject will occur $every in ${_joinDays(monthNames)}';
       if (_yearlyDaysEnabled) {
         final pos = _kPositions[_yearlyPositionIndex];
         final day = _kDays[_yearlyDayIndex];
@@ -11199,7 +11206,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
       }
       return '$base.';
     }
-    return 'Event will occur $every.';
+    return '$subject will occur $every.';
   }
 
   // ── Every subcard ─────────────────────────────────────────────────────────
@@ -12073,7 +12080,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
   // ── Label & save ──────────────────────────────────────────────────────────
 
   String get _customLabel {
-    const prefix = 'Event will occur ';
+    final prefix = '${widget.subjectLabel} will occur ';
     final text = _footerText;
     final raw = text.startsWith(prefix) ? text.substring(prefix.length) : text;
     final stripped = raw.endsWith('.') ? raw.substring(0, raw.length - 1) : raw;
