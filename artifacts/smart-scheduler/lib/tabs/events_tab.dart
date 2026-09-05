@@ -15092,6 +15092,9 @@ const double _kEmojiGlyphSize = 20.0;
 // SVG asset paths for the light/dark emoji icon pair.
 const _kEmojiLightSvg = 'assets/custom_icons/emoji.svg';
 const _kEmojiDarkSvg = 'assets/custom_icons/emoji_fill.svg';
+const _kSoccerBallSvg = 'assets/custom_icons/SoccerBall.svg';
+
+bool _isSoccerBallIcon(Object o) => o == _kSoccerBallSvg;
 
 // Returns the brightness-appropriate SVG path.
 // Currently switches the emoji outline↔filled pair; all other paths pass through.
@@ -15345,6 +15348,7 @@ Widget _buildPickerIconRaw(Object iconOrSvg, Color color, {BuildContext? ctx}) {
     );
   }
   if (iconOrSvg is String) {
+    final isSoccerBall = _isSoccerBallIcon(iconOrSvg);
     final double sz =
         iconOrSvg.contains('Banknote')
             ? 18
@@ -15373,7 +15377,11 @@ Widget _buildPickerIconRaw(Object iconOrSvg, Color color, {BuildContext? ctx}) {
       height: sz,
       fit: BoxFit.contain,
       alignment: Alignment.center,
-      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      // SoccerBall.svg intentionally keeps its black fill and light contour;
+      // applying the generic tint would flatten that contrast back to one
+      // color. All other picker SVGs retain their existing monochrome styling.
+      colorFilter:
+          isSoccerBall ? null : ColorFilter.mode(color, BlendMode.srcIn),
     );
   }
   final icon = iconOrSvg as IconData;
