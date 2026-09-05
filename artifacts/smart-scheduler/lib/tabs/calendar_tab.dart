@@ -9247,6 +9247,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
     'tif',
   };
 
+  static const _kRecurringAttachmentFooter =
+      'Attachments will be applied to all recurrences';
+
   /// "Add attachment…" row — always at the bottom of Card 7.
   ///
   /// [DropRegion] is a native drop target rather than Flutter's [DragTarget],
@@ -10714,6 +10717,35 @@ class _NewEventSheetState extends State<_NewEventSheet>
                             ),
                             _buildAttachmentRow(),
                           ]),
+                           AnimatedSize(
+                             duration: const Duration(milliseconds: 180),
+                             curve: Curves.easeOutCubic,
+                             alignment: Alignment.topCenter,
+                             child: _repeat != 'Never'
+                                 ? SizedBox(
+                                     width: double.infinity,
+                                     child: Padding(
+                                       padding: const EdgeInsets.only(
+                                         top: 8,
+                                         left:
+                                             kModalSheetContextFooterHorizontalInset,
+                                         right:
+                                             kModalSheetContextFooterHorizontalInset,
+                                       ),
+                                       child: Text(
+                                         _kRecurringAttachmentFooter,
+                                         style: modalSheetContextFooterStyle(
+                                           context,
+                                         ),
+                                         textAlign: TextAlign.left,
+                                       ),
+                                     ),
+                                   )
+                                 : const SizedBox(
+                                     width: double.infinity,
+                                     height: 0,
+                                   ),
+                           ),
                           const SizedBox(height: kModalCardGap),
                           // Card 8 — URL + Notes
                           _card([
