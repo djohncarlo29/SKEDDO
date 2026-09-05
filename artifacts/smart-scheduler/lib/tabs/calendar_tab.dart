@@ -736,7 +736,7 @@ class CalendarTabState extends State<CalendarTab>
     // Let the existing Year → Month morph fully land before starting the
     // existing Month → Day collapse.  This keeps the two transitions visually
     // continuous instead of replacing the year grid with a day timeline.
-    await _enterMonth(today.month - 1);
+    await _enterMonth(today.month - 1, fast: true);
     if (!mounted || _view != CalendarView.month) return;
     if (displayedYear != today.year) {
       // The shortcut always targets the real current day.  If the user was
@@ -748,7 +748,7 @@ class CalendarTabState extends State<CalendarTab>
       });
       _notify();
     }
-    _enterDay(today);
+    _enterDay(today, fast: true);
   }
 
   /// Advances through today's calendar hierarchy when the current header title
@@ -778,9 +778,9 @@ class CalendarTabState extends State<CalendarTab>
         return;
       case CalendarView.day:
         if (!_sameDay(_selected, today)) return;
-        await _exitToMonth();
+        await _exitToMonth(fast: true);
         if (!mounted) return;
-        await _exitToYear();
+        await _exitToYear(fast: true);
     }
   }
 
@@ -1129,6 +1129,15 @@ class CalendarTabState extends State<CalendarTab>
     damping: 25.0,
   );
 
+  // Chained Year ↔ Month ↔ Day transitions use the same visual springs but
+  // complete each leg in roughly half the time, keeping the full two-step
+  // journey close to the duration of a normal single navigation.
+  static const _kHierarchyZoomSpring = SpringDescription(
+    mass: 1.0,
+    stiffness: 720.0,
+    damping: 50.0,
+  );
+
   // Exit spring: high stiffness + strong initial velocity so the collapse
   // starts fast and lands crisply — perceptibly quicker than the enter spring.
   static const _kZoomSpringExit = SpringDescription(
@@ -1136,6 +1145,14 @@ class CalendarTabState extends State<CalendarTab>
     stiffness: 680.0,
     damping: 46.0,
   );
+
+  static const _kHierarchyZoomSpringExit = SpringDescription(
+    mass: 1.0,
+    stiffness: 2720.0,
+    damping: 92.0,
+  );
+
+  static const _kHierarchyCollapseDuration = Duration(milliseconds: 185);
 
   // Reads each year-view row's actual rendered top from the GlobalKeys.
   // Must be called while the year view is in the tree (zoomT ≈ 0).
@@ -1160,7 +1177,7 @@ class CalendarTabState extends State<CalendarTab>
     if (tops.length == 4) _yearMeasuredRowTops = tops;
   }
 
-  Future<void> _enterMonth(int monthIdx) async {
+  Future<void> _enterMonth(int monthIdx, {bool fast = false}) async {
     // Capture exact row positions before the zoom animation hides the YearView.
     _measureYearRowTops();
     _zoomScrollOffset = _yearScrollCtrl.hasClients
@@ -1173,7 +1190,12 @@ class CalendarTabState extends State<CalendarTab>
     });
     _notify();
     await _zoomCtrl.animateWith(
-      SpringSimulation(_kZoomSpring, _zoomCtrl.value, 1.0, 0.0),
+      SpringSimulation(
+        fast ? _kHierarchyZoomSpring : _kZoomSpring,
+        _zoomCtrl.value,
+        1.0,
+        0.0,
+      ),
     );
     // Spring tolerance (~0.001) can leave the value just below 1.0.
     // Snap to the exact target so the morph condition (zoomT < 1.0) is
@@ -1181,7 +1203,7 @@ class CalendarTabState extends State<CalendarTab>
     if (mounted) _zoomCtrl.value = 1.0;
   }
 
-  Future<void> _exitToYear() async {
+  Future<void> _exitToYear({bool fast = false}) async {
     // Capture current month scroll before leaving so the position survives the
     // Year View excursion and is restored when the user taps back into a month.
     if (_monthViewScrollCtrl.hasClients) {
@@ -1189,7 +1211,12 @@ class CalendarTabState extends State<CalendarTab>
     }
     setState(() => _zoomMonthIdx = _dispMonth - 1);
     await _zoomCtrl.animateWith(
-      SpringSimulation(_kZoomSpringExit, _zoomCtrl.value, 0.0, -14.0),
+      SpringSimulation(
+        fast ? _kHierarchyZoomSpringExit : _kZoomSpringExit,
+        _zoomCtrl.value,
+        0.0,
+        fast ? -28.0 : -14.0,
+      ),
     );
     if (mounted) {
       _zoomCtrl.value = 0.0;
@@ -1236,7 +1263,7 @@ class CalendarTabState extends State<CalendarTab>
     _zoomPrevT = t;
   }
 
-  void _enterDay(DateTime date) {
+  void _enterDay(DateTime date, {bool fast = false}) {
     // Capture the current scroll offset of the month-view content area BEFORE
     // setState triggers a rebuild.  This value is used by _AnimatedWeekRow to
     // offset its Y-translation so the selected row lands at visual-y = 0 even
@@ -1252,7 +1279,14 @@ class CalendarTabState extends State<CalendarTab>
       _view = CalendarView.day;
     });
     _notify();
-    _collapseCtrl.forward(from: _collapseCtrl.value).then((_) {
+    final collapse = fast
+        ? _collapseCtrl.animateTo(
+            1.0,
+            duration: _kHierarchyCollapseDuration,
+            curve: Curves.easeInOutCubic,
+          )
+        : _collapseCtrl.forward(from: _collapseCtrl.value);
+    collapse.then((_) {
       if (!mounted) return;
       // Animation settled at colT=1.  The selected row is visually at y=0.
       // Reset the scroll controller and the captured compensation offset so
@@ -1266,7 +1300,7 @@ class CalendarTabState extends State<CalendarTab>
     });
   }
 
-  Future<void> _exitToMonth() async {
+  Future<void> _exitToMonth({bool fast = false}) async {
     // Restore the saved scroll position BEFORE starting the reverse animation
     // so that _collapseScrollOffset is non-zero throughout the reverse.
     // With _collapseScrollOffset = saved, _AnimatedWeekRow's translateY formula
@@ -1278,7 +1312,15 @@ class CalendarTabState extends State<CalendarTab>
       }
       setState(() => _collapseScrollOffset = _savedMonthScrollOffset);
     }
-    await _collapseCtrl.reverse();
+    if (fast) {
+      await _collapseCtrl.animateBack(
+        0.0,
+        duration: _kHierarchyCollapseDuration,
+        curve: Curves.easeInOutCubic,
+      );
+    } else {
+      await _collapseCtrl.reverse();
+    }
     if (!mounted) return;
     // Animation settled at colT=0.  collapseProgress is 0, so
     // _collapseScrollOffset no longer affects row positions — safe to clear.
