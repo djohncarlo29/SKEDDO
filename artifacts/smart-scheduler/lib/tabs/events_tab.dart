@@ -12797,6 +12797,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         data.icon!,
         64 * circleScale,
         widget.smartIconColor ?? CupertinoColors.white,
+        containerColor: _resolvedSelectedColor,
         ctx: context,
         emojiOffsetY: 2 * circleScale,
       );
@@ -15339,7 +15340,12 @@ class _SoccerBallRingPainter extends CustomPainter {
 // widget's layout footprint equals the actual visual icon size (~65 px for an
 // average icon at the 130-unit scale).  This matches SearchWeightedIcon(size:64)
 // used by built-in categories so both paths centre identically in the Column.
-Widget _buildDcvCatIcon(Object iconOrSvg, Color color, {BuildContext? ctx}) {
+Widget _buildDcvCatIcon(
+  Object iconOrSvg,
+  Color color, {
+  BuildContext? ctx,
+  Color? containerColor,
+}) {
   const double scale = 130.0 / _kIconCircle; // same scale as before
   final double iconSz = _pickerIconBaseSize(iconOrSvg) * scale;
   final Offset offset = _pickerIconOffset(iconOrSvg) * scale;
@@ -15355,6 +15361,17 @@ Widget _buildDcvCatIcon(Object iconOrSvg, Color color, {BuildContext? ctx}) {
         textScaler: TextScaler.noScaling,
       ),
     );
+  }
+  if (_isSoccerBallIcon(iconOrSvg) && containerColor != null) {
+    inner = _buildSoccerBallIcon(
+      size: iconSz,
+      ballFillColor: containerColor,
+      detailColor: color,
+    );
+    if (offset != Offset.zero) {
+      inner = Transform.translate(offset: offset, child: inner);
+    }
+    return inner;
   }
   if (iconOrSvg is String) {
     final String path =
@@ -18318,7 +18335,12 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     if (widget.icon is String) {
       return KeyedSubtree(
         key: ValueKey('icon_${widget.label}'),
-        child: _buildDcvCatIcon(widget.icon!, kEmptyStateIcon),
+        child: _buildDcvCatIcon(
+          widget.icon!,
+          CupertinoDynamicColor.resolve(kEmptyStateIcon, context),
+          containerColor: resolveThemeColor(kBackgroundColor, context),
+          ctx: context,
+        ),
       );
     }
     final IconData iconData;
@@ -18345,7 +18367,12 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     if (isUserCategory) {
       return KeyedSubtree(
         key: ValueKey('icon_${widget.label}'),
-        child: _buildDcvCatIcon(iconData, kEmptyStateIcon),
+        child: _buildDcvCatIcon(
+          iconData,
+          CupertinoDynamicColor.resolve(kEmptyStateIcon, context),
+          containerColor: resolveThemeColor(kBackgroundColor, context),
+          ctx: context,
+        ),
       );
     }
     if (iconData == SFIcons.sf_music_note) {
