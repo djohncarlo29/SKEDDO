@@ -15231,8 +15231,7 @@ Widget _renderCatIcon(
         ),
       ),
     );
-  }
-  if (iconOrSvg is String) {
+  } else if (iconOrSvg is String) {
     final String path =
         ctx != null
             ? _resolveIconSvg(iconOrSvg, CupertinoTheme.brightnessOf(ctx))
@@ -18250,6 +18249,17 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   // Builds the large icon for the empty-state, matching the icon shown in
   // the tile's blue circle (scaled up, tinted kTertiaryLabel instead of white).
   Widget _buildIcon() {
+    final dcvDetailColor = CupertinoDynamicColor.resolve(
+      kEmptyStateIcon,
+      context,
+    );
+    // Light Mode intentionally keeps the original monochrome DCV icon.
+    // Dark Mode uses the two-color soccer treatment so the light detail color
+    // remains legible against the dark page background.
+    final Color? dcvSoccerContainerColor =
+        CupertinoTheme.brightnessOf(context) == Brightness.dark
+            ? resolveThemeColor(kBackgroundColor, context)
+            : null;
     // Groceries category type — fixed carrot icon regardless of user's icon.
     if (widget.categoryType == 'Groceries') {
       return FixedSFIcon(
@@ -18337,8 +18347,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         key: ValueKey('icon_${widget.label}'),
         child: _buildDcvCatIcon(
           widget.icon!,
-          CupertinoDynamicColor.resolve(kEmptyStateIcon, context),
-          containerColor: resolveThemeColor(kBackgroundColor, context),
+          dcvDetailColor,
+          containerColor: dcvSoccerContainerColor,
           ctx: context,
         ),
       );
@@ -18369,8 +18379,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         key: ValueKey('icon_${widget.label}'),
         child: _buildDcvCatIcon(
           iconData,
-          CupertinoDynamicColor.resolve(kEmptyStateIcon, context),
-          containerColor: resolveThemeColor(kBackgroundColor, context),
+          dcvDetailColor,
+          containerColor: dcvSoccerContainerColor,
           ctx: context,
         ),
       );
