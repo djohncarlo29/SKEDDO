@@ -19408,22 +19408,23 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
 
   // Static context footer — always visible below Card 1, reflects live state.
   String get _footerText {
+    const prefix = 'Events inside this category will occur';
     final unit = _everyUnit.toLowerCase();
     final every =
         _everyCount == 1 ? 'every $unit' : 'every $_everyCount ${unit}';
     if (_frequency == 'Weekly' && _selectedDays.isNotEmpty) {
-      return 'Event will occur $every on ${_joinDays(_orderedSelectedDays)}.';
+      return '$prefix $every on ${_joinDays(_orderedSelectedDays)}.';
     }
     if (_frequency == 'Monthly') {
       if (_monthlyMode == 'Each' && _selectedDates.isNotEmpty) {
         final sorted = _selectedDates.toList()..sort();
         final ordinals = sorted.map(_ordinal).toList();
-        return 'Event will occur $every on the ${_joinDays(ordinals)}.';
+        return '$prefix $every on the ${_joinDays(ordinals)}.';
       }
       if (_monthlyMode == 'OnThe') {
         final pos = _kPositions[_onThePositionIndex];
         final day = _kDays[_onTheDayIndex];
-        return 'Event will occur $every on the $pos $day.';
+        return '$prefix $every on the $pos $day.';
       }
     }
     if (_frequency == 'Yearly') {
@@ -19431,8 +19432,8 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
       final monthNames = sortedMonths.map((i) => _kMonthsFull[i - 1]).toList();
       final String base =
           monthNames.isEmpty
-              ? 'Event will occur $every'
-              : 'Event will occur $every in ${_joinDays(monthNames)}';
+              ? '$prefix $every'
+              : '$prefix $every in ${_joinDays(monthNames)}';
       if (_yearlyDaysEnabled) {
         final pos = _kPositions[_yearlyPositionIndex];
         final day = _kDays[_yearlyDayIndex];
@@ -19440,7 +19441,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
       }
       return '$base.';
     }
-    return 'Event will occur $every.';
+    return '$prefix $every.';
   }
 
   // ── Every subcard state ───────────────────────────────────────────────────
@@ -20351,7 +20352,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
 
   /// Returns the footer sentence starting from "Every…" (capitalised, no period).
   String get _customLabel {
-    const prefix = 'Event will occur ';
+    const prefix = 'Events inside this category will occur ';
     final text = _footerText;
     final raw = text.startsWith(prefix) ? text.substring(prefix.length) : text;
     final stripped = raw.endsWith('.') ? raw.substring(0, raw.length - 1) : raw;
