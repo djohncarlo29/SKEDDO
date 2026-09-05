@@ -15315,7 +15315,9 @@ class _SoccerBallRingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final strokeWidth = max(0.5, min(1.6, size.shortestSide / 40));
+    // Slightly heavier than the original hairline while staying proportional
+    // across picker, tile, modal, ghost, and DCV sizes.
+    final strokeWidth = max(0.55, min(1.8, size.shortestSide / 36));
     final paint =
         Paint()
           ..color = color
