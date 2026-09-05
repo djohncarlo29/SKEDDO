@@ -715,6 +715,39 @@ class CalendarTabState extends State<CalendarTab>
     _notify();
   }
 
+  /// Advances through today's calendar hierarchy when the current header title
+  /// is tapped: Year → Month → Day → Year.
+  ///
+  /// The title callback is only exposed for today's visible title by AppShell,
+  /// but the date/view checks stay here so the state transition remains safe
+  /// if another caller invokes this method.
+  Future<void> advanceCurrentHeader() async {
+    if (_snapCtrl.isAnimating ||
+        _zoomCtrl.isAnimating ||
+        _collapseCtrl.isAnimating) {
+      return;
+    }
+
+    final today = DateTime.now();
+    switch (_view) {
+      case CalendarView.year:
+        if (_dispYear == today.year) {
+          _enterMonth(today.month - 1);
+        }
+        return;
+      case CalendarView.month:
+        if (_dispYear == today.year && _dispMonth == today.month) {
+          _enterDay(today);
+        }
+        return;
+      case CalendarView.day:
+        if (!_sameDay(_selected, today)) return;
+        await _exitToMonth();
+        if (!mounted) return;
+        await _exitToYear();
+    }
+  }
+
   // dir = +1: content slides RIGHT → previous appears from the left
   // dir = -1: content slides LEFT  → next appears from the right
   void _swipeNavigate(int dir) {
@@ -1113,24 +1146,21 @@ class CalendarTabState extends State<CalendarTab>
         });
   }
 
-  void _exitToYear() {
+  Future<void> _exitToYear() async {
     // Capture current month scroll before leaving so the position survives the
     // Year View excursion and is restored when the user taps back into a month.
     if (_monthViewScrollCtrl.hasClients) {
       _savedMonthScrollOffset = _monthViewScrollCtrl.offset;
     }
     setState(() => _zoomMonthIdx = _dispMonth - 1);
-    _zoomCtrl
-        .animateWith(
-          SpringSimulation(_kZoomSpringExit, _zoomCtrl.value, 0.0, -14.0),
-        )
-        .then((_) {
-          if (mounted) {
-            _zoomCtrl.value = 0.0;
-            setState(() => _view = CalendarView.year);
-            _notify();
-          }
-        });
+    await _zoomCtrl.animateWith(
+      SpringSimulation(_kZoomSpringExit, _zoomCtrl.value, 0.0, -14.0),
+    );
+    if (mounted) {
+      _zoomCtrl.value = 0.0;
+      setState(() => _view = CalendarView.year);
+      _notify();
+    }
   }
 
   // Fires _notify() at the header-snap thresholds:
@@ -1201,7 +1231,7 @@ class CalendarTabState extends State<CalendarTab>
     });
   }
 
-  void _exitToMonth() {
+  Future<void> _exitToMonth() async {
     // Restore the saved scroll position BEFORE starting the reverse animation
     // so that _collapseScrollOffset is non-zero throughout the reverse.
     // With _collapseScrollOffset = saved, _AnimatedWeekRow's translateY formula
@@ -1213,19 +1243,18 @@ class CalendarTabState extends State<CalendarTab>
       }
       setState(() => _collapseScrollOffset = _savedMonthScrollOffset);
     }
-    _collapseCtrl.reverse().then((_) {
-      if (!mounted) return;
-      // Animation settled at colT=0.  collapseProgress is 0, so
-      // _collapseScrollOffset no longer affects row positions — safe to clear.
-      // _savedMonthScrollOffset is intentionally kept: the user is back in
-      // Month View at that exact offset, and it must survive any subsequent
-      // Year View excursion.
-      setState(() {
-        _view = CalendarView.month;
-        _collapseScrollOffset = 0.0;
-      });
-      _notify();
+    await _collapseCtrl.reverse();
+    if (!mounted) return;
+    // Animation settled at colT=0.  collapseProgress is 0, so
+    // _collapseScrollOffset no longer affects row positions — safe to clear.
+    // _savedMonthScrollOffset is intentionally kept: the user is back in
+    // Month View at that exact offset, and it must survive any subsequent
+    // Year View excursion.
+    setState(() {
+      _view = CalendarView.month;
+      _collapseScrollOffset = 0.0;
     });
+    _notify();
   }
 
   @override

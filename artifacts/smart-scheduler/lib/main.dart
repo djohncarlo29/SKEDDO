@@ -1750,6 +1750,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             child: HeaderTitleScroller(
               title: title,
               fadeColor: resolveThemeColor(kCardColor, context),
+              onTap: isActive && isToday
+                  ? _advanceCurrentCalendarHeader
+                  : null,
               // The title area ends immediately before the calendar arrows,
               // so its trailing boundary must fade instead of hard-clipping.
               showTrailingFade: true,
@@ -1832,6 +1835,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         );
       },
     );
+  }
+
+  void _advanceCurrentCalendarHeader() {
+    final future = _calendarTabKey.currentState?.advanceCurrentHeader();
+    if (future != null) unawaited(future);
   }
 
   // Returns true when [title] matches the REAL-WORLD today period.

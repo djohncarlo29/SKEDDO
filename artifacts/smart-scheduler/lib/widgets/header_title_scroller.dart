@@ -92,6 +92,7 @@ class HeaderTitleScroller extends StatefulWidget {
   final Widget Function(double titleFontSize)? trailingBuilder;
   final double trailingGap;
   final bool showTrailingFade;
+  final VoidCallback? onTap;
 
   const HeaderTitleScroller({
     super.key,
@@ -103,6 +104,7 @@ class HeaderTitleScroller extends StatefulWidget {
     this.trailingBuilder,
     this.trailingGap = 4,
     this.showTrailingFade = true,
+    this.onTap,
   });
 
   @override
@@ -282,38 +284,42 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                           alignment: Alignment.bottomLeft,
                           child: SizedBox(
                             width: double.infinity,
-                            child: SingleChildScrollView(
-                              controller: _scrollController,
-                              primary: false,
-                              scrollDirection: Axis.horizontal,
-                              // Headers always accept the native rubberband gesture,
-                              // including titles that fit completely.  _canScroll
-                              // remains only an overflow/fade decision; it must not
-                              // disable the gesture for short titles.
-                              physics: const BouncingScrollPhysics(
-                                parent: AlwaysScrollableScrollPhysics(),
-                              ),
-                              padding: EdgeInsets.zero,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    widget.title,
-                                    maxLines: 1,
-                                    softWrap: false,
-                                    overflow: TextOverflow.visible,
-                                    // Large Header titles are intentionally fixed-height. The
-                                    // rest of the app continues to follow the bounded
-                                    // header scale above instead of the ambient scaler.
-                                    textScaler: TextScaler.noScaling,
-                                    style: effectiveStyle,
-                                  ),
-                                   if (trailing != null) ...[
-                                    SizedBox(width: widget.trailingGap),
-                                     trailing,
-                                  ],
-                                ],
+                         child: GestureDetector(
+                           behavior: HitTestBehavior.opaque,
+                           onTap: widget.onTap,
+                           child: SingleChildScrollView(
+                             controller: _scrollController,
+                             primary: false,
+                             scrollDirection: Axis.horizontal,
+                             // Headers always accept the native rubberband gesture,
+                             // including titles that fit completely.  _canScroll
+                             // remains only an overflow/fade decision; it must not
+                             // disable the gesture for short titles.
+                             physics: const BouncingScrollPhysics(
+                               parent: AlwaysScrollableScrollPhysics(),
+                             ),
+                             padding: EdgeInsets.zero,
+                             child: Row(
+                               mainAxisSize: MainAxisSize.min,
+                               crossAxisAlignment: CrossAxisAlignment.center,
+                               children: [
+                                 Text(
+                                   widget.title,
+                                   maxLines: 1,
+                                   softWrap: false,
+                                   overflow: TextOverflow.visible,
+                                   // Large Header titles are intentionally fixed-height. The
+                                   // rest of the app continues to follow the bounded
+                                   // header scale above instead of the ambient scaler.
+                                   textScaler: TextScaler.noScaling,
+                                   style: effectiveStyle,
+                                 ),
+                                  if (trailing != null) ...[
+                                   SizedBox(width: widget.trailingGap),
+                                    trailing,
+                                 ],
+                               ],
+                             ),
                               ),
                             ),
                           ),
