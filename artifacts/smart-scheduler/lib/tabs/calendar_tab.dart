@@ -5220,9 +5220,11 @@ class _CurrentTimeIndicator extends StatelessWidget {
     required this.hour,
     required this.minute,
     this.multiDay = false,
+    this.multiDayMarkerShiftX = 0.0,
   });
   final int hour, minute;
   final bool multiDay;
+  final double multiDayMarkerShiftX;
 
   String get _label {
     final suffix = hour < 12 ? 'am' : 'pm';
@@ -5259,27 +5261,47 @@ class _CurrentTimeIndicator extends StatelessWidget {
     );
 
     if (multiDay) {
-      final line = Container(
-        height: 1.5,
-        color: resolveAccentColor(context),
-      );
-      return Row(
+      final marker = Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          pill,
-          // The dot's center is 5.5 px beyond the label-column edge, matching
-          // the shifted Multi-Day divider.
+          // The left divider is intentionally offset by 5.5 px, so the
+          // default marker center is labelColW + 5.5.  The caller supplies
+          // the additional live swipe translation.
           const SizedBox(width: _kMultiDayIndicatorDividerShift - 3.5),
           const SizedBox(
             width: 7,
             height: 7,
             child: _CurrentTimeDot(),
           ),
-          // Keep this full-width.  The entire indicator translates with the
-          // active day, so a right-side indicator is naturally clipped to the
-          // right half while a left-side indicator remains full-width.
-          Expanded(child: line),
+          // Keep this full-width. The marker's translation and the viewport
+          // clipping make the right-side state end at the screen edge.
+          Expanded(
+            child: Container(
+              height: 1.5,
+              color: resolveAccentColor(context),
+            ),
+          ),
         ],
+      );
+
+      return ClipRect(
+        child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          pill,
+          // The pill remains anchored in the left label column. Only the
+          // marker moves, and ClipRect prevents it from painting over the pill
+          // during an exit transition.
+          Expanded(
+            child: ClipRect(
+              child: Transform.translate(
+                offset: Offset(multiDayMarkerShiftX, 0),
+                child: marker,
+              ),
+            ),
+          ),
+        ],
+        ),
       );
     }
 
@@ -5490,23 +5512,40 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                   //   A exits left, A+1 stays, A+2 enters right.
                   // goingRight (slideX > 0):  final pair = [A-1, A]
                   //   A+1 exits right, A stays, A-1 enters left.
-                   double indicatorShiftX = 0.0;
+                   double markerShiftX = 0.0;
                   if (showIndicator) {
                      if (goingLeft) {
                        if (_sameDay(A, widget.today)) {
-                         indicatorShiftX = posA;
+                         // Left-side today exits at full speed.
+                         markerShiftX = posA;
                        } else if (_sameDay(Aplus1, widget.today)) {
-                         indicatorShiftX = posAplus1;
+                         // Shared right-side today moves toward the left
+                         // divider. Interpolate between the shifted left
+                         // divider and the exact center divider.
+                         markerShiftX =
+                             (posAplus1 / colW) *
+                             (colW - _kMultiDayIndicatorDividerShift);
                        } else if (_sameDay(Aplus2, widget.today)) {
-                         indicatorShiftX = posAplus2;
+                         // Entering right-side today must arrive centered on
+                         // the center divider, not 5.5 px beyond it.
+                         markerShiftX =
+                             posAplus2 - _kMultiDayIndicatorDividerShift;
                        }
                      } else {
                        if (_sameDay(Aminus1, widget.today)) {
-                         indicatorShiftX = posAminus1;
+                         // Entering left-side today arrives on the shifted
+                         // label divider.
+                         markerShiftX = posAminus1;
                        } else if (_sameDay(A, widget.today)) {
-                         indicatorShiftX = posA;
+                         // Shared today moves from the left divider to the
+                         // exact center divider.
+                         markerShiftX =
+                             (posA / colW) *
+                             (colW - _kMultiDayIndicatorDividerShift);
                        } else if (_sameDay(Aplus1, widget.today)) {
-                         indicatorShiftX = posAplus1;
+                         // Right-side today exits from the exact center line.
+                         markerShiftX =
+                             posAplus1 - _kMultiDayIndicatorDividerShift;
                        }
                      }
                   }
@@ -5611,21 +5650,21 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                             ),
                           ),
 
-                           // Current-time indicator belongs to the active day
-                           // column.  Paint it after the separators so its dot
-                           // sits visibly on top of the vertical divider.
+                           // Current-time marker belongs to the active day
+                           // column. The pill remains in the left label
+                           // column; only the circle and line slide. Paint it
+                           // after the separators so the dot sits visibly on
+                           // top of the vertical divider.
                            if (showIndicator)
                              Positioned(
                                left: 0,
                                right: 0,
                                top: indicatorTop,
-                               child: Transform.translate(
-                                 offset: Offset(indicatorShiftX, 0),
-                                 child: _CurrentTimeIndicator(
-                                   hour: now.hour,
-                                   minute: now.minute,
-                                   multiDay: true,
-                                 ),
+                               child: _CurrentTimeIndicator(
+                                 hour: now.hour,
+                                 minute: now.minute,
+                                 multiDay: true,
+                                 multiDayMarkerShiftX: markerShiftX,
                                ),
                              ),
                         ],
