@@ -4542,8 +4542,11 @@ class _DayBannerState extends State<_DayBanner>
               final midX = labelColW + contentW / 2;
 
               // Left separator slides in from BEYOND the LEFT viewport edge.
-              // At t=0 it sits at -0.5 (hidden); at t=1 it lands at labelColW-0.25.
-              final sep1X = -0.5 + (labelColW - 0.25 + 0.5) * t;
+              // At t=0 it sits at -0.5 (hidden); at t=1 it lands on the
+              // shifted Multi-Day label divider.
+              final sep1Target =
+                  labelColW + _kMultiDayIndicatorDividerShift - 0.25;
+              final sep1X = -0.5 + (sep1Target + 0.5) * t;
               // Centre separator slides in from BEYOND the RIGHT viewport edge.
               // At t=0 it sits at totalW (hidden); at t=1 it lands at midX-0.25.
               final sep2X = totalW + (midX - 0.25 - totalW) * t;
@@ -4620,7 +4623,10 @@ class _DayBannerState extends State<_DayBanner>
                   children: [
                     // Fixed vertical separators at their fully-open positions.
                     Positioned(
-                      left: labelColW - 0.25,
+                      left:
+                          labelColW +
+                          _kMultiDayIndicatorDividerShift -
+                          0.25,
                       top: 0,
                       bottom: 0,
                       width: 0.5,
@@ -4802,6 +4808,11 @@ class _DayBannerState extends State<_DayBanner>
 // ══════════════════════════════════════════════════════════════════════════════
 // _DayTimeline — scrollable hour grid + current-time indicator
 // ══════════════════════════════════════════════════════════════════════════════
+// Multi-Day keeps the current-time dot on the label divider, but gives that
+// divider the same small breathing offset that the Single-Day dot gets from
+// its left margin after the label column.
+const double _kMultiDayIndicatorDividerShift = 5.5;
+
 class _DayTimeline extends StatefulWidget {
   const _DayTimeline({
     super.key,
@@ -4936,8 +4947,14 @@ class _DayTimelineState extends State<_DayTimeline>
                       builder: (_, __) {
                         final t = _sepAnim.value;
                         // Left separator slides in from BEYOND the LEFT edge.
-                        // At t=0: -0.5 (hidden left). At t=1: labelColW-0.25.
-                        final sep1X = -0.5 + (labelColW - 0.25 + 0.5) * t;
+                        // At t=0: -0.5 (hidden left). At t=1: the label
+                        // divider plus the same visual offset used by the
+                        // Multi-Day current-time indicator.
+                        final sep1Target =
+                            labelColW +
+                            _kMultiDayIndicatorDividerShift -
+                            0.25;
+                        final sep1X = -0.5 + (sep1Target + 0.5) * t;
                         // Centre separator slides in from BEYOND the RIGHT edge.
                         // At t=0: totalW (hidden right). At t=1: midpoint.
                         final sep2X =
@@ -5051,9 +5068,13 @@ class _DayTimelineState extends State<_DayTimeline>
 
                         // ── Multi Day vertical separators — extended far beyond
                         // content bounds so rubber-band overscroll never shows ends.
-                        // Left separator: right edge of the hour-label column.
+                        // Left separator: the hour-label divider with the same
+                        // breathing offset used by the current-time indicator.
                         Positioned(
-                          left: labelColW - 0.25,
+                          left:
+                              labelColW +
+                              _kMultiDayIndicatorDividerShift -
+                              0.25,
                           top: -9999,
                           bottom: -9999,
                           width: 0.5,
@@ -5267,9 +5288,12 @@ class _CurrentTimeIndicator extends StatelessWidget {
         // Dot
         if (multiDay)
           Transform.translate(
-            // The dot's centre sits on the label-column divider. The line is
-            // shifted by the same half-diameter below so it meets the dot.
-            offset: const Offset(-3.5, 0),
+            // The dot's centre sits on the shifted label-column divider. The
+            // line is shifted by the same amount so it still meets the dot.
+            offset: const Offset(
+              _kMultiDayIndicatorDividerShift - 3.5,
+              0,
+            ),
             child: const SizedBox(
               width: 7,
               height: 7,
@@ -5291,7 +5315,10 @@ class _CurrentTimeIndicator extends StatelessWidget {
           child:
               multiDay
                   ? Transform.translate(
-                    offset: const Offset(-3.5, 0),
+                    offset: const Offset(
+                      _kMultiDayIndicatorDividerShift - 3.5,
+                      0,
+                    ),
                     child: Container(
                       height: 1.5,
                       color: resolveAccentColor(context),
@@ -5530,8 +5557,13 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                     builder: (_, __) {
                       final t = _sepAnim.value;
                       // Left separator slides in from beyond the left edge.
-                      // At t=0: -0.5 (hidden). At t=1: labelColW-0.25.
-                      final sep1X = -0.5 + (labelColW - 0.25 + 0.5) * t;
+                      // At t=0: -0.5 (hidden). At t=1: the shifted label
+                      // divider used by the current-time indicator.
+                      final sep1Target =
+                          labelColW +
+                          _kMultiDayIndicatorDividerShift -
+                          0.25;
+                      final sep1X = -0.5 + (sep1Target + 0.5) * t;
                       // Centre separator slides in from beyond the right edge.
                       // At t=0: totalW (hidden). At t=1: midpoint.
                       final sep2X =
