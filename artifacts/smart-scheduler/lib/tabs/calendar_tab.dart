@@ -5625,10 +5625,10 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                   if (showIndicator) {
                      if (goingLeft) {
                        if (_sameDay(A, widget.today)) {
-                          // Left-side today exits at full speed. Carry the
-                          // pill with the dot and line so the entire
-                          // indicator leaves as one element.
-                          wholeIndicatorShiftX = posA;
+                          // Match the Single-Day panel transform exactly:
+                          // the current panel leaves from its resting x=0
+                          // origin at the full screen-width slide offset.
+                          wholeIndicatorShiftX = slideX;
                        } else if (_sameDay(Aplus1, widget.today)) {
                          // Shared right-side today moves toward the left
                          // divider. Interpolate between the shifted left
@@ -5644,10 +5644,11 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                        }
                      } else {
                        if (_sameDay(Aminus1, widget.today)) {
-                          // Entering left-side today arrives from off-screen
-                          // with the entire indicator, matching the
-                          // Single-Day panel entrance behavior.
-                          wholeIndicatorShiftX = posAminus1;
+                          // Match the Single-Day previous-panel transform
+                          // exactly.  The indicator starts one full screen
+                          // width off the left edge and arrives at x=0
+                          // together with that panel.
+                          wholeIndicatorShiftX = slideX - sw;
                        } else if (_sameDay(A, widget.today)) {
                          // Shared today moves from the left divider to the
                          // exact center divider.
