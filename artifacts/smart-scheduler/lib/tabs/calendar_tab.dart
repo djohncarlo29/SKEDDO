@@ -2077,14 +2077,19 @@ class CalendarTabState extends State<CalendarTab>
                     if (colT > 0.01 &&
                         widget.daySubMode != DayViewSubMode.list)
                       const Positioned(
-                        top: _kCalendarHeaderToDowGap,
+                        // Cover the complete boundary below the app header.
+                        // The week rows are vertically transformed while
+                        // collapsing into Day View and can otherwise paint
+                        // through the small gap above the DOW labels.
+                        top: 0,
                         left: 0,
                         right: 0,
-                        height: _kDayLabelHeight,
+                        height: _kCalendarHeaderToDowGap + _kDayLabelHeight,
                         child: _DayViewDowMask(),
                       ),
                     // (Strip slides off-screen via stripSlideY Transform on each
-                    // _MonthView panel — no separate cover overlay needed.)
+                    // _MonthView panel; the mask above also seals the header
+                    // boundary while the strip is settling.)
 
                     // ── Day banner (weekday + full date) below week strip ──
                     // Multi Day: single banner instance handles column-level
@@ -4319,27 +4324,35 @@ class _DayViewDowMask extends StatelessWidget {
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     return ColoredBox(
       color: resolveThemeColor(kBackgroundColor, context),
-      child: Row(
+      child: Column(
         children: [
-          const Expanded(child: SizedBox.shrink()),
-          ...List.generate(
-            7,
-            (i) => Expanded(
-              child: Center(
-                child: Text(
-                  _kDayLabels[i],
-                  style: TextStyle(
-                    fontFamily: kSFProText,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: secondaryLabel,
-                    letterSpacing: -0.1,
+          const SizedBox(height: _kCalendarHeaderToDowGap),
+          SizedBox(
+            height: _kDayLabelHeight,
+            child: Row(
+              children: [
+                const Expanded(child: SizedBox.shrink()),
+                ...List.generate(
+                  7,
+                  (i) => Expanded(
+                    child: Center(
+                      child: Text(
+                        _kDayLabels[i],
+                        style: TextStyle(
+                          fontFamily: kSFProText,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: secondaryLabel,
+                          letterSpacing: -0.1,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(width: 7),
+              ],
             ),
           ),
-          const SizedBox(width: 7),
         ],
       ),
     );
@@ -5282,10 +5295,15 @@ class _CurrentTimeIndicator extends StatelessWidget {
     required this.minute,
     this.multiDay = false,
     this.multiDayMarkerShiftX = 0.0,
+    this.multiDayWholeShiftX = 0.0,
   });
   final int hour, minute;
   final bool multiDay;
   final double multiDayMarkerShiftX;
+  // Used when the left-hand day is today and exits the viewport. In that
+  // case the pill must travel with the dot and line instead of remaining
+  // anchored in the hour-label column.
+  final double multiDayWholeShiftX;
 
   String get _label {
     final suffix = hour < 12 ? 'am' : 'pm';
@@ -5346,22 +5364,30 @@ class _CurrentTimeIndicator extends StatelessWidget {
       );
 
       return ClipRect(
-        child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          pill,
-          // The pill remains anchored in the left label column. Only the
-          // marker moves, and ClipRect prevents it from painting over the pill
-          // during an exit transition.
-          Expanded(
-            child: ClipRect(
-              child: Transform.translate(
-                offset: Offset(multiDayMarkerShiftX, 0),
-                child: marker,
+        child: Transform.translate(
+          offset: Offset(multiDayWholeShiftX, 0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              pill,
+              // Normally the pill remains anchored in the left label column
+              // and only the marker moves. During a left-side exit,
+              // multiDayWholeShiftX carries both as one element.
+              Expanded(
+                child: ClipRect(
+                  child: Transform.translate(
+                    offset: Offset(
+                      multiDayWholeShiftX == 0.0
+                          ? multiDayMarkerShiftX
+                          : 0.0,
+                      0,
+                    ),
+                    child: marker,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
         ),
       );
     }
@@ -5578,12 +5604,15 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                   //   A exits left, A+1 stays, A+2 enters right.
                   // goingRight (slideX > 0):  final pair = [A-1, A]
                   //   A+1 exits right, A stays, A-1 enters left.
-                   double markerShiftX = 0.0;
+                    double markerShiftX = 0.0;
+                    double wholeIndicatorShiftX = 0.0;
                   if (showIndicator) {
                      if (goingLeft) {
                        if (_sameDay(A, widget.today)) {
-                         // Left-side today exits at full speed.
-                         markerShiftX = posA;
+                          // Left-side today exits at full speed. Carry the
+                          // pill with the dot and line so the entire
+                          // indicator leaves as one element.
+                          wholeIndicatorShiftX = posA;
                        } else if (_sameDay(Aplus1, widget.today)) {
                          // Shared right-side today moves toward the left
                          // divider. Interpolate between the shifted left
@@ -5731,6 +5760,7 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                                  minute: now.minute,
                                  multiDay: true,
                                  multiDayMarkerShiftX: markerShiftX,
+                                  multiDayWholeShiftX: wholeIndicatorShiftX,
                                ),
                              ),
                         ],
