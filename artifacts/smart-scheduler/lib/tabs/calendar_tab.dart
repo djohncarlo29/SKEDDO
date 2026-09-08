@@ -5007,6 +5007,7 @@ class _DayTimelineState extends State<_DayTimeline>
                                 child: _CurrentTimeIndicator(
                                   hour: now.hour,
                                   minute: now.minute,
+                                  multiDay: isMultiDay,
                                 ),
                               ),
                           ],
@@ -5084,6 +5085,7 @@ class _DayTimelineState extends State<_DayTimeline>
                             child: _CurrentTimeIndicator(
                               hour: now.hour,
                               minute: now.minute,
+                              multiDay: true,
                             ),
                           ),
                       ],
@@ -5217,8 +5219,13 @@ class _HourSlot extends StatelessWidget {
 }
 
 class _CurrentTimeIndicator extends StatelessWidget {
-  const _CurrentTimeIndicator({required this.hour, required this.minute});
+  const _CurrentTimeIndicator({
+    required this.hour,
+    required this.minute,
+    this.multiDay = false,
+  });
   final int hour, minute;
+  final bool multiDay;
 
   String get _label {
     final suffix = hour < 12 ? 'am' : 'pm';
@@ -5258,20 +5265,55 @@ class _CurrentTimeIndicator extends StatelessWidget {
           ),
         ),
         // Dot
-        Container(
-          width: 7,
-          height: 7,
-          margin: const EdgeInsets.symmetric(horizontal: 2),
-          decoration: BoxDecoration(
-            color: resolveAccentColor(context),
-            shape: BoxShape.circle,
+        if (multiDay)
+          Transform.translate(
+            // The dot's centre sits on the label-column divider. The line is
+            // shifted by the same half-diameter below so it meets the dot.
+            offset: const Offset(-3.5, 0),
+            child: const SizedBox(
+              width: 7,
+              height: 7,
+              child: _CurrentTimeDot(),
+            ),
+          )
+        else
+          Container(
+            width: 7,
+            height: 7,
+            margin: const EdgeInsets.only(left: 2),
+            decoration: BoxDecoration(
+              color: resolveAccentColor(context),
+              shape: BoxShape.circle,
+            ),
           ),
-        ),
         // Line to right edge
         Expanded(
-          child: Container(height: 1.5, color: resolveAccentColor(context)),
+          child:
+              multiDay
+                  ? Transform.translate(
+                    offset: const Offset(-3.5, 0),
+                    child: Container(
+                      height: 1.5,
+                      color: resolveAccentColor(context),
+                    ),
+                  )
+                  : Container(height: 1.5, color: resolveAccentColor(context)),
         ),
       ],
+    );
+  }
+}
+
+class _CurrentTimeDot extends StatelessWidget {
+  const _CurrentTimeDot();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: resolveAccentColor(context),
+        shape: BoxShape.circle,
+      ),
     );
   }
 }
@@ -5539,6 +5581,7 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                                 child: _CurrentTimeIndicator(
                                   hour: now.hour,
                                   minute: now.minute,
+                                  multiDay: true,
                                 ),
                               ),
                             ),
