@@ -5015,18 +5015,6 @@ class _DayTimelineState extends State<_DayTimeline>
                               ),
                             ),
 
-                            // Current-time indicator
-                            if (isToday)
-                              Positioned(
-                                left: 0,
-                                right: 0,
-                                top: indicatorTop,
-                                child: _CurrentTimeIndicator(
-                                  hour: now.hour,
-                                  minute: now.minute,
-                                  multiDay: isMultiDay,
-                                ),
-                              ),
                           ],
                         );
                       },
@@ -5097,18 +5085,6 @@ class _DayTimelineState extends State<_DayTimeline>
                           child: Container(color: separatorColor),
                         ),
 
-                        // Current-time indicator
-                        if (isToday)
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            top: indicatorTop,
-                            child: _CurrentTimeIndicator(
-                              hour: now.hour,
-                              minute: now.minute,
-                              multiDay: true,
-                            ),
-                          ),
                       ],
                     );
                   },
@@ -5257,74 +5233,74 @@ class _CurrentTimeIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final labelColW = _hourLabelColW(MediaQuery.textScalerOf(context));
+    final pill = SizedBox(
+      width: labelColW,
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Container(
+          margin: const EdgeInsets.only(right: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: ShapeDecoration(
+            color: resolveAccentColor(context),
+            shape: const BoundedSquircleStadiumBorder(radius: 10),
+          ),
+          child: Text(
+            _label,
+            style: TextStyle(
+              fontFamily: kSFProText,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: CupertinoColors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (multiDay) {
+      final line = Container(
+        height: 1.5,
+        color: resolveAccentColor(context),
+      );
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          pill,
+          // The dot's center is 5.5 px beyond the label-column edge, matching
+          // the shifted Multi-Day divider.
+          const SizedBox(width: _kMultiDayIndicatorDividerShift - 3.5),
+          const SizedBox(
+            width: 7,
+            height: 7,
+            child: _CurrentTimeDot(),
+          ),
+          // Keep this full-width.  The entire indicator translates with the
+          // active day, so a right-side indicator is naturally clipped to the
+          // right half while a left-side indicator remains full-width.
+          Expanded(child: line),
+        ],
+      );
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // Time pill — fits inside the same measured label column as the hour
         // text, right-aligned so it sits flush with the hairline separator.
-        SizedBox(
-          width: _hourLabelColW(MediaQuery.textScalerOf(context)),
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: Container(
-              margin: const EdgeInsets.only(right: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: ShapeDecoration(
-                color: resolveAccentColor(context),
-                shape: const BoundedSquircleStadiumBorder(radius: 10),
-              ),
-              child: Text(
-                _label,
-                style: TextStyle(
-                  fontFamily: kSFProText,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: CupertinoColors.white,
-                ),
-              ),
-            ),
+        pill,
+        Container(
+          width: 7,
+          height: 7,
+          margin: const EdgeInsets.only(left: 2),
+          decoration: BoxDecoration(
+            color: resolveAccentColor(context),
+            shape: BoxShape.circle,
           ),
         ),
-        // Dot
-        if (multiDay)
-          Transform.translate(
-            // The dot's centre sits on the shifted label-column divider. The
-            // line is shifted by the same amount so it still meets the dot.
-            offset: const Offset(
-              _kMultiDayIndicatorDividerShift - 3.5,
-              0,
-            ),
-            child: const SizedBox(
-              width: 7,
-              height: 7,
-              child: _CurrentTimeDot(),
-            ),
-          )
-        else
-          Container(
-            width: 7,
-            height: 7,
-            margin: const EdgeInsets.only(left: 2),
-            decoration: BoxDecoration(
-              color: resolveAccentColor(context),
-              shape: BoxShape.circle,
-            ),
-          ),
         // Line to right edge
         Expanded(
-          child:
-              multiDay
-                  ? Transform.translate(
-                    offset: const Offset(
-                      _kMultiDayIndicatorDividerShift - 3.5,
-                      0,
-                    ),
-                    child: Container(
-                      height: 1.5,
-                      color: resolveAccentColor(context),
-                    ),
-                  )
-                  : Container(height: 1.5, color: resolveAccentColor(context)),
+          child: Container(height: 1.5, color: resolveAccentColor(context)),
         ),
       ],
     );
@@ -5502,36 +5478,37 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                     (d) => _sameDay(d, widget.today),
                   );
 
-                  // Indicator slide rules:
-                  //   • Today is a STAYING column (will still be on screen after
-                  //     the swipe) → no translation.
-                  //   • Today is the EXITING column → slide all the way off the
-                  //     viewport edge using full-screen scale (slideX * totalW/sw)
-                  //     so that the time pill and hairline disappear completely.
-                  //   • Today is an ENTERING column → slide in from the opposite
-                  //     edge using the same full-screen scale.
+                   // Indicator slide rules:
+                   //   • The indicator belongs to today's day column, so its
+                   //     dot/line anchor follows that column's left edge.
+                   //   • A shared day moves at half speed with its column.
+                   //   • An entering or exiting day uses the same full-speed
+                   //     column position, which carries the whole indicator
+                   //     cleanly off-screen.
                   //
                   // goingLeft (slideX ≤ 0): final pair = [A+1, A+2]
                   //   A exits left, A+1 stays, A+2 enters right.
                   // goingRight (slideX > 0):  final pair = [A-1, A]
                   //   A+1 exits right, A stays, A-1 enters left.
-                  double indicatorShiftX = 0.0;
+                   double indicatorShiftX = 0.0;
                   if (showIndicator) {
-                    final double frac = slideX / sw; // −1..+1
-                    if (goingLeft && _sameDay(A, widget.today)) {
-                      // A exits left — slide off the left edge.
-                      indicatorShiftX = frac * totalW; // 0 → −totalW
-                    } else if (!goingLeft && _sameDay(Aplus1, widget.today)) {
-                      // A+1 exits right — slide off the right edge.
-                      indicatorShiftX = frac * totalW; // 0 → +totalW
-                    } else if (goingLeft && _sameDay(Aplus2, widget.today)) {
-                      // A+2 enters from the right — slide in from right edge.
-                      indicatorShiftX = totalW + frac * totalW; // totalW → 0
-                    } else if (!goingLeft && _sameDay(Aminus1, widget.today)) {
-                      // A-1 enters from the left — slide in from left edge.
-                      indicatorShiftX = -totalW + frac * totalW; // −totalW → 0
-                    }
-                    // Staying columns (A going right, A+1 going left): shift = 0.
+                     if (goingLeft) {
+                       if (_sameDay(A, widget.today)) {
+                         indicatorShiftX = posA;
+                       } else if (_sameDay(Aplus1, widget.today)) {
+                         indicatorShiftX = posAplus1;
+                       } else if (_sameDay(Aplus2, widget.today)) {
+                         indicatorShiftX = posAplus2;
+                       }
+                     } else {
+                       if (_sameDay(Aminus1, widget.today)) {
+                         indicatorShiftX = posAminus1;
+                       } else if (_sameDay(A, widget.today)) {
+                         indicatorShiftX = posA;
+                       } else if (_sameDay(Aplus1, widget.today)) {
+                         indicatorShiftX = posAplus1;
+                       }
+                     }
                   }
 
                   // Returns a Positioned for a sliding day column.
@@ -5598,26 +5575,6 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                             ),
                           ),
 
-                          // Full-width current-time indicator.
-                          // Translates with "today's" column so it slides
-                          // in/out exactly like it does in Single Day mode
-                          // (full speed for exiting/entering day, half speed
-                          // for the shared middle day).
-                          if (showIndicator)
-                            Positioned(
-                              left: 0,
-                              right: 0,
-                              top: indicatorTop,
-                              child: Transform.translate(
-                                offset: Offset(indicatorShiftX, 0),
-                                child: _CurrentTimeIndicator(
-                                  hour: now.hour,
-                                  minute: now.minute,
-                                  multiDay: true,
-                                ),
-                              ),
-                            ),
-
                           // ── Sliding day content columns ─────────────────
                           if (!goingLeft) contentColumn(Aminus1, posAminus1),
                           contentColumn(A, posA),
@@ -5653,6 +5610,24 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                               child: ColoredBox(color: separatorColor),
                             ),
                           ),
+
+                           // Current-time indicator belongs to the active day
+                           // column.  Paint it after the separators so its dot
+                           // sits visibly on top of the vertical divider.
+                           if (showIndicator)
+                             Positioned(
+                               left: 0,
+                               right: 0,
+                               top: indicatorTop,
+                               child: Transform.translate(
+                                 offset: Offset(indicatorShiftX, 0),
+                                 child: _CurrentTimeIndicator(
+                                   hour: now.hour,
+                                   minute: now.minute,
+                                   multiDay: true,
+                                 ),
+                               ),
+                             ),
                         ],
                       );
                     },
