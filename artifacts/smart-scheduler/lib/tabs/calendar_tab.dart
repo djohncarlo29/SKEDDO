@@ -4886,6 +4886,10 @@ class _DayBannerState extends State<_DayBanner>
 // divider the same small breathing offset that the Single-Day dot gets from
 // its left margin after the label column.
 const double _kMultiDayIndicatorDividerShift = 5.5;
+// Horizontal hour hairlines begin at the left edge of the shifted divider,
+// rather than underneath the label-column breathing offset.
+const double _kMultiDayHourLineInset =
+    _kMultiDayIndicatorDividerShift - 0.25;
 
 class _DayTimeline extends StatefulWidget {
   const _DayTimeline({
@@ -5043,7 +5047,11 @@ class _DayTimelineState extends State<_DayTimeline>
                                 left: 0,
                                 right: 0,
                                 top: _kTimelinePad + h * _kHourHeight,
-                                child: _HourSlot(hour: h),
+                                child: _HourSlot(
+                                  hour: h,
+                                  lineStartInset:
+                                      _kMultiDayHourLineInset * t,
+                                ),
                               ),
 
                             // End-of-day hairline — offset by 8 px to match the
@@ -5113,7 +5121,10 @@ class _DayTimelineState extends State<_DayTimeline>
                             left: 0,
                             right: 0,
                             top: _kTimelinePad + h * _kHourHeight,
-                            child: _HourSlot(hour: h),
+                            child: _HourSlot(
+                              hour: h,
+                              lineStartInset: _kMultiDayHourLineInset,
+                            ),
                           ),
 
                         // End-of-day hairline — same +8 offset as the animated
@@ -5234,8 +5245,12 @@ double _hourLabelColW(TextScaler scaler) {
 }
 
 class _HourSlot extends StatelessWidget {
-  const _HourSlot({required this.hour});
+  const _HourSlot({
+    required this.hour,
+    this.lineStartInset = 0.0,
+  });
   final int hour;
+  final double lineStartInset;
 
   String get _label {
     if (hour == 0) return '12:00 am';
@@ -5279,6 +5294,7 @@ class _HourSlot extends StatelessWidget {
                   ),
                 ),
               ),
+              SizedBox(width: lineStartInset),
               // Hairline separator — its vertical centre aligns with the label centre.
               Expanded(child: Container(height: 0.5, color: separatorColor)),
             ],
@@ -5628,9 +5644,10 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                        }
                      } else {
                        if (_sameDay(Aminus1, widget.today)) {
-                         // Entering left-side today arrives on the shifted
-                         // label divider.
-                         markerShiftX = posAminus1;
+                          // Entering left-side today arrives from off-screen
+                          // with the entire indicator, matching the
+                          // Single-Day panel entrance behavior.
+                          wholeIndicatorShiftX = posAminus1;
                        } else if (_sameDay(A, widget.today)) {
                          // Shared today moves from the left divider to the
                          // exact center divider.
@@ -5694,7 +5711,10 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                               left: 0,
                               right: 0,
                               top: _kTimelinePad + h * _kHourHeight,
-                              child: _HourSlot(hour: h),
+                              child: _HourSlot(
+                                hour: h,
+                                lineStartInset: _kMultiDayHourLineInset,
+                              ),
                             ),
                           // End-of-day hairline — +8 px so it sits at the same
                           // visual depth as every _HourSlot hairline (~7-8 px
@@ -5745,11 +5765,13 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                             ),
                           ),
 
-                           // Current-time marker belongs to the active day
-                           // column. The pill remains in the left label
-                           // column; only the circle and line slide. Paint it
-                           // after the separators so the dot sits visibly on
-                           // top of the vertical divider.
+                            // Current-time marker belongs to the active day
+                            // column. The pill normally remains in the left
+                            // label column; the exception is a left-side
+                            // today entering from off-screen, where the
+                            // entire indicator returns as one element. Paint
+                            // it after the separators so the dot sits visibly
+                            // on top of the vertical divider.
                            if (showIndicator)
                              Positioned(
                                left: 0,
