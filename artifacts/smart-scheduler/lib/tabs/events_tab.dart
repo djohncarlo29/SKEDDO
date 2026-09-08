@@ -13026,6 +13026,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                                 64 * circleScale,
                                 CupertinoColors.white,
                                 containerColor: previewColor,
+                                  detailOnlyTwoToneBall:
+                                      _isTwoToneBallIcon(_effectiveIcon),
                                 emojiOffsetY: 2 * circleScale,
                                 ctx: context,
                               ),
@@ -14823,12 +14825,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                                 : (selected
                                     ? _resolvedSelectedColor
                                     : iconBackground);
-                        final soccerBallUsesContainerFill =
+                        final twoToneBallUsesContainerFill =
                             selected || brightness == Brightness.dark;
-                        final soccerBallFillColor =
-                            soccerBallUsesContainerFill ? circleBg : iconColor;
-                        final soccerBallDetailColor =
-                            soccerBallUsesContainerFill ? iconColor : circleBg;
+                        final twoToneBallFillColor =
+                            twoToneBallUsesContainerFill ? circleBg : iconColor;
+                        final twoToneBallDetailColor =
+                            twoToneBallUsesContainerFill ? iconColor : circleBg;
 
                         return AnimatedPositioned(
                           key: ValueKey(i),
@@ -14860,10 +14862,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                                       displayIcon,
                                       iconColor,
                                       ctx: context,
-                                      soccerBallFillColor:
-                                          soccerBallFillColor,
-                                      soccerBallDetailColor:
-                                          soccerBallDetailColor,
+                                      ballFillColor: twoToneBallFillColor,
+                                      ballDetailColor: twoToneBallDetailColor,
                                     ),
                                   ),
                                 ),
@@ -15110,7 +15110,7 @@ const _kEmojiLightSvg = 'assets/custom_icons/emoji.svg';
 const _kEmojiDarkSvg = 'assets/custom_icons/emoji_fill.svg';
 const _kSoccerBallSvg = 'assets/custom_icons/SoccerBall.svg';
 
-bool _isSoccerBallIcon(Object o) => o == _kSoccerBallSvg;
+bool _isTwoToneBallIcon(Object o) => o == _kSoccerBallSvg;
 
 // Returns the brightness-appropriate SVG path.
 // Currently switches the emoji outline↔filled pair; all other paths pass through.
@@ -15199,6 +15199,7 @@ Widget _renderCatIcon(
   BuildContext? ctx,
   double emojiOffsetY = 0,
   Color? containerColor,
+  bool detailOnlyTwoToneBall = false,
 }) {
   final double scale = containerSize / _kIconCircle;
   final double iconSz = _pickerIconBaseSize(iconOrSvg) * scale;
@@ -15208,11 +15209,13 @@ Widget _renderCatIcon(
   }
 
   Widget inner;
-  if (_isSoccerBallIcon(iconOrSvg) && containerColor != null) {
-    inner = _buildSoccerBallIcon(
+  if (_isTwoToneBallIcon(iconOrSvg) && containerColor != null) {
+    inner = _buildTwoToneBallIcon(
+      iconSvg: iconOrSvg as String,
       size: iconSz,
       ballFillColor: containerColor,
       detailColor: color,
+      detailOnly: detailOnlyTwoToneBall,
     );
   } else if (_isEmojiIcon(iconOrSvg)) {
     // Emoji: render as native Unicode text — no color tint, fills circle naturally.
@@ -15271,11 +15274,46 @@ Widget _renderCatIcon(
   );
 }
 
-Widget _buildSoccerBallIcon({
+Widget _buildTwoToneBallIcon({
+  required String iconSvg,
   required double size,
   required Color ballFillColor,
   required Color detailColor,
+  bool detailOnly = false,
 }) {
+  if (detailOnly) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: ClipOval(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Card 1 uses only the ball's visible detail colour. The SVG is
+            // used as an alpha mask to remove the coloured body from this
+            // clipped silhouette, rather than leaving a full white backing
+            // circle behind the icon.
+            ColoredBox(color: detailColor),
+            ShaderMask(
+              blendMode: BlendMode.dstOut,
+              shaderCallback:
+                  (bounds) => const LinearGradient(
+                    colors: [CupertinoColors.black, CupertinoColors.black],
+                  ).createShader(bounds),
+              child: SvgPicture.asset(
+                iconSvg,
+                width: size,
+                height: size,
+                fit: BoxFit.contain,
+                alignment: Alignment.center,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   return SizedBox(
     width: size,
     height: size,
@@ -15291,27 +15329,28 @@ Widget _buildSoccerBallIcon({
           ),
         ),
         SvgPicture.asset(
-          _kSoccerBallSvg,
+          iconSvg,
           width: size,
           height: size,
           fit: BoxFit.contain,
           alignment: Alignment.center,
           colorFilter: ColorFilter.mode(ballFillColor, BlendMode.srcIn),
         ),
-        Positioned.fill(
-          child: CustomPaint(
-            painter: _SoccerBallRingPainter(detailColor),
+        if (iconSvg == _kSoccerBallSvg)
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _TwoToneBallRingPainter(detailColor),
+            ),
           ),
-        ),
       ],
     ),
   );
 }
 
-class _SoccerBallRingPainter extends CustomPainter {
+class _TwoToneBallRingPainter extends CustomPainter {
   final Color color;
 
-  const _SoccerBallRingPainter(this.color);
+  const _TwoToneBallRingPainter(this.color);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -15331,7 +15370,7 @@ class _SoccerBallRingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_SoccerBallRingPainter oldDelegate) =>
+  bool shouldRepaint(_TwoToneBallRingPainter oldDelegate) =>
       oldDelegate.color != color;
 }
 
@@ -15363,8 +15402,9 @@ Widget _buildDcvCatIcon(
       ),
     );
   }
-  if (_isSoccerBallIcon(iconOrSvg) && containerColor != null) {
-    inner = _buildSoccerBallIcon(
+  if (_isTwoToneBallIcon(iconOrSvg) && containerColor != null) {
+    inner = _buildTwoToneBallIcon(
+      iconSvg: iconOrSvg as String,
       size: iconSz,
       ballFillColor: containerColor,
       detailColor: color,
@@ -15435,15 +15475,15 @@ Widget _buildPickerIcon(
   Object iconOrSvg,
   Color color, {
   BuildContext? ctx,
-  Color? soccerBallFillColor,
-  Color? soccerBallDetailColor,
+  Color? ballFillColor,
+  Color? ballDetailColor,
 }) {
   Widget child = _buildPickerIconRaw(
     iconOrSvg,
     color,
     ctx: ctx,
-    soccerBallFillColor: soccerBallFillColor,
-    soccerBallDetailColor: soccerBallDetailColor,
+    ballFillColor: ballFillColor,
+    ballDetailColor: ballDetailColor,
   );
   final offset = _pickerIconOffset(iconOrSvg);
   if (offset != Offset.zero)
@@ -15456,8 +15496,8 @@ Widget _buildPickerIconRaw(
   Object iconOrSvg,
   Color color, {
   BuildContext? ctx,
-  Color? soccerBallFillColor,
-  Color? soccerBallDetailColor,
+  Color? ballFillColor,
+  Color? ballDetailColor,
 }) {
   if (_isEmojiIcon(iconOrSvg)) {
     // Emoji: render as native Unicode text at the shared reference size.
@@ -15477,8 +15517,6 @@ Widget _buildPickerIconRaw(
             ? 21 // Bag.svg
             : iconOrSvg.contains('Tent')
             ? 20
-            : iconOrSvg.contains('PingPongBall')
-            ? 22
             : iconOrSvg.contains('Compass')
             ? 24
             : iconOrSvg.contains('Wallet')
@@ -15486,11 +15524,12 @@ Widget _buildPickerIconRaw(
             : iconOrSvg.contains('Briefcase')
             ? 18
             : 20;
-    if (_isSoccerBallIcon(iconOrSvg)) {
-      return _buildSoccerBallIcon(
+    if (_isTwoToneBallIcon(iconOrSvg)) {
+      return _buildTwoToneBallIcon(
+        iconSvg: iconOrSvg,
         size: sz,
-        ballFillColor: soccerBallFillColor ?? color,
-        detailColor: soccerBallDetailColor ?? color,
+        ballFillColor: ballFillColor ?? color,
+        detailColor: ballDetailColor ?? color,
       );
     }
     final String path =
@@ -18256,9 +18295,9 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       context,
     );
     // Light Mode intentionally keeps the original monochrome DCV icon.
-    // Dark Mode uses the two-color soccer treatment so the light detail color
+    // Dark Mode uses the two-color ball treatment so the light detail color
     // remains legible against the dark page background.
-    final Color? dcvSoccerContainerColor =
+    final Color? dcvTwoToneBallContainerColor =
         CupertinoTheme.brightnessOf(context) == Brightness.dark
             ? resolveThemeColor(kBackgroundColor, context)
             : null;
@@ -18350,7 +18389,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         child: _buildDcvCatIcon(
           widget.icon!,
           dcvDetailColor,
-          containerColor: dcvSoccerContainerColor,
+          containerColor: dcvTwoToneBallContainerColor,
           ctx: context,
         ),
       );
@@ -18382,7 +18421,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         child: _buildDcvCatIcon(
           iconData,
           dcvDetailColor,
-          containerColor: dcvSoccerContainerColor,
+          containerColor: dcvTwoToneBallContainerColor,
           ctx: context,
         ),
       );
