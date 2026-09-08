@@ -1934,10 +1934,11 @@ class CalendarTabState extends State<CalendarTab>
                               top: 0,
                               bottom: 0,
                               width: sw,
-                              child: Transform.translate(
-                                offset: Offset(0, stripSlideY),
-                                child: IgnorePointer(
-                                  child: _MonthView(
+                               child: ClipRect(
+                                 child: Transform.translate(
+                                   offset: Offset(0, stripSlideY),
+                                   child: IgnorePointer(
+                                     child: _MonthView(
                                     key: ValueKey(
                                       '$prevPanelYear-$prevPanelMonth-${prevPanelSel.day}',
                                     ),
@@ -1955,7 +1956,8 @@ class CalendarTabState extends State<CalendarTab>
                                           '$prevPanelYear-$prevPanelMonth-${prevPanelSel.day}',
                                     ),
                                     onDayTap: (_) {},
-                                  ),
+                                     ),
+                                   ),
                                 ),
                               ),
                             ),
@@ -1965,9 +1967,10 @@ class CalendarTabState extends State<CalendarTab>
                               top: 0,
                               bottom: 0,
                               width: sw,
-                              child: Transform.translate(
-                                offset: Offset(0, stripSlideY),
-                                child: _MonthView(
+                               child: ClipRect(
+                                 child: Transform.translate(
+                                   offset: Offset(0, stripSlideY),
+                                   child: _MonthView(
                                   key: ValueKey('$_dispYear-$_dispMonth'),
                                   year: _dispYear,
                                   month: _dispMonth,
@@ -2025,7 +2028,8 @@ class CalendarTabState extends State<CalendarTab>
                                       _enterDay(date);
                                     }
                                   },
-                                ),
+                                   ),
+                                 ),
                               ),
                             ),
                             // Next panel — display only, no tap
@@ -2034,10 +2038,11 @@ class CalendarTabState extends State<CalendarTab>
                               top: 0,
                               bottom: 0,
                               width: sw,
-                              child: Transform.translate(
-                                offset: Offset(0, stripSlideY),
-                                child: IgnorePointer(
-                                  child: _MonthView(
+                               child: ClipRect(
+                                 child: Transform.translate(
+                                   offset: Offset(0, stripSlideY),
+                                   child: IgnorePointer(
+                                     child: _MonthView(
                                     key: ValueKey(
                                       '$nextPanelYear-$nextPanelMonth-${nextPanelSel.day}',
                                     ),
@@ -2054,7 +2059,8 @@ class CalendarTabState extends State<CalendarTab>
                                           '$nextPanelYear-$nextPanelMonth-${nextPanelSel.day}',
                                     ),
                                     onDayTap: (_) {},
-                                  ),
+                                     ),
+                                   ),
                                 ),
                               ),
                             ),

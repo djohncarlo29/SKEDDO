@@ -8,6 +8,7 @@
 - [Multi-Day current-time indicator](calendar-multiday-current-time-indicator.md) — left-side today stays full-width; the indicator follows the active day column and is clipped to the right side when today is on the right.
 - [Calendar year↔month single-Transform zoom](calendar-year-zoom-transform.md) — the only working approach: one Matrix4 on the entire _YearView; no per-cell morph widgets.
 - [Calendar 3-panel swipe ±2 bug](calendar-3panel-plusminus2-bug.md) — early doThen remaps panel slots mid-animation, carrying header one extra step; fix is doThen at 100% only.
+- [Calendar month panel clipping](calendar-month-panel-clipping.md) — clip each horizontally positioned month panel before vertical strip transforms so off-screen week rows cannot bleed into the DOW boundary.
 - [ScrollController remount resync](calendar-scrollctrl-remount-resync.md) — a key-forced Scrollable remount resets to the controller's stale original initialScrollOffset, not the last jumpTo() value; recreate before remounting.
 - [Smart Scheduler theme constants](smart-scheduler-theme-constants.md) — sheet-stack background and search-bar clear icon each have their own dedicated constant; don't reuse kBackgroundColor for the former.
 - [Dark-mode surface coverage](dark-mode-surface-coverage.md) — shared glass, attachment previews, import overlays, and action menus must resolve surfaces at build time.
