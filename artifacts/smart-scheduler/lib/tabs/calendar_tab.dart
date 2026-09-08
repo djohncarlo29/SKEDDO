@@ -2067,6 +2067,22 @@ class CalendarTabState extends State<CalendarTab>
                           ],
                         ),
                       ),
+                    // ── Day-view DOW mask ───────────────────────────────────
+                    // The three month panels each contain their own DOW row,
+                    // but their translated week rows can still paint across
+                    // that row before an individual panel's clip is applied.
+                    // Paint one opaque mask at the parent level, above all
+                    // three panels, and render the labels again inside it so
+                    // the DOW alignment remains independent of panel motion.
+                    if (colT > 0.01 &&
+                        widget.daySubMode != DayViewSubMode.list)
+                      const Positioned(
+                        top: _kCalendarHeaderToDowGap,
+                        left: 0,
+                        right: 0,
+                        height: _kDayLabelHeight,
+                        child: _DayViewDowMask(),
+                      ),
                     // (Strip slides off-screen via stripSlideY Transform on each
                     // _MonthView panel — no separate cover overlay needed.)
 
@@ -4291,6 +4307,45 @@ class _DayListPlaceholder extends StatelessWidget {
   }
 }
 
+// Parent-level opaque cover for the Day View DOW row. This deliberately
+// duplicates the labels from _MonthView: the cover must sit above all three
+// horizontally-sliding month panels, otherwise an adjacent panel's translated
+// week row can bleed through the DOW boundary.
+class _DayViewDowMask extends StatelessWidget {
+  const _DayViewDowMask();
+
+  @override
+  Widget build(BuildContext context) {
+    final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
+    return ColoredBox(
+      color: resolveThemeColor(kBackgroundColor, context),
+      child: Row(
+        children: [
+          const Expanded(child: SizedBox.shrink()),
+          ...List.generate(
+            7,
+            (i) => Expanded(
+              child: Center(
+                child: Text(
+                  _kDayLabels[i],
+                  style: TextStyle(
+                    fontFamily: kSFProText,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: secondaryLabel,
+                    letterSpacing: -0.1,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 7),
+        ],
+      ),
+    );
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // _BlobCircle — velocity-driven gel blob for Day View drags.
 //
@@ -5492,19 +5547,24 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                   final double posAplus2 =
                       colW + contentW + slideX * contentW / sw;
 
-                  // Show the full-width current-time indicator whenever today
-                  // is among the currently visible days.  left:0/right:0
-                  // matches the Single Day indicator which also spans the full
-                  // row including the hour-label column.
-                  final List<DateTime> visibleDays = [
-                    A,
-                    Aplus1,
-                    if (!goingLeft) Aminus1,
-                    if (goingLeft) Aplus2,
-                  ];
-                  final bool showIndicator = visibleDays.any(
-                    (d) => _sameDay(d, widget.today),
-                  );
+                   // The pill/marker exists only while today's actual column
+                   // intersects the visible content area. Checking the
+                   // candidate dates alone is not enough during a swipe:
+                   // Aplus2/Aminus1 is mounted just outside the viewport before
+                   // it enters, and would otherwise leave a time pill behind
+                   // even though today is not on screen.
+                   bool isVisibleColumn(DateTime date, double contentPos) {
+                     if (!_sameDay(date, widget.today)) return false;
+                     final left = labelColW + contentPos;
+                     final right = left + colW;
+                     return right > labelColW && left < totalW;
+                   }
+
+                   final bool showIndicator =
+                       isVisibleColumn(A, posA) ||
+                       isVisibleColumn(Aplus1, posAplus1) ||
+                       (!goingLeft && isVisibleColumn(Aminus1, posAminus1)) ||
+                       (goingLeft && isVisibleColumn(Aplus2, posAplus2));
 
                    // Indicator slide rules:
                    //   • The indicator belongs to today's day column, so its
