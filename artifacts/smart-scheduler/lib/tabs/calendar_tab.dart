@@ -31,7 +31,12 @@ import '../services/category_registry.dart';
 import '../services/alert_sequence.dart';
 import '../ai/search/search_service.dart';
 import 'events_tab.dart'
-    show wrapSearchEventTileWithActions, wrapSearchEventTileWithPressScale;
+    show
+      buildDcvEventCard,
+      buildDcvSectionLabel,
+      dcvTimeSectionKey,
+      wrapSearchEventTileWithActions,
+      wrapSearchEventTileWithPressScale;
 import '../widgets/smart_search_results.dart';
 import '../widgets/delete_confirmation_sheet.dart';
 
@@ -3211,7 +3216,7 @@ List<List<ScheduledEvent>> _groupMonthEvents(List<ScheduledEvent> events) {
   });
   final groups = <String, List<ScheduledEvent>>{};
   for (final event in timed) {
-    (groups[event.time!] ??= []).add(event);
+    (groups[dcvTimeSectionKey(event.time!)] ??= []).add(event);
   }
   return [
     if (allDay.isNotEmpty) allDay,
@@ -4451,13 +4456,13 @@ class _MonthSelectedEvents extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (var groupIndex = 0; groupIndex < events.length; groupIndex++)
             Padding(
-              padding: EdgeInsets.only(top: groupIndex == 0 ? 0 : 16),
+              padding: const EdgeInsets.only(bottom: 16),
               child: _MonthEventGroup(
                 events: events[groupIndex],
                 onEditEvent: onEditEvent,
@@ -4469,7 +4474,7 @@ class _MonthSelectedEvents extends StatelessWidget {
   }
 }
 
-class _MonthEventGroup extends StatelessWidget {
+class _MonthEventGroup extends StatefulWidget {
   const _MonthEventGroup({
     required this.events,
     this.onEditEvent,
@@ -4479,133 +4484,75 @@ class _MonthEventGroup extends StatelessWidget {
   final void Function(ScheduledEvent event)? onEditEvent;
 
   @override
-  Widget build(BuildContext context) {
-    final isAllDay = events.first.isAllDay || events.first.time == null;
-    final header = isAllDay ? 'All-day' : events.first.time!;
-    final surface = resolveThemeColor(kSbSurface, context);
-    final separator = resolveThemeColor(kSeparatorColor, context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 8),
-          child: Text(
-            header,
-            style: TextStyle(
-              inherit: false,
-              fontFamily: kSFProText,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: resolveThemeColor(kSecondaryLabel, context),
-            ),
-          ),
-        ),
-        Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: ShapeDecoration(
-            color: surface,
-            shape: const BoundedSquircleStadiumBorder(radius: 20),
-            shadows: resolveThemeShadows(kCardShadow, context),
-          ),
-          child: Column(
-            children: [
-              for (var index = 0; index < events.length; index++)
-                Column(
-                  children: [
-                    if (index > 0) Container(height: 0.5, color: separator),
-                    _MonthEventRow(
-                      event: events[index],
-                      onTap: onEditEvent == null
-                          ? null
-                          : () => onEditEvent!(events[index]),
-                    ),
-                  ],
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+  State<_MonthEventGroup> createState() => _MonthEventGroupState();
 }
 
-class _MonthEventRow extends StatelessWidget {
-  const _MonthEventRow({
-    required this.event,
-    this.onTap,
-  });
-
-  final ScheduledEvent event;
-  final VoidCallback? onTap;
+class _MonthEventGroupState extends State<_MonthEventGroup> {
+  bool _isCollapsed = false;
 
   @override
   Widget build(BuildContext context) {
-    final raw = CategoryRegistry.get(event.categoryId)?.rawColor;
-    final dotColor = raw == null
-        ? resolveAccentColor(context)
-        : renderCategoryColor(raw, context);
-    final timeLabel = event.isAllDay
-        ? 'All-day'
-        : event.time == null
-        ? 'Unscheduled'
-        : event.endTime == null
-        ? event.time!
-        : '${event.time} – ${event.endTime}';
-    final child = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: dotColor,
-              shape: BoxShape.circle,
+    final events = widget.events;
+    final isAllDay = events.first.isAllDay || events.first.time == null;
+    final header =
+        isAllDay ? 'All-day' : dcvTimeSectionKey(events.first.time!);
+    final dotColors = [
+      for (final event in events) _monthEventDotColor(context, event),
+    ];
+    return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            buildDcvSectionLabel(
+              text: header,
+              isFirst: true,
+               isCollapsed: _isCollapsed,
+              accentColor: resolveAccentColor(context),
+               onTap: () => setState(() => _isCollapsed = !_isCollapsed),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  event.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    inherit: false,
-                    fontFamily: kSFProText,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w400,
-                    color: resolveThemeColor(kPrimaryLabel, context),
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  timeLabel,
-                  style: TextStyle(
-                    inherit: false,
-                    fontFamily: kSFProText,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w400,
-                    color: resolveThemeColor(kSecondaryLabel, context),
-                  ),
-                ),
-              ],
+            AnimatedSize(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeInOut,
+               child: _isCollapsed
+                  ? const SizedBox.shrink()
+                  : Container(
+                      clipBehavior: Clip.antiAlias,
+                      decoration: ShapeDecoration(
+                        color: resolveThemeColor(kSbSurface, context),
+                        shape: const BoundedSquircleStadiumBorder(
+                          radius: kSbCornerRadius,
+                        ),
+                        shadows: resolveThemeShadows(kCardShadow, context),
+                      ),
+                      child: Column(
+                        children: [
+                          for (var index = 0; index < events.length; index++)
+                            buildDcvEventCard(
+                              event: events[index],
+                              dotColor: dotColors[index],
+                              isFirst: index == 0,
+                              isLast: index == events.length - 1,
+                               onEdit: widget.onEditEvent == null
+                                  ? null
+                                   : () => widget.onEditEvent!(events[index]),
+                              onDelete: () => confirmDeleteEvent(
+                                context,
+                                events[index],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
             ),
-          ),
-        ],
-      ),
-    );
-    return onTap == null
-        ? child
-        : GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onTap,
-            child: child,
-          );
+          ],
+        );
   }
+}
+
+Color _monthEventDotColor(BuildContext context, ScheduledEvent event) {
+  final raw = CategoryRegistry.get(event.categoryId)?.rawColor;
+  return raw == null
+      ? resolveAccentColor(context)
+      : renderCategoryColor(raw, context);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

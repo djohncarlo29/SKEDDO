@@ -35,6 +35,20 @@ import '../services/category_registry.dart';
 import '../widgets/smart_search_results.dart';
 import '../widgets/delete_confirmation_sheet.dart';
 
+/// Returns the hourly bucket used by Today/Tomorrow DCV section headers.
+///
+/// Events at 9:10 AM and 9:45 AM both belong to the `9:00 AM` section.
+String dcvTimeSectionKey(String rawTime) {
+  final parts = rawTime.trim().split(RegExp(r'\s+'));
+  if (parts.isEmpty) return rawTime;
+  final hourPart = parts.first.split(':').first;
+  final hour = int.tryParse(hourPart);
+  if (hour == null) return rawTime;
+  final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+  final suffix = parts.length > 1 ? ' ${parts[1].toUpperCase()}' : '';
+  return '$displayHour:00$suffix';
+}
+
 // ── ISO 8601 week number ──────────────────────────────────────────────────────
 int _isoWeekNumber(DateTime date) {
   final thursday = date.subtract(
@@ -16751,6 +16765,45 @@ class _DcvSectionLabel extends StatelessWidget {
   }
 }
 
+/// Public bridge for calendar list mode to use the exact DCV section header.
+Widget buildDcvSectionLabel({
+  required String text,
+  required bool isFirst,
+  required bool isCollapsed,
+  required Color accentColor,
+  required VoidCallback onTap,
+}) {
+  return _DcvSectionLabel(
+    text: text,
+    isFirst: isFirst,
+    isCollapsed: isCollapsed,
+    accentColor: accentColor,
+    onTap: onTap,
+  );
+}
+
+/// Public bridge for calendar list mode to use the exact DCV event card,
+/// including its context menu, press scale, location row, edit, and delete
+/// behavior.
+Widget buildDcvEventCard({
+  required ScheduledEvent event,
+  required Color dotColor,
+  required bool isFirst,
+  required bool isLast,
+  VoidCallback? onEdit,
+  VoidCallback? onDelete,
+}) {
+  return _ScheduledEventCard(
+    event: event,
+    dotColor: dotColor,
+    isGrouped: true,
+    isFirst: isFirst,
+    isLast: isLast,
+    onEdit: onEdit,
+    onDelete: onDelete,
+  );
+}
+
 /// Editable header used for user-created Manual-view sections.
 ///
 /// The field uses the platform "Done" action, which becomes the return/check
@@ -18105,7 +18158,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       timed.sort((a, b) => _timeToMinutes(a.time!) - _timeToMinutes(b.time!));
       final groups = <String, List<ScheduledEvent>>{};
       for (final e in timed) {
-        (groups[e.time!] ??= []).add(e);
+        (groups[dcvTimeSectionKey(e.time!)] ??= []).add(e);
       }
       return [
         if (allDay.isNotEmpty)
