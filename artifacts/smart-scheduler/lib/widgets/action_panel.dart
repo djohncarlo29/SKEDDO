@@ -1839,7 +1839,6 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
   void initState() {
     super.initState();
     widget.isClosing.addListener(_onOuterClosing);
-    _mainScrollOffset.addListener(_onMainScrollChanged);
     _chevronCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 220),
@@ -1849,16 +1848,11 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
   @override
   void dispose() {
     widget.isClosing.removeListener(_onOuterClosing);
-    _mainScrollOffset.removeListener(_onMainScrollChanged);
     _mainScrollOffset.dispose();
     _origClosing.dispose();
     _expandedClosing.dispose();
     _chevronCtrl.dispose();
     super.dispose();
-  }
-
-  void _onMainScrollChanged() {
-    if (mounted) setState(() {});
   }
 
   // Route an outer close signal (barrier tap, parent dismissal) to whichever
@@ -1964,12 +1958,6 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
             ),
             ...activeSpec.subItems,
           ];
-    final subPanelTop = activeSpec == null
-        ? 0.0
-        : widget.panelTop + activeSpec.rowTop - _mainScrollOffset.value;
-    final subPanelMaxHeight = activeSpec == null
-        ? null
-        : math.max(1.0, mediaQuery.size.height - safeBottom - subPanelTop);
     return Stack(
       alignment: Alignment.bottomLeft,
       children: [
@@ -2015,21 +2003,32 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
         // The trigger-row slot (index 0) uses contentOpacity:0 so the floating
         // shared element is the sole visual for that row while both are live.
         if (activeSpec != null)
-          Positioned(
-            left: widget.panelLeft,
-            top: subPanelTop,
-            width: widget.panelWidth,
-            child: ActionPanel(
-              items: subPanelItems!,
-              isClosing: _expandedClosing,
-              chevronColumn: widget.chevronColumn,
-              closeDurationOverrideMs: widget.closeDurationOverrideMs,
-              openDurationOverrideMs: 280,
-              maxHeight: subPanelMaxHeight,
-              bouncingScroll: true,
-              pinnedTopItemCount: 1,
-              pinSeparatorAfterTop: true,
-            ),
+          ValueListenableBuilder<double>(
+            valueListenable: _mainScrollOffset,
+            builder: (ctx, scrollOffset, child) {
+              final subPanelTop =
+                  widget.panelTop + activeSpec.rowTop - scrollOffset;
+              final subPanelMaxHeight = math.max(
+                1.0,
+                mediaQuery.size.height - safeBottom - subPanelTop,
+              );
+              return Positioned(
+                left: widget.panelLeft,
+                top: subPanelTop,
+                width: widget.panelWidth,
+                child: ActionPanel(
+                  items: subPanelItems!,
+                  isClosing: _expandedClosing,
+                  chevronColumn: widget.chevronColumn,
+                  closeDurationOverrideMs: widget.closeDurationOverrideMs,
+                  openDurationOverrideMs: 280,
+                  maxHeight: subPanelMaxHeight,
+                  bouncingScroll: true,
+                  pinnedTopItemCount: 1,
+                  pinSeparatorAfterTop: true,
+                ),
+              );
+            },
           ),
 
         // Floating shared element — rendered LAST so it paints above both panels
@@ -2037,18 +2036,22 @@ class _ExpandableActionMenuState extends State<ExpandableActionMenu>
         // Fades out via AnimatedOpacity when the outer overlay closes so it
         // dissolves together with the panels' bloom-back animation.
         if (sharedSpec != null)
-          Positioned(
-            // _ExpandableRowSharedContent now uses the same _ActionRow as the
-            // parent panel, so give it the full panel bounds and let _ActionRow
-            // apply the shared 16 px horizontal inset exactly once.
-            left: widget.panelLeft,
-            // Keep the shared trigger row aligned with the row inside the
-            // main panel after that panel has been scrolled. Without this,
-            // the nested panel follows the live scroll offset while the
-            // trigger copy stays at its original, unscrolled position.
-            top: widget.panelTop + sharedSpec.rowTop - _mainScrollOffset.value,
-            width: widget.panelWidth,
-            height: triggerHeight,
+          ValueListenableBuilder<double>(
+            valueListenable: _mainScrollOffset,
+            builder: (ctx, scrollOffset, child) => Positioned(
+              // _ExpandableRowSharedContent now uses the same _ActionRow as the
+              // parent panel, so give it the full panel bounds and let _ActionRow
+              // apply the shared 16 px horizontal inset exactly once.
+              left: widget.panelLeft,
+              // Keep the shared trigger row aligned with the row inside the
+              // main panel after that panel has been scrolled. Without this,
+              // the nested panel follows the live scroll offset while the
+              // trigger copy stays at its original, unscrolled position.
+              top: widget.panelTop + sharedSpec.rowTop - scrollOffset,
+              width: widget.panelWidth,
+              height: triggerHeight,
+              child: child!,
+            ),
             child: ValueListenableBuilder<bool>(
               valueListenable: _origClosing,
               builder: (ctx, origClosing, child) => AnimatedOpacity(
