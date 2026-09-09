@@ -3482,6 +3482,7 @@ class _MonthView extends StatelessWidget {
                           dayGroups: listDayGroups,
                           selectedDayIndex:
                               selectedListIndex < 0 ? 0 : selectedListIndex,
+                          height: listContentH,
                           onEditEvent: onEditEvent,
                           scrollController: scrollController,
                           scrollViewportKey: scrollViewportKey,
@@ -4510,6 +4511,7 @@ class _MonthSelectedEvents extends StatelessWidget {
     required this.dayKeys,
     required this.dayGroups,
     required this.selectedDayIndex,
+    required this.height,
     this.onEditEvent,
     this.scrollController,
     this.scrollViewportKey,
@@ -4519,6 +4521,7 @@ class _MonthSelectedEvents extends StatelessWidget {
   final List<String> dayKeys;
   final List<List<List<ScheduledEvent>>> dayGroups;
   final int selectedDayIndex;
+  final double height;
   final void Function(ScheduledEvent event)? onEditEvent;
   final ScrollController? scrollController;
   final GlobalKey? scrollViewportKey;
@@ -4527,26 +4530,30 @@ class _MonthSelectedEvents extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IndexedStack(
-      index: selectedDayIndex.clamp(0, dayGroups.length - 1) as int,
-      alignment: Alignment.topCenter,
-      children: [
-        for (var dayIndex = 0; dayIndex < dayGroups.length; dayIndex++)
-          KeyedSubtree(
-            key: ValueKey(dayKeys[dayIndex]),
-            child: buildDcvEventList(
-              events: [
-                for (final group in dayGroups[dayIndex]) ...group,
-              ],
-              onEditEvent: onEditEvent,
-              onManualOrderChanged: (orderedEvents) {
-                onOrderChanged?.call(dayKeys[dayIndex], orderedEvents);
-              },
-              scrollController: scrollController,
-              scrollViewportKey: scrollViewportKey,
+    return SizedBox(
+      width: double.infinity,
+      height: height,
+      child: IndexedStack(
+        index: selectedDayIndex.clamp(0, dayGroups.length - 1) as int,
+        alignment: Alignment.topCenter,
+        children: [
+          for (var dayIndex = 0; dayIndex < dayGroups.length; dayIndex++)
+            KeyedSubtree(
+              key: ValueKey(dayKeys[dayIndex]),
+              child: buildDcvEventList(
+                events: [
+                  for (final group in dayGroups[dayIndex]) ...group,
+                ],
+                onEditEvent: onEditEvent,
+                onManualOrderChanged: (orderedEvents) {
+                  onOrderChanged?.call(dayKeys[dayIndex], orderedEvents);
+                },
+                scrollController: scrollController,
+                scrollViewportKey: scrollViewportKey,
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
