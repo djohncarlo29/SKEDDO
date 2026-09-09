@@ -434,6 +434,10 @@ class CalendarTabState extends State<CalendarTab>
   double _slideX = 0.0; // live drag or snap offset (logical px)
   double _blobDeltaX = 0.0; // current-frame gesture delta → blob stretch
   int _blobSnapCount = 0; // incremented on release → triggers spring-back
+  // Per-frame drag invalidation stays local to the calendar animation builder.
+  // Unlike setState(), this does not rebuild CalendarTab's surrounding state
+  // or update every unrelated subtree while a finger is moving.
+  final ValueNotifier<int> _dragFrameTick = ValueNotifier<int>(0);
   double _screenW = 393.0; // updated from LayoutBuilder each build
   int _snapGeneration =
       0; // incremented on each _animateSlide call; stale Futures compare and bail
@@ -1063,10 +1067,9 @@ class CalendarTabState extends State<CalendarTab>
   }
 
   void _onHDragUpdate(DragUpdateDetails d) {
-    setState(() {
-      _slideX = (_slideX + d.delta.dx).clamp(-_screenW, _screenW);
-      _blobDeltaX = d.delta.dx; // per-frame velocity for blob stretch
-    });
+    _slideX = (_slideX + d.delta.dx).clamp(-_screenW, _screenW);
+    _blobDeltaX = d.delta.dx; // per-frame velocity for blob stretch
+    _dragFrameTick.value++;
     widget.onStripSlide?.call(_slideX);
   }
 
@@ -1572,6 +1575,7 @@ class CalendarTabState extends State<CalendarTab>
   void dispose() {
     _clockTimer?.cancel();
     _searchDebounce?.cancel();
+    _dragFrameTick.dispose();
     _nowNotifier.dispose();
     _zoomAnim.dispose();
     _zoomCtrl.dispose();
@@ -1706,6 +1710,7 @@ class CalendarTabState extends State<CalendarTab>
             _snapCtrl,
             _viewModeCtrl,
             _listModeCtrl,
+            _dragFrameTick,
           ]),
           builder: (context, _) {
             final zoomT = _zoomAnim.value;
