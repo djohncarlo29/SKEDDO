@@ -79,6 +79,12 @@ const _kDayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 const double _kRowHeightList = 52.0;
+const double _kRowHeightMonthList = 64.0;
+// Month List content changes to Day View at the same midpoint used by the
+// header/content transition. Keep all List-only adornments on this boundary so
+// they cannot leak into the incoming Day View week strip.
+const double _kMonthDayTransitionThreshold = 0.5;
+const double _kMonthListDotTop = 38.0;
 const double _kRowHeightCompact = 68.0;
 const double _kRowHeightStacked = 96.0;
 const double _kRowHeightDetails = 128.0;
@@ -181,7 +187,7 @@ extension CalendarViewModeExt on CalendarViewMode {
   double get rowHeight {
     switch (this) {
       case CalendarViewMode.list:
-        return _kRowHeightList;
+        return _kRowHeightMonthList;
       case CalendarViewMode.compact:
         return _kRowHeightCompact;
       case CalendarViewMode.stacked:
@@ -3319,7 +3325,8 @@ class _MonthView extends StatelessWidget {
         final selectedEvents =
             eventsByDay[_calendarDateKey(selectedDate)] ?? const [];
         final showMonthList =
-            viewMode == CalendarViewMode.list && collapseProgress < 0.5;
+            viewMode == CalendarViewMode.list &&
+            collapseProgress < _kMonthDayTransitionThreshold;
         final groupedSelectedEvents = _groupMonthEvents(selectedEvents);
         final listContentH = showMonthList
             ? _monthListEstimatedHeight(groupedSelectedEvents)
@@ -3339,7 +3346,7 @@ class _MonthView extends StatelessWidget {
 
         return SingleChildScrollView(
           controller: scrollController,
-          physics: collapseProgress < 0.5
+          physics: collapseProgress < _kMonthDayTransitionThreshold
               ? const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 )
@@ -3404,7 +3411,8 @@ class _MonthView extends StatelessWidget {
                               SizedBox(
                                 height: emptyStateH,
                                 child: Opacity(
-                                  opacity: collapseProgress < 0.5
+                                  opacity: collapseProgress <
+                                      _kMonthDayTransitionThreshold
                                       ? (1.0 - collapseProgress * 4.0).clamp(
                                           0.0,
                                           1.0,
@@ -3600,7 +3608,8 @@ class _AnimatedWeekRow extends StatelessWidget {
         onDayLongPress: onDayLongPress,
         eventsByDay: eventsByDay,
         viewMode: viewMode,
-        showOverflow: collapseProgress > 0.5,
+        showOverflow:
+            collapseProgress > _kMonthDayTransitionThreshold,
         circleSlideX: circleSlideX,
         settleCount: settleCount,
         blobDeltaX: blobDeltaX,
@@ -4143,25 +4152,27 @@ class _WeekRowState extends State<_WeekRow> {
                       alignment: Alignment.topCenter,
                       child: Padding(
                         padding: const EdgeInsets.only(top: kFixedTopPadding),
-                         child: SizedBox(
-                           height: widget.rowHeight - kFixedTopPadding,
-                           child: Stack(
-                             clipBehavior: Clip.none,
-                             alignment: Alignment.topCenter,
-                             children: [
-                               dayCell,
-                               if (widget.viewMode == CalendarViewMode.list &&
-                                   dayEvents.isNotEmpty &&
-                                   !isOverflow)
-                                 Positioned(
-                                   top: 38,
-                                   child: _MonthEventDots(
-                                     events: dayEvents,
-                                   ),
-                                 ),
-                             ],
-                           ),
-                         ),
+                        child: SizedBox(
+                          height: widget.rowHeight - kFixedTopPadding,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            alignment: Alignment.topCenter,
+                            children: [
+                              dayCell,
+                              if (widget.viewMode == CalendarViewMode.list &&
+                                  widget.collapseProgress <
+                                      _kMonthDayTransitionThreshold &&
+                                  dayEvents.isNotEmpty &&
+                                  !isOverflow)
+                                Positioned(
+                                  top: _kMonthListDotTop,
+                                  child: _MonthEventDots(
+                                    events: dayEvents,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
