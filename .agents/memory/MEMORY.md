@@ -106,3 +106,4 @@
 - [Family emoji skin-tone support](family-emoji-skin-tone-support.md) — gendered family ZWJ glyphs have no standardized skin-tone variants; per-person modifiers can decompose on Android.
 - [Screen-captured emoji transparency](emoji-sprite-transparency.md) — validate screenshot-derived sprites on a contrasting background; aggressive flood-fill can erase dark hair and body pixels.
 - [Emoji category selection repaint](emoji-category-selection-repaint.md) — paint selection alpha in the emoji TextStyle; Opacity layers can retain stale variation-selector glyphs.
+- [Calendar List DCV parity](calendar-list-dcv-parity.md) — Month List should embed the Events DCV implementation, including its exact-time reorder boundaries.

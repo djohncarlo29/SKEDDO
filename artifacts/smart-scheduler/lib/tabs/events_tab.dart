@@ -16819,6 +16819,28 @@ Widget buildDcvEventCard({
   );
 }
 
+/// Public bridge for embedded Calendar List mode. This uses the same stateful
+/// DCV implementation, including long-press disambiguation, lifted overlay,
+/// placeholder opacity, separator gaps, FLIP reflow, and auto-scroll.
+Widget buildDcvEventList({
+  required List<ScheduledEvent> events,
+  ValueChanged<ScheduledEvent>? onEditEvent,
+  ScrollController? scrollController,
+  GlobalKey? scrollViewportKey,
+}) {
+  return _CategoryDetailView(
+    label: 'Calendar List',
+    events: events,
+    sortBy: 'Manual',
+    showManualDateSections: true,
+    timeGroupedManualEvents: true,
+    embedded: true,
+    externalScrollController: scrollController,
+    externalScrollViewportKey: scrollViewportKey,
+    onEditEvent: onEditEvent,
+  );
+}
+
 /// Editable header used for user-created Manual-view sections.
 ///
 /// The field uses the platform "Done" action, which becomes the return/check
@@ -17092,6 +17114,10 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
 
 class _CategoryDetailView extends StatefulWidget {
   final String label;
+  final bool embedded;
+  final bool timeGroupedManualEvents;
+  final ScrollController? externalScrollController;
+  final GlobalKey? externalScrollViewportKey;
 
   /// Icon override for user-created categories; null → built-in switch logic.
   /// Either an [IconData] or a String SVG asset path — pass to [_renderCatIcon].
@@ -17154,6 +17180,10 @@ class _CategoryDetailView extends StatefulWidget {
   const _CategoryDetailView({
     super.key,
     required this.label,
+    this.embedded = false,
+    this.timeGroupedManualEvents = false,
+    this.externalScrollController,
+    this.externalScrollViewportKey,
     this.icon,
     this.categoryType = 'Standard',
     this.events = const [],
@@ -17544,6 +17574,13 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   // ── Reorder helpers ───────────────────────────────────────────────────────
 
   RenderBox? _dragScrollViewportBox() {
+    final externalObject =
+        widget.externalScrollViewportKey?.currentContext?.findRenderObject();
+    if (externalObject is RenderBox &&
+        externalObject.attached &&
+        externalObject.hasSize) {
+      return externalObject;
+    }
     final keyedObject =
         _dcvScrollViewportKey.currentContext?.findRenderObject();
     if (keyedObject is RenderBox &&
@@ -17589,9 +17626,9 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     if (!mounted || _dragAutoScrollTicking) return;
     final pointer = _lastDragGlobalPosition;
     final viewport = _dragScrollViewportBox();
-    if (pointer == null ||
-        viewport == null ||
-        !_dcvScrollController.hasClients) {
+    final scrollController =
+        widget.externalScrollController ?? _dcvScrollController;
+    if (pointer == null || viewport == null || !scrollController.hasClients) {
       return;
     }
 
@@ -17624,7 +17661,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     }
     if (signedProximity == 0.0) return;
 
-    final position = _dcvScrollController.position;
+    final position = scrollController.position;
     final currentOffset = position.pixels;
     final requestedDelta =
         signedProximity * _kDragAutoScrollMaxVelocity * seconds;
@@ -17718,6 +17755,74 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
 
     final dragId = _dragEvent?.id;
     if (_draggingIndex == null || dragId == null) return;
+
+    // Today/Tomorrow DCVs are divided into exact-time sections.  Manual
+    // reordering is intentionally local to the section: a 9:20 event can move
+    // around other 9:20 events, but it cannot cross into the 9:30 section.
+    // Calendar Month List uses this same path, so it inherits the DCV rule
+    // instead of maintaining a second, subtly different drag implementation.
+    if (widget.sortBy == 'Manual' &&
+        (widget.timeGroupedManualEvents ||
+            widget.label == 'Today' ||
+            widget.label == 'Tomorrow')) {
+      final sections = _buildDisplaySections();
+      final sourceSection = sections.indexWhere(
+        (section) => section.events.any((event) => event.id == dragId),
+      );
+      if (sourceSection < 0) return;
+      final sectionEvents = sections[sourceSection].events;
+      final currentSectionIndex =
+          sectionEvents.indexWhere((event) => event.id == dragId);
+      if (currentSectionIndex < 0) return;
+
+      if (currentSectionIndex > 0) {
+        final previous = sectionEvents[currentSectionIndex - 1];
+        final key = _itemKeys[previous.id];
+        final box = key?.currentContext?.findRenderObject() as RenderBox?;
+        if (box != null && box.attached) {
+          final top = box.localToGlobal(Offset.zero).dy;
+          if (globalPos.dy < top + box.size.height / 2) {
+            _applyDragSwap(() {
+              final itemIndex = _items.indexWhere(
+                (event) => event.id == dragId,
+              );
+              final previousIndex = _items.indexWhere(
+                (event) => event.id == previous.id,
+              );
+              if (itemIndex < 0 || previousIndex < 0) return;
+              final item = _items.removeAt(itemIndex);
+              _items.insert(previousIndex, item);
+              _draggingIndex = previousIndex;
+            });
+            return;
+          }
+        }
+      }
+
+      if (currentSectionIndex < sectionEvents.length - 1) {
+        final next = sectionEvents[currentSectionIndex + 1];
+        final key = _itemKeys[next.id];
+        final box = key?.currentContext?.findRenderObject() as RenderBox?;
+        if (box != null && box.attached) {
+          final top = box.localToGlobal(Offset.zero).dy;
+          if (globalPos.dy > top + box.size.height / 2) {
+            _applyDragSwap(() {
+              final itemIndex = _items.indexWhere(
+                (event) => event.id == dragId,
+              );
+              final nextIndex = _items.indexWhere(
+                (event) => event.id == next.id,
+              );
+              if (itemIndex < 0 || nextIndex < 0) return;
+              final item = _items.removeAt(itemIndex);
+              _items.insert(nextIndex, item);
+              _draggingIndex = nextIndex;
+            });
+          }
+        }
+      }
+      return;
+    }
 
     // A DCV with custom sections needs insertion semantics rather than a
     // simple swap: the dragged event moves into the destination section while
@@ -18164,7 +18269,9 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     }
 
     // ── Today / Tomorrow: time-grouped sections ───────────────────────────────
-    if (label == 'Today' || label == 'Tomorrow') {
+    if (widget.timeGroupedManualEvents ||
+        label == 'Today' ||
+        label == 'Tomorrow') {
       final allDay = <ScheduledEvent>[];
       final timed = <ScheduledEvent>[];
       for (final e in _items) {
@@ -18573,6 +18680,110 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     );
   }
 
+  Widget _buildSectionWidget(
+    BuildContext context,
+    _DcvSection section,
+    int sectionIdx,
+    Map<String, ScheduledEvent?> previousEventById,
+    bool isReorderable,
+  ) {
+    final sectionKey = section.collapseKey ?? section.headerText;
+    final isCollapsed =
+        section.headerText != null &&
+        _collapsedSections.contains(sectionKey);
+    final sectionKeyWidget = _sectionKeys.putIfAbsent(
+      sectionIdx,
+      () => GlobalKey(),
+    );
+
+    return KeyedSubtree(
+      key: sectionKeyWidget,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (section.headerText != null)
+              section.isEditable
+                  ? _SwipeToRevealDelete(
+                    iconSize: MediaQuery.textScalerOf(context).scale(15),
+                    deleteIconVerticalOffset: -4,
+                    onDelete: () {
+                      final index = section.customSectionIndex;
+                      if (index != null) {
+                        widget.onCustomSectionDeleted?.call(index);
+                      }
+                    },
+                    child: _DcvEditableSectionLabel(
+                      initialText: section.headerText!,
+                      isFirst: true,
+                      isCollapsed: isCollapsed,
+                      accentColor: widget.color,
+                      onToggle: () => _toggleSection(sectionKey!),
+                      onChanged: (title) {
+                        final index = section.customSectionIndex;
+                        if (index != null) {
+                          widget.onCustomSectionEditingChanged?.call(
+                            index,
+                            title,
+                          );
+                        }
+                      },
+                      onSubmitted: (title) {
+                        final index = section.customSectionIndex;
+                        if (index != null) {
+                          widget.onCustomSectionRenamed?.call(index, title);
+                        }
+                      },
+                    ),
+                  )
+                  : _DcvSectionLabel(
+                    text: section.headerText!,
+                    isFirst: true,
+                    isCollapsed: isCollapsed,
+                    accentColor: widget.color,
+                    onTap: () => _toggleSection(sectionKey!),
+                  ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeInOut,
+              child:
+                  isCollapsed
+                      ? const SizedBox.shrink()
+                      : Container(
+                        clipBehavior: Clip.antiAlias,
+                        decoration: ShapeDecoration(
+                          color: resolveThemeColor(kSbSurface, context),
+                          shape: BoundedSquircleStadiumBorder(
+                            radius: _kCornerRadius,
+                          ),
+                          shadows: resolveThemeShadows(kCardShadow, context),
+                        ),
+                        child: Column(
+                          children: [
+                            for (
+                              int ei = 0;
+                              ei < section.events.length;
+                              ei++
+                            )
+                              _buildEventRow(
+                                context,
+                                section.events[ei],
+                                ei,
+                                section.events.length,
+                                isReorderable,
+                                previousEventById[section.events[ei].id],
+                              ),
+                          ],
+                        ),
+                      ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
@@ -18632,6 +18843,36 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       // positions before the animation has started. Never apply that
       // measurement frame to a live drag: drag swaps update the list directly.
       final hideForSortMeasurement = _sortMeasuring && _draggingIndex == null;
+      if (widget.embedded) {
+        return Opacity(
+          opacity: hideForSortMeasurement ? 0.0 : 1.0,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var sectionIdx = 0;
+                    sectionIdx < displaySections.length;
+                    sectionIdx++)
+                  _buildSectionWidget(
+                    context,
+                    displaySections[sectionIdx],
+                    sectionIdx,
+                    previousEventById,
+                    isReorderable,
+                  ),
+                SizedBox(
+                  height: floatingTabBarContentBottomClearance(
+                    context,
+                    existingTrailingContentPadding: 32,
+                    finalContentGap: 20,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
       return Opacity(
         opacity: hideForSortMeasurement ? 0.0 : 1.0,
         child: CustomScrollView(

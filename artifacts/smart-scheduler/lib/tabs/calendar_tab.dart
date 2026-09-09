@@ -34,6 +34,7 @@ import 'events_tab.dart'
     show
       buildDcvEventCard,
       buildDcvSectionLabel,
+      buildDcvEventList,
       dcvTimeSectionKey,
       wrapSearchEventTileWithActions,
       wrapSearchEventTileWithPressScale;
@@ -328,6 +329,7 @@ class CalendarTabState extends State<CalendarTab>
   //   Reset to 0 once collapseCtrl settles in either direction (collapseProgress
   //   is 0 or 1, so any value × 0 has no effect after the animation).
   ScrollController _monthViewScrollCtrl = ScrollController();
+  final GlobalKey _monthViewScrollViewportKey = GlobalKey();
   double _collapseScrollOffset = 0.0;
   double _savedMonthScrollOffset = 0.0;
 
@@ -2051,6 +2053,8 @@ class CalendarTabState extends State<CalendarTab>
                                   daySubMode: widget.daySubMode,
                                    onEditEvent: widget.onEditEvent,
                                   scrollController: _monthViewScrollCtrl,
+                                  scrollViewportKey:
+                                      _monthViewScrollViewportKey,
                                   collapseScrollOffset: _collapseScrollOffset,
                                   onDayTap: (date) {
                                     if (colT < 0.1) {
@@ -3219,7 +3223,7 @@ List<List<ScheduledEvent>> _groupMonthEvents(List<ScheduledEvent> events) {
   timed.sort((a, b) {
     final byTime = _calendarTimeToMinutes(a.time) -
         _calendarTimeToMinutes(b.time);
-    return byTime != 0 ? byTime : a.title.compareTo(b.title);
+    return byTime;
   });
   final groups = <String, List<ScheduledEvent>>{};
   for (final event in timed) {
@@ -3264,6 +3268,7 @@ class _MonthView extends StatelessWidget {
     this.pendingBloomDate,
     this.daySubMode = DayViewSubMode.singleDay,
     this.scrollController,
+    this.scrollViewportKey,
     this.collapseScrollOffset = 0.0,
   });
 
@@ -3286,6 +3291,7 @@ class _MonthView extends StatelessWidget {
   /// External scroll controller attached to the SingleChildScrollView so the
   /// parent can read the scroll offset at the moment _enterDay is called.
   final ScrollController? scrollController;
+  final GlobalKey? scrollViewportKey;
 
   /// Scroll offset captured when the Month→Day collapse began.  Passed to
   /// each _AnimatedWeekRow so the selected row translates to visual-y = 0
@@ -3346,6 +3352,7 @@ class _MonthView extends StatelessWidget {
         final emptyStateH = math.max(0.0, emptyH - floatingClearance);
 
         return SingleChildScrollView(
+           key: scrollViewportKey,
           controller: scrollController,
           physics: collapseProgress < _kMonthDayTransitionThreshold
               ? const AlwaysScrollableScrollPhysics(
@@ -3403,6 +3410,8 @@ class _MonthView extends StatelessWidget {
                         _MonthSelectedEvents(
                           events: groupedSelectedEvents,
                           onEditEvent: onEditEvent,
+                          scrollController: scrollController,
+                          scrollViewportKey: scrollViewportKey,
                         )
                       else if (emptyH > 0)
                         SizedBox(
@@ -4445,47 +4454,24 @@ class _MonthSelectedEvents extends StatelessWidget {
   const _MonthSelectedEvents({
     required this.events,
     this.onEditEvent,
+    this.scrollController,
+    this.scrollViewportKey,
   });
 
   final List<List<ScheduledEvent>> events;
   final void Function(ScheduledEvent event)? onEditEvent;
+  final ScrollController? scrollController;
+  final GlobalKey? scrollViewportKey;
 
   @override
   Widget build(BuildContext context) {
-    if (events.isEmpty) {
-      return SizedBox(
-        height: 80,
-        child: Center(
-          child: Text(
-            'No Events',
-            style: TextStyle(
-              inherit: false,
-              fontFamily: kSFProText,
-              fontWeight: FontWeight.w400,
-              fontSize: kEmptyStateLabelFontSize,
-              letterSpacing: kTracking16,
-              color: resolveThemeColor(kSecondaryLabel, context),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var groupIndex = 0; groupIndex < events.length; groupIndex++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _MonthEventGroup(
-                events: events[groupIndex],
-                onEditEvent: onEditEvent,
-              ),
-            ),
-        ],
-      ),
+    return buildDcvEventList(
+      events: [
+        for (final group in events) ...group,
+      ],
+      onEditEvent: onEditEvent,
+      scrollController: scrollController,
+      scrollViewportKey: scrollViewportKey,
     );
   }
 }
