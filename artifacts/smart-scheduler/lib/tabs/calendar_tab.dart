@@ -84,7 +84,8 @@ const double _kRowHeightMonthList = 64.0;
 // header/content transition. Keep all List-only adornments on this boundary so
 // they cannot leak into the incoming Day View week strip.
 const double _kMonthDayTransitionThreshold = 0.5;
-const double _kMonthListDotTop = 38.0;
+const double _kMonthListDotDiameter = 5.0;
+const double _kDayIndicatorDiameter = 36.0;
 const double _kRowHeightCompact = 68.0;
 const double _kRowHeightStacked = 96.0;
 const double _kRowHeightDetails = 128.0;
@@ -4165,7 +4166,7 @@ class _WeekRowState extends State<_WeekRow> {
                                   dayEvents.isNotEmpty &&
                                   !isOverflow)
                                 Positioned(
-                                  top: _kMonthListDotTop,
+                                  top: _monthListDotTop(widget.rowHeight),
                                   child: _MonthEventDots(
                                     events: dayEvents,
                                   ),
@@ -4436,6 +4437,10 @@ class _MonthEventDots extends StatelessWidget {
   }
 }
 
+double _monthListDotTop(double rowHeight) =>
+    ((rowHeight - kFixedTopPadding + _kDayIndicatorDiameter) / 2) -
+    (_kMonthListDotDiameter / 2);
+
 class _MonthSelectedEvents extends StatelessWidget {
   const _MonthSelectedEvents({
     required this.events,
@@ -4500,10 +4505,125 @@ class _MonthEventGroup extends StatefulWidget {
 
 class _MonthEventGroupState extends State<_MonthEventGroup> {
   bool _isCollapsed = false;
+  late List<ScheduledEvent> _orderedEvents;
+  final Map<String, GlobalKey> _eventKeys = {};
+  String? _draggingEventId;
+  OverlayEntry? _dragOverlay;
+  double _dragGlobalY = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _orderedEvents = List<ScheduledEvent>.of(widget.events);
+  }
+
+  @override
+  void didUpdateWidget(covariant _MonthEventGroup oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_draggingEventId != null) return;
+
+    final incomingById = {for (final event in widget.events) event.id: event};
+    final incomingIds = incomingById.keys.toSet();
+    final currentIds = _orderedEvents.map((event) => event.id).toSet();
+    if (incomingIds.length != currentIds.length ||
+        !incomingIds.containsAll(currentIds)) {
+      _orderedEvents = List<ScheduledEvent>.of(widget.events);
+      _eventKeys.removeWhere((id, _) => !incomingIds.contains(id));
+      return;
+    }
+
+    // Preserve a local manual reorder while refreshing event objects from the
+    // store after an edit or category-color update.
+    _orderedEvents = [
+      for (final event in _orderedEvents) incomingById[event.id]!,
+    ];
+  }
+
+  @override
+  void dispose() {
+    _dragOverlay?.remove();
+    _dragOverlay = null;
+    super.dispose();
+  }
+
+  void _startReorder(ScheduledEvent event, Offset globalPosition) {
+    if (_draggingEventId != null) return;
+    final key = _eventKeys[event.id];
+    final box = key?.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached || !box.hasSize) return;
+
+    final offset = box.localToGlobal(Offset.zero);
+    final size = box.size;
+    _dragGlobalY = globalPosition.dy;
+    setState(() => _draggingEventId = event.id);
+
+    _dragOverlay = OverlayEntry(
+      builder: (context) => Positioned(
+        left: offset.dx,
+        top: _dragGlobalY - size.height / 2,
+        width: size.width,
+        child: IgnorePointer(
+          child: Transform.scale(
+            scale: 1.05,
+            child: buildDcvEventCard(
+              event: event,
+              dotColor: _monthEventDotColor(context, event),
+              isFirst: true,
+              isLast: true,
+              isGrouped: false,
+              elevatedShadow: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _dragOverlay != null) {
+        Overlay.of(context).insert(_dragOverlay!);
+      }
+    });
+  }
+
+  void _updateReorder(Offset globalPosition) {
+    if (_draggingEventId == null) return;
+    _dragGlobalY = globalPosition.dy;
+    _dragOverlay?.markNeedsBuild();
+
+    final currentIndex =
+        _orderedEvents.indexWhere((event) => event.id == _draggingEventId);
+    if (currentIndex < 0) return;
+
+    var targetIndex = _orderedEvents.length;
+    for (var index = 0; index < _orderedEvents.length; index++) {
+      final event = _orderedEvents[index];
+      if (event.id == _draggingEventId) continue;
+      final key = _eventKeys[event.id];
+      final box = key?.currentContext?.findRenderObject() as RenderBox?;
+      if (box == null || !box.attached || !box.hasSize) continue;
+      final top = box.localToGlobal(Offset.zero).dy;
+      if (globalPosition.dy < top + box.size.height / 2) {
+        targetIndex = index;
+        break;
+      }
+    }
+    if (targetIndex > currentIndex) targetIndex--;
+    if (targetIndex == currentIndex) return;
+
+    final next = List<ScheduledEvent>.of(_orderedEvents);
+    final moving = next.removeAt(currentIndex);
+    next.insert(targetIndex.clamp(0, next.length), moving);
+    setState(() => _orderedEvents = next);
+  }
+
+  void _endReorder() {
+    _dragOverlay?.remove();
+    _dragOverlay = null;
+    if (mounted) setState(() => _draggingEventId = null);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final events = widget.events;
+    final events = _orderedEvents;
     final isAllDay = events.first.isAllDay || events.first.time == null;
     final header =
         isAllDay ? 'All-day' : dcvTimeSectionKey(events.first.time!);
@@ -4537,17 +4657,34 @@ class _MonthEventGroupState extends State<_MonthEventGroup> {
                       child: Column(
                         children: [
                           for (var index = 0; index < events.length; index++)
-                            buildDcvEventCard(
-                              event: events[index],
-                              dotColor: dotColors[index],
-                              isFirst: index == 0,
-                              isLast: index == events.length - 1,
-                               onEdit: widget.onEditEvent == null
-                                  ? null
-                                   : () => widget.onEditEvent!(events[index]),
-                              onDelete: () => confirmDeleteEvent(
-                                context,
-                                events[index],
+                            KeyedSubtree(
+                              key: _eventKeys.putIfAbsent(
+                                events[index].id,
+                                GlobalKey.new,
+                              ),
+                              child: Opacity(
+                                opacity: events[index].id == _draggingEventId
+                                    ? 0.0
+                                    : 1.0,
+                                child: buildDcvEventCard(
+                                  event: events[index],
+                                  dotColor: dotColors[index],
+                                  isFirst: index == 0,
+                                  isLast: index == events.length - 1,
+                                  reorderable: true,
+                                  onReorderStart: (position) =>
+                                      _startReorder(events[index], position),
+                                  onReorderUpdate: _updateReorder,
+                                  onReorderEnd: _endReorder,
+                                  onReorderCancel: _endReorder,
+                                  onEdit: widget.onEditEvent == null
+                                      ? null
+                                      : () => widget.onEditEvent!(events[index]),
+                                  onDelete: () => confirmDeleteEvent(
+                                    context,
+                                    events[index],
+                                  ),
+                                ),
                               ),
                             ),
                         ],

@@ -16792,15 +16792,30 @@ Widget buildDcvEventCard({
   required bool isLast,
   VoidCallback? onEdit,
   VoidCallback? onDelete,
+  bool reorderable = false,
+  void Function(Offset globalPosition)? onReorderStart,
+  void Function(Offset globalPosition)? onReorderUpdate,
+  VoidCallback? onReorderEnd,
+  VoidCallback? onReorderCancel,
+  bool isGrouped = true,
+  bool elevatedShadow = false,
+  bool hasGapAbove = false,
 }) {
   return _ScheduledEventCard(
     event: event,
     dotColor: dotColor,
-    isGrouped: true,
+    isGrouped: isGrouped,
     isFirst: isFirst,
     isLast: isLast,
+    hasGapAbove: hasGapAbove,
+    elevatedShadow: elevatedShadow,
     onEdit: onEdit,
     onDelete: onDelete,
+    reorderable: reorderable,
+    onReorderStart: onReorderStart,
+    onReorderUpdate: onReorderUpdate,
+    onReorderEnd: onReorderEnd,
+    onReorderCancel: onReorderCancel,
   );
 }
 
@@ -19263,7 +19278,10 @@ class _ScheduledEventCard extends StatelessWidget {
   /// When [isGrouped] and not [isLast], a 0.5 px separator is painted at the
   /// bottom so it travels with the row during FLIP / drag animation — matching
   /// the rule used by [_CategoryRow._buildRowContent].
-  Widget _buildContent(BuildContext context) {
+  Widget _buildContent(
+    BuildContext context, {
+    bool includeGroupedSeparators = true,
+  }) {
     final sub = _subtitle(context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
     return Column(
@@ -19271,7 +19289,7 @@ class _ScheduledEventCard extends StatelessWidget {
       children: [
         // Top separator when the invisible dragging placeholder sits directly
         // above this row — keeps the hairline visible during reorder.
-        if (isGrouped && hasGapAbove)
+        if (includeGroupedSeparators && isGrouped && hasGapAbove)
           Container(height: 0.5, color: separatorColor),
         _TilePressScale(
           child: Padding(
@@ -19361,7 +19379,8 @@ class _ScheduledEventCard extends StatelessWidget {
         ),
         // Separator travels with the row during FLIP / drag — only shown
         // between grouped rows, never after the last one.
-        if (isGrouped && !isLast) Container(height: 0.5, color: separatorColor),
+        if (includeGroupedSeparators && isGrouped && !isLast)
+          Container(height: 0.5, color: separatorColor),
       ],
     );
   }
@@ -19369,7 +19388,10 @@ class _ScheduledEventCard extends StatelessWidget {
   /// Full standalone card: squircle background + drop shadow.
   /// Used as the drag-ghost, as the context-menu preview, and for cards
   /// rendered outside the grouped-card container (e.g. standalone usage).
-  Widget _buildCard(BuildContext context) {
+  Widget _buildCard(
+    BuildContext context, {
+    bool includeGroupedSeparators = true,
+  }) {
     // Lifted ghost uses a larger shadow to simulate elevation.
     final shadows =
         elevatedShadow
@@ -19387,7 +19409,10 @@ class _ScheduledEventCard extends StatelessWidget {
         shape: BoundedSquircleStadiumBorder(radius: _kCornerRadius),
         shadows: shadows,
       ),
-      child: _buildContent(context),
+      child: _buildContent(
+        context,
+        includeGroupedSeparators: includeGroupedSeparators,
+      ),
     );
   }
 
@@ -19396,7 +19421,8 @@ class _ScheduledEventCard extends StatelessWidget {
     return _EventContextMenu(
       // Preview is always the full standalone card regardless of isGrouped,
       // so the drag ghost looks correct even when the card is inside a group.
-      previewBuilder: _buildCard,
+      previewBuilder: (context) =>
+          _buildCard(context, includeGroupedSeparators: false),
       onEdit: onEdit,
       onDelete: onDelete ?? () => EventStore.instance.remove(event.id),
       reorderable: reorderable,

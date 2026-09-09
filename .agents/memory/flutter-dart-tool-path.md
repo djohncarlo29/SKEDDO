@@ -7,4 +7,4 @@ The pinned Flutter command and the bundled Dart CLI are separate paths: standalo
 
 **Why:** The workspace's Flutter entry point is an executable, so appending `bin/cache/...` to that path produces a non-directory path and fails before Dart runs.
 
-**How to apply:** For Dart-only maintenance commands, derive the path from the Flutter SDK directory (the parent of the Flutter executable), or use the known SDK cache path directly.
+**How to apply:** For Dart-only maintenance commands, derive the path from the Flutter SDK directory (the parent of the Flutter executable), or use the known SDK cache path directly. For project analysis/build checks, invoke the pinned workspace Flutter SDK rather than the older global wrapper, or dependency resolution can select an incompatible Dart version.
