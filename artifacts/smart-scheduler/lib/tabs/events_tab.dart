@@ -16844,6 +16844,7 @@ Color resolveEventCategoryColor(
 Widget buildDcvEventList({
   required List<ScheduledEvent> events,
   ValueChanged<ScheduledEvent>? onEditEvent,
+  ValueChanged<List<ScheduledEvent>>? onManualOrderChanged,
   ScrollController? scrollController,
   GlobalKey? scrollViewportKey,
 }) {
@@ -16857,6 +16858,7 @@ Widget buildDcvEventList({
     externalScrollController: scrollController,
     externalScrollViewportKey: scrollViewportKey,
     onEditEvent: onEditEvent,
+    onManualOrderChanged: onManualOrderChanged,
   );
 }
 
@@ -17137,6 +17139,7 @@ class _CategoryDetailView extends StatefulWidget {
   final bool timeGroupedManualEvents;
   final ScrollController? externalScrollController;
   final GlobalKey? externalScrollViewportKey;
+  final ValueChanged<List<ScheduledEvent>>? onManualOrderChanged;
 
   /// Icon override for user-created categories; null → built-in switch logic.
   /// Either an [IconData] or a String SVG asset path — pass to [_renderCatIcon].
@@ -17203,6 +17206,7 @@ class _CategoryDetailView extends StatefulWidget {
     this.timeGroupedManualEvents = false,
     this.externalScrollController,
     this.externalScrollViewportKey,
+    this.onManualOrderChanged,
     this.icon,
     this.categoryType = 'Standard',
     this.events = const [],
@@ -18086,6 +18090,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         ..addAll(predictedOffsets);
       _sortAnimCtrl.value = 0.0;
     });
+    widget.onManualOrderChanged?.call(List<ScheduledEvent>.of(_items));
 
     if (predictedOffsets.isNotEmpty) {
       _sortAnimCtrl

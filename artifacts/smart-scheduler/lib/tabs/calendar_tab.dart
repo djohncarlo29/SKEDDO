@@ -331,6 +331,7 @@ class CalendarTabState extends State<CalendarTab>
   //   is 0 or 1, so any value × 0 has no effect after the animation).
   ScrollController _monthViewScrollCtrl = ScrollController();
   final GlobalKey _monthViewScrollViewportKey = GlobalKey();
+  final Map<String, List<String>> _monthListOrderByDay = {};
   double _collapseScrollOffset = 0.0;
   double _savedMonthScrollOffset = 0.0;
 
@@ -1660,6 +1661,16 @@ class CalendarTabState extends State<CalendarTab>
     if (mounted) setState(() {});
   }
 
+  void _onMonthListOrderChanged(
+    String dayKey,
+    List<ScheduledEvent> orderedEvents,
+  ) {
+    _monthListOrderByDay[dayKey] = [
+      for (final event in orderedEvents) event.id,
+    ];
+    if (mounted) setState(() {});
+  }
+
   // ── Full-screen search overlay (mirrors EventsTab._buildGridSearchOverlay) ──
   Widget _buildSearchOverlay() {
     final showResults = _searchFocused && _searchText.isNotEmpty;
@@ -2027,6 +2038,10 @@ class CalendarTabState extends State<CalendarTab>
                                       key:
                                           '$prevPanelYear-$prevPanelMonth-${prevPanelSel.day}',
                                     ),
+                                     monthListOrderByDay:
+                                         _monthListOrderByDay,
+                                     onMonthListOrderChanged:
+                                         _onMonthListOrderChanged,
                                     onDayTap: (_) {},
                                      ),
                                    ),
@@ -2062,6 +2077,10 @@ class CalendarTabState extends State<CalendarTab>
                                   scrollController: _monthViewScrollCtrl,
                                   scrollViewportKey:
                                       _monthViewScrollViewportKey,
+                                   monthListOrderByDay:
+                                       _monthListOrderByDay,
+                                   onMonthListOrderChanged:
+                                       _onMonthListOrderChanged,
                                   collapseScrollOffset: _collapseScrollOffset,
                                   onDayTap: (date) {
                                     if (colT < 0.1) {
@@ -2135,6 +2154,10 @@ class CalendarTabState extends State<CalendarTab>
                                       key:
                                           '$nextPanelYear-$nextPanelMonth-${nextPanelSel.day}',
                                     ),
+                                     monthListOrderByDay:
+                                         _monthListOrderByDay,
+                                     onMonthListOrderChanged:
+                                         _onMonthListOrderChanged,
                                     onDayTap: (_) {},
                                      ),
                                    ),
@@ -3252,6 +3275,23 @@ double _monthListEstimatedHeight(List<List<ScheduledEvent>> groups) {
   return 32.0 + groups.length * 40.0 + eventCount * 80.0 + 24.0;
 }
 
+List<ScheduledEvent> _applyMonthListOrder(
+  List<ScheduledEvent> events,
+  List<String>? savedOrder,
+) {
+  if (events.length < 2 || savedOrder == null || savedOrder.isEmpty) {
+    return List<ScheduledEvent>.of(events);
+  }
+  final byId = {for (final event in events) event.id: event};
+  final ordered = <ScheduledEvent>[];
+  for (final id in savedOrder) {
+    final event = byId.remove(id);
+    if (event != null) ordered.add(event);
+  }
+  ordered.addAll(byId.values);
+  return ordered;
+}
+
 // _MonthView — full month grid with collapse-to-day animation
 // ══════════════════════════════════════════════════════════════════════════════
 class _MonthView extends StatelessWidget {
@@ -3276,6 +3316,8 @@ class _MonthView extends StatelessWidget {
     this.daySubMode = DayViewSubMode.singleDay,
     this.scrollController,
     this.scrollViewportKey,
+    this.monthListOrderByDay = const {},
+    this.onMonthListOrderChanged,
     this.collapseScrollOffset = 0.0,
   });
 
@@ -3299,6 +3341,9 @@ class _MonthView extends StatelessWidget {
   /// parent can read the scroll offset at the moment _enterDay is called.
   final ScrollController? scrollController;
   final GlobalKey? scrollViewportKey;
+  final Map<String, List<String>> monthListOrderByDay;
+  final void Function(String dayKey, List<ScheduledEvent> orderedEvents)?
+      onMonthListOrderChanged;
 
   /// Scroll offset captured when the Month→Day collapse began.  Passed to
   /// each _AnimatedWeekRow so the selected row translates to visual-y = 0
@@ -3336,14 +3381,32 @@ class _MonthView extends StatelessWidget {
             day = day.add(const Duration(days: 1));
           }
         }
-        final selectedEvents =
-            eventsByDay[_calendarDateKey(selectedDate)] ?? const [];
+        final orderedEventsByDay = <String, List<ScheduledEvent>>{
+          for (final entry in eventsByDay.entries)
+            entry.key: _applyMonthListOrder(
+              entry.value,
+              monthListOrderByDay[entry.key],
+            ),
+        };
+        final listDayKeys = [
+          for (var i = 0; i < totalRows * 7; i++)
+            _calendarDateKey(firstGridDay.add(Duration(days: i))),
+        ];
+        final listDayGroups = [
+          for (final dayKey in listDayKeys)
+            _groupMonthEvents(orderedEventsByDay[dayKey] ?? const []),
+        ];
+        final selectedDayKey = _calendarDateKey(selectedDate);
+        final selectedListIndex = listDayKeys.indexOf(selectedDayKey);
         final showMonthList =
             viewMode == CalendarViewMode.list &&
             collapseProgress < _kMonthDayTransitionThreshold;
-        final groupedSelectedEvents = _groupMonthEvents(selectedEvents);
         final listContentH = showMonthList
-            ? _monthListEstimatedHeight(groupedSelectedEvents)
+            ? listDayGroups.fold<double>(
+                80.0,
+                (height, groups) =>
+                    math.max(height, _monthListEstimatedHeight(groups)),
+              )
             : 80.0;
         final gridH =
             _kCalendarHeaderToDowGap + _kDayLabelHeight + totalRows * rowHeight;
@@ -3395,7 +3458,7 @@ class _MonthView extends StatelessWidget {
                                 viewModeRowHeight: rowHeight,
                                 screenHeight: constraints.maxHeight,
                                 scrollOffset: collapseScrollOffset,
-                                eventsByDay: eventsByDay,
+                                 eventsByDay: orderedEventsByDay,
                                 viewMode: viewMode,
                                 onDayTap: onDayTap,
                                 onDayLongPress: onDayLongPress,
@@ -3415,10 +3478,14 @@ class _MonthView extends StatelessWidget {
                       ),
                       if (showMonthList)
                         _MonthSelectedEvents(
-                          events: groupedSelectedEvents,
+                          dayKeys: listDayKeys,
+                          dayGroups: listDayGroups,
+                          selectedDayIndex:
+                              selectedListIndex < 0 ? 0 : selectedListIndex,
                           onEditEvent: onEditEvent,
                           scrollController: scrollController,
                           scrollViewportKey: scrollViewportKey,
+                          onOrderChanged: onMonthListOrderChanged,
                         )
                       else if (emptyH > 0)
                         SizedBox(
@@ -4440,26 +4507,46 @@ double _monthListDotTop(double rowHeight) =>
 
 class _MonthSelectedEvents extends StatelessWidget {
   const _MonthSelectedEvents({
-    required this.events,
+    required this.dayKeys,
+    required this.dayGroups,
+    required this.selectedDayIndex,
     this.onEditEvent,
     this.scrollController,
     this.scrollViewportKey,
+    this.onOrderChanged,
   });
 
-  final List<List<ScheduledEvent>> events;
+  final List<String> dayKeys;
+  final List<List<List<ScheduledEvent>>> dayGroups;
+  final int selectedDayIndex;
   final void Function(ScheduledEvent event)? onEditEvent;
   final ScrollController? scrollController;
   final GlobalKey? scrollViewportKey;
+  final void Function(String dayKey, List<ScheduledEvent> orderedEvents)?
+      onOrderChanged;
 
   @override
   Widget build(BuildContext context) {
-    return buildDcvEventList(
-      events: [
-        for (final group in events) ...group,
+    return IndexedStack(
+      index: selectedDayIndex.clamp(0, dayGroups.length - 1) as int,
+      alignment: Alignment.topCenter,
+      children: [
+        for (var dayIndex = 0; dayIndex < dayGroups.length; dayIndex++)
+          KeyedSubtree(
+            key: ValueKey(dayKeys[dayIndex]),
+            child: buildDcvEventList(
+              events: [
+                for (final group in dayGroups[dayIndex]) ...group,
+              ],
+              onEditEvent: onEditEvent,
+              onManualOrderChanged: (orderedEvents) {
+                onOrderChanged?.call(dayKeys[dayIndex], orderedEvents);
+              },
+              scrollController: scrollController,
+              scrollViewportKey: scrollViewportKey,
+            ),
+          ),
       ],
-      onEditEvent: onEditEvent,
-      scrollController: scrollController,
-      scrollViewportKey: scrollViewportKey,
     );
   }
 }
