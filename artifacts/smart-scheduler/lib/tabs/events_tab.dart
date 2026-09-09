@@ -5592,6 +5592,7 @@ class EventsTabState extends State<EventsTab>
       if (appDefaultCategoryId == updated.id) {
         appDefaultCategoryLabelNotifier.value = updated.name;
       }
+      _updateCategoryRegistry();
     });
     _saveCategories();
     if (appDefaultCategoryId == updated.id) {
@@ -16819,6 +16820,24 @@ Widget buildDcvEventCard({
   );
 }
 
+/// Resolves the category colour owned by an event.  Occurrence expansion keeps
+/// the source event's categoryId, so every occurrence stays in the same
+/// category colour without inheriting the colour of the surrounding DCV.
+Color resolveEventCategoryColor(
+  BuildContext context,
+  ScheduledEvent event,
+) {
+  const uncategorizedIds = {'', 'uncategorized', 'sys-uncategorized'};
+  final categoryId =
+      uncategorizedIds.contains(event.categoryId)
+          ? 'sys-uncategorized'
+          : event.categoryId;
+  final meta = CategoryRegistry.get(categoryId);
+  return meta == null
+      ? resolveAccentColor(context)
+      : renderCategoryColor(meta.rawColor, context);
+}
+
 /// Public bridge for embedded Calendar List mode. This uses the same stateful
 /// DCV implementation, including long-press disambiguation, lifted overlay,
 /// placeholder opacity, separator gaps, FLIP reflow, and auto-scroll.
@@ -17737,15 +17756,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   /// DCV currently being viewed. This keeps the dot color stable in Smart
   /// Categories, date-based smart tiles, All Events, and search results.
   Color _resolveEventDotColor(BuildContext context, ScheduledEvent event) {
-    const uncategorizedIds = {'', 'uncategorized', 'sys-uncategorized'};
-    final categoryId =
-        uncategorizedIds.contains(event.categoryId)
-            ? 'sys-uncategorized'
-            : event.categoryId;
-    final meta = CategoryRegistry.get(categoryId);
-    return meta == null
-        ? resolveAccentColor(context)
-        : renderCategoryColor(meta.rawColor, context);
+    return resolveEventCategoryColor(context, event);
   }
 
   void _updateReorder(Offset globalPos) {

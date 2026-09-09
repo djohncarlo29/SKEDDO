@@ -36,6 +36,7 @@ import 'events_tab.dart'
       buildDcvSectionLabel,
       buildDcvEventList,
       dcvTimeSectionKey,
+      resolveEventCategoryColor,
       wrapSearchEventTileWithActions,
       wrapSearchEventTileWithPressScale;
 import '../widgets/smart_search_results.dart';
@@ -1403,6 +1404,7 @@ class CalendarTabState extends State<CalendarTab>
     _selected = DateTime.now();
     _monthViewScrollCtrl.addListener(_syncPreviewScrollToCurrent);
     _yearScrollCtrl.addListener(_syncYearPreviewScrollToCurrent);
+    CategoryRegistry.revision.addListener(_onCategoryRegistryChanged);
     _zoomCtrl = AnimationController(
       vsync: this,
       value: 1.0, // start in month view
@@ -1632,6 +1634,7 @@ class CalendarTabState extends State<CalendarTab>
 
   @override
   void dispose() {
+    CategoryRegistry.revision.removeListener(_onCategoryRegistryChanged);
     _clockTimer?.cancel();
     _searchDebounce?.cancel();
     _dragFrameTick.dispose();
@@ -1651,6 +1654,10 @@ class CalendarTabState extends State<CalendarTab>
     _nextPreviewScrollCtrl?.dispose();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _onCategoryRegistryChanged() {
+    if (mounted) setState(() {});
   }
 
   // ── Full-screen search overlay (mirrors EventsTab._buildGridSearchOverlay) ──
@@ -4416,32 +4423,13 @@ class _MonthEventDots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = <Color>[];
-    for (final event in events) {
-      final raw = CategoryRegistry.get(event.categoryId)?.rawColor;
-      final color = raw == null
-          ? resolveAccentColor(context)
-          : renderCategoryColor(raw, context);
-      if (!colors.any((existing) => existing.value == color.value)) {
-        colors.add(color);
-      }
-      if (colors.length == 3) break;
-    }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < colors.length; i++) ...[
-          if (i > 0) const SizedBox(width: 2),
-          Container(
-            width: 5,
-            height: 5,
-            decoration: BoxDecoration(
-              color: colors[i],
-              shape: BoxShape.circle,
-            ),
-          ),
-        ],
-      ],
+    return Container(
+      width: 5,
+      height: 5,
+      decoration: BoxDecoration(
+        color: resolveEventCategoryColor(context, events.first),
+        shape: BoxShape.circle,
+      ),
     );
   }
 }
@@ -4683,10 +4671,7 @@ class _MonthEventGroupState extends State<_MonthEventGroup> {
 }
 
 Color _monthEventDotColor(BuildContext context, ScheduledEvent event) {
-  final raw = CategoryRegistry.get(event.categoryId)?.rawColor;
-  return raw == null
-      ? resolveAccentColor(context)
-      : renderCategoryColor(raw, context);
+  return resolveEventCategoryColor(context, event);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:flutter/painting.dart' show Color;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -15,6 +16,7 @@ class CategoryRegistry {
   CategoryRegistry._();
 
   static final _data = <String, CategoryMeta>{};
+  static final revision = ValueNotifier<int>(0);
 
   /// Replace the entire registry contents with [entries].
   /// Cheap — just clears and refills the internal map.
@@ -22,6 +24,7 @@ class CategoryRegistry {
     _data
       ..clear()
       ..addAll(entries);
+    revision.value++;
   }
 
   /// Return the [CategoryMeta] for [categoryId], or null if unknown.
