@@ -27,6 +27,7 @@ import '../widgets/action_panel.dart';
 import '../widgets/view_mode_icons.dart';
 import '../widgets/app_switch.dart';
 import '../services/event_store.dart';
+import '../services/category_registry.dart';
 import '../services/alert_sequence.dart';
 import '../ai/search/search_service.dart';
 import 'events_tab.dart'
@@ -120,6 +121,50 @@ int _weekRowForDate(DateTime date) {
 
 bool _sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
+
+String _calendarDateKey(DateTime date) =>
+    '${date.year}-${date.month}-${date.day}';
+
+DateTime? _calendarEventDate(String? rawDate) {
+  if (rawDate == null || rawDate.trim().isEmpty) return null;
+  final parsed = DateTime.tryParse(rawDate.trim());
+  if (parsed != null) {
+    return DateTime(parsed.year, parsed.month, parsed.day);
+  }
+  final match = RegExp(r'^(\w+) (\d+), (\d{4})$').firstMatch(rawDate.trim());
+  if (match == null) return null;
+  final month = _kMonthNames.indexOf(match.group(1)!);
+  if (month < 0) return null;
+  final day = int.tryParse(match.group(2)!);
+  final year = int.tryParse(match.group(3)!);
+  if (day == null || year == null) return null;
+  return DateTime(year, month + 1, day);
+}
+
+DateTime? _calendarEventStartDate(ScheduledEvent event) =>
+    event.parsedDate?.absoluteDate != null
+    ? DateTime(
+        event.parsedDate!.absoluteDate!.year,
+        event.parsedDate!.absoluteDate!.month,
+        event.parsedDate!.absoluteDate!.day,
+      )
+    : _calendarEventDate(event.date);
+
+DateTime? _calendarEventEndDate(ScheduledEvent event) =>
+    _calendarEventDate(event.endDate) ?? _calendarEventStartDate(event);
+
+int _calendarTimeToMinutes(String? value) {
+  if (value == null) return 0;
+  final parts = value.trim().split(' ');
+  if (parts.length < 2) return 0;
+  final hm = parts[0].split(':');
+  var hour = int.tryParse(hm.first) ?? 0;
+  final minute = hm.length > 1 ? int.tryParse(hm[1]) ?? 0 : 0;
+  final isPm = parts[1].toUpperCase() == 'PM';
+  if (isPm && hour != 12) hour += 12;
+  if (!isPm && hour == 12) hour = 0;
+  return hour * 60 + minute;
+}
 
 // ── View enum ─────────────────────────────────────────────────────────────────
 enum CalendarView { year, month, day }
@@ -1954,6 +1999,7 @@ class CalendarTabState extends State<CalendarTab>
                                     collapseProgress: prevColT,
                                     collapseWeekRow: prevColRow,
                                     rowHeight: rowHeight,
+                                     viewMode: _viewMode,
                                     pendingBloomDate: _pendingBloomDate,
                                     scrollController: _previewScrollCtrl(
                                       isPrev: true,
@@ -1984,12 +2030,14 @@ class CalendarTabState extends State<CalendarTab>
                                   collapseProgress: colT,
                                   collapseWeekRow: _collapseRow,
                                   rowHeight: rowHeight,
+                                   viewMode: _viewMode,
                                   circleSlideX: circleSlideX,
                                   settleCount: _settleCount,
                                   blobDeltaX: circleMode ? _blobDeltaX : 0.0,
                                   blobSnapCount: _blobSnapCount,
                                   pendingBloomDate: _pendingBloomDate,
                                   daySubMode: widget.daySubMode,
+                                   onEditEvent: widget.onEditEvent,
                                   scrollController: _monthViewScrollCtrl,
                                   collapseScrollOffset: _collapseScrollOffset,
                                   onDayTap: (date) {
@@ -2058,6 +2106,7 @@ class CalendarTabState extends State<CalendarTab>
                                     collapseProgress: nextColT,
                                     collapseWeekRow: nextColRow,
                                     rowHeight: rowHeight,
+                                     viewMode: _viewMode,
                                     scrollController: _previewScrollCtrl(
                                       isPrev: false,
                                       key:
@@ -3149,6 +3198,37 @@ class _MorphPainter extends CustomPainter {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+List<List<ScheduledEvent>> _groupMonthEvents(List<ScheduledEvent> events) {
+  final allDay = <ScheduledEvent>[];
+  final timed = <ScheduledEvent>[];
+  for (final event in events) {
+    (event.isAllDay || event.time == null ? allDay : timed).add(event);
+  }
+  timed.sort((a, b) {
+    final byTime = _calendarTimeToMinutes(a.time) -
+        _calendarTimeToMinutes(b.time);
+    return byTime != 0 ? byTime : a.title.compareTo(b.title);
+  });
+  final groups = <String, List<ScheduledEvent>>{};
+  for (final event in timed) {
+    (groups[event.time!] ??= []).add(event);
+  }
+  return [
+    if (allDay.isNotEmpty) allDay,
+    ...groups.values,
+  ];
+}
+
+double _monthListEstimatedHeight(List<List<ScheduledEvent>> groups) {
+  if (groups.isEmpty) return 80.0;
+  // Leave enough room for wrapped titles and the same section/card spacing used
+  // by the Events tab.  The list remains scrollable if a title exceeds this
+  // estimate; the estimate only prevents the Stack's scroll content from being
+  // clipped for the common one- or two-event case.
+  final eventCount = groups.fold<int>(0, (sum, group) => sum + group.length);
+  return 32.0 + groups.length * 40.0 + eventCount * 80.0 + 24.0;
+}
+
 // _MonthView — full month grid with collapse-to-day animation
 // ══════════════════════════════════════════════════════════════════════════════
 class _MonthView extends StatelessWidget {
@@ -3162,7 +3242,9 @@ class _MonthView extends StatelessWidget {
     required this.collapseWeekRow,
     required this.onDayTap,
     required this.rowHeight,
+    required this.viewMode,
     this.onDayLongPress,
+    this.onEditEvent,
     this.circleSlideX = 0.0,
     this.settleCount = 0,
     this.blobDeltaX = 0.0,
@@ -3178,8 +3260,10 @@ class _MonthView extends StatelessWidget {
   final double collapseProgress; // 0 = full month  1 = day view
   final int collapseWeekRow; // 0-based row to keep pinned
   final double rowHeight; // animated view-mode row height
+  final CalendarViewMode viewMode;
   final void Function(DateTime) onDayTap;
   final void Function(DateTime)? onDayLongPress;
+  final void Function(ScheduledEvent event)? onEditEvent;
   final double circleSlideX; // non-zero in Day View during content drags
   final int settleCount; // cross-week settle trigger
   final double blobDeltaX; // per-frame gesture delta → blob stretch
@@ -3198,22 +3282,52 @@ class _MonthView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalRows = _totalWeekRows(year, month);
-    final gridH =
-        _kCalendarHeaderToDowGap + _kDayLabelHeight + totalRows * rowHeight;
+    return ValueListenableBuilder<List<ScheduledEvent>>(
+      valueListenable: EventStore.instance.events,
+      builder: (context, _, __) {
+        final firstGridDay = DateTime(year, month, 1).subtract(
+          Duration(days: _firstWeekday(year, month)),
+        );
+        final totalRows = _totalWeekRows(year, month);
+        final lastGridDay = firstGridDay.add(
+          Duration(days: totalRows * 7 - 1),
+        );
+        final events = EventStore.instance.expandedEvents(
+          from: firstGridDay,
+          to: lastGridDay.add(const Duration(days: 1)),
+        );
+        final eventsByDay = <String, List<ScheduledEvent>>{};
+        for (final event in events) {
+          final start = _calendarEventStartDate(event);
+          if (start == null) continue;
+          final end = _calendarEventEndDate(event) ?? start;
+          if (end.isBefore(firstGridDay) || start.isAfter(lastGridDay)) {
+            continue;
+          }
+          var day = start.isBefore(firstGridDay) ? firstGridDay : start;
+          final clampedEnd = end.isAfter(lastGridDay) ? lastGridDay : end;
+          while (!day.isAfter(clampedEnd)) {
+            (eventsByDay[_calendarDateKey(day)] ??= []).add(event);
+            day = day.add(const Duration(days: 1));
+          }
+        }
+        final selectedEvents =
+            eventsByDay[_calendarDateKey(selectedDate)] ?? const [];
+        final showMonthList =
+            viewMode == CalendarViewMode.list && collapseProgress < 0.5;
+        final groupedSelectedEvents = _groupMonthEvents(selectedEvents);
+        final listContentH = showMonthList
+            ? _monthListEstimatedHeight(groupedSelectedEvents)
+            : 80.0;
+        final gridH =
+            _kCalendarHeaderToDowGap + _kDayLabelHeight + totalRows * rowHeight;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
         final secondaryC = resolveThemeColor(kSecondaryLabel, context);
-        // Ensure the scroll content is always tall enough to:
-        //   (a) show the last week row's 0.5 px bottom separator without
-        //       being clipped by ClipRect when gridH > screen height, and
-        //   (b) provide at least 80 px of space below the grid so the
-        //       "No Events" placeholder is visible even in Details view.
-        const double noEventsMinHeight = 80.0;
         final floatingClearance = floatingTabBarContentBottomClearance(context);
         final contentH =
-            math.max(constraints.maxHeight, gridH + noEventsMinHeight) +
+            math.max(constraints.maxHeight, gridH + listContentH) +
             floatingClearance;
         final emptyH = contentH - gridH;
         final emptyStateH = math.max(0.0, emptyH - floatingClearance);
@@ -3254,6 +3368,8 @@ class _MonthView extends StatelessWidget {
                                 viewModeRowHeight: rowHeight,
                                 screenHeight: constraints.maxHeight,
                                 scrollOffset: collapseScrollOffset,
+                                eventsByDay: eventsByDay,
+                                viewMode: viewMode,
                                 onDayTap: onDayTap,
                                 onDayLongPress: onDayLongPress,
                                 circleSlideX: row == collapseWeekRow
@@ -3270,10 +3386,12 @@ class _MonthView extends StatelessWidget {
                           ],
                         ),
                       ),
-                      // "No Events" placeholder is part of the scroll content
-                      // so it rubber-bands with the rest of the view,
-                      // exactly like the Notes Tab empty state.
-                      if (emptyH > 0)
+                      if (showMonthList)
+                        _MonthSelectedEvents(
+                          events: groupedSelectedEvents,
+                          onEditEvent: onEditEvent,
+                        )
+                      else if (emptyH > 0)
                         SizedBox(
                           height: emptyH,
                           child: Column(
@@ -3367,6 +3485,8 @@ class _MonthView extends StatelessWidget {
               ),
             ),
           ),
+            );
+          },
         );
       },
     );
@@ -3394,6 +3514,8 @@ class _AnimatedWeekRow extends StatelessWidget {
     this.pendingBloomDate,
     this.daySubMode = DayViewSubMode.singleDay,
     this.scrollOffset = 0.0,
+    this.eventsByDay = const {},
+    required this.viewMode,
   });
 
   final int year, month, row;
@@ -3411,6 +3533,8 @@ class _AnimatedWeekRow extends StatelessWidget {
   final int blobSnapCount;
   final DateTime? pendingBloomDate;
   final DayViewSubMode daySubMode;
+  final Map<String, List<ScheduledEvent>> eventsByDay;
+  final CalendarViewMode viewMode;
 
   /// Scroll offset captured at the start of the collapse animation.
   /// Added to translateY (scaled by collapseProgress) for rows that move
@@ -3469,6 +3593,8 @@ class _AnimatedWeekRow extends StatelessWidget {
         rowHeight: currentRowHeight,
         onDayTap: onDayTap,
         onDayLongPress: onDayLongPress,
+        eventsByDay: eventsByDay,
+        viewMode: viewMode,
         showOverflow: collapseProgress > 0.5,
         circleSlideX: circleSlideX,
         settleCount: settleCount,
@@ -3785,6 +3911,8 @@ class _WeekRow extends StatefulWidget {
     this.pendingBloomDate,
     this.daySubMode = DayViewSubMode.singleDay,
     this.collapseProgress = 1.0,
+    this.eventsByDay = const {},
+    required this.viewMode,
   });
 
   final int year, month, row;
@@ -3807,6 +3935,8 @@ class _WeekRow extends StatefulWidget {
   // 0 = month view, 1 = day view — used to fade the multi-day pill so it
   // doesn't persist while transitioning back to Month View.
   final double collapseProgress;
+  final Map<String, List<ScheduledEvent>> eventsByDay;
+  final CalendarViewMode viewMode;
 
   @override
   State<_WeekRow> createState() => _WeekRowState();
@@ -3907,6 +4037,8 @@ class _WeekRowState extends State<_WeekRow> {
                 final displayDay = date.day;
                 final isToday = _sameDay(date, widget.today);
                 final isSel = _sameDay(date, widget.selectedDate);
+                final dayEvents =
+                    widget.eventsByDay[_calendarDateKey(date)] ?? const [];
 
                 if (isOverflow && !widget.showOverflow) {
                   return const Expanded(child: SizedBox.shrink());
@@ -3973,26 +4105,26 @@ class _WeekRowState extends State<_WeekRow> {
                     fontWeight = FontWeight.w400;
                   }
 
-                  dayCell = _BloomDayCircle(
-                    key: ValueKey(date),
-                    isSel: isSel,
-                    tapCount: _tapCount,
-                    lastTappedDate: _lastTappedDate,
-                    myDate: date,
-                    settleCount: widget.settleCount,
-                    blobSnapCount: widget.blobSnapCount,
-                    pendingBloomDate: widget.pendingBloomDate,
-                    circleColor: circleColor,
-                    child: Text(
-                      '$displayDay',
-                      style: TextStyle(
-                        fontFamily: kSFProText,
-                        fontSize: 17,
-                        fontWeight: fontWeight,
-                        color: textColor,
+                    dayCell = _BloomDayCircle(
+                      key: ValueKey(date),
+                      isSel: isSel,
+                      tapCount: _tapCount,
+                      lastTappedDate: _lastTappedDate,
+                      myDate: date,
+                      settleCount: widget.settleCount,
+                      blobSnapCount: widget.blobSnapCount,
+                      pendingBloomDate: widget.pendingBloomDate,
+                      circleColor: circleColor,
+                      child: Text(
+                        '$displayDay',
+                        style: TextStyle(
+                          fontFamily: kSFProText,
+                          fontSize: 17,
+                          fontWeight: fontWeight,
+                          color: textColor,
+                        ),
                       ),
-                    ),
-                  );
+                    );
                 }
 
                 return Expanded(
@@ -4006,7 +4138,25 @@ class _WeekRowState extends State<_WeekRow> {
                       alignment: Alignment.topCenter,
                       child: Padding(
                         padding: const EdgeInsets.only(top: kFixedTopPadding),
-                        child: dayCell,
+                         child: SizedBox(
+                           height: widget.rowHeight - kFixedTopPadding,
+                           child: Stack(
+                             clipBehavior: Clip.none,
+                             alignment: Alignment.topCenter,
+                             children: [
+                               dayCell,
+                               if (widget.viewMode == CalendarViewMode.list &&
+                                   dayEvents.isNotEmpty &&
+                                   !isOverflow)
+                                 Positioned(
+                                   top: 38,
+                                   child: _MonthEventDots(
+                                     events: dayEvents,
+                                   ),
+                                 ),
+                             ],
+                           ),
+                         ),
                       ),
                     ),
                   ),
@@ -4230,6 +4380,231 @@ class _WeekRowState extends State<_WeekRow> {
         );
       },
     );
+  }
+}
+
+class _MonthEventDots extends StatelessWidget {
+  const _MonthEventDots({required this.events});
+
+  final List<ScheduledEvent> events;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = <Color>[];
+    for (final event in events) {
+      final raw = CategoryRegistry.get(event.categoryId)?.rawColor;
+      final color = raw == null
+          ? resolveAccentColor(context)
+          : renderCategoryColor(raw, context);
+      if (!colors.any((existing) => existing.value == color.value)) {
+        colors.add(color);
+      }
+      if (colors.length == 3) break;
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < colors.length; i++) ...[
+          if (i > 0) const SizedBox(width: 2),
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              color: colors[i],
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _MonthSelectedEvents extends StatelessWidget {
+  const _MonthSelectedEvents({
+    required this.events,
+    this.onEditEvent,
+  });
+
+  final List<List<ScheduledEvent>> events;
+  final void Function(ScheduledEvent event)? onEditEvent;
+
+  @override
+  Widget build(BuildContext context) {
+    if (events.isEmpty) {
+      return SizedBox(
+        height: 80,
+        child: Center(
+          child: Text(
+            'No Events',
+            style: TextStyle(
+              inherit: false,
+              fontFamily: kSFProText,
+              fontWeight: FontWeight.w400,
+              fontSize: kEmptyStateLabelFontSize,
+              letterSpacing: kTracking16,
+              color: resolveThemeColor(kSecondaryLabel, context),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var groupIndex = 0; groupIndex < events.length; groupIndex++)
+            Padding(
+              padding: EdgeInsets.only(top: groupIndex == 0 ? 0 : 16),
+              child: _MonthEventGroup(
+                events: events[groupIndex],
+                onEditEvent: onEditEvent,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthEventGroup extends StatelessWidget {
+  const _MonthEventGroup({
+    required this.events,
+    this.onEditEvent,
+  });
+
+  final List<ScheduledEvent> events;
+  final void Function(ScheduledEvent event)? onEditEvent;
+
+  @override
+  Widget build(BuildContext context) {
+    final isAllDay = events.first.isAllDay || events.first.time == null;
+    final header = isAllDay ? 'All-day' : events.first.time!;
+    final surface = resolveThemeColor(kSbSurface, context);
+    final separator = resolveThemeColor(kSeparatorColor, context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 8, bottom: 8),
+          child: Text(
+            header,
+            style: TextStyle(
+              inherit: false,
+              fontFamily: kSFProText,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: resolveThemeColor(kSecondaryLabel, context),
+            ),
+          ),
+        ),
+        Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: ShapeDecoration(
+            color: surface,
+            shape: const BoundedSquircleStadiumBorder(radius: 20),
+            shadows: resolveThemeShadows(kCardShadow, context),
+          ),
+          child: Column(
+            children: [
+              for (var index = 0; index < events.length; index++)
+                Column(
+                  children: [
+                    if (index > 0) Container(height: 0.5, color: separator),
+                    _MonthEventRow(
+                      event: events[index],
+                      onTap: onEditEvent == null
+                          ? null
+                          : () => onEditEvent!(events[index]),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MonthEventRow extends StatelessWidget {
+  const _MonthEventRow({
+    required this.event,
+    this.onTap,
+  });
+
+  final ScheduledEvent event;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final raw = CategoryRegistry.get(event.categoryId)?.rawColor;
+    final dotColor = raw == null
+        ? resolveAccentColor(context)
+        : renderCategoryColor(raw, context);
+    final timeLabel = event.isAllDay
+        ? 'All-day'
+        : event.time == null
+        ? 'Unscheduled'
+        : event.endTime == null
+        ? event.time!
+        : '${event.time} – ${event.endTime}';
+    final child = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: dotColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  event.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    inherit: false,
+                    fontFamily: kSFProText,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w400,
+                    color: resolveThemeColor(kPrimaryLabel, context),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  timeLabel,
+                  style: TextStyle(
+                    inherit: false,
+                    fontFamily: kSFProText,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                    color: resolveThemeColor(kSecondaryLabel, context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    return onTap == null
+        ? child
+        : GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: child,
+          );
   }
 }
 
