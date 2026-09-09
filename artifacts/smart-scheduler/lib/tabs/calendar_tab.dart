@@ -5602,7 +5602,17 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                      return right > labelColW && left < totalW;
                    }
 
+                   // Keep the whole indicator mounted for the complete
+                   // Single-Day-style panel travel.  The day column itself
+                   // becomes "invisible" as soon as it reaches the label
+                   // divider, but the pill/circle/line must remain alive
+                   // while its full-width transform carries it to the
+                   // viewport edge.
+                   final bool wholeIndicatorActive =
+                       (goingLeft && _sameDay(A, widget.today)) ||
+                       (!goingLeft && _sameDay(Aminus1, widget.today));
                    final bool showIndicator =
+                       wholeIndicatorActive ||
                        isVisibleColumn(A, posA) ||
                        isVisibleColumn(Aplus1, posAplus1) ||
                        (!goingLeft && isVisibleColumn(Aminus1, posAminus1)) ||
