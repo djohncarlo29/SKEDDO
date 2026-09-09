@@ -1,0 +1,39 @@
+name: Flutter iOS Build
+on:
+  push:
+    branches: [ main ] # Runs automatically every time you push code to the main branch
+
+jobs:
+  build:
+    runs-file: macos-latest # This forces GitHub to give you a free virtual Mac
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build iOS Workspace
+        run: flutter build ios --no-codesign # Compiles the project without needing expensive Apple developer certificates
+
+      - name: Package into IPA
+        run: |
+          mkdir -p Payload
+          mv build/ios/iphoneos/Runner.app Payload/
+          zip -r FlutterApp.ipa Payload/
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-ios-ipa
+          path: FlutterApp.ipa
