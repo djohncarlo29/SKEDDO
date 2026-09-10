@@ -536,6 +536,27 @@ class EventStore {
   /// Moves active events into the archived-event store while preserving their
   /// original category IDs. Archived events are excluded from All Events and
   /// all active category views until the category is recovered.
+  bool archiveEvent(String id) {
+    final index = events.value.indexWhere((event) => event.id == id);
+    if (index < 0) return false;
+
+    final archived = events.value[index];
+    final nextEvents = List<ScheduledEvent>.of(events.value)
+      ..removeAt(index);
+    final nextArchived = [
+      ...archivedEvents.value.where((event) => event.id != id),
+      archived,
+    ];
+    events.value = nextEvents;
+    archivedEvents.value = nextArchived;
+    LocalStorage.instance.saveEvents(nextEvents);
+    LocalStorage.instance.saveArchivedEvents(nextArchived);
+    return true;
+  }
+
+  /// Moves active events into the archived-event store while preserving their
+  /// original category IDs. Archived events are excluded from All Events and
+  /// all active category views until the category is recovered.
   int archiveEventsForCategory(String categoryId) {
     final moving = events.value
         .where((event) => event.categoryId == categoryId)

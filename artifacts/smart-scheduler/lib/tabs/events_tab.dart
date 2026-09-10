@@ -706,6 +706,11 @@ class _ContextMenuOverlay extends StatelessWidget {
           onTap: onEdit,
         ),
         ActionItem(
+          label: 'Archive Event',
+          icon: SFIcons.sf_archivebox,
+          onTap: onArchive,
+        ),
+        ActionItem(
           label: 'Delete Event',
           icon: SFIcons.sf_trash,
           isDestructive: true,
@@ -7854,12 +7859,15 @@ Widget wrapSearchEventTileWithActions({
   required Widget child,
   required WidgetBuilder previewBuilder,
   VoidCallback? onEdit,
+  VoidCallback? onArchive,
   VoidCallback? onDelete,
 }) {
   return _EventContextMenu(
     child: child,
     previewBuilder: previewBuilder,
     onEdit: onEdit,
+    onArchive:
+        onArchive ?? () => EventStore.instance.archiveEvent(hit.event.id),
     onDelete: onDelete ?? () => EventStore.instance.remove(hit.event.id),
   );
 }
@@ -19443,6 +19451,7 @@ class _EventContextMenu extends StatefulWidget {
   final Widget child;
   final WidgetBuilder previewBuilder;
   final VoidCallback? onEdit;
+  final VoidCallback? onArchive;
   final VoidCallback? onDelete;
   final bool enabled;
 
@@ -19459,6 +19468,7 @@ class _EventContextMenu extends StatefulWidget {
     required this.child,
     required this.previewBuilder,
     this.onEdit,
+    this.onArchive,
     this.onDelete,
     this.enabled = true,
     this.reorderable = false,
@@ -19548,6 +19558,10 @@ class _EventContextMenuState extends State<_EventContextMenu>
             onDismiss: _hide,
             onEdit:
                 widget.onEdit != null ? () => _hide(then: widget.onEdit) : null,
+            onArchive:
+                widget.onArchive != null
+                    ? () => _hide(then: widget.onArchive)
+                    : null,
             onDelete:
                 widget.onDelete != null
                     ? () => _hide(then: widget.onDelete)
@@ -19725,6 +19739,9 @@ class _ScheduledEventCard extends StatelessWidget {
   /// Called when the user selects "Edit Event" from the long-press menu.
   final VoidCallback? onEdit;
 
+  /// Called when the user selects "Archive Event" from the long-press menu.
+  final VoidCallback? onArchive;
+
   /// Called when the user selects "Delete Event" from the long-press menu.
   final VoidCallback? onDelete;
 
@@ -19766,6 +19783,7 @@ class _ScheduledEventCard extends StatelessWidget {
     required this.event,
     this.dotColor,
     this.onEdit,
+    this.onArchive,
     this.onDelete,
     this.enableContextMenu = true,
     this.reorderable = false,
@@ -19994,6 +20012,8 @@ class _ScheduledEventCard extends StatelessWidget {
       previewBuilder: (context) =>
           _buildCard(context, includeGroupedSeparators: false),
       onEdit: onEdit,
+      onArchive:
+          onArchive ?? () => EventStore.instance.archiveEvent(event.id),
        onDelete: onDelete ?? () => EventStore.instance.remove(event.id),
        enabled: enableContextMenu,
        reorderable: reorderable,
