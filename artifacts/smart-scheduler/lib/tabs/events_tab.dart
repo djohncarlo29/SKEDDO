@@ -17258,6 +17258,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
   // finger at an edge continue revealing event tiles.
   static const double _kDragAutoScrollEdgeExtent = 88.0;
   static const double _kDragAutoScrollMaxVelocity = 900.0;
+  // Keep the visible final gap aligned with Calendar Month List.
+  static const double _kDcvFinalContentGap = 16.0;
   Ticker? _dragAutoScrollTicker;
   Offset? _lastDragGlobalPosition;
   Duration? _lastDragAutoScrollElapsed;
@@ -18829,7 +18831,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
               height: floatingTabBarContentBottomClearance(
                 context,
                 existingTrailingContentPadding: 32,
-                finalContentGap: 20,
+                finalContentGap: _kDcvFinalContentGap,
               ),
             ),
           ),
@@ -19035,7 +19037,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                 height: floatingTabBarContentBottomClearance(
                   context,
                   existingTrailingContentPadding: 32,
-                  finalContentGap: 20,
+                  finalContentGap: _kDcvFinalContentGap,
                 ),
               ),
             ),
