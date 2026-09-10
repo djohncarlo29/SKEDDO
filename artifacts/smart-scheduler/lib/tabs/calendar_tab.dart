@@ -3453,12 +3453,11 @@ class _MonthView extends StatelessWidget {
                     : availableListEmptyStateH
                 : estimatedListContentH
             : 80.0;
-        // Month List owns its final 16 pt inset in the estimated list height.
-        // Do not append the floating-tab-bar clearance again: that clearance
-        // becomes visible as a large, unintended bottom pad after the final
-        // event card. Other calendar states still need the regular clearance.
+        // Keep an explicit 16 pt visual gap between the final event card and
+        // the Floating Tab Bar. This is separate from the list's height
+        // estimate because wrapped event content can consume that estimate.
         final eventContentClearance =
-            showMonthList ? 0.0 : floatingClearance;
+            showMonthList ? 16.0 : floatingClearance;
         final contentH = selectedDayIsEmpty
             ? emptyStateNeedsScrollableFallback
                 ? gridH +
