@@ -18,6 +18,14 @@ The visible gap from the final Detailed Category View event content to the Float
 
 **How to apply:** Keep the DCV final-content target at 16pt for regular event sections and utility-category content; preserve the existing trailing-padding subtraction when calculating scroll clearance.
 
+## Scroll extent
+
+For Calendar Month List, compute the document height as `max(viewportHeight, naturalListEnd + requiredClearance)`, not `max(viewportHeight, naturalListEnd) + requiredClearance`.
+
+**Why:** Appending clearance after a viewport-sized document creates positive scroll extent for short lists, while an oversized natural-height estimate makes long lists stop too far above the Floating Tab Bar.
+
+**How to apply:** Keep the embedded DCV's measured/estimated trailing section padding inside the natural list end, add only the remaining Floating Tab Bar clearance, and let the viewport minimum absorb it when the list already fits.
+
 ## Empty-state positioning
 
 The Calendar Month List text-only empty state centers in the live space below the week strip and above the floating tab bar; use the established fallback only when that space is smaller.

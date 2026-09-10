@@ -3272,18 +3272,19 @@ List<List<ScheduledEvent>> _groupMonthEvents(List<ScheduledEvent> events) {
 
 double _monthListEstimatedHeight(List<List<ScheduledEvent>> groups) {
   if (groups.isEmpty) return 80.0;
-  // Leave enough room for wrapped titles and the same section/card spacing used
-  // by the Events tab.  The list remains scrollable if a title exceeds this
-  // estimate; the estimate only prevents the Stack's scroll content from being
-  // clipped for the common one- or two-event case.
+  // Mirror the embedded DCV's natural layout: one 16 pt list inset, a compact
+  // section label, each event row, and one 16 pt section tail. Keeping this
+  // estimate aligned with the actual child height is important because the
+  // parent uses it to determine the maximum scroll offset and final 16 pt gap.
   final eventCount = groups.fold<int>(0, (sum, group) => sum + group.length);
   const listTopPadding = 16.0;
-  const listBottomPadding = 16.0;
+  const sectionLabelHeight = 26.0;
+  const eventRowHeight = 72.0;
+  const sectionBottomPadding = 16.0;
   return
       listTopPadding +
-      groups.length * 40.0 +
-      eventCount * 80.0 +
-      listBottomPadding;
+      groups.length * (sectionLabelHeight + sectionBottomPadding) +
+      eventCount * eventRowHeight;
 }
 
 List<ScheduledEvent> _applyMonthListOrder(
@@ -3491,8 +3492,14 @@ class _MonthView extends StatelessWidget {
                     constraints.maxHeight,
                     gridH + emptyStateFloatingClearance,
                   )
-            : math.max(constraints.maxHeight, gridH + listContentH) +
-                eventContentClearance;
+            : // Keep a short event list at zero positive scroll extent. The
+              // final-content clearance only contributes when the list is
+              // long enough to require scrolling; it must not be appended
+              // after a viewport-sized document.
+              math.max(
+                constraints.maxHeight,
+                gridH + listContentH + eventContentClearance,
+              );
         final emptyH =
             selectedDayIsEmpty && showMonthList ? contentH - gridH : 0.0;
         final emptyStateH = selectedDayIsEmpty
