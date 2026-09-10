@@ -11218,6 +11218,7 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
       isLast: isLast,
       onEdit: null,
       onDelete: null,
+      enableContextMenu: false,
       reorderable: false,
     );
     return item.onTap == null
@@ -19255,6 +19256,7 @@ class _EventContextMenu extends StatefulWidget {
   final WidgetBuilder previewBuilder;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final bool enabled;
 
   /// When true, long-press-then-move triggers drag-to-reorder; long-press
   /// without movement shows the context menu.  Mirrors the disambiguation
@@ -19270,6 +19272,7 @@ class _EventContextMenu extends StatefulWidget {
     required this.previewBuilder,
     this.onEdit,
     this.onDelete,
+    this.enabled = true,
     this.reorderable = false,
     this.onReorderStart,
     this.onReorderUpdate,
@@ -19497,6 +19500,7 @@ class _EventContextMenuState extends State<_EventContextMenu>
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.enabled) return widget.child;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onLongPressStart: _onLongPressStart,
@@ -19536,6 +19540,10 @@ class _ScheduledEventCard extends StatelessWidget {
   /// Called when the user selects "Delete Event" from the long-press menu.
   final VoidCallback? onDelete;
 
+  /// Utility rows are tap-only and do not expose the standard event context
+  /// menu.
+  final bool enableContextMenu;
+
   /// When true the card participates in long-press drag-to-reorder (e.g. in
   /// the Category Detail View).  The callbacks mirror [_CategoryContextMenu].
   final bool reorderable;
@@ -19571,6 +19579,7 @@ class _ScheduledEventCard extends StatelessWidget {
     this.dotColor,
     this.onEdit,
     this.onDelete,
+    this.enableContextMenu = true,
     this.reorderable = false,
     this.onReorderStart,
     this.onReorderUpdate,
@@ -19797,8 +19806,9 @@ class _ScheduledEventCard extends StatelessWidget {
       previewBuilder: (context) =>
           _buildCard(context, includeGroupedSeparators: false),
       onEdit: onEdit,
-      onDelete: onDelete ?? () => EventStore.instance.remove(event.id),
-      reorderable: reorderable,
+       onDelete: onDelete ?? () => EventStore.instance.remove(event.id),
+       enabled: enableContextMenu,
+       reorderable: reorderable,
       onReorderStart: onReorderStart,
       onReorderUpdate: onReorderUpdate,
       onReorderEnd: onReorderEnd,
