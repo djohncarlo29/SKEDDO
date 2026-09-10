@@ -3,6 +3,7 @@ name: Flutter iOS Build
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -26,32 +27,21 @@ jobs:
         working-directory: artifacts/smart-scheduler
         run: flutter pub get
 
-      - name: Prepare unsigned iOS build
-        working-directory: artifacts/smart-scheduler
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          project = Path("ios/Runner.xcodeproj/project.pbxproj")
-          contents = project.read_text()
-          marker = 'DEVELOPMENT_TEAM = 0000000000;'
-          if marker not in contents:
-              contents = contents.replace(
-                  '"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";',
-                  '"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";\n'
-                  f'{marker}',
-              )
-              project.write_text(contents)
-          PY
-
       - name: Build iOS Workspace
         working-directory: artifacts/smart-scheduler
-        run: flutter build ios --release --no-codesign --no-tree-shake-icons
+        run: |
+          set -euo pipefail
+          flutter build ios \
+            --release \
+            --no-codesign \
+            --no-tree-shake-icons
 
       - name: Package into IPA
         run: |
+          set -euo pipefail
           rm -rf artifacts/smart-scheduler/Payload artifacts/smart-scheduler/FlutterApp.ipa
           mkdir -p artifacts/smart-scheduler/Payload
+          test -d artifacts/smart-scheduler/build/ios/iphoneos/Runner.app
           cp -R artifacts/smart-scheduler/build/ios/iphoneos/Runner.app \
             artifacts/smart-scheduler/Payload/
           cd artifacts/smart-scheduler
