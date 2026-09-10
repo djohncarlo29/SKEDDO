@@ -3272,7 +3272,13 @@ double _monthListEstimatedHeight(List<List<ScheduledEvent>> groups) {
   // estimate; the estimate only prevents the Stack's scroll content from being
   // clipped for the common one- or two-event case.
   final eventCount = groups.fold<int>(0, (sum, group) => sum + group.length);
-  return 32.0 + groups.length * 40.0 + eventCount * 80.0 + 24.0;
+  const listTopPadding = 16.0;
+  const listBottomPadding = 16.0;
+  return
+      listTopPadding +
+      groups.length * 40.0 +
+      eventCount * 80.0 +
+      listBottomPadding;
 }
 
 List<ScheduledEvent> _applyMonthListOrder(
@@ -3400,15 +3406,13 @@ class _MonthView extends StatelessWidget {
         final selectedListIndex = listDayKeys.indexOf(selectedDayKey);
         final selectedListChildIndex =
             selectedListIndex < 0 ? 0 : selectedListIndex;
+        final selectedListGroups =
+            listDayGroups[selectedListChildIndex];
         final showMonthList =
             viewMode == CalendarViewMode.list &&
             collapseProgress < _kMonthDayTransitionThreshold;
         final estimatedListContentH = showMonthList
-            ? listDayGroups.fold<double>(
-                80.0,
-                (height, groups) =>
-                    math.max(height, _monthListEstimatedHeight(groups)),
-              )
+            ? _monthListEstimatedHeight(selectedListGroups)
             : 80.0;
         final gridH =
             _kCalendarHeaderToDowGap + _kDayLabelHeight + totalRows * rowHeight;
@@ -3417,12 +3421,6 @@ class _MonthView extends StatelessWidget {
           builder: (context, constraints) {
         final secondaryC = resolveThemeColor(kSecondaryLabel, context);
         final floatingClearance = floatingTabBarContentBottomClearance(context);
-        final listEventFloatingClearance =
-            floatingTabBarContentBottomClearance(
-              context,
-              existingTrailingContentPadding: 16.0,
-              finalContentGap: 16.0,
-            );
         final emptyStateFloatingClearance =
             floatingTabBarContentBottomClearance(
               context,
@@ -3455,8 +3453,12 @@ class _MonthView extends StatelessWidget {
                     : availableListEmptyStateH
                 : estimatedListContentH
             : 80.0;
+        // Month List owns its final 16 pt inset in the estimated list height.
+        // Do not append the floating-tab-bar clearance again: that clearance
+        // becomes visible as a large, unintended bottom pad after the final
+        // event card. Other calendar states still need the regular clearance.
         final eventContentClearance =
-            showMonthList ? listEventFloatingClearance : floatingClearance;
+            showMonthList ? 0.0 : floatingClearance;
         final contentH = selectedDayIsEmpty
             ? emptyStateNeedsScrollableFallback
                 ? gridH +
