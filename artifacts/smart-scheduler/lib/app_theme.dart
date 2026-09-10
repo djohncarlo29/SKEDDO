@@ -2706,6 +2706,12 @@ class _GelBloomButtonState extends State<GelBloomButton>
                 ),
               ),
               child: LiquidGlassView(
+                 // This view keeps a one-shot backdrop capture for stable,
+                 // inexpensive optical lighting. Recreate that capture when
+                 // a category/checkmark surface changes color; otherwise the
+                 // lens body updates while its rim still refracts the old
+                 // color from the cached sheet backdrop.
+                 key: ValueKey<int>(surfaceColor.toARGB32()),
                 // LiquidGlassView paints its capture surface as a rectangle.
                 // The backgroundWidget clip alone is not enough: the view/lens
                 // output can still expose that rectangular surface on Android.
