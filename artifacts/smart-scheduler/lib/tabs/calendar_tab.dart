@@ -10684,7 +10684,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     onTap: _cancelImport,
                     child: Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
                       decoration: ShapeDecoration(
                         color: resolveThemeColor(kPillColor, context),
                         shape: const BoundedSquircleStadiumBorder(),

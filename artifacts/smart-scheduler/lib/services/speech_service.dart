@@ -182,7 +182,7 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
       shape: const BoundedSquircleStadiumBorder(),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
-    const buttonPadding = EdgeInsets.symmetric(vertical: 16);
+    const buttonPadding = EdgeInsets.symmetric(horizontal: 8, vertical: 16);
 
     return Stack(
       children: [

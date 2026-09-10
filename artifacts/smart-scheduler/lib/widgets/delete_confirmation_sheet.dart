@@ -93,7 +93,7 @@ class _DeleteConfirmationSheetOverlay extends StatelessWidget {
           width: double.infinity,
           clipBehavior: Clip.antiAlias,
           decoration: buttonDecor,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
           child: Center(
             child: Text(
               label,

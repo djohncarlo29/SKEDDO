@@ -1661,7 +1661,7 @@ class _SaveEventButtonState extends State<_SaveEventButton>
             shadows: cardShadows,
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
             child: Center(
               child: Text(
                 'Save Event',
@@ -3554,7 +3554,7 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
                           GestureDetector(
                             onTap: () => _analysisCancellation?.cancel(),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
                               decoration: const ShapeDecoration(
                                 shape: BoundedSquircleStadiumBorder(),
                               ),
