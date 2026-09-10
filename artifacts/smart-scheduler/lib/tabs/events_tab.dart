@@ -7332,12 +7332,13 @@ class EventsTabState extends State<EventsTab>
           ),
           SliverToBoxAdapter(
             child: SizedBox(
-              // The button already owns its original 24 px trailing inset;
-              // don't compound that spacing with the pill clearance.
+              // The button's layout keeps its original 24 px trailing inset.
+              // Subtract it from the scroll clearance, then add the shared
+              // 16 px visual gap from the button to the Floating Tab Bar.
               height: floatingTabBarContentBottomClearance(
                 context,
                 existingTrailingContentPadding: 24,
-                finalContentGap: kAddCategoryFloatingTabBarGap,
+                finalContentGap: kFloatingTabBarVisualGap,
               ),
             ),
           ),
@@ -7544,6 +7545,7 @@ class EventsTabState extends State<EventsTab>
                                     category.id,
                                   ),
                               },
+                              categoryCounts: _liveEventCounts,
                               onArchivedSmartCategoryTap:
                                   _openArchivedSmartCategory,
                               onArchivedCategoryTap: _openArchivedCategory,
@@ -7578,6 +7580,7 @@ class EventsTabState extends State<EventsTab>
                                     category.id,
                                   ),
                               },
+                              categoryCounts: _liveEventCounts,
                               onDeletedEventTap: _openDeletedEvent,
                               onDeletedSmartCategoryTap:
                                   _openDeletedSmartCategory,
@@ -10918,25 +10921,6 @@ class _AddCategoryButtonState extends State<_AddCategoryButton>
   }
 }
 
-/// Body content for the Archived Categories and Recently Deleted detailed
-/// category views. The surrounding header, slide transition, empty state, and
-/// scrolling are all supplied by [_CategoryDetailView].
-class _UtilityContentItem {
-  final DateTime date;
-  final String title;
-  final String? subtitle;
-  final Widget leading;
-  final VoidCallback? onTap;
-
-  const _UtilityContentItem({
-    required this.date,
-    required this.title,
-    this.subtitle,
-    required this.leading,
-    this.onTap,
-  });
-}
-
 DateTime _utilityDay(DateTime date) => DateTime(date.year, date.month, date.day);
 
 String _utilityDateHeader(DateTime date) {
@@ -10972,7 +10956,21 @@ String _utilityDateHeader(DateTime date) {
       '${months[day.month - 1]} ${day.day}, ${day.year}';
 }
 
-class _DcvUtilityContent extends StatelessWidget {
+class _DcvUtilityItem {
+  final DateTime date;
+  final _UserCategory? category;
+  final ScheduledEvent? event;
+  final VoidCallback? onTap;
+
+  const _DcvUtilityItem({
+    required this.date,
+    this.category,
+    this.event,
+    this.onTap,
+  }) : assert((category == null) != (event == null));
+}
+
+class _DcvUtilityContent extends StatefulWidget {
   final List<String> archivedSmartLabels;
   final List<_UserCategory> archivedCategories;
   final List<ScheduledEvent> deletedEvents;
@@ -10983,6 +10981,7 @@ class _DcvUtilityContent extends StatelessWidget {
   final Map<String, DateTime> deletedEventDates;
   final Map<String, DateTime> deletedSmartDates;
   final Map<String, DateTime> deletedCategoryDates;
+  final Map<String, int> categoryCounts;
   final ValueChanged<String>? onArchivedSmartCategoryTap;
   final ValueChanged<_UserCategory>? onArchivedCategoryTap;
   final ValueChanged<ScheduledEvent>? onDeletedEventTap;
@@ -11000,6 +10999,7 @@ class _DcvUtilityContent extends StatelessWidget {
     this.deletedEventDates = const {},
     this.deletedSmartDates = const {},
     this.deletedCategoryDates = const {},
+    this.categoryCounts = const {},
     this.onArchivedSmartCategoryTap,
     this.onArchivedCategoryTap,
     this.onDeletedEventTap,
@@ -11007,186 +11007,266 @@ class _DcvUtilityContent extends StatelessWidget {
     this.onDeletedCategoryTap,
   });
 
-  Widget _sectionLabel(BuildContext context, String label) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(
-      label,
-      style: TextStyle(
-        inherit: false,
-        color: resolveThemeColor(kSecondaryLabel, context),
-        fontSize: 13,
-        fontFamily: kSFProText,
-        fontWeight: FontWeight.w600,
-        letterSpacing: kTracking16,
-      ),
-    ),
-  );
+  @override
+  State<_DcvUtilityContent> createState() => _DcvUtilityContentState();
+}
 
-  Widget _row(
-    BuildContext context, {
-    required String title,
-    String? subtitle,
-    required Widget leading,
+class _DcvUtilityContentState extends State<_DcvUtilityContent> {
+  final Set<int> _collapsedSections = {};
+
+  List<_DcvUtilityItem> _items() {
+    final items = <_DcvUtilityItem>[];
+    for (final label in widget.archivedSmartLabels) {
+      items.add(
+        _DcvUtilityItem(
+          date:
+              widget.archivedSmartDates[label] ??
+              DateTime.fromMillisecondsSinceEpoch(0),
+          category: _UserCategory(
+            id: 'utility-archived-smart-$label',
+            name: label,
+            description: '',
+            count: 0,
+            color: kCatSlate,
+            icon: SFIcons.sf_archivebox,
+          ),
+          onTap: () => widget.onArchivedSmartCategoryTap?.call(label),
+        ),
+      );
+    }
+    for (final category in widget.archivedCategories) {
+      items.add(
+        _DcvUtilityItem(
+          date:
+              widget.archivedCategoryDates[category.id] ??
+              DateTime.fromMillisecondsSinceEpoch(0),
+          category: category,
+          onTap: () => widget.onArchivedCategoryTap?.call(category),
+        ),
+      );
+    }
+    for (final event in widget.deletedEvents) {
+      items.add(
+        _DcvUtilityItem(
+          date:
+              widget.deletedEventDates[event.id] ??
+              DateTime.fromMillisecondsSinceEpoch(0),
+          event: event,
+          onTap: () => widget.onDeletedEventTap?.call(event),
+        ),
+      );
+    }
+    for (final label in widget.deletedSmartLabels) {
+      items.add(
+        _DcvUtilityItem(
+          date:
+              widget.deletedSmartDates[label] ??
+              DateTime.fromMillisecondsSinceEpoch(0),
+          category: _UserCategory(
+            id: 'utility-deleted-smart-$label',
+            name: label,
+            description: '',
+            count: 0,
+            color: kCatSlate,
+            icon: SFIcons.sf_archivebox,
+          ),
+          onTap: () => widget.onDeletedSmartCategoryTap?.call(label),
+        ),
+      );
+    }
+    for (final category in widget.deletedCategories) {
+      items.add(
+        _DcvUtilityItem(
+          date:
+              widget.deletedCategoryDates[category.id] ??
+              DateTime.fromMillisecondsSinceEpoch(0),
+          category: category,
+          onTap: () => widget.onDeletedCategoryTap?.call(category),
+        ),
+      );
+    }
+    return items;
+  }
+
+  Widget _buildCategoryTile(
+    BuildContext context,
+    _UserCategory category,
     VoidCallback? onTap,
-  }) {
-    final primary = resolveThemeColor(kPrimaryLabel, context);
-    final secondary = resolveThemeColor(kSecondaryLabel, context);
+    bool isFirst,
+    bool isLast,
+  ) {
+    final liveCount =
+        widget.categoryCounts[category.id] ?? category.count;
+    final rowHeight = _eventsCategoryListRowHeight(
+      context,
+      item: _FlatItem.solo(category),
+      liveEventCounts: {category.id: liveCount},
+    );
+    final rowShape =
+        isFirst && isLast
+            ? const BoundedSquircleStadiumBorder()
+            : isFirst
+            ? const BoundedSquircleStadiumBorder(topOnly: true)
+            : isLast
+            ? const BoundedSquircleStadiumBorder(bottomOnly: true)
+            : const BoundedSquircleStadiumBorder(radius: 0);
+    final cardWidth = max(0.0, MediaQuery.sizeOf(context).width - 32.0);
     final row = Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      height: rowHeight,
       decoration: ShapeDecoration(
         color: resolveThemeColor(kSbSurface, context),
-        shape: const BoundedSquircleStadiumBorder(),
+        shape: rowShape,
       ),
-      child: Row(
+      child: _TilePressScale(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          child: _buildCategoryListRowBody(
+            context,
+            category: category,
+            liveCount: liveCount,
+            indented: false,
+            cardWidth: cardWidth,
+          ),
+        ),
+      ),
+    );
+    return onTap == null
+        ? row
+        : GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: row,
+        );
+  }
+
+  Widget _buildItem(
+    BuildContext context,
+    _DcvUtilityItem item,
+    int index,
+    int total,
+  ) {
+    final isFirst = index == 0;
+    final isLast = index == total - 1;
+    final category = item.category;
+    if (category != null) {
+      final child = _buildCategoryTile(
+        context,
+        category,
+        item.onTap,
+        isFirst,
+        isLast,
+      );
+      return Column(
         children: [
-          SizedBox(width: 24, height: 24, child: Center(child: leading)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title.trim().isEmpty ? 'Untitled' : title.trim(),
-                  style: TextStyle(
-                    inherit: false,
-                    color: primary,
-                    fontSize: 17,
-                    fontFamily: kSFProText,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: kTracking17,
-                    height: kLineHeight,
-                  ),
-                ),
-                if (subtitle != null && subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      inherit: false,
-                      color: secondary,
-                      fontSize: 13,
-                      fontFamily: kSFProText,
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: kTracking16,
-                      height: kLineHeight,
-                    ),
-                  ),
-                ],
-              ],
+          child,
+          if (!isLast)
+            Container(
+              height: 0.5,
+              color: resolveThemeColor(kSeparatorColor, context),
             ),
+        ],
+      );
+    }
+
+    final event = item.event!;
+    final card = _ScheduledEventCard(
+      event: event,
+      dotColor: resolveEventCategoryColor(context, event),
+      isGrouped: true,
+      isFirst: isFirst,
+      isLast: isLast,
+      onEdit: null,
+      onDelete: null,
+      reorderable: false,
+    );
+    return item.onTap == null
+        ? card
+        : GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: item.onTap,
+          child: card,
+        );
+  }
+
+  Widget _buildSection(
+    BuildContext context,
+    DateTime date,
+    List<_DcvUtilityItem> items,
+  ) {
+    final sectionKey = date.millisecondsSinceEpoch;
+    final isCollapsed = _collapsedSections.contains(sectionKey);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _DcvSectionLabel(
+            text: _utilityDateHeader(date),
+            isFirst: true,
+            isCollapsed: isCollapsed,
+            accentColor: resolveAccentColor(context),
+            onTap: () {
+              setState(() {
+                if (isCollapsed) {
+                  _collapsedSections.remove(sectionKey);
+                } else {
+                  _collapsedSections.add(sectionKey);
+                }
+              });
+            },
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeInOut,
+            child:
+                isCollapsed
+                    ? const SizedBox.shrink()
+                    : Container(
+                      clipBehavior: Clip.antiAlias,
+                      decoration: ShapeDecoration(
+                        color: resolveThemeColor(kSbSurface, context),
+                        shape: const BoundedSquircleStadiumBorder(
+                          radius: _kCornerRadius,
+                        ),
+                        shadows: resolveThemeShadows(kCardShadow, context),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (
+                            var index = 0;
+                            index < items.length;
+                            index++
+                          )
+                            _buildItem(
+                              context,
+                              items[index],
+                              index,
+                              items.length,
+                            ),
+                        ],
+                      ),
+                    ),
           ),
         ],
       ),
     );
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child:
-          onTap == null
-              ? row
-              : GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onTap,
-                child: row,
-              ),
-    );
-  }
-
-  Widget _sfIcon(BuildContext context, IconData icon, {Color? color}) =>
-      FixedSFIcon(
-        icon,
-        fontSize: 20,
-        color: color ?? resolveThemeColor(kSecondaryLabel, context),
-        fontWeight: FontWeight.w500,
-      );
-
-  Widget _categoryIcon(BuildContext context, _UserCategory category) =>
-      _renderCatIcon(
-        category.iconOrSvg,
-        24,
-        resolveThemeColor(kSecondaryLabel, context),
-        containerColor: _userCategoryCircleColor(category, context),
-        ctx: context,
-        emojiOffsetY: 1,
-      );
-
-  String _eventSubtitle(ScheduledEvent event) {
-    final parts = <String>[
-      if (event.date != null) event.date!,
-      if (event.time != null) event.time!,
-    ];
-    return parts.join('  ·  ');
   }
 
   @override
   Widget build(BuildContext context) {
-    final items = <_UtilityContentItem>[
-      for (final label in archivedSmartLabels)
-        _UtilityContentItem(
-          date: archivedSmartDates[label] ?? DateTime.now(),
-          title: label,
-          leading: _sfIcon(context, SFIcons.sf_archivebox),
-          onTap: () => onArchivedSmartCategoryTap?.call(label),
-        ),
-      for (final category in archivedCategories)
-        _UtilityContentItem(
-          date: archivedCategoryDates[category.id] ?? DateTime.now(),
-          title: category.name,
-          leading: _categoryIcon(context, category),
-          onTap: () => onArchivedCategoryTap?.call(category),
-        ),
-      for (final event in deletedEvents)
-        _UtilityContentItem(
-          date: deletedEventDates[event.id] ?? DateTime.now(),
-          title: event.title,
-          subtitle: _eventSubtitle(event),
-          leading: _sfIcon(context, SFIcons.sf_calendar),
-          onTap: () => onDeletedEventTap?.call(event),
-        ),
-      for (final label in deletedSmartLabels)
-        _UtilityContentItem(
-          date: deletedSmartDates[label] ?? DateTime.now(),
-          title: label,
-          leading: _sfIcon(context, SFIcons.sf_archivebox),
-          onTap: () => onDeletedSmartCategoryTap?.call(label),
-        ),
-      for (final category in deletedCategories)
-        _UtilityContentItem(
-          date: deletedCategoryDates[category.id] ?? DateTime.now(),
-          title: category.name,
-          leading: _categoryIcon(context, category),
-          onTap: () => onDeletedCategoryTap?.call(category),
-        ),
-    ];
-
-    final grouped = <DateTime, List<_UtilityContentItem>>{};
-    for (final item in items) {
+    final grouped = <DateTime, List<_DcvUtilityItem>>{};
+    for (final item in _items()) {
       (grouped[_utilityDay(item.date)] ??= []).add(item);
     }
     final dates = grouped.keys.toList()
       ..sort((a, b) => b.compareTo(a));
-    final children = <Widget>[];
-    for (var index = 0; index < dates.length; index++) {
-      if (index > 0) children.add(const SizedBox(height: 12));
-      final date = dates[index];
-      children
-        ..add(_sectionLabel(context, _utilityDateHeader(date)))
-        ..addAll(
-          grouped[date]!.map(
-            (item) => _row(
-              context,
-              title: item.title,
-              subtitle: item.subtitle,
-              leading: item.leading,
-              onTap: item.onTap,
-            ),
-          ),
-        );
-    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: children,
+      children: [
+        for (var index = 0; index < dates.length; index++)
+          _buildSection(context, dates[index], grouped[dates[index]]!),
+      ],
     );
   }
 }
