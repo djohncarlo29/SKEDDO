@@ -7486,6 +7486,24 @@ class EventsTabState extends State<EventsTab>
                       EventStore.instance.deletedEvents.value.isNotEmpty ||
                       _recentlyDeletedCategories.isNotEmpty ||
                       _recentlyDeletedSmartCategories.isNotEmpty;
+                  final archivedCategoryCounts = <String, int>{
+                    for (final category in _archivedUserCategories)
+                      category.id:
+                          EventStore.instance.archivedEvents.value
+                              .where(
+                                (event) => event.categoryId == category.id,
+                              )
+                              .length,
+                  };
+                  final deletedCategoryCounts = <String, int>{
+                    for (final category in _recentlyDeletedCategories)
+                      category.id:
+                          EventStore.instance.deletedEvents.value
+                              .where(
+                                (event) => event.categoryId == category.id,
+                              )
+                              .length,
+                  };
                   return _CategoryDetailView(
                     key: ValueKey(widget.activeDCV ?? '_none'),
                     label: widget.activeDCV ?? '',
@@ -7545,7 +7563,10 @@ class EventsTabState extends State<EventsTab>
                                     category.id,
                                   ),
                               },
-                              categoryCounts: _liveEventCounts,
+                              categoryCounts: {
+                                ..._liveEventCounts,
+                                ...archivedCategoryCounts,
+                              },
                               onArchivedSmartCategoryTap:
                                   _openArchivedSmartCategory,
                               onArchivedCategoryTap: _openArchivedCategory,
@@ -7580,7 +7601,10 @@ class EventsTabState extends State<EventsTab>
                                     category.id,
                                   ),
                               },
-                              categoryCounts: _liveEventCounts,
+                              categoryCounts: {
+                                ..._liveEventCounts,
+                                ...deletedCategoryCounts,
+                              },
                               onDeletedEventTap: _openDeletedEvent,
                               onDeletedSmartCategoryTap:
                                   _openDeletedSmartCategory,
@@ -9089,6 +9113,7 @@ double _eventsCategoryListRowHeight(
   Iterable<_FlatItem>? items,
   _FlatItem? item,
   Map<String, int>? liveEventCounts,
+  bool showTrailingCount = true,
 }) {
   final scaler = MediaQuery.textScalerOf(context);
   final viewportWidth = MediaQuery.sizeOf(context).width;
@@ -9121,11 +9146,14 @@ double _eventsCategoryListRowHeight(
         current.isGroupHeader
             ? '${current.group?.memberIds.length ?? 0}'
             : '${liveEventCounts?[current.category!.id] ?? 0}';
-    final trailingWidth = _eventsCategoryTrailingWidth(
-      trailingLabel,
-      countStyle,
-      scaler,
-    );
+    final trailingWidth =
+        showTrailingCount
+            ? _eventsCategoryTrailingWidth(
+              trailingLabel,
+              countStyle,
+              scaler,
+            )
+            : 0.0;
     final leftPad = current.isGroupMember ? 32.0 : 16.0;
     final sideBySideTextWidth = _eventsCategorySideBySideTextWidth(
       cardWidth: cardWidth,
@@ -9269,6 +9297,7 @@ Widget _buildCategoryListRowBody(
   required int liveCount,
   required bool indented,
   required double cardWidth,
+  bool showTrailingCount = true,
 }) {
   final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
   final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
@@ -9304,11 +9333,14 @@ Widget _buildCategoryListRowBody(
     letterSpacing: kTracking16,
   );
   final leftPad = indented ? 32.0 : 16.0;
-  final trailingWidth = _eventsCategoryTrailingWidth(
-    '$liveCount',
-    countStyle,
-    textScaler,
-  );
+  final trailingWidth =
+      showTrailingCount
+          ? _eventsCategoryTrailingWidth(
+            '$liveCount',
+            countStyle,
+            textScaler,
+          )
+          : 0.0;
   final textWidth = _eventsCategorySideBySideTextWidth(
     cardWidth: cardWidth,
     leftPad: leftPad,
@@ -9365,7 +9397,11 @@ Widget _buildCategoryListRowBody(
         SizedBox(
           height: circleSize,
           child: Row(
-            children: [categoryIcon(), const Spacer(), trailingCount()],
+            children: [
+              categoryIcon(),
+              const Spacer(),
+              if (showTrailingCount) trailingCount(),
+            ],
           ),
         ),
         const SizedBox(height: _eventsCategoryStackedContentGap),
@@ -9413,8 +9449,10 @@ Widget _buildCategoryListRowBody(
       ),
       // Authored 16pt minimum gap. This intentionally stays fixed while
       // Dynamic Type scales the text and chevron.
-      const SizedBox(width: _eventsCategoryTextTrailingGap),
-      trailingCount(),
+      if (showTrailingCount) ...[
+        const SizedBox(width: _eventsCategoryTextTrailingGap),
+        trailingCount(),
+      ],
     ],
   );
 }
@@ -11085,6 +11123,7 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
         ),
       );
     }
+    items.sort((a, b) => b.date.compareTo(a.date));
     return items;
   }
 
@@ -11101,6 +11140,7 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
       context,
       item: _FlatItem.solo(category),
       liveEventCounts: {category.id: liveCount},
+      showTrailingCount: liveCount > 0,
     );
     final rowShape =
         isFirst && isLast
@@ -11126,6 +11166,7 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
             liveCount: liveCount,
             indented: false,
             cardWidth: cardWidth,
+            showTrailingCount: liveCount > 0,
           ),
         ),
       ),
