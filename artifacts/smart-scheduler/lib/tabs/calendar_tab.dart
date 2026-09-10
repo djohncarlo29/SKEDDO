@@ -3398,10 +3398,12 @@ class _MonthView extends StatelessWidget {
         ];
         final selectedDayKey = _calendarDateKey(selectedDate);
         final selectedListIndex = listDayKeys.indexOf(selectedDayKey);
+        final selectedListChildIndex =
+            selectedListIndex < 0 ? 0 : selectedListIndex;
         final showMonthList =
             viewMode == CalendarViewMode.list &&
             collapseProgress < _kMonthDayTransitionThreshold;
-        final listContentH = showMonthList
+        final estimatedListContentH = showMonthList
             ? listDayGroups.fold<double>(
                 80.0,
                 (height, groups) =>
@@ -3415,6 +3417,19 @@ class _MonthView extends StatelessWidget {
           builder: (context, constraints) {
         final secondaryC = resolveThemeColor(kSecondaryLabel, context);
         final floatingClearance = floatingTabBarContentBottomClearance(context);
+        final availableListEmptyStateH = math.max(
+          80.0,
+          constraints.maxHeight - gridH - floatingClearance,
+        );
+        final selectedListIsEmpty =
+            showMonthList &&
+            listDayGroups[selectedListChildIndex].isEmpty;
+        final listContentH = showMonthList
+            ? math.max(
+                estimatedListContentH,
+                selectedListIsEmpty ? availableListEmptyStateH : 0.0,
+              )
+            : 80.0;
         final contentH =
             math.max(constraints.maxHeight, gridH + listContentH) +
             floatingClearance;
@@ -3481,8 +3496,9 @@ class _MonthView extends StatelessWidget {
                           dayKeys: listDayKeys,
                           dayGroups: listDayGroups,
                           selectedDayIndex:
-                              selectedListIndex < 0 ? 0 : selectedListIndex,
+                              selectedListChildIndex,
                           height: listContentH,
+                           emptyStateHeight: availableListEmptyStateH,
                           onEditEvent: onEditEvent,
                           scrollController: scrollController,
                           scrollViewportKey: scrollViewportKey,
@@ -4512,6 +4528,7 @@ class _MonthSelectedEvents extends StatelessWidget {
     required this.dayGroups,
     required this.selectedDayIndex,
     required this.height,
+    required this.emptyStateHeight,
     this.onEditEvent,
     this.scrollController,
     this.scrollViewportKey,
@@ -4522,6 +4539,7 @@ class _MonthSelectedEvents extends StatelessWidget {
   final List<List<List<ScheduledEvent>>> dayGroups;
   final int selectedDayIndex;
   final double height;
+  final double emptyStateHeight;
   final void Function(ScheduledEvent event)? onEditEvent;
   final ScrollController? scrollController;
   final GlobalKey? scrollViewportKey;
@@ -4546,18 +4564,21 @@ class _MonthSelectedEvents extends StatelessWidget {
                     for (final group in dayGroups[dayIndex]) ...group,
                   ];
                   if (events.isEmpty) {
-                    return Center(
-                      child: Text(
-                        'No Events',
-                        style: TextStyle(
-                          inherit: false,
-                          fontFamily: kSFProText,
-                          fontWeight: FontWeight.w400,
-                          fontStyle: FontStyle.normal,
-                          letterSpacing: kTracking16,
-                          height: kLineHeight,
-                          fontSize: kEmptyStateLabelFontSize,
-                          color: resolveThemeColor(kSecondaryLabel, context),
+                    return SizedBox(
+                      height: emptyStateHeight,
+                      child: Center(
+                        child: Text(
+                          'No Events',
+                          style: TextStyle(
+                            inherit: false,
+                            fontFamily: kSFProText,
+                            fontWeight: FontWeight.w400,
+                            fontStyle: FontStyle.normal,
+                            letterSpacing: kTracking16,
+                            height: kLineHeight,
+                            fontSize: kEmptyStateLabelFontSize,
+                            color: resolveThemeColor(kSecondaryLabel, context),
+                          ),
                         ),
                       ),
                     );
