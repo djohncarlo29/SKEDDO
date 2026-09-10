@@ -2640,12 +2640,100 @@ class EventsTabState extends State<EventsTab>
     );
   }
 
+  bool _utilityCategoryHasEvents(
+    _UserCategory category, {
+    required bool deleted,
+  }) {
+    final events =
+        deleted
+            ? EventStore.instance.deletedEvents.value
+            : EventStore.instance.archivedEvents.value;
+    return events.any((event) => event.categoryId == category.id);
+  }
+
+  bool _utilityCategoryHasSections(_UserCategory category) =>
+      _dcvCustomSectionNames[category.name]?.isNotEmpty ?? false;
+
+  String _utilityCategoryContentNoun({
+    required bool hasSections,
+    required bool hasEvents,
+  }) {
+    if (hasSections && hasEvents) return 'its saved sections and events';
+    if (hasSections) return 'its saved sections';
+    return 'its events';
+  }
+
+  String _archivedCategorySubtitle(_UserCategory category) {
+    final hasSections = _utilityCategoryHasSections(category);
+    final hasEvents = _utilityCategoryHasEvents(category, deleted: false);
+    if (!hasSections && !hasEvents) {
+      return 'This category is archived and hidden. Recover it to show the '
+          'category again.';
+    }
+    final content = _utilityCategoryContentNoun(
+      hasSections: hasSections,
+      hasEvents: hasEvents,
+    );
+    return 'This category is archived and hidden. $content are kept with it. '
+        'Recover it to show the category again.';
+  }
+
+  String _deletedCategorySubtitle(_UserCategory category) {
+    final hasSections = _utilityCategoryHasSections(category);
+    final hasEvents = _utilityCategoryHasEvents(category, deleted: true);
+    if (!hasSections && !hasEvents) {
+      return 'This category is in Recently Deleted. Recover it to show the '
+          'category again.';
+    }
+    final content = _utilityCategoryContentNoun(
+      hasSections: hasSections,
+      hasEvents: hasEvents,
+    );
+    final recovery =
+        hasEvents
+            ? 'Recovering the category will recover those events too.'
+            : 'Recovering it will restore the category and its sections.';
+    return 'This category is in Recently Deleted with $content. $recovery';
+  }
+
+  String _deleteArchivedCategorySubtitle(_UserCategory category) {
+    final hasSections = _utilityCategoryHasSections(category);
+    final hasEvents = _utilityCategoryHasEvents(category, deleted: false);
+    if (!hasSections && !hasEvents) {
+      return 'This archived category will move to Recently Deleted. It has '
+          'no saved sections or events to move with it.';
+    }
+    final content = _utilityCategoryContentNoun(
+      hasSections: hasSections,
+      hasEvents: hasEvents,
+    );
+    final recovery =
+        hasEvents
+            ? ' Recovering it will recover those events too.'
+            : ' It has no events to move.';
+    return 'This archived category will move to Recently Deleted with '
+        '$content.$recovery';
+  }
+
+  String _permanentlyDeleteCategorySubtitle(_UserCategory category) {
+    final hasSections = _utilityCategoryHasSections(category);
+    final hasEvents = _utilityCategoryHasEvents(category, deleted: true);
+    if (!hasSections && !hasEvents) {
+      return 'This category will be permanently deleted and cannot be '
+          'recovered.';
+    }
+    final content = _utilityCategoryContentNoun(
+      hasSections: hasSections,
+      hasEvents: hasEvents,
+    );
+    return 'This category and $content will be permanently deleted and '
+        'cannot be recovered.';
+  }
+
   void _openArchivedCategory(_UserCategory category) {
     _openUtilityItemSheet(
       title: 'Archived Category',
-      subtitle:
-          'This category is archived, so its sections and events are still '
-          'kept with it. Recover it to show the category again.',
+      subtitle: _archivedCategorySubtitle(category),
       actionLabel: 'Recover',
       onAction: () => _unarchiveCategory(category),
       destructiveActionLabel: 'Delete Category',
@@ -2734,11 +2822,7 @@ class EventsTabState extends State<EventsTab>
   void _openDeletedCategory(_UserCategory category) {
     _openUtilityItemSheet(
       title: 'Recently Deleted Category',
-      subtitle:
-          'If this category was deleted with its contents, its remaining '
-          'deleted events are stored with it. Recovering the category will '
-          'recover those events too. Events moved by a category-only action '
-          'stay in the default category.',
+      subtitle: _deletedCategorySubtitle(category),
       actionLabel: 'Recover',
       onAction: () => _recoverDeletedCategory(category),
       destructiveActionLabel: 'Permanently Delete',
@@ -2770,10 +2854,7 @@ class EventsTabState extends State<EventsTab>
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title: 'Delete the category "${_categoryDisplayName(category.name)}"?',
-      subtitle:
-          'This archived category will move to Recently Deleted with any '
-          'events still stored with it. Recovering it will recover those '
-          'events too.',
+      subtitle: _deleteArchivedCategorySubtitle(category),
     );
     if (!mounted || confirmed != true) return;
     _ensureDefaultCategoryAvailable({category.id});
@@ -2825,10 +2906,7 @@ class EventsTabState extends State<EventsTab>
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title: 'Delete ${_categoryDisplayName(category.name)}?',
-      subtitle:
-          'This category and its saved sections will be permanently deleted '
-          'and cannot be recovered. Any events still stored with it in Recently '
-          'Deleted will also be permanently deleted.',
+      subtitle: _permanentlyDeleteCategorySubtitle(category),
       actionLabel: 'Permanently Delete',
     );
     if (!mounted || confirmed != true) return;
