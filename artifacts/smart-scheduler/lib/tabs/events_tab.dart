@@ -2201,7 +2201,8 @@ class EventsTabState extends State<EventsTab>
     switch (category.id) {
       case _kIdSysArchivedCategories:
         return _archivedSmartLabels.isNotEmpty ||
-            _archivedUserCategories.isNotEmpty;
+            _archivedUserCategories.isNotEmpty ||
+            EventStore.instance.archivedEvents.value.isNotEmpty;
       case _kIdSysRecentlyDeleted:
         return EventStore.instance.deletedEvents.value.isNotEmpty ||
             _recentlyDeletedCategories.isNotEmpty ||
@@ -2226,7 +2227,9 @@ class EventsTabState extends State<EventsTab>
 
   void _syncUtilityVisibilityAndResurface() {
     final hasArchived =
-        _archivedSmartLabels.isNotEmpty || _archivedUserCategories.isNotEmpty;
+        _archivedSmartLabels.isNotEmpty ||
+        _archivedUserCategories.isNotEmpty ||
+        EventStore.instance.archivedEvents.value.isNotEmpty;
     final hasRecentlyDeleted =
         EventStore.instance.deletedEvents.value.isNotEmpty ||
         _recentlyDeletedCategories.isNotEmpty ||
@@ -2666,6 +2669,27 @@ class EventsTabState extends State<EventsTab>
     );
   }
 
+  void _openArchivedEvent(ScheduledEvent event) {
+    _openUtilityItemSheet(
+      title: 'Archived Event',
+      subtitle:
+          'Recovering will return this event to the active schedule in the '
+          'default category. Permanently deleting it cannot be undone.',
+      actionLabel: 'Recover',
+      onAction: () {
+        if (EventStore.instance.restoreArchived(event.id)) {
+          _removeUtilityDate('archived-event', event.id);
+          _syncUtilityVisibilityAndResurface();
+          _saveCategories();
+          setState(() {});
+          _scheduleUtilityExitIfEmpty();
+        }
+      },
+      destructiveActionLabel: 'Permanently Delete',
+      onDestructiveAction: () => _requestPermanentlyDeleteArchivedEvent(event),
+    );
+  }
+
   void _openDeletedSmartCategory(String label) {
     _openUtilityItemSheet(
       title: 'Recently Deleted Category',
@@ -2798,6 +2822,23 @@ class EventsTabState extends State<EventsTab>
     _scheduleUtilityExitIfEmpty();
   }
 
+  void _requestPermanentlyDeleteArchivedEvent(ScheduledEvent event) async {
+    final confirmed = await showDeleteConfirmationSheet(
+      context,
+      title: 'Delete ${_eventDisplayName(event.title)}?',
+      subtitle: 'This archived event will be permanently deleted and cannot be recovered.',
+      actionLabel: 'Permanently Delete',
+    );
+    if (!mounted || confirmed != true) return;
+    if (EventStore.instance.permanentlyDeleteArchived(event.id)) {
+      _removeUtilityDate('archived-event', event.id);
+      _syncUtilityVisibilityAndResurface();
+      setState(() {});
+      _saveCategories();
+      _scheduleUtilityExitIfEmpty();
+    }
+  }
+
   /// If the selected default category is being deleted, fall back before any
   /// event reassignment occurs so those events never point at the deleted ID.
   void _ensureDefaultCategoryAvailable(Set<String> deletingIds) {
@@ -2892,9 +2933,10 @@ class EventsTabState extends State<EventsTab>
 
   bool _activeUtilityIsEmpty() {
     switch (widget.activeDCV) {
-      case 'Archived Categories':
+      case _kArchivedUtilityLabel:
         return _archivedSmartLabels.isEmpty &&
-            _archivedUserCategories.isEmpty;
+            _archivedUserCategories.isEmpty &&
+            EventStore.instance.archivedEvents.value.isEmpty;
       case 'Recently Deleted':
         return EventStore.instance.deletedEvents.value.isEmpty &&
             _recentlyDeletedCategories.isEmpty &&
@@ -6038,6 +6080,13 @@ class EventsTabState extends State<EventsTab>
   // ── EventStore listener ───────────────────────────────────────────────────
   void _onEventsChanged() {
     var addedUtilityDates = false;
+    for (final event in EventStore.instance.archivedEvents.value) {
+      final key = _utilityDateKey('archived-event', event.id);
+      if (!_utilityItemDates.containsKey(key)) {
+        _utilityItemDates[key] = DateTime.now();
+        addedUtilityDates = true;
+      }
+    }
     for (final event in EventStore.instance.deletedEvents.value) {
       final key = _utilityDateKey('deleted-event', event.id);
       if (!_utilityItemDates.containsKey(key)) {
@@ -6547,7 +6596,8 @@ class EventsTabState extends State<EventsTab>
         _moveSystemUtilityRowsToBottom();
         _hadArchivedUtilityItems =
             _archivedSmartLabels.isNotEmpty ||
-            _archivedUserCategories.isNotEmpty;
+            _archivedUserCategories.isNotEmpty ||
+            EventStore.instance.archivedEvents.value.isNotEmpty;
         _hadRecentlyDeletedUtilityItems =
             EventStore.instance.deletedEvents.value.isNotEmpty ||
             _recentlyDeletedCategories.isNotEmpty;
@@ -7481,7 +7531,8 @@ class EventsTabState extends State<EventsTab>
                   final dcvColor = _activeDcvColor(context);
                   final hasArchivedUtilityItems =
                       _archivedSmartLabels.isNotEmpty ||
-                      _archivedUserCategories.isNotEmpty;
+                      _archivedUserCategories.isNotEmpty ||
+                      EventStore.instance.archivedEvents.value.isNotEmpty;
                   final hasRecentlyDeletedUtilityItems =
                       EventStore.instance.deletedEvents.value.isNotEmpty ||
                       _recentlyDeletedCategories.isNotEmpty ||
@@ -7510,8 +7561,16 @@ class EventsTabState extends State<EventsTab>
                     icon: cat?.iconOrSvg,
                     categoryType: cat?.categoryType ?? 'Standard',
                     events: dcvEvents,
-                    sortBy: widget.dcvSortBy ?? 'Manual',
-                    sortDir: widget.dcvSortDir ?? '',
+                    sortBy:
+                        isArchivedUtility || isRecentlyDeletedUtility
+                            ? 'Creation Date'
+                            : (widget.dcvSortBy ?? 'Manual'),
+                    sortDir:
+                        isArchivedUtility || isRecentlyDeletedUtility
+                            ? (widget.dcvSortDir == 'Oldest First'
+                                ? 'Oldest First'
+                                : 'Newest First')
+                            : (widget.dcvSortDir ?? ''),
                     showManualDateSections: widget.dcvShowManualDateSections,
                     customSectionNames: List<String>.of(
                       _dcvCustomSectionNames[dcvLabel] ?? const <String>[],
@@ -7552,6 +7611,8 @@ class EventsTabState extends State<EventsTab>
                             ? (_) => _DcvUtilityContent(
                               archivedSmartLabels: _archivedSmartLabels,
                               archivedCategories: _archivedUserCategories,
+                              archivedEvents:
+                                  EventStore.instance.archivedEvents.value,
                               archivedSmartDates: {
                                 for (final label in _archivedSmartLabels)
                                   label: _utilityDateFor('archived-smart', label),
@@ -7563,13 +7624,23 @@ class EventsTabState extends State<EventsTab>
                                     category.id,
                                   ),
                               },
+                              archivedEventDates: {
+                                for (final event
+                                    in EventStore.instance.archivedEvents.value)
+                                  event.id: _utilityDateFor(
+                                    'archived-event',
+                                    event.id,
+                                  ),
+                              },
                               categoryCounts: {
                                 ..._liveEventCounts,
                                 ...archivedCategoryCounts,
                               },
+                              sortNewestFirst: widget.dcvSortDir != 'Oldest First',
                               onArchivedSmartCategoryTap:
                                   _openArchivedSmartCategory,
                               onArchivedCategoryTap: _openArchivedCategory,
+                              onArchivedEventTap: _openArchivedEvent,
                             )
                             : isRecentlyDeletedUtility &&
                                 hasRecentlyDeletedUtilityItems
@@ -7605,6 +7676,7 @@ class EventsTabState extends State<EventsTab>
                                 ..._liveEventCounts,
                                 ...deletedCategoryCounts,
                               },
+                              sortNewestFirst: widget.dcvSortDir != 'Oldest First',
                               onDeletedEventTap: _openDeletedEvent,
                               onDeletedSmartCategoryTap:
                                   _openDeletedSmartCategory,
@@ -8746,6 +8818,7 @@ const _kIdSysUnnamed = 'sys-unnamed';
 const _kIdSysUncategorized = 'sys-uncategorized';
 const _kIdSysArchivedCategories = 'sys-archived-categories';
 const _kIdSysRecentlyDeleted = 'sys-recently-deleted';
+const _kArchivedUtilityLabel = 'Archived Items';
 const _kSystemUtilityCategoryIds = {
   _kIdSysArchivedCategories,
   _kIdSysRecentlyDeleted,
@@ -8780,7 +8853,7 @@ const _kUserCategories = [
   ),
   _UserCategory(
     id: _kIdSysArchivedCategories,
-    name: 'Archived Categories',
+    name: _kArchivedUtilityLabel,
     description: '',
     count: 0,
     color: kCatSlate,
@@ -8809,7 +8882,7 @@ const _kSmartCategoryDescriptions = <String, String>{
   'Unscheduled': 'Groups events that don\'t yet have a date or time.',
   'All Events': 'Shows every event you\'ve created.',
   'Completed': 'Shows events you\'ve marked as done.',
-  'Archived Categories': 'Shows categories you\'ve archived.',
+  _kArchivedUtilityLabel: 'Shows archived categories and events.',
   'Recently Deleted': 'Shows deleted events and categories.',
 };
 
@@ -10687,7 +10760,7 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
 
 enum _UtilityItemAction { primary, destructive }
 
-/// Overlay action sheet used when an item in Archived Categories or Recently
+/// Overlay action sheet used when an item in Archived Items or Recently
 /// Deleted is tapped. Recovery stays first, an optional destructive action is
 /// placed in the middle, and Cancel remains last.
 class _UtilityItemSheet {
@@ -10998,12 +11071,16 @@ class _DcvUtilityItem {
   final DateTime date;
   final _UserCategory? category;
   final ScheduledEvent? event;
+  final List<ScheduledEvent> childEvents;
+  final ValueChanged<ScheduledEvent>? onChildEventTap;
   final VoidCallback? onTap;
 
   const _DcvUtilityItem({
     required this.date,
     this.category,
     this.event,
+    this.childEvents = const [],
+    this.onChildEventTap,
     this.onTap,
   }) : assert((category == null) != (event == null));
 }
@@ -11011,17 +11088,21 @@ class _DcvUtilityItem {
 class _DcvUtilityContent extends StatefulWidget {
   final List<String> archivedSmartLabels;
   final List<_UserCategory> archivedCategories;
+  final List<ScheduledEvent> archivedEvents;
   final List<ScheduledEvent> deletedEvents;
   final List<String> deletedSmartLabels;
   final List<_UserCategory> deletedCategories;
   final Map<String, DateTime> archivedSmartDates;
   final Map<String, DateTime> archivedCategoryDates;
+  final Map<String, DateTime> archivedEventDates;
   final Map<String, DateTime> deletedEventDates;
   final Map<String, DateTime> deletedSmartDates;
   final Map<String, DateTime> deletedCategoryDates;
   final Map<String, int> categoryCounts;
+  final bool sortNewestFirst;
   final ValueChanged<String>? onArchivedSmartCategoryTap;
   final ValueChanged<_UserCategory>? onArchivedCategoryTap;
+  final ValueChanged<ScheduledEvent>? onArchivedEventTap;
   final ValueChanged<ScheduledEvent>? onDeletedEventTap;
   final ValueChanged<String>? onDeletedSmartCategoryTap;
   final ValueChanged<_UserCategory>? onDeletedCategoryTap;
@@ -11029,17 +11110,21 @@ class _DcvUtilityContent extends StatefulWidget {
   const _DcvUtilityContent({
     this.archivedSmartLabels = const [],
     this.archivedCategories = const [],
+    this.archivedEvents = const [],
     this.deletedEvents = const [],
     this.deletedSmartLabels = const [],
     this.deletedCategories = const [],
     this.archivedSmartDates = const {},
     this.archivedCategoryDates = const {},
+    this.archivedEventDates = const {},
     this.deletedEventDates = const {},
     this.deletedSmartDates = const {},
     this.deletedCategoryDates = const {},
     this.categoryCounts = const {},
+    this.sortNewestFirst = true,
     this.onArchivedSmartCategoryTap,
     this.onArchivedCategoryTap,
+    this.onArchivedEventTap,
     this.onDeletedEventTap,
     this.onDeletedSmartCategoryTap,
     this.onDeletedCategoryTap,
@@ -11052,8 +11137,46 @@ class _DcvUtilityContent extends StatefulWidget {
 class _DcvUtilityContentState extends State<_DcvUtilityContent> {
   final Set<int> _collapsedSections = {};
 
+  List<ScheduledEvent> _sortedChildEvents(
+    Iterable<ScheduledEvent> events,
+    Map<String, DateTime> dates,
+  ) {
+    final sorted = List<ScheduledEvent>.of(events);
+    sorted.sort(
+      (a, b) =>
+          widget.sortNewestFirst
+              ? (dates[b.id] ?? DateTime.fromMillisecondsSinceEpoch(0))
+                  .compareTo(
+                    dates[a.id] ?? DateTime.fromMillisecondsSinceEpoch(0),
+                  )
+              : (dates[a.id] ?? DateTime.fromMillisecondsSinceEpoch(0))
+                  .compareTo(
+                    dates[b.id] ?? DateTime.fromMillisecondsSinceEpoch(0),
+                  ),
+    );
+    return sorted;
+  }
+
   List<_DcvUtilityItem> _items() {
     final items = <_DcvUtilityItem>[];
+    final archivedCategoryIds = {
+      for (final category in widget.archivedCategories) category.id,
+    };
+    final deletedCategoryIds = {
+      for (final category in widget.deletedCategories) category.id,
+    };
+    final archivedChildEvents = <String, List<ScheduledEvent>>{};
+    final deletedChildEvents = <String, List<ScheduledEvent>>{};
+    for (final event in widget.archivedEvents) {
+      if (archivedCategoryIds.contains(event.categoryId)) {
+        (archivedChildEvents[event.categoryId] ??= []).add(event);
+      }
+    }
+    for (final event in widget.deletedEvents) {
+      if (deletedCategoryIds.contains(event.categoryId)) {
+        (deletedChildEvents[event.categoryId] ??= []).add(event);
+      }
+    }
     for (final label in widget.archivedSmartLabels) {
       items.add(
         _DcvUtilityItem(
@@ -11079,11 +11202,29 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
               widget.archivedCategoryDates[category.id] ??
               DateTime.fromMillisecondsSinceEpoch(0),
           category: category,
+          childEvents: _sortedChildEvents(
+            archivedChildEvents[category.id] ?? const [],
+            widget.archivedEventDates,
+          ),
+          onChildEventTap: widget.onArchivedEventTap,
           onTap: () => widget.onArchivedCategoryTap?.call(category),
         ),
       );
     }
+    for (final event in widget.archivedEvents) {
+      if (archivedCategoryIds.contains(event.categoryId)) continue;
+      items.add(
+        _DcvUtilityItem(
+          date:
+              widget.archivedEventDates[event.id] ??
+              DateTime.fromMillisecondsSinceEpoch(0),
+          event: event,
+          onTap: () => widget.onArchivedEventTap?.call(event),
+        ),
+      );
+    }
     for (final event in widget.deletedEvents) {
+      if (deletedCategoryIds.contains(event.categoryId)) continue;
       items.add(
         _DcvUtilityItem(
           date:
@@ -11119,11 +11260,21 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
               widget.deletedCategoryDates[category.id] ??
               DateTime.fromMillisecondsSinceEpoch(0),
           category: category,
+          childEvents: _sortedChildEvents(
+            deletedChildEvents[category.id] ?? const [],
+            widget.deletedEventDates,
+          ),
+          onChildEventTap: widget.onDeletedEventTap,
           onTap: () => widget.onDeletedCategoryTap?.call(category),
         ),
       );
     }
-    items.sort((a, b) => b.date.compareTo(a.date));
+    items.sort(
+      (a, b) =>
+          widget.sortNewestFirst
+              ? b.date.compareTo(a.date)
+              : a.date.compareTo(b.date),
+    );
     return items;
   }
 
@@ -11190,43 +11341,77 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
     final isLast = index == total - 1;
     final category = item.category;
     if (category != null) {
+      final hasChildren = item.childEvents.isNotEmpty;
       final child = _buildCategoryTile(
         context,
         category,
         item.onTap,
         isFirst,
-        isLast,
+        isLast && !hasChildren,
       );
-      return Column(
-        children: [
-          child,
-          if (!isLast)
-            Container(
-              height: 0.5,
-              color: resolveThemeColor(kSeparatorColor, context),
-            ),
-        ],
-      );
+      final rows = <Widget>[child];
+      for (var childIndex = 0; childIndex < item.childEvents.length; childIndex++) {
+        final event = item.childEvents[childIndex];
+        rows.add(
+          _buildUtilityEventCard(
+            context,
+            event,
+            isLast:
+                childIndex == item.childEvents.length - 1 && isLast,
+            indented: true,
+            onTap: () => item.onChildEventTap?.call(event),
+          ),
+        );
+      }
+      if (!isLast) {
+        rows.add(
+          Container(
+            height: 0.5,
+            color: resolveThemeColor(kSeparatorColor, context),
+          ),
+        );
+      }
+      return Column(children: rows);
     }
 
     final event = item.event!;
+    return _buildUtilityEventCard(
+      context,
+      event,
+      isLast: isLast,
+      indented: false,
+      onTap: item.onTap,
+    );
+  }
+
+  Widget _buildUtilityEventCard(
+    BuildContext context,
+    ScheduledEvent event, {
+    required bool isLast,
+    required bool indented,
+    required VoidCallback? onTap,
+  }) {
     final card = _ScheduledEventCard(
       event: event,
       dotColor: resolveEventCategoryColor(context, event),
       isGrouped: true,
-      isFirst: isFirst,
+      isFirst: false,
       isLast: isLast,
       onEdit: null,
       onDelete: null,
       enableContextMenu: false,
       reorderable: false,
     );
-    return item.onTap == null
-        ? card
+    final indentedCard = Padding(
+      padding: EdgeInsets.only(left: indented ? 32 : 0),
+      child: card,
+    );
+    return onTap == null
+        ? indentedCard
         : GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: item.onTap,
-          child: card,
+          onTap: onTap,
+          child: indentedCard,
         );
   }
 
@@ -11302,7 +11487,10 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
       (grouped[_utilityDay(item.date)] ??= []).add(item);
     }
     final dates = grouped.keys.toList()
-      ..sort((a, b) => b.compareTo(a));
+      ..sort(
+        (a, b) =>
+            widget.sortNewestFirst ? b.compareTo(a) : a.compareTo(b),
+      );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -11391,7 +11579,7 @@ class _ArchivedCategoriesSheet extends StatelessWidget {
               alignment: Alignment.center,
               children: [
                 Text(
-                  'Archived Categories',
+                  _kArchivedUtilityLabel,
                   style: TextStyle(
                     inherit: false,
                     color: primary,
@@ -18560,8 +18748,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
 
   String get _emptyStateTitle {
     switch (widget.label) {
-      case 'Archived Categories':
-        return 'No Archived Categories';
+      case _kArchivedUtilityLabel:
+        return 'No Archived Items';
       case 'Recently Deleted':
         return 'No Recently Deleted Items';
       default:
@@ -18593,8 +18781,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         return 'All of your events will appear here.';
       case 'Completed':
         return 'Completed events will appear here.';
-      case 'Archived Categories':
-        return 'Archived categories will appear here.';
+      case _kArchivedUtilityLabel:
+        return 'Archived categories and events will appear here.';
       case 'Recently Deleted':
         return 'Deleted events and categories will appear here.';
       default:

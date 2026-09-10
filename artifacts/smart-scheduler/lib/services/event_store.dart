@@ -579,6 +579,27 @@ class EventStore {
     return moving.length;
   }
 
+  /// Restores one archived event to the active schedule. Individual recovery
+  /// uses the current default category so the event becomes visible even when
+  /// its original category is still archived.
+  bool restoreArchived(String id) {
+    final archivedIndex = archivedEvents.value.indexWhere(
+      (event) => event.id == id,
+    );
+    if (archivedIndex < 0) return false;
+
+    final archived = archivedEvents.value[archivedIndex];
+    final restored = archived.copyWithCategory(appDefaultCategoryId);
+    final nextArchived = List<ScheduledEvent>.of(archivedEvents.value)
+      ..removeAt(archivedIndex);
+    archivedEvents.value = nextArchived;
+    events.value = [...events.value, restored];
+    LocalStorage.instance.saveArchivedEvents(nextArchived);
+    LocalStorage.instance.saveEvents(events.value);
+    _onAdded?.call(restored, events.value);
+    return true;
+  }
+
   /// Moves archived events into Recently Deleted when their category is
   /// deleted. Their category IDs remain intact for category-bundle recovery.
   int deleteArchivedEventsForCategory(String categoryId) {
@@ -710,6 +731,16 @@ class EventStore {
     if (nextDeleted.length == deletedEvents.value.length) return false;
     deletedEvents.value = nextDeleted;
     LocalStorage.instance.saveDeletedEvents(nextDeleted);
+    return true;
+  }
+
+  /// Permanently removes an event that is still in the Archived Items utility.
+  bool permanentlyDeleteArchived(String id) {
+    final nextArchived = List<ScheduledEvent>.of(archivedEvents.value)
+      ..removeWhere((event) => event.id == id);
+    if (nextArchived.length == archivedEvents.value.length) return false;
+    archivedEvents.value = nextArchived;
+    LocalStorage.instance.saveArchivedEvents(nextArchived);
     return true;
   }
 

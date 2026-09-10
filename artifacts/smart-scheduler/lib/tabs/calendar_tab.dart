@@ -6614,7 +6614,7 @@ const _kEventPickerUtilityCategoryIds = {
   'sys-recently-deleted',
 };
 const _kEventPickerUtilityCategoryNames = {
-  'Archived Categories',
+  'Archived Items',
   'Recently Deleted',
 };
 
@@ -8520,7 +8520,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
         if ((m['archived'] as bool?) == true) continue;
         final id = (m['id'] as String?) ?? '';
         final name = (m['name'] as String?) ?? '';
-        // Archived Categories and Recently Deleted are utility/navigation
+        // Archived Items and Recently Deleted are utility/navigation
         // entries, not places where an event can be stored. Check the
         // persisted marker, reserved IDs, and display names so this remains
         // correct for both current and legacy records.

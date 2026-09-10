@@ -45,6 +45,7 @@ class _DcvMenuContent extends StatefulWidget {
   final ValueNotifier<bool> isClosing;
   final VoidCallback onDismiss;
   final bool isSmartCategory;
+  final bool isUtilityCategory;
   final bool sectionsEnabled;
   final bool initialManageSections;
   final String initialSortBy;
@@ -70,6 +71,7 @@ class _DcvMenuContent extends StatefulWidget {
     required this.isClosing,
     required this.onDismiss,
     required this.isSmartCategory,
+    required this.isUtilityCategory,
     required this.sectionsEnabled,
     required this.initialManageSections,
     required this.initialSortBy,
@@ -291,7 +293,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       label: 'Sort By',
       icon: SFIcons.sf_arrow_up_arrow_down,
       hasChevron: true,
-      subtitle: _sortBy,
+      subtitle: widget.isUtilityCategory ? _sortDir : _sortBy,
       contentOpacity: expandedTriggerId == 'sortBy' ? 0.0 : 1.0,
       onTap: () => onTriggerTap('sortBy'),
     ),
@@ -323,6 +325,27 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
   // strongFirstSep adds a calendar-weight separator between the Sort By header
   // row slot and the first option (used inside ExpandableActionMenu's sub-panel).
   List<ActionItem> _sortOptionItems() {
+    if (widget.isUtilityCategory) {
+      return [
+        ActionItem(
+          label: 'Oldest First',
+          icon: SFIcons.sf_checkmark,
+          checkmark: _sortDir == 'Oldest First',
+          primaryCheckmark: true,
+          iconBuilder: (_) => const SizedBox(width: 20),
+          groupBreakAbove: true,
+          onTap: () => _selectDir('Oldest First'),
+        ),
+        ActionItem(
+          label: 'Newest First',
+          icon: SFIcons.sf_checkmark,
+          checkmark: _sortDir != 'Oldest First',
+          primaryCheckmark: true,
+          iconBuilder: (_) => const SizedBox(width: 20),
+          onTap: () => _selectDir('Newest First'),
+        ),
+      ];
+    }
     final dirs = _kSortDirections[_sortBy];
     return [
       for (int i = 0; i < _kSortOptions.length; i++)
@@ -424,6 +447,11 @@ const _kSmartCategoryLabels = {
   'Completed',
 };
 
+const _kUtilityDcvLabels = {
+  'Archived Items',
+  'Recently Deleted',
+};
+
 /// Whether the currently open DCV supports the manual Sections action.
 ///
 /// The fixed smart categories are intentionally not section-enabled.  The
@@ -432,7 +460,9 @@ const _kSmartCategoryLabels = {
 /// fixed smart-category set.
 bool _dcvSectionsEnabled(String? label) =>
     label == 'Unscheduled' ||
-    (label != null && !_kSmartCategoryLabels.contains(label));
+    (label != null &&
+        !_kSmartCategoryLabels.contains(label) &&
+        !_kUtilityDcvLabels.contains(label));
 
 const _overlayStyle = SystemUiOverlayStyle(
   statusBarColor: Color(0x00000000),
@@ -945,8 +975,19 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     setState(() {});
 
     final isSmartCategory = _kSmartCategoryLabels.contains(_dcvCategory);
+    final isUtilityCategory = _kUtilityDcvLabels.contains(_dcvCategory);
     final sectionsEnabled = _dcvSectionsEnabled(_dcvCategory);
-    final initialSortBy = _dcvSortByMap[_dcvCategory] ?? 'Manual';
+    final initialSortBy =
+        isUtilityCategory
+            ? 'Creation Date'
+            : (_dcvSortByMap[_dcvCategory] ?? 'Manual');
+    final storedSortDir = _dcvSortDirMap[_dcvCategory];
+    final initialSortDir =
+        isUtilityCategory &&
+                storedSortDir != 'Oldest First' &&
+                storedSortDir != 'Newest First'
+            ? 'Newest First'
+            : (storedSortDir ?? '');
     final manageSections =
         initialSortBy == 'Manual' &&
         (_eventsTabKey.currentState?.dcvHasSections(_dcvCategory) ?? false);
@@ -1039,6 +1080,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           closeDuration: const Duration(milliseconds: 260),
         ),
         isSmartCategory: isSmartCategory,
+         isUtilityCategory: isUtilityCategory,
         sectionsEnabled: sectionsEnabled,
         initialManageSections: manageSections,
         initialSortBy: initialSortBy,
@@ -1052,7 +1094,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             );
           }
         },
-        initialSortDir: _dcvSortDirMap[_dcvCategory] ?? '',
+         initialSortDir: initialSortDir,
         onSortDirChanged: (d) {
           final cat = _dcvCategory;
           if (cat != null && mounted) {
