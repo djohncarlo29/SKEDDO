@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:archive/archive.dart';
@@ -617,11 +618,6 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
               const SliverFillRemaining(
                 hasScrollBody: false,
                 child: _EmptyState(),
-              ),
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: floatingTabBarContentBottomClearance(context),
-                ),
               ),
             ],
           ],
@@ -1673,24 +1669,48 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: floatingTabBarContentBottomClearance(context),
+    final emptyStateFloatingClearance =
+        floatingTabBarContentBottomClearance(
+          context,
+          finalContentGap: 16.0,
+        );
+    final emptyStateLabelH = kEmptyStateLabelFontSize * kLineHeight;
+    final emptyStateFallbackH = emptyStateLabelH + 32.0;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        minHeight: emptyStateFallbackH + emptyStateFloatingClearance,
       ),
-      child: Center(
-        child: Text(
-          'No Events',
-          style: TextStyle(
-            inherit: false,
-            color: resolveThemeColor(kSecondaryLabel, context),
-            fontSize: kEmptyStateLabelFontSize,
-            fontFamily: 'SFProText',
-            fontWeight: FontWeight.w400,
-            fontStyle: FontStyle.normal,
-            letterSpacing: kTracking16,
-            height: kLineHeight,
-          ),
-        ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final emptyStateH = math.max(
+            emptyStateFallbackH,
+            constraints.maxHeight - emptyStateFloatingClearance,
+          );
+          return Column(
+            children: [
+              SizedBox(
+                height: emptyStateH,
+                child: Center(
+                  child: Text(
+                    'No Events',
+                    style: TextStyle(
+                      inherit: false,
+                      color: resolveThemeColor(kSecondaryLabel, context),
+                      fontSize: kEmptyStateLabelFontSize,
+                      fontFamily: 'SFProText',
+                      fontWeight: FontWeight.w400,
+                      fontStyle: FontStyle.normal,
+                      letterSpacing: kTracking16,
+                      height: kLineHeight,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: emptyStateFloatingClearance),
+            ],
+          );
+        },
       ),
     );
   }
