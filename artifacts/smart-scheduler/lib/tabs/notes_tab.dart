@@ -615,9 +615,32 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                   ),
                 ),
               ),
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: _EmptyState(),
+              SliverLayoutBuilder(
+                builder: (context, constraints) {
+                  final emptyStateFloatingClearance =
+                      floatingTabBarContentBottomClearance(
+                        context,
+                        finalContentGap: 16.0,
+                      );
+                  final availableEmptyStateH = math.max(
+                    0.0,
+                    constraints.viewportMainAxisExtent -
+                        constraints.precedingScrollExtent -
+                        emptyStateFloatingClearance,
+                  );
+                  final emptyStateFallbackH =
+                      kEmptyStateLabelFontSize * kLineHeight + 32.0;
+                  final emptyStateH = math.max(
+                    emptyStateFallbackH,
+                    availableEmptyStateH,
+                  );
+                  return SliverToBoxAdapter(
+                    child: _EmptyState(
+                      height: emptyStateH,
+                      floatingClearance: emptyStateFloatingClearance,
+                    ),
+                  );
+                },
               ),
             ],
           ],
@@ -1665,53 +1688,38 @@ class _SaveEventButtonState extends State<_SaveEventButton>
 // Empty state
 // ─────────────────────────────────────────────────────────────────────────────
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({
+    required this.height,
+    required this.floatingClearance,
+  });
+
+  final double height;
+  final double floatingClearance;
 
   @override
   Widget build(BuildContext context) {
-    final emptyStateFloatingClearance =
-        floatingTabBarContentBottomClearance(
-          context,
-          finalContentGap: 16.0,
-        );
-    final emptyStateLabelH = kEmptyStateLabelFontSize * kLineHeight;
-    final emptyStateFallbackH = emptyStateLabelH + 32.0;
-
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        minHeight: emptyStateFallbackH + emptyStateFloatingClearance,
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final emptyStateH = math.max(
-            emptyStateFallbackH,
-            constraints.maxHeight - emptyStateFloatingClearance,
-          );
-          return Column(
-            children: [
-              SizedBox(
-                height: emptyStateH,
-                child: Center(
-                  child: Text(
-                    'No Events',
-                    style: TextStyle(
-                      inherit: false,
-                      color: resolveThemeColor(kSecondaryLabel, context),
-                      fontSize: kEmptyStateLabelFontSize,
-                      fontFamily: 'SFProText',
-                      fontWeight: FontWeight.w400,
-                      fontStyle: FontStyle.normal,
-                      letterSpacing: kTracking16,
-                      height: kLineHeight,
-                    ),
-                  ),
-                ),
+    return Column(
+      children: [
+        SizedBox(
+          height: height,
+          child: Center(
+            child: Text(
+              'No Events',
+              style: TextStyle(
+                inherit: false,
+                color: resolveThemeColor(kSecondaryLabel, context),
+                fontSize: kEmptyStateLabelFontSize,
+                fontFamily: 'SFProText',
+                fontWeight: FontWeight.w400,
+                fontStyle: FontStyle.normal,
+                letterSpacing: kTracking16,
+                height: kLineHeight,
               ),
-              SizedBox(height: emptyStateFloatingClearance),
-            ],
-          );
-        },
-      ),
+            ),
+          ),
+        ),
+        SizedBox(height: floatingClearance),
+      ],
     );
   }
 }
