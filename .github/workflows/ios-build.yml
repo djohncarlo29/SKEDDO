@@ -26,6 +26,24 @@ jobs:
         working-directory: artifacts/smart-scheduler
         run: flutter pub get
 
+      - name: Prepare unsigned iOS build
+        working-directory: artifacts/smart-scheduler
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          project = Path("ios/Runner.xcodeproj/project.pbxproj")
+          contents = project.read_text()
+          marker = 'DEVELOPMENT_TEAM = 0000000000;'
+          if marker not in contents:
+              contents = contents.replace(
+                  '"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";',
+                  '"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";\n'
+                  f'{marker}',
+              )
+              project.write_text(contents)
+          PY
+
       - name: Build iOS Workspace
         working-directory: artifacts/smart-scheduler
         run: flutter build ios --release --no-codesign
