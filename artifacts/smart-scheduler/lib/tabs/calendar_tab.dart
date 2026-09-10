@@ -3419,7 +3419,7 @@ class _MonthView extends StatelessWidget {
         final floatingClearance = floatingTabBarContentBottomClearance(context);
         final availableListEmptyStateH = math.max(
           80.0,
-          constraints.maxHeight - gridH - floatingClearance,
+          constraints.maxHeight - gridH,
         );
         final selectedListIsEmpty =
             showMonthList &&
