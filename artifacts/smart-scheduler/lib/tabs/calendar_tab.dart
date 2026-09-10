@@ -87,6 +87,11 @@ const double _kRowHeightMonthList = 64.0;
 // they cannot leak into the incoming Day View week strip.
 const double _kMonthDayTransitionThreshold = 0.5;
 const double _kMonthListDotDiameter = 5.0;
+// The embedded DCV supplies one 16 pt trailing section gap. The remaining
+// scroll clearance must keep the last event above the Floating Tab Bar while
+// preserving a separate 16 pt visual gap from the bar's top edge.
+const double _kMonthListExistingTrailingContentPadding = 16.0;
+const double _kMonthListFinalContentGap = 16.0;
 const double _kDayIndicatorDiameter = 36.0;
 const double _kRowHeightCompact = 68.0;
 const double _kRowHeightStacked = 96.0;
@@ -3453,11 +3458,20 @@ class _MonthView extends StatelessWidget {
                     : availableListEmptyStateH
                 : estimatedListContentH
             : 80.0;
-        // Keep an explicit 16 pt visual gap between the final event card and
-        // the Floating Tab Bar. This is separate from the list's height
-        // estimate because wrapped event content can consume that estimate.
+        // The embedded DCV already supplies a 16 pt trailing section gap.
+        // Account for the Floating Tab Bar's height and bottom inset as well,
+        // then keep a separate 16 pt gap between the final event card and the
+        // pill. This remains a fixed final-content clearance when rows are
+        // removed; it is not reduced with the event count.
         final eventContentClearance =
-            showMonthList ? 16.0 : floatingClearance;
+            showMonthList
+                ? floatingTabBarContentBottomClearance(
+                    context,
+                    existingTrailingContentPadding:
+                        _kMonthListExistingTrailingContentPadding,
+                    finalContentGap: _kMonthListFinalContentGap,
+                  )
+                : floatingClearance;
         final contentH = selectedDayIsEmpty
             ? emptyStateNeedsScrollableFallback
                 ? gridH +
