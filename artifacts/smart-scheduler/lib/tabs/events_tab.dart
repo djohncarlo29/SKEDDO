@@ -2691,8 +2691,21 @@ class EventsTabState extends State<EventsTab>
         }
       },
       destructiveActionLabel: 'Delete Event',
-      onDestructiveAction: () => _moveArchivedEventToDeleted(event),
+      onDestructiveAction: () => _confirmMoveArchivedEventToDeleted(event),
     );
+  }
+
+  Future<void> _confirmMoveArchivedEventToDeleted(ScheduledEvent event) async {
+    final confirmed = await showDeleteConfirmationSheet(
+      context,
+      title: 'Delete ${_eventDisplayName(event.title)}?',
+      subtitle:
+          'This archived event will move to Recently Deleted. You can '
+          'recover it later or permanently delete it there.',
+      actionLabel: 'Delete Event',
+    );
+    if (!mounted || confirmed != true) return;
+    _moveArchivedEventToDeleted(event);
   }
 
   void _moveArchivedEventToDeleted(ScheduledEvent event) {
@@ -11412,7 +11425,10 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
       reorderable: false,
     );
     final indentedCard = Padding(
-      padding: EdgeInsets.only(left: indented ? 32 : 0),
+      // The event card already has 16 px of internal content padding.  A
+      // 16 px outer inset therefore aligns its visible content with the
+      // 32 px leading inset used by grouped category members.
+      padding: EdgeInsets.only(left: indented ? 16 : 0),
       child: card,
     );
     return onTap == null
