@@ -46,7 +46,7 @@ jobs:
 
       - name: Build iOS Workspace
         working-directory: artifacts/smart-scheduler
-        run: flutter build ios --release --no-codesign
+        run: flutter build ios --release --no-codesign --no-tree-shake-icons
 
       - name: Package into IPA
         run: |
