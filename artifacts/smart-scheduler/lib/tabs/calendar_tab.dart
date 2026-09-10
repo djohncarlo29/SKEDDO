@@ -82,6 +82,10 @@ const _kDayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 // ── Layout constants ──────────────────────────────────────────────────────────
 const double _kRowHeightList = 52.0;
 const double _kRowHeightMonthList = 64.0;
+// The shared DCV empty state includes a 64px icon, title, subtitle, and the
+// floating tab bar's bottom clearance. Keep enough room for it when every
+// day in the Month View List is empty.
+const double _kMonthListEmptyStateHeight = 240.0;
 // Month List content changes to Day View at the same midpoint used by the
 // header/content transition. Keep all List-only adornments on this boundary so
 // they cannot leak into the incoming Day View week strip.
@@ -3266,7 +3270,7 @@ List<List<ScheduledEvent>> _groupMonthEvents(List<ScheduledEvent> events) {
 }
 
 double _monthListEstimatedHeight(List<List<ScheduledEvent>> groups) {
-  if (groups.isEmpty) return 80.0;
+  if (groups.isEmpty) return _kMonthListEmptyStateHeight;
   // Leave enough room for wrapped titles and the same section/card spacing used
   // by the Events tab.  The list remains scrollable if a title exceeds this
   // estimate; the estimate only prevents the Stack's scroll content from being
