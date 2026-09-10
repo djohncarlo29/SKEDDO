@@ -87,10 +87,11 @@ const double _kRowHeightMonthList = 64.0;
 // they cannot leak into the incoming Day View week strip.
 const double _kMonthDayTransitionThreshold = 0.5;
 const double _kMonthListDotDiameter = 5.0;
-// The embedded DCV supplies one 16 pt trailing section gap. The remaining
-// scroll clearance must keep the last event above the Floating Tab Bar while
-// preserving a separate 16 pt visual gap from the bar's top edge.
-const double _kMonthListExistingTrailingContentPadding = 16.0;
+// The embedded DCV keeps one 16 pt trailing section gap outside its
+// AnimatedSize. That gap remains after a section's event card collapses, so it
+// is the correct existing trailing padding for both an event tile and a
+// collapsed section header.
+const double _kMonthListSectionTrailingContentPadding = 16.0;
 const double _kMonthListFinalContentGap = 16.0;
 const double _kDayIndicatorDiameter = 36.0;
 const double _kRowHeightCompact = 68.0;
@@ -3459,17 +3460,17 @@ class _MonthView extends StatelessWidget {
                     : availableListEmptyStateH
                 : estimatedListContentH
             : 80.0;
-        // The embedded DCV already supplies a 16 pt trailing section gap.
-        // Account for the Floating Tab Bar's height and bottom inset as well,
-        // then keep a separate 16 pt gap between the final event card and the
-        // pill. This remains a fixed final-content clearance when rows are
-        // removed; it is not reduced with the event count.
+        // The embedded DCV already supplies a 16 pt trailing section gap
+        // outside the collapsible event card. Account for the Floating Tab
+        // Bar's height and bottom inset as well, then keep a separate 16 pt
+        // gap between whichever element is last (event tile or section
+        // header) and the pill.
         final eventContentClearance =
             showMonthList
                 ? floatingTabBarContentBottomClearance(
                     context,
                     existingTrailingContentPadding:
-                        _kMonthListExistingTrailingContentPadding,
+                        _kMonthListSectionTrailingContentPadding,
                     finalContentGap: _kMonthListFinalContentGap,
                   )
                 : floatingClearance;
@@ -3510,8 +3511,170 @@ class _MonthView extends StatelessWidget {
                 : 0.0
             : math.max(0.0, emptyH - eventContentClearance);
 
+        // A non-empty Month List must use the selected DCV's measured height.
+        // A collapsed final section therefore measures as its header plus the
+        // section wrapper's trailing 16 pt, rather than retaining an estimated
+        // event-tile height.
+        final monthListUsesNaturalHeight = showMonthList && !selectedDayIsEmpty;
+
+        final document = ClipRect(
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // ── Scrollable body ───────────────────────────────────
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: _kCalendarHeaderToDowGap),
+                  SizedBox(height: _kDayLabelHeight),
+                  SizedBox(
+                    height: totalRows * rowHeight,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        for (int row = 0; row < totalRows; row++)
+                          _AnimatedWeekRow(
+                            year: year,
+                            month: month,
+                            row: row,
+                            today: today,
+                            selectedDate: selectedDate,
+                            collapseProgress: collapseProgress,
+                            collapseWeekRow: collapseWeekRow,
+                            viewModeRowHeight: rowHeight,
+                            screenHeight: constraints.maxHeight,
+                            scrollOffset: collapseScrollOffset,
+                            eventsByDay: orderedEventsByDay,
+                            viewMode: viewMode,
+                            onDayTap: onDayTap,
+                            onDayLongPress: onDayLongPress,
+                            circleSlideX: row == collapseWeekRow
+                                ? circleSlideX
+                                : 0.0,
+                            settleCount: settleCount,
+                            blobDeltaX: row == collapseWeekRow
+                                ? blobDeltaX
+                                : 0.0,
+                            blobSnapCount: blobSnapCount,
+                            pendingBloomDate: pendingBloomDate,
+                            daySubMode: daySubMode,
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (showMonthList) ...[
+                    _MonthSelectedEvents(
+                      dayKeys: listDayKeys,
+                      dayGroups: listDayGroups,
+                      selectedDayIndex: selectedListChildIndex,
+                      height: monthListUsesNaturalHeight ? null : listContentH,
+                      emptyStateHeight: selectedListIsEmpty
+                          ? listContentH
+                          : availableListEmptyStateH,
+                      onEditEvent: onEditEvent,
+                      scrollController: scrollController,
+                      scrollViewportKey: scrollViewportKey,
+                      onOrderChanged: onMonthListOrderChanged,
+                    ),
+                    if (monthListUsesNaturalHeight)
+                      SizedBox(height: eventContentClearance),
+                  ] else if (emptyH > 0)
+                    SizedBox(
+                      height: emptyH,
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: emptyStateH,
+                            child: Opacity(
+                              opacity: collapseProgress <
+                                      _kMonthDayTransitionThreshold
+                                  ? (1.0 - collapseProgress * 4.0).clamp(
+                                      0.0,
+                                      1.0,
+                                    )
+                                  : 0.0,
+                              child: Center(
+                                child: Text(
+                                  'No Events',
+                                  style: TextStyle(
+                                    inherit: false,
+                                    fontFamily: kSFProText,
+                                    fontWeight: FontWeight.w400,
+                                    fontStyle: FontStyle.normal,
+                                    letterSpacing: kTracking16,
+                                    height: kLineHeight,
+                                    fontSize: kEmptyStateLabelFontSize,
+                                    color: secondaryC,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: emptyH - emptyStateH),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+
+              // ── Day-of-week header overlay ────────────────────────
+              // Painted last = highest z-order, covers rows that overflow
+              // upward during the collapse animation.
+              // 10px right margin mirrors the day-row inset;
+              // week-num column is Expanded (equal to day columns).
+              //
+              // Scroll-offset compensation: when entering Day View from a
+              // scrolled Month View the viewport scroll stays at
+              // capturedOffset during the animation.  The DOW header sits
+              // at content-y=the fixed header gap, so its viewport-y is
+              // fixed relative to the header (minus capturedOffset)
+              // (above the fold, invisible).  Translating it DOWN by
+              // collapseScrollOffset × collapseProgress brings it into
+              // view in lock-step with the week strip arriving at y=28.
+              Positioned(
+                top: _kCalendarHeaderToDowGap,
+                left: 0,
+                right: 0,
+                height: _kDayLabelHeight,
+                child: Transform.translate(
+                  offset: Offset(
+                    0,
+                    collapseScrollOffset * collapseProgress,
+                  ),
+                  child: ColoredBox(
+                    color: resolveThemeColor(kBackgroundColor, context),
+                    child: Row(
+                      children: [
+                        const Expanded(child: SizedBox.shrink()),
+                        ...List.generate(
+                          7,
+                          (i) => Expanded(
+                            child: Center(
+                              child: Text(
+                                _kDayLabels[i],
+                                style: TextStyle(
+                                  fontFamily: kSFProText,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: secondaryC,
+                                  letterSpacing: -0.1,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
         return SingleChildScrollView(
-           key: scrollViewportKey,
+          key: scrollViewportKey,
           controller: scrollController,
           physics: collapseProgress < _kMonthDayTransitionThreshold
               ? const AlwaysScrollableScrollPhysics(
@@ -3519,163 +3682,15 @@ class _MonthView extends StatelessWidget {
                 )
               : const NeverScrollableScrollPhysics(),
           clipBehavior: Clip.none,
-          child: SizedBox(
-            height: contentH,
-            child: ClipRect(
-              child: Stack(
-                children: [
-                  // ── Scrollable body ───────────────────────────────────
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: _kCalendarHeaderToDowGap),
-                      SizedBox(height: _kDayLabelHeight),
-                      SizedBox(
-                        height: totalRows * rowHeight,
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            for (int row = 0; row < totalRows; row++)
-                              _AnimatedWeekRow(
-                                year: year,
-                                month: month,
-                                row: row,
-                                today: today,
-                                selectedDate: selectedDate,
-                                collapseProgress: collapseProgress,
-                                collapseWeekRow: collapseWeekRow,
-                                viewModeRowHeight: rowHeight,
-                                screenHeight: constraints.maxHeight,
-                                scrollOffset: collapseScrollOffset,
-                                 eventsByDay: orderedEventsByDay,
-                                viewMode: viewMode,
-                                onDayTap: onDayTap,
-                                onDayLongPress: onDayLongPress,
-                                circleSlideX: row == collapseWeekRow
-                                    ? circleSlideX
-                                    : 0.0,
-                                settleCount: settleCount,
-                                blobDeltaX: row == collapseWeekRow
-                                    ? blobDeltaX
-                                    : 0.0,
-                                blobSnapCount: blobSnapCount,
-                                pendingBloomDate: pendingBloomDate,
-                                daySubMode: daySubMode,
-                              ),
-                          ],
-                        ),
-                      ),
-                      if (showMonthList)
-                        _MonthSelectedEvents(
-                          dayKeys: listDayKeys,
-                          dayGroups: listDayGroups,
-                          selectedDayIndex:
-                              selectedListChildIndex,
-                          height: listContentH,
-                           emptyStateHeight: selectedListIsEmpty
-                               ? listContentH
-                               : availableListEmptyStateH,
-                          onEditEvent: onEditEvent,
-                          scrollController: scrollController,
-                          scrollViewportKey: scrollViewportKey,
-                          onOrderChanged: onMonthListOrderChanged,
-                        )
-                      else if (emptyH > 0)
-                        SizedBox(
-                          height: emptyH,
-                          child: Column(
-                            children: [
-                              SizedBox(
-                                height: emptyStateH,
-                                child: Opacity(
-                                  opacity: collapseProgress <
-                                      _kMonthDayTransitionThreshold
-                                      ? (1.0 - collapseProgress * 4.0).clamp(
-                                          0.0,
-                                          1.0,
-                                        )
-                                      : 0.0,
-                                  child: Center(
-                                    child: Text(
-                                      'No Events',
-                                      style: TextStyle(
-                                        inherit: false,
-                                        fontFamily: kSFProText,
-                                        fontWeight: FontWeight.w400,
-                                        fontStyle: FontStyle.normal,
-                                        letterSpacing: kTracking16,
-                                        height: kLineHeight,
-                                        fontSize: kEmptyStateLabelFontSize,
-                                        color: secondaryC,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: emptyH - emptyStateH),
-                            ],
-                          ),
-                        ),
-                    ],
+          child: monthListUsesNaturalHeight
+              ? ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
                   ),
-
-                  // ── Day-of-week header overlay ────────────────────────
-                  // Painted last = highest z-order, covers rows that overflow
-                  // upward during the collapse animation.
-                  // 10px right margin mirrors the day-row inset;
-                  // week-num column is Expanded (equal to day columns).
-                  //
-                  // Scroll-offset compensation: when entering Day View from a
-                  // scrolled Month View the viewport scroll stays at
-                  // capturedOffset during the animation.  The DOW header sits
-                  // at content-y=the fixed header gap, so its viewport-y is
-                  // fixed relative to the header (minus capturedOffset)
-                  // (above the fold, invisible).  Translating it DOWN by
-                  // collapseScrollOffset × collapseProgress brings it into
-                  // view in lock-step with the week strip arriving at y=28.
-                  Positioned(
-                    top: _kCalendarHeaderToDowGap,
-                    left: 0,
-                    right: 0,
-                    height: _kDayLabelHeight,
-                    child: Transform.translate(
-                      offset: Offset(
-                        0,
-                        collapseScrollOffset * collapseProgress,
-                      ),
-                      child: ColoredBox(
-                        color: resolveThemeColor(kBackgroundColor, context),
-                        child: Row(
-                          children: [
-                            const Expanded(child: SizedBox.shrink()),
-                            ...List.generate(
-                              7,
-                              (i) => Expanded(
-                                child: Center(
-                                  child: Text(
-                                    _kDayLabels[i],
-                                    style: TextStyle(
-                                      fontFamily: kSFProText,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w500,
-                                      color: secondaryC,
-                                      letterSpacing: -0.1,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 7),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-            );
+                  child: document,
+                )
+              : SizedBox(height: contentH, child: document),
+        );
           },
         );
       },
@@ -4614,7 +4629,7 @@ class _MonthSelectedEvents extends StatelessWidget {
   final List<String> dayKeys;
   final List<List<List<ScheduledEvent>>> dayGroups;
   final int selectedDayIndex;
-  final double height;
+  final double? height;
   final double emptyStateHeight;
   final void Function(ScheduledEvent event)? onEditEvent;
   final ScrollController? scrollController;
@@ -4624,54 +4639,60 @@ class _MonthSelectedEvents extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final selectedIndex =
+        selectedDayIndex.clamp(0, dayGroups.length - 1) as int;
+    final children = [
+      for (var dayIndex = 0; dayIndex < dayGroups.length; dayIndex++)
+        KeyedSubtree(
+          key: ValueKey(dayKeys[dayIndex]),
+          child: Builder(
+            builder: (context) {
+              final events = [
+                for (final group in dayGroups[dayIndex]) ...group,
+              ];
+              if (events.isEmpty) {
+                return SizedBox(
+                  height: emptyStateHeight,
+                  child: Center(
+                    child: Text(
+                      'No Events',
+                      style: TextStyle(
+                        inherit: false,
+                        fontFamily: kSFProText,
+                        fontWeight: FontWeight.w400,
+                        fontStyle: FontStyle.normal,
+                        letterSpacing: kTracking16,
+                        height: kLineHeight,
+                        fontSize: kEmptyStateLabelFontSize,
+                        color: resolveThemeColor(kSecondaryLabel, context),
+                      ),
+                    ),
+                  ),
+                );
+              }
+              return buildDcvEventList(
+                events: events,
+                onEditEvent: onEditEvent,
+                onManualOrderChanged: (orderedEvents) {
+                  onOrderChanged?.call(dayKeys[dayIndex], orderedEvents);
+                },
+                scrollController: scrollController,
+                scrollViewportKey: scrollViewportKey,
+              );
+            },
+          ),
+        ),
+    ];
+    if (height == null) {
+      return children[selectedIndex];
+    }
     return SizedBox(
       width: double.infinity,
       height: height,
       child: IndexedStack(
-        index: selectedDayIndex.clamp(0, dayGroups.length - 1) as int,
+        index: selectedIndex,
         alignment: Alignment.topCenter,
-        children: [
-          for (var dayIndex = 0; dayIndex < dayGroups.length; dayIndex++)
-            KeyedSubtree(
-              key: ValueKey(dayKeys[dayIndex]),
-              child: Builder(
-                builder: (context) {
-                  final events = [
-                    for (final group in dayGroups[dayIndex]) ...group,
-                  ];
-                  if (events.isEmpty) {
-                    return SizedBox(
-                      height: emptyStateHeight,
-                      child: Center(
-                        child: Text(
-                          'No Events',
-                          style: TextStyle(
-                            inherit: false,
-                            fontFamily: kSFProText,
-                            fontWeight: FontWeight.w400,
-                            fontStyle: FontStyle.normal,
-                            letterSpacing: kTracking16,
-                            height: kLineHeight,
-                            fontSize: kEmptyStateLabelFontSize,
-                            color: resolveThemeColor(kSecondaryLabel, context),
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-                  return buildDcvEventList(
-                    events: events,
-                    onEditEvent: onEditEvent,
-                    onManualOrderChanged: (orderedEvents) {
-                      onOrderChanged?.call(dayKeys[dayIndex], orderedEvents);
-                    },
-                    scrollController: scrollController,
-                    scrollViewportKey: scrollViewportKey,
-                  );
-                },
-              ),
-            ),
-        ],
+        children: children,
       ),
     );
   }

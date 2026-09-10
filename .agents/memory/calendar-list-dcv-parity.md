@@ -33,3 +33,11 @@ The Calendar Month List text-only empty state centers in the live space below th
 **Why:** A fixed empty-state height leaves the placeholder too high or too low on different viewport sizes.
 
 **How to apply:** Derive the empty-state height from the current viewport, grid height, and floating-bar clearance rather than hardcoding the normal case.
+
+## Collapsed final section
+
+When the last Calendar List section is collapsed, its event card height must disappear from the natural document height. The section wrapper's 16pt bottom padding remains, so the visible 16pt target is measured from the collapsed section header.
+
+**Why:** The DCV's `AnimatedSize` collapses only the event content; the section wrapper remains. Keeping an estimated tile height makes the Calendar List stop too far above the Floating Tab Bar after dismissal.
+
+**How to apply:** Let the selected embedded DCV use natural height and subtract only its persistent 16pt section trailing padding in `floatingTabBarContentBottomClearance`.
