@@ -18877,13 +18877,6 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                     previousEventById,
                     isReorderable,
                   ),
-                SizedBox(
-                  height: floatingTabBarContentBottomClearance(
-                    context,
-                    existingTrailingContentPadding: 32,
-                    finalContentGap: 20,
-                  ),
-                ),
               ],
             ),
           ),

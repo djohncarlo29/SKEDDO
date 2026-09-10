@@ -3417,6 +3417,12 @@ class _MonthView extends StatelessWidget {
           builder: (context, constraints) {
         final secondaryC = resolveThemeColor(kSecondaryLabel, context);
         final floatingClearance = floatingTabBarContentBottomClearance(context);
+        final listEventFloatingClearance =
+            floatingTabBarContentBottomClearance(
+              context,
+              existingTrailingContentPadding: 16.0,
+              finalContentGap: 16.0,
+            );
         final emptyStateFloatingClearance =
             floatingTabBarContentBottomClearance(
               context,
@@ -3449,6 +3455,8 @@ class _MonthView extends StatelessWidget {
                     : availableListEmptyStateH
                 : estimatedListContentH
             : 80.0;
+        final eventContentClearance =
+            showMonthList ? listEventFloatingClearance : floatingClearance;
         final contentH = selectedDayIsEmpty
             ? emptyStateNeedsScrollableFallback
                 ? gridH +
@@ -3461,13 +3469,13 @@ class _MonthView extends StatelessWidget {
                         emptyStateFloatingClearance,
                   )
             : math.max(constraints.maxHeight, gridH + listContentH) +
-                floatingClearance;
+                eventContentClearance;
         final emptyH = contentH - gridH;
         final emptyStateH = selectedDayIsEmpty
             ? emptyStateNeedsScrollableFallback
                 ? emptyStateFallbackH
                 : availableListEmptyStateH
-            : math.max(0.0, emptyH - floatingClearance);
+            : math.max(0.0, emptyH - eventContentClearance);
 
         return SingleChildScrollView(
            key: scrollViewportKey,
