@@ -3417,6 +3417,11 @@ class _MonthView extends StatelessWidget {
           builder: (context, constraints) {
         final secondaryC = resolveThemeColor(kSecondaryLabel, context);
         final floatingClearance = floatingTabBarContentBottomClearance(context);
+        final emptyStateFloatingClearance =
+            floatingTabBarContentBottomClearance(
+              context,
+              finalContentGap: 16.0,
+            );
         // An empty selected day is a viewport placeholder, not a list item.
         // Keep the pill clearance inside the viewport rather than appending it
         // to the scroll document.  That leaves the scroll position at zero
@@ -3424,28 +3429,44 @@ class _MonthView extends StatelessWidget {
         // placeholder to move during a rubber-band overscroll.
         final availableListEmptyStateH = math.max(
           0.0,
-          constraints.maxHeight - gridH - floatingClearance,
+          constraints.maxHeight - gridH - emptyStateFloatingClearance,
         );
+        final selectedDayIsEmpty =
+            listDayGroups[selectedListChildIndex].isEmpty;
+        final emptyStateLabelH =
+            kEmptyStateLabelFontSize * kLineHeight;
+        final emptyStateFallbackH = emptyStateLabelH + 32.0;
+        final emptyStateNeedsScrollableFallback =
+            selectedDayIsEmpty &&
+            availableListEmptyStateH < emptyStateFallbackH;
         final selectedListIsEmpty =
             showMonthList &&
-            listDayGroups[selectedListChildIndex].isEmpty;
-        final emptySelectedDayHasNoScrollExtent =
-            showMonthList && selectedListIsEmpty;
+            selectedDayIsEmpty;
         final listContentH = showMonthList
             ? selectedListIsEmpty
-                ? availableListEmptyStateH
+                ? emptyStateNeedsScrollableFallback
+                    ? emptyStateFallbackH
+                    : availableListEmptyStateH
                 : estimatedListContentH
             : 80.0;
-        final contentH = emptySelectedDayHasNoScrollExtent
-            ? math.max(
-                constraints.maxHeight,
-                gridH + listContentH + floatingClearance,
-              )
+        final contentH = selectedDayIsEmpty
+            ? emptyStateNeedsScrollableFallback
+                ? gridH +
+                    emptyStateFallbackH +
+                    emptyStateFloatingClearance
+                : math.max(
+                    constraints.maxHeight,
+                    gridH +
+                        availableListEmptyStateH +
+                        emptyStateFloatingClearance,
+                  )
             : math.max(constraints.maxHeight, gridH + listContentH) +
                 floatingClearance;
         final emptyH = contentH - gridH;
-        final emptyStateH = emptySelectedDayHasNoScrollExtent
-            ? listContentH
+        final emptyStateH = selectedDayIsEmpty
+            ? emptyStateNeedsScrollableFallback
+                ? emptyStateFallbackH
+                : availableListEmptyStateH
             : math.max(0.0, emptyH - floatingClearance);
 
         return SingleChildScrollView(
@@ -3510,7 +3531,9 @@ class _MonthView extends StatelessWidget {
                           selectedDayIndex:
                               selectedListChildIndex,
                           height: listContentH,
-                           emptyStateHeight: availableListEmptyStateH,
+                           emptyStateHeight: selectedListIsEmpty
+                               ? listContentH
+                               : availableListEmptyStateH,
                           onEditEvent: onEditEvent,
                           scrollController: scrollController,
                           scrollViewportKey: scrollViewportKey,
