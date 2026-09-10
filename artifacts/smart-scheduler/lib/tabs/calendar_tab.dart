@@ -3473,23 +3473,34 @@ class _MonthView extends StatelessWidget {
                   )
                 : floatingClearance;
         final contentH = selectedDayIsEmpty
-            ? emptyStateNeedsScrollableFallback
-                ? gridH +
-                    emptyStateFallbackH +
-                    emptyStateFloatingClearance
-                : math.max(
+            ? showMonthList
+                ? emptyStateNeedsScrollableFallback
+                    ? gridH +
+                        emptyStateFallbackH +
+                        emptyStateFloatingClearance
+                    : math.max(
+                        constraints.maxHeight,
+                        gridH +
+                            availableListEmptyStateH +
+                            emptyStateFloatingClearance,
+                      )
+                : // Compact, Stacked, and Details end at the grid. Keep only
+                  // enough scroll tail to place its final separator 16 pt
+                  // above the Floating Tab Bar.
+                  math.max(
                     constraints.maxHeight,
-                    gridH +
-                        availableListEmptyStateH +
-                        emptyStateFloatingClearance,
+                    gridH + emptyStateFloatingClearance,
                   )
             : math.max(constraints.maxHeight, gridH + listContentH) +
                 eventContentClearance;
-        final emptyH = contentH - gridH;
+        final emptyH =
+            selectedDayIsEmpty && showMonthList ? contentH - gridH : 0.0;
         final emptyStateH = selectedDayIsEmpty
-            ? emptyStateNeedsScrollableFallback
-                ? emptyStateFallbackH
-                : availableListEmptyStateH
+            ? showMonthList
+                ? emptyStateNeedsScrollableFallback
+                    ? emptyStateFallbackH
+                    : availableListEmptyStateH
+                : 0.0
             : math.max(0.0, emptyH - eventContentClearance);
 
         return SingleChildScrollView(
