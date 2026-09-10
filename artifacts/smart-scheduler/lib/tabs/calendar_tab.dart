@@ -3417,24 +3417,36 @@ class _MonthView extends StatelessWidget {
           builder: (context, constraints) {
         final secondaryC = resolveThemeColor(kSecondaryLabel, context);
         final floatingClearance = floatingTabBarContentBottomClearance(context);
+        // An empty selected day is a viewport placeholder, not a list item.
+        // Keep the pill clearance inside the viewport rather than appending it
+        // to the scroll document.  That leaves the scroll position at zero
+        // while AlwaysScrollable+BouncingScrollPhysics still permits the
+        // placeholder to move during a rubber-band overscroll.
         final availableListEmptyStateH = math.max(
-          80.0,
-          constraints.maxHeight - gridH,
+          0.0,
+          constraints.maxHeight - gridH - floatingClearance,
         );
         final selectedListIsEmpty =
             showMonthList &&
             listDayGroups[selectedListChildIndex].isEmpty;
+        final emptySelectedDayHasNoScrollExtent =
+            showMonthList && selectedListIsEmpty;
         final listContentH = showMonthList
-            ? math.max(
-                estimatedListContentH,
-                selectedListIsEmpty ? availableListEmptyStateH : 0.0,
-              )
+            ? selectedListIsEmpty
+                ? availableListEmptyStateH
+                : estimatedListContentH
             : 80.0;
-        final contentH =
-            math.max(constraints.maxHeight, gridH + listContentH) +
-            floatingClearance;
+        final contentH = emptySelectedDayHasNoScrollExtent
+            ? math.max(
+                constraints.maxHeight,
+                gridH + listContentH + floatingClearance,
+              )
+            : math.max(constraints.maxHeight, gridH + listContentH) +
+                floatingClearance;
         final emptyH = contentH - gridH;
-        final emptyStateH = math.max(0.0, emptyH - floatingClearance);
+        final emptyStateH = emptySelectedDayHasNoScrollExtent
+            ? listContentH
+            : math.max(0.0, emptyH - floatingClearance);
 
         return SingleChildScrollView(
            key: scrollViewportKey,
