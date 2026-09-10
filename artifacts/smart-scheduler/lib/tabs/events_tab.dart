@@ -2679,7 +2679,7 @@ class EventsTabState extends State<EventsTab>
       title: 'Archived Event',
       subtitle:
           'Recovering will return this event to the active schedule in the '
-          'default category. Permanently deleting it cannot be undone.',
+          'default category. Delete Event will move it to Recently Deleted.',
       actionLabel: 'Recover',
       onAction: () {
         if (EventStore.instance.restoreArchived(event.id)) {
@@ -2690,9 +2690,19 @@ class EventsTabState extends State<EventsTab>
           _scheduleUtilityExitIfEmpty();
         }
       },
-      destructiveActionLabel: 'Permanently Delete',
-      onDestructiveAction: () => _requestPermanentlyDeleteArchivedEvent(event),
+      destructiveActionLabel: 'Delete Event',
+      onDestructiveAction: () => _moveArchivedEventToDeleted(event),
     );
+  }
+
+  void _moveArchivedEventToDeleted(ScheduledEvent event) {
+    if (!EventStore.instance.deleteArchived(event.id)) return;
+    _removeUtilityDate('archived-event', event.id);
+    _setUtilityDate('deleted-event', event.id);
+    _syncUtilityVisibilityAndResurface();
+    _saveCategories();
+    setState(() {});
+    _scheduleUtilityExitIfEmpty();
   }
 
   void _openDeletedSmartCategory(String label) {
@@ -2825,23 +2835,6 @@ class EventsTabState extends State<EventsTab>
     });
     _saveCategories();
     _scheduleUtilityExitIfEmpty();
-  }
-
-  void _requestPermanentlyDeleteArchivedEvent(ScheduledEvent event) async {
-    final confirmed = await showDeleteConfirmationSheet(
-      context,
-      title: 'Delete ${_eventDisplayName(event.title)}?',
-      subtitle: 'This archived event will be permanently deleted and cannot be recovered.',
-      actionLabel: 'Permanently Delete',
-    );
-    if (!mounted || confirmed != true) return;
-    if (EventStore.instance.permanentlyDeleteArchived(event.id)) {
-      _removeUtilityDate('archived-event', event.id);
-      _syncUtilityVisibilityAndResurface();
-      setState(() {});
-      _saveCategories();
-      _scheduleUtilityExitIfEmpty();
-    }
   }
 
   /// If the selected default category is being deleted, fall back before any
@@ -11358,6 +11351,14 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
         isLast && !hasChildren,
       );
       final rows = <Widget>[child];
+      if (hasChildren) {
+        rows.add(
+          Container(
+            height: 0.5,
+            color: resolveThemeColor(kSeparatorColor, context),
+          ),
+        );
+      }
       for (var childIndex = 0; childIndex < item.childEvents.length; childIndex++) {
         final event = item.childEvents[childIndex];
         rows.add(

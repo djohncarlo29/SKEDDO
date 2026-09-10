@@ -621,6 +621,29 @@ class EventStore {
     return true;
   }
 
+  /// Moves one archived event into Recently Deleted.
+  ///
+  /// The event remains associated with its original category so category
+  /// recovery can still find it if the user later recovers that category.
+  bool deleteArchived(String id) {
+    final archivedIndex = archivedEvents.value.indexWhere(
+      (event) => event.id == id,
+    );
+    if (archivedIndex < 0) return false;
+
+    final archived = archivedEvents.value[archivedIndex];
+    final nextArchived = List<ScheduledEvent>.of(archivedEvents.value)
+      ..removeAt(archivedIndex);
+    archivedEvents.value = nextArchived;
+    deletedEvents.value = [
+      ...deletedEvents.value.where((event) => event.id != id),
+      archived,
+    ];
+    LocalStorage.instance.saveArchivedEvents(nextArchived);
+    LocalStorage.instance.saveDeletedEvents(deletedEvents.value);
+    return true;
+  }
+
   /// Moves archived events into Recently Deleted when their category is
   /// deleted. Their category IDs remain intact for category-bundle recovery.
   int deleteArchivedEventsForCategory(String categoryId) {

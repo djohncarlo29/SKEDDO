@@ -122,11 +122,16 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
   void initState() {
     super.initState();
     _sortBy = widget.initialSortBy;
-    // Default to the first direction for the active sort if none stored yet.
+    // Utility categories only expose Creation Date directions and should
+    // always start with the newest item first, even if an older saved value
+    // is missing or came from a previous menu shape.
     final storedDir = widget.initialSortDir;
-    _sortDir = storedDir.isNotEmpty
-        ? storedDir
-        : (_kSortDirections[_sortBy]?.first ?? '');
+    _sortDir =
+        widget.isUtilityCategory
+            ? (storedDir == 'Oldest First' ? 'Oldest First' : 'Newest First')
+            : (storedDir.isNotEmpty
+                ? storedDir
+                : (_kSortDirections[_sortBy]?.first ?? ''));
     _showCompleted = widget.initialShowCompleted;
     _viewAsList = widget.initialViewAsList;
     _manageSections = widget.initialManageSections;
@@ -307,12 +312,13 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
       onChanged: widget.onShowCompletedChanged,
       onDismiss: widget.onDismiss,
     ),
-    ActionItem(
-      label: 'Archive Category',
-      icon: SFIcons.sf_archivebox,
-      onTap: _onArchiveCategoryTap,
-    ),
-    if (!widget.isSmartCategory)
+    if (!widget.isUtilityCategory)
+      ActionItem(
+        label: 'Archive Category',
+        icon: SFIcons.sf_archivebox,
+        onTap: _onArchiveCategoryTap,
+      ),
+    if (!widget.isUtilityCategory && !widget.isSmartCategory)
       ActionItem(
         label: 'Delete Category',
         icon: SFIcons.sf_trash,
@@ -413,7 +419,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
         rowTop: _sortByTop(context),
         rowHeight: _rowHeight(context, 'Sort By'),
         label: 'Sort By',
-        subtitle: _sortBy,
+        subtitle: widget.isUtilityCategory ? _sortDir : _sortBy,
         icon: SFIcons.sf_arrow_up_arrow_down,
         subItems: _sortOptionItems(),
       ),
@@ -435,7 +441,7 @@ class _DcvMenuContentState extends State<_DcvMenuContent> {
 }
 
 // System-defined (smart) category labels — user-created categories are anything
-// not in this set.  "Delete Category" is hidden for smart categories.
+// not in this set.  "Delete Category" is hidden for smart and utility views.
 const _kSmartCategoryLabels = {
   'Today',
   'Tomorrow',
@@ -1029,8 +1035,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         subtitle: 'x',
       ),
       const ActionItem(label: 'Show Completed', icon: SFIcons.sf_eye),
-      const ActionItem(label: 'Archive Category', icon: SFIcons.sf_archivebox),
-      if (!isSmartCategory)
+       if (!isUtilityCategory)
+         const ActionItem(
+           label: 'Archive Category',
+           icon: SFIcons.sf_archivebox,
+         ),
+       if (!isUtilityCategory && !isSmartCategory)
         const ActionItem(
           label: 'Delete Category',
           icon: SFIcons.sf_trash,
@@ -1113,16 +1123,20 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         onViewAsListChanged: (v) {
           if (mounted) setState(() => _dcvViewAsList = v);
         },
-        onArchiveCategory: () {
+         onArchiveCategory: isUtilityCategory
+             ? null
+             : () {
           final cat = _dcvCategory;
           _exitDCV();
           if (cat != null) _eventsTabKey.currentState?.archiveCategory(cat);
-        },
-        onDeleteCategory: () {
+         },
+         onDeleteCategory: isUtilityCategory
+             ? null
+             : () {
           final cat = _dcvCategory;
           _exitDCV();
           if (cat != null) _eventsTabKey.currentState?.deleteCategory(cat);
-        },
+         },
         onEditCategory: () {
           final cat = _dcvCategory;
           if (cat != null) _eventsTabKey.currentState?.editCategory(cat);
