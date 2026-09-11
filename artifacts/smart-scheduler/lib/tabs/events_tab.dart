@@ -5671,7 +5671,9 @@ class EventsTabState extends State<EventsTab>
   String _categoryWithContentsScope({
     required int sectionCount,
     required int eventCount,
+    bool capitalize = false,
   }) {
+    final category = capitalize ? 'The category' : 'the category';
     final sections =
         sectionCount > 0
             ? 'its ${_pluralizedNoun(sectionCount, 'saved section')}'
@@ -5679,11 +5681,11 @@ class EventsTabState extends State<EventsTab>
     final events =
         eventCount > 0 ? 'its ${_pluralizedNoun(eventCount, 'event')}' : null;
     if (sections != null && events != null) {
-      return 'the category, $sections, and $events';
+      return '$category, $sections, and $events';
     }
-    if (sections != null) return 'the category and $sections';
-    if (events != null) return 'the category and $events';
-    return 'the category';
+    if (sections != null) return '$category and $sections';
+    if (events != null) return '$category and $events';
+    return category;
   }
 
   String _categoryChoiceSubtitle({
@@ -5699,6 +5701,7 @@ class EventsTabState extends State<EventsTab>
     final withContentsScope = _categoryWithContentsScope(
       sectionCount: sectionCount,
       eventCount: eventCount,
+      capitalize: true,
     );
     if (actionVerb == 'Delete') {
       return 'This category has $contents. Choose whether to move '

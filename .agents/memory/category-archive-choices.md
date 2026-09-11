@@ -7,4 +7,4 @@ Contentful user categories require an explicit scope choice when events exist: a
 
 **Why:** The user wants archiving and deletion to support both reversible preservation and intentional removal of category organization without silently changing event placement.
 
-**How to apply:** Keep archive and delete choice subtitles concise and parallel, and derive every section/event noun from its actual count so singular and plural forms stay consistent across both confirmation levels and utility screens. Built-in smart categories do not need this prompt because they do not own category sections or event assignments.
+**How to apply:** Keep archive and delete choice subtitles concise and parallel, derive every section/event noun from its actual count, and capitalize shared scope phrases when they begin a standalone confirmation sentence. Built-in smart categories do not need this prompt because they do not own category sections or event assignments.
