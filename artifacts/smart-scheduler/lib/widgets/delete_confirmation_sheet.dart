@@ -75,21 +75,6 @@ Future<bool?> showArchiveConfirmationSheet(
   );
 }
 
-/// Confirms a neutral structural action such as removing a group wrapper.
-Future<bool?> showNeutralConfirmationSheet(
-  BuildContext context, {
-  required String title,
-  String? subtitle,
-  required String actionLabel,
-}) {
-  return showConfirmationSheet(
-    context,
-    title: title,
-    subtitle: subtitle,
-    actionLabel: actionLabel,
-  );
-}
-
 /// Confirms and then moves an active event to Recently Deleted.
 Future<void> confirmDeleteEvent(
   BuildContext context,

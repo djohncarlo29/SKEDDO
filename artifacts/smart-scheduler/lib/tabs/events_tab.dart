@@ -2473,13 +2473,14 @@ class EventsTabState extends State<EventsTab>
   }
 
   Future<void> _confirmRemoveGroup(_CategoryGroup group) async {
-    final confirmed = await showNeutralConfirmationSheet(
+    final confirmed = await showConfirmationSheet(
       context,
       title: 'Are you sure?',
       subtitle:
           'Only the group wrapper will be removed. Its categories and their '
           'events will stay unchanged.',
       actionLabel: 'Remove Group',
+      destructive: true,
     );
     if (!mounted || confirmed != true) return;
     if (_categoryGroups.any((candidate) => candidate.id == group.id)) {
@@ -5875,9 +5876,9 @@ class EventsTabState extends State<EventsTab>
       subtitle:
           isDelete
               ? 'This only changes the saved Smart Category rule. Matching '
-                  'events stay in their storage categories.'
+                  'events stay in their parent categories.'
               : 'This only archives the saved Smart Category rule. Matching '
-                  'events stay in their storage categories.',
+                  'events stay in their parent categories.',
       actionLabel:
           isDelete ? 'Delete Smart Category' : 'Archive Smart Category',
     );
