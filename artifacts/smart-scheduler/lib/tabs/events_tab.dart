@@ -7738,7 +7738,11 @@ class EventsTabState extends State<EventsTab>
         }
       }
       counts[_kIdSysArchivedCategories] =
-          _archivedSmartLabels.length + _archivedUserCategories.length;
+          _archivedSmartLabels.length +
+          _archivedUserCategories.length +
+          // Every archived event is rendered as one utility tile: either as
+          // a standalone event or as a child inside an archived category.
+          EventStore.instance.archivedEvents.value.length;
       counts[_kIdSysRecentlyDeleted] =
           _recentlyDeletedCategories.length +
           _recentlyDeletedSmartCategories.length +
