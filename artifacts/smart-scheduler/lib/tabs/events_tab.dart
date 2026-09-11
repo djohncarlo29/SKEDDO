@@ -2675,17 +2675,17 @@ class EventsTabState extends State<EventsTab>
   }) {
     final parts = <String>[];
     if (sectionCount > 0) {
-      parts.add(_pluralizedCount(sectionCount, 'saved section'));
+      parts.add(_pluralizedNoun(sectionCount, 'saved section'));
     }
     if (eventCount > 0) {
-      parts.add(_pluralizedCount(eventCount, 'event'));
+      parts.add(_pluralizedNoun(eventCount, 'event'));
     }
     if (parts.length == 2) return '${parts[0]} and ${parts[1]}';
     return parts.single;
   }
 
   String _utilityCategorySectionNoun(int sectionCount) =>
-      _pluralizedCount(sectionCount, 'saved section');
+      _pluralizedNoun(sectionCount, 'saved section');
 
   String _utilityCategoryContentSubject({
     required int sectionCount,
@@ -5645,6 +5645,9 @@ class EventsTabState extends State<EventsTab>
   String _pluralizedCount(int count, String singular) =>
       '$count $singular${count == 1 ? '' : 's'}';
 
+  String _pluralizedNoun(int count, String singular) =>
+      '$singular${count == 1 ? '' : 's'}';
+
   String _categoryContentsLabel({
     required int sectionCount,
     required int eventCount,
@@ -5662,7 +5665,7 @@ class EventsTabState extends State<EventsTab>
 
   String _categoryOnlyScope(int sectionCount) =>
       sectionCount > 0
-          ? 'the category and its ${_pluralizedCount(sectionCount, 'saved section')}'
+          ? 'the category and its ${_pluralizedNoun(sectionCount, 'saved section')}'
           : 'the category';
 
   String _categoryWithContentsScope({
@@ -5671,10 +5674,10 @@ class EventsTabState extends State<EventsTab>
   }) {
     final sections =
         sectionCount > 0
-            ? 'its ${_pluralizedCount(sectionCount, 'saved section')}'
+            ? 'its ${_pluralizedNoun(sectionCount, 'saved section')}'
             : null;
     final events =
-        eventCount > 0 ? 'its ${_pluralizedCount(eventCount, 'event')}' : null;
+        eventCount > 0 ? 'its ${_pluralizedNoun(eventCount, 'event')}' : null;
     if (sections != null && events != null) {
       return 'the category, $sections, and $events';
     }
@@ -5701,11 +5704,11 @@ class EventsTabState extends State<EventsTab>
       return 'This category has $contents. Choose whether to move '
           '$withContentsScope to Recently Deleted together, or move '
           '$onlyScope there while moving its '
-          '${_pluralizedCount(eventCount, 'event')} to the default category.';
+          '${_pluralizedNoun(eventCount, 'event')} to the default category.';
     }
     return 'This category has $contents. Choose whether to archive '
         '$withContentsScope together, or archive $onlyScope while moving '
-        'its ${_pluralizedCount(eventCount, 'event')} to the default category.';
+        'its ${_pluralizedNoun(eventCount, 'event')} to the default category.';
   }
 
   Future<bool> _confirmCategoryLifecycleAction(
@@ -5721,7 +5724,7 @@ class EventsTabState extends State<EventsTab>
       sectionCount: sectionCount,
       eventCount: eventCount,
     );
-    final eventLabel = _pluralizedCount(eventCount, 'event');
+    final eventLabel = _pluralizedNoun(eventCount, 'event');
     final isDelete = actionVerb == 'Delete';
     final title =
         withContents
