@@ -103,7 +103,7 @@ Future<void> confirmDeleteEvent(
     subtitle:
         'This event will move to Recently Deleted. You can recover it later '
         'or permanently delete it.',
-    actionLabel: 'Continue',
+    actionLabel: 'Delete Event',
   );
   if (firstStep != true) return;
 
@@ -132,7 +132,7 @@ Future<void> confirmArchiveEvent(
     title: title,
     subtitle:
         'This event will move to Archived Items. You can recover it later.',
-    actionLabel: 'Continue',
+    actionLabel: 'Archive Event',
   );
   if (firstStep != true) return;
 
@@ -163,7 +163,7 @@ Future<bool?> confirmDeleteSection(
     subtitle:
         'Events in "$displayName" will stay in this category and will no '
         'longer belong to this section. They will not be deleted.',
-    actionLabel: 'Continue',
+    actionLabel: 'Delete Section',
   );
   if (firstStep != true) return false;
 

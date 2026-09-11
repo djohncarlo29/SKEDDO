@@ -5852,13 +5852,13 @@ class EventsTabState extends State<EventsTab>
               context,
               title: '$actionVerb the category "$categoryName"?',
               subtitle: subtitle,
-              actionLabel: 'Continue',
+              actionLabel: '$actionVerb Category',
             )
             : showArchiveConfirmationSheet(
               context,
               title: '$actionVerb the category "$categoryName"?',
               subtitle: subtitle,
-              actionLabel: 'Continue',
+              actionLabel: '$actionVerb Category',
             ));
     return result == true;
   }
@@ -5878,7 +5878,8 @@ class EventsTabState extends State<EventsTab>
                   'events stay in their storage categories.'
               : 'This only archives the saved Smart Category rule. Matching '
                   'events stay in their storage categories.',
-      actionLabel: 'Continue',
+      actionLabel:
+          isDelete ? 'Delete Smart Category' : 'Archive Smart Category',
     );
     if (!mounted || firstStep != true) return false;
 
