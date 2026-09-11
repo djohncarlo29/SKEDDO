@@ -12564,6 +12564,36 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
 
   bool get _canSave =>
       _nameCtrl.text.trim().isNotEmpty && _selectedIds.length >= 2;
+  bool _discarding = false;
+
+  bool get _hasUnsavedChanges {
+    final initialIds = widget.initialMemberIds.toSet();
+    return _nameCtrl.text.trim() != (widget.initial?.name ?? '').trim() ||
+        !_setEquals(_selectedIds, initialIds);
+  }
+
+  static bool _setEquals(Set<String> a, Set<String> b) =>
+      a.length == b.length && a.containsAll(b);
+
+  Future<void> _requestDismiss({required bool fromXmark}) async {
+    if (_pickerOpen) {
+      _dismissPicker();
+      return;
+    }
+    if (!_hasUnsavedChanges) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final discard = await showDiscardChangesConfirmationSheet(
+      context,
+      entityLabel: 'group',
+      isNew: widget.initial == null,
+      fromXmark: fromXmark,
+    );
+    if (!mounted || discard != true) return;
+    setState(() => _discarding = true);
+    Navigator.of(context).pop();
+  }
 
   @override
   void initState() {
@@ -12712,9 +12742,10 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
         '$selectedCount ${selectedCount == 1 ? 'Category' : 'Categories'}';
 
     return PopScope(
-      canPop: !_pickerOpen,
+      canPop: !_pickerOpen && (!_hasUnsavedChanges || _discarding),
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _dismissPicker();
+        if (didPop) return;
+        _requestDismiss(fromXmark: false);
       },
       child: CupertinoPageScaffold(
         backgroundColor: kModalBackground,
@@ -12750,7 +12781,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                           icon: CupertinoIcons.xmark,
                           iconColor: resolveThemeColor(kPrimaryLabel, context),
                           tapDelay: const Duration(milliseconds: 130),
-                          onTap: () => Navigator.of(context).pop(),
+                           onTap: () => _requestDismiss(fromXmark: true),
                         ),
                       ),
                       Positioned(
@@ -13104,6 +13135,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   // double-tap word-select, triple-tap all-select) is preserved correctly.
   late final ValueNotifier<Color> _handleColorNotifier;
   late final TintedCupertinoTextSelectionControls _selectionControls;
+  String? _initialDraftSignature;
+  bool _discarding = false;
 
   // ── Location field focus nodes (drive placeholder slide animation) ────────
   final _startLocFocus = FocusNode();
@@ -13390,6 +13423,74 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     _selectionControls = TintedCupertinoTextSelectionControls(
       _handleColorNotifier,
     );
+    _initialDraftSignature = _draftSignature();
+  }
+
+  String _iconSignature(Object icon) {
+    if (icon is IconData) {
+      return 'icon:${icon.fontFamily}:${icon.fontPackage}:${icon.codePoint}';
+    }
+    return icon.toString();
+  }
+
+  Map<String, dynamic>? _repeatConfigSignature(_CustomRepeatConfig? config) {
+    if (config == null) return null;
+    return {
+      'frequency': config.frequency,
+      'everyCount': config.everyCount,
+      'selectedDays': config.selectedDays.toList()..sort(),
+      'monthlyMode': config.monthlyMode,
+      'selectedDates': config.selectedDates.toList()..sort(),
+      'onThePositionIndex': config.onThePositionIndex,
+      'onTheDayIndex': config.onTheDayIndex,
+      'selectedMonths': config.selectedMonths.toList()..sort(),
+      'yearlyDaysEnabled': config.yearlyDaysEnabled,
+      'yearlyPositionIndex': config.yearlyPositionIndex,
+      'yearlyDayIndex': config.yearlyDayIndex,
+    };
+  }
+
+  String _draftSignature() => jsonEncode({
+    'title': _titleCtrl.text.trim(),
+    'description': _descCtrl.text.trim(),
+    'smartDescription': _smartDescriptionCtrl.text.trim(),
+    'startLocation': _startLocCtrl.text.trim(),
+    'destination': _destCtrl.text.trim(),
+    'categoryType': _categoryType,
+    'travelTime': _travelTime,
+    'travelMode': _travelMode,
+    'repeat': _repeat,
+    'repeatConfig': _repeatConfigSignature(_savedCustomConfig),
+    'endRepeat': _endRepeat,
+    'endDate': _endRepeat == 'On Date' ? _endDate.toIso8601String() : null,
+    'alerts': List<String>.of(_alerts),
+    'color': _selectedColor.value,
+    'followsAccent': _selectedColorFollowsAccent,
+    'icon': _iconSignature(_selectedIcon),
+  });
+
+  bool get _hasUnsavedChanges =>
+      _initialDraftSignature != null &&
+      _draftSignature() != _initialDraftSignature;
+
+  Future<void> _requestDismiss({required bool fromXmark}) async {
+    if (_pickerMenuOpen) {
+      _dismissPickerOverlay();
+      return;
+    }
+    if (!_hasUnsavedChanges) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final discard = await showDiscardChangesConfirmationSheet(
+      context,
+      entityLabel: 'category',
+      isNew: widget.initial == null && !_isSmart,
+      fromXmark: fromXmark,
+    );
+    if (!mounted || discard != true) return;
+    setState(() => _discarding = true);
+    Navigator.of(context).pop();
   }
 
   @override
@@ -15982,9 +16083,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     return PopScope(
       // While a picker overlay is open, intercept the OS back gesture to
       // dismiss the picker instead of closing the sheet.
-      canPop: !_pickerMenuOpen,
+      canPop: !_pickerMenuOpen && (!_hasUnsavedChanges || _discarding),
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _dismissPickerOverlay();
+        if (didPop) return;
+        _requestDismiss(fromXmark: false);
       },
       child: CupertinoPageScaffold(
         backgroundColor: kModalBackground,
@@ -16022,7 +16124,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                           icon: CupertinoIcons.xmark,
                           iconColor: resolveThemeColor(kPrimaryLabel, context),
                           tapDelay: const Duration(milliseconds: 130),
-                          onTap: () => Navigator.of(context).pop(),
+                          onTap: () => _requestDismiss(fromXmark: true),
                         ),
                       ),
                       Positioned(
@@ -16941,6 +17043,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
   Ticker? _dragAutoScrollTicker;
   bool _dragAutoScrollTicking = false;
   bool _didDragAutoScroll = false;
+  bool _discarding = false;
 
   static const double _kHeaderEdge = kModalSheetButtonEdgeGap;
   static const double _kHeaderButtonSize = kModalSheetButtonDiameter;
@@ -16976,6 +17079,34 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
       _dragGapIndex = null;
       _didDragAutoScroll = false;
     });
+  }
+
+  bool get _hasUnsavedChanges {
+    final originalOrder = List<int>.generate(
+      widget.sectionNames.length,
+      (index) => index,
+    );
+    return _deletingSections.isNotEmpty ||
+        _sectionOrder.length != originalOrder.length ||
+        !_sectionOrder.asMap().entries.every(
+          (entry) => entry.value == originalOrder[entry.key],
+        );
+  }
+
+  Future<void> _requestDismiss({required bool fromXmark}) async {
+    if (!_hasUnsavedChanges) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final discard = await showDiscardChangesConfirmationSheet(
+      context,
+      entityLabel: 'section',
+      isNew: false,
+      fromXmark: fromXmark,
+    );
+    if (!mounted || discard != true) return;
+    setState(() => _discarding = true);
+    Navigator.of(context).pop();
   }
 
   List<int> get _stationaryOrder {
@@ -17253,7 +17384,13 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
     final handleColor = widget.accentColor;
-    return CupertinoPageScaffold(
+    return PopScope(
+      canPop: !_hasUnsavedChanges || _discarding,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _requestDismiss(fromXmark: false);
+      },
+      child: CupertinoPageScaffold(
       backgroundColor: kModalBackground,
       child: SafeArea(
         bottom: false,
@@ -17285,7 +17422,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
                         icon: CupertinoIcons.xmark,
                         iconColor: primaryLabel,
                         tapDelay: const Duration(milliseconds: 130),
-                        onTap: () => Navigator.of(context).pop(),
+                        onTap: () => _requestDismiss(fromXmark: true),
                       ),
                     ),
                     Positioned(
@@ -17456,6 +17593,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
             ),
           ],
         ),
+      ),
       ),
     );
   }

@@ -75,6 +75,38 @@ Future<bool?> showArchiveConfirmationSheet(
   );
 }
 
+/// Shows the compact confirmation used when an editor with unsaved changes is
+/// dismissed. The xmark uses the sheet-attached placement; system back and
+/// sheet drag use the centered placement.
+Future<bool?> showDiscardChangesConfirmationSheet(
+  BuildContext context, {
+  required String entityLabel,
+  required bool isNew,
+  bool fromXmark = false,
+}) async {
+  final completer = Completer<bool?>();
+  late OverlayEntry entry;
+  final overlay = Overlay.of(context, rootOverlay: true);
+
+  void close(bool? result) {
+    if (completer.isCompleted) return;
+    entry.remove();
+    completer.complete(result);
+  }
+
+  entry = OverlayEntry(
+    builder:
+        (_) => _DiscardChangesSheetOverlay(
+          entityLabel: entityLabel,
+          isNew: isNew,
+          fromXmark: fromXmark,
+          onResult: close,
+        ),
+  );
+  overlay.insert(entry);
+  return completer.future;
+}
+
 /// Runs a two-step confirmation. Cancelling the second step returns to the
 /// first step; cancelling the first step dismisses the flow.
 Future<bool> showTwoStepConfirmationSheet({
@@ -182,6 +214,138 @@ Future<bool?> confirmDeleteSection(
           actionLabel: 'Delete Section',
         ),
   );
+}
+
+class _DiscardChangesSheetOverlay extends StatelessWidget {
+  final String entityLabel;
+  final bool isNew;
+  final bool fromXmark;
+  final void Function(bool?) onResult;
+
+  const _DiscardChangesSheetOverlay({
+    required this.entityLabel,
+    required this.isNew,
+    required this.fromXmark,
+    required this.onResult,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = resolveThemeColor(kPrimaryLabel, context);
+    final sheetBorder =
+        CupertinoTheme.brightnessOf(context) == Brightness.dark
+            ? BorderSide(
+              color: resolveThemeColor(kTertiaryLabel, context),
+              width: 0.5,
+            )
+            : null;
+    final buttonDecor = ShapeDecoration(
+      color: resolveThemeColor(kModalButtonBackground, context),
+      shape: const BoundedSquircleStadiumBorder(),
+      shadows: resolveThemeShadows(kCardShadow, context),
+    );
+    final message = isNew
+        ? 'Are you sure you want to discard this new $entityLabel?'
+        : 'Are you sure you want to discard the changes in this $entityLabel?';
+
+    final card = SizedBox(
+      width: 362,
+      child: GelBloomCard(
+        scaleOrigin: fromXmark ? Alignment.topLeft : Alignment.center,
+        fillOpacity: 0.82,
+        shadowOpacity: 0.26,
+        border: sheetBorder,
+        shape: BoundedSquircleStadiumBorder(
+          radius: kLargeModalSheetCornerRadius,
+          side: sheetBorder ?? BorderSide.none,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                message,
+                style: TextStyle(
+                  inherit: false,
+                  fontSize: 18,
+                  fontFamily: kSFProText,
+                  fontWeight: FontWeight.w400,
+                  color: primary,
+                  letterSpacing: kTracking16,
+                  height: 1.25,
+                ),
+              ),
+              const SizedBox(height: 24),
+              GelBloomButton(
+                peakScale: 1.06,
+                tapDelay: const Duration(milliseconds: 120),
+                onTap: () => onResult(true),
+                child: Container(
+                  width: double.infinity,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: buttonDecor,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 16,
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Discard Changes',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        inherit: false,
+                        fontSize: 17,
+                        fontFamily: kSFProText,
+                        fontWeight: FontWeight.w500,
+                        color: CupertinoColors.destructiveRed,
+                        letterSpacing: kTracking17,
+                        height: kLineHeight,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    return Stack(
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => onResult(null),
+          child: const ColoredBox(
+            color: Color(0x44000000),
+            child: SizedBox.expand(),
+          ),
+        ),
+        if (fromXmark)
+          Align(
+            alignment: Alignment.topLeft,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16, top: 104),
+                child: card,
+              ),
+            ),
+          )
+        else
+          Align(
+            alignment: Alignment.center,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: card,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 class _DeleteConfirmationSheetOverlay extends StatelessWidget {

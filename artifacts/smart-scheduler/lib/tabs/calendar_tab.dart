@@ -7007,6 +7007,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
   Map<String, List<List<String>>> _dcvCustomSectionEventIds = {};
   String? _initialCategoryName;
   int _selectedSectionIndex = 0;
+  String? _initialDraftSignature;
+  bool _discarding = false;
   // Keep the outgoing row's content mounted while its SizeTransition
   // collapses. Without this, changing to a category with no sections replaces
   // the row with a zero-height child before the dismissal animation can run.
@@ -7159,6 +7161,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     // Must run after all controllers are created (above) so that
     // _initFromEvent can set their initial values directly.
     if (widget.initial != null) _initFromEvent(widget.initial!);
+    _initialDraftSignature = _draftSignature();
     // Auto-focus title on new events only; when editing the user may want
     // to review existing content rather than immediately enter the title.
     if (!widget.isEditing) {
@@ -7166,6 +7169,86 @@ class _NewEventSheetState extends State<_NewEventSheet>
         if (mounted) _titleFocus.requestFocus();
       });
     }
+  }
+
+  Map<String, dynamic>? _repeatConfigSignature(
+    _NewEventCustomRepeatConfig? config,
+  ) {
+    if (config == null) return null;
+    return {
+      'frequency': config.frequency,
+      'everyCount': config.everyCount,
+      'selectedDays': config.selectedDays.toList()..sort(),
+      'monthlyMode': config.monthlyMode,
+      'selectedDates': config.selectedDates.toList()..sort(),
+      'onThePositionIndex': config.onThePositionIndex,
+      'onTheDayIndex': config.onTheDayIndex,
+      'selectedMonths': config.selectedMonths.toList()..sort(),
+      'yearlyDaysEnabled': config.yearlyDaysEnabled,
+      'yearlyPositionIndex': config.yearlyPositionIndex,
+      'yearlyDayIndex': config.yearlyDayIndex,
+    };
+  }
+
+  List<String> _attachmentSignatures() => [
+    for (final attachment in _attachments)
+      '${attachment.path ?? ''}|${attachment.name}|${attachment.bytes?.length ?? 0}',
+  ];
+
+  String _draftSignature() => jsonEncode({
+    'title': _titleCtrl.text.trim(),
+    'subtitle': _subtitleCtrl.text.trim(),
+    'location': _locationTextCtrl.text.trim(),
+    'destination': _destCtrl.text.trim(),
+    'url': _urlCtrl.text.trim(),
+    'notes': _notesCtrl.text.trim(),
+    'allDay': _allDay,
+    'unscheduled': _unscheduled,
+    'starts': _starts.toIso8601String(),
+    'ends': _ends.toIso8601String(),
+    'travelTime': _travelTime,
+    'travelMode': _travelMode,
+    'repeat': _repeat,
+    'repeatConfig': _repeatConfigSignature(_savedCustomConfig),
+    'endRepeat': _endRepeat,
+    'endDate': _endRepeat == 'On Date' ? _endDate.toIso8601String() : null,
+    'alerts': List<String>.of(_alerts),
+    'reminder': _unscheduled ? _reminder : null,
+    'reminderDate': _unscheduled && _reminder == 'On Date'
+        ? _reminderDate.toIso8601String()
+        : null,
+    'repeatReminder': _unscheduled && _reminder == 'On Date'
+        ? _repeatReminder
+        : null,
+    'reminderConfig': _unscheduled && _reminder == 'On Date'
+        ? _repeatConfigSignature(_savedReminderCustomConfig)
+        : null,
+    'categoryId': _categoryId,
+    'attachments': _attachmentSignatures(),
+  });
+
+  bool get _hasUnsavedChanges =>
+      _initialDraftSignature != null &&
+      _draftSignature() != _initialDraftSignature;
+
+  Future<void> _requestDismiss({required bool fromXmark}) async {
+    if (_pickerMenuOpen) {
+      _dismissPickerOverlay();
+      return;
+    }
+    if (!_hasUnsavedChanges) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final discard = await showDiscardChangesConfirmationSheet(
+      context,
+      entityLabel: 'event',
+      isNew: !widget.isEditing,
+      fromXmark: fromXmark,
+    );
+    if (!mounted || discard != true) return;
+    setState(() => _discarding = true);
+    Navigator.of(context).pop();
   }
 
   @override
@@ -11415,7 +11498,13 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    return PopScope(
+      canPop: !_pickerMenuOpen && (!_hasUnsavedChanges || _discarding),
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _requestDismiss(fromXmark: false);
+      },
+      child: Stack(
       // The rounded sheet route gives this page a finite 92% viewport.
       // Expand the scaffold to that viewport so its header and Expanded
       // scroll body receive the same bounded height as the Category sheet.
@@ -11458,7 +11547,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                               context,
                             ),
                             tapDelay: const Duration(milliseconds: 130),
-                            onTap: () => Navigator.of(context).pop(),
+                            onTap: () => _requestDismiss(fromXmark: true),
                           ),
                         ),
                         Positioned(
@@ -11741,6 +11830,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           ),
         ),
       ],
+      ),
     );
   }
 }

@@ -859,7 +859,10 @@ class _RoundedDownGestureController<T> {
           navigator.context,
           rootNavigator: true,
         );
-        rootNavigator.pop();
+        // Use maybePop so a descendant PopScope can hold the sheet open long
+        // enough to ask about unsaved changes. A direct pop bypasses that
+        // route-level veto and makes a downward sheet drag destructive.
+        rootNavigator.maybePop();
       }
 
       if (controller.isAnimating) {

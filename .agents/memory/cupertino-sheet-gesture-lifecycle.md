@@ -12,3 +12,7 @@ The sheet's down-drag recognizer should be added on pointer-down, allowed to com
 Custom transition state must create any animation derived from inherited Cupertino theme data in `didChangeDependencies`, not `initState`.
 
 **Why:** resolving theme brightness while the transition state is mounting triggers Flutter's inherited-dependency assertion and prevents the sheet route from building at all.
+
+When a sheet page uses `PopScope` to protect unsaved edits, the custom drag controller must request dismissal with `Navigator.maybePop()` rather than `Navigator.pop()`.
+
+**Why:** direct navigator pops bypass the descendant pop disposition, so a downward drag can close a dirty editor without giving its centered discard confirmation a chance to appear.
