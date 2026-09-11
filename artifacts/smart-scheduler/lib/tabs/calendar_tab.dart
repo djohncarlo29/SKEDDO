@@ -260,8 +260,8 @@ class CalendarTab extends StatefulWidget {
   final void Function(ScheduledEvent event)? onEditEvent;
   /// Live DCV section state owned by EventsTab. The event sheet uses these
   /// providers so it does not race a just-finished DCV edit against prefs.
-  final Map<String, List<String>> Function()? dcvSectionNamesProvider;
-  final Map<String, List<List<String>>> Function()?
+  final Map<String, List<String>>? Function()? dcvSectionNamesProvider;
+  final Map<String, List<List<String>>>? Function()?
       dcvSectionEventIdsProvider;
   final void Function(String label, List<List<String>> sectionEventIds)?
       onDcvSectionEventIdsChanged;
@@ -6773,8 +6773,8 @@ class _NewEventSheet extends StatefulWidget {
   /// [EventStore.create], preserving the original event id.
   final ScheduledEvent? initial;
   final String? initialCategoryId;
-  final Map<String, List<String>> Function()? dcvSectionNamesProvider;
-  final Map<String, List<List<String>>> Function()?
+  final Map<String, List<String>>? Function()? dcvSectionNamesProvider;
+  final Map<String, List<List<String>>>? Function()?
       dcvSectionEventIdsProvider;
   final void Function(String label, List<List<String>> sectionEventIds)?
       onDcvSectionEventIdsChanged;
@@ -8357,14 +8357,26 @@ class _NewEventSheetState extends State<_NewEventSheet>
       _dcvCustomSectionEventIds.remove(currentCategory);
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _kPrefsDcvCustomSectionEventIds,
-      jsonEncode(_dcvCustomSectionEventIds),
-    );
-    // The Events tab listens to the event store, but the section membership
-    // map is a separate preference. Notify it once the map is durable so the
-    // newly saved event appears under the selected header immediately.
+    final notifyEventsTab = widget.onDcvSectionEventIdsChanged;
+    if (notifyEventsTab != null) {
+      notifyEventsTab(
+        currentCategory,
+        _dcvCustomSectionEventIds[currentCategory]
+                ?.map(List<String>.of)
+                .toList() ??
+            const <List<String>>[],
+      );
+    } else {
+      // Keep a safe fallback for callers that create the sheet without the
+      // AppShell-owned live section bridge.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _kPrefsDcvCustomSectionEventIds,
+        jsonEncode(_dcvCustomSectionEventIds),
+      );
+    }
+    // The Events tab now owns the live map, so notify the event list after
+    // that map is updated and the newly saved event appears immediately.
     EventStore.instance.events.notifyListeners();
     _initialCategoryName = currentCategory;
   }

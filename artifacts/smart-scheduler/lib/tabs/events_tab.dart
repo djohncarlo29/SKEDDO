@@ -1756,6 +1756,11 @@ class EventsTabState extends State<EventsTab>
   /// "New Section".
   final Map<String, List<String>> _dcvCustomSectionNames = {};
   final Map<String, List<List<String>>> _dcvCustomSectionEventIds = {};
+  // Category state is loaded asynchronously.  Saves triggered by event-store
+  // notifications must not write the initial empty maps over persisted
+  // sections before that load has completed.
+  bool _categoriesLoaded = false;
+  bool _saveRequestedBeforeCategoryLoad = false;
 
   // ── Group state ───────────────────────────────────────────────────────────
   // All groups in the CATEGORIES list section.
@@ -6358,15 +6363,21 @@ class EventsTabState extends State<EventsTab>
   /// Live section snapshots shared with the event editor. The Events tab owns
   /// these maps; the event editor must not use an independently stale copy
   /// when a section was just created or renamed in the DCV.
-  Map<String, List<String>> dcvCustomSectionNamesSnapshot() => {
+  Map<String, List<String>>? dcvCustomSectionNamesSnapshot() {
+    if (!_categoriesLoaded) return null;
+    return {
     for (final entry in _dcvCustomSectionNames.entries)
       entry.key: List<String>.of(entry.value),
-  };
+    };
+  }
 
-  Map<String, List<List<String>>> dcvCustomSectionEventIdsSnapshot() => {
+  Map<String, List<List<String>>>? dcvCustomSectionEventIdsSnapshot() {
+    if (!_categoriesLoaded) return null;
+    return {
     for (final entry in _dcvCustomSectionEventIds.entries)
       entry.key: entry.value.map(List<String>.of).toList(),
-  };
+    };
+  }
 
   /// Applies section membership changes made by the event editor to the
   /// Events tab's authoritative state and persists the complete category
@@ -6872,6 +6883,14 @@ class EventsTabState extends State<EventsTab>
   Future<void> _categorySaveQueue = Future<void>.value();
 
   void _saveCategories() {
+    // _loadCategories() owns the cold-start merge between defaults and
+    // persisted state.  Do not allow an event-store callback to serialize the
+    // pre-load empty maps and erase saved section names.
+    if (!_categoriesLoaded) {
+      _saveRequestedBeforeCategoryLoad = true;
+      return;
+    }
+
     // Snapshot every value before waiting for SharedPreferences. This keeps a
     // save tied to the state that caused it, while the queue preserves the
     // order in which those state changes happened.
@@ -6944,6 +6963,14 @@ class EventsTabState extends State<EventsTab>
     });
   }
 
+  void _markCategoriesLoaded() {
+    _categoriesLoaded = true;
+    if (_saveRequestedBeforeCategoryLoad) {
+      _saveRequestedBeforeCategoryLoad = false;
+      _saveCategories();
+    }
+  }
+
   /// Shows a non-intrusive banner at the bottom of the screen when category
   /// persistence fails (e.g. device storage is full).  The banner auto-
   /// dismisses after 4 seconds.  At most one copy is shown at a time.
@@ -6992,7 +7019,8 @@ class EventsTabState extends State<EventsTab>
           rawDcvSections == null &&
           rawDcvSectionEventIds == null &&
           rawUtilityItemDates == null) {
-        return; // first launch — keep defaults
+        _markCategoriesLoaded(); // first launch — keep defaults
+        return;
       }
       setState(() {
         if (rawDcvSections != null) {
@@ -7223,6 +7251,7 @@ class EventsTabState extends State<EventsTab>
           AIServices.parseAndRegisterRule(cat.smartDescription);
         }
       }
+      _markCategoriesLoaded();
     });
   }
 

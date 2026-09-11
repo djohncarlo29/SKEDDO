@@ -1986,12 +1986,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             onEditEvent: (event) => _calendarTabKey.currentState
                 ?.showEditEventSheet(context, event),
             dcvSectionNamesProvider: () =>
-                _eventsTabKey.currentState?.dcvCustomSectionNamesSnapshot() ??
-                const <String, List<String>>{},
+                _eventsTabKey.currentState?.dcvCustomSectionNamesSnapshot(),
             dcvSectionEventIdsProvider: () =>
-                _eventsTabKey.currentState
-                    ?.dcvCustomSectionEventIdsSnapshot() ??
-                const <String, List<List<String>>>{},
+                 _eventsTabKey.currentState
+                    ?.dcvCustomSectionEventIdsSnapshot(),
             onDcvSectionEventIdsChanged: (label, sectionEventIds) =>
                 _eventsTabKey.currentState?.updateDcvSectionEventIds(
                   label,
