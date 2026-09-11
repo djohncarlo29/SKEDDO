@@ -302,7 +302,9 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: kDiscardConfirmationMessageHorizontalInset,
+                ),
                 child: Text(
                   message,
                   style: TextStyle(
@@ -372,7 +374,10 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
               alignment: Alignment.topLeft,
               child: SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.only(left: 16, top: 104),
+                  padding: const EdgeInsets.only(
+                    left: kDiscardConfirmationTopLeftEdgeGap,
+                    top: kDiscardConfirmationTopLeftEdgeGap,
+                  ),
                   child: card,
                 ),
               ),
