@@ -3079,15 +3079,6 @@ class EventsTabState extends State<EventsTab>
     );
     if (!isArchived) return;
     final isSmart = _isSmartUserCategory(category);
-    if (!isSmart) {
-      final firstStep = await showDeleteConfirmationSheet(
-        context,
-        title: 'Delete Archived Category',
-        subtitle: _deleteArchivedCategorySubtitle(category),
-        actionLabel: 'Continue',
-      );
-      if (!mounted || firstStep != true) return;
-    }
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title:
@@ -3161,15 +3152,6 @@ class EventsTabState extends State<EventsTab>
 
   void _requestPermanentlyDeleteCategory(_UserCategory category) async {
     final isSmart = _isSmartUserCategory(category);
-    if (!isSmart) {
-      final firstStep = await showDeleteConfirmationSheet(
-        context,
-        title: 'Permanently Delete Category',
-        subtitle: _permanentlyDeleteCategorySubtitle(category),
-        actionLabel: 'Continue',
-      );
-      if (!mounted || firstStep != true) return;
-    }
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title:
