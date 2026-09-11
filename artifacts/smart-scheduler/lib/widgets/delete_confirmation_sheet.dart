@@ -277,7 +277,7 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
     );
     final message = isNew
         ? 'Are you sure you want to discard this new $entityLabel?'
-        : 'Are you sure you want to discard the changes in this $entityLabel?';
+        : 'Are you sure you want to discard this $entityLabel?';
 
     final card = SizedBox(
       width: 362,
