@@ -113,3 +113,5 @@
 - [Utility child separators](utility-child-separators.md) — final child event owns the category-block boundary; the wrapper must not paint a second line.
 - [Smart Category metadata wiring](smart-category-metadata-wiring.md) — shared event-card support still requires enabling the flag at the Smart Category detail-view call site.
 - [Section delete confirmation](section-delete-confirmation.md) — section removal takes two confirmations; events stay in the category as unsectioned events.
+- [DCV section persistence](dcv-section-persistence.md) — keep live section state authoritative and serialize preference snapshots to prevent stale overwrites.
+- [Smart Category lifecycle](smart-category-lifecycle.md) — Smart Categories own rules, not events or sections; use red lifecycle actions and explicit utility confirmations.

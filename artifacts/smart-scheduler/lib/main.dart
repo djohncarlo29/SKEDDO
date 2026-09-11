@@ -982,7 +982,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
     final isSmartCategory = _kSmartCategoryLabels.contains(_dcvCategory);
     final isUtilityCategory = _kUtilityDcvLabels.contains(_dcvCategory);
-    final sectionsEnabled = _dcvSectionsEnabled(_dcvCategory);
+    final userSmartCategory =
+        _eventsTabKey.currentState?.isUserSmartCategoryLabel(_dcvCategory) ??
+        false;
+    final sectionsEnabled =
+        !userSmartCategory && _dcvSectionsEnabled(_dcvCategory);
     final initialSortBy =
         isUtilityCategory
             ? 'Creation Date'
@@ -1997,7 +2001,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             // grouping.  This is intentionally independent from the menu's
             // Live section membership is resolved by the Events tab so the
             // menu state always matches the currently visible DCV sections.
-            dcvShowManualDateSections: !_dcvSectionsEnabled(_dcvCategory),
+            dcvShowManualDateSections:
+                !(_eventsTabKey.currentState?.isUserSmartCategoryLabel(
+                          _dcvCategory,
+                        ) ??
+                    false) &&
+                !_dcvSectionsEnabled(_dcvCategory),
             onTileTapped: (label, color) => _enterDCV(label, color),
             onActiveDCVCategoryChanged: (label, color) {
               // The category currently shown in the DCV had its color edited

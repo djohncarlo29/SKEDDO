@@ -57,7 +57,9 @@ Future<bool?> showDeleteConfirmationSheet(
   );
 }
 
-/// Confirms a reversible archive action without using destructive red styling.
+/// Confirms an archive action using the same destructive-red treatment as the
+/// other lifecycle confirmations. Archiving is reversible, but it still
+/// removes the item from the active schedule.
 Future<bool?> showArchiveConfirmationSheet(
   BuildContext context, {
   required String title,
@@ -69,7 +71,7 @@ Future<bool?> showArchiveConfirmationSheet(
     title: title,
     subtitle: subtitle,
     actionLabel: actionLabel,
-    accentAction: true,
+    destructive: true,
   );
 }
 

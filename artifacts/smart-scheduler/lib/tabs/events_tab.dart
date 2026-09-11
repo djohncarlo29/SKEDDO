@@ -2863,12 +2863,18 @@ class EventsTabState extends State<EventsTab>
       'deleted and cannot be recovered.';
 
   void _openArchivedCategory(_UserCategory category) {
+    final isSmart = _isSmartUserCategory(category);
     _openUtilityItemSheet(
-      title: 'Archived Category',
-      subtitle: _archivedCategorySubtitle(category),
+      title: isSmart ? 'Archived Smart Category' : 'Archived Category',
+      subtitle:
+          isSmart
+              ? 'This saved Smart Category rule is archived and hidden. '
+                  'Recover it to show it again. Matching events are not changed.'
+              : _archivedCategorySubtitle(category),
       actionLabel: 'Recover',
       onAction: () => _unarchiveCategory(category),
-      destructiveActionLabel: 'Delete Category',
+      destructiveActionLabel:
+          isSmart ? 'Delete Smart Category' : 'Delete Category',
       onDestructiveAction: () => _requestDeleteArchivedCategory(category),
     );
   }
@@ -2946,12 +2952,21 @@ class EventsTabState extends State<EventsTab>
   }
 
   void _openDeletedCategory(_UserCategory category) {
+    final isSmart = _isSmartUserCategory(category);
     _openUtilityItemSheet(
-      title: 'Recently Deleted Category',
-      subtitle: _deletedCategorySubtitle(category),
+      title:
+          isSmart
+              ? 'Recently Deleted Smart Category'
+              : 'Recently Deleted Category',
+      subtitle:
+          isSmart
+              ? 'This saved Smart Category rule is in Recently Deleted. '
+                  'Recover it to show it again. Matching events are not changed.'
+              : _deletedCategorySubtitle(category),
       actionLabel: 'Recover',
       onAction: () => _recoverDeletedCategory(category),
-      destructiveActionLabel: 'Permanently Delete',
+      destructiveActionLabel:
+          isSmart ? 'Permanently Delete Smart Category' : 'Permanently Delete',
       onDestructiveAction: () => _requestPermanentlyDeleteCategory(category),
     );
   }
@@ -3058,37 +3073,31 @@ class EventsTabState extends State<EventsTab>
       (candidate) => candidate.id == category.id,
     );
     if (!isArchived) return;
-    final firstStep = await showDeleteConfirmationSheet(
-      context,
-      title:
-          _isSmartUserCategory(category)
-              ? 'Delete Archived Smart Category'
-              : 'Delete Archived Category',
-      subtitle:
-          _isSmartUserCategory(category)
-              ? 'This only deletes the saved smart category rule. Matching '
-                  'events are not changed.'
-              : _deleteArchivedCategorySubtitle(category),
-      actionLabel: 'Continue',
-    );
-    if (!mounted || firstStep != true) return;
+    final isSmart = _isSmartUserCategory(category);
+    if (!isSmart) {
+      final firstStep = await showDeleteConfirmationSheet(
+        context,
+        title: 'Delete Archived Category',
+        subtitle: _deleteArchivedCategorySubtitle(category),
+        actionLabel: 'Continue',
+      );
+      if (!mounted || firstStep != true) return;
+    }
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title:
-          _isSmartUserCategory(category)
+          isSmart
               ? 'Are you sure you want to delete the smart category '
                   '"${_categoryDisplayName(category.name)}"?'
               : 'Are you sure you want to delete the category '
                   '"${_categoryDisplayName(category.name)}"?',
       subtitle:
-          _isSmartUserCategory(category)
+          isSmart
               ? 'The smart category will move to Recently Deleted. Its '
                   'matching events will stay unchanged.'
               : _deleteArchivedCategorySubtitle(category),
       actionLabel:
-          _isSmartUserCategory(category)
-              ? 'Delete Smart Category'
-              : 'Delete Category',
+          isSmart ? 'Delete Smart Category' : 'Delete Category',
     );
     if (!mounted || confirmed != true) return;
     _ensureDefaultCategoryAvailable({category.id});
@@ -3146,37 +3155,31 @@ class EventsTabState extends State<EventsTab>
   }
 
   void _requestPermanentlyDeleteCategory(_UserCategory category) async {
-    final firstStep = await showDeleteConfirmationSheet(
-      context,
-      title:
-          _isSmartUserCategory(category)
-              ? 'Permanently Delete Smart Category'
-              : 'Permanently Delete Category',
-      subtitle:
-          _isSmartUserCategory(category)
-              ? 'This permanently deletes the saved smart category rule. '
-                  'Matching events are not changed.'
-              : _permanentlyDeleteCategorySubtitle(category),
-      actionLabel: 'Continue',
-    );
-    if (!mounted || firstStep != true) return;
+    final isSmart = _isSmartUserCategory(category);
+    if (!isSmart) {
+      final firstStep = await showDeleteConfirmationSheet(
+        context,
+        title: 'Permanently Delete Category',
+        subtitle: _permanentlyDeleteCategorySubtitle(category),
+        actionLabel: 'Continue',
+      );
+      if (!mounted || firstStep != true) return;
+    }
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title:
-          _isSmartUserCategory(category)
+          isSmart
               ? 'Are you sure you want to permanently delete the smart category '
                   '"${_categoryDisplayName(category.name)}"?'
               : 'Are you sure you want to permanently delete '
                   '"${_categoryDisplayName(category.name)}"?',
       subtitle:
-          _isSmartUserCategory(category)
+          isSmart
               ? 'The smart category cannot be recovered. Its matching events '
                   'will stay unchanged.'
               : _permanentlyDeleteCategorySubtitle(category),
       actionLabel:
-          _isSmartUserCategory(category)
-              ? 'Permanently Delete Smart Category'
-              : 'Permanently Delete',
+          isSmart ? 'Permanently Delete Smart Category' : 'Permanently Delete',
     );
     if (!mounted || confirmed != true) return;
     final deleted = _recentlyDeletedCategories.any(
@@ -5889,50 +5892,33 @@ class EventsTabState extends State<EventsTab>
     required String actionVerb,
   }) async {
     final isDelete = actionVerb == 'Delete';
-    final firstStep =
-        await (isDelete
-            ? showDeleteConfirmationSheet(
-              context,
-              title: '$actionVerb Smart Category',
-              subtitle:
-                  'This only changes the saved smart category rule. Matching '
-                  'events, storage categories, and event sections will not be '
-                  'changed.',
-              actionLabel: 'Continue',
-            )
-            : showArchiveConfirmationSheet(
-              context,
-              title: '$actionVerb Smart Category',
-              subtitle:
-                  'This only archives the saved smart category rule. Matching '
-                  'events, storage categories, and event sections will not be '
-                  'changed.',
-              actionLabel: 'Continue',
-            ));
+    final firstStep = await showDeleteConfirmationSheet(
+      context,
+      title: '$actionVerb Smart Category',
+      subtitle:
+          isDelete
+              ? 'This only changes the saved Smart Category rule. Matching '
+                  'events stay in their storage categories.'
+              : 'This only archives the saved Smart Category rule. Matching '
+                  'events stay in their storage categories.',
+      actionLabel: 'Continue',
+    );
     if (!mounted || firstStep != true) return false;
 
-    final secondStep =
-        await (isDelete
-            ? showDeleteConfirmationSheet(
-              context,
-              title:
-                  'Are you sure you want to $actionVerb the smart category '
-                  '"${_categoryDisplayName(categoryName)}"?',
-              subtitle:
-                  'The smart category rule will move to Recently Deleted. '
+    final secondStep = await showDeleteConfirmationSheet(
+      context,
+      title:
+          'Are you sure you want to $actionVerb the smart category '
+          '"${_categoryDisplayName(categoryName)}"?',
+      subtitle:
+          isDelete
+              ? 'The Smart Category rule will move to Recently Deleted. '
+                  'Matching events will stay unchanged.'
+              : 'The Smart Category rule will move to Archived Items. '
                   'Matching events will stay unchanged.',
-              actionLabel: 'Delete Smart Category',
-            )
-            : showArchiveConfirmationSheet(
-              context,
-              title:
-                  'Are you sure you want to $actionVerb the smart category '
-                  '"${_categoryDisplayName(categoryName)}"?',
-              subtitle:
-                  'The smart category rule will move to Archived Items. '
-                  'Matching events will stay unchanged.',
-              actionLabel: 'Archive Smart Category',
-            ));
+      actionLabel:
+          isDelete ? 'Delete Smart Category' : 'Archive Smart Category',
+    );
     return secondStep == true;
   }
 
@@ -6732,54 +6718,6 @@ class EventsTabState extends State<EventsTab>
     if (mounted) setState(() {});
     if (addedUtilityDates) _saveCategories();
     _scheduleUtilityExitIfEmpty();
-    _reloadPersistedDcvSections();
-  }
-
-  Future<void> _reloadPersistedDcvSections() async {
-    final prefs = await SharedPreferences.getInstance();
-    final rawNames = prefs.getString(_kPrefsDcvCustomSections);
-    final rawEventIds = prefs.getString(_kPrefsDcvCustomSectionEventIds);
-    if (!mounted || (rawNames == null && rawEventIds == null)) return;
-
-    final names = <String, List<String>>{};
-    final eventIds = <String, List<List<String>>>{};
-    try {
-      final decoded = rawNames == null ? null : jsonDecode(rawNames);
-      if (decoded is Map) {
-        for (final entry in decoded.entries) {
-          names[entry.key.toString()] =
-              entry.value is List
-                  ? [for (final name in entry.value as List) name.toString()]
-                  : <String>[];
-        }
-      }
-    } catch (_) {}
-    try {
-      final decoded = rawEventIds == null ? null : jsonDecode(rawEventIds);
-      if (decoded is Map) {
-        for (final entry in decoded.entries) {
-          eventIds[entry.key.toString()] =
-              entry.value is List
-                  ? [
-                    for (final section in entry.value as List)
-                      section is List
-                          ? [for (final id in section) id.toString()]
-                          : <String>[],
-                  ]
-                  : <List<String>>[];
-        }
-      }
-    } catch (_) {}
-
-    if (!mounted) return;
-    setState(() {
-      _dcvCustomSectionNames
-        ..clear()
-        ..addAll(names);
-      _dcvCustomSectionEventIds
-        ..clear()
-        ..addAll(eventIds);
-    });
   }
 
   @override
@@ -6889,86 +6827,81 @@ class EventsTabState extends State<EventsTab>
   // while storage is still full.
   bool _saveBannerVisible = false;
 
+  // SharedPreferences writes are asynchronous. Queue them so a later section
+  // edit cannot be overtaken by an earlier save that started from stale state.
+  Future<void> _categorySaveQueue = Future<void>.value();
+
   void _saveCategories() {
-    SharedPreferences.getInstance()
-        .then((prefs) async {
-          try {
-            final results = await Future.wait<bool>([
-              prefs.setStringList(
-                _kPrefsUserCats,
-                _userCategories.map((c) => jsonEncode(c.toJson())).toList(),
-              ),
-              prefs.setStringList(
-                _kPrefsPinnedCats,
-                _pinnedUserCategories
-                    .map((c) => jsonEncode(c.toJson()))
-                    .toList(),
-              ),
-              prefs.setStringList(
-                _kPrefsDeletedCats,
-                _recentlyDeletedCategories
-                    .map((c) => jsonEncode(c.toJson()))
-                    .toList(),
-              ),
-              prefs.setStringList(
-                _kPrefsDeletedSmart,
-                _recentlyDeletedSmartCategories,
-              ),
-              prefs.setString(
-                _kPrefsSmartColors,
-                jsonEncode(
-                  _smartCategoryColors.map((k, v) => MapEntry(k, v.value)),
-                ),
-              ),
-              prefs.setStringList(
-                _kPrefsArchivedSmart,
-                _archivedSmartCategories.toList(),
-              ),
-              prefs.setStringList(_kPrefsSmartOrder, _smartCategoryOrder),
-              prefs.setStringList(
-                _kPrefsGridCombinedOrder,
-                _gridCombinedOrder
-                    .map(
-                      (e) =>
-                          e is String
-                              ? 'smart_$e'
-                              : 'pinned_${(e as _UserCategory).id}',
-                    )
-                    .toList(),
-              ),
-              // Persist groups and list order.
-              prefs.setStringList(
-                _kPrefsCategoryGroups,
-                _categoryGroups.map((g) => jsonEncode(g.toJson())).toList(),
-              ),
-              prefs.setStringList(_kPrefsListTopOrder, _listTopOrder),
-              prefs.setString(
-                _kPrefsDcvCustomSections,
-                jsonEncode(_dcvCustomSectionNames),
-              ),
-              prefs.setString(
-                _kPrefsDcvCustomSectionEventIds,
-                jsonEncode(_dcvCustomSectionEventIds),
-              ),
-              prefs.setString(
-                _kPrefsUtilityItemDates,
-                jsonEncode(
-                  _utilityItemDates.map(
-                    (key, value) => MapEntry(key, value.toIso8601String()),
-                  ),
-                ),
-              ),
-            ]);
-            if (results.any((ok) => !ok) && mounted) {
-              _showCategorySaveError();
-            }
-          } catch (_) {
-            if (mounted) _showCategorySaveError();
-          }
-        })
-        .catchError((_) {
-          if (mounted) _showCategorySaveError();
-        });
+    // Snapshot every value before waiting for SharedPreferences. This keeps a
+    // save tied to the state that caused it, while the queue preserves the
+    // order in which those state changes happened.
+    final userCats = _userCategories.map((c) => jsonEncode(c.toJson())).toList();
+    final pinnedCats =
+        _pinnedUserCategories.map((c) => jsonEncode(c.toJson())).toList();
+    final deletedCats =
+        _recentlyDeletedCategories
+            .map((c) => jsonEncode(c.toJson()))
+            .toList();
+    final deletedSmart = List<String>.of(_recentlyDeletedSmartCategories);
+    final smartColors = jsonEncode(
+      _smartCategoryColors.map((k, v) => MapEntry(k, v.value)),
+    );
+    final archivedSmart = List<String>.of(_archivedSmartCategories);
+    final smartOrder = List<String>.of(_smartCategoryOrder);
+    final gridCombinedOrder =
+        _gridCombinedOrder
+            .map(
+              (e) =>
+                  e is String
+                      ? 'smart_$e'
+                      : 'pinned_${(e as _UserCategory).id}',
+            )
+            .toList();
+    final categoryGroups =
+        _categoryGroups.map((g) => jsonEncode(g.toJson())).toList();
+    final listTopOrder = List<String>.of(_listTopOrder);
+    final dcvSectionNames = jsonEncode({
+      for (final entry in _dcvCustomSectionNames.entries)
+        entry.key: List<String>.of(entry.value),
+    });
+    final dcvSectionEventIds = jsonEncode({
+      for (final entry in _dcvCustomSectionEventIds.entries)
+        entry.key: entry.value.map(List<String>.of).toList(),
+    });
+    final utilityItemDates = jsonEncode(
+      _utilityItemDates.map(
+        (key, value) => MapEntry(key, value.toIso8601String()),
+      ),
+    );
+
+    _categorySaveQueue = _categorySaveQueue.then((_) async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final results = await Future.wait<bool>([
+          prefs.setStringList(_kPrefsUserCats, userCats),
+          prefs.setStringList(_kPrefsPinnedCats, pinnedCats),
+          prefs.setStringList(_kPrefsDeletedCats, deletedCats),
+          prefs.setStringList(_kPrefsDeletedSmart, deletedSmart),
+          prefs.setString(_kPrefsSmartColors, smartColors),
+          prefs.setStringList(_kPrefsArchivedSmart, archivedSmart),
+          prefs.setStringList(_kPrefsSmartOrder, smartOrder),
+          prefs.setStringList(_kPrefsGridCombinedOrder, gridCombinedOrder),
+          prefs.setStringList(_kPrefsCategoryGroups, categoryGroups),
+          prefs.setStringList(_kPrefsListTopOrder, listTopOrder),
+          prefs.setString(_kPrefsDcvCustomSections, dcvSectionNames),
+          prefs.setString(
+            _kPrefsDcvCustomSectionEventIds,
+            dcvSectionEventIds,
+          ),
+          prefs.setString(_kPrefsUtilityItemDates, utilityItemDates),
+        ]);
+        if (results.any((ok) => !ok) && mounted) {
+          _showCategorySaveError();
+        }
+      } catch (_) {
+        if (mounted) _showCategorySaveError();
+      }
+    });
   }
 
   /// Shows a non-intrusive banner at the bottom of the screen when category
@@ -7369,6 +7302,16 @@ class EventsTabState extends State<EventsTab>
       if (c.name == name) return c.id;
     }
     return null;
+  }
+
+  /// User-created Smart Categories are matching views, not storage
+  /// categories. They do not own manual sections or section membership.
+  bool isUserSmartCategoryLabel(String? label) {
+    if (label == null || label.isEmpty) return false;
+    return [..._userCategories, ..._pinnedUserCategories].any(
+      (category) =>
+          category.name == label && _isSmartUserCategory(category),
+    );
   }
 
   /// Returns the active Standard Category's ID for the header's add-event
@@ -8212,14 +8155,21 @@ class EventsTabState extends State<EventsTab>
                                 ? 'Oldest First'
                                 : 'Newest First')
                             : (widget.dcvSortDir ?? ''),
-                    showManualDateSections: widget.dcvShowManualDateSections,
+                    showManualDateSections:
+                        widget.dcvShowManualDateSections &&
+                        cat?.categoryType != 'Smart Category',
                     customSectionNames: List<String>.of(
-                      _dcvCustomSectionNames[dcvLabel] ?? const <String>[],
+                      cat?.categoryType == 'Smart Category'
+                          ? const <String>[]
+                          : _dcvCustomSectionNames[dcvLabel] ??
+                              const <String>[],
                     ),
                     customSectionEventIds:
-                        _dcvCustomSectionEventIds[dcvLabel]
-                            ?.map(List<String>.of)
-                            .toList(),
+                        cat?.categoryType == 'Smart Category'
+                            ? null
+                            : _dcvCustomSectionEventIds[dcvLabel]
+                                ?.map(List<String>.of)
+                                .toList(),
                     onCustomSectionRenamed: (index, title) {
                       if (dcvLabel != null) {
                         _renameDcvSection(dcvLabel, index, title);
