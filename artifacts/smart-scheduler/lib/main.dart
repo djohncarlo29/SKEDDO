@@ -2039,12 +2039,22 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).padding.top;
+    final keyboardBottomInset = MediaQuery.of(context).viewInsets.bottom;
     final bottomInset = systemSafeAreaBottomInset(context);
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
     final cardColor = resolveThemeColor(kCardColor, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final shadowBlack = resolveThemeColor(kShadowBlack, context);
+    // AppShell uses a custom Stack instead of Scaffold, so the framework does
+    // not automatically shrink the content viewport when the IME appears.
+    // Reserve the keyboard's space while editing a DCV section; otherwise
+    // ensureVisible measures against the full screen and the keyboard can
+    // still cover the active New Section field.
+    final dcvKeyboardBottomInset =
+        _selectedIndex == 2 && _dcvCategory != null
+            ? keyboardBottomInset
+            : 0.0;
 
     // TapRegionSurface provides the registry that TapRegion widgets in the
     // tree (around each NativeTextInput) need so that tap-outside-to-dismiss
@@ -2089,6 +2099,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                             return Padding(
                               padding: EdgeInsets.only(
                                 top: topInset + 101.0 * (1 - t),
+                                bottom: dcvKeyboardBottomInset,
                               ),
                               child: child,
                             );
