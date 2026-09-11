@@ -10896,26 +10896,26 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
                       button(
                         label: actionVerb == 'Delete'
                             ? 'Delete Category Only'
-                            : 'Archive Category & Contents',
+                            : 'Archive Category Only',
                         labelColor: primary,
                         onTap:
                             () => onResult(
                               actionVerb == 'Delete'
                                   ? _ArchiveCategoryChoice.categoryOnly
-                                  : _ArchiveCategoryChoice.withContents,
+                                  : _ArchiveCategoryChoice.categoryOnly,
                             ),
                       ),
                       const SizedBox(height: 8),
                       button(
                         label: actionVerb == 'Delete'
                             ? 'Delete Category & Events'
-                            : 'Archive Category Only',
+                            : 'Archive Category & Contents',
                         labelColor: CupertinoColors.destructiveRed,
                         onTap:
                             () => onResult(
                               actionVerb == 'Delete'
                                   ? _ArchiveCategoryChoice.withContents
-                                  : _ArchiveCategoryChoice.categoryOnly,
+                                  : _ArchiveCategoryChoice.withContents,
                             ),
                       ),
                       const SizedBox(height: 8),
