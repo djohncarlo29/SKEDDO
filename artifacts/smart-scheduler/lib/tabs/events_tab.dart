@@ -12576,6 +12576,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
       a.length == b.length && a.containsAll(b);
 
   Future<void> _requestDismiss({required bool fromXmark}) async {
+    if (dismissActiveDiscardChangesConfirmationSheet()) return;
     if (_pickerOpen) {
       _dismissPicker();
       return;
@@ -13474,6 +13475,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       _draftSignature() != _initialDraftSignature;
 
   Future<void> _requestDismiss({required bool fromXmark}) async {
+    if (dismissActiveDiscardChangesConfirmationSheet()) return;
     if (_pickerMenuOpen) {
       _dismissPickerOverlay();
       return;
@@ -17094,6 +17096,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
   }
 
   Future<void> _requestDismiss({required bool fromXmark}) async {
+    if (dismissActiveDiscardChangesConfirmationSheet()) return;
     if (!_hasUnsavedChanges) {
       Navigator.of(context).pop();
       return;

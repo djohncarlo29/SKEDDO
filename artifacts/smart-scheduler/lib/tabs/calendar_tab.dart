@@ -7232,6 +7232,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
       _draftSignature() != _initialDraftSignature;
 
   Future<void> _requestDismiss({required bool fromXmark}) async {
+    if (dismissActiveDiscardChangesConfirmationSheet()) return;
     if (_pickerMenuOpen) {
       _dismissPickerOverlay();
       return;

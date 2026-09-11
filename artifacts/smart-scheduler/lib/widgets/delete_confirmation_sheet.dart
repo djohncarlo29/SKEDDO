@@ -5,6 +5,29 @@ import 'package:flutter/cupertino.dart';
 import '../app_theme.dart';
 import '../services/event_store.dart';
 
+VoidCallback? _activeDiscardChangesSheetDismiss;
+bool _discardChangesBackConsumed = false;
+
+/// Closes the active discard confirmation when a back event is delivered.
+///
+/// The confirmation is an OverlayEntry layered above an editor route, so both
+/// the overlay's PopScope and the editor's PopScope can observe the same
+/// system-back event. The short-lived consumed flag prevents the second
+/// callback from immediately opening another confirmation sheet.
+bool dismissActiveDiscardChangesConfirmationSheet() {
+  if (_discardChangesBackConsumed) return true;
+
+  final dismiss = _activeDiscardChangesSheetDismiss;
+  if (dismiss == null) return false;
+
+  _discardChangesBackConsumed = true;
+  scheduleMicrotask(() {
+    _discardChangesBackConsumed = false;
+  });
+  dismiss();
+  return true;
+}
+
 /// Shows the shared confirmation surface used by event, category, section, and
 /// lifecycle actions.
 Future<bool?> showConfirmationSheet(
@@ -87,9 +110,13 @@ Future<bool?> showDiscardChangesConfirmationSheet(
   final completer = Completer<bool?>();
   late OverlayEntry entry;
   final overlay = Overlay.of(context, rootOverlay: true);
+  VoidCallback? dismissActive;
 
   void close(bool? result) {
     if (completer.isCompleted) return;
+    if (identical(_activeDiscardChangesSheetDismiss, dismissActive)) {
+      _activeDiscardChangesSheetDismiss = null;
+    }
     entry.remove();
     completer.complete(result);
   }
@@ -103,6 +130,8 @@ Future<bool?> showDiscardChangesConfirmationSheet(
           onResult: close,
         ),
   );
+  dismissActive = () => close(null);
+  _activeDiscardChangesSheetDismiss = dismissActive;
   overlay.insert(entry);
   return completer.future;
 }
@@ -323,37 +352,43 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
       ),
     );
 
-    return Stack(
-      children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => onResult(null),
-          child: const ColoredBox(
-            color: Color(0x44000000),
-            child: SizedBox.expand(),
-          ),
-        ),
-        if (fromXmark)
-          Align(
-            alignment: Alignment.topLeft,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.only(left: 16, top: 104),
-                child: card,
-              ),
-            ),
-          )
-        else
-          Align(
-            alignment: Alignment.center,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: card,
-              ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (_, __) {
+        dismissActiveDiscardChangesConfirmationSheet();
+      },
+      child: Stack(
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => onResult(null),
+            child: const ColoredBox(
+              color: Color(0x44000000),
+              child: SizedBox.expand(),
             ),
           ),
-      ],
+          if (fromXmark)
+            Align(
+              alignment: Alignment.topLeft,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 16, top: 104),
+                  child: card,
+                ),
+              ),
+            )
+          else
+            Align(
+              alignment: Alignment.center,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: card,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

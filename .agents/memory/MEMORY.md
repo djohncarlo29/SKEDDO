@@ -14,6 +14,7 @@
 - [Dark-mode surface coverage](dark-mode-surface-coverage.md) — shared glass, attachment previews, import overlays, and action menus must resolve surfaces at build time.
 - [Custom-radius Cupertino sheet transition](rounded-cupertino-sheet.md) — showCupertinoSheet hardcodes a 12px radius with no public override; copy the private implementation to change it.
 - [Cupertino sheet gesture lifecycle](cupertino-sheet-gesture-lifecycle.md) — match Flutter's route recognizer and navigator user-gesture lifecycle; do not pre-filter pointer hits with a render-tree Listener.
+- [Overlay dismissal confirmation ownership](overlay-dismissal-confirmation-ownership.md) — an OverlayEntry confirmation must consume Back and guard the parent PopScope to prevent stacked copies.
 - [Modal sheet drag scope](modal-sheet-header-drag-scope.md) — allow native-style down-drag across sheets while excluding editable controls from the route recognizer.
 - [Live-synced adjacent swipe panels](calendar-adjacent-panel-live-sync.md) — prev/next preview panels need a scroll listener on the current panel's controller, not just an offset read at panel-creation time.
 - [Context menu overlay covers animation](context-menu-overlay-covers-animation.md) — the 420ms closing overlay paints over the real row; defer all action callbacks via _hide(then:) so they fire after overlay removal.
