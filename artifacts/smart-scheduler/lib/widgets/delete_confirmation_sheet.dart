@@ -95,10 +95,11 @@ Future<void> confirmDeleteEvent(
   BuildContext context,
   ScheduledEvent event,
 ) async {
-  final title = 'Delete the event "${event.title.trim().isEmpty ? 'Untitled' : event.title.trim()}"?';
+  final title =
+      'Delete the event "${event.title.trim().isEmpty ? 'Untitled' : event.title.trim()}"?';
   final firstStep = await showDeleteConfirmationSheet(
     context,
-    title: 'Delete Event',
+    title: title,
     subtitle:
         'This event will move to Recently Deleted. You can recover it later '
         'or permanently delete it.',
@@ -108,7 +109,7 @@ Future<void> confirmDeleteEvent(
 
   final confirmed = await showDeleteConfirmationSheet(
     context,
-    title: 'Are you sure you want to delete $title',
+    title: 'Are you sure?',
     subtitle:
         'The event will be removed from the active schedule and moved to '
         'Recently Deleted.',
@@ -124,10 +125,11 @@ Future<void> confirmArchiveEvent(
   BuildContext context,
   ScheduledEvent event,
 ) async {
-  final title = 'Archive the event "${event.title.trim().isEmpty ? 'Untitled' : event.title.trim()}"?';
+  final title =
+      'Archive the event "${event.title.trim().isEmpty ? 'Untitled' : event.title.trim()}"?';
   final firstStep = await showArchiveConfirmationSheet(
     context,
-    title: 'Archive Event',
+    title: title,
     subtitle:
         'This event will move to Archived Items. You can recover it later.',
     actionLabel: 'Continue',
@@ -136,7 +138,7 @@ Future<void> confirmArchiveEvent(
 
   final confirmed = await showArchiveConfirmationSheet(
     context,
-    title: 'Are you sure you want to archive $title',
+    title: 'Are you sure?',
     subtitle:
         'The event will be removed from the active schedule and moved to '
         'Archived Items.',
@@ -157,7 +159,7 @@ Future<bool?> confirmDeleteSection(
       sectionName.trim().isEmpty ? 'New Section' : sectionName.trim();
   final firstStep = await showDeleteConfirmationSheet(
     context,
-    title: 'Delete Section',
+    title: 'Delete the section "$displayName"?',
     subtitle:
         'Events in "$displayName" will stay in this category and will no '
         'longer belong to this section. They will not be deleted.',
@@ -167,7 +169,7 @@ Future<bool?> confirmDeleteSection(
 
   return showDeleteConfirmationSheet(
     context,
-    title: 'Are you sure you want to delete the section "$displayName"?',
+    title: 'Are you sure?',
     subtitle:
         'The section will be removed. Its events will stay in this category '
         'and can be organized into another section.',

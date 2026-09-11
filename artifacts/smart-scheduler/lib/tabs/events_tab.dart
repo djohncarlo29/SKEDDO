@@ -2475,7 +2475,7 @@ class EventsTabState extends State<EventsTab>
   Future<void> _confirmRemoveGroup(_CategoryGroup group) async {
     final confirmed = await showNeutralConfirmationSheet(
       context,
-      title: 'Are you sure you want to remove the group "${group.name}"?',
+      title: 'Are you sure?',
       subtitle:
           'Only the group wrapper will be removed. Its categories and their '
           'events will stay unchanged.',
@@ -2493,9 +2493,7 @@ class EventsTabState extends State<EventsTab>
   }) async {
     final confirmed = await showDeleteConfirmationSheet(
       context,
-      title: deleteEvents
-          ? 'Are you sure you want to delete the group, categories, and events?'
-          : 'Are you sure you want to delete the group and its categories?',
+      title: 'Are you sure?',
       subtitle: deleteEvents
           ? 'The group and its categories will move to Recently Deleted '
               'together with their events. Recovering a category will recover '
@@ -2925,7 +2923,7 @@ class EventsTabState extends State<EventsTab>
   Future<void> _confirmMoveArchivedEventToDeleted(ScheduledEvent event) async {
     final confirmed = await showDeleteConfirmationSheet(
       context,
-      title: 'Delete ${_eventDisplayName(event.title)}?',
+      title: 'Are you sure?',
       subtitle: _moveArchivedEventSubtitle(event),
       actionLabel: 'Delete Event',
     );
@@ -3081,12 +3079,7 @@ class EventsTabState extends State<EventsTab>
     final isSmart = _isSmartUserCategory(category);
     final confirmed = await showDeleteConfirmationSheet(
       context,
-      title:
-          isSmart
-              ? 'Are you sure you want to delete the smart category '
-                  '"${_categoryDisplayName(category.name)}"?'
-              : 'Are you sure you want to delete the category '
-                  '"${_categoryDisplayName(category.name)}"?',
+      title: 'Are you sure?',
       subtitle:
           isSmart
               ? 'The smart category will move to Recently Deleted. Its '
@@ -3136,7 +3129,7 @@ class EventsTabState extends State<EventsTab>
   void _requestPermanentlyDeleteEvent(ScheduledEvent event) async {
     final confirmed = await showDeleteConfirmationSheet(
       context,
-      title: 'Delete ${_eventDisplayName(event.title)}?',
+      title: 'Are you sure?',
       subtitle: _permanentlyDeleteEventSubtitle(event),
       actionLabel: 'Permanently Delete',
     );
@@ -3154,12 +3147,7 @@ class EventsTabState extends State<EventsTab>
     final isSmart = _isSmartUserCategory(category);
     final confirmed = await showDeleteConfirmationSheet(
       context,
-      title:
-          isSmart
-              ? 'Are you sure you want to permanently delete the smart category '
-                  '"${_categoryDisplayName(category.name)}"?'
-              : 'Are you sure you want to permanently delete '
-                  '"${_categoryDisplayName(category.name)}"?',
+      title: 'Are you sure?',
       subtitle:
           isSmart
               ? 'The smart category cannot be recovered. Its matching events '
@@ -3262,7 +3250,7 @@ class EventsTabState extends State<EventsTab>
   void _requestPermanentlyDeleteSmartCategory(String label) async {
     final confirmed = await showDeleteConfirmationSheet(
       context,
-      title: 'Delete ${_categoryDisplayName(label)}?',
+      title: 'Are you sure?',
       subtitle:
           'This built-in smart category will be permanently deleted and '
           'cannot be recovered. Your events will not be affected.',
@@ -5857,17 +5845,18 @@ class EventsTabState extends State<EventsTab>
                 'Deleted.'
             : 'This category has no events. Only $scope will be archived and '
                 'hidden from the active list.';
+    final categoryName = _categoryDisplayName(category.name);
     final result =
         await (isDelete
             ? showDeleteConfirmationSheet(
               context,
-              title: '$actionVerb Category',
+              title: '$actionVerb the category "$categoryName"?',
               subtitle: subtitle,
               actionLabel: 'Continue',
             )
             : showArchiveConfirmationSheet(
               context,
-              title: '$actionVerb Category',
+              title: '$actionVerb the category "$categoryName"?',
               subtitle: subtitle,
               actionLabel: 'Continue',
             ));
@@ -5879,9 +5868,10 @@ class EventsTabState extends State<EventsTab>
     required String actionVerb,
   }) async {
     final isDelete = actionVerb == 'Delete';
+    final displayName = _categoryDisplayName(categoryName);
     final firstStep = await showDeleteConfirmationSheet(
       context,
-      title: '$actionVerb Smart Category',
+      title: '$actionVerb the smart category "$displayName"?',
       subtitle:
           isDelete
               ? 'This only changes the saved Smart Category rule. Matching '
@@ -5894,9 +5884,7 @@ class EventsTabState extends State<EventsTab>
 
     final secondStep = await showDeleteConfirmationSheet(
       context,
-      title:
-          'Are you sure you want to $actionVerb the smart category '
-          '"${_categoryDisplayName(categoryName)}"?',
+      title: 'Are you sure?',
       subtitle:
           isDelete
               ? 'The Smart Category rule will move to Recently Deleted. '
@@ -5925,10 +5913,6 @@ class EventsTabState extends State<EventsTab>
     );
     final eventLabel = _pluralizedNoun(eventCount, 'event');
     final isDelete = actionVerb == 'Delete';
-    final title =
-        withContents
-            ? '$actionVerb "$name" and its contents?'
-            : '$actionVerb "$name" only?';
     final subtitle =
         withContents
             ? isDelete
@@ -5956,13 +5940,13 @@ class EventsTabState extends State<EventsTab>
         await (isDelete
             ? showDeleteConfirmationSheet(
               context,
-              title: 'Are you sure you want to $title',
+              title: 'Are you sure?',
               subtitle: subtitle,
               actionLabel: actionLabel,
             )
             : showArchiveConfirmationSheet(
               context,
-              title: 'Are you sure you want to $title',
+              title: 'Are you sure?',
               subtitle: subtitle,
               actionLabel: actionLabel,
             ));
@@ -11340,7 +11324,7 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        '$actionVerb "$categoryName"?',
+                        '$actionVerb the category "$categoryName"?',
                         style: TextStyle(
                           inherit: false,
                           fontSize: 18,
