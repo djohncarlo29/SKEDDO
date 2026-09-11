@@ -2909,7 +2909,15 @@ class EventsTabState extends State<EventsTab>
     if (_isSystemUtilityCategory(category)) return;
     final sectionCount = _categorySavedSectionCount(category);
     final eventCount = _categoryLiveEventCount(category);
-    if (sectionCount == 0 && eventCount == 0) {
+    if (eventCount == 0) {
+      final confirmed = await _confirmCategoryLifecycleAction(
+        category,
+        actionVerb: 'Delete',
+        withContents: false,
+        sectionCount: sectionCount,
+        eventCount: eventCount,
+      );
+      if (!mounted || !confirmed) return;
       if (_pinnedUserCategories.contains(category)) {
         _deletePinnedCategory(category, deleteEvents: false);
       } else {
@@ -5525,10 +5533,9 @@ class EventsTabState extends State<EventsTab>
     );
   }
 
-  /// Opens archive choices when a category has sections or events. Empty
-  /// categories can be archived directly because there is no content to
-  /// preserve or move.
-  void _archiveCategory(_UserCategory cat) {
+  /// Opens archive choices when a category has events. Categories without
+  /// events skip the scope choice but still require confirmation.
+  void _archiveCategory(_UserCategory cat) async {
     if (_isSystemUtilityCategory(cat) ||
         _archivingFromList.contains(cat) ||
         _archivingFromGrid.contains(cat)) {
@@ -5536,7 +5543,15 @@ class EventsTabState extends State<EventsTab>
     }
     final eventCount = _categoryLiveEventCount(cat);
     final sectionCount = _categorySavedSectionCount(cat);
-    if (eventCount == 0 && sectionCount == 0) {
+    if (eventCount == 0) {
+      final confirmed = await _confirmCategoryLifecycleAction(
+        cat,
+        actionVerb: 'Archive',
+        withContents: false,
+        sectionCount: sectionCount,
+        eventCount: eventCount,
+      );
+      if (!mounted || !confirmed) return;
       _archiveCategoryAfterChoice(cat);
       return;
     }
@@ -5665,9 +5680,15 @@ class EventsTabState extends State<EventsTab>
                 : '$withContentsScope will be archived together. You can '
                     'recover them together from Archived Items.'
             : isDelete
-            ? 'Only $onlyScope will move to Recently Deleted. Its $eventLabel '
-                'will move to the default category.'
-            : 'Only $onlyScope will be archived. Its $eventLabel will move to '
+            ? eventCount > 0
+                ? 'Only $onlyScope will move to Recently Deleted. Its '
+                    '$eventLabel will move to the default category.'
+                : 'Only $onlyScope will move to Recently Deleted. It has no '
+                    'events to move to the default category.'
+            : eventCount > 0
+            ? 'Only $onlyScope will be archived. Its $eventLabel will move to '
+                'the default category.'
+            : 'Only $onlyScope will be archived. It has no events to move to '
                 'the default category.';
     final actionLabel =
         withContents
@@ -17804,6 +17825,10 @@ class _CategoryDetailView extends StatefulWidget {
   /// Drives the empty-state icon, title, and subtitle copy.
   final String categoryType;
 
+  /// Smart Category tiles show the event's assigned standard category as the
+  /// third metadata line, matching the search-result event tile.
+  final bool showStandardCategoryName;
+
   /// Filtered events for this view.  Empty list → show empty state.
   /// Populated by SmartCategoryMatcher for smart tiles and Smart Categories.
   final List<ScheduledEvent> events;
@@ -17864,6 +17889,7 @@ class _CategoryDetailView extends StatefulWidget {
     this.onManualOrderChanged,
     this.icon,
     this.categoryType = 'Standard',
+    this.showStandardCategoryName = false,
     this.events = const [],
     this.sortBy = 'Manual',
     this.sortDir = '',
@@ -18398,6 +18424,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
                   child: _ScheduledEventCard(
                     event: ghostEvent,
                     dotColor: _resolveEventDotColor(ctx, ghostEvent),
+                    showStandardCategoryName:
+                        widget.showStandardCategoryName,
                     elevatedShadow: true,
                   ),
                 ),
@@ -19327,6 +19355,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
           child: _ScheduledEventCard(
             event: event,
             dotColor: _resolveEventDotColor(context, event),
+            showStandardCategoryName: widget.showStandardCategoryName,
             isGrouped: true,
             isFirst: index == 0,
             isLast: index == total - 1,
@@ -20073,6 +20102,10 @@ class _ScheduledEventCard extends StatelessWidget {
   /// Null falls back to the app accent color.
   final Color? dotColor;
 
+  /// When true, render the event's assigned standard category below its
+  /// date/time and location metadata, matching search-result tiles.
+  final bool showStandardCategoryName;
+
   /// Called when the user selects "Edit Event" from the long-press menu.
   final VoidCallback? onEdit;
 
@@ -20119,6 +20152,7 @@ class _ScheduledEventCard extends StatelessWidget {
   const _ScheduledEventCard({
     required this.event,
     this.dotColor,
+    this.showStandardCategoryName = false,
     this.onEdit,
     this.onArchive,
     this.onDelete,
@@ -20209,6 +20243,12 @@ class _ScheduledEventCard extends StatelessWidget {
   }) {
     final sub = _subtitle(context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
+    final categoryMeta =
+        showStandardCategoryName ? CategoryRegistry.get(event.categoryId) : null;
+    final categoryColor =
+        categoryMeta == null
+            ? null
+            : renderCategoryColor(categoryMeta.rawColor, context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -20293,6 +20333,21 @@ class _ScheduledEventCard extends StatelessWidget {
                               ),
                             ),
                           ],
+                        ),
+                      ],
+                      if (categoryMeta != null) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          categoryMeta.name,
+                          softWrap: true,
+                          style: TextStyle(
+                            inherit: false,
+                            color: categoryColor,
+                            fontSize: 12,
+                            fontFamily: kSFProText,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.1,
+                          ),
                         ),
                       ],
                     ],
