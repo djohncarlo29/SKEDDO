@@ -33,3 +33,16 @@ visibility problem and breaks the stable pre-typing position.
 **How to apply:** Preserve the current scroll offset when the header is visible
 and scroll only the minimum distance needed when a wrapped line becomes
 occluded.
+
+When a focused header shrinks from multiple lines to one, compensate the
+scroll offset by the removed height if the header was anchored near the
+keyboard. This removes the stale gap without moving sections that were not
+near the viewport edge.
+
+**Why:** The viewport keeps its prior scroll offset after the header's layout
+height decreases, so the keyboard-safe position can retain one line's worth of
+empty space.
+
+**How to apply:** Measure the header before and after layout, subtract only the
+negative height delta from the active scroll position, clamp to scroll bounds,
+then run the keep-visible reveal.

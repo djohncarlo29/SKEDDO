@@ -17894,6 +17894,7 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
   late final ValueNotifier<Color> _handleColorNotifier;
   late final TintedCupertinoTextSelectionControls _selectionControls;
   bool _ensureVisibleScheduled = false;
+  double? _lastMeasuredHeight;
   late String _lastCommittedText;
 
   @override
@@ -17941,6 +17942,7 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
       if (!mounted || !_focusNode.hasFocus) return;
       final renderObject = context.findRenderObject();
       if (renderObject == null || !renderObject.attached) return;
+      _compensateForShrunkHeader(renderObject);
       Scrollable.ensureVisible(
         context,
         alignment: 0.28,
@@ -17952,6 +17954,48 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
         alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
       );
     });
+  }
+
+  void _compensateForShrunkHeader(RenderObject renderObject) {
+    if (renderObject is! RenderBox || !renderObject.hasSize) return;
+    final currentHeight = renderObject.size.height;
+    final previousHeight = _lastMeasuredHeight;
+    _lastMeasuredHeight = currentHeight;
+    if (previousHeight == null) return;
+
+    final heightDelta = currentHeight - previousHeight;
+    if (heightDelta >= -0.5) return;
+
+    final scrollable = Scrollable.maybeOf(context);
+    final position = scrollable?.position;
+    final viewport = scrollable?.context.findRenderObject();
+    if (position == null ||
+        !position.hasPixels ||
+        !position.hasContentDimensions ||
+        viewport is! RenderBox ||
+        !viewport.hasSize) {
+      return;
+    }
+
+    // Only compensate when this header was anchored near the bottom of the
+    // visible viewport. Otherwise a shrink in the middle of the DCV should
+    // not move the user's current reading position.
+    final currentBottom = renderObject
+        .localToGlobal(Offset(0, currentHeight))
+        .dy;
+    final previousBottom = currentBottom - heightDelta;
+    final viewportBottom = viewport
+        .localToGlobal(Offset(0, viewport.size.height))
+        .dy;
+    if (previousBottom < viewportBottom - 80.0) return;
+
+    final targetOffset = (position.pixels + heightDelta).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if ((targetOffset - position.pixels).abs() > 0.5) {
+      position.jumpTo(targetOffset);
+    }
   }
 
   @override
