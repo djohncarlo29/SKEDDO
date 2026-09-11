@@ -241,7 +241,9 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
             : null;
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
-      shape: const BoundedSquircleStadiumBorder(),
+      shape: const BoundedSquircleStadiumBorder(
+        radius: kDiscardConfirmationButtonCornerRadius,
+      ),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
     final message = isNew
@@ -256,25 +258,33 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
         shadowOpacity: 0.26,
         border: sheetBorder,
         shape: BoundedSquircleStadiumBorder(
-          radius: kLargeModalSheetCornerRadius,
+          radius: kDiscardConfirmationSheetCornerRadius,
           side: sheetBorder ?? BorderSide.none,
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+          padding: const EdgeInsets.fromLTRB(
+            kDiscardConfirmationButtonEdgeGap,
+            28,
+            kDiscardConfirmationButtonEdgeGap,
+            kDiscardConfirmationButtonEdgeGap,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                message,
-                style: TextStyle(
-                  inherit: false,
-                  fontSize: 18,
-                  fontFamily: kSFProText,
-                  fontWeight: FontWeight.w400,
-                  color: primary,
-                  letterSpacing: kTracking16,
-                  height: 1.25,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  message,
+                  style: TextStyle(
+                    inherit: false,
+                    fontSize: 18,
+                    fontFamily: kSFProText,
+                    fontWeight: FontWeight.w400,
+                    color: primary,
+                    letterSpacing: kTracking16,
+                    height: 1.25,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),

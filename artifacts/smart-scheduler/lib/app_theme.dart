@@ -566,6 +566,9 @@ const kPillColor = CupertinoDynamicColor.withBrightness(
 // when the painted control is physically shorter than 48 px.
 const double kSquircleStadiumRadius = 24.0;
 const double kLargeModalSheetCornerRadius = 40.0;
+const double kDiscardConfirmationSheetCornerRadius = 20.0;
+const double kDiscardConfirmationButtonCornerRadius = 12.0;
+const double kDiscardConfirmationButtonEdgeGap = 8.0;
 
 // Shared cubic quarter used by both stadium controls and bounded card corners.
 const double _kSharedSquircleCurveControl = 0.64;
