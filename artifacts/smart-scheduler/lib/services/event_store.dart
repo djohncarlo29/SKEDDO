@@ -536,11 +536,16 @@ class EventStore {
   /// Moves active events into the archived-event store while preserving their
   /// original category IDs. Archived events are excluded from All Events and
   /// all active category views until the category is recovered.
-  bool archiveEvent(String id) {
+  bool archiveEvent(
+    String id, {
+    EventLifecycleOrigin origin = EventLifecycleOrigin.individual,
+  }) {
     final index = events.value.indexWhere((event) => event.id == id);
     if (index < 0) return false;
 
-    final archived = events.value[index];
+    final archived = events.value[index].copyWithLifecycle(
+      archiveOrigin: origin,
+    );
     final nextEvents = List<ScheduledEvent>.of(events.value)
       ..removeAt(index);
     final nextArchived = [
@@ -557,9 +562,13 @@ class EventStore {
   /// Moves active events into the archived-event store while preserving their
   /// original category IDs. Archived events are excluded from All Events and
   /// all active category views until the category is recovered.
-  int archiveEventsForCategory(String categoryId) {
+  int archiveEventsForCategory(
+    String categoryId, {
+    EventLifecycleOrigin origin = EventLifecycleOrigin.category,
+  }) {
     final moving = events.value
         .where((event) => event.categoryId == categoryId)
+        .map((event) => event.copyWithLifecycle(archiveOrigin: origin))
         .toList();
     if (moving.isEmpty) return 0;
 
@@ -625,13 +634,18 @@ class EventStore {
   ///
   /// The event remains associated with its original category so category
   /// recovery can still find it if the user later recovers that category.
-  bool deleteArchived(String id) {
+  bool deleteArchived(
+    String id, {
+    EventLifecycleOrigin origin = EventLifecycleOrigin.individual,
+  }) {
     final archivedIndex = archivedEvents.value.indexWhere(
       (event) => event.id == id,
     );
     if (archivedIndex < 0) return false;
 
-    final archived = archivedEvents.value[archivedIndex];
+    final archived = archivedEvents.value[archivedIndex].copyWithLifecycle(
+      deleteOrigin: origin,
+    );
     final nextArchived = List<ScheduledEvent>.of(archivedEvents.value)
       ..removeAt(archivedIndex);
     archivedEvents.value = nextArchived;
@@ -646,9 +660,13 @@ class EventStore {
 
   /// Moves archived events into Recently Deleted when their category is
   /// deleted. Their category IDs remain intact for category-bundle recovery.
-  int deleteArchivedEventsForCategory(String categoryId) {
+  int deleteArchivedEventsForCategory(
+    String categoryId, {
+    EventLifecycleOrigin origin = EventLifecycleOrigin.category,
+  }) {
     final moving = archivedEvents.value
         .where((event) => event.categoryId == categoryId)
+        .map((event) => event.copyWithLifecycle(deleteOrigin: origin))
         .toList();
     if (moving.isEmpty) return 0;
 
@@ -679,13 +697,16 @@ class EventStore {
     LocalStorage.instance.saveEvents(next); // fire-and-forget
   }
 
-  void remove(String id) {
+  void remove(
+    String id, {
+    EventLifecycleOrigin origin = EventLifecycleOrigin.individual,
+  }) {
     // Capture the event's attachment paths before removing it so the pipeline
     // can delete the files from disk after the event is gone from memory.
     final removed = events.value.firstWhere(
       (e) => e.id == id,
       orElse: () => ScheduledEvent(id: id, title: ''),
-    );
+    ).copyWithLifecycle(deleteOrigin: origin);
     final existed = events.value.any((e) => e.id == id);
     if (!existed) return;
     final attachmentPaths = removed.attachmentPaths ?? const [];
@@ -797,7 +818,10 @@ class EventStore {
     if (events.value.isNotEmpty) {
       final byId = <String, ScheduledEvent>{
         for (final event in deletedEvents.value) event.id: event,
-        for (final event in events.value) event.id: event,
+        for (final event in events.value)
+          event.id: event.copyWithLifecycle(
+            deleteOrigin: EventLifecycleOrigin.all,
+          ),
       };
       deletedEvents.value = byId.values.toList();
       LocalStorage.instance.saveDeletedEvents(deletedEvents.value);
@@ -805,7 +829,13 @@ class EventStore {
     if (archivedEvents.value.isNotEmpty) {
       deletedEvents.value = [
         ...deletedEvents.value,
-        ...archivedEvents.value.where(
+        ...archivedEvents.value
+            .map(
+              (archived) => archived.copyWithLifecycle(
+                deleteOrigin: EventLifecycleOrigin.all,
+              ),
+            )
+            .where(
           (archived) => !deletedEvents.value.any(
             (deleted) => deleted.id == archived.id,
           ),

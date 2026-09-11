@@ -2515,9 +2515,16 @@ class EventsTabState extends State<EventsTab>
       );
       for (final category in categories) {
         if (deleteEvents) {
-          EventStore.instance.deleteArchivedEventsForCategory(category.id);
+          EventStore.instance.deleteArchivedEventsForCategory(
+            category.id,
+            origin: EventLifecycleOrigin.group,
+          );
         }
-        _removeCategoryEvents(category.id, deleteEvents: deleteEvents);
+        _removeCategoryEvents(
+          category.id,
+          deleteEvents: deleteEvents,
+          deletionOrigin: EventLifecycleOrigin.group,
+        );
       }
       setState(() {
         _deletingFromList.removeAll(categories);
@@ -2556,7 +2563,11 @@ class EventsTabState extends State<EventsTab>
     Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
       _ensureDefaultCategoryAvailable({cat.id});
-      _removeCategoryEvents(cat.id, deleteEvents: deleteEvents);
+      _removeCategoryEvents(
+        cat.id,
+        deleteEvents: deleteEvents,
+        deletionOrigin: EventLifecycleOrigin.category,
+      );
       setState(() {
         _deletingFromList.remove(cat);
         _recentlyDeletedCategories
@@ -2582,7 +2593,11 @@ class EventsTabState extends State<EventsTab>
     Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
       _ensureDefaultCategoryAvailable({cat.id});
-      _removeCategoryEvents(cat.id, deleteEvents: deleteEvents);
+      _removeCategoryEvents(
+        cat.id,
+        deleteEvents: deleteEvents,
+        deletionOrigin: EventLifecycleOrigin.category,
+      );
       setState(() {
         _deletingFromGrid.remove(cat);
         _recentlyDeletedCategories
@@ -2730,6 +2745,72 @@ class EventsTabState extends State<EventsTab>
         'cannot be recovered.';
   }
 
+  EventLifecycleOrigin? _archivedEventOrigin(ScheduledEvent event) =>
+      event.archiveOrigin;
+
+  EventLifecycleOrigin? _deletedEventOrigin(ScheduledEvent event) =>
+      event.deleteOrigin;
+
+  String _archivedEventProvenance(ScheduledEvent event) {
+    final origin = _archivedEventOrigin(event);
+    if (origin == null) {
+      return 'archived previously; the original archive action was not '
+          'recorded.';
+    }
+    switch (origin) {
+      case EventLifecycleOrigin.category:
+        return 'archived together with its category.';
+      case EventLifecycleOrigin.group:
+        return 'archived together with its category as part of a group action.';
+      case EventLifecycleOrigin.all:
+        return 'archived as part of a bulk action.';
+      case EventLifecycleOrigin.individual:
+        return 'archived independently.';
+    }
+  }
+
+  String _deletedEventProvenance(ScheduledEvent event) {
+    final deletion = switch (_deletedEventOrigin(event)) {
+      EventLifecycleOrigin.category => 'deleted together with its category.',
+      EventLifecycleOrigin.group =>
+        'deleted together with its category as part of a group action.',
+      EventLifecycleOrigin.all => 'deleted as part of a bulk action.',
+      EventLifecycleOrigin.individual => 'deleted independently.',
+      null => 'deleted previously; the original delete action was not recorded.',
+    };
+    if (event.archiveOrigin == EventLifecycleOrigin.category) {
+      return deletion.replaceFirst(
+        '.',
+        ' after it was archived together with its category.',
+      );
+    }
+    if (event.archiveOrigin == EventLifecycleOrigin.group) {
+      return deletion.replaceFirst(
+        '.',
+        ' after it was archived with its category as part of a group action.',
+      );
+    }
+    return deletion;
+  }
+
+  String _archivedEventSubtitle(ScheduledEvent event) =>
+      'This event was ${_archivedEventProvenance(event)} Recovering it will '
+      'return it to the active schedule in the default category. Delete Event '
+      'will move it to Recently Deleted.';
+
+  String _moveArchivedEventSubtitle(ScheduledEvent event) =>
+      'This event was ${_archivedEventProvenance(event)} It will move to '
+      'Recently Deleted, where you can recover it or permanently delete it.';
+
+  String _deletedEventSubtitle(ScheduledEvent event) =>
+      'This event was ${_deletedEventProvenance(event)} Recovering it will '
+      'return it to the default category. Permanently deleting it cannot be '
+      'undone.';
+
+  String _permanentlyDeleteEventSubtitle(ScheduledEvent event) =>
+      'This event was ${_deletedEventProvenance(event)} It will be permanently '
+      'deleted and cannot be recovered.';
+
   void _openArchivedCategory(_UserCategory category) {
     _openUtilityItemSheet(
       title: 'Archived Category',
@@ -2744,9 +2825,7 @@ class EventsTabState extends State<EventsTab>
   void _openDeletedEvent(ScheduledEvent event) {
     _openUtilityItemSheet(
       title: 'Recently Deleted Event',
-      subtitle:
-          'Recovering will return this event to the default category. Permanently '
-          'deleting it cannot be undone.',
+      subtitle: _deletedEventSubtitle(event),
       actionLabel: 'Recover',
       onAction: () {
         if (EventStore.instance.restoreDeleted(event.id)) {
@@ -2765,9 +2844,7 @@ class EventsTabState extends State<EventsTab>
   void _openArchivedEvent(ScheduledEvent event) {
     _openUtilityItemSheet(
       title: 'Archived Event',
-      subtitle:
-          'Recovering will return this event to the active schedule in the '
-          'default category. Delete Event will move it to Recently Deleted.',
+      subtitle: _archivedEventSubtitle(event),
       actionLabel: 'Recover',
       onAction: () {
         if (EventStore.instance.restoreArchived(event.id)) {
@@ -2787,9 +2864,7 @@ class EventsTabState extends State<EventsTab>
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title: 'Delete ${_eventDisplayName(event.title)}?',
-      subtitle:
-          'This archived event will move to Recently Deleted. You can '
-          'recover it later or permanently delete it there.',
+      subtitle: _moveArchivedEventSubtitle(event),
       actionLabel: 'Delete Event',
     );
     if (!mounted || confirmed != true) return;
@@ -2861,8 +2936,15 @@ class EventsTabState extends State<EventsTab>
     // An archived category can contain events that were deliberately kept
     // with it. Move both active remnants and archived contents to Recently
     // Deleted rather than silently reassigning either set.
-    EventStore.instance.deleteArchivedEventsForCategory(category.id);
-    _removeCategoryEvents(category.id, deleteEvents: true);
+    EventStore.instance.deleteArchivedEventsForCategory(
+      category.id,
+      origin: EventLifecycleOrigin.category,
+    );
+    _removeCategoryEvents(
+      category.id,
+      deleteEvents: true,
+      deletionOrigin: EventLifecycleOrigin.category,
+    );
     setState(() {
       _recentlyDeletedCategories
         ..removeWhere((existing) => existing.id == category.id)
@@ -2889,7 +2971,7 @@ class EventsTabState extends State<EventsTab>
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title: 'Delete ${_eventDisplayName(event.title)}?',
-      subtitle: 'This event will be permanently deleted and cannot be recovered.',
+      subtitle: _permanentlyDeleteEventSubtitle(event),
       actionLabel: 'Permanently Delete',
     );
     if (!mounted || confirmed != true) return;
@@ -2983,6 +3065,7 @@ class EventsTabState extends State<EventsTab>
   void _removeCategoryEvents(
     String categoryId, {
     required bool deleteEvents,
+    EventLifecycleOrigin deletionOrigin = EventLifecycleOrigin.category,
   }) {
     final eventIds = EventStore.instance.events.value
         .where((event) => event.categoryId == categoryId)
@@ -2990,7 +3073,7 @@ class EventsTabState extends State<EventsTab>
         .toList();
     if (deleteEvents) {
       for (final eventId in eventIds) {
-        EventStore.instance.remove(eventId);
+        EventStore.instance.remove(eventId, origin: deletionOrigin);
       }
     } else {
       EventStore.instance.reassignCategories(fromCategoryIds: {categoryId});
@@ -5453,7 +5536,10 @@ class EventsTabState extends State<EventsTab>
       });
       _saveCategories();
     } else {
-      EventStore.instance.archiveEventsForCategory(cat.id);
+      EventStore.instance.archiveEventsForCategory(
+        cat.id,
+        origin: EventLifecycleOrigin.category,
+      );
     }
     _archiveCategoryAfterChoice(cat);
   }

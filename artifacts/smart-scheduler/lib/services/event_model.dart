@@ -1,6 +1,32 @@
 import '../ai/parsed_date.dart';
 import 'alert_sequence.dart';
 
+/// Describes the action that moved an event into a utility collection.
+///
+/// These values are persisted with archived/deleted snapshots so utility
+/// sheets can explain whether the event moved independently or with its
+/// category/group.
+enum EventLifecycleOrigin { individual, category, group, all }
+
+extension EventLifecycleOriginCodec on EventLifecycleOrigin {
+  String get storageValue => name;
+
+  static EventLifecycleOrigin? fromStorage(Object? value) {
+    switch (value) {
+      case 'individual':
+        return EventLifecycleOrigin.individual;
+      case 'category':
+        return EventLifecycleOrigin.category;
+      case 'group':
+        return EventLifecycleOrigin.group;
+      case 'all':
+        return EventLifecycleOrigin.all;
+      default:
+        return null;
+    }
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ScheduledEvent — the core event data class.
 //
@@ -123,6 +149,12 @@ class ScheduledEvent {
   /// Set automatically by EventPipeline after embedding; defaults to 0.
   final int priority;
 
+  /// How this event entered Archived Items, if it has ever been archived.
+  final EventLifecycleOrigin? archiveOrigin;
+
+  /// How this event entered Recently Deleted, if it has ever been deleted.
+  final EventLifecycleOrigin? deleteOrigin;
+
   const ScheduledEvent({
     required this.id,
     required this.title,
@@ -154,6 +186,8 @@ class ScheduledEvent {
     this.reminderCustomRepeatConfig,
     this.createdAt,
     this.priority = 0,
+    this.archiveOrigin,
+    this.deleteOrigin,
   });
 
   /// Return a copy with the category-preset fields replaced.
@@ -202,6 +236,8 @@ class ScheduledEvent {
     reminderCustomRepeatConfig: reminderCustomRepeatConfig,
     createdAt: createdAt,
     priority: priority,
+    archiveOrigin: archiveOrigin,
+    deleteOrigin: deleteOrigin,
   );
 
   /// Return a copy assigned to a different standard category.
@@ -240,6 +276,47 @@ class ScheduledEvent {
     reminderCustomRepeatConfig: reminderCustomRepeatConfig,
     createdAt: createdAt,
     priority: priority,
+    archiveOrigin: archiveOrigin,
+    deleteOrigin: deleteOrigin,
+  );
+
+  /// Return a copy with utility-collection provenance updated.
+  ScheduledEvent copyWithLifecycle({
+    EventLifecycleOrigin? archiveOrigin,
+    EventLifecycleOrigin? deleteOrigin,
+  }) => ScheduledEvent(
+    id: id,
+    title: title,
+    subtitle: subtitle,
+    date: date,
+    time: time,
+    endDate: endDate,
+    endTime: endTime,
+    isAllDay: isAllDay,
+    location: location,
+    destination: destination,
+    travelTime: travelTime,
+    travelMode: travelMode,
+    repeat: repeat,
+    repeatEndType: repeatEndType,
+    repeatEndDate: repeatEndDate,
+    customRepeatConfig: customRepeatConfig,
+    alert: alert,
+    secondAlert: secondAlert,
+    alerts: alerts,
+    url: url,
+    notes: notes,
+    attachmentPaths: attachmentPaths,
+    parsedDate: parsedDate,
+    categoryId: categoryId,
+    reminderOption: reminderOption,
+    reminderDateTime: reminderDateTime,
+    reminderRepeat: reminderRepeat,
+    reminderCustomRepeatConfig: reminderCustomRepeatConfig,
+    createdAt: createdAt,
+    priority: priority,
+    archiveOrigin: archiveOrigin ?? this.archiveOrigin,
+    deleteOrigin: deleteOrigin ?? this.deleteOrigin,
   );
 
   /// Return a copy with [parsedDate] updated (used by the EventPipeline).
@@ -274,6 +351,8 @@ class ScheduledEvent {
     reminderCustomRepeatConfig: reminderCustomRepeatConfig,
     createdAt: createdAt,
     priority: priority,
+    archiveOrigin: archiveOrigin,
+    deleteOrigin: deleteOrigin,
   );
 
   /// Return a copy with [priority] updated by the AI pipeline.
@@ -308,6 +387,8 @@ class ScheduledEvent {
     reminderCustomRepeatConfig: reminderCustomRepeatConfig,
     createdAt: createdAt,
     priority: newPriority,
+    archiveOrigin: archiveOrigin,
+    deleteOrigin: deleteOrigin,
   );
 
   // ── Serialization ──────────────────────────────────────────────────────────
@@ -350,6 +431,8 @@ class ScheduledEvent {
     'categoryId': categoryId,
     if (createdAt != null) 'createdAt': createdAt,
     if (priority != 0) 'priority': priority,
+    if (archiveOrigin != null) 'archiveOrigin': archiveOrigin!.storageValue,
+    if (deleteOrigin != null) 'deleteOrigin': deleteOrigin!.storageValue,
   };
 
   factory ScheduledEvent.fromJson(Map<String, dynamic> j) {
@@ -404,6 +487,8 @@ class ScheduledEvent {
       // Null for events created before this field was introduced.
       createdAt: j['createdAt'] as String?,
       priority: (j['priority'] as int?) ?? 0,
+      archiveOrigin: EventLifecycleOriginCodec.fromStorage(j['archiveOrigin']),
+      deleteOrigin: EventLifecycleOriginCodec.fromStorage(j['deleteOrigin']),
     );
   }
 }
