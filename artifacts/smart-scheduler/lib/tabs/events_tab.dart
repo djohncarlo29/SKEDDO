@@ -2655,7 +2655,7 @@ class EventsTabState extends State<EventsTab>
     );
   }
 
-  bool _utilityCategoryHasEvents(
+  int _utilityCategoryEventCount(
     _UserCategory category, {
     required bool deleted,
   }) {
@@ -2663,83 +2663,119 @@ class EventsTabState extends State<EventsTab>
         deleted
             ? EventStore.instance.deletedEvents.value
             : EventStore.instance.archivedEvents.value;
-    return events.any((event) => event.categoryId == category.id);
+    return events.where((event) => event.categoryId == category.id).length;
   }
 
-  bool _utilityCategoryHasSections(_UserCategory category) =>
-      _dcvCustomSectionNames[category.name]?.isNotEmpty ?? false;
+  int _utilityCategorySectionCount(_UserCategory category) =>
+      _dcvCustomSectionNames[category.name]?.length ?? 0;
 
   String _utilityCategoryContentNoun({
-    required bool hasSections,
-    required bool hasEvents,
+    required int sectionCount,
+    required int eventCount,
   }) {
-    if (hasSections && hasEvents) return 'its saved sections and events';
-    if (hasSections) return 'its saved sections';
-    return 'its events';
+    final parts = <String>[];
+    if (sectionCount > 0) {
+      parts.add(_pluralizedCount(sectionCount, 'saved section'));
+    }
+    if (eventCount > 0) {
+      parts.add(_pluralizedCount(eventCount, 'event'));
+    }
+    if (parts.length == 2) return '${parts[0]} and ${parts[1]}';
+    return parts.single;
+  }
+
+  String _utilityCategorySectionNoun(int sectionCount) =>
+      _pluralizedCount(sectionCount, 'saved section');
+
+  String _utilityCategoryContentSubject({
+    required int sectionCount,
+    required int eventCount,
+  }) {
+    final content = _utilityCategoryContentNoun(
+      sectionCount: sectionCount,
+      eventCount: eventCount,
+    );
+    return 'the category\'s $content';
+  }
+
+  String _utilityCategoryContentVerb({
+    required int sectionCount,
+    required int eventCount,
+  }) {
+    final contentItemCount =
+        (sectionCount > 0 ? 1 : 0) + (eventCount > 0 ? 1 : 0);
+    return contentItemCount == 1 ? 'is' : 'are';
   }
 
   String _archivedCategorySubtitle(_UserCategory category) {
-    final hasSections = _utilityCategoryHasSections(category);
-    final hasEvents = _utilityCategoryHasEvents(category, deleted: false);
-    if (!hasSections && !hasEvents) {
+    final sectionCount = _utilityCategorySectionCount(category);
+    final eventCount = _utilityCategoryEventCount(category, deleted: false);
+    if (sectionCount == 0 && eventCount == 0) {
       return 'This category is archived and hidden. Recover it to show the '
           'category again.';
     }
-    final content = _utilityCategoryContentNoun(
-      hasSections: hasSections,
-      hasEvents: hasEvents,
+    final subject = _utilityCategoryContentSubject(
+      sectionCount: sectionCount,
+      eventCount: eventCount,
     );
-    return 'This category is archived and hidden. $content are kept with it. '
+    final verb = _utilityCategoryContentVerb(
+      sectionCount: sectionCount,
+      eventCount: eventCount,
+    );
+    return 'This category is archived and hidden. $subject $verb kept with it. '
         'Recover it to show the category again.';
   }
 
   String _deletedCategorySubtitle(_UserCategory category) {
-    final hasSections = _utilityCategoryHasSections(category);
-    final hasEvents = _utilityCategoryHasEvents(category, deleted: true);
-    if (!hasSections && !hasEvents) {
+    final sectionCount = _utilityCategorySectionCount(category);
+    final eventCount = _utilityCategoryEventCount(category, deleted: true);
+    if (sectionCount == 0 && eventCount == 0) {
       return 'This category is in Recently Deleted. Recover it to show the '
           'category again.';
     }
     final content = _utilityCategoryContentNoun(
-      hasSections: hasSections,
-      hasEvents: hasEvents,
+      sectionCount: sectionCount,
+      eventCount: eventCount,
     );
     final recovery =
-        hasEvents
-            ? 'Recovering the category will recover those events too.'
-            : 'Recovering it will restore the category and its sections.';
+        eventCount > 0
+            ? 'Recovering the category will recover '
+                '${eventCount == 1 ? 'that event' : 'those events'} too.'
+            : 'Recovering it will restore the category and its '
+                '${_utilityCategorySectionNoun(sectionCount)}.';
     return 'This category is in Recently Deleted with $content. $recovery';
   }
 
   String _deleteArchivedCategorySubtitle(_UserCategory category) {
-    final hasSections = _utilityCategoryHasSections(category);
-    final hasEvents = _utilityCategoryHasEvents(category, deleted: false);
-    if (!hasSections && !hasEvents) {
+    final sectionCount = _utilityCategorySectionCount(category);
+    final eventCount = _utilityCategoryEventCount(category, deleted: false);
+    if (sectionCount == 0 && eventCount == 0) {
       return 'This archived category will move to Recently Deleted. It has '
           'no saved sections or events to move with it.';
     }
     final content = _utilityCategoryContentNoun(
-      hasSections: hasSections,
-      hasEvents: hasEvents,
+      sectionCount: sectionCount,
+      eventCount: eventCount,
     );
     final recovery =
-        hasEvents
-            ? ' Recovering it will recover those events too.'
+        eventCount > 0
+            ? ' Recovering it will recover '
+                '${eventCount == 1 ? 'that event' : 'those events'} too.'
             : ' It has no events to move.';
     return 'This archived category will move to Recently Deleted with '
         '$content.$recovery';
   }
 
   String _permanentlyDeleteCategorySubtitle(_UserCategory category) {
-    final hasSections = _utilityCategoryHasSections(category);
-    final hasEvents = _utilityCategoryHasEvents(category, deleted: true);
-    if (!hasSections && !hasEvents) {
+    final sectionCount = _utilityCategorySectionCount(category);
+    final eventCount = _utilityCategoryEventCount(category, deleted: true);
+    if (sectionCount == 0 && eventCount == 0) {
       return 'This category will be permanently deleted and cannot be '
           'recovered.';
     }
     final content = _utilityCategoryContentNoun(
-      hasSections: hasSections,
-      hasEvents: hasEvents,
+      sectionCount: sectionCount,
+      eventCount: eventCount,
     );
     return 'This category and $content will be permanently deleted and '
         'cannot be recovered.';
@@ -5625,13 +5661,26 @@ class EventsTabState extends State<EventsTab>
   }
 
   String _categoryOnlyScope(int sectionCount) =>
-      sectionCount > 0 ? 'the category and its saved sections' : 'the category';
+      sectionCount > 0
+          ? 'the category and its ${_pluralizedCount(sectionCount, 'saved section')}'
+          : 'the category';
 
-  String _categoryWithContentsScope(int sectionCount) {
-    if (sectionCount > 0) {
-      return 'the category, its saved sections, and its events';
+  String _categoryWithContentsScope({
+    required int sectionCount,
+    required int eventCount,
+  }) {
+    final sections =
+        sectionCount > 0
+            ? 'its ${_pluralizedCount(sectionCount, 'saved section')}'
+            : null;
+    final events =
+        eventCount > 0 ? 'its ${_pluralizedCount(eventCount, 'event')}' : null;
+    if (sections != null && events != null) {
+      return 'the category, $sections, and $events';
     }
-    return 'the category and its events';
+    if (sections != null) return 'the category and $sections';
+    if (events != null) return 'the category and $events';
+    return 'the category';
   }
 
   String _categoryChoiceSubtitle({
@@ -5644,15 +5693,19 @@ class EventsTabState extends State<EventsTab>
       eventCount: eventCount,
     );
     final onlyScope = _categoryOnlyScope(sectionCount);
-    final withContentsScope = _categoryWithContentsScope(sectionCount);
+    final withContentsScope = _categoryWithContentsScope(
+      sectionCount: sectionCount,
+      eventCount: eventCount,
+    );
     if (actionVerb == 'Delete') {
       return 'This category has $contents. Choose whether to move '
           '$withContentsScope to Recently Deleted together, or move '
-          '$onlyScope there while moving its events to the default category.';
+          '$onlyScope there while moving its '
+          '${_pluralizedCount(eventCount, 'event')} to the default category.';
     }
     return 'This category has $contents. Choose whether to archive '
         '$withContentsScope together, or archive $onlyScope while moving '
-        'its events to the default category.';
+        'its ${_pluralizedCount(eventCount, 'event')} to the default category.';
   }
 
   Future<bool> _confirmCategoryLifecycleAction(
@@ -5664,7 +5717,10 @@ class EventsTabState extends State<EventsTab>
   }) async {
     final name = _categoryDisplayName(category.name);
     final onlyScope = _categoryOnlyScope(sectionCount);
-    final withContentsScope = _categoryWithContentsScope(sectionCount);
+    final withContentsScope = _categoryWithContentsScope(
+      sectionCount: sectionCount,
+      eventCount: eventCount,
+    );
     final eventLabel = _pluralizedCount(eventCount, 'event');
     final isDelete = actionVerb == 'Delete';
     final title =
