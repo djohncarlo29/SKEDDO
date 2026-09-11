@@ -11542,16 +11542,26 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
           _buildUtilityEventCard(
             context,
             event,
-            isLast:
-                childIndex == item.childEvents.length - 1 && isLast,
+            // Utility child separators are added below, outside the
+            // indentation wrapper, so they remain full width.
+            isLast: true,
             indented: true,
             onTap: () => item.onChildEventTap?.call(event),
           ),
         );
+        final isLastChild = childIndex == item.childEvents.length - 1;
+        if (!isLastChild || !isLast) {
+          rows.add(
+            Container(
+              height: 0.5,
+              color: resolveThemeColor(kSeparatorColor, context),
+            ),
+          );
+        }
       }
-      // When children exist, the final child event owns the separator below
-      // this category block. Adding another one here would paint two
-      // hairlines on top of each other before the next utility item.
+      // When children exist, the final child separator above owns the
+      // category-block boundary. The category wrapper must not add another
+      // hairline on top of it.
       if (!isLast && !hasChildren) {
         rows.add(
           Container(
