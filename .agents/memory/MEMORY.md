@@ -112,3 +112,4 @@
 - [Event utility provenance](event-provenance.md) — persist archive/delete origins; never guess legacy provenance from current category membership.
 - [Utility child separators](utility-child-separators.md) — final child event owns the category-block boundary; the wrapper must not paint a second line.
 - [Smart Category metadata wiring](smart-category-metadata-wiring.md) — shared event-card support still requires enabling the flag at the Smart Category detail-view call site.
+- [Section delete confirmation](section-delete-confirmation.md) — section removal takes two confirmations; events stay in the category as unsectioned events.

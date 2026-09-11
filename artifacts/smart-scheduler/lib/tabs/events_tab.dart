@@ -2459,11 +2459,26 @@ class EventsTabState extends State<EventsTab>
     if (!mounted || choice == null) return;
     switch (choice) {
       case _DeleteGroupChoice.only:
-        _ungroupGroup(group);
+        _confirmRemoveGroup(group);
       case _DeleteGroupChoice.withCategories:
         _confirmDeleteGroupAndCategories(group, deleteEvents: false);
       case _DeleteGroupChoice.withCategoriesAndContents:
         _confirmDeleteGroupAndCategories(group, deleteEvents: true);
+    }
+  }
+
+  Future<void> _confirmRemoveGroup(_CategoryGroup group) async {
+    final confirmed = await showNeutralConfirmationSheet(
+      context,
+      title: 'Are you sure you want to remove the group "${group.name}"?',
+      subtitle:
+          'Only the group wrapper will be removed. Its categories and their '
+          'events will stay unchanged.',
+      actionLabel: 'Remove Group',
+    );
+    if (!mounted || confirmed != true) return;
+    if (_categoryGroups.any((candidate) => candidate.id == group.id)) {
+      _ungroupGroup(group);
     }
   }
 
@@ -2474,8 +2489,8 @@ class EventsTabState extends State<EventsTab>
     final confirmed = await showDeleteConfirmationSheet(
       context,
       title: deleteEvents
-          ? 'Delete the group, categories, and events?'
-          : 'Delete the group and its categories?',
+          ? 'Are you sure you want to delete the group, categories, and events?'
+          : 'Are you sure you want to delete the group and its categories?',
       subtitle: deleteEvents
           ? 'The group and its categories will move to Recently Deleted '
               'together with their events. Recovering a category will recover '
@@ -2943,9 +2958,19 @@ class EventsTabState extends State<EventsTab>
 
   void _requestDeleteCategory(_UserCategory category) async {
     if (_isSystemUtilityCategory(category)) return;
+    if (_isSmartUserCategory(category)) {
+      await _requestDeleteSmartCategory(category);
+      return;
+    }
     final sectionCount = _categorySavedSectionCount(category);
     final eventCount = _categoryLiveEventCount(category);
     if (eventCount == 0) {
+      final firstStep = await _showCategoryLifecycleIntro(
+        category,
+        actionVerb: 'Delete',
+        sectionCount: sectionCount,
+      );
+      if (!mounted || !firstStep) return;
       final confirmed = await _confirmCategoryLifecycleAction(
         category,
         actionVerb: 'Delete',
@@ -2988,30 +3013,99 @@ class EventsTabState extends State<EventsTab>
     }
   }
 
+  Future<void> _requestDeleteSmartCategory(_UserCategory category) async {
+    if (_isSystemUtilityCategory(category) || category.archived) return;
+    final confirmed = await _confirmSmartCategoryAction(
+      category.name,
+      actionVerb: 'Delete',
+    );
+    if (!mounted || !confirmed) return;
+    _deleteSmartCategory(category);
+  }
+
+  void _deleteSmartCategory(_UserCategory category) {
+    if (_isSystemUtilityCategory(category)) return;
+    final inGrid = _pinnedUserCategories.contains(category);
+    setState(() {
+      if (inGrid) {
+        _deletingFromGrid.add(category);
+      } else {
+        _deletingFromList.add(category);
+      }
+    });
+    Future.delayed(const Duration(milliseconds: 260), () {
+      if (!mounted) return;
+      setState(() {
+        _deletingFromList.remove(category);
+        _deletingFromGrid.remove(category);
+        _recentlyDeletedCategories
+          ..removeWhere((existing) => existing.id == category.id)
+          ..add(category);
+        _setUtilityDate('deleted-category', category.id);
+        _userCategories.remove(category);
+        _pinnedUserCategories.remove(category);
+        _removeFromGroupById(category.id);
+        _listTopOrder.remove(category.id);
+        _gridCombinedOrder.remove(category);
+        _syncUtilityVisibilityAndResurface();
+      });
+      _saveCategories();
+    });
+  }
+
   void _requestDeleteArchivedCategory(_UserCategory category) async {
     final isArchived = _archivedUserCategories.any(
       (candidate) => candidate.id == category.id,
     );
     if (!isArchived) return;
+    final firstStep = await showDeleteConfirmationSheet(
+      context,
+      title:
+          _isSmartUserCategory(category)
+              ? 'Delete Archived Smart Category'
+              : 'Delete Archived Category',
+      subtitle:
+          _isSmartUserCategory(category)
+              ? 'This only deletes the saved smart category rule. Matching '
+                  'events are not changed.'
+              : _deleteArchivedCategorySubtitle(category),
+      actionLabel: 'Continue',
+    );
+    if (!mounted || firstStep != true) return;
     final confirmed = await showDeleteConfirmationSheet(
       context,
-      title: 'Delete the category "${_categoryDisplayName(category.name)}"?',
-      subtitle: _deleteArchivedCategorySubtitle(category),
+      title:
+          _isSmartUserCategory(category)
+              ? 'Are you sure you want to delete the smart category '
+                  '"${_categoryDisplayName(category.name)}"?'
+              : 'Are you sure you want to delete the category '
+                  '"${_categoryDisplayName(category.name)}"?',
+      subtitle:
+          _isSmartUserCategory(category)
+              ? 'The smart category will move to Recently Deleted. Its '
+                  'matching events will stay unchanged.'
+              : _deleteArchivedCategorySubtitle(category),
+      actionLabel:
+          _isSmartUserCategory(category)
+              ? 'Delete Smart Category'
+              : 'Delete Category',
     );
     if (!mounted || confirmed != true) return;
     _ensureDefaultCategoryAvailable({category.id});
     // An archived category can contain events that were deliberately kept
     // with it. Move both active remnants and archived contents to Recently
     // Deleted rather than silently reassigning either set.
-    EventStore.instance.deleteArchivedEventsForCategory(
-      category.id,
-      origin: EventLifecycleOrigin.category,
-    );
-    _removeCategoryEvents(
-      category.id,
-      deleteEvents: true,
-      deletionOrigin: EventLifecycleOrigin.category,
-    );
+    if (!_isSmartUserCategory(category)) {
+      EventStore.instance.deleteArchivedEventsForCategory(
+        category.id,
+        origin: EventLifecycleOrigin.category,
+      );
+      _removeCategoryEvents(
+        category.id,
+        deleteEvents: true,
+        deletionOrigin: EventLifecycleOrigin.category,
+      );
+    }
     setState(() {
       _recentlyDeletedCategories
         ..removeWhere((existing) => existing.id == category.id)
@@ -3052,18 +3146,46 @@ class EventsTabState extends State<EventsTab>
   }
 
   void _requestPermanentlyDeleteCategory(_UserCategory category) async {
+    final firstStep = await showDeleteConfirmationSheet(
+      context,
+      title:
+          _isSmartUserCategory(category)
+              ? 'Permanently Delete Smart Category'
+              : 'Permanently Delete Category',
+      subtitle:
+          _isSmartUserCategory(category)
+              ? 'This permanently deletes the saved smart category rule. '
+                  'Matching events are not changed.'
+              : _permanentlyDeleteCategorySubtitle(category),
+      actionLabel: 'Continue',
+    );
+    if (!mounted || firstStep != true) return;
     final confirmed = await showDeleteConfirmationSheet(
       context,
-      title: 'Delete ${_categoryDisplayName(category.name)}?',
-      subtitle: _permanentlyDeleteCategorySubtitle(category),
-      actionLabel: 'Permanently Delete',
+      title:
+          _isSmartUserCategory(category)
+              ? 'Are you sure you want to permanently delete the smart category '
+                  '"${_categoryDisplayName(category.name)}"?'
+              : 'Are you sure you want to permanently delete '
+                  '"${_categoryDisplayName(category.name)}"?',
+      subtitle:
+          _isSmartUserCategory(category)
+              ? 'The smart category cannot be recovered. Its matching events '
+                  'will stay unchanged.'
+              : _permanentlyDeleteCategorySubtitle(category),
+      actionLabel:
+          _isSmartUserCategory(category)
+              ? 'Permanently Delete Smart Category'
+              : 'Permanently Delete',
     );
     if (!mounted || confirmed != true) return;
     final deleted = _recentlyDeletedCategories.any(
       (candidate) => candidate.id == category.id,
     );
     if (!deleted) return;
-    EventStore.instance.permanentlyDeleteForCategory(category.id);
+    if (!_isSmartUserCategory(category)) {
+      EventStore.instance.permanentlyDeleteForCategory(category.id);
+    }
     setState(() {
       _recentlyDeletedCategories.removeWhere(
         (candidate) => candidate.id == category.id,
@@ -3229,7 +3351,9 @@ class EventsTabState extends State<EventsTab>
     );
     if (!isInList && !isInGrid) return;
 
-    EventStore.instance.restoreArchivedEventsForCategory(category.id);
+    if (!_isSmartUserCategory(category)) {
+      EventStore.instance.restoreArchivedEventsForCategory(category.id);
+    }
     final restored = category.copyWith(archived: false);
     setState(() {
       _userCategories.removeWhere((candidate) => candidate.id == category.id);
@@ -3259,7 +3383,9 @@ class EventsTabState extends State<EventsTab>
     // Category-and-content deletion keeps the original categoryId on deleted
     // event snapshots. Restore those snapshots with the category, while
     // leaving events the user already recovered individually untouched.
-    EventStore.instance.restoreDeletedForCategory(category.id);
+    if (!_isSmartUserCategory(category)) {
+      EventStore.instance.restoreDeletedForCategory(category.id);
+    }
     final restored = category.copyWith(archived: false);
     setState(() {
       _recentlyDeletedCategories.removeWhere(
@@ -5577,9 +5703,24 @@ class EventsTabState extends State<EventsTab>
         _archivingFromGrid.contains(cat)) {
       return;
     }
+    if (_isSmartUserCategory(cat)) {
+      final confirmed = await _confirmSmartCategoryAction(
+        cat.name,
+        actionVerb: 'Archive',
+      );
+      if (!mounted || !confirmed) return;
+      _archiveCategoryAfterChoice(cat);
+      return;
+    }
     final eventCount = _categoryLiveEventCount(cat);
     final sectionCount = _categorySavedSectionCount(cat);
     if (eventCount == 0) {
+      final firstStep = await _showCategoryLifecycleIntro(
+        cat,
+        actionVerb: 'Archive',
+        sectionCount: sectionCount,
+      );
+      if (!mounted || !firstStep) return;
       final confirmed = await _confirmCategoryLifecycleAction(
         cat,
         actionVerb: 'Archive',
@@ -5713,6 +5854,88 @@ class EventsTabState extends State<EventsTab>
         'its ${_pluralizedNoun(eventCount, 'event')} to the default category.';
   }
 
+  Future<bool> _showCategoryLifecycleIntro(
+    _UserCategory category, {
+    required String actionVerb,
+    required int sectionCount,
+  }) async {
+    final isDelete = actionVerb == 'Delete';
+    final scope = _categoryOnlyScope(sectionCount);
+    final subtitle =
+        isDelete
+            ? 'This category has no events. Only $scope will move to Recently '
+                'Deleted.'
+            : 'This category has no events. Only $scope will be archived and '
+                'hidden from the active list.';
+    final result =
+        await (isDelete
+            ? showDeleteConfirmationSheet(
+              context,
+              title: '$actionVerb Category',
+              subtitle: subtitle,
+              actionLabel: 'Continue',
+            )
+            : showArchiveConfirmationSheet(
+              context,
+              title: '$actionVerb Category',
+              subtitle: subtitle,
+              actionLabel: 'Continue',
+            ));
+    return result == true;
+  }
+
+  Future<bool> _confirmSmartCategoryAction(
+    String categoryName, {
+    required String actionVerb,
+  }) async {
+    final isDelete = actionVerb == 'Delete';
+    final firstStep =
+        await (isDelete
+            ? showDeleteConfirmationSheet(
+              context,
+              title: '$actionVerb Smart Category',
+              subtitle:
+                  'This only changes the saved smart category rule. Matching '
+                  'events, storage categories, and event sections will not be '
+                  'changed.',
+              actionLabel: 'Continue',
+            )
+            : showArchiveConfirmationSheet(
+              context,
+              title: '$actionVerb Smart Category',
+              subtitle:
+                  'This only archives the saved smart category rule. Matching '
+                  'events, storage categories, and event sections will not be '
+                  'changed.',
+              actionLabel: 'Continue',
+            ));
+    if (!mounted || firstStep != true) return false;
+
+    final secondStep =
+        await (isDelete
+            ? showDeleteConfirmationSheet(
+              context,
+              title:
+                  'Are you sure you want to $actionVerb the smart category '
+                  '"${_categoryDisplayName(categoryName)}"?',
+              subtitle:
+                  'The smart category rule will move to Recently Deleted. '
+                  'Matching events will stay unchanged.',
+              actionLabel: 'Delete Smart Category',
+            )
+            : showArchiveConfirmationSheet(
+              context,
+              title:
+                  'Are you sure you want to $actionVerb the smart category '
+                  '"${_categoryDisplayName(categoryName)}"?',
+              subtitle:
+                  'The smart category rule will move to Archived Items. '
+                  'Matching events will stay unchanged.',
+              actionLabel: 'Archive Smart Category',
+            ));
+    return secondStep == true;
+  }
+
   Future<bool> _confirmCategoryLifecycleAction(
     _UserCategory category, {
     required String actionVerb,
@@ -5756,13 +5979,21 @@ class EventsTabState extends State<EventsTab>
         withContents
             ? '$actionVerb Category & Contents'
             : '$actionVerb Category Only';
-    return await showDeleteConfirmationSheet(
-          context,
-          title: title,
-          subtitle: subtitle,
-          actionLabel: actionLabel,
-        ) ==
-        true;
+    final result =
+        await (isDelete
+            ? showDeleteConfirmationSheet(
+              context,
+              title: 'Are you sure you want to $title',
+              subtitle: subtitle,
+              actionLabel: actionLabel,
+            )
+            : showArchiveConfirmationSheet(
+              context,
+              title: 'Are you sure you want to $title',
+              subtitle: subtitle,
+              actionLabel: actionLabel,
+            ));
+    return result == true;
   }
 
   /// Flags [cat] as archived so it's hidden from the grid/list without
@@ -6322,12 +6553,9 @@ class EventsTabState extends State<EventsTab>
     final names = _dcvCustomSectionNames[label];
     if (names == null || index < 0 || index >= names.length) return;
     final sectionName = _sectionDisplayName(names[index]);
-    showDeleteConfirmationSheet(
+    confirmDeleteSection(
       context,
-      title: 'Delete the section "$sectionName"?',
-      subtitle:
-          'Events in this section will stay in this category and will no '
-          'longer belong to this section. They will not be deleted.',
+      sectionName: sectionName,
     ).then((confirmed) {
       if (!mounted || confirmed != true) return;
       reorderDcvSections(label, [
@@ -7076,7 +7304,12 @@ class EventsTabState extends State<EventsTab>
   /// archiving — no reveal/unarchive UI exists yet. Plays the same soft
   /// fade+scale-down treatment as list/grid archiving before the tile is
   /// actually removed from the grid.
-  void _archiveSmartCategory(String label) {
+  Future<void> _archiveSmartCategory(String label) async {
+    final confirmed = await _confirmSmartCategoryAction(
+      label,
+      actionVerb: 'Archive',
+    );
+    if (!mounted || !confirmed) return;
     setState(() => _archivingSmartLabels.add(label));
     Future.delayed(const Duration(milliseconds: 280), () {
       if (!mounted) return;
@@ -8265,13 +8498,16 @@ Widget wrapSearchEventTileWithActions({
   VoidCallback? onArchive,
   VoidCallback? onDelete,
 }) {
-  return _EventContextMenu(
-    child: child,
-    previewBuilder: previewBuilder,
-    onEdit: onEdit,
-    onArchive:
-        onArchive ?? () => EventStore.instance.archiveEvent(hit.event.id),
-    onDelete: onDelete ?? () => EventStore.instance.remove(hit.event.id),
+  return Builder(
+    builder:
+        (context) => _EventContextMenu(
+          child: child,
+          previewBuilder: previewBuilder,
+          onEdit: onEdit,
+          onArchive:
+              onArchive ?? () => confirmArchiveEvent(context, hit.event),
+          onDelete: onDelete ?? () => confirmDeleteEvent(context, hit.event),
+        ),
   );
 }
 
@@ -9239,6 +9475,9 @@ bool _isSystemUtilityCategory(_UserCategory category) =>
     category.isSystemUtility ||
     category.id == _kIdSysArchivedCategories ||
     category.id == _kIdSysRecentlyDeleted;
+
+bool _isSmartUserCategory(_UserCategory category) =>
+    category.categoryType == 'Smart Category';
 
 Color _userCategoryCircleColor(_UserCategory category, BuildContext context) {
   final resolved = renderCategoryColor(category.color, context);
@@ -16817,12 +17056,9 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
       return;
     }
     final sectionName = _sectionDisplayName(widget.sectionNames[originalIndex]);
-    final confirmed = await showDeleteConfirmationSheet(
+    final confirmed = await confirmDeleteSection(
       context,
-      title: 'Delete the section "$sectionName"?',
-      subtitle:
-          'Events in this section will stay in this category and will no '
-          'longer belong to this section. They will not be deleted.',
+      sectionName: sectionName,
     );
     if (!mounted || confirmed != true) return;
     if (!_sectionOrder.contains(originalIndex) ||
@@ -20469,10 +20705,13 @@ class _ScheduledEventCard extends StatelessWidget {
           _buildCard(context, includeGroupedSeparators: false),
       onEdit: onEdit,
       onArchive:
-          onArchive ?? () => EventStore.instance.archiveEvent(event.id),
-       onDelete: onDelete ?? () => EventStore.instance.remove(event.id),
-       enabled: enableContextMenu,
-       reorderable: reorderable,
+          onArchive ??
+          () => confirmArchiveEvent(context, event),
+      onDelete:
+          onDelete ??
+          () => confirmDeleteEvent(context, event),
+      enabled: enableContextMenu,
+      reorderable: reorderable,
       onReorderStart: onReorderStart,
       onReorderUpdate: onReorderUpdate,
       onReorderEnd: onReorderEnd,
