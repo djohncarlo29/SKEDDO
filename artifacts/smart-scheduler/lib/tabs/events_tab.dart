@@ -7960,6 +7960,8 @@ class EventsTabState extends State<EventsTab>
                     label: widget.activeDCV ?? '',
                     icon: cat?.iconOrSvg,
                     categoryType: cat?.categoryType ?? 'Standard',
+                    showStandardCategoryName:
+                        cat?.categoryType == 'Smart Category',
                     events: dcvEvents,
                     sortBy:
                         isArchivedUtility || isRecentlyDeletedUtility
