@@ -17946,7 +17946,10 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
         alignment: 0.28,
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOutCubic,
-        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
+        // Text changes can call this after every keystroke. Keep the current
+        // position when the header is already visible; only move the minimum
+        // distance needed when the keyboard or a newly wrapped line covers it.
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
       );
     });
   }
