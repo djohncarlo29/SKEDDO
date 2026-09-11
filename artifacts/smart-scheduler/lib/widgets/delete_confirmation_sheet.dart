@@ -372,14 +372,15 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
           if (fromXmark)
             Align(
               alignment: Alignment.topLeft,
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.only(
-                    left: kDiscardConfirmationTopLeftEdgeGap,
-                    top: kDiscardConfirmationTopLeftEdgeGap,
-                  ),
-                  child: card,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: kDiscardConfirmationTopLeftEdgeGap,
+                  top:
+                      MediaQuery.sizeOf(context).height *
+                          kRoundedSheetTopGapRatio +
+                      kDiscardConfirmationTopLeftEdgeGap,
                 ),
+                child: card,
               ),
             )
           else

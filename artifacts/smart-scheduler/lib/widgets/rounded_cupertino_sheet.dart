@@ -8,6 +8,7 @@ import '../app_theme.dart'
         kModalBackground,
         BoundedSquircleStadiumBorder,
         kModalSheetCornerRadius,
+        kRoundedSheetTopGapRatio,
         resolveThemeColor,
         systemSafeAreaBottomInset;
 
@@ -25,11 +26,9 @@ import '../app_theme.dart'
 // reimplemented here using only public ModalRoute/PageRoute API.
 // ══════════════════════════════════════════════════════════════════════════════
 
-const double _kTopGapRatio = 0.08;
-
 final Animatable<Offset> _kBottomUpTween = Tween<Offset>(
   begin: const Offset(0.0, 1.0),
-  end: const Offset(0.0, _kTopGapRatio),
+  end: const Offset(0.0, kRoundedSheetTopGapRatio),
 );
 final Animatable<Offset> _kBottomUpTweenWhenCoveringOtherSheet = Tween<Offset>(
   begin: const Offset(0.0, 1.0),
@@ -219,7 +218,7 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
                 // page at the visible 92% so its scrollable content ends at
                 // the physical bottom instead of extending below the clip.
                 final double visiblePageHeight =
-                    constraints.maxHeight * (1.0 - _kTopGapRatio);
+                    constraints.maxHeight * (1.0 - kRoundedSheetTopGapRatio);
                 return Align(
                   alignment: Alignment.topCenter,
                   child: SizedBox(
@@ -779,7 +778,8 @@ class _RoundedDownGestureDetectorState<T>
     _downGestureController!.dragUpdate(
       // Divide by the visible sheet height, exactly as the framework does.
       details.primaryDelta! /
-          (context.size!.height - (context.size!.height * _kTopGapRatio)),
+          (context.size!.height -
+              (context.size!.height * kRoundedSheetTopGapRatio)),
     );
   }
 

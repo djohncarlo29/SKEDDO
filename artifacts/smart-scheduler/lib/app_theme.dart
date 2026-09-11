@@ -641,6 +641,7 @@ const double kModalSheetButtonDiameter = 40.0;
 const double kModalSheetButtonEdgeGap = 16.0;
 const double kModalSheetCornerRadius =
     (kModalSheetButtonDiameter / 2) + kModalSheetButtonEdgeGap;
+const double kRoundedSheetTopGapRatio = 0.08;
 
 // ── SF Pro Dynamic Tracking ───────────────────────────────────────────────────
 const kTracking10 = 0.12;
