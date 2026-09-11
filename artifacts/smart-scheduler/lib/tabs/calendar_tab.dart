@@ -233,6 +233,9 @@ class CalendarTab extends StatefulWidget {
     this.onSearchCancel,
     this.searchModeAnimation,
     this.onEditEvent,
+    this.dcvSectionNamesProvider,
+    this.dcvSectionEventIdsProvider,
+    this.onDcvSectionEventIdsChanged,
     this.daySubMode = DayViewSubMode.singleDay,
   });
 
@@ -255,6 +258,13 @@ class CalendarTab extends StatefulWidget {
 
   /// Opens the shared event editor for a search result long-press action.
   final void Function(ScheduledEvent event)? onEditEvent;
+  /// Live DCV section state owned by EventsTab. The event sheet uses these
+  /// providers so it does not race a just-finished DCV edit against prefs.
+  final Map<String, List<String>> Function()? dcvSectionNamesProvider;
+  final Map<String, List<List<String>>> Function()?
+      dcvSectionEventIdsProvider;
+  final void Function(String label, List<List<String>> sectionEventIds)?
+      onDcvSectionEventIdsChanged;
   // Active Day View sub-mode — drives the timeline layout and week-strip
   // multi-day indicator.  Owned by AppShell; passed in on every rebuild.
   final DayViewSubMode daySubMode;
@@ -565,7 +575,12 @@ class CalendarTabState extends State<CalendarTab>
     showRoundedCupertinoSheet<void>(
       context: shellContext,
       pageBuilder: (ctx) =>
-          _NewEventSheet(initialCategoryId: initialCategoryId),
+          _NewEventSheet(
+            initialCategoryId: initialCategoryId,
+            dcvSectionNamesProvider: widget.dcvSectionNamesProvider,
+            dcvSectionEventIdsProvider: widget.dcvSectionEventIdsProvider,
+            onDcvSectionEventIdsChanged: widget.onDcvSectionEventIdsChanged,
+          ),
     );
   }
 
@@ -577,7 +592,12 @@ class CalendarTabState extends State<CalendarTab>
   void showEditEventSheet(BuildContext shellContext, ScheduledEvent event) {
     showRoundedCupertinoSheet<void>(
       context: shellContext,
-      pageBuilder: (ctx) => _NewEventSheet(initial: event),
+      pageBuilder: (ctx) => _NewEventSheet(
+        initial: event,
+        dcvSectionNamesProvider: widget.dcvSectionNamesProvider,
+        dcvSectionEventIdsProvider: widget.dcvSectionEventIdsProvider,
+        onDcvSectionEventIdsChanged: widget.onDcvSectionEventIdsChanged,
+      ),
     );
   }
 
@@ -6753,8 +6773,19 @@ class _NewEventSheet extends StatefulWidget {
   /// [EventStore.create], preserving the original event id.
   final ScheduledEvent? initial;
   final String? initialCategoryId;
+  final Map<String, List<String>> Function()? dcvSectionNamesProvider;
+  final Map<String, List<List<String>>> Function()?
+      dcvSectionEventIdsProvider;
+  final void Function(String label, List<List<String>> sectionEventIds)?
+      onDcvSectionEventIdsChanged;
 
-  const _NewEventSheet({this.initial, this.initialCategoryId});
+  const _NewEventSheet({
+    this.initial,
+    this.initialCategoryId,
+    this.dcvSectionNamesProvider,
+    this.dcvSectionEventIdsProvider,
+    this.onDcvSectionEventIdsChanged,
+  });
 
   bool get isEditing => initial != null;
 
@@ -8511,6 +8542,29 @@ class _NewEventSheetState extends State<_NewEventSheet>
     } catch (_) {
       // See the section-name guard above.
     }
+
+    // EventsTab is the live owner of section state. Preference reads are only
+    // the cold-start fallback; prefer the live snapshot when the DCV was just
+    // edited and its queued write has not completed yet.
+    final liveSectionNames = widget.dcvSectionNamesProvider?.call();
+    if (liveSectionNames != null) {
+      loadedSectionNames
+        ..clear()
+        ..addAll({
+          for (final entry in liveSectionNames.entries)
+            entry.key: List<String>.of(entry.value),
+        });
+    }
+    final liveSectionEventIds = widget.dcvSectionEventIdsProvider?.call();
+    if (liveSectionEventIds != null) {
+      loadedSectionEventIds
+        ..clear()
+        ..addAll({
+          for (final entry in liveSectionEventIds.entries)
+            entry.key: entry.value.map(List<String>.of).toList(),
+        });
+    }
+
     if (!mounted) return;
     final parsed = <_NewEventCategory>[];
     Color uncatColor = kAccentColor;

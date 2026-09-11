@@ -6355,6 +6355,46 @@ class EventsTabState extends State<EventsTab>
     return _dcvCustomSectionNames[label]?.isNotEmpty ?? false;
   }
 
+  /// Live section snapshots shared with the event editor. The Events tab owns
+  /// these maps; the event editor must not use an independently stale copy
+  /// when a section was just created or renamed in the DCV.
+  Map<String, List<String>> dcvCustomSectionNamesSnapshot() => {
+    for (final entry in _dcvCustomSectionNames.entries)
+      entry.key: List<String>.of(entry.value),
+  };
+
+  Map<String, List<List<String>>> dcvCustomSectionEventIdsSnapshot() => {
+    for (final entry in _dcvCustomSectionEventIds.entries)
+      entry.key: entry.value.map(List<String>.of).toList(),
+  };
+
+  /// Applies section membership changes made by the event editor to the
+  /// Events tab's authoritative state and persists the complete category
+  /// snapshot through the normal save queue.
+  void updateDcvSectionEventIds(
+    String label,
+    List<List<String>> sectionEventIds,
+  ) {
+    if (!_dcvCustomSectionNames.containsKey(label)) return;
+    final sectionCount = _dcvCustomSectionNames[label]!.length;
+    final normalized = List<List<String>>.generate(
+      sectionCount,
+      (index) =>
+          index < sectionEventIds.length
+              ? List<String>.of(sectionEventIds[index])
+              : <String>[],
+    );
+    setState(() {
+      _dcvCustomSectionEventIds[label] = normalized;
+    });
+    _saveCategories();
+  }
+
+  /// Lets a newly opened event sheet wait for the latest section snapshot
+  /// when necessary. Normal section edits persist immediately, but this also
+  /// protects the handoff during a rapid DCV → event-sheet action.
+  Future<void> flushCategoryPersistence() => _categorySaveQueue;
+
   /// Opens the section-order editor for the currently visible DCV.
   void editDcvSections(String label, Color accentColor) {
     final names = _dcvCustomSectionNames[label];
@@ -6363,10 +6403,10 @@ class EventsTabState extends State<EventsTab>
       context: context,
       pageBuilder:
           (_) => _EditDcvSectionsSheet(
-            sectionNames: [
-              for (final name in names)
-                name.trim().isEmpty ? 'New Section' : name.trim(),
-            ],
+            // Keep the empty-string sentinel intact. The edit sheet renders
+            // it as "New Section", but that text is only a placeholder and
+            // must not become the persisted section name.
+            sectionNames: List<String>.of(names),
             accentColor: accentColor,
             onSave:
                 (order, editedNames) =>
@@ -8181,7 +8221,6 @@ class EventsTabState extends State<EventsTab>
                           dcvLabel,
                           index,
                           title,
-                          persist: false,
                         );
                       }
                     },
@@ -16994,7 +17033,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
       ],
       [
         for (final name in widget.sectionNames)
-          name.trim().isEmpty ? 'New Section' : name,
+          name.trim(),
       ],
     );
     Navigator.of(context).pop();

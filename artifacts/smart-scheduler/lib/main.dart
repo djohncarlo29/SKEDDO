@@ -1985,6 +1985,18 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             searchModeAnimation: _searchModeAnim,
             onEditEvent: (event) => _calendarTabKey.currentState
                 ?.showEditEventSheet(context, event),
+            dcvSectionNamesProvider: () =>
+                _eventsTabKey.currentState?.dcvCustomSectionNamesSnapshot() ??
+                const <String, List<String>>{},
+            dcvSectionEventIdsProvider: () =>
+                _eventsTabKey.currentState
+                    ?.dcvCustomSectionEventIdsSnapshot() ??
+                const <String, List<List<String>>>{},
+            onDcvSectionEventIdsChanged: (label, sectionEventIds) =>
+                _eventsTabKey.currentState?.updateDcvSectionEventIds(
+                  label,
+                  sectionEventIds,
+                ),
           ),
         ),
         RepaintBoundary(
