@@ -867,13 +867,13 @@ class _RoundedDownGestureController<T> {
 
       // If maybePop was vetoed by an unsaved-change PopScope, the route is
       // still current and the controller is sitting at the finger's partial
-      // drag value. Always settle it back to the fully-open position in that
-      // case so the confirmation overlay never sits above a half-dismissed
+      // drag value. Always settle it back to 1.0, the fully-open position, in
+      // that case so the confirmation overlay never sits above a dismissed
       // sheet. If the route was actually popped, isCurrent becomes false and
-      // the normal forward dismissal animation remains untouched.
-      if (getIsCurrent() && controller.value > 0.0) {
-        controller.animateBack(
-          0.0,
+      // the normal dismissal animation remains untouched.
+      if (getIsCurrent() && controller.value < 1.0) {
+        controller.animateTo(
+          1.0,
           duration: _kDroppedSheetDragAnimationDuration,
           curve: animationCurve,
         );
