@@ -260,7 +260,7 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = resolveThemeColor(kPrimaryLabel, context);
+    final secondary = resolveThemeColor(kSecondaryLabel, context);
     final sheetBorder =
         CupertinoTheme.brightnessOf(context) == Brightness.dark
             ? BorderSide(
@@ -309,12 +309,12 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
                   message,
                   style: TextStyle(
                     inherit: false,
-                    fontSize: 18,
+                    fontSize: 15,
                     fontFamily: kSFProText,
                     fontWeight: FontWeight.w400,
-                    color: primary,
+                    color: secondary,
                     letterSpacing: kTracking16,
-                    height: 1.25,
+                    height: 1.5,
                   ),
                 ),
               ),
