@@ -5701,7 +5701,6 @@ class EventsTabState extends State<EventsTab>
     final withContentsScope = _categoryWithContentsScope(
       sectionCount: sectionCount,
       eventCount: eventCount,
-      capitalize: true,
     );
     if (actionVerb == 'Delete') {
       return 'This category has $contents. Choose whether to move '
@@ -5726,6 +5725,7 @@ class EventsTabState extends State<EventsTab>
     final withContentsScope = _categoryWithContentsScope(
       sectionCount: sectionCount,
       eventCount: eventCount,
+      capitalize: true,
     );
     final eventLabel = _pluralizedNoun(eventCount, 'event');
     final isDelete = actionVerb == 'Delete';
