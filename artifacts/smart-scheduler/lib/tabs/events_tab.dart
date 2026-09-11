@@ -2460,19 +2460,32 @@ class EventsTabState extends State<EventsTab>
 
   /// Opens the confirmation sheet before dissolving or deleting a group.
   void _openDeleteGroupSheet(_CategoryGroup group) async {
-    final choice = await _DeleteGroupSheet.show(context, groupName: group.name);
-    if (!mounted || choice == null) return;
-    switch (choice) {
-      case _DeleteGroupChoice.only:
-        _confirmRemoveGroup(group);
-      case _DeleteGroupChoice.withCategories:
-        _confirmDeleteGroupAndCategories(group, deleteEvents: false);
-      case _DeleteGroupChoice.withCategoriesAndContents:
-        _confirmDeleteGroupAndCategories(group, deleteEvents: true);
+    while (mounted) {
+      final choice = await _DeleteGroupSheet.show(
+        context,
+        groupName: group.name,
+      );
+      if (!mounted || choice == null) return;
+
+      final confirmed =
+          switch (choice) {
+            _DeleteGroupChoice.only => await _confirmRemoveGroup(group),
+            _DeleteGroupChoice.withCategories =>
+              await _confirmDeleteGroupAndCategories(
+                group,
+                deleteEvents: false,
+              ),
+            _DeleteGroupChoice.withCategoriesAndContents =>
+              await _confirmDeleteGroupAndCategories(
+                group,
+                deleteEvents: true,
+              ),
+          };
+      if (!mounted || confirmed) return;
     }
   }
 
-  Future<void> _confirmRemoveGroup(_CategoryGroup group) async {
+  Future<bool> _confirmRemoveGroup(_CategoryGroup group) async {
     final confirmed = await showConfirmationSheet(
       context,
       title: 'Are you sure?',
@@ -2482,13 +2495,14 @@ class EventsTabState extends State<EventsTab>
       actionLabel: 'Remove Group',
       destructive: true,
     );
-    if (!mounted || confirmed != true) return;
+    if (!mounted || confirmed != true) return false;
     if (_categoryGroups.any((candidate) => candidate.id == group.id)) {
       _ungroupGroup(group);
     }
+    return true;
   }
 
-  Future<void> _confirmDeleteGroupAndCategories(
+  Future<bool> _confirmDeleteGroupAndCategories(
     _CategoryGroup group, {
     required bool deleteEvents,
   }) async {
@@ -2506,9 +2520,12 @@ class EventsTabState extends State<EventsTab>
           ? 'Delete Group, Categories & Events'
           : 'Delete Group and Categories',
     );
-    if (!mounted || confirmed != true) return;
-    if (!_categoryGroups.any((candidate) => candidate.id == group.id)) return;
+    if (!mounted || confirmed != true) return false;
+    if (!_categoryGroups.any((candidate) => candidate.id == group.id)) {
+      return true;
+    }
     _deleteGroupAndCategories(group, deleteEvents: deleteEvents);
+    return true;
   }
 
   /// Deletes the group and its member categories using the same visible
@@ -2928,7 +2945,11 @@ class EventsTabState extends State<EventsTab>
       subtitle: _moveArchivedEventSubtitle(event),
       actionLabel: 'Delete Event',
     );
-    if (!mounted || confirmed != true) return;
+    if (!mounted) return;
+    if (confirmed != true) {
+      _openArchivedEvent(event);
+      return;
+    }
     _moveArchivedEventToDeleted(event);
   }
 
@@ -2984,51 +3005,59 @@ class EventsTabState extends State<EventsTab>
     final sectionCount = _categorySavedSectionCount(category);
     final eventCount = _categoryLiveEventCount(category);
     if (eventCount == 0) {
-      final firstStep = await _showCategoryLifecycleIntro(
-        category,
-        actionVerb: 'Delete',
-        sectionCount: sectionCount,
-      );
-      if (!mounted || !firstStep) return;
-      final confirmed = await _confirmCategoryLifecycleAction(
-        category,
-        actionVerb: 'Delete',
-        withContents: false,
-        sectionCount: sectionCount,
-        eventCount: eventCount,
-      );
-      if (!mounted || !confirmed) return;
-      if (_pinnedUserCategories.contains(category)) {
-        _deletePinnedCategory(category, deleteEvents: false);
-      } else {
-        _deleteUserCategory(category, deleteEvents: false);
+      while (mounted) {
+        final firstStep = await _showCategoryLifecycleIntro(
+          category,
+          actionVerb: 'Delete',
+          sectionCount: sectionCount,
+        );
+        if (!mounted || !firstStep) return;
+        final confirmed = await _confirmCategoryLifecycleAction(
+          category,
+          actionVerb: 'Delete',
+          withContents: false,
+          sectionCount: sectionCount,
+          eventCount: eventCount,
+        );
+        if (!mounted) return;
+        if (!confirmed) continue;
+        if (_pinnedUserCategories.contains(category)) {
+          _deletePinnedCategory(category, deleteEvents: false);
+        } else {
+          _deleteUserCategory(category, deleteEvents: false);
+        }
+        return;
       }
       return;
     }
-    final choice = await _ArchiveCategorySheet.show(
-      context,
-      categoryName: _categoryDisplayName(category.name),
-      subtitle: _categoryChoiceSubtitle(
+    while (mounted) {
+      final choice = await _ArchiveCategorySheet.show(
+        context,
+        categoryName: _categoryDisplayName(category.name),
+        subtitle: _categoryChoiceSubtitle(
+          actionVerb: 'Delete',
+          sectionCount: sectionCount,
+          eventCount: eventCount,
+        ),
         actionVerb: 'Delete',
+      );
+      if (!mounted || choice == null) return;
+      final confirmed = await _confirmCategoryLifecycleAction(
+        category,
+        actionVerb: 'Delete',
+        withContents: choice == _ArchiveCategoryChoice.withContents,
         sectionCount: sectionCount,
         eventCount: eventCount,
-      ),
-      actionVerb: 'Delete',
-    );
-    if (!mounted || choice == null) return;
-    final confirmed = await _confirmCategoryLifecycleAction(
-      category,
-      actionVerb: 'Delete',
-      withContents: choice == _ArchiveCategoryChoice.withContents,
-      sectionCount: sectionCount,
-      eventCount: eventCount,
-    );
-    if (!mounted || !confirmed) return;
-    final deleteEvents = choice == _ArchiveCategoryChoice.withContents;
-    if (_pinnedUserCategories.contains(category)) {
-      _deletePinnedCategory(category, deleteEvents: deleteEvents);
-    } else {
-      _deleteUserCategory(category, deleteEvents: deleteEvents);
+      );
+      if (!mounted) return;
+      if (!confirmed) continue;
+      final deleteEvents = choice == _ArchiveCategoryChoice.withContents;
+      if (_pinnedUserCategories.contains(category)) {
+        _deletePinnedCategory(category, deleteEvents: deleteEvents);
+      } else {
+        _deleteUserCategory(category, deleteEvents: deleteEvents);
+      }
+      return;
     }
   }
 
@@ -3089,7 +3118,11 @@ class EventsTabState extends State<EventsTab>
       actionLabel:
           isSmart ? 'Delete Smart Category' : 'Delete Category',
     );
-    if (!mounted || confirmed != true) return;
+    if (!mounted) return;
+    if (confirmed != true) {
+      _openArchivedCategory(category);
+      return;
+    }
     _ensureDefaultCategoryAvailable({category.id});
     // An archived category can contain events that were deliberately kept
     // with it. Move both active remnants and archived contents to Recently
@@ -3134,7 +3167,11 @@ class EventsTabState extends State<EventsTab>
       subtitle: _permanentlyDeleteEventSubtitle(event),
       actionLabel: 'Permanently Delete',
     );
-    if (!mounted || confirmed != true) return;
+    if (!mounted) return;
+    if (confirmed != true) {
+      _openDeletedEvent(event);
+      return;
+    }
     if (EventStore.instance.permanentlyDelete(event.id)) {
       _removeUtilityDate('deleted-event', event.id);
       _syncUtilityVisibilityAndResurface();
@@ -3157,7 +3194,11 @@ class EventsTabState extends State<EventsTab>
       actionLabel:
           isSmart ? 'Permanently Delete Smart Category' : 'Permanently Delete',
     );
-    if (!mounted || confirmed != true) return;
+    if (!mounted) return;
+    if (confirmed != true) {
+      _openDeletedCategory(category);
+      return;
+    }
     final deleted = _recentlyDeletedCategories.any(
       (candidate) => candidate.id == category.id,
     );
@@ -3257,7 +3298,11 @@ class EventsTabState extends State<EventsTab>
           'cannot be recovered. Your events will not be affected.',
       actionLabel: 'Permanently Delete',
     );
-    if (!mounted || confirmed != true) return;
+    if (!mounted) return;
+    if (confirmed != true) {
+      _openDeletedSmartCategory(label);
+      return;
+    }
     if (!_recentlyDeletedSmartCategories.contains(label)) return;
     setState(() {
       _recentlyDeletedSmartCategories.remove(label);
@@ -5694,64 +5739,60 @@ class EventsTabState extends State<EventsTab>
     final eventCount = _categoryLiveEventCount(cat);
     final sectionCount = _categorySavedSectionCount(cat);
     if (eventCount == 0) {
-      final firstStep = await _showCategoryLifecycleIntro(
-        cat,
-        actionVerb: 'Archive',
-        sectionCount: sectionCount,
-      );
-      if (!mounted || !firstStep) return;
-      final confirmed = await _confirmCategoryLifecycleAction(
-        cat,
-        actionVerb: 'Archive',
-        withContents: false,
-        sectionCount: sectionCount,
-        eventCount: eventCount,
-      );
-      if (!mounted || !confirmed) return;
-      _archiveCategoryAfterChoice(cat);
+      while (mounted) {
+        final firstStep = await _showCategoryLifecycleIntro(
+          cat,
+          actionVerb: 'Archive',
+          sectionCount: sectionCount,
+        );
+        if (!mounted || !firstStep) return;
+        final confirmed = await _confirmCategoryLifecycleAction(
+          cat,
+          actionVerb: 'Archive',
+          withContents: false,
+          sectionCount: sectionCount,
+          eventCount: eventCount,
+        );
+        if (!mounted) return;
+        if (!confirmed) continue;
+        _archiveCategoryAfterChoice(cat);
+        return;
+      }
       return;
     }
 
-    _openArchiveCategorySheet(
-      cat,
-      sectionCount: sectionCount,
-      eventCount: eventCount,
-    );
-  }
-
-  void _openArchiveCategorySheet(
-    _UserCategory cat, {
-    required int sectionCount,
-    required int eventCount,
-  }) async {
-    final choice = await _ArchiveCategorySheet.show(
-      context,
-      categoryName: _categoryDisplayName(cat.name),
-      subtitle: _categoryChoiceSubtitle(
+    while (mounted) {
+      final choice = await _ArchiveCategorySheet.show(
+        context,
+        categoryName: _categoryDisplayName(cat.name),
+        subtitle: _categoryChoiceSubtitle(
+          actionVerb: 'Archive',
+          sectionCount: sectionCount,
+          eventCount: eventCount,
+        ),
+      );
+      if (!mounted || choice == null) return;
+      final confirmed = await _confirmCategoryLifecycleAction(
+        cat,
         actionVerb: 'Archive',
+        withContents: choice == _ArchiveCategoryChoice.withContents,
         sectionCount: sectionCount,
         eventCount: eventCount,
-      ),
-    );
-    if (!mounted || choice == null) return;
-    final confirmed = await _confirmCategoryLifecycleAction(
-      cat,
-      actionVerb: 'Archive',
-      withContents: choice == _ArchiveCategoryChoice.withContents,
-      sectionCount: sectionCount,
-      eventCount: eventCount,
-    );
-    if (!mounted || !confirmed) return;
-    if (choice == _ArchiveCategoryChoice.categoryOnly) {
-      _ensureDefaultCategoryAvailable({cat.id});
-      EventStore.instance.reassignCategories(fromCategoryIds: {cat.id});
-    } else {
-      EventStore.instance.archiveEventsForCategory(
-        cat.id,
-        origin: EventLifecycleOrigin.category,
       );
+      if (!mounted) return;
+      if (!confirmed) continue;
+      if (choice == _ArchiveCategoryChoice.categoryOnly) {
+        _ensureDefaultCategoryAvailable({cat.id});
+        EventStore.instance.reassignCategories(fromCategoryIds: {cat.id});
+      } else {
+        EventStore.instance.archiveEventsForCategory(
+          cat.id,
+          origin: EventLifecycleOrigin.category,
+        );
+      }
+      _archiveCategoryAfterChoice(cat);
+      return;
     }
-    _archiveCategoryAfterChoice(cat);
   }
 
   int _categoryLiveEventCount(_UserCategory category) =>
@@ -5870,33 +5911,34 @@ class EventsTabState extends State<EventsTab>
   }) async {
     final isDelete = actionVerb == 'Delete';
     final displayName = _categoryDisplayName(categoryName);
-    final firstStep = await showDeleteConfirmationSheet(
-      context,
-      title: '$actionVerb the smart category "$displayName"?',
-      subtitle:
-          isDelete
-              ? 'This only changes the saved Smart Category rule. Matching '
-                  'events stay in their parent categories.'
-              : 'This only archives the saved Smart Category rule. Matching '
-                  'events stay in their parent categories.',
-      actionLabel:
-          isDelete ? 'Delete Smart Category' : 'Archive Smart Category',
+    return showTwoStepConfirmationSheet(
+      firstStep:
+          () => showDeleteConfirmationSheet(
+            context,
+            title: '$actionVerb the smart category "$displayName"?',
+            subtitle:
+                isDelete
+                    ? 'This only changes the saved Smart Category rule. '
+                        'Matching events stay in their parent categories.'
+                    : 'This only archives the saved Smart Category rule. '
+                        'Matching events stay in their parent categories.',
+            actionLabel:
+                isDelete ? 'Delete Smart Category' : 'Archive Smart Category',
+          ),
+      secondStep:
+          () => showDeleteConfirmationSheet(
+            context,
+            title: 'Are you sure?',
+            subtitle:
+                isDelete
+                    ? 'The Smart Category rule will move to Recently Deleted. '
+                        'Matching events will stay unchanged.'
+                    : 'The Smart Category rule will move to Archived Items. '
+                        'Matching events will stay unchanged.',
+            actionLabel:
+                isDelete ? 'Delete Smart Category' : 'Archive Smart Category',
+          ),
     );
-    if (!mounted || firstStep != true) return false;
-
-    final secondStep = await showDeleteConfirmationSheet(
-      context,
-      title: 'Are you sure?',
-      subtitle:
-          isDelete
-              ? 'The Smart Category rule will move to Recently Deleted. '
-                  'Matching events will stay unchanged.'
-              : 'The Smart Category rule will move to Archived Items. '
-                  'Matching events will stay unchanged.',
-      actionLabel:
-          isDelete ? 'Delete Smart Category' : 'Archive Smart Category',
-    );
-    return secondStep == true;
   }
 
   Future<bool> _confirmCategoryLifecycleAction(

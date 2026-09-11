@@ -75,6 +75,21 @@ Future<bool?> showArchiveConfirmationSheet(
   );
 }
 
+/// Runs a two-step confirmation. Cancelling the second step returns to the
+/// first step; cancelling the first step dismisses the flow.
+Future<bool> showTwoStepConfirmationSheet({
+  required Future<bool?> Function() firstStep,
+  required Future<bool?> Function() secondStep,
+}) async {
+  while (true) {
+    final firstResult = await firstStep();
+    if (firstResult != true) return false;
+
+    final secondResult = await secondStep();
+    if (secondResult == true) return true;
+  }
+}
+
 /// Confirms and then moves an active event to Recently Deleted.
 Future<void> confirmDeleteEvent(
   BuildContext context,
@@ -82,23 +97,25 @@ Future<void> confirmDeleteEvent(
 ) async {
   final title =
       'Delete the event "${event.title.trim().isEmpty ? 'Untitled' : event.title.trim()}"?';
-  final firstStep = await showDeleteConfirmationSheet(
-    context,
-    title: title,
-    subtitle:
-        'This event will move to Recently Deleted. You can recover it later '
-        'or permanently delete it.',
-    actionLabel: 'Delete Event',
-  );
-  if (firstStep != true) return;
-
-  final confirmed = await showDeleteConfirmationSheet(
-    context,
-    title: 'Are you sure?',
-    subtitle:
-        'The event will be removed from the active schedule and moved to '
-        'Recently Deleted.',
-    actionLabel: 'Delete Event',
+  final confirmed = await showTwoStepConfirmationSheet(
+    firstStep:
+        () => showDeleteConfirmationSheet(
+          context,
+          title: title,
+          subtitle:
+              'This event will move to Recently Deleted. You can recover it '
+              'later or permanently delete it.',
+          actionLabel: 'Delete Event',
+        ),
+    secondStep:
+        () => showDeleteConfirmationSheet(
+          context,
+          title: 'Are you sure?',
+          subtitle:
+              'The event will be removed from the active schedule and moved '
+              'to Recently Deleted.',
+          actionLabel: 'Delete Event',
+        ),
   );
   if (confirmed == true) {
     EventStore.instance.remove(event.id);
@@ -112,22 +129,25 @@ Future<void> confirmArchiveEvent(
 ) async {
   final title =
       'Archive the event "${event.title.trim().isEmpty ? 'Untitled' : event.title.trim()}"?';
-  final firstStep = await showArchiveConfirmationSheet(
-    context,
-    title: title,
-    subtitle:
-        'This event will move to Archived Items. You can recover it later.',
-    actionLabel: 'Archive Event',
-  );
-  if (firstStep != true) return;
-
-  final confirmed = await showArchiveConfirmationSheet(
-    context,
-    title: 'Are you sure?',
-    subtitle:
-        'The event will be removed from the active schedule and moved to '
-        'Archived Items.',
-    actionLabel: 'Archive Event',
+  final confirmed = await showTwoStepConfirmationSheet(
+    firstStep:
+        () => showArchiveConfirmationSheet(
+          context,
+          title: title,
+          subtitle:
+              'This event will move to Archived Items. You can recover it '
+              'later.',
+          actionLabel: 'Archive Event',
+        ),
+    secondStep:
+        () => showArchiveConfirmationSheet(
+          context,
+          title: 'Are you sure?',
+          subtitle:
+              'The event will be removed from the active schedule and moved '
+              'to Archived Items.',
+          actionLabel: 'Archive Event',
+        ),
   );
   if (confirmed == true) {
     EventStore.instance.archiveEvent(event.id);
@@ -142,23 +162,25 @@ Future<bool?> confirmDeleteSection(
 }) async {
   final displayName =
       sectionName.trim().isEmpty ? 'New Section' : sectionName.trim();
-  final firstStep = await showDeleteConfirmationSheet(
-    context,
-    title: 'Delete the section "$displayName"?',
-    subtitle:
-        'Events in "$displayName" will stay in this category and will no '
-        'longer belong to this section. They will not be deleted.',
-    actionLabel: 'Delete Section',
-  );
-  if (firstStep != true) return false;
-
-  return showDeleteConfirmationSheet(
-    context,
-    title: 'Are you sure?',
-    subtitle:
-        'The section will be removed. Its events will stay in this category '
-        'and can be organized into another section.',
-    actionLabel: 'Delete Section',
+  return showTwoStepConfirmationSheet(
+    firstStep:
+        () => showDeleteConfirmationSheet(
+          context,
+          title: 'Delete the section "$displayName"?',
+          subtitle:
+              'Events in "$displayName" will stay in this category and will '
+              'no longer belong to this section. They will not be deleted.',
+          actionLabel: 'Delete Section',
+        ),
+    secondStep:
+        () => showDeleteConfirmationSheet(
+          context,
+          title: 'Are you sure?',
+          subtitle:
+              'The section will be removed. Its events will stay in this '
+              'category and can be organized into another section.',
+          actionLabel: 'Delete Section',
+        ),
   );
 }
 
