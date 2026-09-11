@@ -5905,12 +5905,55 @@ class EventsTabState extends State<EventsTab>
     return result == true;
   }
 
+  int _smartCategoryMatchCount(String categoryName) {
+    final allEvents = EventStore.instance.expandedEvents();
+    if (_kDCVLabels.contains(categoryName)) {
+      return AIServices.matcher
+          .match(
+            candidates: allEvents,
+            rule: categoryName,
+            builtInLabel: categoryName,
+            now: DateTime.now(),
+          )
+          .length;
+    }
+
+    final category = [
+      ..._userCategories,
+      ..._pinnedUserCategories,
+    ].cast<_UserCategory?>().firstWhere(
+      (candidate) =>
+          candidate?.name == categoryName &&
+          candidate != null &&
+          _isSmartUserCategory(candidate),
+      orElse: () => null,
+    );
+    if (category == null || category.smartDescription.trim().isEmpty) {
+      return 0;
+    }
+
+    return AIServices.matcher
+        .match(
+          candidates: allEvents,
+          rule: category.smartDescription,
+          categoryName: category.name,
+          now: DateTime.now(),
+        )
+        .length;
+  }
+
   Future<bool> _confirmSmartCategoryAction(
     String categoryName, {
     required String actionVerb,
   }) async {
     final isDelete = actionVerb == 'Delete';
     final displayName = _categoryDisplayName(categoryName);
+    final hasMatchingEvents = _smartCategoryMatchCount(categoryName) > 0;
+    final matchingEventsSubtitle =
+        hasMatchingEvents
+            ? 'Matching events will stay in their parent categories.'
+            : 'No events currently match this Smart Category rule, so no '
+                'events will be affected.';
     return showTwoStepConfirmationSheet(
       firstStep:
           () => showDeleteConfirmationSheet(
@@ -5919,9 +5962,9 @@ class EventsTabState extends State<EventsTab>
             subtitle:
                 isDelete
                     ? 'This only changes the saved Smart Category rule. '
-                        'Matching events stay in their parent categories.'
+                        '$matchingEventsSubtitle'
                     : 'This only archives the saved Smart Category rule. '
-                        'Matching events stay in their parent categories.',
+                        '$matchingEventsSubtitle',
             actionLabel:
                 isDelete ? 'Delete Smart Category' : 'Archive Smart Category',
           ),
@@ -5932,9 +5975,9 @@ class EventsTabState extends State<EventsTab>
             subtitle:
                 isDelete
                     ? 'The Smart Category rule will move to Recently Deleted. '
-                        'Matching events will stay unchanged.'
+                        '$matchingEventsSubtitle'
                     : 'The Smart Category rule will move to Archived Items. '
-                        'Matching events will stay unchanged.',
+                        '$matchingEventsSubtitle',
             actionLabel:
                 isDelete ? 'Delete Smart Category' : 'Archive Smart Category',
           ),
