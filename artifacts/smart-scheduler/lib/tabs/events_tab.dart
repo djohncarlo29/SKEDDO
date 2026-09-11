@@ -2907,12 +2907,35 @@ class EventsTabState extends State<EventsTab>
 
   void _requestDeleteCategory(_UserCategory category) async {
     if (_isSystemUtilityCategory(category)) return;
+    final sectionCount = _categorySavedSectionCount(category);
+    final eventCount = _categoryLiveEventCount(category);
+    if (sectionCount == 0 && eventCount == 0) {
+      if (_pinnedUserCategories.contains(category)) {
+        _deletePinnedCategory(category, deleteEvents: false);
+      } else {
+        _deleteUserCategory(category, deleteEvents: false);
+      }
+      return;
+    }
     final choice = await _ArchiveCategorySheet.show(
       context,
       categoryName: _categoryDisplayName(category.name),
+      subtitle: _categoryChoiceSubtitle(
+        actionVerb: 'Delete',
+        sectionCount: sectionCount,
+        eventCount: eventCount,
+      ),
       actionVerb: 'Delete',
     );
     if (!mounted || choice == null) return;
+    final confirmed = await _confirmCategoryLifecycleAction(
+      category,
+      actionVerb: 'Delete',
+      withContents: choice == _ArchiveCategoryChoice.withContents,
+      sectionCount: sectionCount,
+      eventCount: eventCount,
+    );
+    if (!mounted || !confirmed) return;
     final deleteEvents = choice == _ArchiveCategoryChoice.withContents;
     if (_pinnedUserCategories.contains(category)) {
       _deletePinnedCategory(category, deleteEvents: deleteEvents);
@@ -5511,30 +5534,46 @@ class EventsTabState extends State<EventsTab>
         _archivingFromGrid.contains(cat)) {
       return;
     }
-    final eventCount = _liveEventCounts[cat.id] ?? 0;
-    final sectionCount = _dcvCustomSectionNames[cat.name]?.length ?? 0;
+    final eventCount = _categoryLiveEventCount(cat);
+    final sectionCount = _categorySavedSectionCount(cat);
     if (eventCount == 0 && sectionCount == 0) {
       _archiveCategoryAfterChoice(cat);
       return;
     }
 
-    _openArchiveCategorySheet(cat);
+    _openArchiveCategorySheet(
+      cat,
+      sectionCount: sectionCount,
+      eventCount: eventCount,
+    );
   }
 
-  void _openArchiveCategorySheet(_UserCategory cat) async {
+  void _openArchiveCategorySheet(
+    _UserCategory cat, {
+    required int sectionCount,
+    required int eventCount,
+  }) async {
     final choice = await _ArchiveCategorySheet.show(
       context,
       categoryName: _categoryDisplayName(cat.name),
+      subtitle: _categoryChoiceSubtitle(
+        actionVerb: 'Archive',
+        sectionCount: sectionCount,
+        eventCount: eventCount,
+      ),
     );
     if (!mounted || choice == null) return;
+    final confirmed = await _confirmCategoryLifecycleAction(
+      cat,
+      actionVerb: 'Archive',
+      withContents: choice == _ArchiveCategoryChoice.withContents,
+      sectionCount: sectionCount,
+      eventCount: eventCount,
+    );
+    if (!mounted || !confirmed) return;
     if (choice == _ArchiveCategoryChoice.categoryOnly) {
       _ensureDefaultCategoryAvailable({cat.id});
       EventStore.instance.reassignCategories(fromCategoryIds: {cat.id});
-      setState(() {
-        _dcvCustomSectionNames.remove(cat.name);
-        _dcvCustomSectionEventIds.remove(cat.name);
-      });
-      _saveCategories();
     } else {
       EventStore.instance.archiveEventsForCategory(
         cat.id,
@@ -5542,6 +5581,105 @@ class EventsTabState extends State<EventsTab>
       );
     }
     _archiveCategoryAfterChoice(cat);
+  }
+
+  int _categoryLiveEventCount(_UserCategory category) =>
+      EventStore.instance.events.value
+          .where((event) => event.categoryId == category.id)
+          .length;
+
+  int _categorySavedSectionCount(_UserCategory category) =>
+      _dcvCustomSectionNames[category.name]?.length ?? 0;
+
+  String _pluralizedCount(int count, String singular) =>
+      '$count $singular${count == 1 ? '' : 's'}';
+
+  String _categoryContentsLabel({
+    required int sectionCount,
+    required int eventCount,
+  }) {
+    final parts = <String>[];
+    if (sectionCount > 0) {
+      parts.add(_pluralizedCount(sectionCount, 'saved section'));
+    }
+    if (eventCount > 0) {
+      parts.add(_pluralizedCount(eventCount, 'event'));
+    }
+    if (parts.length == 2) return '${parts[0]} and ${parts[1]}';
+    return parts.single;
+  }
+
+  String _categoryOnlyScope(int sectionCount) =>
+      sectionCount > 0 ? 'the category and its saved sections' : 'the category';
+
+  String _categoryWithContentsScope(int sectionCount) {
+    if (sectionCount > 0) {
+      return 'the category, its saved sections, and its events';
+    }
+    return 'the category and its events';
+  }
+
+  String _categoryChoiceSubtitle({
+    required String actionVerb,
+    required int sectionCount,
+    required int eventCount,
+  }) {
+    final contents = _categoryContentsLabel(
+      sectionCount: sectionCount,
+      eventCount: eventCount,
+    );
+    final onlyScope = _categoryOnlyScope(sectionCount);
+    final withContentsScope = _categoryWithContentsScope(sectionCount);
+    if (actionVerb == 'Delete') {
+      return 'This category has $contents. Choose whether to move '
+          '$withContentsScope to Recently Deleted together, or move '
+          '$onlyScope there while moving its events to the default category.';
+    }
+    return 'This category has $contents. Choose whether to archive '
+        '$withContentsScope together, or archive $onlyScope while moving '
+        'its events to the default category.';
+  }
+
+  Future<bool> _confirmCategoryLifecycleAction(
+    _UserCategory category, {
+    required String actionVerb,
+    required bool withContents,
+    required int sectionCount,
+    required int eventCount,
+  }) async {
+    final name = _categoryDisplayName(category.name);
+    final onlyScope = _categoryOnlyScope(sectionCount);
+    final withContentsScope = _categoryWithContentsScope(sectionCount);
+    final eventLabel = _pluralizedCount(eventCount, 'event');
+    final isDelete = actionVerb == 'Delete';
+    final title =
+        withContents
+            ? '$actionVerb "$name" and its contents?'
+            : '$actionVerb "$name" only?';
+    final subtitle =
+        withContents
+            ? isDelete
+                ? '$withContentsScope will move to Recently Deleted together. '
+                    'You can recover them together until they are permanently '
+                    'deleted.'
+                : '$withContentsScope will be archived together. You can '
+                    'recover them together from Archived Items.'
+            : isDelete
+            ? 'Only $onlyScope will move to Recently Deleted. Its $eventLabel '
+                'will move to the default category.'
+            : 'Only $onlyScope will be archived. Its $eventLabel will move to '
+                'the default category.';
+    final actionLabel =
+        withContents
+            ? '$actionVerb Category & Contents'
+            : '$actionVerb Category Only';
+    return await showDeleteConfirmationSheet(
+          context,
+          title: title,
+          subtitle: subtitle,
+          actionLabel: actionLabel,
+        ) ==
+        true;
   }
 
   /// Flags [cat] as archived so it's hidden from the grid/list without
@@ -5794,6 +5932,16 @@ class EventsTabState extends State<EventsTab>
 
   void _updateCategory(_UserCategory oldCat, _UserCategory updated) {
     setState(() {
+      if (oldCat.name != updated.name) {
+        final sectionNames = _dcvCustomSectionNames.remove(oldCat.name);
+        final sectionEventIds = _dcvCustomSectionEventIds.remove(oldCat.name);
+        if (sectionNames != null) {
+          _dcvCustomSectionNames[updated.name] = sectionNames;
+        }
+        if (sectionEventIds != null) {
+          _dcvCustomSectionEventIds[updated.name] = sectionEventIds;
+        }
+      }
       final i = _userCategories.indexOf(oldCat);
       if (i != -1) {
         _userCategories[i] = updated;
@@ -10744,6 +10892,7 @@ class _ArchiveCategorySheet {
   static Future<_ArchiveCategoryChoice?> show(
     BuildContext context, {
     required String categoryName,
+    required String subtitle,
     String actionVerb = 'Archive',
   }) async {
     final completer = Completer<_ArchiveCategoryChoice?>();
@@ -10760,6 +10909,7 @@ class _ArchiveCategorySheet {
       builder:
           (_) => _ArchiveCategorySheetOverlay(
             categoryName: categoryName,
+            subtitle: subtitle,
             actionVerb: actionVerb,
             onResult: close,
           ),
@@ -10771,11 +10921,13 @@ class _ArchiveCategorySheet {
 
 class _ArchiveCategorySheetOverlay extends StatelessWidget {
   final String categoryName;
+  final String subtitle;
   final String actionVerb;
   final void Function(_ArchiveCategoryChoice?) onResult;
 
   const _ArchiveCategorySheetOverlay({
     required this.categoryName,
+    required this.subtitle,
     required this.actionVerb,
     required this.onResult,
   });
@@ -10872,16 +11024,7 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        actionVerb == 'Delete'
-                            ? 'Choose whether to move the category and its '
-                                'events to Recently Deleted together, or '
-                                'delete only the category and move its events '
-                                'to the default category. The category’s saved '
-                                'sections stay with it.'
-                            : 'Choose whether to keep the category, sections, '
-                                'and events together, or archive only the '
-                                'category and move its events to the default '
-                                'category.',
+                        subtitle,
                         style: TextStyle(
                           inherit: false,
                           fontSize: 15,
@@ -10908,7 +11051,7 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
                       const SizedBox(height: 8),
                       button(
                         label: actionVerb == 'Delete'
-                            ? 'Delete Category & Events'
+                            ? 'Delete Category & Contents'
                             : 'Archive Category & Contents',
                         labelColor: CupertinoColors.destructiveRed,
                         onTap:
