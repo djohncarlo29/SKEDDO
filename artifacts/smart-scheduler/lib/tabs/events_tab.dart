@@ -11549,7 +11549,10 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
           ),
         );
       }
-      if (!isLast) {
+      // When children exist, the final child event owns the separator below
+      // this category block. Adding another one here would paint two
+      // hairlines on top of each other before the next utility item.
+      if (!isLast && !hasChildren) {
         rows.add(
           Container(
             height: 0.5,
