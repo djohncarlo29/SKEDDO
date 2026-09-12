@@ -909,6 +909,251 @@ class ActionPanel extends StatefulWidget {
   State<ActionPanel> createState() => _ActionPanelState();
 }
 
+/// Scroll viewport shared by action panels and modal confirmation surfaces.
+///
+/// This intentionally mirrors ActionPanel's overflow behavior rather than
+/// using Flutter's platform scrollbar: the indicator is the same short iOS
+/// pill, edge fades are shader masks over the rendered content, and bouncing
+/// physics are enabled only after layout proves that content overflows.
+class ActionPanelScrollView extends StatefulWidget {
+  const ActionPanelScrollView({
+    super.key,
+    required this.child,
+    required this.maxHeight,
+    this.fadeHeight = kPickerPanelFadeHeight,
+  });
+
+  final Widget child;
+  final double maxHeight;
+  final double fadeHeight;
+
+  @override
+  State<ActionPanelScrollView> createState() => _ActionPanelScrollViewState();
+}
+
+class _ActionPanelScrollViewState extends State<ActionPanelScrollView> {
+  final _scrollCtrl = ScrollController();
+  bool _canScroll = false;
+  bool _checkScheduled = false;
+  bool _showTopFade = false;
+  bool _showBottomFade = false;
+  bool _pillVisible = false;
+  Timer? _pillHideTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollCtrl.addListener(_onScrollPositionChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncAfterLayout());
+  }
+
+  @override
+  void didUpdateWidget(covariant ActionPanelScrollView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.maxHeight != widget.maxHeight ||
+        oldWidget.child.key != widget.child.key) {
+      _scheduleSync();
+    }
+  }
+
+  void _scheduleSync() {
+    if (_checkScheduled) return;
+    _checkScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkScheduled = false;
+      _syncAfterLayout();
+    });
+  }
+
+  void _syncAfterLayout() {
+    if (!mounted || !_scrollCtrl.hasClients) return;
+    _syncEdgeFades(_scrollCtrl.position);
+  }
+
+  void _onScrollPositionChanged() {
+    if (!mounted || !_scrollCtrl.hasClients) return;
+    _syncEdgeFades(_scrollCtrl.position);
+  }
+
+  void _syncEdgeFades(ScrollMetrics metrics) {
+    final canScroll = metrics.maxScrollExtent > 1.0;
+    final showTop = canScroll && metrics.pixels > 1.0;
+    final showBottom =
+        canScroll && metrics.pixels < metrics.maxScrollExtent - 1.0;
+    if (_canScroll == canScroll &&
+        _showTopFade == showTop &&
+        _showBottomFade == showBottom) {
+      return;
+    }
+    setState(() {
+      _canScroll = canScroll;
+      _showTopFade = showTop;
+      _showBottomFade = showBottom;
+    });
+  }
+
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (!mounted) return false;
+    _syncEdgeFades(notification.metrics);
+    if (!_pillVisible) setState(() => _pillVisible = true);
+    _pillHideTimer?.cancel();
+    _pillHideTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) setState(() => _pillVisible = false);
+    });
+    return false;
+  }
+
+  ScrollPhysics get _physics => _canScroll
+      ? const BouncingScrollPhysics()
+      : const NeverScrollableScrollPhysics();
+
+  @override
+  void dispose() {
+    _scrollCtrl.removeListener(_onScrollPositionChanged);
+    _pillHideTimer?.cancel();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _scheduleSync();
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: widget.maxHeight),
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _onScrollNotification,
+        child: Stack(
+          children: [
+            ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) {
+                const white = Color(0xFFFFFFFF);
+                const transparent = Color(0x00FFFFFF);
+                if (bounds.height == 0) {
+                  return const LinearGradient(
+                    colors: [white, white],
+                  ).createShader(bounds);
+                }
+                final topFrac = _showTopFade
+                    ? (widget.fadeHeight / bounds.height).clamp(0.0, 0.45)
+                    : 0.0;
+                final bottomFrac = _showBottomFade
+                    ? (widget.fadeHeight / bounds.height).clamp(0.0, 0.45)
+                    : 0.0;
+                final top0 = topFrac * 0.30;
+                final top1 = topFrac * 0.65;
+                final bottom0 = 1.0 - bottomFrac * 0.65;
+                final bottom1 = 1.0 - bottomFrac * 0.30;
+                return LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    _showTopFade ? transparent : white,
+                    _showTopFade ? const Color(0x06FFFFFF) : white,
+                    _showTopFade ? const Color(0x38FFFFFF) : white,
+                    white,
+                    white,
+                    _showBottomFade ? const Color(0x38FFFFFF) : white,
+                    _showBottomFade ? const Color(0x06FFFFFF) : white,
+                    _showBottomFade ? transparent : white,
+                  ],
+                  stops: [
+                    0.0,
+                    top0,
+                    top1,
+                    topFrac,
+                    1.0 - bottomFrac,
+                    bottom0,
+                    bottom1,
+                    1.0,
+                  ],
+                ).createShader(bounds);
+              },
+              child: SingleChildScrollView(
+                controller: _scrollCtrl,
+                physics: _physics,
+                child: widget.child,
+              ),
+            ),
+            Positioned(
+              right: 3,
+              top: 10,
+              bottom: 10,
+              width: 2.5,
+              child: AnimatedSlide(
+                offset: _pillVisible ? Offset.zero : const Offset(3.0, 0),
+                duration: const Duration(milliseconds: 100),
+                curve: _pillVisible ? Curves.easeOut : Curves.easeIn,
+                child: AnimatedOpacity(
+                  opacity: _pillVisible ? 0.80 : 0.0,
+                  duration: const Duration(milliseconds: 100),
+                  curve: _pillVisible ? Curves.easeOut : Curves.easeIn,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final trackH = constraints.maxHeight;
+                      if (!_scrollCtrl.hasClients || trackH <= 0) {
+                        return const SizedBox.shrink();
+                      }
+                      return AnimatedBuilder(
+                        animation: _scrollCtrl,
+                        builder: (context, _) {
+                          final position = _scrollCtrl.position;
+                          if (position.maxScrollExtent < 1.0) {
+                            return const SizedBox.shrink();
+                          }
+                          final overscroll = position.pixels < 0
+                              ? -position.pixels
+                              : position.pixels > position.maxScrollExtent
+                              ? position.pixels - position.maxScrollExtent
+                              : 0.0;
+                          final total = position.maxScrollExtent +
+                              position.viewportDimension +
+                              overscroll;
+                          final fraction =
+                              (position.viewportDimension / total)
+                                  .clamp(0.0, 1.0);
+                          final pillH =
+                              (fraction * trackH).clamp(20.0, trackH);
+                          final ratio = position.maxScrollExtent > 0
+                              ? position.pixels / position.maxScrollExtent
+                              : 0.0;
+                          final pillTop = (ratio * (trackH - pillH)).clamp(
+                            0.0,
+                            (trackH - pillH).clamp(0.0, double.infinity),
+                          );
+                          return Stack(
+                            children: [
+                              Positioned(
+                                top: pillTop,
+                                left: 0,
+                                right: 0,
+                                height: pillH,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: CupertinoDynamicColor.resolve(
+                                      kTertiaryLabel,
+                                      context,
+                                    ),
+                                    borderRadius: BorderRadius.circular(1.25),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ActionPanelState extends State<ActionPanel>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;

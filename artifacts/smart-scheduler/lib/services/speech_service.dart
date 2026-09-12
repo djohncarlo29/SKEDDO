@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../app_theme.dart';
+import '../widgets/action_panel.dart';
 
 // Offline-only speech-to-text service. Recognition is performed by the
 // platform's native speech engine; no network or language-model API is used.
@@ -212,9 +213,11 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
+                   child: ActionPanelScrollView(
+                     maxHeight: MediaQuery.sizeOf(context).height,
+                     child: Column(
+                       mainAxisSize: MainAxisSize.min,
+                       children: [
                       Container(
                         width: 64,
                         height: 64,
@@ -312,7 +315,8 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                    ],
+                       ],
+                     ),
                   ),
                 ),
               ),

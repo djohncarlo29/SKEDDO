@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 
 import '../app_theme.dart';
 import '../services/event_store.dart';
+import 'action_panel.dart';
 import 'rounded_cupertino_sheet.dart';
 
 VoidCallback? _activeDiscardChangesSheetDismiss;
@@ -324,10 +325,12 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
             kDiscardConfirmationButtonEdgeGap,
             kDiscardConfirmationButtonEdgeGap,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+                   child: ActionPanelScrollView(
+                     maxHeight: MediaQuery.sizeOf(context).height,
+                     child: Column(
+                       mainAxisSize: MainAxisSize.min,
+                       crossAxisAlignment: CrossAxisAlignment.stretch,
+                       children: [
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: kDiscardConfirmationMessageHorizontalInset,
@@ -375,7 +378,8 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
                   ),
                 ),
               ),
-            ],
+                       ],
+                     ),
           ),
         ),
       ),
@@ -535,10 +539,12 @@ class _DeleteConfirmationSheetOverlay extends StatelessWidget {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
+                   child: ActionPanelScrollView(
+                     maxHeight: MediaQuery.sizeOf(context).height,
+                     child: Column(
+                       mainAxisSize: MainAxisSize.min,
+                       crossAxisAlignment: CrossAxisAlignment.stretch,
+                       children: [
                         Text(
                           title,
                           style: TextStyle(
@@ -582,7 +588,8 @@ class _DeleteConfirmationSheetOverlay extends StatelessWidget {
                           labelColor: primary,
                           onTap: () => onResult(null),
                         ),
-                      ],
+                       ],
+                     ),
                     ),
                   ),
                 ),

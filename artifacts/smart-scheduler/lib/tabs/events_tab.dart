@@ -11214,10 +11214,12 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+                   child: ActionPanelScrollView(
+                     maxHeight: MediaQuery.sizeOf(context).height,
+                     child: Column(
+                       mainAxisSize: MainAxisSize.min,
+                       crossAxisAlignment: CrossAxisAlignment.stretch,
+                       children: [
                       Text(
                         'Delete the group "$groupName"?',
                         style: TextStyle(
@@ -11273,7 +11275,8 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                         labelColor: primary,
                         onTap: () => onResult(null),
                       ),
-                    ],
+                       ],
+                     ),
                   ),
                 ),
               ),
@@ -11410,10 +11413,12 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+                   child: ActionPanelScrollView(
+                     maxHeight: MediaQuery.sizeOf(context).height,
+                     child: Column(
+                       mainAxisSize: MainAxisSize.min,
+                       crossAxisAlignment: CrossAxisAlignment.stretch,
+                       children: [
                       Text(
                         '$actionVerb the category "$categoryName"?',
                         style: TextStyle(
@@ -11470,7 +11475,8 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
                         labelColor: primary,
                         onTap: () => onResult(null),
                       ),
-                    ],
+                       ],
+                     ),
                   ),
                 ),
               ),
@@ -11613,10 +11619,12 @@ class _UtilityItemSheetOverlay extends StatelessWidget {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+                   child: ActionPanelScrollView(
+                     maxHeight: MediaQuery.sizeOf(context).height,
+                     child: Column(
+                       mainAxisSize: MainAxisSize.min,
+                       crossAxisAlignment: CrossAxisAlignment.stretch,
+                       children: [
                       Text(
                         title,
                         style: TextStyle(
@@ -11662,7 +11670,8 @@ class _UtilityItemSheetOverlay extends StatelessWidget {
                         labelColor: primary,
                         onTap: () => onResult(null),
                       ),
-                    ],
+                       ],
+                     ),
                   ),
                 ),
               ),
@@ -14072,13 +14081,16 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     final cardColor = resolveThemeColor(kModalCard, context);
     final shadows = resolveThemeShadows(kCardShadow, context);
     final ShapeBorder shape = const BoundedSquircleStadiumBorder();
-    return Container(
+     return Container(
       decoration: ShapeDecoration(
         color: cardColor,
         shape: shape,
         shadows: shadows,
       ),
-      clipBehavior: Clip.antiAlias,
+      // Keep the 16pt layout inset, but do not make it a paint boundary for
+      // gel-bloom controls. Their visual scale is allowed to grow into the
+      // inset and the card's transparent margins without being cut off.
+      clipBehavior: Clip.none,
       child: Column(mainAxisSize: MainAxisSize.min, children: rows),
     );
   }
