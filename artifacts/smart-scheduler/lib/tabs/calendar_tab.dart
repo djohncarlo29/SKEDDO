@@ -7482,7 +7482,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
           _categoryColor,
           context,
         ).withValues(alpha: 0.20),
-        child: CupertinoTextField(
+        child: trackTextFieldPointerDown(
+          focusNode: focus,
+          child: CupertinoTextField(
           controller: ctrl,
           focusNode: focus,
           scrollController: scrollController,
@@ -7494,11 +7496,15 @@ class _NewEventSheetState extends State<_NewEventSheet>
           maxLines: maxLinesOverride ?? (multiline ? null : 1),
           minLines: minLinesOverride ?? (multiline ? 3 : 1),
           onTap: caretToEndOnTap
-              ? () => scheduleTextFieldCaretToEnd(
-                    ctrl,
-                    scrollController: scrollController,
-                    isMounted: () => mounted,
-                  )
+              ? () {
+                  if (shouldMoveTextFieldCaretToEnd(focus)) {
+                    scheduleTextFieldCaretToEnd(
+                      ctrl,
+                      scrollController: scrollController,
+                      isMounted: () => mounted,
+                    );
+                  }
+                }
               : null,
           scrollPhysics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
@@ -7511,6 +7517,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                        right: clearIconSize + kHorizontalFadeContentGap,
                      ),
           onChanged: (_) => setState(() {}),
+          ),
         ),
       ),
     );
@@ -9231,7 +9238,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     _categoryColor,
                     context,
                   ).withOpacity(0.20),
-                  child: CupertinoTextField(
+                  child: trackTextFieldPointerDown(
+                    focusNode: focusNode,
+                    child: CupertinoTextField(
                     controller: ctrl,
                     focusNode: focusNode,
                     scrollController: scrollController,
@@ -9253,11 +9262,16 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     textCapitalization: TextCapitalization.sentences,
                     decoration: null,
                     textInputAction: TextInputAction.next,
-                    onTap: () => scheduleTextFieldCaretToEnd(
-                      ctrl,
-                      scrollController: scrollController,
-                      isMounted: () => mounted,
-                    ),
+                    onTap: () {
+                      if (shouldMoveTextFieldCaretToEnd(focusNode)) {
+                        scheduleTextFieldCaretToEnd(
+                          ctrl,
+                          scrollController: scrollController,
+                          isMounted: () => mounted,
+                        );
+                      }
+                    },
+                  ),
                   ),
                 ),
               ),

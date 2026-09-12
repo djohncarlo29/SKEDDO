@@ -12889,40 +12889,48 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                       selectionColor: resolveAccentColor(
                                         context,
                                       ).withOpacity(0.20),
-                                      child: CupertinoTextField(
-                                        controller: _nameCtrl,
+                                      child: trackTextFieldPointerDown(
                                         focusNode: _nameFocus,
-                                        scrollController: _nameScrollCtrl,
-                                        placeholder: '',
-                                        style: TextStyle(
-                                          inherit: false,
-                                          color: resolveThemeColor(
-                                            kPrimaryLabel,
-                                            context,
+                                        child: CupertinoTextField(
+                                          controller: _nameCtrl,
+                                          focusNode: _nameFocus,
+                                          scrollController: _nameScrollCtrl,
+                                          placeholder: '',
+                                          style: TextStyle(
+                                            inherit: false,
+                                            color: resolveThemeColor(
+                                              kPrimaryLabel,
+                                              context,
+                                            ),
+                                            fontSize: 17,
+                                            fontFamily: kSFProText,
+                                            fontWeight: FontWeight.w400,
+                                            letterSpacing: kTracking17,
+                                            height: kLineHeight,
                                           ),
-                                          fontSize: 17,
-                                          fontFamily: kSFProText,
-                                          fontWeight: FontWeight.w400,
-                                          letterSpacing: kTracking17,
-                                          height: kLineHeight,
+                                          cursorColor: resolveAccentColor(context),
+                                          padding: EdgeInsets.only(
+                                            left: 0,
+                                            right:
+                                                scaledSearchIconSize(context, 18) +
+                                                kHorizontalFadeContentGap,
+                                          ),
+                                          scrollPhysics: const BouncingScrollPhysics(
+                                            parent: AlwaysScrollableScrollPhysics(),
+                                          ),
+                                          decoration: null,
+                                          textCapitalization:
+                                              TextCapitalization.sentences,
+                                          textInputAction: TextInputAction.done,
+                                          onTap: () {
+                                            if (shouldMoveTextFieldCaretToEnd(
+                                              _nameFocus,
+                                            )) {
+                                              _scheduleCaretToEnd(_nameCtrl);
+                                            }
+                                          },
+                                          onChanged: (_) => setState(() {}),
                                         ),
-                                        cursorColor: resolveAccentColor(context),
-                                         padding: EdgeInsets.only(
-                                           left: 0,
-                                           right:
-                                               scaledSearchIconSize(context, 18) +
-                                               kHorizontalFadeContentGap,
-                                         ),
-                                        scrollPhysics: const BouncingScrollPhysics(
-                                          parent: AlwaysScrollableScrollPhysics(),
-                                        ),
-                                        decoration: null,
-                                        textCapitalization:
-                                            TextCapitalization.sentences,
-                                        textInputAction: TextInputAction.done,
-                                        onTap: () =>
-                                            _scheduleCaretToEnd(_nameCtrl),
-                                        onChanged: (_) => setState(() {}),
                                       ),
                                     ),
                                   ),
@@ -14248,7 +14256,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 placeholderFocusNode: _titleFocus,
                 controller: _titleCtrl,
                 scrollController: _titleScrollCtrl,
-                child: CupertinoTextField(
+                child: trackTextFieldPointerDown(
+                  focusNode: _titleFocus,
+                  child: CupertinoTextField(
                   controller: _titleCtrl,
                   focusNode: _titleFocus,
                   scrollController: _titleScrollCtrl,
@@ -14299,10 +14309,15 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   textInputAction: TextInputAction.next,
                   onTap: _isSmart
                       ? null
-                      : () => _scheduleCaretToEnd(
-                          _titleCtrl,
-                          scrollController: _titleScrollCtrl,
-                        ),
+                      : () {
+                          if (shouldMoveTextFieldCaretToEnd(_titleFocus)) {
+                            _scheduleCaretToEnd(
+                              _titleCtrl,
+                              scrollController: _titleScrollCtrl,
+                            );
+                          }
+                        },
+                ),
                 ),
               ),
               // Clear button — Positioned overlay so it never enters the text
@@ -14375,7 +14390,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 placeholderFocusNode: _descFocus,
                 controller: _descCtrl,
                 scrollController: _descScrollCtrl,
-                child: CupertinoTextField(
+                child: trackTextFieldPointerDown(
+                  focusNode: _descFocus,
+                  child: CupertinoTextField(
                   controller: _descCtrl,
                   focusNode: _descFocus,
                   scrollController: _descScrollCtrl,
@@ -14410,10 +14427,15 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   textInputAction: TextInputAction.done,
                   onTap: _isSmart
                       ? null
-                      : () => _scheduleCaretToEnd(
-                          _descCtrl,
-                          scrollController: _descScrollCtrl,
-                        ),
+                      : () {
+                          if (shouldMoveTextFieldCaretToEnd(_descFocus)) {
+                            _scheduleCaretToEnd(
+                              _descCtrl,
+                              scrollController: _descScrollCtrl,
+                            );
+                          }
+                        },
+                ),
                 ),
               ),
               if (!_isSmart)
@@ -14735,7 +14757,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 ).copyWith(primaryColor: _resolvedSelectedColor),
                 child: DefaultSelectionStyle(
                   selectionColor: _resolvedSelectedColor.withOpacity(0.20),
-                  child: CupertinoTextField(
+                  child: trackTextFieldPointerDown(
+                    focusNode: focusNode,
+                    child: CupertinoTextField(
                     controller: ctrl,
                     focusNode: focusNode,
                     scrollController: scrollController,
@@ -14758,10 +14782,15 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     textCapitalization: TextCapitalization.sentences,
                     decoration: null,
                     textInputAction: TextInputAction.next,
-                    onTap: () => _scheduleCaretToEnd(
-                      ctrl,
-                      scrollController: scrollController,
-                    ),
+                    onTap: () {
+                      if (shouldMoveTextFieldCaretToEnd(focusNode)) {
+                        _scheduleCaretToEnd(
+                          ctrl,
+                          scrollController: scrollController,
+                        );
+                      }
+                    },
+                  ),
                   ),
                 ),
               ),
