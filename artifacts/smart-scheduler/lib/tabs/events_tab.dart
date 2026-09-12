@@ -14204,6 +14204,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                                 64 * circleScale,
                                 CupertinoColors.white,
                                 containerColor: previewColor,
+                                useCategoryPreviewGradient:
+                                    _isTwoToneBallIcon(_effectiveIcon),
                                 emojiOffsetY: 2 * circleScale,
                                 ctx: context,
                               ),
@@ -16397,6 +16399,7 @@ Widget _renderCatIcon(
   BuildContext? ctx,
   double emojiOffsetY = 0,
   Color? containerColor,
+  bool useCategoryPreviewGradient = false,
 }) {
   final double scale = containerSize / _kIconCircle;
   final double iconSz = _pickerIconBaseSize(iconOrSvg) * scale;
@@ -16412,6 +16415,7 @@ Widget _renderCatIcon(
       size: iconSz,
       ballFillColor: containerColor,
       detailColor: color,
+        useCategoryPreviewGradient: useCategoryPreviewGradient,
     );
   } else if (_isEmojiIcon(iconOrSvg)) {
     // Emoji: render as native Unicode text — no color tint, fills circle naturally.
@@ -16475,7 +16479,30 @@ Widget _buildTwoToneBallIcon({
   required double size,
   required Color ballFillColor,
   required Color detailColor,
+  bool useCategoryPreviewGradient = false,
 }) {
+  final ballArtwork =
+      SvgPicture.asset(
+        iconSvg,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        alignment: Alignment.center,
+        colorFilter: ColorFilter.mode(ballFillColor, BlendMode.srcIn),
+      );
+  final ballArtworkWithColor =
+      useCategoryPreviewGradient
+          ? ShaderMask(
+            blendMode: BlendMode.srcIn,
+            shaderCallback:
+                (bounds) =>
+                    _categoryPreviewGradient(ballFillColor).createShader(
+                      bounds,
+                    ),
+            child: ballArtwork,
+          )
+          : ballArtwork;
+
   return SizedBox(
     width: size,
     height: size,
@@ -16490,14 +16517,7 @@ Widget _buildTwoToneBallIcon({
             shape: BoxShape.circle,
           ),
         ),
-        SvgPicture.asset(
-          iconSvg,
-          width: size,
-          height: size,
-          fit: BoxFit.contain,
-          alignment: Alignment.center,
-          colorFilter: ColorFilter.mode(ballFillColor, BlendMode.srcIn),
-        ),
+        ballArtworkWithColor,
         if (iconSvg == _kSoccerBallSvg)
           Positioned.fill(
             child: CustomPaint(
@@ -16506,6 +16526,65 @@ Widget _buildTwoToneBallIcon({
           ),
       ],
     ),
+  );
+}
+
+// These are the resolved light/dark values for every category swatch. The
+// highlight is intentionally softer for Yellow, Teal, and Sand because those
+// swatches are already bright; every other swatch uses the standard lift.
+const _kCategoryPreviewHighlightAlphaByColor = <int, int>{
+  0xFFFF3B30: 0x38, // Red
+  0xFFFF453A: 0x38,
+  0xFFFF9500: 0x38, // Orange
+  0xFFFF9F0A: 0x38,
+  0xFFFFCC00: 0x18, // Yellow
+  0xFFFFD60A: 0x18,
+  0xFF34C759: 0x38, // Green
+  0xFF30D158: 0x38,
+  0xFF5AC8FA: 0x18, // Teal
+  0xFF64D2FF: 0x18,
+  0xFF007AFF: 0x38, // Blue
+  0xFF0A84FF: 0x38,
+  0xFF5856D6: 0x38, // Indigo
+  0xFF5E5CE6: 0x38,
+  0xFFFF2D55: 0x38, // Pink
+  0xFFFF375F: 0x38,
+  0xFFAF52DE: 0x38, // Purple
+  0xFFBF5AF2: 0x38,
+  0xFFA89968: 0x38, // Tan
+  0xFFC4B285: 0x38,
+  0xFF607D8B: 0x38, // Slate
+  0xFF98A2B3: 0x38,
+  0xFFD7C0AE: 0x18, // Sand
+  0xFFE8D5C3: 0x18,
+};
+
+int _categoryPreviewHighlightAlpha(Color color) =>
+    _kCategoryPreviewHighlightAlphaByColor[color.value] ?? 0x38;
+
+// Matches the top-to-bottom highlight painted over the Card 1 preview circle.
+// The circle uses BlendMode.plus with translucent white. These stops express
+// that same additive result as concrete colors so the SVG mask can carry the
+// highlight through its category-colored regions while transparent artwork
+// still reveals the detail-color layer underneath.
+LinearGradient _categoryPreviewGradient(Color color) {
+  final opacity = _categoryPreviewHighlightAlpha(color) / 255.0;
+  final whiteLift = (255 * opacity).round();
+
+  Color lifted(Color source) {
+    int lift(int channel) => min(255, channel + whiteLift);
+    return Color.fromARGB(
+      source.alpha,
+      lift(source.red),
+      lift(source.green),
+      lift(source.blue),
+    );
+  }
+
+  return LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [lifted(color), color],
   );
 }
 
@@ -16878,24 +16957,15 @@ class _CircleAddHighlightPainter extends CustomPainter {
   final Color color;
   const _CircleAddHighlightPainter(this.color);
 
-  // ARGB values for the three light swatches — both light-mode and dark-mode
-  // variants — that need reduced highlight intensity.
-  static const _kLightColorValues = <int>{
-    0xFFFFCC00, 0xFFFFD60A, // Yellow
-    0xFF5AC8FA, 0xFF64D2FF, // Teal / Light Blue
-    0xFFD7C0AE, 0xFFE8D5C3, // Sand (last swatch)
-  };
-
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    // Resolve dynamic color to its concrete ARGB before checking.
-    final argb = color.value;
-    final isLight = _kLightColorValues.contains(argb);
-    final topOpacity =
-        isLight
-            ? const Color(0x18FFFFFF) // ~9 % — subtle for already-bright hues
-            : const Color(0x38FFFFFF); // ~22 % — standard for mid/dark hues
+    final topOpacity = Color.fromARGB(
+      _categoryPreviewHighlightAlpha(color),
+      255,
+      255,
+      255,
+    );
     final paint =
         Paint()
           ..blendMode = BlendMode.plus
