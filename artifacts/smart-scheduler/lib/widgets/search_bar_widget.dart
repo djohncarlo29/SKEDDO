@@ -477,6 +477,7 @@ class AppSearchBarState extends State<AppSearchBar>
                         scrollController: _scrollController,
                         child: NativeTextInput(
                           controller: widget.controller,
+                          caretToEndOnFirstTap: true,
                           scrollController: _scrollController,
                           onFocusChanged: (focused) {
                             _placeholderFocusNotifier.value = focused;

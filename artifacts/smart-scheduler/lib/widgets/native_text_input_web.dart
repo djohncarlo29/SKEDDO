@@ -25,6 +25,7 @@ class NativeTextInput extends StatefulWidget {
   final Color cursorColor;
   final Color? selectionColor;
   final TextSelectionControls? selectionControls;
+  final bool caretToEndOnFirstTap;
 
   final ValueChanged<bool>? onFocusChanged;
 
@@ -41,6 +42,7 @@ class NativeTextInput extends StatefulWidget {
     this.metricsListenable,
     this.selectionColor,
     this.selectionControls,
+    this.caretToEndOnFirstTap = false,
     this.multiline = false,
     this.padding = EdgeInsets.zero,
     this.onFocusChanged,
@@ -88,8 +90,11 @@ class _NativeTextInputState extends State<NativeTextInput> {
   StreamSubscription<html.Event>? _scrollSub;
   StreamSubscription<html.Event>? _focusSub;
   StreamSubscription<html.Event>? _blurSub;
+  StreamSubscription<html.MouseEvent>? _pointerDownSub;
+  StreamSubscription<html.MouseEvent>? _pointerUpSub;
   bool _updatingFromNative = false;
   bool _metricsScheduled = false;
+  bool _wasFocusedAtPointerDown = false;
 
   @override
   void initState() {
@@ -103,6 +108,19 @@ class _NativeTextInputState extends State<NativeTextInput> {
     _setNativeText(widget.controller.text);
     _inputSub = _element.onInput.listen((_) => _syncTextFromNative());
     _scrollSub = _element.onScroll.listen((_) => _publishScrollMetrics());
+    if (widget.caretToEndOnFirstTap) {
+      _pointerDownSub = _element.onMouseDown.listen((_) {
+        _wasFocusedAtPointerDown =
+            html.document.activeElement == _element;
+      });
+      _pointerUpSub = _element.onMouseUp.listen((_) {
+        if (_wasFocusedAtPointerDown) return;
+        html.window.requestAnimationFrame((_) {
+          if (!mounted || html.document.activeElement != _element) return;
+          _setNativeCaretToEnd();
+        });
+      });
+    }
     _focusSub = _element.onFocus.listen((_) {
       widget.onFocusChanged?.call(true);
     });
@@ -141,6 +159,8 @@ class _NativeTextInputState extends State<NativeTextInput> {
     _scrollSub?.cancel();
     _focusSub?.cancel();
     _blurSub?.cancel();
+    _pointerDownSub?.cancel();
+    _pointerUpSub?.cancel();
     _element.remove();
     super.dispose();
   }
@@ -252,6 +272,15 @@ class _NativeTextInputState extends State<NativeTextInput> {
       (_element as html.TextAreaElement).value = text;
     } else {
       (_element as html.InputElement).value = text;
+    }
+  }
+
+  void _setNativeCaretToEnd() {
+    final length = _nativeText.length;
+    if (_element is html.TextAreaElement) {
+      (_element as html.TextAreaElement).setSelectionRange(length, length);
+    } else {
+      (_element as html.InputElement).setSelectionRange(length, length);
     }
   }
 

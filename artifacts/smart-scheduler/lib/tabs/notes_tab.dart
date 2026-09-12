@@ -1373,6 +1373,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                         _placeholderFocusNotifier,
                                     child: NativeTextInput(
                                       controller: widget.controller,
+                                      caretToEndOnFirstTap: true,
                                       placeholder: '',
                                       multiline: true,
                                       // The card stays 155 px tall. Seven lines

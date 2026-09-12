@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'edge_fade_metrics.dart';
+import 'text_editing_helpers.dart';
 
 /// Cupertino-native text input used across the app's search bars and the
 /// Notes tab note editor.
@@ -34,6 +35,7 @@ class NativeTextInput extends StatefulWidget {
   final Color cursorColor;
   final Color? selectionColor;
   final TextSelectionControls? selectionControls;
+  final bool caretToEndOnFirstTap;
   // Fired when the field gains or loses focus. Used by the Notes tab to
   // collapse the header / show the Cancel button when the user taps into
   // the search bar.
@@ -52,6 +54,7 @@ class NativeTextInput extends StatefulWidget {
     this.metricsListenable,
     this.selectionColor,
     this.selectionControls,
+    this.caretToEndOnFirstTap = false,
     this.multiline = false,
     this.padding = EdgeInsets.zero,
     this.onFocusChanged,
@@ -195,6 +198,44 @@ class _NativeTextInputState extends State<NativeTextInput> {
     // Placeholder slides 4px to the right when the field gains focus, same
     // offset/curve as the old Android/iOS overlay-label animation.
     final double placeholderOffset = _focusNode.hasFocus ? 4.0 : 0.0;
+    final textField = CupertinoTextField(
+      controller: widget.controller,
+      focusNode: _focusNode,
+      scrollController: widget.scrollController,
+      style: widget.style,
+      decoration: null,
+      expands: widget.multiline && widget.minLines == null,
+      maxLines: widget.multiline ? null : 1,
+      minLines: widget.multiline ? widget.minLines : null,
+      scrollPhysics:
+          widget.scrollPhysics ??
+          const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
+      keyboardType: widget.multiline
+          ? TextInputType.multiline
+          : TextInputType.text,
+      textCapitalization: TextCapitalization.sentences,
+      textAlignVertical: widget.multiline
+          ? TextAlignVertical.top
+          : TextAlignVertical.center,
+      padding: widget.padding,
+      cursorColor: widget.cursorColor,
+      selectionControls: widget.selectionControls,
+      cursorOpacityAnimates: true,
+      enableInteractiveSelection: true,
+      onTap: widget.caretToEndOnFirstTap
+          ? () {
+              if (shouldMoveTextFieldCaretToEnd(_focusNode)) {
+                scheduleTextFieldCaretToEnd(
+                  widget.controller,
+                  scrollController: widget.scrollController,
+                  isMounted: () => mounted,
+                );
+              }
+            }
+          : null,
+    );
 
     return Stack(
       fit: StackFit.expand,
@@ -229,33 +270,12 @@ class _NativeTextInputState extends State<NativeTextInput> {
               ),
             ),
           ),
-        CupertinoTextField(
-          controller: widget.controller,
-          focusNode: _focusNode,
-          scrollController: widget.scrollController,
-          style: widget.style,
-          decoration: null,
-           expands: widget.multiline && widget.minLines == null,
-          maxLines: widget.multiline ? null : 1,
-           minLines: widget.multiline ? widget.minLines : null,
-           scrollPhysics:
-               widget.scrollPhysics ??
-               const BouncingScrollPhysics(
-                 parent: AlwaysScrollableScrollPhysics(),
-               ),
-          keyboardType: widget.multiline
-              ? TextInputType.multiline
-              : TextInputType.text,
-          textCapitalization: TextCapitalization.sentences,
-           textAlignVertical: widget.multiline
-               ? TextAlignVertical.top
-               : TextAlignVertical.center,
-          padding: widget.padding,
-          cursorColor: widget.cursorColor,
-          selectionControls: widget.selectionControls,
-          cursorOpacityAnimates: true,
-          enableInteractiveSelection: true,
-        ),
+        widget.caretToEndOnFirstTap
+            ? trackTextFieldPointerDown(
+                focusNode: _focusNode,
+                child: textField,
+              )
+            : textField,
       ],
     );
   }
