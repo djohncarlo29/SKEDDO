@@ -4263,8 +4263,17 @@ class _WeekRowState extends State<_WeekRow> {
                 final displayDay = date.day;
                 final isToday = _sameDay(date, widget.today);
                 final isSel = _sameDay(date, widget.selectedDate);
-                final dayEvents =
-                    widget.eventsByDay[_calendarDateKey(date)] ?? const [];
+                // The month-list dot follows the first event in the same
+                // ordering shown below: all-day events first, then timed
+                // sections in time order. Do not use the raw EventStore order
+                // here, or a timed event can incorrectly win over an all-day
+                // event for the dot color.
+                final dayEvents = [
+                  for (final group in _groupMonthEvents(
+                    widget.eventsByDay[_calendarDateKey(date)] ?? const [],
+                  ))
+                    ...group,
+                ];
 
                 if (isOverflow && !widget.showOverflow) {
                   return const Expanded(child: SizedBox.shrink());
