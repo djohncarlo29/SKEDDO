@@ -567,9 +567,13 @@ const kPillColor = CupertinoDynamicColor.withBrightness(
 const double kSquircleStadiumRadius = 24.0;
 const double kLargeModalSheetCornerRadius = 40.0;
 const double kDiscardConfirmationSheetCornerRadius = 20.0;
-const double kDiscardConfirmationButtonCornerRadius = 12.0;
-const double kDiscardConfirmationButtonEdgeGap = 8.0;
+const double kDiscardConfirmationButtonCornerRadius = kSquircleStadiumRadius;
+const double kDiscardConfirmationSheetWidth = 362.0;
+const double kDiscardConfirmationTopLeftWidthFraction = 2 / 3;
+const double kDiscardConfirmationButtonEdgeGap = 16.0;
 const double kDiscardConfirmationMessageHorizontalInset = 8.0;
+const double kDiscardConfirmationMessageButtonGap = 24.0;
+const double kDiscardConfirmationSheetTopInset = 24.0;
 const double kDiscardConfirmationTopLeftEdgeGap = 16.0;
 
 // Shared cubic quarter used by both stadium controls and bounded card corners.

@@ -260,7 +260,7 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final secondary = resolveThemeColor(kSecondaryLabel, context);
+    final primary = resolveThemeColor(kPrimaryLabel, context);
     final sheetBorder =
         CupertinoTheme.brightnessOf(context) == Brightness.dark
             ? BorderSide(
@@ -275,25 +275,34 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
       ),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
+    final sheetWidth =
+        fromXmark
+            ? MediaQuery.sizeOf(context).width *
+                kDiscardConfirmationTopLeftWidthFraction
+            : kDiscardConfirmationSheetWidth;
+    final sheetRadius =
+        fromXmark
+            ? kDiscardConfirmationSheetCornerRadius
+            : kLargeModalSheetCornerRadius;
     final message = isNew
         ? 'Are you sure you want to discard this new $entityLabel?'
         : 'Are you sure you want to discard this $entityLabel?';
 
     final card = SizedBox(
-      width: 362,
+      width: sheetWidth,
       child: GelBloomCard(
         scaleOrigin: fromXmark ? Alignment.topLeft : Alignment.center,
         fillOpacity: 0.82,
         shadowOpacity: 0.26,
         border: sheetBorder,
         shape: BoundedSquircleStadiumBorder(
-          radius: kDiscardConfirmationSheetCornerRadius,
+          radius: sheetRadius,
           side: sheetBorder ?? BorderSide.none,
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
             kDiscardConfirmationButtonEdgeGap,
-            28,
+            kDiscardConfirmationSheetTopInset,
             kDiscardConfirmationButtonEdgeGap,
             kDiscardConfirmationButtonEdgeGap,
           ),
@@ -309,16 +318,16 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
                   message,
                   style: TextStyle(
                     inherit: false,
-                    fontSize: 15,
+                    fontSize: 16,
                     fontFamily: kSFProText,
                     fontWeight: FontWeight.w400,
-                    color: secondary,
+                    color: primary,
                     letterSpacing: kTracking16,
                     height: 1.5,
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: kDiscardConfirmationMessageButtonGap),
               GelBloomButton(
                 peakScale: 1.06,
                 tapDelay: const Duration(milliseconds: 120),
