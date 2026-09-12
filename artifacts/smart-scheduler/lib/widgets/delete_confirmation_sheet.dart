@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 
 import '../app_theme.dart';
 import '../services/event_store.dart';
+import 'rounded_cupertino_sheet.dart';
 
 VoidCallback? _activeDiscardChangesSheetDismiss;
 bool _discardChangesBackConsumed = false;
@@ -41,6 +42,10 @@ Future<bool?> showConfirmationSheet(
   final completer = Completer<bool?>();
   late OverlayEntry entry;
   final overlay = Overlay.of(context, rootOverlay: true);
+  final horizontalInset =
+      RoundedCupertinoSheetRoute.hasParentSheet(context)
+          ? kModalConfirmationHorizontalInset
+          : 16.0;
 
   void close(bool? result) {
     if (completer.isCompleted) return;
@@ -56,6 +61,7 @@ Future<bool?> showConfirmationSheet(
           actionLabel: actionLabel,
           destructive: destructive,
           accentAction: accentAction,
+          horizontalInset: horizontalInset,
           onResult: close,
         ),
   );
@@ -108,6 +114,10 @@ Future<bool?> showDiscardChangesConfirmationSheet(
   final completer = Completer<bool?>();
   late OverlayEntry entry;
   final overlay = Overlay.of(context, rootOverlay: true);
+  final horizontalInset =
+      RoundedCupertinoSheetRoute.hasParentSheet(context)
+          ? kModalConfirmationHorizontalInset
+          : 16.0;
   VoidCallback? dismissActive;
 
   void close(bool? result) {
@@ -124,6 +134,7 @@ Future<bool?> showDiscardChangesConfirmationSheet(
         (_) => _DiscardChangesSheetOverlay(
           entityLabel: entityLabel,
           isNew: isNew,
+          horizontalInset: horizontalInset,
           onResult: close,
         ),
   );
@@ -245,11 +256,13 @@ Future<bool?> confirmDeleteSection(
 class _DiscardChangesSheetOverlay extends StatelessWidget {
   final String entityLabel;
   final bool isNew;
+  final double horizontalInset;
   final void Function(bool?) onResult;
 
   const _DiscardChangesSheetOverlay({
     required this.entityLabel,
     required this.isNew,
+    required this.horizontalInset,
     required this.onResult,
   });
 
@@ -272,10 +285,10 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
     );
     final message = isNew
         ? 'Are you sure you want to discard this new $entityLabel?'
-        : 'Are you sure you want to discard this $entityLabel?';
+        : 'Are you sure you want to discard your changes?';
 
     final card = SizedBox(
-      width: kDiscardConfirmationSheetWidth,
+      width: double.infinity,
       child: GelBloomCard(
         scaleOrigin: Alignment.center,
         fillOpacity: 0.82,
@@ -368,7 +381,10 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
             alignment: Alignment.center,
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalInset,
+                  vertical: 16,
+                ),
                 child: card,
               ),
             ),
@@ -385,6 +401,7 @@ class _DeleteConfirmationSheetOverlay extends StatelessWidget {
   final String actionLabel;
   final bool destructive;
   final bool accentAction;
+  final double horizontalInset;
   final void Function(bool?) onResult;
 
   const _DeleteConfirmationSheetOverlay({
@@ -393,6 +410,7 @@ class _DeleteConfirmationSheetOverlay extends StatelessWidget {
     required this.actionLabel,
     required this.destructive,
     required this.accentAction,
+    required this.horizontalInset,
     required this.onResult,
   });
 
@@ -460,66 +478,72 @@ class _DeleteConfirmationSheetOverlay extends StatelessWidget {
           alignment: Alignment.center,
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: GelBloomCard(
-                scaleOrigin: Alignment.center,
-                fillOpacity: 0.82,
-                shadowOpacity: 0.26,
-                border: sheetBorder,
-                shape: BoundedSquircleStadiumBorder(
-                  radius: kLargeModalSheetCornerRadius,
-                  side: sheetBorder ?? BorderSide.none,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          inherit: false,
-                          fontSize: 18,
-                          fontFamily: kSFProText,
-                          fontWeight: FontWeight.w600,
-                          color: primary,
-                          letterSpacing: kTracking16,
-                        ),
-                      ),
-                      if (subtitle != null && subtitle!.isNotEmpty) ...[
-                        const SizedBox(height: 10),
+              padding: EdgeInsets.symmetric(
+                horizontal: horizontalInset,
+                vertical: 16,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: GelBloomCard(
+                  scaleOrigin: Alignment.center,
+                  fillOpacity: 0.82,
+                  shadowOpacity: 0.26,
+                  border: sheetBorder,
+                  shape: BoundedSquircleStadiumBorder(
+                    radius: kLargeModalSheetCornerRadius,
+                    side: sheetBorder ?? BorderSide.none,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                         Text(
-                          subtitle!,
+                          title,
                           style: TextStyle(
                             inherit: false,
-                            fontSize: 15,
+                            fontSize: 18,
                             fontFamily: kSFProText,
-                            fontWeight: FontWeight.w400,
-                            color: secondary,
-                            height: 1.5,
+                            fontWeight: FontWeight.w600,
+                            color: primary,
                             letterSpacing: kTracking16,
                           ),
                         ),
+                        if (subtitle != null && subtitle!.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            subtitle!,
+                            style: TextStyle(
+                              inherit: false,
+                              fontSize: 15,
+                              fontFamily: kSFProText,
+                              fontWeight: FontWeight.w400,
+                              color: secondary,
+                              height: 1.5,
+                              letterSpacing: kTracking16,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+                        button(
+                          label: actionLabel,
+                          labelColor:
+                              destructive
+                                  ? CupertinoColors.destructiveRed
+                                  : accentAction
+                                  ? resolveAccentColor(context)
+                                  : primary,
+                          onTap: () => onResult(true),
+                        ),
+                        const SizedBox(height: 8),
+                        button(
+                          label: 'Cancel',
+                          labelColor: primary,
+                          onTap: () => onResult(null),
+                        ),
                       ],
-                      const SizedBox(height: 24),
-                      button(
-                        label: actionLabel,
-                        labelColor:
-                            destructive
-                                ? CupertinoColors.destructiveRed
-                                : accentAction
-                                ? resolveAccentColor(context)
-                                : primary,
-                        onTap: () => onResult(true),
-                      ),
-                      const SizedBox(height: 8),
-                      button(
-                        label: 'Cancel',
-                        labelColor: primary,
-                        onTap: () => onResult(null),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
