@@ -567,7 +567,9 @@ const kPillColor = CupertinoDynamicColor.withBrightness(
 const double kSquircleStadiumRadius = 24.0;
 const double kLargeModalSheetCornerRadius = 40.0;
 const double kDiscardConfirmationSheetCornerRadius = 20.0;
-const double kDiscardConfirmationButtonCornerRadius = kSquircleStadiumRadius;
+const double kDiscardConfirmationButtonCornerRadius = 12.0;
+const double kDiscardConfirmationCenteredButtonCornerRadius =
+    kSquircleStadiumRadius;
 const double kDiscardConfirmationSheetWidth = 362.0;
 const double kDiscardConfirmationTopLeftWidthFraction = 2 / 3;
 const double kDiscardConfirmationButtonEdgeGap = 16.0;
