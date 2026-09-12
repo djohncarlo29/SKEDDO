@@ -7,4 +7,4 @@ When changing repeated style properties such as `fontSize`, anchor the edit with
 
 **Why:** Repeated values in a large Dart file can cause a context-light patch to modify an adjacent, unrelated widget while leaving the intended occurrence untouched.
 
-**How to apply:** After any repeated-style edit, inspect `git diff`, run an occurrence-aware search, and confirm the surrounding widget identity for every intended change.
+**How to apply:** After any repeated-style or deeply nested Dart edit, anchor the patch with unique surrounding labels, inspect `git diff`, run an occurrence-aware search, and confirm the surrounding widget identity for every intended change.
