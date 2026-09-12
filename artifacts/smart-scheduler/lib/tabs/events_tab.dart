@@ -14204,8 +14204,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                                 64 * circleScale,
                                 CupertinoColors.white,
                                 containerColor: previewColor,
-                                  detailOnlyTwoToneBall:
-                                      _isTwoToneBallIcon(_effectiveIcon),
                                 emojiOffsetY: 2 * circleScale,
                                 ctx: context,
                               ),
@@ -16399,7 +16397,6 @@ Widget _renderCatIcon(
   BuildContext? ctx,
   double emojiOffsetY = 0,
   Color? containerColor,
-  bool detailOnlyTwoToneBall = false,
 }) {
   final double scale = containerSize / _kIconCircle;
   final double iconSz = _pickerIconBaseSize(iconOrSvg) * scale;
@@ -16415,7 +16412,6 @@ Widget _renderCatIcon(
       size: iconSz,
       ballFillColor: containerColor,
       detailColor: color,
-      detailOnly: detailOnlyTwoToneBall,
     );
   } else if (_isEmojiIcon(iconOrSvg)) {
     // Emoji: render as native Unicode text — no color tint, fills circle naturally.
@@ -16479,41 +16475,7 @@ Widget _buildTwoToneBallIcon({
   required double size,
   required Color ballFillColor,
   required Color detailColor,
-  bool detailOnly = false,
 }) {
-  if (detailOnly) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: ClipOval(
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Card 1 uses only the ball's visible detail colour. The SVG is
-            // used as an alpha mask to remove the coloured body from this
-            // clipped silhouette, rather than leaving a full white backing
-            // circle behind the icon.
-            ColoredBox(color: detailColor),
-            ShaderMask(
-              blendMode: BlendMode.dstOut,
-              shaderCallback:
-                  (bounds) => const LinearGradient(
-                    colors: [CupertinoColors.black, CupertinoColors.black],
-                  ).createShader(bounds),
-              child: SvgPicture.asset(
-                iconSvg,
-                width: size,
-                height: size,
-                fit: BoxFit.contain,
-                alignment: Alignment.center,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   return SizedBox(
     width: size,
     height: size,
