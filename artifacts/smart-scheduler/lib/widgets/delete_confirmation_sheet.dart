@@ -98,14 +98,12 @@ Future<bool?> showArchiveConfirmationSheet(
   );
 }
 
-/// Shows the compact confirmation used when an editor with unsaved changes is
-/// dismissed. The xmark uses the sheet-attached placement; system back and
-/// sheet drag use the centered placement.
+/// Shows the centered confirmation used when an editor with unsaved changes is
+/// dismissed.
 Future<bool?> showDiscardChangesConfirmationSheet(
   BuildContext context, {
   required String entityLabel,
   required bool isNew,
-  bool fromXmark = false,
 }) async {
   final completer = Completer<bool?>();
   late OverlayEntry entry;
@@ -126,7 +124,6 @@ Future<bool?> showDiscardChangesConfirmationSheet(
         (_) => _DiscardChangesSheetOverlay(
           entityLabel: entityLabel,
           isNew: isNew,
-          fromXmark: fromXmark,
           onResult: close,
         ),
   );
@@ -248,13 +245,11 @@ Future<bool?> confirmDeleteSection(
 class _DiscardChangesSheetOverlay extends StatelessWidget {
   final String entityLabel;
   final bool isNew;
-  final bool fromXmark;
   final void Function(bool?) onResult;
 
   const _DiscardChangesSheetOverlay({
     required this.entityLabel,
     required this.isNew,
-    required this.fromXmark,
     required this.onResult,
   });
 
@@ -270,36 +265,24 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
             : null;
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
-      shape: BoundedSquircleStadiumBorder(
-        radius:
-            fromXmark
-                ? kDiscardConfirmationButtonCornerRadius
-                : kDiscardConfirmationCenteredButtonCornerRadius,
+      shape: const BoundedSquircleStadiumBorder(
+        radius: kDiscardConfirmationButtonCornerRadius,
       ),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
-    final sheetWidth =
-        fromXmark
-            ? MediaQuery.sizeOf(context).width *
-                kDiscardConfirmationTopLeftWidthFraction
-            : kDiscardConfirmationSheetWidth;
-    final sheetRadius =
-        fromXmark
-            ? kDiscardConfirmationSheetCornerRadius
-            : kLargeModalSheetCornerRadius;
     final message = isNew
         ? 'Are you sure you want to discard this new $entityLabel?'
         : 'Are you sure you want to discard this $entityLabel?';
 
     final card = SizedBox(
-      width: sheetWidth,
+      width: kDiscardConfirmationSheetWidth,
       child: GelBloomCard(
-        scaleOrigin: fromXmark ? Alignment.topLeft : Alignment.center,
+        scaleOrigin: Alignment.center,
         fillOpacity: 0.82,
         shadowOpacity: 0.26,
         border: sheetBorder,
         shape: BoundedSquircleStadiumBorder(
-          radius: sheetRadius,
+          radius: kLargeModalSheetCornerRadius,
           side: sheetBorder ?? BorderSide.none,
         ),
         child: Padding(
@@ -381,30 +364,15 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
               child: SizedBox.expand(),
             ),
           ),
-          if (fromXmark)
-            Align(
-              alignment: Alignment.topLeft,
+          Align(
+            alignment: Alignment.center,
+            child: SafeArea(
               child: Padding(
-                padding: EdgeInsets.only(
-                  left: kDiscardConfirmationTopLeftEdgeGap,
-                  top:
-                      MediaQuery.sizeOf(context).height *
-                          kRoundedSheetTopGapRatio +
-                      kDiscardConfirmationTopLeftEdgeGap,
-                ),
+                padding: const EdgeInsets.all(16),
                 child: card,
               ),
-            )
-          else
-            Align(
-              alignment: Alignment.center,
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: card,
-                ),
-              ),
             ),
+          ),
         ],
       ),
     );

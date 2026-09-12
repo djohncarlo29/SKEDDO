@@ -7231,7 +7231,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
       _initialDraftSignature != null &&
       _draftSignature() != _initialDraftSignature;
 
-  Future<void> _requestDismiss({required bool fromXmark}) async {
+  Future<void> _requestDismiss() async {
     if (dismissActiveDiscardChangesConfirmationSheet()) return;
     if (_pickerMenuOpen) {
       _dismissPickerOverlay();
@@ -7245,7 +7245,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
       context,
       entityLabel: 'event',
       isNew: !widget.isEditing,
-      fromXmark: fromXmark,
     );
     if (!mounted || discard != true) return;
     setState(() => _discarding = true);
@@ -11503,7 +11502,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
       canPop: !_pickerMenuOpen && (!_hasUnsavedChanges || _discarding),
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        _requestDismiss(fromXmark: false);
+        _requestDismiss();
       },
       child: Stack(
       // The rounded sheet route gives this page a finite 92% viewport.
@@ -11548,7 +11547,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                               context,
                             ),
                             tapDelay: const Duration(milliseconds: 130),
-                            onTap: () => _requestDismiss(fromXmark: true),
+                            onTap: _requestDismiss,
                           ),
                         ),
                         Positioned(
