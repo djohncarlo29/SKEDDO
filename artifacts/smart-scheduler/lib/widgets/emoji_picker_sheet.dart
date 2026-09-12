@@ -8,27 +8,6 @@ import 'horizontal_edge_fade.dart';
 import 'rounded_cupertino_sheet.dart';
 import 'vertical_edge_fade.dart';
 
-class _HorizontalInsetClipper extends CustomClipper<Rect> {
-  final double inset;
-
-  const _HorizontalInsetClipper({required this.inset});
-
-  @override
-  Rect getClip(Size size) {
-    return Rect.fromLTRB(
-      inset,
-      -size.height,
-      math.max(inset, size.width - inset),
-      size.height * 2,
-    );
-  }
-
-  @override
-  bool shouldReclip(covariant _HorizontalInsetClipper oldClipper) {
-    return oldClipper.inset != inset;
-  }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Emoji category data
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1705,7 +1684,11 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                           constraints.maxHeight,
                                         ),
                                         child: Stack(
-                                          clipBehavior: Clip.hardEdge,
+                                          // Preserve the grid's layout inset,
+                                          // but let picker gel blooms paint
+                                          // into that inset instead of being
+                                          // clipped at the grid boundary.
+                                          clipBehavior: Clip.none,
                                           children: [
                                           if (_catIndex > 0)
                                             AnimatedPositioned(
@@ -1800,11 +1783,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                     fadeOnRubberbandWhenContentFits: true,
                                     leadingInset: categoryHorizontalInset,
                                     trailingInset: categoryHorizontalInset,
-                                    child: ClipRect(
-                                      clipper: _HorizontalInsetClipper(
-                                        inset: categoryHorizontalInset,
-                                      ),
-                                      child: Padding(
+                                    child: Padding(
                                         padding: EdgeInsets.symmetric(
                                           horizontal:
                                               categoryHorizontalInset,
@@ -1904,7 +1883,6 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                           },
                                         ),
                                       ),
-                                    ),
                                   );
                                 },
                               ),

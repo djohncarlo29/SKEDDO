@@ -15862,6 +15862,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 alignment: WrapAlignment.start,
                 spacing: gap,
                 runSpacing: swatchGap,
+                // Keep the 16pt card inset as layout space, but do not turn
+                // it into a paint boundary for the swatch's gel bloom.
+                clipBehavior: Clip.none,
                 children: [
                   for (final color in _kColorOptions)
                     SizedBox(
@@ -16006,6 +16009,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                       context,
                     );
                     return Stack(
+                      // The 16pt card inset remains part of the grid layout.
+                      // A selected/tapped circle may paint into that inset
+                      // while it blooms, so the grid itself must not clip it.
+                      clipBehavior: Clip.none,
                       children: List.generate(_kIconOptions.length, (i) {
                         final icon = _kIconOptions[i];
                         // Row-1 Icon-1 is the emoji button, not a selectable icon.
