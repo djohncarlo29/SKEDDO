@@ -42,8 +42,10 @@ Future<bool?> showConfirmationSheet(
   final completer = Completer<bool?>();
   late OverlayEntry entry;
   final overlay = Overlay.of(context, rootOverlay: true);
+  final isPresentedOverModalSheet =
+      RoundedCupertinoSheetRoute.hasParentSheet(context);
   final horizontalInset =
-      RoundedCupertinoSheetRoute.hasParentSheet(context)
+      isPresentedOverModalSheet
           ? kModalConfirmationHorizontalInset
           : 16.0;
 
@@ -62,6 +64,7 @@ Future<bool?> showConfirmationSheet(
           destructive: destructive,
           accentAction: accentAction,
           horizontalInset: horizontalInset,
+           isPresentedOverModalSheet: isPresentedOverModalSheet,
           onResult: close,
         ),
   );
@@ -114,8 +117,10 @@ Future<bool?> showDiscardChangesConfirmationSheet(
   final completer = Completer<bool?>();
   late OverlayEntry entry;
   final overlay = Overlay.of(context, rootOverlay: true);
+  final isPresentedOverModalSheet =
+      RoundedCupertinoSheetRoute.hasParentSheet(context);
   final horizontalInset =
-      RoundedCupertinoSheetRoute.hasParentSheet(context)
+      isPresentedOverModalSheet
           ? kModalConfirmationHorizontalInset
           : 16.0;
   VoidCallback? dismissActive;
@@ -135,6 +140,7 @@ Future<bool?> showDiscardChangesConfirmationSheet(
           entityLabel: entityLabel,
           isNew: isNew,
           horizontalInset: horizontalInset,
+           isPresentedOverModalSheet: isPresentedOverModalSheet,
           onResult: close,
         ),
   );
@@ -257,12 +263,14 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
   final String entityLabel;
   final bool isNew;
   final double horizontalInset;
+  final bool isPresentedOverModalSheet;
   final void Function(bool?) onResult;
 
   const _DiscardChangesSheetOverlay({
     required this.entityLabel,
     required this.isNew,
     required this.horizontalInset,
+    required this.isPresentedOverModalSheet,
     required this.onResult,
   });
 
@@ -279,7 +287,7 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
       shape: const BoundedSquircleStadiumBorder(
-        radius: kDiscardConfirmationButtonCornerRadius,
+        radius: kConfirmationButtonCornerRadius,
       ),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
@@ -295,7 +303,9 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
         shadowOpacity: 0.26,
         border: sheetBorder,
         shape: BoundedSquircleStadiumBorder(
-          radius: kLargeModalSheetCornerRadius,
+          radius: isPresentedOverModalSheet
+              ? kModalConfirmationSheetCornerRadius
+              : kConfirmationSheetCornerRadius,
           side: sheetBorder ?? BorderSide.none,
         ),
         child: Padding(
@@ -402,6 +412,7 @@ class _DeleteConfirmationSheetOverlay extends StatelessWidget {
   final bool destructive;
   final bool accentAction;
   final double horizontalInset;
+  final bool isPresentedOverModalSheet;
   final void Function(bool?) onResult;
 
   const _DeleteConfirmationSheetOverlay({
@@ -411,6 +422,7 @@ class _DeleteConfirmationSheetOverlay extends StatelessWidget {
     required this.destructive,
     required this.accentAction,
     required this.horizontalInset,
+    required this.isPresentedOverModalSheet,
     required this.onResult,
   });
 
@@ -420,7 +432,9 @@ class _DeleteConfirmationSheetOverlay extends StatelessWidget {
     final secondary = resolveThemeColor(kSecondaryLabel, context);
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
-      shape: const BoundedSquircleStadiumBorder(),
+      shape: const BoundedSquircleStadiumBorder(
+        radius: kConfirmationButtonCornerRadius,
+      ),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
     final sheetBorder =
@@ -490,7 +504,9 @@ class _DeleteConfirmationSheetOverlay extends StatelessWidget {
                   shadowOpacity: 0.26,
                   border: sheetBorder,
                   shape: BoundedSquircleStadiumBorder(
-                    radius: kLargeModalSheetCornerRadius,
+                    radius: isPresentedOverModalSheet
+                        ? kModalConfirmationSheetCornerRadius
+                        : kConfirmationSheetCornerRadius,
                     side: sheetBorder ?? BorderSide.none,
                   ),
                   child: Padding(

@@ -11142,7 +11142,9 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
     final secondary = resolveThemeColor(kSecondaryLabel, context);
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
-      shape: const BoundedSquircleStadiumBorder(),
+      shape: const BoundedSquircleStadiumBorder(
+        radius: kConfirmationButtonCornerRadius,
+      ),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
     final sheetBorder =
@@ -11207,7 +11209,7 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                 shadowOpacity: 0.26,
                 border: sheetBorder,
                 shape: BoundedSquircleStadiumBorder(
-                  radius: kLargeModalSheetCornerRadius,
+                  radius: kConfirmationSheetCornerRadius,
                   side: sheetBorder ?? BorderSide.none,
                 ),
                 child: Padding(
@@ -11337,7 +11339,9 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
     final secondary = resolveThemeColor(kSecondaryLabel, context);
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
-      shape: const BoundedSquircleStadiumBorder(),
+      shape: const BoundedSquircleStadiumBorder(
+        radius: kConfirmationButtonCornerRadius,
+      ),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
     final sheetBorder =
@@ -11401,7 +11405,7 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
                 shadowOpacity: 0.26,
                 border: sheetBorder,
                 shape: BoundedSquircleStadiumBorder(
-                  radius: kLargeModalSheetCornerRadius,
+                  radius: kConfirmationSheetCornerRadius,
                   side: sheetBorder ?? BorderSide.none,
                 ),
                 child: Padding(
@@ -11537,7 +11541,9 @@ class _UtilityItemSheetOverlay extends StatelessWidget {
     final secondary = resolveThemeColor(kSecondaryLabel, context);
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
-      shape: const BoundedSquircleStadiumBorder(),
+      shape: const BoundedSquircleStadiumBorder(
+        radius: kConfirmationButtonCornerRadius,
+      ),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
     final sheetBorder =
@@ -11602,7 +11608,7 @@ class _UtilityItemSheetOverlay extends StatelessWidget {
                 shadowOpacity: 0.26,
                 border: sheetBorder,
                 shape: BoundedSquircleStadiumBorder(
-                  radius: kLargeModalSheetCornerRadius,
+                  radius: kConfirmationSheetCornerRadius,
                   side: sheetBorder ?? BorderSide.none,
                 ),
                 child: Padding(

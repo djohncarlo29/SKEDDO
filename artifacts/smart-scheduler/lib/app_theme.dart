@@ -566,7 +566,14 @@ const kPillColor = CupertinoDynamicColor.withBrightness(
 // when the painted control is physically shorter than 48 px.
 const double kSquircleStadiumRadius = 24.0;
 const double kLargeModalSheetCornerRadius = 40.0;
-const double kDiscardConfirmationButtonCornerRadius = kSquircleStadiumRadius;
+// Confirmation cards use the standard modal radius. Confirmation buttons use
+// an unbounded stadium radius so BoundedSquircleStadiumBorder clamps it to
+// exactly half of the button's rendered height, including Dynamic Type growth.
+const double kConfirmationSheetCornerRadius = 24.0;
+const double kModalConfirmationSheetCornerRadius = 20.0;
+const double kConfirmationButtonCornerRadius = double.infinity;
+const double kDiscardConfirmationButtonCornerRadius =
+    kConfirmationButtonCornerRadius;
 const double kModalConfirmationHorizontalInset = 24.0;
 const double kDiscardConfirmationButtonEdgeGap = 16.0;
 const double kDiscardConfirmationMessageHorizontalInset = 8.0;
