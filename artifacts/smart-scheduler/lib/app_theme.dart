@@ -566,14 +566,15 @@ const kPillColor = CupertinoDynamicColor.withBrightness(
 // when the painted control is physically shorter than 48 px.
 const double kSquircleStadiumRadius = 24.0;
 const double kLargeModalSheetCornerRadius = 40.0;
-// Confirmation cards use the standard modal radius. Confirmation buttons use
-// an unbounded stadium radius so BoundedSquircleStadiumBorder clamps it to
-// exactly half of the button's rendered height, including Dynamic Type growth.
+// Confirmation cards and normal confirmation buttons use the standard fixed
+// 24px radius. A multiline button grows through its straight middle section
+// instead of changing the curvature of its corners.
 const double kConfirmationSheetCornerRadius = 24.0;
 const double kModalConfirmationSheetCornerRadius = 24.0;
-const double kConfirmationButtonCornerRadius = double.infinity;
-const double kDiscardConfirmationButtonCornerRadius =
-    kConfirmationButtonCornerRadius;
+const double kConfirmationButtonCornerRadius = kSquircleStadiumRadius;
+// The dismiss confirmation keeps its own token, but its radius is fixed so
+// multiline labels grow through the straight middle section.
+const double kDiscardConfirmationButtonCornerRadius = kSquircleStadiumRadius;
 const double kModalConfirmationHorizontalInset = 24.0;
 const double kDiscardConfirmationTopLeftWidthFraction = 2 / 3;
 const double kDiscardConfirmationTopLeftEdgeGap = 16.0;

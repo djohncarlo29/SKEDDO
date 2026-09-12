@@ -10777,6 +10777,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             decoration: ShapeDecoration(
               color: cardBg,
               shape: BoundedSquircleStadiumBorder(
+                radius: kConfirmationSheetCornerRadius,
                 side: isDark
                     ? BorderSide(
                         color: resolveThemeColor(kTertiaryLabel, context),
@@ -10851,7 +10852,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
                       decoration: ShapeDecoration(
                         color: resolveThemeColor(kPillColor, context),
-                        shape: const BoundedSquircleStadiumBorder(),
+                        shape: const BoundedSquircleStadiumBorder(
+                          radius: kConfirmationButtonCornerRadius,
+                        ),
                       ),
                       alignment: Alignment.center,
                       child: Text(

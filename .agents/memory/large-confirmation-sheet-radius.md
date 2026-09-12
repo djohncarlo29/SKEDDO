@@ -3,8 +3,8 @@ name: Large confirmation sheet radius
 description: The radius exception for the microphone permission and Delete Group overlay sheets.
 ---
 
-The microphone access action sheet and Delete Group confirmation sheet use a 40px `BoundedSquircleStadiumBorder` for their outer sheet card. Archive/delete/discard confirmations layered over an existing modal sheet use a separate 24px outer radius, while standalone confirmation cards stay at 24px. Dismiss cards use 16px top text inset and 16px message-to-button gap. Internal action buttons continue using the shared stadium radius.
+The archive/delete confirmation sheet is the reference geometry: its outer sheet card uses a fixed 24px `BoundedSquircleStadiumBorder`, and its buttons use a separate fixed 24px radius. The microphone access sheet and the other gel-bloom confirmation surfaces follow that same 24px/24px pairing. Dismiss buttons retain their separate token and layout.
 
-**Why:** These confirmation surfaces have distinct presentation contexts: the dedicated microphone/Delete Group cards are intentionally softer and more pill-like, while confirmations layered over another modal keep the tighter standard radius without changing the regular two-step flow. The dismiss copy spacing is intentionally compact.
+**Why:** Archive/delete is the product reference for these confirmation surfaces. Keeping the outer sheet and button tokens separate prevents multiline button labels from changing their corner curvature, while preserving each sheet's existing insets and behavior.
 
-**How to apply:** Keep the 40px token only on the microphone/Delete Group cards. Use the modal-confirmation radius when the confirmation overlay detects a parent sheet; preserve 24px for standalone confirmations and do not change the regular rounded sheet route. Keep the dismiss sheet's top text inset and message/button gap at 16px.
+**How to apply:** Use the shared confirmation-sheet token for the microphone, archive/delete, group/category, utility, and other matching gel-bloom cards. Use the shared fixed button token for their action buttons. Do not change the regular rounded sheet route or the dismiss sheet's distinct spacing and token.

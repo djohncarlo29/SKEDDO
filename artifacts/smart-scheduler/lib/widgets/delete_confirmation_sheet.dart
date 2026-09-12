@@ -292,7 +292,7 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
       shape: const BoundedSquircleStadiumBorder(
-        radius: kConfirmationButtonCornerRadius,
+        radius: kDiscardConfirmationButtonCornerRadius,
       ),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
