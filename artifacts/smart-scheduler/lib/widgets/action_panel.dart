@@ -1023,6 +1023,10 @@ class _ActionPanelScrollViewState extends State<ActionPanelScrollView> {
       child: NotificationListener<ScrollNotification>(
         onNotification: _onScrollNotification,
         child: Stack(
+          // The scroll pill is laid out against the surrounding sheet
+          // surface. Keep the Stack open so its full edge clearance is not
+          // clipped by the scroll viewport.
+          clipBehavior: Clip.none,
           children: [
             ShaderMask(
               blendMode: BlendMode.dstIn,
@@ -1076,9 +1080,9 @@ class _ActionPanelScrollViewState extends State<ActionPanelScrollView> {
               ),
             ),
             Positioned(
-              right: 3,
-              top: 10,
-              bottom: 10,
+              right: 8,
+              top: 8,
+              bottom: 8,
               width: 2.5,
               child: AnimatedSlide(
                 offset: _pillVisible ? Offset.zero : const Offset(3.0, 0),

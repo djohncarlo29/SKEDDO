@@ -11166,7 +11166,6 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
         onTap: onTap,
         child: Container(
           width: double.infinity,
-          clipBehavior: Clip.antiAlias,
           decoration: buttonDecor,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
           child: Center(
@@ -11212,11 +11211,11 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                   radius: kConfirmationSheetCornerRadius,
                   side: sheetBorder ?? BorderSide.none,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                   child: ActionPanelScrollView(
-                     maxHeight: MediaQuery.sizeOf(context).height,
-                     child: Column(
+                child: ActionPanelScrollView(
+                  maxHeight: MediaQuery.sizeOf(context).height,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                    child: Column(
                        mainAxisSize: MainAxisSize.min,
                        crossAxisAlignment: CrossAxisAlignment.stretch,
                        children: [
@@ -11275,14 +11274,14 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
                         labelColor: primary,
                         onTap: () => onResult(null),
                       ),
-                       ],
-                     ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -11365,7 +11364,6 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
         onTap: onTap,
         child: Container(
           width: double.infinity,
-          clipBehavior: Clip.antiAlias,
           decoration: buttonDecor,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
           child: Center(
@@ -11411,11 +11409,11 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
                   radius: kConfirmationSheetCornerRadius,
                   side: sheetBorder ?? BorderSide.none,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                   child: ActionPanelScrollView(
-                     maxHeight: MediaQuery.sizeOf(context).height,
-                     child: Column(
+                child: ActionPanelScrollView(
+                  maxHeight: MediaQuery.sizeOf(context).height,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                    child: Column(
                        mainAxisSize: MainAxisSize.min,
                        crossAxisAlignment: CrossAxisAlignment.stretch,
                        children: [
@@ -11475,14 +11473,14 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
                         labelColor: primary,
                         onTap: () => onResult(null),
                       ),
-                       ],
-                     ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -11571,7 +11569,6 @@ class _UtilityItemSheetOverlay extends StatelessWidget {
         onTap: onTap,
         child: Container(
           width: double.infinity,
-          clipBehavior: Clip.antiAlias,
           decoration: buttonDecor,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
           child: Center(
@@ -11617,11 +11614,11 @@ class _UtilityItemSheetOverlay extends StatelessWidget {
                   radius: kConfirmationSheetCornerRadius,
                   side: sheetBorder ?? BorderSide.none,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                   child: ActionPanelScrollView(
-                     maxHeight: MediaQuery.sizeOf(context).height,
-                     child: Column(
+                child: ActionPanelScrollView(
+                  maxHeight: MediaQuery.sizeOf(context).height,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                    child: Column(
                        mainAxisSize: MainAxisSize.min,
                        crossAxisAlignment: CrossAxisAlignment.stretch,
                        children: [
@@ -11670,14 +11667,14 @@ class _UtilityItemSheetOverlay extends StatelessWidget {
                         labelColor: primary,
                         onTap: () => onResult(null),
                       ),
-                       ],
-                     ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
       ],
     );
   }

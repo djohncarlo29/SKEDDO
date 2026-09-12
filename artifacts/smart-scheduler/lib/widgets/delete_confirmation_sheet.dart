@@ -318,16 +318,16 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
               : kConfirmationSheetCornerRadius,
           side: sheetBorder ?? BorderSide.none,
         ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            kDiscardConfirmationButtonEdgeGap,
-            kDiscardConfirmationSheetTopInset,
-            kDiscardConfirmationButtonEdgeGap,
-            kDiscardConfirmationButtonEdgeGap,
-          ),
-                   child: ActionPanelScrollView(
-                     maxHeight: MediaQuery.sizeOf(context).height,
-                     child: Column(
+        child: ActionPanelScrollView(
+          maxHeight: MediaQuery.sizeOf(context).height,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              kDiscardConfirmationButtonEdgeGap,
+              kDiscardConfirmationSheetTopInset,
+              kDiscardConfirmationButtonEdgeGap,
+              kDiscardConfirmationButtonEdgeGap,
+            ),
+            child: Column(
                        mainAxisSize: MainAxisSize.min,
                        crossAxisAlignment: CrossAxisAlignment.stretch,
                        children: [
@@ -355,7 +355,6 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
                 onTap: () => onResult(true),
                 child: Container(
                   width: double.infinity,
-                  clipBehavior: Clip.antiAlias,
                   decoration: buttonDecor,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
@@ -378,8 +377,8 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
                   ),
                 ),
               ),
-                       ],
-                     ),
+              ],
+            ),
           ),
         ),
       ),
@@ -484,7 +483,6 @@ class _DeleteConfirmationSheetOverlay extends StatelessWidget {
         onTap: onTap,
         child: Container(
           width: double.infinity,
-          clipBehavior: Clip.antiAlias,
           decoration: buttonDecor,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
           child: Center(
@@ -537,11 +535,11 @@ class _DeleteConfirmationSheetOverlay extends StatelessWidget {
                         : kConfirmationSheetCornerRadius,
                     side: sheetBorder ?? BorderSide.none,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                   child: ActionPanelScrollView(
-                     maxHeight: MediaQuery.sizeOf(context).height,
-                     child: Column(
+                  child: ActionPanelScrollView(
+                    maxHeight: MediaQuery.sizeOf(context).height,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                      child: Column(
                        mainAxisSize: MainAxisSize.min,
                        crossAxisAlignment: CrossAxisAlignment.stretch,
                        children: [
@@ -588,15 +586,15 @@ class _DeleteConfirmationSheetOverlay extends StatelessWidget {
                           labelColor: primary,
                           onTap: () => onResult(null),
                         ),
-                       ],
-                     ),
+                        ],
+                      ),
+                    ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
       ],
     );
   }

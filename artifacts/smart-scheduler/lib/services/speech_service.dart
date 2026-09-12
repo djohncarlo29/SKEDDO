@@ -211,11 +211,11 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
                   radius: kConfirmationSheetCornerRadius,
                   side: sheetBorder ?? BorderSide.none,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                   child: ActionPanelScrollView(
-                     maxHeight: MediaQuery.sizeOf(context).height,
-                     child: Column(
+                child: ActionPanelScrollView(
+                  maxHeight: MediaQuery.sizeOf(context).height,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                    child: Column(
                        mainAxisSize: MainAxisSize.min,
                        children: [
                       Container(
@@ -265,7 +265,6 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
                         onTap: () => onResult(true),
                         child: Container(
                           width: double.infinity,
-                          clipBehavior: Clip.antiAlias,
                           decoration: buttonDecor,
                           child: Padding(
                             padding: buttonPadding,
@@ -293,7 +292,6 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
                         onTap: () => onResult(false),
                         child: Container(
                           width: double.infinity,
-                          clipBehavior: Clip.antiAlias,
                           decoration: buttonDecor,
                           child: Padding(
                             padding: buttonPadding,
@@ -315,8 +313,8 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                       ],
-                     ),
+                      ],
+                    ),
                   ),
                 ),
               ),
