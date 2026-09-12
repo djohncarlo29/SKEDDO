@@ -1021,10 +1021,10 @@ class _SettingsSection extends StatelessWidget {
                 label.toUpperCase(),
                 style: TextStyle(
                   fontFamily: kSFProText,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
                   color: resolveThemeColor(kSecondaryLabel, context),
-                  letterSpacing: 0.06,
+                  letterSpacing: 0.0,
                 ),
               ),
             ),
