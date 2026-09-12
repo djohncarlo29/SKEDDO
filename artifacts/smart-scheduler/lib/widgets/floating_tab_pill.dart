@@ -9,6 +9,14 @@ import '../app_theme.dart';
 import '../app_settings.dart';
 import 'fixed_size_icon.dart';
 
+/// Geometry shared by the Liquid Glass settings preview card and its
+/// shape-aware movement boundary.
+const double kLiquidGlassPreviewHeight = 154.0;
+const BoundedSquircleStadiumBorder kLiquidGlassPreviewCardShape =
+    BoundedSquircleStadiumBorder(
+  radius: kSquircleStadiumRadius,
+);
+
 /// The AppShell's platform-neutral floating tab control.
 ///
 /// This widget owns the pill's presentation and tab-item interaction only.
@@ -214,6 +222,7 @@ class FloatingTabBarGlassPreview extends StatefulWidget {
 
 class _FloatingTabBarGlassPreviewState
     extends State<FloatingTabBarGlassPreview> {
+  static const _pillHeight = 50.0;
   final ValueNotifier<Offset> _offsetNotifier = ValueNotifier(Offset.zero);
 
   @override
@@ -233,8 +242,33 @@ class _FloatingTabBarGlassPreviewState
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maxX = math.max(0.0, (constraints.maxWidth - barWidth) / 2);
-        final maxY = math.max(0.0, (constraints.maxHeight - 50) / 2);
+        // The old rectangular maxX/maxY limits allowed the pill's corners to
+        // enter the preview card's curved corners. Keep the runtime card size
+        // and its bounded squircle path together for both clipping and bounds.
+        final previewSize = Size(
+          constraints.hasBoundedWidth ? constraints.maxWidth : barWidth,
+          constraints.hasBoundedHeight
+              ? constraints.maxHeight
+              : kLiquidGlassPreviewHeight,
+        );
+        final previewGeometry = _LiquidGlassPreviewGeometry(previewSize);
+        final pillSize = Size(barWidth, _pillHeight);
+        final pillPath = liquidGlassSquirclePath(
+          pillSize,
+          kSquircleStadiumRadius,
+          1.0,
+        );
+
+        Offset clampOffset(Offset current, Offset target) {
+          return _clampPreviewOffset(
+            cardPath: previewGeometry.path,
+            pillPath: pillPath,
+            cardSize: previewSize,
+            pillSize: pillSize,
+            currentOffset: current,
+            targetOffset: target,
+          );
+        }
 
         return SizedBox.expand(
           child: GestureDetector(
@@ -245,83 +279,116 @@ class _FloatingTabBarGlassPreviewState
             dragStartBehavior: DragStartBehavior.down,
             onPanUpdate: (details) {
               final offset = _offsetNotifier.value;
-              _offsetNotifier.value = Offset(
-                (offset.dx + details.delta.dx).clamp(-maxX, maxX),
-                (offset.dy + details.delta.dy).clamp(-maxY, maxY),
+              _offsetNotifier.value = clampOffset(
+                offset,
+                offset + details.delta,
               );
             },
             onDoubleTap: () => _offsetNotifier.value = Offset.zero,
             child: ValueListenableBuilder<Offset>(
               valueListenable: _offsetNotifier,
               builder: (context, offset, child) {
-                final boundedOffset = Offset(
-                  offset.dx.clamp(-maxX, maxX),
-                  offset.dy.clamp(-maxY, maxY),
+                final boundedOffset = clampOffset(
+                  Offset.zero,
+                  offset,
                 );
                 return Transform.translate(offset: boundedOffset, child: child);
               },
               child: Semantics(
                 label: 'Liquid Glass preview',
                 hint: 'Drag to move. Double-tap to center.',
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    IgnorePointer(
-                      child: LiquidGlassShadow(
-                        blur: 16,
-                        opacity: isDark ? 0 : 0.18,
-                        offset: const Offset(0, 5),
-                        cornerRadius: kSquircleStadiumRadius,
-                        child: SizedBox(width: barWidth, height: 50),
+                 child: ClipPath(
+                   clipper: ShapeBorderClipper(
+                     shape: const BoundedSquircleStadiumBorder(
+                       radius: kSquircleStadiumRadius,
+                     ),
+                   ),
+                   child: Stack(
+                     alignment: Alignment.center,
+                     children: [
+                       IgnorePointer(
+                         child: LiquidGlassShadow(
+                           blur: 16,
+                           opacity: isDark ? 0 : 0.18,
+                           offset: const Offset(0, 5),
+                           cornerRadius: kSquircleStadiumRadius,
+                           child: SizedBox(
+                             width: barWidth,
+                             height: _pillHeight,
+                           ),
+                         ),
                       ),
-                    ),
-                    // The Settings preview is a visual sample, not a second
-                    // navigation control. Ignore the tab bar's own hit
-                    // testing so taps cannot make a selection indicator
-                    // appear; the parent GestureDetector still owns the
-                    // preview's drag and double-tap gestures.
-                    ValueListenableBuilder<double>(
-                      valueListenable: appLiquidGlassOpacityNotifier,
-                      builder: (context, _, __) {
-                        // Re-resolve the glass appearance on every slider
-                        // update while this preview remains mounted.
-                        final style = _floatingTabBarStyle(context);
-                        return IgnorePointer(
-                          child: LiquidGlassTabBar(
-                            items: [
-                              _previewItem(SFIcons.sf_trash),
-                              _previewItem(SFIcons.sf_folder, size: 23),
-                              _previewItem(SFIcons.sf_arrowshape_turn_up_left),
-                            ],
-                            selectedIndex: 0,
-                            onChanged: (_) {},
-                            width: barWidth,
-                            height: 50,
-                            itemPadding: 4,
-                            itemStyle: LiquidGlassTabItemStyle(
-                              selectedColor: resolveThemeColor(
-                                kSecondaryLabel,
-                                context,
+                       // The Settings preview is a visual sample, not a second
+                       // navigation control. Ignore the tab bar's own hit
+                       // testing so taps cannot make a selection indicator
+                       // appear; the parent GestureDetector still owns the
+                       // preview's drag and double-tap gestures.
+                       ValueListenableBuilder<double>(
+                         valueListenable: appLiquidGlassOpacityNotifier,
+                         builder: (context, _, __) {
+                           // Re-resolve the glass appearance on every slider
+                           // update while this preview remains mounted.
+                           final style = _floatingTabBarStyle(
+                             context,
+                             exactClip: true,
+                           );
+                           return IgnorePointer(
+                             child: LiquidGlassTabBar(
+                               items: [
+                                 _previewItem(SFIcons.sf_trash),
+                                 _previewItem(SFIcons.sf_folder, size: 23),
+                                 _previewItem(
+                                   SFIcons.sf_arrowshape_turn_up_left,
+                                 ),
+                               ],
+                               selectedIndex: 0,
+                               onChanged: (_) {},
+                               width: barWidth,
+                               height: _pillHeight,
+                               itemPadding: 4,
+                               itemStyle: LiquidGlassTabItemStyle(
+                                 selectedColor: resolveThemeColor(
+                                   kSecondaryLabel,
+                                   context,
+                                 ),
+                                 unselectedColor: resolveThemeColor(
+                                   kSecondaryLabel,
+                                   context,
+                                 ),
+                                 iconSize: 20,
+                                 selectedFontWeight: FontWeight.w500,
+                                 unselectedFontWeight: FontWeight.w500,
+                               ),
+                               style: style,
+                               pillStyle: LiquidGlassTabPillStyle(
+                                 mode: LiquidGlassPillMode.none,
+                                 show: false,
+                                 animated: false,
+                                 shape: LiquidGlassShape.squircle(
+                                   cornerRadius: kSquircleStadiumRadius,
+                                   clipQuality: LiquidGlassClipQuality.exact,
+                                 ),
+                                 glassStyle: LiquidGlassStyle(
+                                   shape: LiquidGlassShape.squircle(
+                                     cornerRadius: kSquircleStadiumRadius,
+                                     clipQuality:
+                                         LiquidGlassClipQuality.exact,
+                                   ),
+                                 ),
+                                  rest: LiquidGlassStyle(
+                                   shape: LiquidGlassShape.squircle(
+                                     cornerRadius: kSquircleStadiumRadius,
+                                     clipQuality:
+                                         LiquidGlassClipQuality.exact,
+                                   ),
+                                 ),
+                                ),
                               ),
-                              unselectedColor: resolveThemeColor(
-                                kSecondaryLabel,
-                                context,
-                              ),
-                              iconSize: 20,
-                              selectedFontWeight: FontWeight.w500,
-                              unselectedFontWeight: FontWeight.w500,
-                            ),
-                            style: style,
-                            pillStyle: const LiquidGlassTabPillStyle(
-                              mode: LiquidGlassPillMode.none,
-                              show: false,
-                              animated: false,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                            );
+                         },
+                       ),
+                     ],
+                   ),
                 ),
               ),
             ),
@@ -343,7 +410,97 @@ class _FloatingTabBarGlassPreviewState
   }
 }
 
-LiquidGlassStyle _floatingTabBarStyle(BuildContext context) {
+class _LiquidGlassPreviewGeometry {
+  const _LiquidGlassPreviewGeometry(this.size);
+
+  final Size size;
+
+  Path get path => kLiquidGlassPreviewCardShape.getOuterPath(
+        Offset.zero & size,
+      );
+}
+
+/// Tests the rendered pill outline against the preview card path. Sampling the
+/// contour catches the pill's curved corners and straight-side extrema rather
+/// than treating either shape as a rectangle.
+bool _pillFitsPreview({
+  required Path cardPath,
+  required Path pillPath,
+  required Size cardSize,
+  required Size pillSize,
+  required Offset offset,
+}) {
+  final pillRect = Rect.fromCenter(
+    center: cardSize.center(Offset.zero) + offset,
+    width: pillSize.width,
+    height: pillSize.height,
+  );
+  final translatedPill = pillPath.shift(pillRect.topLeft);
+
+  for (final metric in translatedPill.computeMetrics()) {
+    final sampleCount = math.max(12, (metric.length / 2).ceil());
+    for (var index = 0; index <= sampleCount; index++) {
+      final tangent = metric.getTangentForOffset(
+        metric.length * index / sampleCount,
+      );
+      if (tangent == null || !cardPath.contains(tangent.position)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/// Clamps movement along the user's requested vector to the last legal point.
+///
+/// The legal region is the shape difference between the card and the pill, so
+/// it cannot be represented by independent horizontal and vertical limits.
+/// Binary search preserves the direction of each drag update while finding the
+/// furthest valid offset.
+Offset _clampPreviewOffset({
+  required Path cardPath,
+  required Path pillPath,
+  required Size cardSize,
+  required Size pillSize,
+  required Offset currentOffset,
+  required Offset targetOffset,
+}) {
+  bool fits(Offset offset) => _pillFitsPreview(
+        cardPath: cardPath,
+        pillPath: pillPath,
+        cardSize: cardSize,
+        pillSize: pillSize,
+        offset: offset,
+      );
+
+  Offset start = fits(currentOffset) ? currentOffset : Offset.zero;
+  if (!fits(start)) {
+    // Keep the state centered if a responsive relayout temporarily makes the
+    // preview smaller than the pill; do not reintroduce rectangular limits.
+    return Offset.zero;
+  }
+  if (fits(targetOffset)) return targetOffset;
+
+  var low = start;
+  var high = targetOffset;
+  for (var iteration = 0; iteration < 14; iteration++) {
+    final middle = Offset(
+      (low.dx + high.dx) / 2,
+      (low.dy + high.dy) / 2,
+    );
+    if (fits(middle)) {
+      low = middle;
+    } else {
+      high = middle;
+    }
+  }
+  return low;
+}
+
+LiquidGlassStyle _floatingTabBarStyle(
+  BuildContext context, {
+  bool exactClip = false,
+}) {
   final headerColor = resolveThemeColor(kFloatingTabBarSurfaceColor, context);
   final defaultBlur = LiquidGlassTabBar.defaultStyle.appearance.blur;
   final blurProgress =
@@ -364,8 +521,11 @@ LiquidGlassStyle _floatingTabBarStyle(BuildContext context) {
         sigmaY: defaultBlur.sigmaY * blurScale,
       ),
     ),
-    shape: const LiquidGlassShape.squircle(
+    shape: LiquidGlassShape.squircle(
       cornerRadius: kSquircleStadiumRadius,
+      clipQuality: exactClip
+          ? LiquidGlassClipQuality.exact
+          : LiquidGlassClipQuality.roundedRectangle,
       // Keep the 0.5px hairline inside the capsule lens. The active lifted
       // pill captures this optical rim as part of the bar, so its smaller
       // moving envelope can refract it instead of leaving a fixed sibling

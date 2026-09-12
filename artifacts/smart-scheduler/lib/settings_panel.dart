@@ -1018,7 +1018,7 @@ class _SettingsSection extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(left: 16, bottom: 8),
               child: Text(
-                label.toUpperCase(),
+                label,
                 style: TextStyle(
                   fontFamily: kSFProText,
                   fontSize: 15,
@@ -1326,6 +1326,7 @@ class _LiquidGlassSection extends StatelessWidget {
     final backgroundAsset = isDark
         ? 'assets/liquid_glass_background_dark.webp'
         : 'assets/liquid_glass_background_light.webp';
+    const previewShape = kLiquidGlassPreviewCardShape;
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1341,14 +1342,14 @@ class _LiquidGlassSection extends StatelessWidget {
                     offset: const Offset(0, 2),
                   ),
                 ], context),
-                shape: const BoundedSquircleStadiumBorder(),
+                 shape: previewShape,
               ),
               child: SizedBox(
                 width: double.infinity,
-                height: 154,
+                 height: kLiquidGlassPreviewHeight,
                 child: ClipPath(
                   clipper: ShapeBorderClipper(
-                    shape: const BoundedSquircleStadiumBorder(),
+                     shape: previewShape,
                   ),
                   child: Stack(
                     fit: StackFit.expand,
