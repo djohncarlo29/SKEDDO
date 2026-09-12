@@ -1081,8 +1081,8 @@ class _ActionPanelScrollViewState extends State<ActionPanelScrollView> {
             ),
             Positioned(
               right: 8,
-              top: 8,
-              bottom: 8,
+              top: 16,
+              bottom: 16,
               width: 2.5,
               child: AnimatedSlide(
                 offset: _pillVisible ? Offset.zero : const Offset(3.0, 0),
