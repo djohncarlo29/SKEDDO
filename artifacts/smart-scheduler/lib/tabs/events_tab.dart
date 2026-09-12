@@ -12581,7 +12581,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
   static bool _setEquals(Set<String> a, Set<String> b) =>
       a.length == b.length && a.containsAll(b);
 
-  Future<void> _requestDismiss() async {
+  Future<void> _requestDismiss({required bool fromXmark}) async {
     if (dismissActiveDiscardChangesConfirmationSheet()) return;
     if (_pickerOpen) {
       _dismissPicker();
@@ -12595,6 +12595,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
       context,
       entityLabel: 'group',
       isNew: widget.initial == null,
+      fromXmark: fromXmark,
     );
     if (!mounted || discard != true) return;
     setState(() => _discarding = true);
@@ -12751,7 +12752,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
       canPop: !_pickerOpen && (!_hasUnsavedChanges || _discarding),
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        _requestDismiss();
+        _requestDismiss(fromXmark: false);
       },
       child: CupertinoPageScaffold(
         backgroundColor: kModalBackground,
@@ -12787,7 +12788,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                           icon: CupertinoIcons.xmark,
                           iconColor: resolveThemeColor(kPrimaryLabel, context),
                           tapDelay: const Duration(milliseconds: 130),
-                           onTap: _requestDismiss,
+                            onTap: () => _requestDismiss(fromXmark: true),
                         ),
                       ),
                       Positioned(
@@ -13487,7 +13488,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       _initialDraftSignature != null &&
       _draftSignature() != _initialDraftSignature;
 
-  Future<void> _requestDismiss() async {
+  Future<void> _requestDismiss({required bool fromXmark}) async {
     if (dismissActiveDiscardChangesConfirmationSheet()) return;
     if (_pickerMenuOpen) {
       _dismissPickerOverlay();
@@ -13501,6 +13502,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       context,
       entityLabel: 'category',
       isNew: widget.initial == null && !_isSmart,
+      fromXmark: fromXmark,
     );
     if (!mounted || discard != true) return;
     setState(() => _discarding = true);
@@ -16121,7 +16123,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       canPop: !_pickerMenuOpen && (!_hasUnsavedChanges || _discarding),
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        _requestDismiss();
+        _requestDismiss(fromXmark: false);
       },
       child: CupertinoPageScaffold(
         backgroundColor: kModalBackground,
@@ -16159,7 +16161,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                           icon: CupertinoIcons.xmark,
                           iconColor: resolveThemeColor(kPrimaryLabel, context),
                           tapDelay: const Duration(milliseconds: 130),
-                          onTap: _requestDismiss,
+                          onTap: () => _requestDismiss(fromXmark: true),
                         ),
                       ),
                       Positioned(
@@ -17171,7 +17173,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
         );
   }
 
-  Future<void> _requestDismiss() async {
+  Future<void> _requestDismiss({required bool fromXmark}) async {
     if (dismissActiveDiscardChangesConfirmationSheet()) return;
     if (!_hasUnsavedChanges) {
       Navigator.of(context).pop();
@@ -17181,6 +17183,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
       context,
       entityLabel: 'section',
       isNew: false,
+      fromXmark: fromXmark,
     );
     if (!mounted || discard != true) return;
     setState(() => _discarding = true);
@@ -17466,7 +17469,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
       canPop: !_hasUnsavedChanges || _discarding,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        _requestDismiss();
+        _requestDismiss(fromXmark: false);
       },
       child: CupertinoPageScaffold(
       backgroundColor: kModalBackground,
@@ -17500,7 +17503,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
                         icon: CupertinoIcons.xmark,
                         iconColor: primaryLabel,
                         tapDelay: const Duration(milliseconds: 130),
-                        onTap: _requestDismiss,
+                        onTap: () => _requestDismiss(fromXmark: true),
                       ),
                     ),
                     Positioned(

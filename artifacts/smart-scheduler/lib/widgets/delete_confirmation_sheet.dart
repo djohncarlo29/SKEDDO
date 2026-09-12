@@ -107,12 +107,14 @@ Future<bool?> showArchiveConfirmationSheet(
   );
 }
 
-/// Shows the centered confirmation used when an editor with unsaved changes is
-/// dismissed.
+/// Shows the confirmation used when an editor with unsaved changes is
+/// dismissed. The X-mark entry point uses the sheet-attached placement; system
+/// back and sheet drag use the centered placement.
 Future<bool?> showDiscardChangesConfirmationSheet(
   BuildContext context, {
   required String entityLabel,
   required bool isNew,
+  bool fromXmark = false,
 }) async {
   final completer = Completer<bool?>();
   late OverlayEntry entry;
@@ -139,8 +141,9 @@ Future<bool?> showDiscardChangesConfirmationSheet(
         (_) => _DiscardChangesSheetOverlay(
           entityLabel: entityLabel,
           isNew: isNew,
+          fromXmark: fromXmark,
           horizontalInset: horizontalInset,
-           isPresentedOverModalSheet: isPresentedOverModalSheet,
+          isPresentedOverModalSheet: isPresentedOverModalSheet,
           onResult: close,
         ),
   );
@@ -262,6 +265,7 @@ Future<bool?> confirmDeleteSection(
 class _DiscardChangesSheetOverlay extends StatelessWidget {
   final String entityLabel;
   final bool isNew;
+  final bool fromXmark;
   final double horizontalInset;
   final bool isPresentedOverModalSheet;
   final void Function(bool?) onResult;
@@ -269,6 +273,7 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
   const _DiscardChangesSheetOverlay({
     required this.entityLabel,
     required this.isNew,
+    required this.fromXmark,
     required this.horizontalInset,
     required this.isPresentedOverModalSheet,
     required this.onResult,
@@ -291,14 +296,18 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
       ),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
+    final sheetWidth = fromXmark
+        ? MediaQuery.sizeOf(context).width *
+            kDiscardConfirmationTopLeftWidthFraction
+        : double.infinity;
     final message = isNew
         ? 'Are you sure you want to discard this new $entityLabel?'
         : 'Are you sure you want to discard your changes?';
 
     final card = SizedBox(
-      width: double.infinity,
+      width: sheetWidth,
       child: GelBloomCard(
-        scaleOrigin: Alignment.center,
+        scaleOrigin: fromXmark ? Alignment.topLeft : Alignment.center,
         fillOpacity: 0.82,
         shadowOpacity: 0.26,
         border: sheetBorder,
@@ -387,18 +396,33 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
               child: SizedBox.expand(),
             ),
           ),
-          Align(
-            alignment: Alignment.center,
-            child: SafeArea(
+          if (fromXmark)
+            Align(
+              alignment: Alignment.topLeft,
               child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: horizontalInset,
-                  vertical: 16,
+                padding: EdgeInsets.only(
+                  left: kDiscardConfirmationTopLeftEdgeGap,
+                  top:
+                      MediaQuery.sizeOf(context).height *
+                          kRoundedSheetTopGapRatio +
+                      kDiscardConfirmationTopLeftEdgeGap,
                 ),
                 child: card,
               ),
+            )
+          else
+            Align(
+              alignment: Alignment.center,
+              child: SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontalInset,
+                    vertical: 16,
+                  ),
+                  child: card,
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );

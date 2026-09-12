@@ -570,15 +570,17 @@ const double kLargeModalSheetCornerRadius = 40.0;
 // an unbounded stadium radius so BoundedSquircleStadiumBorder clamps it to
 // exactly half of the button's rendered height, including Dynamic Type growth.
 const double kConfirmationSheetCornerRadius = 24.0;
-const double kModalConfirmationSheetCornerRadius = 20.0;
+const double kModalConfirmationSheetCornerRadius = 24.0;
 const double kConfirmationButtonCornerRadius = double.infinity;
 const double kDiscardConfirmationButtonCornerRadius =
     kConfirmationButtonCornerRadius;
 const double kModalConfirmationHorizontalInset = 24.0;
+const double kDiscardConfirmationTopLeftWidthFraction = 2 / 3;
+const double kDiscardConfirmationTopLeftEdgeGap = 16.0;
 const double kDiscardConfirmationButtonEdgeGap = 16.0;
 const double kDiscardConfirmationMessageHorizontalInset = 8.0;
-const double kDiscardConfirmationMessageButtonGap = 24.0;
-const double kDiscardConfirmationSheetTopInset = 24.0;
+const double kDiscardConfirmationMessageButtonGap = 16.0;
+const double kDiscardConfirmationSheetTopInset = 16.0;
 
 // Shared cubic quarter used by both stadium controls and bounded card corners.
 const double _kSharedSquircleCurveControl = 0.64;
