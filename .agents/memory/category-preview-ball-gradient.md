@@ -12,5 +12,7 @@ both light and dark resolved ARGB values.
 the preview circle, while one generic opacity makes bright swatches too white.
 
 **How to apply:** Keep the per-swatch highlight lookup shared by the circle
-painter and soccerball mask. Preserve the soccerball's transparent detail areas
-and outline color; only its category-colored artwork receives the gradient.
+painter and soccerball mask. The soccerball shader must use the full preview
+circle as its coordinate extent, sampling the circle's middle segment at the
+icon's centered bounds. Preserve the soccerball's transparent detail areas and
+outline color; only its category-colored artwork receives the gradient.

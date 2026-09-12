@@ -16416,6 +16416,7 @@ Widget _renderCatIcon(
       ballFillColor: containerColor,
       detailColor: color,
         useCategoryPreviewGradient: useCategoryPreviewGradient,
+        gradientExtent: containerSize,
     );
   } else if (_isEmojiIcon(iconOrSvg)) {
     // Emoji: render as native Unicode text — no color tint, fills circle naturally.
@@ -16480,6 +16481,7 @@ Widget _buildTwoToneBallIcon({
   required Color ballFillColor,
   required Color detailColor,
   bool useCategoryPreviewGradient = false,
+  double? gradientExtent,
 }) {
   final ballArtwork =
       SvgPicture.asset(
@@ -16495,10 +16497,13 @@ Widget _buildTwoToneBallIcon({
           ? ShaderMask(
             blendMode: BlendMode.srcIn,
             shaderCallback:
-                (bounds) =>
-                    _categoryPreviewGradient(ballFillColor).createShader(
-                      bounds,
-                    ),
+                (bounds) => _categoryPreviewGradient(
+                  ballFillColor,
+                  extentRatio:
+                      bounds.height <= 0
+                          ? 1.0
+                          : (gradientExtent ?? bounds.height) / bounds.height,
+                ).createShader(bounds),
             child: ballArtwork,
           )
           : ballArtwork;
@@ -16567,7 +16572,10 @@ int _categoryPreviewHighlightAlpha(Color color) =>
 // that same additive result as concrete colors so the SVG mask can carry the
 // highlight through its category-colored regions while transparent artwork
 // still reveals the detail-color layer underneath.
-LinearGradient _categoryPreviewGradient(Color color) {
+LinearGradient _categoryPreviewGradient(
+  Color color, {
+  double extentRatio = 1.0,
+}) {
   final opacity = _categoryPreviewHighlightAlpha(color) / 255.0;
   final whiteLift = (255 * opacity).round();
 
@@ -16582,8 +16590,11 @@ LinearGradient _categoryPreviewGradient(Color color) {
   }
 
   return LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
+    // The icon is centered inside the larger preview circle. Extending the
+    // shader endpoints by the circle/icon ratio makes the icon's local bounds
+    // sample the corresponding middle segment of the full circle gradient.
+    begin: Alignment(0, -extentRatio),
+    end: Alignment(0, extentRatio),
     colors: [lifted(color), color],
   );
 }
