@@ -224,6 +224,10 @@ class _FloatingTabBarGlassPreviewState
     extends State<FloatingTabBarGlassPreview> {
   static const _pillHeight = 50.0;
   final ValueNotifier<Offset> _offsetNotifier = ValueNotifier(Offset.zero);
+  int? _activePointer;
+  bool _pointerMoved = false;
+  DateTime? _lastTapAt;
+  Offset? _lastTapPosition;
 
   @override
   void dispose() {
@@ -253,10 +257,12 @@ class _FloatingTabBarGlassPreviewState
         );
         final previewGeometry = _LiquidGlassPreviewGeometry(previewSize);
         final pillSize = Size(barWidth, _pillHeight);
-        final pillPath = liquidGlassSquirclePath(
-          pillSize,
-          kSquircleStadiumRadius,
-          1.0,
+        // The visible preview pill is clipped by the app-owned bounded
+        // squircle below. Use that exact same path for containment; testing
+        // the package shader's superellipse here creates a visible wedge at
+        // the card corners even though the rendered clip is aligned.
+        final pillPath = kLiquidGlassPreviewCardShape.getOuterPath(
+          Offset.zero & pillSize,
         );
 
         Offset clampOffset(Offset current, Offset target) {
@@ -270,31 +276,81 @@ class _FloatingTabBarGlassPreviewState
           );
         }
 
+        void handlePointerDown(PointerDownEvent event) {
+          _activePointer = event.pointer;
+          _pointerMoved = false;
+        }
+
+        void handlePointerMove(PointerMoveEvent event) {
+          if (_activePointer != event.pointer) return;
+          if (event.delta.distanceSquared > 0) _pointerMoved = true;
+          final offset = _offsetNotifier.value;
+          _offsetNotifier.value = clampOffset(offset, offset + event.delta);
+        }
+
+        void handlePointerUp(PointerUpEvent event) {
+          if (_activePointer != event.pointer) return;
+          if (!_pointerMoved) {
+            final now = DateTime.now();
+            final isDoubleTap = _lastTapAt != null &&
+                now.difference(_lastTapAt!) <=
+                    const Duration(milliseconds: 320) &&
+                _lastTapPosition != null &&
+                (event.position - _lastTapPosition!).distance <= 28;
+            if (isDoubleTap) {
+              _offsetNotifier.value = Offset.zero;
+              _lastTapAt = null;
+              _lastTapPosition = null;
+            } else {
+              _lastTapAt = now;
+              _lastTapPosition = event.position;
+            }
+          } else {
+            _lastTapAt = null;
+            _lastTapPosition = null;
+          }
+          _activePointer = null;
+          _pointerMoved = false;
+        }
+
+        void handlePointerCancel(PointerCancelEvent event) {
+          if (_activePointer != event.pointer) return;
+          _activePointer = null;
+          _pointerMoved = false;
+          _lastTapAt = null;
+          _lastTapPosition = null;
+        }
+
         return SizedBox.expand(
-          child: GestureDetector(
-            // The preview lives inside the settings CustomScrollView. Claim
-            // the full preview surface rather than only the painted pill so
-            // the scroll view cannot steal a drag that starts near its edge.
+          child: RawGestureDetector(
+            // Claim the sequence on pointer-down. The preview is an
+            // interactive surface inside a vertical CustomScrollView, and
+            // allowing the scroll recognizer to win makes the pill feel
+            // sticky or intermittently undraggable.
             behavior: HitTestBehavior.opaque,
-            dragStartBehavior: DragStartBehavior.down,
-            onPanUpdate: (details) {
-              final offset = _offsetNotifier.value;
-              _offsetNotifier.value = clampOffset(
-                offset,
-                offset + details.delta,
+            gestures: <Type, GestureRecognizerFactory>{
+              EagerGestureRecognizer:
+                  GestureRecognizerFactoryWithHandlers<EagerGestureRecognizer>(
+                EagerGestureRecognizer.new,
+                (_) {},
               );
             },
-            onDoubleTap: () => _offsetNotifier.value = Offset.zero,
-            child: ValueListenableBuilder<Offset>(
-              valueListenable: _offsetNotifier,
-              builder: (context, offset, child) {
-                final boundedOffset = clampOffset(
-                  Offset.zero,
-                  offset,
-                );
-                return Transform.translate(offset: boundedOffset, child: child);
-              },
-              child: Semantics(
+            child: Listener(
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: handlePointerDown,
+              onPointerMove: handlePointerMove,
+              onPointerUp: handlePointerUp,
+              onPointerCancel: handlePointerCancel,
+              child: ValueListenableBuilder<Offset>(
+                valueListenable: _offsetNotifier,
+                builder: (context, offset, child) {
+                  final boundedOffset = clampOffset(Offset.zero, offset);
+                  return Transform.translate(
+                    offset: boundedOffset,
+                    child: child,
+                  );
+                },
+                child: Semantics(
                 label: 'Liquid Glass preview',
                 hint: 'Drag to move. Double-tap to center.',
                  child: ClipPath(
