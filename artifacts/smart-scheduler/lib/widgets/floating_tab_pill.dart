@@ -333,7 +333,7 @@ class _FloatingTabBarGlassPreviewState
                   GestureRecognizerFactoryWithHandlers<EagerGestureRecognizer>(
                 EagerGestureRecognizer.new,
                 (_) {},
-              );
+              ),
             },
             child: Listener(
               behavior: HitTestBehavior.opaque,
@@ -353,11 +353,9 @@ class _FloatingTabBarGlassPreviewState
                 child: Semantics(
                 label: 'Liquid Glass preview',
                 hint: 'Drag to move. Double-tap to center.',
-                 child: ClipPath(
+                  child: ClipPath(
                    clipper: ShapeBorderClipper(
-                     shape: const BoundedSquircleStadiumBorder(
-                       radius: kSquircleStadiumRadius,
-                     ),
+                      shape: kLiquidGlassPreviewCardShape,
                    ),
                    child: Stack(
                      alignment: Alignment.center,
@@ -449,9 +447,10 @@ class _FloatingTabBarGlassPreviewState
               ),
             ),
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
   }
 
   LiquidGlassTabBarItem _previewItem(IconData icon, {double size = 20}) {
@@ -492,19 +491,31 @@ bool _pillFitsPreview({
     height: pillSize.height,
   );
   final translatedPill = pillPath.shift(pillRect.topLeft);
+  final cardCenter = cardSize.center(Offset.zero);
 
   for (final metric in translatedPill.computeMetrics()) {
-    final sampleCount = math.max(12, (metric.length / 2).ceil());
+    final sampleCount = math.max(12, (metric.length / 3).ceil());
     for (var index = 0; index <= sampleCount; index++) {
       final tangent = metric.getTangentForOffset(
         metric.length * index / sampleCount,
       );
-      if (tangent == null || !cardPath.contains(tangent.position)) {
+      if (tangent == null ||
+          !_cardContainsOrTouches(cardPath, tangent.position, cardCenter)) {
         return false;
       }
     }
   }
   return true;
+}
+
+bool _cardContainsOrTouches(Path cardPath, Offset point, Offset cardCenter) {
+  if (cardPath.contains(point)) return true;
+  final towardCenter = cardCenter - point;
+  final distance = towardCenter.distance;
+  if (distance == 0) return false;
+  // Path.contains can reject a point exactly on the cubic boundary. A tiny
+  // inward probe accepts that shared edge without allowing a visible overlap.
+  return cardPath.contains(point + towardCenter * (0.08 / distance));
 }
 
 /// Clamps movement along the user's requested vector to the last legal point.

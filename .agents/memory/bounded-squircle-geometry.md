@@ -61,3 +61,14 @@ different corner profile.
 **How to apply:** for a Liquid Glass surface, pair
 `LiquidGlassShape.squircle` with an outer bounded clip; keep the package shape
 for shader rendering and the app border for the actual widget silhouette.
+
+For draggable Liquid Glass previews, derive the pill movement path from that
+same app-owned outer silhouette. Do not use the package shader outline as the
+containment path when the visible pill is clipped by the bounded app path.
+
+**Why:** a mathematically valid package-outline placement can still leave a
+visible wedge when the package squircle and app cubic differ.
+
+**How to apply:** build both card and pill paths from the shared bounded shape,
+accept exact shared-edge points with a tiny inward tolerance, and let the outer
+card clip remain the final safety layer.
