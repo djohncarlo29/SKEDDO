@@ -73,4 +73,9 @@ shape's size.
 
 **How to apply:** use the same fixed-radius exact clip for both nested preview
 clips and the pill styles; solve horizontal and vertical drag axes separately
-instead of binary-searching a diagonal target through a rounded corner.
+instead of binary-searching a diagonal target through a rounded corner. Keep
+the drag loop itself direct: accumulate pointer deltas into one offset and
+clamp only against the available card/pill extents.
+
+**Why:** the historical smooth implementation used direct delta accumulation;
+per-frame path sampling and binary searches made the interaction feel resistant.

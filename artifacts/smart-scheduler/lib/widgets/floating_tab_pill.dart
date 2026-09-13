@@ -228,17 +228,11 @@ class FloatingTabBarGlassPreview extends StatefulWidget {
 class _FloatingTabBarGlassPreviewState
     extends State<FloatingTabBarGlassPreview> {
   static const _pillHeight = 50.0;
-  final ValueNotifier<Offset> _offsetNotifier = ValueNotifier(Offset.zero);
+  Offset _offset = Offset.zero;
   int? _activePointer;
   bool _pointerMoved = false;
   DateTime? _lastTapAt;
   Offset? _lastTapPosition;
-
-  @override
-  void dispose() {
-    _offsetNotifier.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -251,9 +245,6 @@ class _FloatingTabBarGlassPreviewState
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // The old rectangular maxX/maxY limits allowed the pill's corners to
-        // enter the preview card's curved corners. Keep the runtime card size
-        // and its bounded squircle path together for both clipping and bounds.
         final previewSize = Size(
           constraints.hasBoundedWidth ? constraints.maxWidth : barWidth,
           constraints.hasBoundedHeight
@@ -261,22 +252,23 @@ class _FloatingTabBarGlassPreviewState
               : kLiquidGlassPreviewHeight,
         );
         final pillSize = Size(barWidth, _pillHeight);
-        // The preview uses one fixed-radius outline for the card and pill.
-        // Unlike a size-dependent superellipse, a fixed-radius outline nests
-        // exactly at the card corners, so the pill can reach either corner
-        // without an artificial inset.
-        final previewPath = _liquidGlassPreviewPath(previewSize);
-        final pillPath = _liquidGlassPreviewPath(pillSize);
+        // The preview and pill use the same fixed-radius outline. Once those
+        // outlines match, the old rectangular extent clamp is the exact
+        // containment region and avoids path-search resistance while dragging.
+        final maxX = math.max(0.0, (previewSize.width - pillSize.width) / 2);
+        final maxY = math.max(0.0, (previewSize.height - pillSize.height) / 2);
+        final boundedOffset = Offset(
+          _offset.dx.clamp(-maxX, maxX),
+          _offset.dy.clamp(-maxY, maxY),
+        );
 
-        Offset clampOffset(Offset current, Offset target) {
-          return _clampPreviewOffset(
-            cardPath: previewPath,
-            pillPath: pillPath,
-            cardSize: previewSize,
-            pillSize: pillSize,
-            currentOffset: current,
-            targetOffset: target,
-          );
+        void applyDrag(Offset delta) {
+          setState(() {
+            _offset = Offset(
+              (_offset.dx + delta.dx).clamp(-maxX, maxX),
+              (_offset.dy + delta.dy).clamp(-maxY, maxY),
+            );
+          });
         }
 
         void handlePointerDown(PointerDownEvent event) {
@@ -287,8 +279,7 @@ class _FloatingTabBarGlassPreviewState
         void handlePointerMove(PointerMoveEvent event) {
           if (_activePointer != event.pointer) return;
           if (event.delta.distanceSquared > 0) _pointerMoved = true;
-          final offset = _offsetNotifier.value;
-          _offsetNotifier.value = clampOffset(offset, offset + event.delta);
+          applyDrag(event.delta);
         }
 
         void handlePointerUp(PointerUpEvent event) {
@@ -301,7 +292,7 @@ class _FloatingTabBarGlassPreviewState
                 _lastTapPosition != null &&
                 (event.position - _lastTapPosition!).distance <= 28;
             if (isDoubleTap) {
-              _offsetNotifier.value = Offset.zero;
+              setState(() => _offset = Offset.zero);
               _lastTapAt = null;
               _lastTapPosition = null;
             } else {
@@ -344,40 +335,32 @@ class _FloatingTabBarGlassPreviewState
               onPointerMove: handlePointerMove,
               onPointerUp: handlePointerUp,
               onPointerCancel: handlePointerCancel,
-              child: ValueListenableBuilder<Offset>(
-                valueListenable: _offsetNotifier,
-                builder: (context, offset, child) {
-                  final boundedOffset = clampOffset(Offset.zero, offset);
-                  return Transform.translate(
-                    offset: boundedOffset,
-                    child: child,
-                  );
-                },
+              child: Transform.translate(
+                offset: boundedOffset,
                 child: Semantics(
-                label: 'Liquid Glass preview',
-                hint: 'Drag to move. Double-tap to center.',
+                  label: 'Liquid Glass preview',
+                  hint: 'Drag to move. Double-tap to center.',
                   child: ClipPath(
                     clipper: const LiquidGlassPreviewClipper(),
-                   child: Stack(
-                     alignment: Alignment.center,
-                     children: [
-                       IgnorePointer(
-                         child: LiquidGlassShadow(
-                           blur: 16,
-                           opacity: isDark ? 0 : 0.18,
-                           offset: const Offset(0, 5),
-                           cornerRadius: kSquircleStadiumRadius,
-                           child: SizedBox(
-                             width: barWidth,
-                             height: _pillHeight,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        IgnorePointer(
+                          child: LiquidGlassShadow(
+                            blur: 16,
+                            opacity: isDark ? 0 : 0.18,
+                            offset: const Offset(0, 5),
+                            cornerRadius: kSquircleStadiumRadius,
+                            child: SizedBox(
+                              width: barWidth,
+                              height: _pillHeight,
+                            ),
                            ),
                          ),
-                      ),
-                       // The Settings preview is a visual sample, not a second
-                       // navigation control. Ignore the tab bar's own hit
-                       // testing so taps cannot make a selection indicator
-                       // appear; the parent GestureDetector still owns the
-                       // preview's drag and double-tap gestures.
+                        // The Settings preview is a visual sample, not a
+                        // second navigation control. Ignore the tab bar's own
+                        // hit testing; the preview pointer handlers own drag
+                        // and double-tap behavior.
                        ValueListenableBuilder<double>(
                          valueListenable: appLiquidGlassOpacityNotifier,
                          builder: (context, _, __) {
@@ -415,10 +398,10 @@ class _FloatingTabBarGlassPreviewState
                                  unselectedFontWeight: FontWeight.w500,
                                ),
                                style: style,
-                               pillStyle: LiquidGlassTabPillStyle(
-                                 mode: LiquidGlassPillMode.none,
-                                 show: false,
-                                 animated: false,
+                                pillStyle: LiquidGlassTabPillStyle(
+                                  mode: LiquidGlassPillMode.none,
+                                  show: false,
+                                  animated: false,
                                   shape: kLiquidGlassPreviewGlassShape,
                                  glassStyle: LiquidGlassStyle(
                                     shape: kLiquidGlassPreviewGlassShape,
@@ -429,18 +412,18 @@ class _FloatingTabBarGlassPreviewState
                                 ),
                               ),
                             );
-                         },
-                       ),
+                          },
+                        ),
                      ],
                    ),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      );
-    },
-  );
+        );
+      },
+    );
   }
 
   LiquidGlassTabBarItem _previewItem(IconData icon, {double size = 20}) {
@@ -473,128 +456,6 @@ class LiquidGlassPreviewClipper extends CustomClipper<Path> {
 
   @override
   bool shouldReclip(covariant LiquidGlassPreviewClipper oldClipper) => false;
-}
-
-/// Tests the rendered pill outline against the preview card path. Sampling the
-/// contour catches the pill's curved corners and straight-side extrema rather
-/// than treating either shape as a rectangle.
-bool _pillFitsPreview({
-  required Path cardPath,
-  required Path pillPath,
-  required Size cardSize,
-  required Size pillSize,
-  required Offset offset,
-}) {
-  final pillRect = Rect.fromCenter(
-    center: cardSize.center(Offset.zero) + offset,
-    width: pillSize.width,
-    height: pillSize.height,
-  );
-  final translatedPill = pillPath.shift(pillRect.topLeft);
-  final cardCenter = cardSize.center(Offset.zero);
-
-  for (final metric in translatedPill.computeMetrics()) {
-    final sampleCount = math.max(12, (metric.length / 3).ceil());
-    for (var index = 0; index <= sampleCount; index++) {
-      final tangent = metric.getTangentForOffset(
-        metric.length * index / sampleCount,
-      );
-      if (tangent == null ||
-          !_cardContainsOrTouches(cardPath, tangent.position, cardCenter)) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-bool _cardContainsOrTouches(Path cardPath, Offset point, Offset cardCenter) {
-  if (cardPath.contains(point)) return true;
-  final towardCenter = cardCenter - point;
-  final distance = towardCenter.distance;
-  if (distance == 0) return false;
-  // Path.contains can reject a point exactly on the cubic boundary. A tiny
-  // inward probe accepts that shared edge without allowing a visible overlap.
-  return cardPath.contains(point + towardCenter * (0.08 / distance));
-}
-
-/// Clamps movement to the furthest legal point on each axis.
-///
-/// Solving the two axes independently avoids diagonal resistance at rounded
-/// corners. A straight-line search from the current point to a diagonal target
-/// stops on the corner arc before either axis can reach its legal edge.
-Offset _clampPreviewOffset({
-  required Path cardPath,
-  required Path pillPath,
-  required Size cardSize,
-  required Size pillSize,
-  required Offset currentOffset,
-  required Offset targetOffset,
-}) {
-  bool fits(Offset offset) => _pillFitsPreview(
-        cardPath: cardPath,
-        pillPath: pillPath,
-        cardSize: cardSize,
-        pillSize: pillSize,
-        offset: offset,
-      );
-
-  Offset start = fits(currentOffset) ? currentOffset : Offset.zero;
-  if (!fits(start)) {
-    // Keep the state centered if a responsive relayout temporarily makes the
-    // preview smaller than the pill; do not reintroduce rectangular limits.
-    return Offset.zero;
-  }
-  if (fits(targetOffset)) return targetOffset;
-
-  Offset clampAxis(Offset from, Offset target, {required bool horizontal}) {
-    final axisTarget = horizontal
-        ? Offset(target.dx, from.dy)
-        : Offset(from.dx, target.dy);
-    if (fits(axisTarget)) return axisTarget;
-
-    var low = from;
-    var high = axisTarget;
-    for (var iteration = 0; iteration < 14; iteration++) {
-      final middle = Offset(
-        (low.dx + high.dx) / 2,
-        (low.dy + high.dy) / 2,
-      );
-      if (fits(middle)) {
-        low = middle;
-      } else {
-        high = middle;
-      }
-    }
-    return low;
-  }
-
-  Offset solve(bool horizontalFirst) {
-    var result = start;
-    result = clampAxis(
-      result,
-      targetOffset,
-      horizontal: horizontalFirst,
-    );
-    result = clampAxis(
-      result,
-      targetOffset,
-      horizontal: !horizontalFirst,
-    );
-    return result;
-  }
-
-  final horizontalFirst = solve(true);
-  final verticalFirst = solve(false);
-  if (fits(horizontalFirst) && fits(verticalFirst)) {
-    final horizontalDistance =
-        (horizontalFirst - targetOffset).distanceSquared;
-    final verticalDistance = (verticalFirst - targetOffset).distanceSquared;
-    return horizontalDistance <= verticalDistance
-        ? horizontalFirst
-        : verticalFirst;
-  }
-  return fits(horizontalFirst) ? horizontalFirst : verticalFirst;
 }
 
 LiquidGlassStyle _floatingTabBarStyle(
