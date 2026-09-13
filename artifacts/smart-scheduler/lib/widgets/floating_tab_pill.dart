@@ -16,6 +16,11 @@ const BoundedSquircleStadiumBorder kLiquidGlassPreviewCardShape =
     BoundedSquircleStadiumBorder(
   radius: kSquircleStadiumRadius,
 );
+const LiquidGlassShape kLiquidGlassPreviewGlassShape =
+    LiquidGlassShape.roundedRectangle(
+  cornerRadius: kSquircleStadiumRadius,
+  clipQuality: LiquidGlassClipQuality.exact,
+);
 
 /// The AppShell's platform-neutral floating tab control.
 ///
@@ -255,19 +260,17 @@ class _FloatingTabBarGlassPreviewState
               ? constraints.maxHeight
               : kLiquidGlassPreviewHeight,
         );
-        final previewGeometry = _LiquidGlassPreviewGeometry(previewSize);
         final pillSize = Size(barWidth, _pillHeight);
-        // The visible preview pill is clipped by the app-owned bounded
-        // squircle below. Use that exact same path for containment; testing
-        // the package shader's superellipse here creates a visible wedge at
-        // the card corners even though the rendered clip is aligned.
-        final pillPath = kLiquidGlassPreviewCardShape.getOuterPath(
-          Offset.zero & pillSize,
-        );
+        // The preview uses one fixed-radius outline for the card and pill.
+        // Unlike a size-dependent superellipse, a fixed-radius outline nests
+        // exactly at the card corners, so the pill can reach either corner
+        // without an artificial inset.
+        final previewPath = _liquidGlassPreviewPath(previewSize);
+        final pillPath = _liquidGlassPreviewPath(pillSize);
 
         Offset clampOffset(Offset current, Offset target) {
           return _clampPreviewOffset(
-            cardPath: previewGeometry.path,
+            cardPath: previewPath,
             pillPath: pillPath,
             cardSize: previewSize,
             pillSize: pillSize,
@@ -354,9 +357,7 @@ class _FloatingTabBarGlassPreviewState
                 label: 'Liquid Glass preview',
                 hint: 'Drag to move. Double-tap to center.',
                   child: ClipPath(
-                   clipper: ShapeBorderClipper(
-                      shape: kLiquidGlassPreviewCardShape,
-                   ),
+                    clipper: const LiquidGlassPreviewClipper(),
                    child: Stack(
                      alignment: Alignment.center,
                      children: [
@@ -418,23 +419,12 @@ class _FloatingTabBarGlassPreviewState
                                  mode: LiquidGlassPillMode.none,
                                  show: false,
                                  animated: false,
-                                 shape: LiquidGlassShape.squircle(
-                                   cornerRadius: kSquircleStadiumRadius,
-                                   clipQuality: LiquidGlassClipQuality.exact,
-                                 ),
+                                  shape: kLiquidGlassPreviewGlassShape,
                                  glassStyle: LiquidGlassStyle(
-                                   shape: LiquidGlassShape.squircle(
-                                     cornerRadius: kSquircleStadiumRadius,
-                                     clipQuality:
-                                         LiquidGlassClipQuality.exact,
-                                   ),
+                                    shape: kLiquidGlassPreviewGlassShape,
                                  ),
                                   rest: LiquidGlassStyle(
-                                   shape: LiquidGlassShape.squircle(
-                                     cornerRadius: kSquircleStadiumRadius,
-                                     clipQuality:
-                                         LiquidGlassClipQuality.exact,
-                                   ),
+                                    shape: kLiquidGlassPreviewGlassShape,
                                  ),
                                 ),
                               ),
@@ -465,14 +455,24 @@ class _FloatingTabBarGlassPreviewState
   }
 }
 
-class _LiquidGlassPreviewGeometry {
-  const _LiquidGlassPreviewGeometry(this.size);
-
-  final Size size;
-
-  Path get path => kLiquidGlassPreviewCardShape.getOuterPath(
+Path _liquidGlassPreviewPath(Size size) {
+  return Path()
+    ..addRRect(
+      RRect.fromRectAndRadius(
         Offset.zero & size,
-      );
+        const Radius.circular(kSquircleStadiumRadius),
+      ),
+    );
+}
+
+class LiquidGlassPreviewClipper extends CustomClipper<Path> {
+  const LiquidGlassPreviewClipper();
+
+  @override
+  Path getClip(Size size) => _liquidGlassPreviewPath(size);
+
+  @override
+  bool shouldReclip(covariant LiquidGlassPreviewClipper oldClipper) => false;
 }
 
 /// Tests the rendered pill outline against the preview card path. Sampling the
@@ -518,12 +518,11 @@ bool _cardContainsOrTouches(Path cardPath, Offset point, Offset cardCenter) {
   return cardPath.contains(point + towardCenter * (0.08 / distance));
 }
 
-/// Clamps movement along the user's requested vector to the last legal point.
+/// Clamps movement to the furthest legal point on each axis.
 ///
-/// The legal region is the shape difference between the card and the pill, so
-/// it cannot be represented by independent horizontal and vertical limits.
-/// Binary search preserves the direction of each drag update while finding the
-/// furthest valid offset.
+/// Solving the two axes independently avoids diagonal resistance at rounded
+/// corners. A straight-line search from the current point to a diagonal target
+/// stops on the corner arc before either axis can reach its legal edge.
 Offset _clampPreviewOffset({
   required Path cardPath,
   required Path pillPath,
@@ -548,20 +547,54 @@ Offset _clampPreviewOffset({
   }
   if (fits(targetOffset)) return targetOffset;
 
-  var low = start;
-  var high = targetOffset;
-  for (var iteration = 0; iteration < 14; iteration++) {
-    final middle = Offset(
-      (low.dx + high.dx) / 2,
-      (low.dy + high.dy) / 2,
-    );
-    if (fits(middle)) {
-      low = middle;
-    } else {
-      high = middle;
+  Offset clampAxis(Offset from, Offset target, {required bool horizontal}) {
+    final axisTarget = horizontal
+        ? Offset(target.dx, from.dy)
+        : Offset(from.dx, target.dy);
+    if (fits(axisTarget)) return axisTarget;
+
+    var low = from;
+    var high = axisTarget;
+    for (var iteration = 0; iteration < 14; iteration++) {
+      final middle = Offset(
+        (low.dx + high.dx) / 2,
+        (low.dy + high.dy) / 2,
+      );
+      if (fits(middle)) {
+        low = middle;
+      } else {
+        high = middle;
+      }
     }
+    return low;
   }
-  return low;
+
+  Offset solve(bool horizontalFirst) {
+    var result = start;
+    result = clampAxis(
+      result,
+      targetOffset,
+      horizontal: horizontalFirst,
+    );
+    result = clampAxis(
+      result,
+      targetOffset,
+      horizontal: !horizontalFirst,
+    );
+    return result;
+  }
+
+  final horizontalFirst = solve(true);
+  final verticalFirst = solve(false);
+  if (fits(horizontalFirst) && fits(verticalFirst)) {
+    final horizontalDistance =
+        (horizontalFirst - targetOffset).distanceSquared;
+    final verticalDistance = (verticalFirst - targetOffset).distanceSquared;
+    return horizontalDistance <= verticalDistance
+        ? horizontalFirst
+        : verticalFirst;
+  }
+  return fits(horizontalFirst) ? horizontalFirst : verticalFirst;
 }
 
 LiquidGlassStyle _floatingTabBarStyle(
@@ -588,26 +621,25 @@ LiquidGlassStyle _floatingTabBarStyle(
         sigmaY: defaultBlur.sigmaY * blurScale,
       ),
     ),
-    shape: LiquidGlassShape.squircle(
-      cornerRadius: kSquircleStadiumRadius,
-      clipQuality: exactClip
-          ? LiquidGlassClipQuality.exact
-          : LiquidGlassClipQuality.roundedRectangle,
-      // Keep the 0.5px hairline inside the capsule lens. The active lifted
-      // pill captures this optical rim as part of the bar, so its smaller
-      // moving envelope can refract it instead of leaving a fixed sibling
-      // outline behind the glass.
-      borderWidth: 0.5,
-      borderColor: Color(0x26FFFFFF),
-      lightIntensity: 0.46,
-      lightDirection: 62,
-      borderType: OpticalBorder(
-        borderSaturation: 1.0,
-        ambientIntensity: 0.55,
-        borderSolidity: 0.35,
-        lightSpread: 0.12,
-      ),
-    ),
+    shape: exactClip
+        ? kLiquidGlassPreviewGlassShape
+        : LiquidGlassShape.squircle(
+            cornerRadius: kSquircleStadiumRadius,
+            // Keep the 0.5px hairline inside the capsule lens. The active
+            // lifted pill captures this optical rim as part of the bar, so its
+            // smaller moving envelope can refract it instead of leaving a
+            // fixed sibling outline behind the glass.
+            borderWidth: 0.5,
+            borderColor: Color(0x26FFFFFF),
+            lightIntensity: 0.46,
+            lightDirection: 62,
+            borderType: OpticalBorder(
+              borderSaturation: 1.0,
+              ambientIntensity: 0.55,
+              borderSolidity: 0.35,
+              lightSpread: 0.12,
+            ),
+          ),
     refraction: LiquidGlassTabBar.defaultStyle.refraction.copyWith(
       chromaticAberration: kFloatingTabBarChromaticAberration,
     ),

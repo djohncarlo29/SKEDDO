@@ -1348,9 +1348,7 @@ class _LiquidGlassSection extends StatelessWidget {
                 width: double.infinity,
                 height: kLiquidGlassPreviewHeight,
                 child: ClipPath(
-                  clipper: ShapeBorderClipper(
-                    shape: previewShape,
-                  ),
+                  clipper: const LiquidGlassPreviewClipper(),
                   child: Stack(
                     fit: StackFit.expand,
                     children: [

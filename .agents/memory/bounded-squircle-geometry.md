@@ -62,13 +62,15 @@ different corner profile.
 `LiquidGlassShape.squircle` with an outer bounded clip; keep the package shape
 for shader rendering and the app border for the actual widget silhouette.
 
-For draggable Liquid Glass previews, derive the pill movement path from that
-same app-owned outer silhouette. Do not use the package shader outline as the
-containment path when the visible pill is clipped by the bounded app path.
+For draggable Liquid Glass previews, use one fixed-radius outline for the
+rendered preview card, pill, and movement path. The normal app surfaces can
+remain bounded squircles, but the preview's package glass must not mix a
+size-dependent superellipse with the app-owned card clip.
 
-**Why:** a mathematically valid package-outline placement can still leave a
-visible wedge when the package squircle and app cubic differ.
+**Why:** a mathematically valid package-squircle placement can still leave a
+visible wedge and corner resistance when the package curve changes with each
+shape's size.
 
-**How to apply:** build both card and pill paths from the shared bounded shape,
-accept exact shared-edge points with a tiny inward tolerance, and let the outer
-card clip remain the final safety layer.
+**How to apply:** use the same fixed-radius exact clip for both nested preview
+clips and the pill styles; solve horizontal and vertical drag axes separately
+instead of binary-searching a diagonal target through a rounded corner.
