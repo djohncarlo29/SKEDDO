@@ -376,10 +376,10 @@ class _FloatingTabBarGlassPreviewState
                              child: LiquidGlassTabBar(
                                items: [
                                  _previewItem(SFIcons.sf_trash, size: 21),
-                                 _previewItem(SFIcons.sf_folder, size: 26),
+                                 _previewItem(SFIcons.sf_folder, size: 28),
                                  _previewItem(
                                    SFIcons.sf_arrowshape_turn_up_left,
-                                   size: 24.5,
+                                   size: 26,
                                  ),
                                ],
                                selectedIndex: 0,
