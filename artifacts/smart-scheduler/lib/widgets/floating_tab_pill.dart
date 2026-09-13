@@ -230,11 +230,10 @@ class FloatingTabBarGlassPreview extends StatefulWidget {
 class _FloatingTabBarGlassPreviewState
     extends State<FloatingTabBarGlassPreview> {
   static const _pillHeight = 50.0;
-  // LiquidGlassTabBar boxes custom glyphs in a shared 20px slot and then
-  // fits each returned widget independently. Use the largest authored icon
-  // size as the common inner box so those per-glyph intrinsic bounds do not
-  // change the comparison before the bar applies its shared slot scale.
-  static const _previewIconNormalizationSize = 27.0;
+  // Keep one common slot for the preview glyphs. The trash icon is the
+  // optical reference; the other symbols are gently reduced to match its
+  // visible height without changing their authored base sizes.
+  static const _previewIconReferenceSize = 27.0;
   Offset _offset = Offset.zero;
   int? _activePointer;
   bool _pointerMoved = false;
@@ -383,17 +382,17 @@ class _FloatingTabBarGlassPreviewState
                                   _previewItem(
                                     SFIcons.sf_trash,
                                     size: 21,
-                                    opticalScale: 0.86,
+                                    opticalScale: 1.0,
                                   ),
                                   _previewItem(
                                     SFIcons.sf_folder,
                                     size: 27,
-                                    opticalScale: 1.12,
+                                    opticalScale: 0.95,
                                   ),
                                   _previewItem(
                                     SFIcons.sf_arrowshape_turn_up_left,
                                     size: 25.5,
-                                    opticalScale: 1.04,
+                                    opticalScale: 1.0,
                                   ),
                                ],
                                selectedIndex: 0,
@@ -410,7 +409,7 @@ class _FloatingTabBarGlassPreviewState
                                    kSecondaryLabel,
                                    context,
                                  ),
-                                 iconSize: 20,
+                                 iconSize: _previewIconReferenceSize,
                                  selectedFontWeight: FontWeight.w500,
                                  unselectedFontWeight: FontWeight.w500,
                                ),
@@ -452,16 +451,19 @@ class _FloatingTabBarGlassPreviewState
       iconBuilder: (context, glyph) {
         final textScaler = MediaQuery.textScalerOf(context);
         return SizedBox(
-          width: textScaler.scale(_previewIconNormalizationSize),
-          height: textScaler.scale(_previewIconNormalizationSize),
+          width: textScaler.scale(_previewIconReferenceSize),
+          height: textScaler.scale(_previewIconReferenceSize),
           child: Center(
-            child: Transform.scale(
-              scale: opticalScale,
-              child: FixedSFIcon(
-                icon,
-                fontSize: textScaler.scale(size),
-                fontWeight: FontWeight.normal,
-                color: glyph.color,
+            child: UnconstrainedBox(
+              clipBehavior: Clip.none,
+              child: Transform.scale(
+                scale: opticalScale,
+                child: FixedSFIcon(
+                  icon,
+                  fontSize: textScaler.scale(size),
+                  fontWeight: FontWeight.normal,
+                  color: glyph.color,
+                ),
               ),
             ),
           ),

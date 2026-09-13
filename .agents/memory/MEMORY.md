@@ -120,3 +120,4 @@
  - [Category preview ball gradient](category-preview-ball-gradient.md) — Card 1 soccerball artwork follows the circle’s per-swatch additive highlight, with reduced lift for bright swatches.
  - [Smart Category lifecycle](smart-category-lifecycle.md) — Smart Categories own rules, not events or sections; use red lifecycle actions and explicit utility confirmations.
 - [Calendar month dot ordering](calendar-month-dot-order.md) — month-grid dots follow the first event in displayed list order, with all-day events first.
+- [Liquid Glass SF glyph normalization](liquid-glass-sf-glyph-normalization.md) — custom SF font glyphs need one shared slot and unconstrained rendering; per-glyph FittedBox sizing distorts optical comparisons.
