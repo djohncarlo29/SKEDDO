@@ -12,9 +12,11 @@ import 'fixed_size_icon.dart';
 /// Geometry shared by the Liquid Glass settings preview card and its
 /// shape-aware movement boundary.
 const double kLiquidGlassPreviewHeight = 154.0;
-const BoundedSquircleStadiumBorder kLiquidGlassPreviewCardShape =
-    BoundedSquircleStadiumBorder(
-  radius: kSquircleStadiumRadius,
+const RoundedRectangleBorder kLiquidGlassPreviewCardShape =
+    RoundedRectangleBorder(
+  borderRadius: BorderRadius.all(
+    Radius.circular(kSquircleStadiumRadius),
+  ),
 );
 const LiquidGlassShape kLiquidGlassPreviewGlassShape =
     LiquidGlassShape.roundedRectangle(

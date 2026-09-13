@@ -63,9 +63,9 @@ different corner profile.
 for shader rendering and the app border for the actual widget silhouette.
 
 For draggable Liquid Glass previews, use one fixed-radius outline for the
-rendered preview card, pill, and movement path. The normal app surfaces can
-remain bounded squircles, but the preview's package glass must not mix a
-size-dependent superellipse with the app-owned card clip.
+rendered preview card, background image clip, pill, and movement path. The
+normal app surfaces can remain bounded squircles, but the preview card and its
+package glass must not mix a size-dependent superellipse with another clip.
 
 **Why:** a mathematically valid package-squircle placement can still leave a
 visible wedge and corner resistance when the package curve changes with each
