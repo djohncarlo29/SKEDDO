@@ -230,6 +230,11 @@ class FloatingTabBarGlassPreview extends StatefulWidget {
 class _FloatingTabBarGlassPreviewState
     extends State<FloatingTabBarGlassPreview> {
   static const _pillHeight = 50.0;
+  // LiquidGlassTabBar boxes custom glyphs in a shared 20px slot and then
+  // fits each returned widget independently. Use the largest authored icon
+  // size as the common inner box so those per-glyph intrinsic bounds do not
+  // change the comparison before the bar applies its shared slot scale.
+  static const _previewIconNormalizationSize = 27.0;
   Offset _offset = Offset.zero;
   int? _activePointer;
   bool _pointerMoved = false;
@@ -375,11 +380,20 @@ class _FloatingTabBarGlassPreviewState
                            return IgnorePointer(
                              child: LiquidGlassTabBar(
                                items: [
-                                  _previewItem(SFIcons.sf_trash, size: 21),
-                                  _previewItem(SFIcons.sf_folder, size: 27),
+                                  _previewItem(
+                                    SFIcons.sf_trash,
+                                    size: 21,
+                                    opticalScale: 0.86,
+                                  ),
+                                  _previewItem(
+                                    SFIcons.sf_folder,
+                                    size: 27,
+                                    opticalScale: 1.12,
+                                  ),
                                   _previewItem(
                                     SFIcons.sf_arrowshape_turn_up_left,
                                     size: 25.5,
+                                    opticalScale: 1.04,
                                   ),
                                ],
                                selectedIndex: 0,
@@ -429,14 +443,30 @@ class _FloatingTabBarGlassPreviewState
     );
   }
 
-  LiquidGlassTabBarItem _previewItem(IconData icon, {double size = 20}) {
+  LiquidGlassTabBarItem _previewItem(
+    IconData icon, {
+    required double size,
+    required double opticalScale,
+  }) {
     return LiquidGlassTabBarItem(
-      iconBuilder: (context, glyph) => FixedSFIcon(
-        icon,
-        fontSize: MediaQuery.textScalerOf(context).scale(size),
-        fontWeight: FontWeight.normal,
-        color: glyph.color,
-      ),
+      iconBuilder: (context, glyph) {
+        final textScaler = MediaQuery.textScalerOf(context);
+        return SizedBox(
+          width: textScaler.scale(_previewIconNormalizationSize),
+          height: textScaler.scale(_previewIconNormalizationSize),
+          child: Center(
+            child: Transform.scale(
+              scale: opticalScale,
+              child: FixedSFIcon(
+                icon,
+                fontSize: textScaler.scale(size),
+                fontWeight: FontWeight.normal,
+                color: glyph.color,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
