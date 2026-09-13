@@ -229,7 +229,10 @@ class FloatingTabBarGlassPreview extends StatefulWidget {
 
 class _FloatingTabBarGlassPreviewState
     extends State<FloatingTabBarGlassPreview> {
-  static const _pillHeight = 50.0;
+  static const _standardPillHeight = 50.0;
+  static const _previewEdgePadding = 8.0;
+  static const _previewIconGap = 24.0;
+  static const _previewItemPadding = 4.0;
   // Keep one common slot for the preview glyphs. The trash icon is the
   // optical reference; the other symbols are gently reduced to match its
   // visible height without changing their authored base sizes.
@@ -244,9 +247,19 @@ class _FloatingTabBarGlassPreviewState
   Widget build(BuildContext context) {
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
     final width = MediaQuery.sizeOf(context).width;
-    final barWidth = (width - (kFloatingTabBarHorizontalMargin * 2)).clamp(
-      150.0,
-      190.0,
+    final textScaler = MediaQuery.textScalerOf(context);
+    final scaledIconSlot = textScaler.scale(_previewIconReferenceSize);
+    final standardBarWidth =
+        (width - (kFloatingTabBarHorizontalMargin * 2)).clamp(
+          150.0,
+          190.0,
+        );
+    final minBarWidth = (_previewItemPadding * 2) +
+        (3 * (scaledIconSlot + _previewIconGap));
+    final barWidth = math.max(standardBarWidth, minBarWidth);
+    final pillHeight = math.max(
+      _standardPillHeight,
+      scaledIconSlot + (_previewEdgePadding * 2),
     );
 
     return LayoutBuilder(
@@ -257,7 +270,7 @@ class _FloatingTabBarGlassPreviewState
               ? constraints.maxHeight
               : kLiquidGlassPreviewHeight,
         );
-        final pillSize = Size(barWidth, _pillHeight);
+        final pillSize = Size(barWidth, pillHeight);
         // The preview and pill use the same fixed-radius outline. Once those
         // outlines match, the old rectangular extent clamp is the exact
         // containment region and avoids path-search resistance while dragging.
@@ -359,7 +372,7 @@ class _FloatingTabBarGlassPreviewState
                             cornerRadius: kSquircleStadiumRadius,
                             child: SizedBox(
                               width: barWidth,
-                              height: _pillHeight,
+                              height: pillHeight,
                             ),
                            ),
                          ),
@@ -398,8 +411,8 @@ class _FloatingTabBarGlassPreviewState
                                selectedIndex: 0,
                                onChanged: (_) {},
                                width: barWidth,
-                               height: _pillHeight,
-                               itemPadding: 4,
+                                height: pillHeight,
+                                itemPadding: _previewItemPadding,
                                itemStyle: LiquidGlassTabItemStyle(
                                  selectedColor: resolveThemeColor(
                                    kSecondaryLabel,
