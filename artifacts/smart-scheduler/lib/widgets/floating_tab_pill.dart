@@ -387,12 +387,12 @@ class _FloatingTabBarGlassPreviewState
                                   _previewItem(
                                     SFIcons.sf_folder,
                                     size: 27,
-                                    opticalScale: 0.92,
+                                    opticalScale: 0.89,
                                   ),
                                   _previewItem(
                                     SFIcons.sf_arrowshape_turn_up_left,
                                     size: 25.5,
-                                    opticalScale: 0.96,
+                                    opticalScale: 0.93,
                                   ),
                                ],
                                selectedIndex: 0,
