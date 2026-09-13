@@ -375,12 +375,9 @@ class _FloatingTabBarGlassPreviewState
                            return IgnorePointer(
                              child: LiquidGlassTabBar(
                                items: [
-                                 _previewItem(SFIcons.sf_trash, size: 21),
-                                 _previewItem(SFIcons.sf_folder, size: 28),
-                                 _previewItem(
-                                   SFIcons.sf_arrowshape_turn_up_left,
-                                   size: 26,
-                                 ),
+                                  _previewItem(SFIcons.sf_eye, size: 24),
+                                  _previewItem(SFIcons.sf_eye, size: 24),
+                                  _previewItem(SFIcons.sf_eye, size: 24),
                                ],
                                selectedIndex: 0,
                                onChanged: (_) {},
@@ -433,7 +430,7 @@ class _FloatingTabBarGlassPreviewState
     return LiquidGlassTabBarItem(
       iconBuilder: (context, glyph) => FixedSFIcon(
         icon,
-        fontSize: size,
+        fontSize: MediaQuery.textScalerOf(context).scale(size),
         fontWeight: FontWeight.normal,
         color: glyph.color,
       ),
