@@ -375,9 +375,12 @@ class _FloatingTabBarGlassPreviewState
                            return IgnorePointer(
                              child: LiquidGlassTabBar(
                                items: [
-                                  _previewItem(SFIcons.sf_eye, size: 24),
-                                  _previewItem(SFIcons.sf_eye, size: 24),
-                                  _previewItem(SFIcons.sf_eye, size: 24),
+                                  _previewItem(SFIcons.sf_trash, size: 21),
+                                  _previewItem(SFIcons.sf_folder, size: 27),
+                                  _previewItem(
+                                    SFIcons.sf_arrowshape_turn_up_left,
+                                    size: 25.5,
+                                  ),
                                ],
                                selectedIndex: 0,
                                onChanged: (_) {},
