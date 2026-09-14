@@ -7724,7 +7724,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     'November',
     'December',
   ];
-  static const _kDayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  static const _kDayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
   Widget _buildDateRow(String label, DateTime dt, String target) {
     final dateOpen = _activePicker == target;
@@ -11316,7 +11316,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
-            children: _kDayLabels
+            children: _kDayLetters
                 .map(
                   (d) => Expanded(
                     child: Center(

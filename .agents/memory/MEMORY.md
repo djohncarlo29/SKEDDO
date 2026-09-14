@@ -121,3 +121,4 @@
  - [Smart Category lifecycle](smart-category-lifecycle.md) — Smart Categories own rules, not events or sections; use red lifecycle actions and explicit utility confirmations.
 - [Calendar month dot ordering](calendar-month-dot-order.md) — month-grid dots follow the first event in displayed list order, with all-day events first.
 - [Liquid Glass SF glyph normalization](liquid-glass-sf-glyph-normalization.md) — custom SF font glyphs need one shared slot and unconstrained rendering; per-glyph FittedBox sizing distorts optical comparisons.
+- [Date-picker weekday headers](date-picker-weekday-headers.md) — all calendar and modal date-picker weekday rows use single letters, `M T W T F S S`.

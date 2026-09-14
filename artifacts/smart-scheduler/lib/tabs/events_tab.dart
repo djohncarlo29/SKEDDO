@@ -15141,8 +15141,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   );
 
   // Month-view calendar used in the inline End Date picker.
-  // Mon-first 3-letter DOW labels for the inline month picker.
-  static const _kDayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  // Mon-first single-letter DOW labels for the inline month picker.
+  static const _kDayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
   // ── Month-grid cell builder ───────────────────────────────────────────────
   // Extracted so AnimatedSwitcher can key on it without keying a closure.
@@ -15395,7 +15395,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     );
   }
 
-  // Full panel: DOW labels + month grid (header is always rendered above).
+  // Full panel: DOW letters + month grid (header is always rendered above).
   // showHeader is kept for the adjacent panels which still need their own
   // header so that nothing pops in when they slide into the centre slot;
   // for the centre slot the persistent top header is used instead.
@@ -15410,12 +15410,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       children: [
         if (showHeader)
           _buildMonthPanelHeader(month, today, isCenter: isCenter),
-        // DOW labels row (Mon first, 3-letter).
+        // DOW letters row (Mon first).
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             children:
-                _kDayLabels
+                _kDayLetters
                     .map(
                       (d) => Expanded(
                         child: Center(
