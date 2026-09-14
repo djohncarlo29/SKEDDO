@@ -9617,13 +9617,13 @@ class _NewEventSheetState extends State<_NewEventSheet>
     'December',
   ];
   static const _kRepeatDayLabels = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
+    'M',
+    'T',
+    'W',
+    'T',
+    'F',
+    'S',
+    'S',
   ];
 
   String _formatEndDate(DateTime d) =>
