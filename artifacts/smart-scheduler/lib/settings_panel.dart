@@ -819,18 +819,40 @@ class _DefaultCategorySectionState extends State<_DefaultCategorySection> {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: _SettingsCard(
-          rows: [
-            for (final option in _options)
-              _DefaultCategoryRow(
-                option: option,
-                selected: option.id == appDefaultCategoryNotifier.value,
-                accentColor: widget.accentColor,
-                onTap: () => _select(option),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SettingsCard(
+              rows: [
+                for (final option in _options)
+                  _DefaultCategoryRow(
+                    option: option,
+                    selected: option.id == appDefaultCategoryNotifier.value,
+                    accentColor: widget.accentColor,
+                    onTap: () => _select(option),
+                  ),
+              ],
+              cardBg: cardBg,
+              shadowColor: shadowColor,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 8,
               ),
+              child: Text(
+                'Events created outside of a specific category are placed on '
+                'this category.',
+                style: TextStyle(
+                  fontFamily: kSFProText,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                  color: resolveThemeColor(kSecondaryLabel, context),
+                ),
+              ),
+            ),
           ],
-          cardBg: cardBg,
-          shadowColor: shadowColor,
         ),
       ),
     );
