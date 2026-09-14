@@ -76,7 +76,6 @@ const _kShortMonthNames = [
   'Nov',
   'Dec',
 ];
-const _kDayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const _kDayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 // ── Layout constants ──────────────────────────────────────────────────────────
@@ -2206,7 +2205,7 @@ class CalendarTabState extends State<CalendarTab>
                         // Cover the complete boundary below the app header.
                         // The week rows are vertically transformed while
                         // collapsing into Day View and can otherwise paint
-                        // through the small gap above the DOW labels.
+                    // through the small gap above the DOW letters.
                         top: 0,
                         left: 0,
                         right: 0,
@@ -3197,14 +3196,12 @@ class _MorphPainter extends CustomPainter {
       canvas.drawRect(Rect.fromLTWH(0, dowTopY, sw, _kDayLabelHeight), _p);
     }
 
-    // 6. DOW letters → labels crossfade ───────────────────────────────────────
-    //    Letters fade out over first 40 %; labels fade in over 40–90 %.
+    // 6. DOW letters stay unified through the Year → Month morph ─────────────
+    //    The settled Year, Month, and Day views all use the same single-letter
+    //    weekday labels.
     {
-      final lettersAlpha = (1.0 - t * 2.5).clamp(0.0, 1.0);
-      final labelsAlpha = (t * 2.5 - 1.0).clamp(0.0, 1.0);
       // Continuously lerp the base color tertiary→secondary across the whole
-      // animation so both the fading-out letters and fading-in labels share the
-      // same smoothly-shifting hue/alpha — no sudden color snap at the crossover.
+      // animation so the letters transition smoothly into the Month View row.
       final dowColor = Color.lerp(tertiaryColor, secondaryColor, t)!;
       for (int i = 0; i < 7; i++) {
         final cx = lerpDouble(
@@ -3222,30 +3219,16 @@ class _MorphPainter extends CustomPainter {
           t,
         )!;
         final fSz = lerpDouble(cellSz * 0.55, 11.0, t)!.clamp(1.0, 200.0);
-        if (lettersAlpha > 0) {
-          _textC(
-            canvas,
-            _kDayLetters[i],
-            fSz,
-            FontWeight.w500,
-            dowColor,
-            lettersAlpha,
-            Offset(cx, cy),
-            ls: -0.1,
-          );
-        }
-        if (labelsAlpha > 0) {
-          _textC(
-            canvas,
-            _kDayLabels[i],
-            11,
-            FontWeight.w500,
-            dowColor,
-            labelsAlpha,
-            Offset(cx, cy),
-            ls: -0.1,
-          );
-        }
+        _textC(
+          canvas,
+          _kDayLetters[i],
+          fSz,
+          FontWeight.w500,
+          dowColor,
+          1.0,
+          Offset(cx, cy),
+          ls: -0.1,
+        );
       }
     }
 
@@ -3671,7 +3654,7 @@ class _MonthView extends StatelessWidget {
                           (i) => Expanded(
                             child: Center(
                               child: Text(
-                                _kDayLabels[i],
+                                _kDayLetters[i],
                                 style: TextStyle(
                                   fontFamily: kSFProText,
                                   fontSize: 11,
@@ -5022,7 +5005,7 @@ class _DayListPlaceholder extends StatelessWidget {
 }
 
 // Parent-level opaque cover for the Day View DOW row. This deliberately
-// duplicates the labels from _MonthView: the cover must sit above all three
+// duplicates the letters from _MonthView: the cover must sit above all three
 // horizontally-sliding month panels, otherwise an adjacent panel's translated
 // week row can bleed through the DOW boundary.
 class _DayViewDowMask extends StatelessWidget {
@@ -5046,7 +5029,7 @@ class _DayViewDowMask extends StatelessWidget {
                   (i) => Expanded(
                     child: Center(
                       child: Text(
-                        _kDayLabels[i],
+                        _kDayLetters[i],
                         style: TextStyle(
                           fontFamily: kSFProText,
                           fontSize: 11,
