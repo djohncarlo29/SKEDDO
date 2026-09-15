@@ -37,13 +37,15 @@ row, including picker/modal and settings rows. Keep words intact; try the
 value-first alternating line-count sequence before falling back to a stack.
 
 Date/time pill pairs are an explicit exception: when all values cannot share
-the first line with the label, keep the first pill beside the label if it fits
-and move the remaining pill(s) below; if even the first pill cannot fit, move
-the entire group below the left-aligned label. Animate every height change.
+the first line with the label, first try the complete pill group on a
+right-aligned second level; only if that group cannot fit side-by-side should
+the first pill stay beside the label and the remaining pill(s) move below.
+If even the first pill cannot fit, keep the label alone above the full stacked
+group. Animate every height change.
 
 **Why:** Keeping the two reminder values together prevents the date pill from
-occupying the label's level only when the label cannot share a line with the
-date; otherwise the date remains the first right-aligned value.
+occupying the label's level whenever the pair still fits side-by-side below;
+the split state is only needed when the second-level group is too wide.
 
 **How to apply:** Use the shared row's opt-in date/time fallback for Starts,
 Ends, and Reminder Date; do not change the default behavior of other rows.

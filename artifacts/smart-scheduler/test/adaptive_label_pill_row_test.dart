@@ -104,7 +104,7 @@ void main() {
   );
 
   testWidgets(
-    'moves both reminder pills below the label when the first cannot fit',
+    'keeps both reminder pills together below the label when they fit',
     (tester) async {
       const labelStyle = TextStyle(fontSize: 17);
       const pillStyle = TextStyle(fontSize: 15);
@@ -113,7 +113,7 @@ void main() {
         CupertinoApp(
           home: CupertinoPageScaffold(
             child: SizedBox(
-              width: 220,
+              width: 360,
               child: AdaptiveLabelPillRow(
                 label: 'Reminder Date',
                 labelStyle: labelStyle,
@@ -121,12 +121,12 @@ void main() {
                 labelValueGap: 8,
                 pills: [
                   AdaptivePillSpec(
-                    text: 'Sep 16',
+                    text: 'Sep 16, 2026',
                     style: pillStyle,
                     backgroundColor: CupertinoColors.systemGrey5,
                   ),
                   AdaptivePillSpec(
-                    text: '9 AM',
+                    text: '9:00 AM',
                     style: pillStyle,
                     backgroundColor: CupertinoColors.systemGrey5,
                   ),
@@ -140,13 +140,61 @@ void main() {
 
       final rowRect = tester.getRect(find.byType(AdaptiveLabelPillRow));
       final labelRect = tester.getRect(find.text('Reminder Date'));
-      final dateRect = tester.getRect(find.text('Sep 16'));
-      final timeRect = tester.getRect(find.text('9 AM'));
+      final dateRect = tester.getRect(find.text('Sep 16, 2026'));
+      final timeRect = tester.getRect(find.text('9:00 AM'));
 
       expect(labelRect.left, closeTo(rowRect.left, 0.01));
       expect(timeRect.right, closeTo(rowRect.right - 12, 0.01));
       expect(dateRect.left, lessThan(timeRect.left));
       expect(dateRect.top, closeTo(timeRect.top, 0.01));
+      expect(dateRect.top, greaterThan(labelRect.bottom));
+    },
+  );
+
+  testWidgets(
+    'stacks both reminder pills below the label when neither arrangement fits',
+    (tester) async {
+      const labelStyle = TextStyle(fontSize: 17);
+      const pillStyle = TextStyle(fontSize: 15);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: SizedBox(
+              width: 180,
+              child: AdaptiveLabelPillRow(
+                label: 'Reminder Date',
+                labelStyle: labelStyle,
+                pillsBelowLabelOnWrap: true,
+                labelValueGap: 8,
+                pills: [
+                  AdaptivePillSpec(
+                    text: 'Sep 16, 2026',
+                    style: pillStyle,
+                    backgroundColor: CupertinoColors.systemGrey5,
+                  ),
+                  AdaptivePillSpec(
+                    text: '9:00 AM',
+                    style: pillStyle,
+                    backgroundColor: CupertinoColors.systemGrey5,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final rowRect = tester.getRect(find.byType(AdaptiveLabelPillRow));
+      final labelRect = tester.getRect(find.text('Reminder Date'));
+      final dateRect = tester.getRect(find.text('Sep 16, 2026'));
+      final timeRect = tester.getRect(find.text('9:00 AM'));
+
+      expect(labelRect.left, closeTo(rowRect.left, 0.01));
+      expect(dateRect.right, closeTo(rowRect.right - 12, 0.01));
+      expect(timeRect.right, closeTo(rowRect.right - 12, 0.01));
+      expect(dateRect.top, lessThan(timeRect.top));
       expect(dateRect.top, greaterThan(labelRect.bottom));
     },
   );

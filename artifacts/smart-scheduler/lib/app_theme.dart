@@ -1476,12 +1476,17 @@ class AdaptiveLabelPillRow extends StatelessWidget {
               ? constraints.maxWidth
               : naturalGroupWidth;
 
+          final pillGroupFitsOnSecondLevel =
+              naturalGroupWidth <= fullRowWidth + 0.01;
           final firstPillFitsBesideLabel =
               pills.length > 1 &&
               labelWidth + labelValueGap + naturalWidths.first <=
                   constraints.maxWidth + 0.01;
 
-          if (firstPillFitsBesideLabel) {
+          // Prefer keeping the complete date/time pair together below the
+          // label. Split the pair only when it cannot fit side-by-side on that
+          // second level.
+          if (!pillGroupFitsOnSecondLevel && firstPillFitsBesideLabel) {
             final remainingPills = pills.sublist(1);
             final remainingWidths = naturalWidths.sublist(1);
             return Column(
