@@ -115,13 +115,19 @@ const double _kDayBannerHeight = 36.0;
 const double _kCalendarHeaderToDowGap = 8.0;
 
 double _dayViewWeekStripHeight(BuildContext context) {
-  final indicatorSize =
-      _kDayIndicatorDiameter * textScaleRatioFor(context, 17.0);
+  final indicatorSize = _dayIndicatorSizeFor(context);
   return math.max(
     _kRowHeightList,
     kFixedTopPadding + indicatorSize + _kDayIndicatorBottomGap,
   );
 }
+
+/// The authored day-circle diameter follows the same text-size profile as the
+/// 17 pt day number.  The static circle, the 40%-opacity today circle, and the
+/// Multi Day pill must all use this exact value; otherwise the pill changes
+/// apparent height when the sliding overlay takes over.
+double _dayIndicatorSizeFor(BuildContext context) =>
+    _kDayIndicatorDiameter * textScaleRatioFor(context, 17.0);
 
 /// Year View keeps its authored geometry at the default OS size or larger.
 /// Smaller accessibility/text-size settings are still honoured.
@@ -4228,8 +4234,7 @@ class _WeekRowState extends State<_WeekRow> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalW = constraints.maxWidth;
-        final dayIndicatorSize =
-            _kDayIndicatorDiameter * textScaleRatioFor(context, 17.0);
+        final dayIndicatorSize = _dayIndicatorSizeFor(context);
         final separatorColor = resolveThemeColor(kSeparatorColor, context);
         final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
         final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
@@ -5114,7 +5119,9 @@ class _DayViewDowMask extends StatelessWidget {
 //
 // Physics (matches Apple Liquid Glass):
 //   • stretch  = f(per-frame drag speed)  — faster swipe → more elongation
-//   • squash   = 1 / √stretch             — preserves visual "mass/volume"
+//   • the vertical envelope stays at the authored circle diameter while the
+//     horizontal axis stretches, so the blob never grows taller than the
+//     static day indicator or the Multi Day pill
 //   • rotation = atan2(0, dragDeltaX)     — always aligns along travel axis
 //   • on release → AnimationController(elasticOut) springs back to circle
 //
@@ -5217,11 +5224,18 @@ class _BlobCircleState extends State<_BlobCircle>
       ),
       builder: (context, child) {
         final s = _ctrl.isAnimating ? _springAnim.value : _stretch;
-        final squash = 1.0 / math.sqrt(s); // mass preservation
 
         return Transform.rotate(
           angle: _rotation,
-          child: Transform.scale(scaleX: s, scaleY: squash, child: child),
+          child: Transform.scale(
+            // Keep the blob's visible height equal to the static indicator.
+            // The horizontal deformation remains the liquid/glass squish
+            // effect, but it cannot make the sliding state look larger than
+            // the settled Multi Day state.
+            scaleX: s,
+            scaleY: 1.0,
+            child: child,
+          ),
         );
       },
     );
