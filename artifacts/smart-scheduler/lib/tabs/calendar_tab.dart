@@ -4472,9 +4472,7 @@ class _WeekRowState extends State<_WeekRow> {
                     child: Container(
                       decoration: ShapeDecoration(
                         color: resolveAccentColor(context).withOpacity(0.40),
-                        shape: BoundedSquircleStadiumBorder(
-                          radius: dayIndicatorSize / 2,
-                        ),
+                        shape: const StadiumBorder(),
                       ),
                     ),
                   ),
@@ -4623,8 +4621,8 @@ class _WeekRowState extends State<_WeekRow> {
               ),
             // ── Multi Day sliding pill — translates with the blob circle ─
             // Same snap timing as the static pill and the header title.
-            // Width matches the static pill exactly: selCX to nextCX + one pill
-            // diameter (36) so it keeps its two-day pill shape while sliding,
+            // Width matches the static pill exactly: selCX to nextCX + one
+            // scaled pill diameter so it keeps its two-day pill shape while sliding,
             // instead of collapsing to a single-day circle-with-offset.
             if (multiDayHasExtension && widget.collapseProgress > 0.0)
               Positioned(
@@ -4640,9 +4638,7 @@ class _WeekRowState extends State<_WeekRow> {
                 child: Container(
                   decoration: ShapeDecoration(
                     color: resolveAccentColor(context).withOpacity(0.40),
-                    shape: BoundedSquircleStadiumBorder(
-                      radius: dayIndicatorSize / 2,
-                    ),
+                      shape: const StadiumBorder(),
                   ),
                 ),
               ),
