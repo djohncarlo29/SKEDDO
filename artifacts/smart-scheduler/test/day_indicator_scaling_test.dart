@@ -17,6 +17,10 @@ void main() {
         var calendarRatio = 0.0;
         var pickerRatio = 0.0;
         var yearViewScale = 0.0;
+        var pickerItemExtent = 0.0;
+        var pickerHeight = 0.0;
+        var expectedPickerItemExtent = 0.0;
+        var expectedPickerHeight = 0.0;
         await tester.pumpWidget(
           MediaQuery(
             data: MediaQueryData(textScaler: TextScaler.linear(scale)),
@@ -34,6 +38,12 @@ void main() {
                 pickerRatio = pickerSize / scaler.scale(pickerFont);
                 yearViewScale = yearViewScaler.scale(calendarFont) /
                     calendarFont;
+                pickerItemExtent =
+                    cupertinoDatePickerItemExtent(context);
+                pickerHeight = cupertinoDatePickerHeight(context);
+                expectedPickerItemExtent =
+                    scaler.scale(kCupertinoDatePickerItemExtent);
+                expectedPickerHeight = scaler.scale(kCupertinoDatePickerHeight);
                 return const SizedBox.shrink();
               },
             ),
@@ -43,6 +53,14 @@ void main() {
         expect(calendarRatio, closeTo(calendarCircle / calendarFont, 0.000001));
         expect(pickerRatio, closeTo(pickerCircle / pickerFont, 0.000001));
         expect(yearViewScale, closeTo(scale > 1.0 ? 1.0 : scale, 0.000001));
+        expect(
+          pickerItemExtent,
+          closeTo(expectedPickerItemExtent, 0.000001),
+        );
+        expect(
+          pickerHeight,
+          closeTo(expectedPickerHeight, 0.000001),
+        );
       }
     },
   );

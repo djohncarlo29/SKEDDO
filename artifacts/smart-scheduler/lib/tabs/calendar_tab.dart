@@ -11964,8 +11964,6 @@ class _EventTimePicker extends StatefulWidget {
 }
 
 class _EventTimePickerState extends State<_EventTimePicker> {
-  static const double _kItemExtent = 32.0;
-  static const double _kHeight = 216.0;
   static const double _kMagnification = 2.35 / 2.1;
 
   static final _kStyleBase = TextStyle(
@@ -12022,6 +12020,10 @@ class _EventTimePickerState extends State<_EventTimePicker> {
     );
   }
 
+  double get _itemExtent => cupertinoDatePickerItemExtent(context);
+
+  double get _height => cupertinoDatePickerHeight(context);
+
   // Builds a barrel column using ListWheelScrollView.useDelegate.
   // loop:true  → ListWheelChildLoopingListDelegate (infinite circular scroll).
   // loop:false → ListWheelChildListDelegate (finite, stops at ends) — used for
@@ -12042,7 +12044,7 @@ class _EventTimePickerState extends State<_EventTimePicker> {
       children: [
         ListWheelScrollView.useDelegate(
           controller: ctrl,
-          itemExtent: _kItemExtent,
+          itemExtent: _itemExtent,
           physics: const FixedExtentScrollPhysics(),
           diameterRatio: 1.07,
           perspective: 0.003,
@@ -12063,7 +12065,7 @@ class _EventTimePickerState extends State<_EventTimePicker> {
         IgnorePointer(
           child: Center(
             child: SizedBox(
-              height: _kItemExtent,
+              height: _itemExtent,
               width: double.infinity,
               child: CupertinoPickerDefaultSelectionOverlay(
                 capStartEdge: capStart,
@@ -12082,7 +12084,7 @@ class _EventTimePickerState extends State<_EventTimePicker> {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: _kHeight,
+    height: _height,
     child: Row(
       children: [
         // ── Hours 1–12 — loops, leans right toward minutes ───────────────
