@@ -3894,6 +3894,7 @@ class _BloomDayCircle extends StatefulWidget {
     this.pendingBloomDate,
     this.circleColor,
     required this.circleSize,
+    this.capGrowth = false,
   });
 
   final Widget child; // always rendered at scale 1.0 (day number text)
@@ -3910,6 +3911,10 @@ class _BloomDayCircle extends StatefulWidget {
   // (child) is never scaled.  null = no background circle (plain day cell).
   final Color? circleColor;
   final double circleSize;
+  // Multi Day keeps the circle at the static diameter while preserving the
+  // animation timing. Growth overshoot otherwise makes it larger than the
+  // matching pill, especially at larger OS text scales.
+  final bool capGrowth;
 
   @override
   State<_BloomDayCircle> createState() => _BloomDayCircleState();
@@ -4112,7 +4117,7 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
       // widget.child (the day-number Text) is cached here — it never scales.
       child: widget.child,
       builder: (ctx, label) {
-        final double scale = switch (_activeAnim) {
+        final double animatedScale = switch (_activeAnim) {
           _DayAnim.bloomIn => _bloomIn.value,
           _DayAnim.pulse => _pulse.value,
           _DayAnim.settle => _settle.value,
@@ -4120,6 +4125,9 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
           _DayAnim.shrink => _shrink.value,
           _DayAnim.none => 1.0,
         };
+        final double scale = widget.capGrowth
+            ? math.min(animatedScale, 1.0)
+            : animatedScale;
         // effectiveColor logic:
         //  • Normal selected/today: widget.circleColor (set by parent).
         //  • Pre-bloom on unselected cell: kAccentColor injected while the
@@ -4389,8 +4397,10 @@ class _WeekRowState extends State<_WeekRow> {
                       settleCount: widget.settleCount,
                       blobSnapCount: widget.blobSnapCount,
                       pendingBloomDate: widget.pendingBloomDate,
-                      circleColor: circleColor,
+                       circleColor: circleColor,
                        circleSize: dayIndicatorSize,
+                       capGrowth:
+                           widget.daySubMode == DayViewSubMode.multiDay,
                       child: Text(
                         '$displayDay',
                         style: TextStyle(
