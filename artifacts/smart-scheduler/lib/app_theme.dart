@@ -1248,11 +1248,11 @@ class AdaptivePillSpec {
 ///
 /// If that complete group cannot fit, the label stays beside a trailing pill
 /// column. Date/time pills stack in that column and may wrap internally at
-/// the current OS text scale. Rows can opt into moving the entire pill group
-/// below the label instead, which is useful when the label must stay on the
-/// first level and the values should remain together. The default minimum gap
-/// is 25dp and can be tightened for compact rows that prioritize keeping all
-/// content on one line.
+/// the current OS text scale. Rows can opt into an adaptive date/time fallback:
+/// keep the first pill beside the label when it fits and move the remaining
+/// pills below, or move the whole group below when even the first pill cannot
+/// fit beside the label. The default minimum gap is 25dp and can be tightened
+/// for compact rows that prioritize keeping all content on one line.
 class AdaptiveLabelPillRow extends StatelessWidget {
   const AdaptiveLabelPillRow({
     super.key,
@@ -1282,8 +1282,9 @@ class AdaptiveLabelPillRow extends StatelessWidget {
   /// the label to wrap if a stacked pill would otherwise wrap internally.
   final bool wrapLabelLast;
 
-  /// When the full row does not fit, move the pill group below the label
-  /// instead of keeping a stacked pill column beside it.
+  /// When the full row does not fit, use the date/time fallback instead of
+  /// keeping a stacked pill column beside the label. The first pill remains
+  /// beside the label when it fits; otherwise the full group moves below.
   final bool pillsBelowLabelOnWrap;
 
   /// Minimum gap used when deciding whether the label and pill group can share
@@ -1380,28 +1381,29 @@ class AdaptiveLabelPillRow extends StatelessWidget {
 
   Widget _pillGroup(
     BuildContext context,
+    List<AdaptivePillSpec> groupPills,
     List<double> naturalWidths, {
     required double maxWidth,
   }) {
     final naturalGroupWidth =
         naturalWidths.fold<double>(0.0, (sum, width) => sum + width) +
-        (pillGap * math.max(0, pills.length - 1));
+        (pillGap * math.max(0, groupPills.length - 1));
     final canStaySideBySide = naturalGroupWidth <= maxWidth;
 
     if (canStaySideBySide) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (var i = 0; i < pills.length; i++) ...[
+          for (var i = 0; i < groupPills.length; i++) ...[
             if (i > 0) SizedBox(width: pillGap),
-            SizedBox(width: naturalWidths[i], child: _pill(pills[i])),
+            SizedBox(width: naturalWidths[i], child: _pill(groupPills[i])),
           ],
         ],
       );
     }
 
-    if (pills.length == 1) {
-      final pill = pills.single;
+    if (groupPills.length == 1) {
+      final pill = groupPills.single;
       final compactText = pill.compactText;
       // This branch is reached only after the full pill failed to fit.
       // Keep the abbreviated text even when it also exceeds the bound so it
@@ -1418,10 +1420,10 @@ class AdaptiveLabelPillRow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        for (var i = 0; i < pills.length; i++)
+        for (var i = 0; i < groupPills.length; i++)
           Padding(
             padding: EdgeInsets.only(top: i == 0 ? 0.0 : pillGap),
-            child: _pill(pills[i], maxWidth: maxWidth),
+            child: _pill(groupPills[i], maxWidth: maxWidth),
           ),
       ],
     );
@@ -1461,6 +1463,7 @@ class AdaptiveLabelPillRow extends StatelessWidget {
             label: SizedBox(width: labelWidth, child: _label(fillWidth: false)),
             pillGroup: _pillGroup(
               context,
+              pills,
               naturalWidths,
               maxWidth: naturalGroupWidth,
             ),
@@ -1472,6 +1475,44 @@ class AdaptiveLabelPillRow extends StatelessWidget {
           final fullRowWidth = constraints.maxWidth.isFinite
               ? constraints.maxWidth
               : naturalGroupWidth;
+
+          final firstPillFitsBesideLabel =
+              pills.length > 1 &&
+              labelWidth + labelValueGap + naturalWidths.first <=
+                  constraints.maxWidth + 0.01;
+
+          if (firstPillFitsBesideLabel) {
+            final remainingPills = pills.sublist(1);
+            final remainingWidths = naturalWidths.sublist(1);
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _labelAndPills(
+                  label: SizedBox(
+                    width: labelWidth,
+                    child: _label(fillWidth: false),
+                  ),
+                  pillGroup: SizedBox(
+                    width: naturalWidths.first,
+                    child: _pill(pills.first),
+                  ),
+                  alignLabelToTop: false,
+                ),
+                SizedBox(height: verticalWrapGap),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: _pillGroup(
+                    context,
+                    remainingPills,
+                    remainingWidths,
+                    maxWidth: fullRowWidth,
+                  ),
+                ),
+              ],
+            );
+          }
+
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1482,6 +1523,7 @@ class AdaptiveLabelPillRow extends StatelessWidget {
                 alignment: Alignment.centerRight,
                 child: _pillGroup(
                   context,
+                  pills,
                   naturalWidths,
                   maxWidth: fullRowWidth,
                 ),
@@ -1524,6 +1566,7 @@ class AdaptiveLabelPillRow extends StatelessWidget {
                 ),
                 pillGroup: _pillGroup(
                   context,
+                  pills,
                   naturalWidths,
                   maxWidth: wrappedTrailingWidth,
                 ),
@@ -1536,6 +1579,7 @@ class AdaptiveLabelPillRow extends StatelessWidget {
             label: SizedBox(width: labelWidth, child: _label(fillWidth: false)),
             pillGroup: _pillGroup(
               context,
+              pills,
               naturalWidths,
               maxWidth: availableTrailingWidth,
             ),
@@ -1559,7 +1603,12 @@ class AdaptiveLabelPillRow extends StatelessWidget {
             SizedBox(height: verticalWrapGap),
             Align(
               alignment: Alignment.centerRight,
-              child: _pillGroup(context, naturalWidths, maxWidth: fullRowWidth),
+              child: _pillGroup(
+                context,
+                pills,
+                naturalWidths,
+                maxWidth: fullRowWidth,
+              ),
             ),
           ],
         );

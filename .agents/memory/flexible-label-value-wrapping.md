@@ -36,15 +36,17 @@ one-character line break, so that pair remains protected.
 row, including picker/modal and settings rows. Keep words intact; try the
 value-first alternating line-count sequence before falling back to a stack.
 
-Reminder Date is an explicit exception: when its date and time pills cannot
-share the first line with the label, move the entire pill group below the
-left-aligned label and animate the height change.
+Date/time pill pairs are an explicit exception: when all values cannot share
+the first line with the label, keep the first pill beside the label if it fits
+and move the remaining pill(s) below; if even the first pill cannot fit, move
+the entire group below the left-aligned label. Animate every height change.
 
 **Why:** Keeping the two reminder values together prevents the date pill from
-occupying the label's level while the time pill drops below it.
+occupying the label's level only when the label cannot share a line with the
+date; otherwise the date remains the first right-aligned value.
 
-**How to apply:** Use the shared row's opt-in below-label fallback only for
-Reminder Date; do not change the default behavior of other label/value rows.
+**How to apply:** Use the shared row's opt-in date/time fallback for Starts,
+Ends, and Reminder Date; do not change the default behavior of other rows.
 
 Category Type with Shopping List follows the Smart Category exception: preserve
 the label on one line while the value can take the wrapped side without

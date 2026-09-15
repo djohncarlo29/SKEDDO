@@ -56,7 +56,7 @@ void main() {
   );
 
   testWidgets(
-    'moves reminder pills below the label when the row cannot fit',
+    'keeps the first reminder pill beside the label when it fits',
     (tester) async {
       const labelStyle = TextStyle(fontSize: 17);
       const pillStyle = TextStyle(fontSize: 15);
@@ -65,9 +65,9 @@ void main() {
         CupertinoApp(
           home: CupertinoPageScaffold(
             child: SizedBox(
-              width: 360,
+              width: 330,
               child: AdaptiveLabelPillRow(
-                label: 'Reminder Date',
+                label: 'Ends',
                 labelStyle: labelStyle,
                 pillsBelowLabelOnWrap: true,
                 labelValueGap: 8,
@@ -91,9 +91,57 @@ void main() {
       await tester.pumpAndSettle();
 
       final rowRect = tester.getRect(find.byType(AdaptiveLabelPillRow));
-      final labelRect = tester.getRect(find.text('Reminder Date'));
+      final labelRect = tester.getRect(find.text('Ends'));
       final dateRect = tester.getRect(find.text('Sep 16, 2026'));
       final timeRect = tester.getRect(find.text('9:00 AM'));
+
+      expect(labelRect.left, closeTo(rowRect.left, 0.01));
+      expect(dateRect.right, closeTo(rowRect.right - 12, 0.01));
+      expect(timeRect.right, closeTo(rowRect.right - 12, 0.01));
+      expect(dateRect.top, lessThan(timeRect.top));
+      expect(timeRect.top, greaterThan(labelRect.bottom));
+    },
+  );
+
+  testWidgets(
+    'moves both reminder pills below the label when the first cannot fit',
+    (tester) async {
+      const labelStyle = TextStyle(fontSize: 17);
+      const pillStyle = TextStyle(fontSize: 15);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: SizedBox(
+              width: 220,
+              child: AdaptiveLabelPillRow(
+                label: 'Reminder Date',
+                labelStyle: labelStyle,
+                pillsBelowLabelOnWrap: true,
+                labelValueGap: 8,
+                pills: [
+                  AdaptivePillSpec(
+                    text: 'Sep 16',
+                    style: pillStyle,
+                    backgroundColor: CupertinoColors.systemGrey5,
+                  ),
+                  AdaptivePillSpec(
+                    text: '9 AM',
+                    style: pillStyle,
+                    backgroundColor: CupertinoColors.systemGrey5,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final rowRect = tester.getRect(find.byType(AdaptiveLabelPillRow));
+      final labelRect = tester.getRect(find.text('Reminder Date'));
+      final dateRect = tester.getRect(find.text('Sep 16'));
+      final timeRect = tester.getRect(find.text('9 AM'));
 
       expect(labelRect.left, closeTo(rowRect.left, 0.01));
       expect(timeRect.right, closeTo(rowRect.right - 12, 0.01));
