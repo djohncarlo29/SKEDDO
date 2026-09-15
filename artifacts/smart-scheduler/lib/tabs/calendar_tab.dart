@@ -4624,11 +4624,11 @@ class _WeekRowState extends State<_WeekRow> {
                   ),
                 ),
               ),
-            // ── Multi Day sliding pill — translates with the blob circle ─
+            // ── Multi Day sliding pill — translates with the circle ───────
             // Same snap timing as the static pill and the header title.
-            // Width matches the static pill exactly: selCX to nextCX + one
-            // scaled pill diameter so it keeps its two-day pill shape while sliding,
-            // instead of collapsing to a single-day circle-with-offset.
+            // Its authored width and height match the static pill. The shared
+            // stretch transform adds the blob/squish effect while keeping the
+            // height fixed and expanding from the left edge toward the right.
             if (multiDayHasExtension && widget.collapseProgress > 0.0)
               Positioned(
                 left:
@@ -4640,21 +4640,32 @@ class _WeekRowState extends State<_WeekRow> {
                     cellW +
                     dayIndicatorSize, // spans selDay centre to nextDay centre + caps
                 height: dayIndicatorSize,
-                child: Container(
-                  decoration: ShapeDecoration(
-                    color: resolveAccentColor(context).withOpacity(0.40),
+                child: _BlobCircle(
+                  dragDeltaX: widget.blobDeltaX,
+                  snapCount: widget.blobSnapCount,
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    decoration: ShapeDecoration(
+                      color: resolveAccentColor(context).withOpacity(0.40),
                       shape: const StadiumBorder(),
+                    ),
                   ),
                 ),
               ),
-            // ── Blob: full-opacity sliding circle (no text) ──────────────
+            // ── Full-opacity sliding circle (no text) ─────────────────────
+            // Keep the circle itself at the static indicator diameter. The
+            // pill carries the horizontal blob deformation; allowing this
+            // circle to scale as well makes it visibly larger on swipe.
             Positioned(
               left: curCX - dayIndicatorSize / 2 + circleTranslateX,
               top: kFixedTopPadding,
-              child: _BlobCircle(
-                dragDeltaX: widget.blobDeltaX,
-                snapCount: widget.blobSnapCount,
-                size: dayIndicatorSize,
+              child: Container(
+                width: dayIndicatorSize,
+                height: dayIndicatorSize,
+                decoration: BoxDecoration(
+                  color: resolveAccentColor(context),
+                  shape: BoxShape.circle,
+                ),
               ),
             ),
             // ── Numbers: always on top, never move ───────────────────────
@@ -5115,25 +5126,24 @@ class _DayViewDowMask extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// _BlobCircle — velocity-driven gel blob for Day View drags.
+// _BlobCircle — velocity-driven horizontal gel deformation for Day View drags.
 //
 // Physics (matches Apple Liquid Glass):
 //   • stretch  = f(per-frame drag speed)  — faster swipe → more elongation
-//   • the vertical envelope stays at the authored circle diameter while the
-//     horizontal axis stretches, so the blob never grows taller than the
-//     static day indicator or the Multi Day pill
-//   • rotation = atan2(0, dragDeltaX)     — always aligns along travel axis
+//   • the vertical envelope stays at the authored indicator diameter
+//   • the deformation is anchored at the pill's left edge, so it always
+//     expands toward the right
 //   • on release → AnimationController(elasticOut) springs back to circle
 //
-// The blob is a plain circle Container scaled by a Transform matrix each
-// frame.  No CustomPainter — the GPU handles smooth antialiasing of the
-// scaled circle automatically.
+// No CustomPainter is needed — the GPU handles smooth antialiasing of the
+// scaled stadium automatically.
 // ══════════════════════════════════════════════════════════════════════════════
 class _BlobCircle extends StatefulWidget {
   const _BlobCircle({
     required this.dragDeltaX,
     required this.snapCount,
-    required this.size,
+    required this.child,
+    this.alignment = Alignment.center,
   });
 
   /// Horizontal gesture delta in logical px for the current frame.
@@ -5142,7 +5152,8 @@ class _BlobCircle extends StatefulWidget {
 
   /// Incremented each time the finger is lifted.  Used to trigger spring-back.
   final int snapCount;
-  final double size;
+  final Widget child;
+  final Alignment alignment;
 
   @override
   State<_BlobCircle> createState() => _BlobCircleState();
@@ -5156,9 +5167,6 @@ class _BlobCircleState extends State<_BlobCircle>
   // Current stretch factor (≥ 1.0).  Updated every drag frame; animated
   // back to 1.0 by _springAnim on release.
   double _stretch = 1.0;
-
-  // Rotation in radians — aligns the elongation axis with the drag direction.
-  double _rotation = 0.0;
 
   @override
   void initState() {
@@ -5194,8 +5202,6 @@ class _BlobCircleState extends State<_BlobCircle>
         //   medium     ~8 px  → stretch ≈ 1.48
         //   fast fling ~15 px → stretch ≈ 1.50  (cap = 1.50)
         _stretch = 1.0 + (speed * 0.06).clamp(0.0, 0.50);
-        // Align blob axis with travel direction (left vs right).
-        _rotation = math.atan2(0, widget.dragDeltaX); // 0 or π
       });
     }
   }
@@ -5213,29 +5219,19 @@ class _BlobCircleState extends State<_BlobCircle>
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     return AnimatedBuilder(
       animation: _ctrl,
-      // Cache the circle widget — only the Transform wrapper rebuilds.
-      child: Container(
-        width: widget.size,
-        height: widget.size,
-        decoration: BoxDecoration(
-          color: resolveAccentColor(context),
-          shape: BoxShape.circle,
-        ),
-      ),
+      // Cache the pill shape — only the Transform wrapper rebuilds.
+      child: widget.child,
       builder: (context, child) {
         final s = _ctrl.isAnimating ? _springAnim.value : _stretch;
 
-        return Transform.rotate(
-          angle: _rotation,
-          child: Transform.scale(
-            // Keep the blob's visible height equal to the static indicator.
-            // The horizontal deformation remains the liquid/glass squish
-            // effect, but it cannot make the sliding state look larger than
-            // the settled Multi Day state.
-            scaleX: s,
-            scaleY: 1.0,
-            child: child,
-          ),
+        return Transform.scale(
+          alignment: widget.alignment,
+          // Keep the pill's visible height equal to the static indicator.
+          // Horizontal deformation remains the liquid/glass squish effect,
+          // but it cannot make the sliding state taller than the static state.
+          scaleX: s,
+          scaleY: 1.0,
+          child: child,
         );
       },
     );
