@@ -7738,6 +7738,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
         child: AdaptiveLabelPillRow(
           label: label,
           labelStyle: _kLabelStyle,
+          // Starts and Ends use a date + time pill pair. Keep that pair
+          // together below the label when the complete row cannot fit.
+          pillsBelowLabelOnWrap: !_allDay,
+          verticalWrapGap: 16.0,
           onLabelTap: () => _togglePicker(target),
           pills: [
             AdaptivePillSpec(
@@ -10960,46 +10964,52 @@ class _NewEventSheetState extends State<_NewEventSheet>
   /// Row showing the reminder date + time pills (always both; no all-day case).
   Widget _buildReminderDateRow() => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-    child: AdaptiveLabelPillRow(
-      // Keep the label on one line while the pills stack. It wraps only when
-      // that would otherwise make a stacked pill wrap internally.
-      label: 'Reminder Date',
-      labelStyle: _kLabelStyle,
-      wrapLabelLast: true,
-      labelValueGap: 8.0,
-      onLabelTap: () => _togglePicker('reminder'),
-      pills: [
-        AdaptivePillSpec(
-          text: _fmtDate(_reminderDate),
-          backgroundColor: _resolvedPillColor,
-          style: TextStyle(
-            inherit: false,
-            color: _activePicker == 'reminder'
-                ? _resolvedCategoryColor
-                : resolveThemeColor(kPrimaryLabel, context),
-            fontSize: 15,
-            fontFamily: kSFProText,
-            fontWeight: FontWeight.w500,
-            letterSpacing: kTracking17,
+    child: AnimatedSize(
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: AdaptiveLabelPillRow(
+        // Keep the label on the first level and move both values together to
+        // a right-aligned second level when the complete row cannot fit.
+        label: 'Reminder Date',
+        labelStyle: _kLabelStyle,
+        pillsBelowLabelOnWrap: true,
+        verticalWrapGap: 16.0,
+        labelValueGap: 8.0,
+        onLabelTap: () => _togglePicker('reminder'),
+        pills: [
+          AdaptivePillSpec(
+            text: _fmtDate(_reminderDate),
+            backgroundColor: _resolvedPillColor,
+            style: TextStyle(
+              inherit: false,
+              color: _activePicker == 'reminder'
+                  ? _resolvedCategoryColor
+                  : resolveThemeColor(kPrimaryLabel, context),
+              fontSize: 15,
+              fontFamily: kSFProText,
+              fontWeight: FontWeight.w500,
+              letterSpacing: kTracking17,
+            ),
+            onTap: () => _togglePicker('reminder'),
           ),
-          onTap: () => _togglePicker('reminder'),
-        ),
-        AdaptivePillSpec(
-          text: _fmtTime(_reminderDate),
-          backgroundColor: _resolvedPillColor,
-          style: TextStyle(
-            inherit: false,
-            color: _activePicker == 'reminder_time'
-                ? _resolvedCategoryColor
-                : resolveThemeColor(kPrimaryLabel, context),
-            fontSize: 15,
-            fontFamily: kSFProText,
-            fontWeight: FontWeight.w500,
-            letterSpacing: kTracking17,
+          AdaptivePillSpec(
+            text: _fmtTime(_reminderDate),
+            backgroundColor: _resolvedPillColor,
+            style: TextStyle(
+              inherit: false,
+              color: _activePicker == 'reminder_time'
+                  ? _resolvedCategoryColor
+                  : resolveThemeColor(kPrimaryLabel, context),
+              fontSize: 15,
+              fontFamily: kSFProText,
+              fontWeight: FontWeight.w500,
+              letterSpacing: kTracking17,
+            ),
+            onTap: () => _togglePicker('reminder_time'),
           ),
-          onTap: () => _togglePicker('reminder_time'),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 

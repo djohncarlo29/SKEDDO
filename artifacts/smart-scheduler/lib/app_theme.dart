@@ -1248,9 +1248,11 @@ class AdaptivePillSpec {
 ///
 /// If that complete group cannot fit, the label stays beside a trailing pill
 /// column. Date/time pills stack in that column and may wrap internally at
-/// the current OS text scale. Only when the label itself consumes the row does
-/// the label move above the group. The default minimum gap is 25dp and can be
-/// tightened for compact rows that prioritize keeping all content on one line.
+/// the current OS text scale. Rows can opt into moving the entire pill group
+/// below the label instead, which is useful when the label must stay on the
+/// first level and the values should remain together. The default minimum gap
+/// is 25dp and can be tightened for compact rows that prioritize keeping all
+/// content on one line.
 class AdaptiveLabelPillRow extends StatelessWidget {
   const AdaptiveLabelPillRow({
     super.key,
@@ -1263,6 +1265,7 @@ class AdaptiveLabelPillRow extends StatelessWidget {
     this.horizontalPadding = 12.0,
     this.verticalPadding = 6.0,
     this.wrapLabelLast = false,
+    this.pillsBelowLabelOnWrap = false,
     this.labelValueGap = kLabelValueGap,
   }) : assert(pills.length > 0);
 
@@ -1278,6 +1281,10 @@ class AdaptiveLabelPillRow extends StatelessWidget {
   /// Keep a multi-word label on one line while pills stack, only allowing
   /// the label to wrap if a stacked pill would otherwise wrap internally.
   final bool wrapLabelLast;
+
+  /// When the full row does not fit, move the pill group below the label
+  /// instead of keeping a stacked pill column beside it.
+  final bool pillsBelowLabelOnWrap;
 
   /// Minimum gap used when deciding whether the label and pill group can share
   /// one line. Existing rows retain the shared 25dp gap by default.
@@ -1458,6 +1465,28 @@ class AdaptiveLabelPillRow extends StatelessWidget {
               maxWidth: naturalGroupWidth,
             ),
             alignLabelToTop: false,
+          );
+        }
+
+        if (pillsBelowLabelOnWrap) {
+          final fullRowWidth = constraints.maxWidth.isFinite
+              ? constraints.maxWidth
+              : naturalGroupWidth;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _label(fillWidth: true),
+              SizedBox(height: verticalWrapGap),
+              Align(
+                alignment: Alignment.centerRight,
+                child: _pillGroup(
+                  context,
+                  naturalWidths,
+                  maxWidth: fullRowWidth,
+                ),
+              ),
+            ],
           );
         }
 
