@@ -16,6 +16,7 @@ void main() {
       for (final scale in <double>[0.85, 1.0, 1.30, 1.60]) {
         var calendarRatio = 0.0;
         var pickerRatio = 0.0;
+        var yearViewScale = 0.0;
         await tester.pumpWidget(
           MediaQuery(
             data: MediaQueryData(textScaler: TextScaler.linear(scale)),
@@ -26,9 +27,13 @@ void main() {
                     calendarCircle * textScaleRatioFor(context, calendarFont);
                 final pickerSize =
                     pickerCircle * textScaleRatioFor(context, pickerFont);
+                final yearViewScaler =
+                    scaler.clamp(maxScaleFactor: 1.0);
                 calendarRatio =
                     calendarSize / scaler.scale(calendarFont);
                 pickerRatio = pickerSize / scaler.scale(pickerFont);
+                yearViewScale = yearViewScaler.scale(calendarFont) /
+                    calendarFont;
                 return const SizedBox.shrink();
               },
             ),
@@ -37,6 +42,7 @@ void main() {
 
         expect(calendarRatio, closeTo(calendarCircle / calendarFont, 0.000001));
         expect(pickerRatio, closeTo(pickerCircle / pickerFont, 0.000001));
+        expect(yearViewScale, closeTo(scale > 1.0 ? 1.0 : scale, 0.000001));
       }
     },
   );

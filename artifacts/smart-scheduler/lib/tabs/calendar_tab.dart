@@ -93,6 +93,7 @@ const double _kMonthListDotDiameter = 5.0;
 const double _kMonthListSectionTrailingContentPadding = 16.0;
 const double _kMonthListFinalContentGap = 16.0;
 const double _kDayIndicatorDiameter = 36.0;
+const double _kDayIndicatorBottomGap = 8.0;
 const double _kRowHeightCompact = 68.0;
 const double _kRowHeightStacked = 96.0;
 const double _kRowHeightDetails = 128.0;
@@ -112,6 +113,20 @@ const double _kDayBannerHeight = 36.0;
 // DOW row. Keep this independent from text scaling and the shared 16 pt
 // vertical padding token.
 const double _kCalendarHeaderToDowGap = 8.0;
+
+double _dayViewWeekStripHeight(BuildContext context) {
+  final indicatorSize =
+      _kDayIndicatorDiameter * textScaleRatioFor(context, 17.0);
+  return math.max(
+    _kRowHeightList,
+    kFixedTopPadding + indicatorSize + _kDayIndicatorBottomGap,
+  );
+}
+
+/// Year View keeps its authored geometry at the default OS size or larger.
+/// Smaller accessibility/text-size settings are still honoured.
+TextScaler _yearViewTextScaler(BuildContext context) =>
+    MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.0);
 
 // ── Date utilities ────────────────────────────────────────────────────────────
 int _daysInMonth(int year, int month) => DateTime(year, month + 1, 0).day;
@@ -1149,7 +1164,8 @@ class CalendarTabState extends State<CalendarTab>
     _weekStripDrag =
         _view == CalendarView.day &&
         widget.daySubMode != DayViewSubMode.list &&
-        d.localPosition.dy < _kDayLabelHeight + _kRowHeightList;
+        d.localPosition.dy <
+            _kDayLabelHeight + _dayViewWeekStripHeight(context);
   }
 
   void _onHDragUpdate(DragUpdateDetails d) {
@@ -1817,6 +1833,7 @@ class CalendarTabState extends State<CalendarTab>
           builder: (context, _) {
             final zoomT = _zoomAnim.value;
             final colT = _collapseAnim.value;
+            final dayWeekStripHeight = _dayViewWeekStripHeight(context);
             // Animated row height driven by the view-mode transition.
             final rowHeight = lerpDouble(
               _fromHeight,
@@ -1832,7 +1849,7 @@ class CalendarTabState extends State<CalendarTab>
                 -listModeT *
                     (_kCalendarHeaderToDowGap +
                         _kDayLabelHeight +
-                        _kRowHeightList);
+                        dayWeekStripHeight);
             // During a snap animation use the interpolated value; during a
             // free drag use the raw _slideX field.
             final slideX = _snapCtrl.isAnimating ? _snapAnim.value : _slideX;
@@ -2229,7 +2246,7 @@ class CalendarTabState extends State<CalendarTab>
                         top:
                             _kCalendarHeaderToDowGap +
                             _kDayLabelHeight +
-                            _kRowHeightList,
+                            dayWeekStripHeight,
                         height: _kDayBannerHeight,
                         child: Opacity(
                           opacity: ((colT - 0.55) / 0.45).clamp(0.0, 1.0),
@@ -2305,7 +2322,7 @@ class CalendarTabState extends State<CalendarTab>
                         top:
                             _kCalendarHeaderToDowGap +
                             _kDayLabelHeight +
-                            _kRowHeightList +
+                            dayWeekStripHeight +
                             _kDayBannerHeight,
                         bottom: 0,
                         child: Opacity(
@@ -2571,6 +2588,7 @@ class _MiniMonthGrid extends StatelessWidget {
     const Color whiteC = CupertinoColors.white;
     final Color accentC = resolveAccentColor(context);
     final Color accentFadedC = resolveAccentColor(context).withOpacity(0.40);
+    final yearViewDayScaler = _yearViewTextScaler(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2643,7 +2661,7 @@ class _MiniMonthGrid extends StatelessWidget {
               // Circle is slightly larger than the cell so it reads clearly
               // at the mini-grid scale.
               final fontSize = cellSize * 0.62 + 1.0;
-              final dayScale = textScaleRatioFor(context, fontSize);
+              final dayScale = yearViewDayScaler.scale(fontSize) / fontSize;
               final circleSize = cellSize * 1.15 * dayScale;
 
               final Widget dayCell;
@@ -2658,6 +2676,7 @@ class _MiniMonthGrid extends StatelessWidget {
                   child: Center(
                     child: Text(
                       '$day',
+                      textScaler: yearViewDayScaler,
                       style: TextStyle(
                         fontFamily: kSFProText,
                         fontSize: fontSize,
@@ -2678,6 +2697,7 @@ class _MiniMonthGrid extends StatelessWidget {
                   child: Center(
                     child: Text(
                       '$day',
+                      textScaler: yearViewDayScaler,
                       style: TextStyle(
                         fontFamily: kSFProText,
                         fontSize: fontSize,
@@ -2690,6 +2710,7 @@ class _MiniMonthGrid extends StatelessWidget {
               } else {
                 dayCell = Text(
                   '$day',
+                  textScaler: yearViewDayScaler,
                   style: TextStyle(
                     fontFamily: kSFProText,
                     fontSize: fontSize,
@@ -2755,7 +2776,11 @@ class _MorphOverlay extends StatelessWidget {
     final secC = CupertinoDynamicColor.resolve(kSecondaryLabel, context);
     final terC = CupertinoDynamicColor.resolve(kTertiaryLabel, context);
     final sepC = CupertinoDynamicColor.resolve(kSeparatorColor, context);
-    final dayIndicatorScale = textScaleRatioFor(context, 17.0);
+    final miniW = (screenW - 2 * _kYearOuterPad - 2 * _kYearColGap) / 3;
+    final yearFontSize = miniW / 7 * 0.62 + 1.0;
+    final yearDayScale =
+        _yearViewTextScaler(context).scale(yearFontSize) / yearFontSize;
+    final monthDayScale = textScaleRatioFor(context, 17.0);
     return ClipRect(
       child: CustomPaint(
         painter: _MorphPainter(
@@ -2775,7 +2800,8 @@ class _MorphOverlay extends StatelessWidget {
           secondaryColor: secC,
           tertiaryColor: terC,
           separatorColor: sepC,
-          dayIndicatorScale: dayIndicatorScale,
+          yearDayScale: yearDayScale,
+          monthDayScale: monthDayScale,
         ),
       ),
     );
@@ -2800,7 +2826,8 @@ class _MorphPainter extends CustomPainter {
     required this.tertiaryColor,
     required this.separatorColor,
     required this.viewModeRowHeight,
-    required this.dayIndicatorScale,
+    required this.yearDayScale,
+    required this.monthDayScale,
     this.measuredRowTops,
   });
 
@@ -2819,7 +2846,8 @@ class _MorphPainter extends CustomPainter {
   final Color tertiaryColor;
   final Color separatorColor;
   final double viewModeRowHeight;
-  final double dayIndicatorScale;
+  final double yearDayScale;
+  final double monthDayScale;
   final List<double>? measuredRowTops;
 
   final Paint _p = Paint()..isAntiAlias = true;
@@ -2834,7 +2862,8 @@ class _MorphPainter extends CustomPainter {
       o.monthScrollOffset != monthScrollOffset ||
       o.screenW != screenW ||
       o.viewModeRowHeight != viewModeRowHeight ||
-      o.dayIndicatorScale != dayIndicatorScale ||
+      o.yearDayScale != yearDayScale ||
+      o.monthDayScale != monthDayScale ||
       o.bgColor != bgColor;
 
   // ── Multiply a color's alpha by [a] without discarding its inherent opacity ─
@@ -3029,14 +3058,14 @@ class _MorphPainter extends CustomPainter {
           // Destination at t=1: zoom-transform equivalent (sFinal*(pos−focal))
           final cx = lerpDouble(yearCX, sFinal * (yearCX - focalX), t)!;
           final cy = lerpDouble(yearCY, sFinal * (yearCY - focalY), t)!;
-           final r = lerpDouble(
-             cellSz * 0.575 * dayIndicatorScale,
-             18.0 * dayIndicatorScale,
-             t,
-           )!;
+          final r = lerpDouble(
+            cellSz * 0.575 * yearDayScale,
+            18.0 * monthDayScale,
+            t,
+          )!;
           final fSize = lerpDouble(
-             (cellSz * 0.62 + 1.0) * dayIndicatorScale,
-             17.0 * dayIndicatorScale,
+            (cellSz * 0.62 + 1.0) * yearDayScale,
+            17.0 * monthDayScale,
             t,
           )!.clamp(1.0, 200.0);
 
@@ -3080,7 +3109,7 @@ class _MorphPainter extends CustomPainter {
     }
 
     final monthDayCircleOffset =
-        kFixedTopPadding + (_kDayIndicatorDiameter * dayIndicatorScale) / 2;
+        kFixedTopPadding + (_kDayIndicatorDiameter * monthDayScale) / 2;
 
     // 3. Selected-month day cells — per-element lerp year → month ─────────────
     for (var d = 1; d <= daysInMonth; d++) {
@@ -3093,30 +3122,30 @@ class _MorphPainter extends CustomPainter {
       final yearCY = focalY + (weekRow + 1) * cellSz + cellSz / 2 + 2.0;
 
       // Month-view cell centre.
-       // Circles are pinned at kFixedTopPadding (8) from the row top, so
-       // the centre is the scaled circle offset — NOT rowHeight/2.
+      // Circles are pinned at kFixedTopPadding (8) from the row top, so
+      // the centre is the scaled circle offset — NOT rowHeight/2.
       // monthScrollOffset shifts the end position up so the morph's t=1 frame
       // matches the _MonthView that is scrolled to _savedMonthScrollOffset.
       final monthCX = mCellW * (dow + 1.5);
       final monthCY =
           _kCalendarHeaderToDowGap +
-              _kDayLabelHeight +
-              weekRow * viewModeRowHeight +
-               monthDayCircleOffset -
-              monthScrollOffset;
+          _kDayLabelHeight +
+          weekRow * viewModeRowHeight +
+          monthDayCircleOffset -
+          monthScrollOffset;
 
       final cx = lerpDouble(yearCX, monthCX, t)!;
       final cy = lerpDouble(yearCY, monthCY, t)!;
-       final r = lerpDouble(
-         cellSz * 0.575 * dayIndicatorScale,
-         18.0 * dayIndicatorScale,
-         t,
-       )!;
-       final fSize = lerpDouble(
-         (cellSz * 0.62 + 1.0) * dayIndicatorScale,
-         17.0 * dayIndicatorScale,
-         t,
-       )!.clamp(1.0, 200.0);
+      final r = lerpDouble(
+        cellSz * 0.575 * yearDayScale,
+        18.0 * monthDayScale,
+        t,
+      )!;
+      final fSize = lerpDouble(
+        (cellSz * 0.62 + 1.0) * yearDayScale,
+        17.0 * monthDayScale,
+        t,
+      )!.clamp(1.0, 200.0);
 
       final date = DateTime(year, zMonth, d);
       final isToday = _sameDay(date, today);
@@ -3163,7 +3192,7 @@ class _MorphPainter extends CustomPainter {
         _kCalendarHeaderToDowGap +
             _kDayLabelHeight +
             wr * viewModeRowHeight +
-             monthDayCircleOffset -
+            monthDayCircleOffset -
             monthScrollOffset,
         t,
       )!;
@@ -3770,11 +3799,12 @@ class _AnimatedWeekRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Current row height: lerps from mode-switch height → list height as the
-    // collapse progresses, so Day View always shows the standard 52 px strip.
+    // Current row height: lerps from the Month View mode height to the Day
+    // View strip height. The latter grows only when needed to preserve the
+    // indicator's minimum bottom gap.
     final currentRowHeight = lerpDouble(
       viewModeRowHeight,
-      _kRowHeightList,
+      _dayViewWeekStripHeight(context),
       collapseProgress,
     )!;
 
