@@ -15156,6 +15156,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     final daysInMonth = DateTime(year, month + 1, 0).day;
     final isSelectedMonth = _endDate.year == year && _endDate.month == month;
     final isCurrentMonth = today.year == year && today.month == month;
+    final gridScale = textScaleRatioFor(context, 15.0);
+    final gridCircleSize = 30.0 * gridScale;
+    final gridRowHeight = 38.0 * gridScale;
 
     // Category color at 40% for today indicator — mirrors Calendar tab.
     final Color todayFill = _resolvedSelectedColor.withOpacity(0.40);
@@ -15171,7 +15174,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             children: List.generate(7, (col) {
               final day = row * 7 + col - startOffset + 1;
               if (day < 1 || day > daysInMonth) {
-                return const Expanded(child: SizedBox(height: 38));
+                return Expanded(child: SizedBox(height: gridRowHeight));
               }
               final selected = isSelectedMonth && _endDate.day == day;
               final isToday = isCurrentMonth && today.day == day;
@@ -15185,8 +15188,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               final Widget circle;
               if (selected) {
                 circle = Container(
-                  width: 30,
-                  height: 30,
+                  width: gridCircleSize,
+                  height: gridCircleSize,
                   decoration: BoxDecoration(
                     color: _resolvedSelectedColor,
                     shape: BoxShape.circle,
@@ -15206,8 +15209,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 );
               } else if (isToday) {
                 circle = Container(
-                  width: 30,
-                  height: 30,
+                  width: gridCircleSize,
+                  height: gridCircleSize,
                   decoration: BoxDecoration(
                     color: todayFill,
                     shape: BoxShape.circle,
@@ -15228,8 +15231,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               } else if (isPast) {
                 // Past dates: greyed out, unselectable.
                 circle = Container(
-                  width: 30,
-                  height: 30,
+                  width: gridCircleSize,
+                  height: gridCircleSize,
                   alignment: Alignment.center,
                   child: Text(
                     '$day',
@@ -15245,8 +15248,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 );
               } else {
                 circle = Container(
-                  width: 30,
-                  height: 30,
+                  width: gridCircleSize,
+                  height: gridCircleSize,
                   alignment: Alignment.center,
                   child: Text(
                     '$day',
@@ -15265,7 +15268,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               // Past dates: render non-interactively (no bloom, no tap).
               if (isPast) {
                 return Expanded(
-                  child: SizedBox(height: 38, child: Center(child: circle)),
+                  child: SizedBox(
+                    height: gridRowHeight,
+                    child: Center(child: circle),
+                  ),
                 );
               }
 
@@ -15279,7 +15285,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     _datePickerCtrl.animateTo(0.0, curve: Curves.easeIn);
                   },
                   peakScale: 1.15,
-                  child: SizedBox(height: 38, child: Center(child: circle)),
+                  child: SizedBox(
+                    height: gridRowHeight,
+                    child: Center(child: circle),
+                  ),
                 ),
               );
             }),

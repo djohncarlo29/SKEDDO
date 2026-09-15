@@ -2642,8 +2642,9 @@ class _MiniMonthGrid extends StatelessWidget {
               // tap a month to enter that view, not to select days.
               // Circle is slightly larger than the cell so it reads clearly
               // at the mini-grid scale.
-              final circleSize = cellSize * 1.15;
               final fontSize = cellSize * 0.62 + 1.0;
+              final dayScale = textScaleRatioFor(context, fontSize);
+              final circleSize = cellSize * 1.15 * dayScale;
 
               final Widget dayCell;
               if (isSel) {
@@ -2657,7 +2658,6 @@ class _MiniMonthGrid extends StatelessWidget {
                   child: Center(
                     child: Text(
                       '$day',
-                      textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         fontFamily: kSFProText,
                         fontSize: fontSize,
@@ -2678,7 +2678,6 @@ class _MiniMonthGrid extends StatelessWidget {
                   child: Center(
                     child: Text(
                       '$day',
-                      textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         fontFamily: kSFProText,
                         fontSize: fontSize,
@@ -2691,7 +2690,6 @@ class _MiniMonthGrid extends StatelessWidget {
               } else {
                 dayCell = Text(
                   '$day',
-                  textScaler: TextScaler.noScaling,
                   style: TextStyle(
                     fontFamily: kSFProText,
                     fontSize: fontSize,
@@ -2757,6 +2755,7 @@ class _MorphOverlay extends StatelessWidget {
     final secC = CupertinoDynamicColor.resolve(kSecondaryLabel, context);
     final terC = CupertinoDynamicColor.resolve(kTertiaryLabel, context);
     final sepC = CupertinoDynamicColor.resolve(kSeparatorColor, context);
+    final dayIndicatorScale = textScaleRatioFor(context, 17.0);
     return ClipRect(
       child: CustomPaint(
         painter: _MorphPainter(
@@ -2776,6 +2775,7 @@ class _MorphOverlay extends StatelessWidget {
           secondaryColor: secC,
           tertiaryColor: terC,
           separatorColor: sepC,
+          dayIndicatorScale: dayIndicatorScale,
         ),
       ),
     );
@@ -2800,6 +2800,7 @@ class _MorphPainter extends CustomPainter {
     required this.tertiaryColor,
     required this.separatorColor,
     required this.viewModeRowHeight,
+    required this.dayIndicatorScale,
     this.measuredRowTops,
   });
 
@@ -2818,6 +2819,7 @@ class _MorphPainter extends CustomPainter {
   final Color tertiaryColor;
   final Color separatorColor;
   final double viewModeRowHeight;
+  final double dayIndicatorScale;
   final List<double>? measuredRowTops;
 
   final Paint _p = Paint()..isAntiAlias = true;
@@ -2832,6 +2834,7 @@ class _MorphPainter extends CustomPainter {
       o.monthScrollOffset != monthScrollOffset ||
       o.screenW != screenW ||
       o.viewModeRowHeight != viewModeRowHeight ||
+      o.dayIndicatorScale != dayIndicatorScale ||
       o.bgColor != bgColor;
 
   // ── Multiply a color's alpha by [a] without discarding its inherent opacity ─
@@ -3026,10 +3029,14 @@ class _MorphPainter extends CustomPainter {
           // Destination at t=1: zoom-transform equivalent (sFinal*(pos−focal))
           final cx = lerpDouble(yearCX, sFinal * (yearCX - focalX), t)!;
           final cy = lerpDouble(yearCY, sFinal * (yearCY - focalY), t)!;
-          final r = lerpDouble(cellSz * 0.575, 18.0, t)!;
+           final r = lerpDouble(
+             cellSz * 0.575 * dayIndicatorScale,
+             18.0 * dayIndicatorScale,
+             t,
+           )!;
           final fSize = lerpDouble(
-            cellSz * 0.62 + 1.0,
-            17.0,
+             (cellSz * 0.62 + 1.0) * dayIndicatorScale,
+             17.0 * dayIndicatorScale,
             t,
           )!.clamp(1.0, 200.0);
 
@@ -3072,6 +3079,9 @@ class _MorphPainter extends CustomPainter {
       }
     }
 
+    final monthDayCircleOffset =
+        kFixedTopPadding + (_kDayIndicatorDiameter * dayIndicatorScale) / 2;
+
     // 3. Selected-month day cells — per-element lerp year → month ─────────────
     for (var d = 1; d <= daysInMonth; d++) {
       final idx = offset + d - 1;
@@ -3083,8 +3093,8 @@ class _MorphPainter extends CustomPainter {
       final yearCY = focalY + (weekRow + 1) * cellSz + cellSz / 2 + 2.0;
 
       // Month-view cell centre.
-      // Circles are pinned at kFixedTopPadding (8) from the row top, so
-      // the centre is always kDayCircleOffset (26) — NOT rowHeight/2.
+       // Circles are pinned at kFixedTopPadding (8) from the row top, so
+       // the centre is the scaled circle offset — NOT rowHeight/2.
       // monthScrollOffset shifts the end position up so the morph's t=1 frame
       // matches the _MonthView that is scrolled to _savedMonthScrollOffset.
       final monthCX = mCellW * (dow + 1.5);
@@ -3092,13 +3102,21 @@ class _MorphPainter extends CustomPainter {
           _kCalendarHeaderToDowGap +
               _kDayLabelHeight +
               weekRow * viewModeRowHeight +
-              kDayCircleOffset -
+               monthDayCircleOffset -
               monthScrollOffset;
 
       final cx = lerpDouble(yearCX, monthCX, t)!;
       final cy = lerpDouble(yearCY, monthCY, t)!;
-      final r = lerpDouble(cellSz * 0.575, 18.0, t)!;
-      final fSize = lerpDouble(cellSz * 0.62 + 1.0, 17.0, t)!.clamp(1.0, 200.0);
+       final r = lerpDouble(
+         cellSz * 0.575 * dayIndicatorScale,
+         18.0 * dayIndicatorScale,
+         t,
+       )!;
+       final fSize = lerpDouble(
+         (cellSz * 0.62 + 1.0) * dayIndicatorScale,
+         17.0 * dayIndicatorScale,
+         t,
+       )!.clamp(1.0, 200.0);
 
       final date = DateTime(year, zMonth, d);
       final isToday = _sameDay(date, today);
@@ -3145,7 +3163,7 @@ class _MorphPainter extends CustomPainter {
         _kCalendarHeaderToDowGap +
             _kDayLabelHeight +
             wr * viewModeRowHeight +
-            kDayCircleOffset -
+             monthDayCircleOffset -
             monthScrollOffset,
         t,
       )!;
@@ -3839,6 +3857,7 @@ class _BloomDayCircle extends StatefulWidget {
     this.blobSnapCount = 0,
     this.pendingBloomDate,
     this.circleColor,
+    required this.circleSize,
   });
 
   final Widget child; // always rendered at scale 1.0 (day number text)
@@ -3854,6 +3873,7 @@ class _BloomDayCircle extends StatefulWidget {
   // Background circle color.  Only the circle scales; the day-number text
   // (child) is never scaled.  null = no background circle (plain day cell).
   final Color? circleColor;
+  final double circleSize;
 
   @override
   State<_BloomDayCircle> createState() => _BloomDayCircleState();
@@ -4076,8 +4096,8 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
           _ => widget.circleColor,
         };
         return SizedBox(
-          width: 36,
-          height: 36,
+          width: widget.circleSize,
+          height: widget.circleSize,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -4085,8 +4105,8 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
                 Transform.scale(
                   scale: scale,
                   child: Container(
-                    width: 36,
-                    height: 36,
+                    width: widget.circleSize,
+                    height: widget.circleSize,
                     decoration: BoxDecoration(
                       color: effectiveColor,
                       shape: BoxShape.circle,
@@ -4178,6 +4198,8 @@ class _WeekRowState extends State<_WeekRow> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalW = constraints.maxWidth;
+        final dayIndicatorSize =
+            _kDayIndicatorDiameter * textScaleRatioFor(context, 17.0);
         final separatorColor = resolveThemeColor(kSeparatorColor, context);
         final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
         final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
@@ -4221,7 +4243,7 @@ class _WeekRowState extends State<_WeekRow> {
                   child: Padding(
                     padding: const EdgeInsets.only(top: kFixedTopPadding),
                     child: SizedBox(
-                      height: 36,
+                      height: dayIndicatorSize,
                       child: Center(
                         child: Text(
                           '$weekNum',
@@ -4333,6 +4355,7 @@ class _WeekRowState extends State<_WeekRow> {
                       blobSnapCount: widget.blobSnapCount,
                       pendingBloomDate: widget.pendingBloomDate,
                       circleColor: circleColor,
+                       circleSize: dayIndicatorSize,
                       child: Text(
                         '$displayDay',
                         style: TextStyle(
@@ -4412,14 +4435,16 @@ class _WeekRowState extends State<_WeekRow> {
                 // also stays visible for the whole exit.  Result: both snap together.
                 if (widget.collapseProgress > 0.0)
                   Positioned(
-                    left: selCX - 18,
+                    left: selCX - dayIndicatorSize / 2,
                     top: kFixedTopPadding,
-                    width: nextCX - selCX + 36,
-                    height: 36,
+                    width: nextCX - selCX + dayIndicatorSize,
+                    height: dayIndicatorSize,
                     child: Container(
                       decoration: ShapeDecoration(
                         color: resolveAccentColor(context).withOpacity(0.40),
-                        shape: const BoundedSquircleStadiumBorder(radius: 18),
+                        shape: BoundedSquircleStadiumBorder(
+                          radius: dayIndicatorSize / 2,
+                        ),
                       ),
                     ),
                   ),
@@ -4555,11 +4580,11 @@ class _WeekRowState extends State<_WeekRow> {
             // both would compound two semi-transparent layers.
             if (todayCX != null && !todayUnderPill)
               Positioned(
-                left: todayCX - 18,
+                left: todayCX - dayIndicatorSize / 2,
                 top: kFixedTopPadding,
                 child: Container(
-                  width: 36,
-                  height: 36,
+                  width: dayIndicatorSize,
+                  height: dayIndicatorSize,
                   decoration: BoxDecoration(
                     color: resolveAccentColor(context).withOpacity(0.40),
                     shape: BoxShape.circle,
@@ -4573,25 +4598,32 @@ class _WeekRowState extends State<_WeekRow> {
             // instead of collapsing to a single-day circle-with-offset.
             if (multiDayHasExtension && widget.collapseProgress > 0.0)
               Positioned(
-                left: (multiDaySelCol! + 1.5) * cellW - 18 + circleTranslateX,
+                left:
+                    (multiDaySelCol! + 1.5) * cellW -
+                    dayIndicatorSize / 2 +
+                    circleTranslateX,
                 top: kFixedTopPadding,
                 width:
-                    cellW + 36, // spans selDay centre to nextDay centre + caps
-                height: 36,
+                    cellW +
+                    dayIndicatorSize, // spans selDay centre to nextDay centre + caps
+                height: dayIndicatorSize,
                 child: Container(
                   decoration: ShapeDecoration(
                     color: resolveAccentColor(context).withOpacity(0.40),
-                    shape: const BoundedSquircleStadiumBorder(radius: 18),
+                    shape: BoundedSquircleStadiumBorder(
+                      radius: dayIndicatorSize / 2,
+                    ),
                   ),
                 ),
               ),
             // ── Blob: full-opacity sliding circle (no text) ──────────────
             Positioned(
-              left: curCX - 18 + circleTranslateX,
+              left: curCX - dayIndicatorSize / 2 + circleTranslateX,
               top: kFixedTopPadding,
               child: _BlobCircle(
                 dragDeltaX: widget.blobDeltaX,
                 snapCount: widget.blobSnapCount,
+                size: dayIndicatorSize,
               ),
             ),
             // ── Numbers: always on top, never move ───────────────────────
@@ -5065,7 +5097,11 @@ class _DayViewDowMask extends StatelessWidget {
 // scaled circle automatically.
 // ══════════════════════════════════════════════════════════════════════════════
 class _BlobCircle extends StatefulWidget {
-  const _BlobCircle({required this.dragDeltaX, required this.snapCount});
+  const _BlobCircle({
+    required this.dragDeltaX,
+    required this.snapCount,
+    required this.size,
+  });
 
   /// Horizontal gesture delta in logical px for the current frame.
   /// Non-zero while the finger is moving; zero between frames and after release.
@@ -5073,6 +5109,7 @@ class _BlobCircle extends StatefulWidget {
 
   /// Incremented each time the finger is lifted.  Used to trigger spring-back.
   final int snapCount;
+  final double size;
 
   @override
   State<_BlobCircle> createState() => _BlobCircleState();
@@ -5145,8 +5182,8 @@ class _BlobCircleState extends State<_BlobCircle>
       animation: _ctrl,
       // Cache the circle widget — only the Transform wrapper rebuilds.
       child: Container(
-        width: 36,
-        height: 36,
+        width: widget.size,
+        height: widget.size,
         decoration: BoxDecoration(
           color: resolveAccentColor(context),
           shape: BoxShape.circle,
@@ -9673,6 +9710,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final daysInMonth = DateTime(year, month + 1, 0).day;
     final isSelectedMonth = _endDate.year == year && _endDate.month == month;
     final isCurrentMonth = today.year == year && today.month == month;
+    final gridScale = textScaleRatioFor(context, 15.0);
+    final gridCircleSize = 30.0 * gridScale;
+    final gridRowHeight = 38.0 * gridScale;
     final Color todayFill = _resolvedCategoryColor.withOpacity(0.40);
 
     return Padding(
@@ -9685,7 +9725,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             children: List.generate(7, (col) {
               final day = row * 7 + col - startOffset + 1;
               if (day < 1 || day > daysInMonth) {
-                return const Expanded(child: SizedBox(height: 38));
+                return Expanded(child: SizedBox(height: gridRowHeight));
               }
               final selected = isSelectedMonth && _endDate.day == day;
               final isToday = isCurrentMonth && today.day == day;
@@ -9698,8 +9738,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
               final Widget circle;
               if (selected) {
                 circle = Container(
-                  width: 30,
-                  height: 30,
+                  width: gridCircleSize,
+                  height: gridCircleSize,
                   decoration: BoxDecoration(
                     color: _resolvedCategoryColor,
                     shape: BoxShape.circle,
@@ -9719,8 +9759,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 );
               } else if (isToday) {
                 circle = Container(
-                  width: 30,
-                  height: 30,
+                  width: gridCircleSize,
+                  height: gridCircleSize,
                   decoration: BoxDecoration(
                     color: todayFill,
                     shape: BoxShape.circle,
@@ -9740,8 +9780,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 );
               } else if (isPast) {
                 circle = Container(
-                  width: 30,
-                  height: 30,
+                  width: gridCircleSize,
+                  height: gridCircleSize,
                   alignment: Alignment.center,
                   child: Text(
                     '$day',
@@ -9757,8 +9797,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 );
               } else {
                 circle = Container(
-                  width: 30,
-                  height: 30,
+                  width: gridCircleSize,
+                  height: gridCircleSize,
                   alignment: Alignment.center,
                   child: Text(
                     '$day',
@@ -9776,7 +9816,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
               if (isPast) {
                 return Expanded(
-                  child: SizedBox(height: 38, child: Center(child: circle)),
+                  child: SizedBox(
+                    height: gridRowHeight,
+                    child: Center(child: circle),
+                  ),
                 );
               }
               return Expanded(
@@ -9786,7 +9829,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     _datePickerCtrl.animateTo(0.0, curve: Curves.easeIn);
                   },
                   peakScale: 1.15,
-                  child: SizedBox(height: 38, child: Center(child: circle)),
+                  child: SizedBox(
+                    height: gridRowHeight,
+                    child: Center(child: circle),
+                  ),
                 ),
               );
             }),
@@ -11081,6 +11127,9 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final selected = _pickerDate;
     final isSelectedMonth = selected.year == year && selected.month == month;
     final isCurrentMonth = today.year == year && today.month == month;
+    final gridScale = textScaleRatioFor(context, 15.0);
+    final gridCircleSize = 30.0 * gridScale;
+    final gridRowHeight = 38.0 * gridScale;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -11092,7 +11141,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             children: List.generate(7, (col) {
               final day = row * 7 + col - startOffset + 1;
               if (day < 1 || day > daysInMonth) {
-                return const Expanded(child: SizedBox(height: 38));
+                return Expanded(child: SizedBox(height: gridRowHeight));
               }
               final isSel = isSelectedMonth && selected.day == day;
               final isToday = isCurrentMonth && today.day == day;
@@ -11112,8 +11161,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
               final Widget circle;
               if (isSel) {
                 circle = Container(
-                  width: 30,
-                  height: 30,
+                  width: gridCircleSize,
+                  height: gridCircleSize,
                   decoration: BoxDecoration(
                     color: _resolvedCategoryColor,
                     shape: BoxShape.circle,
@@ -11133,8 +11182,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 );
               } else if (isToday) {
                 circle = Container(
-                  width: 30,
-                  height: 30,
+                  width: gridCircleSize,
+                  height: gridCircleSize,
                   decoration: BoxDecoration(
                     color: _resolvedCategoryColor.withOpacity(0.40),
                     shape: BoxShape.circle,
@@ -11154,8 +11203,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 );
               } else if (isPast) {
                 circle = Container(
-                  width: 30,
-                  height: 30,
+                  width: gridCircleSize,
+                  height: gridCircleSize,
                   alignment: Alignment.center,
                   child: Text(
                     '$day',
@@ -11171,8 +11220,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
                 );
               } else {
                 circle = Container(
-                  width: 30,
-                  height: 30,
+                  width: gridCircleSize,
+                  height: gridCircleSize,
                   alignment: Alignment.center,
                   child: Text(
                     '$day',
@@ -11190,7 +11239,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
               if (isPast) {
                 return Expanded(
-                  child: SizedBox(height: 38, child: Center(child: circle)),
+                  child: SizedBox(
+                    height: gridRowHeight,
+                    child: Center(child: circle),
+                  ),
                 );
               }
               return Expanded(
@@ -11204,7 +11256,10 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     });
                   },
                   peakScale: 1.15,
-                  child: SizedBox(height: 38, child: Center(child: circle)),
+                  child: SizedBox(
+                    height: gridRowHeight,
+                    child: Center(child: circle),
+                  ),
                 ),
               );
             }),

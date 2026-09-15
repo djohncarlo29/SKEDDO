@@ -612,6 +612,17 @@ const double kSearchBarHorizontalEdgePadding = 16.0;
 double scaledSearchIconSize(BuildContext context, double authoredSize) =>
     MediaQuery.textScalerOf(context).scale(authoredSize);
 
+/// Returns the active text-size multiplier for an authored font size.
+///
+/// Circle indicators and other non-text geometry use this ratio when they are
+/// designed around a specific text size, so the visual relationship stays
+/// stable across System and Custom text-size modes.
+double textScaleRatioFor(BuildContext context, double authoredFontSize) {
+  if (authoredFontSize <= 0) return 1.0;
+  return MediaQuery.textScalerOf(context).scale(authoredFontSize) /
+      authoredFontSize;
+}
+
 /// The line box occupied by search text at the current OS text scale.
 double searchBarTextLineHeight(BuildContext context) =>
     MediaQuery.textScalerOf(context).scale(kSearchBarTextFontSize) *
