@@ -7741,7 +7741,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           // Starts and Ends use a date + time pill pair. Keep that pair
           // together below the label when the complete row cannot fit.
           pillsBelowLabelOnWrap: !_allDay,
-          verticalWrapGap: 16.0,
+          verticalWrapGap: kWrappedLabelValueGap,
           onLabelTap: () => _togglePicker(target),
           pills: [
             AdaptivePillSpec(
@@ -10974,7 +10974,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
         label: 'Reminder Date',
         labelStyle: _kLabelStyle,
         pillsBelowLabelOnWrap: true,
-        verticalWrapGap: 16.0,
+        verticalWrapGap: kWrappedLabelValueGap,
         labelValueGap: 8.0,
         onLabelTap: () => _togglePicker('reminder'),
         pills: [

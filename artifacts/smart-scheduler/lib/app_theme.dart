@@ -684,6 +684,9 @@ double cupertinoDatePickerFontSize(BuildContext context) {
 // scaling makes labels/value text wrap within their own areas instead of
 // allowing the two columns to touch.
 const double kLabelValueGap = 25.0;
+// Shared vertical separation when a label/value or label/pill row falls back
+// to a second level. Keep this consistent across Settings and date pickers.
+const double kWrappedLabelValueGap = 16.0;
 // Give a preserved single-line label a fractional-pixel cushion so the
 // measured width and the render paragraph do not disagree at a line break.
 const double kTextLayoutEpsilon = 0.5;
@@ -1157,7 +1160,7 @@ class MinGapLabelValueRow extends StatelessWidget {
                         softWrap: true,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: kWrappedLabelValueGap),
                     SizedBox(
                       width: double.infinity,
                       child: Align(
