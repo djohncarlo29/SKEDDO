@@ -685,8 +685,8 @@ double cupertinoDatePickerFontSize(BuildContext context) {
 // allowing the two columns to touch.
 const double kLabelValueGap = 25.0;
 // Shared vertical separation when a label/value or label/pill row falls back
-// to a second level. Keep this consistent across Settings and date pickers.
-const double kWrappedLabelValueGap = 16.0;
+// to a second level. This matches the existing Default Category row spacing.
+const double kWrappedLabelValueGap = 8.0;
 // Give a preserved single-line label a fractional-pixel cushion so the
 // measured width and the render paragraph do not disagree at a line break.
 const double kTextLayoutEpsilon = 0.5;

@@ -316,7 +316,7 @@ void main() {
       final valueRect = tester.getRect(find.byKey(valueKey));
       expect(labelRect.left, closeTo(rowRect.left, 0.01));
       expect(valueRect.right, closeTo(rowRect.right, 0.01));
-      expect(valueRect.top - labelRect.bottom, closeTo(16, 0.01));
+      expect(valueRect.top - labelRect.bottom, closeTo(8, 0.01));
       expect(labelRect.height, greaterThan(34));
       expect(valueRect.height, greaterThan(34));
     },
