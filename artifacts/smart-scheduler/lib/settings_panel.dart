@@ -842,8 +842,8 @@ class _DefaultCategorySectionState extends State<_DefaultCategorySection> {
                 top: 8,
               ),
               child: Text(
-                'Events created outside of a specific category are placed on '
-                'this category.',
+                'Events created without a category are automatically assigned '
+                'to this category.',
                 style: TextStyle(
                   fontFamily: kSFProText,
                   fontSize: 13,
