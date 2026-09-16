@@ -3894,7 +3894,6 @@ class _BloomDayCircle extends StatefulWidget {
     this.pendingBloomDate,
     this.circleColor,
     required this.circleSize,
-    this.capGrowth = false,
   });
 
   final Widget child; // always rendered at scale 1.0 (day number text)
@@ -3911,10 +3910,6 @@ class _BloomDayCircle extends StatefulWidget {
   // (child) is never scaled.  null = no background circle (plain day cell).
   final Color? circleColor;
   final double circleSize;
-  // Keep the painted circle at the static diameter while preserving the
-  // animation timing. Growth overshoot otherwise makes selected and today
-  // indicators larger than their matching static geometry.
-  final bool capGrowth;
 
   @override
   State<_BloomDayCircle> createState() => _BloomDayCircleState();
@@ -4125,9 +4120,11 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
           _DayAnim.shrink => _shrink.value,
           _DayAnim.none => 1.0,
         };
-        final double scale = widget.capGrowth
-            ? math.min(animatedScale, 1.0)
-            : animatedScale;
+        // Preserve the bloom/settle motion as a shape change, never as a
+        // scale. The indicator's authored rectangle is an invariant: the
+        // selected and today circles cannot grow during any animation.
+        final double deformation =
+            (animatedScale - 1.0).abs().clamp(0.0, 0.50);
         // effectiveColor logic:
         //  • Normal selected/today: widget.circleColor (set by parent).
         //  • Pre-bloom on unselected cell: kAccentColor injected while the
@@ -4146,8 +4143,11 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
             alignment: Alignment.center,
             children: [
               if (effectiveColor != null)
-                Transform.scale(
-                  scale: scale,
+                ClipPath(
+                  clipper: _BoundedBlobClipper(
+                    deformation: deformation,
+                    alignment: Alignment.center,
+                  ),
                   child: Container(
                     width: widget.circleSize,
                     height: widget.circleSize,
@@ -4399,11 +4399,6 @@ class _WeekRowState extends State<_WeekRow> {
                       pendingBloomDate: widget.pendingBloomDate,
                        circleColor: circleColor,
                        circleSize: dayIndicatorSize,
-                        // The selected and today indicators share one fixed
-                        // diameter at every text scale. Keep the bloom's
-                        // undershoot/timing, but never let its overshoot make
-                        // either painted circle larger than the static one.
-                        capGrowth: true,
                       child: Text(
                         '$displayDay',
                         style: TextStyle(
