@@ -122,3 +122,4 @@
 - [Calendar month dot ordering](calendar-month-dot-order.md) — month-grid dots follow the first event in displayed list order, with all-day events first.
 - [Liquid Glass SF glyph normalization](liquid-glass-sf-glyph-normalization.md) — custom SF font glyphs need one shared slot and unconstrained rendering; per-glyph FittedBox sizing distorts optical comparisons.
 - [Date-picker weekday headers](date-picker-weekday-headers.md) — all calendar and modal date-picker weekday rows use single letters, `M T W T F S S`.
+- [Calendar swipe indicator geometry](calendar-swipe-indicator-geometry.md) — cap bloom overshoot globally and keep the selected swipe overlay blob-wrapped so fixed-height circles still deform horizontally.

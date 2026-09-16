@@ -3911,9 +3911,9 @@ class _BloomDayCircle extends StatefulWidget {
   // (child) is never scaled.  null = no background circle (plain day cell).
   final Color? circleColor;
   final double circleSize;
-  // Multi Day keeps the circle at the static diameter while preserving the
-  // animation timing. Growth overshoot otherwise makes it larger than the
-  // matching pill, especially at larger OS text scales.
+  // Keep the painted circle at the static diameter while preserving the
+  // animation timing. Growth overshoot otherwise makes selected and today
+  // indicators larger than their matching static geometry.
   final bool capGrowth;
 
   @override
@@ -4399,8 +4399,11 @@ class _WeekRowState extends State<_WeekRow> {
                       pendingBloomDate: widget.pendingBloomDate,
                        circleColor: circleColor,
                        circleSize: dayIndicatorSize,
-                       capGrowth:
-                           widget.daySubMode == DayViewSubMode.multiDay,
+                        // The selected and today indicators share one fixed
+                        // diameter at every text scale. Keep the bloom's
+                        // undershoot/timing, but never let its overshoot make
+                        // either painted circle larger than the static one.
+                        capGrowth: true,
                       child: Text(
                         '$displayDay',
                         style: TextStyle(
@@ -4663,18 +4666,23 @@ class _WeekRowState extends State<_WeekRow> {
                 ),
               ),
             // ── Full-opacity sliding circle (no text) ─────────────────────
-            // Keep the circle itself at the static indicator diameter. The
-            // pill carries the horizontal blob deformation; allowing this
-            // circle to scale as well makes it visibly larger on swipe.
+            // Keep the vertical envelope at the static indicator diameter,
+            // while retaining the horizontal blob/squish response used by
+            // Single Day and Multi Day. The day number is painted separately
+            // by numbersOverlay so it never stretches with the blob.
             Positioned(
               left: curCX - dayIndicatorSize / 2 + circleTranslateX,
               top: kFixedTopPadding,
-              child: Container(
-                width: dayIndicatorSize,
-                height: dayIndicatorSize,
-                decoration: BoxDecoration(
-                  color: resolveAccentColor(context),
-                  shape: BoxShape.circle,
+              child: _BlobCircle(
+                dragDeltaX: widget.blobDeltaX,
+                snapCount: widget.blobSnapCount,
+                child: Container(
+                  width: dayIndicatorSize,
+                  height: dayIndicatorSize,
+                  decoration: BoxDecoration(
+                    color: resolveAccentColor(context),
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
             ),
