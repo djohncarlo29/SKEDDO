@@ -3894,7 +3894,6 @@ class _BloomDayCircle extends StatefulWidget {
     this.pendingBloomDate,
     this.circleColor,
     required this.circleSize,
-    this.capGrowth = false,
   });
 
   final Widget child; // always rendered at scale 1.0 (day number text)
@@ -3907,13 +3906,10 @@ class _BloomDayCircle extends StatefulWidget {
   // When non-null and equal to myDate, the pre-bloom timer has fired and this
   // circle should start its settle animation before selection is committed.
   final DateTime? pendingBloomDate;
-  // Background circle color. Only the circle scales; the day-number text
-  // (child) is never scaled. null = no background circle (plain day cell).
+  // Background circle color. The day-number text (child) is never scaled.
+  // null = no background circle (plain day cell).
   final Color? circleColor;
   final double circleSize;
-  // Keep the painted circle at its authored diameter while preserving gel
-  // animation timing. Used by the day-strip indicators.
-  final bool capGrowth;
 
   @override
   State<_BloomDayCircle> createState() => _BloomDayCircleState();
@@ -4124,9 +4120,6 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
           _DayAnim.shrink => _shrink.value,
           _DayAnim.none => 1.0,
         };
-        final double scale = widget.capGrowth
-            ? math.min(animatedScale, 1.0)
-            : animatedScale;
         // effectiveColor logic:
         //  • Normal selected/today: widget.circleColor (set by parent).
         //  • Pre-bloom on unselected cell: kAccentColor injected while the
@@ -4145,14 +4138,11 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
             alignment: Alignment.center,
             children: [
               if (effectiveColor != null)
-                Transform.scale(
-                  scale: scale,
-                  child: Container(
-                    width: widget.circleSize,
-                    height: widget.circleSize,
-                    decoration: BoxDecoration(
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _FixedBloomCirclePainter(
                       color: effectiveColor,
-                      shape: BoxShape.circle,
+                      scale: animatedScale,
                     ),
                   ),
                 ),
@@ -4163,6 +4153,52 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
       },
     );
   }
+}
+
+/// Paints the selection bloom inside one invariant indicator rectangle.
+///
+/// The old implementation used Transform.scale on the painted circle. That
+/// made the static indicator's render bounds larger than [circleSize] during
+/// the bloom and made the later swipe overlay appear to grow when it replaced
+/// the static cell. Small bloom values still shrink normally; values above
+/// 1.0 become a bounded gel deformation instead of enlarging the rectangle.
+class _FixedBloomCirclePainter extends CustomPainter {
+  const _FixedBloomCirclePainter({
+    required this.color,
+    required this.scale,
+  });
+
+  final Color color;
+  final double scale;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0 || scale <= 0) return;
+
+    final paint = Paint()..color = color;
+    final boundedScale = scale.clamp(0.0, 1.0);
+    if (scale <= 1.0) {
+      canvas.drawCircle(
+        size.center(Offset.zero),
+        size.shortestSide * boundedScale / 2.0,
+        paint,
+      );
+      return;
+    }
+
+    // Preserve the gel's overshoot as an asymmetric shape change, while the
+    // path itself stays within the authored indicator rectangle.
+    final deformation = ((scale - 1.0) / 0.35).clamp(0.0, 0.50);
+    final path = _BoundedBlobClipper(
+      deformation: deformation,
+      alignment: Alignment.center,
+    ).getClip(size);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _FixedBloomCirclePainter oldPainter) =>
+      oldPainter.color != color || oldPainter.scale != scale;
 }
 
 class _WeekRow extends StatefulWidget {
@@ -4667,6 +4703,8 @@ class _WeekRowState extends State<_WeekRow> {
             Positioned(
               left: curCX - dayIndicatorSize / 2 + circleTranslateX,
               top: kFixedTopPadding,
+              width: dayIndicatorSize,
+              height: dayIndicatorSize,
               child: _BlobCircle(
                 dragDeltaX: widget.blobDeltaX,
                 snapCount: widget.blobSnapCount,
