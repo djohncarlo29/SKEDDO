@@ -5153,8 +5153,10 @@ class _DayViewDowMask extends StatelessWidget {
 //     expands toward the right
 //   • on release → AnimationController(elasticOut) springs back to circle
 //
-// No CustomPainter is needed — the GPU handles smooth antialiasing of the
-// scaled stadium automatically.
+// The deformation is clipped to the authored bounds.  It must not use
+// Transform.scale: even scaleY: 1.0 makes the painted circle visibly wider
+// during the drag.  A bounded clip path preserves the blob without changing
+// the indicator's outer width or height.
 // ══════════════════════════════════════════════════════════════════════════════
 class _BlobCircle extends StatefulWidget {
   const _BlobCircle({
@@ -5232,28 +5234,110 @@ class _BlobCircleState extends State<_BlobCircle>
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = resolveThemeColor(kBackgroundColor, context);
-    final separatorColor = resolveThemeColor(kSeparatorColor, context);
-    final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     return AnimatedBuilder(
       animation: _ctrl,
-      // Cache the pill shape — only the Transform wrapper rebuilds.
+      // Cache the authored shape — only the bounded clip path rebuilds.
       child: widget.child,
       builder: (context, child) {
-        final s = _ctrl.isAnimating ? _springAnim.value : _stretch;
+        final deformation = ((_ctrl.isAnimating ? _springAnim.value : _stretch) -
+                1.0)
+            .clamp(0.0, 0.50);
 
-        return Transform.scale(
-          alignment: widget.alignment,
-          // Keep the pill's visible height equal to the static indicator.
-          // Horizontal deformation remains the liquid/glass squish effect,
-          // but it cannot make the sliding state taller than the static state.
-          scaleX: s,
-          scaleY: 1.0,
+        return ClipPath(
+          clipper: _BoundedBlobClipper(
+            deformation: deformation,
+            alignment: widget.alignment,
+          ),
           child: child,
         );
       },
     );
   }
+}
+
+/// A bounded, right-biased blob deformation.
+///
+/// Unlike a scale transform, this path always uses the widget's original
+/// rectangle.  The left cap narrows while the right cap widens by the same
+/// amount, so the top/bottom endpoints and the outer left/right edges remain
+/// fixed.  At zero deformation it is an exact circle or stadium.
+class _BoundedBlobClipper extends CustomClipper<Path> {
+  const _BoundedBlobClipper({
+    required this.deformation,
+    required this.alignment,
+  });
+
+  final double deformation;
+  final Alignment alignment;
+
+  @override
+  Path getClip(Size size) {
+    if (size.width <= 0 || size.height <= 0) return Path();
+
+    final left = 0.0;
+    final top = 0.0;
+    final right = size.width;
+    final bottom = size.height;
+    final middleY = size.height / 2.0;
+    final halfHeight = size.height / 2.0;
+    final baseRadius = halfHeight;
+    final amount = deformation.clamp(0.0, 0.50);
+
+    // centerLeft is used by the Multi-Day pill so it deforms more strongly
+    // toward the extension. The selected circle uses center alignment and a
+    // softer version of the same bounded right-biased blob.
+    final isPill = alignment == Alignment.centerLeft;
+    final bias = isPill ? 0.45 : 0.30;
+    final leftRadius = baseRadius * (1.0 - amount * bias);
+    final rightRadius = baseRadius * (1.0 + amount * bias);
+    const kappa = 0.5522847498;
+
+    final path = Path()
+      ..moveTo(left + leftRadius, top)
+      ..lineTo(right - rightRadius, top)
+      // Right cap: wider as the drag deformation increases.
+      ..cubicTo(
+        right - rightRadius + rightRadius * kappa,
+        top,
+        right,
+        middleY - halfHeight * kappa,
+        right,
+        middleY,
+      )
+      ..cubicTo(
+        right,
+        middleY + halfHeight * kappa,
+        right - rightRadius + rightRadius * kappa,
+        bottom,
+        right - rightRadius,
+        bottom,
+      )
+      ..lineTo(left + leftRadius, bottom)
+      // Left cap: narrows by the same amount, preserving the outer bounds.
+      ..cubicTo(
+        left + leftRadius - leftRadius * kappa,
+        bottom,
+        left,
+        middleY + halfHeight * kappa,
+        left,
+        middleY,
+      )
+      ..cubicTo(
+        left,
+        middleY - halfHeight * kappa,
+        left + leftRadius - leftRadius * kappa,
+        top,
+        left + leftRadius,
+        top,
+      )
+      ..close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant _BoundedBlobClipper oldClipper) =>
+      oldClipper.deformation != deformation ||
+      oldClipper.alignment != alignment;
 }
 
 // _DayBanner — animated strip below the week strip.
