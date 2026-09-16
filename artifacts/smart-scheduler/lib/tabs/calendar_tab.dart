@@ -3906,8 +3906,8 @@ class _BloomDayCircle extends StatefulWidget {
   // When non-null and equal to myDate, the pre-bloom timer has fired and this
   // circle should start its settle animation before selection is committed.
   final DateTime? pendingBloomDate;
-  // Background circle color.  Only the circle scales; the day-number text
-  // (child) is never scaled.  null = no background circle (plain day cell).
+  // Background circle color. The day-number text (child) is never deformed.
+  // null = no background circle (plain day cell).
   final Color? circleColor;
   final double circleSize;
 
