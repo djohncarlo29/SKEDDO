@@ -3894,6 +3894,7 @@ class _BloomDayCircle extends StatefulWidget {
     this.pendingBloomDate,
     this.circleColor,
     required this.circleSize,
+    this.capGrowth = false,
   });
 
   final Widget child; // always rendered at scale 1.0 (day number text)
@@ -3906,10 +3907,13 @@ class _BloomDayCircle extends StatefulWidget {
   // When non-null and equal to myDate, the pre-bloom timer has fired and this
   // circle should start its settle animation before selection is committed.
   final DateTime? pendingBloomDate;
-  // Background circle color. The day-number text (child) is never deformed.
-  // null = no background circle (plain day cell).
+  // Background circle color. Only the circle scales; the day-number text
+  // (child) is never scaled. null = no background circle (plain day cell).
   final Color? circleColor;
   final double circleSize;
+  // Keep the painted circle at its authored diameter while preserving gel
+  // animation timing. Used by the day-strip indicators.
+  final bool capGrowth;
 
   @override
   State<_BloomDayCircle> createState() => _BloomDayCircleState();
@@ -4120,11 +4124,9 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
           _DayAnim.shrink => _shrink.value,
           _DayAnim.none => 1.0,
         };
-        // Preserve the bloom/settle motion as a shape change, never as a
-        // scale. The indicator's authored rectangle is an invariant: the
-        // selected and today circles cannot grow during any animation.
-        final double deformation =
-            (animatedScale - 1.0).abs().clamp(0.0, 0.50);
+        final double scale = widget.capGrowth
+            ? math.min(animatedScale, 1.0)
+            : animatedScale;
         // effectiveColor logic:
         //  • Normal selected/today: widget.circleColor (set by parent).
         //  • Pre-bloom on unselected cell: kAccentColor injected while the
@@ -4143,11 +4145,8 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
             alignment: Alignment.center,
             children: [
               if (effectiveColor != null)
-                ClipPath(
-                  clipper: _BoundedBlobClipper(
-                    deformation: deformation,
-                    alignment: Alignment.center,
-                  ),
+                Transform.scale(
+                  scale: scale,
                   child: Container(
                     width: widget.circleSize,
                     height: widget.circleSize,
