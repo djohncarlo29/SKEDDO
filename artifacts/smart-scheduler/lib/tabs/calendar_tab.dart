@@ -3900,10 +3900,10 @@ class _BloomDayCircle extends StatefulWidget {
     this.pendingBloomDate,
     this.circleColor,
     required this.circleSize,
-    this.indicatorWidth,
-    this.indicatorHeight,
-    this.indicatorShape = BoxShape.circle,
-    this.indicatorBorderRadius,
+    this.pillWidth,
+    this.pillColor,
+    this.pillBlobDeltaX,
+    this.pillBlobSnapCount = 0,
     this.fixedSize = false,
     this.backgroundOffsetX = 0.0,
     this.stationaryCircleColor,
@@ -3923,13 +3923,13 @@ class _BloomDayCircle extends StatefulWidget {
   // null = no background circle (plain day cell).
   final Color? circleColor;
   final double circleSize;
-  // The selected indicator uses the default square/circle geometry.  The
-  // Multi-Day indicator reuses this exact renderer with a wider rectangular
-  // view box and stadium corners.
-  final double? indicatorWidth;
-  final double? indicatorHeight;
-  final BoxShape indicatorShape;
-  final BorderRadius? indicatorBorderRadius;
+  // Optional Multi-Day extension. It is painted inside this same renderer,
+  // before the selected circle, so both backgrounds share the exact same
+  // transform, view box, compositing order, and parent clipping.
+  final double? pillWidth;
+  final Color? pillColor;
+  final double? pillBlobDeltaX;
+  final int pillBlobSnapCount;
   // Day View indicators must remain physically fixed while the content swipe
   // moves them horizontally.  Month View can still use the authored bloom
   // animation, but allowing its overshoot in the pinned Day View strip makes
@@ -4180,14 +4180,52 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
         final double renderedScale = widget.fixedSize
             ? 1.0
             : scale;
-        final indicatorWidth = widget.indicatorWidth ?? widget.circleSize;
-        final indicatorHeight = widget.indicatorHeight ?? widget.circleSize;
+        Widget transformedBackground(Widget background) {
+          return Transform.translate(
+            offset: Offset(widget.backgroundOffsetX, 0),
+            child: Transform.scale(
+              scale: renderedScale,
+              child: background,
+            ),
+          );
+        }
+
+        Widget? pillBackground;
+        if (widget.pillWidth != null && widget.pillColor != null) {
+          pillBackground = Container(
+            width: widget.pillWidth,
+            height: widget.circleSize,
+            decoration: BoxDecoration(
+              color: widget.pillColor,
+              shape: BoxShape.rectangle,
+              borderRadius: BorderRadius.circular(widget.circleSize / 2),
+            ),
+          );
+          if (widget.pillBlobDeltaX != null) {
+            pillBackground = _BlobCircle(
+              dragDeltaX: widget.pillBlobDeltaX!,
+              snapCount: widget.pillBlobSnapCount,
+              alignment: Alignment.centerLeft,
+              child: pillBackground,
+            );
+          }
+        }
+
         return SizedBox(
-          width: indicatorWidth,
-          height: indicatorHeight,
+          width: widget.circleSize,
+          height: widget.circleSize,
           child: Stack(
+            clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
+              if (pillBackground != null)
+                Positioned(
+                  left: (widget.circleSize - widget.pillWidth!) / 2,
+                  top: 0,
+                  width: widget.pillWidth,
+                  height: widget.circleSize,
+                  child: transformedBackground(pillBackground),
+                ),
               if (widget.stationaryCircleColor != null)
                 Container(
                   width: widget.circleSize,
@@ -4198,18 +4236,13 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
                   ),
                 ),
               if (effectiveColor != null)
-                Transform.translate(
-                  offset: Offset(widget.backgroundOffsetX, 0),
-                  child: Transform.scale(
-                    scale: renderedScale,
-                    child: Container(
-                      width: indicatorWidth,
-                      height: indicatorHeight,
-                      decoration: BoxDecoration(
-                        color: effectiveColor,
-                        shape: widget.indicatorShape,
-                        borderRadius: widget.indicatorBorderRadius,
-                      ),
+                transformedBackground(
+                  Container(
+                    width: widget.circleSize,
+                    height: widget.circleSize,
+                    decoration: BoxDecoration(
+                      color: effectiveColor,
+                      shape: BoxShape.circle,
                     ),
                   ),
                 ),
@@ -4431,6 +4464,16 @@ class _WeekRowState extends State<_WeekRow> {
                         ? resolveAccentColor(context).withOpacity(0.40)
                         : null,
                     circleSize: restingIndicatorDiameter,
+                    pillWidth: isSel && multiDayPillActive
+                        ? cellW + restingIndicatorDiameter
+                        : null,
+                    pillColor: isSel && multiDayPillActive
+                        ? resolveAccentColor(context).withOpacity(0.40)
+                        : null,
+                    pillBlobDeltaX: isSel && multiDayPillActive
+                        ? widget.blobDeltaX
+                        : null,
+                    pillBlobSnapCount: widget.blobSnapCount,
                     fixedSize: true,
                     backgroundOffsetX: isSel ? circleTranslateX : 0.0,
                     stationaryCircleColor: isSel &&
@@ -4505,6 +4548,12 @@ class _WeekRowState extends State<_WeekRow> {
                       pendingBloomDate: widget.pendingBloomDate,
                        circleColor: circleColor,
                        circleSize: restingIndicatorDiameter,
+                        pillWidth: isSel && multiDayPillActive
+                            ? cellW + restingIndicatorDiameter
+                            : null,
+                        pillColor: isSel && multiDayPillActive
+                            ? resolveAccentColor(context).withOpacity(0.40)
+                            : null,
                         // Day View indicator circles must stay at the authored
                         // diameter. The pill is a fixed-height shape, so
                         // allowing _BloomDayCircle's bloom Transform.scale to
@@ -4572,62 +4621,7 @@ class _WeekRowState extends State<_WeekRow> {
           ),
         );
 
-        if (!isSliding) {
-          // In Multi Day mode draw a single _BloomDayCircle pill spanning both
-          // the selected day and the next day. It sits BEHIND rowContent so the
-          // full-opacity selected-day circle renders on top.
-          // The pill is gated on collapseProgress so it fades out when transitioning
-          // back to Month View and never bleeds into the non-Day-View grid.
-          if (multiDayHasExtension) {
-            final selCol = multiDaySelCol!;
-            final nextCol = selCol + 1;
-            // Column centres (col 0 = week-number, day cols are 1–7).
-            final selCX = (selCol + 1.5) * cellW;
-            final nextCX = (nextCol + 1.5) * cellW;
-
-            return Stack(
-              children: [
-                // The pill uses the same _BloomDayCircle renderer as the
-                // selected indicator. Its only differences are the rectangular
-                // view box, stadium corners, and 40% opacity.
-                // Snaps in sync with the header title: _view becomes CalendarView.day
-                // BEFORE _collapseCtrl.forward() fires, so the title reads "Jul 09"
-                // from frame 0 of the enter animation (colT > 0).  On exit, _view
-                // stays day until reverse() fully completes (colT → 0), so the pill
-                // also stays visible for the whole exit.  Result: both snap together.
-                if (widget.collapseProgress > 0.0)
-                  Positioned(
-                    left: selCX - restingIndicatorDiameter / 2,
-                    top: kFixedTopPadding,
-                    child: _BloomDayCircle(
-                      key: const ValueKey('multi-day-pill'),
-                      isSel: true,
-                      tapCount: _tapCount,
-                      lastTappedDate: _lastTappedDate,
-                      myDate: widget.selectedDate,
-                      settleCount: widget.settleCount,
-                      blobSnapCount: widget.blobSnapCount,
-                      pendingBloomDate: widget.pendingBloomDate,
-                      circleColor: resolveAccentColor(context).withOpacity(0.40),
-                      circleSize: restingIndicatorDiameter,
-                      indicatorWidth:
-                          nextCX - selCX + restingIndicatorDiameter,
-                      indicatorHeight: restingIndicatorDiameter,
-                      indicatorShape: BoxShape.rectangle,
-                      indicatorBorderRadius: BorderRadius.circular(
-                        restingIndicatorDiameter / 2,
-                      ),
-                      fixedSize: true,
-                      child: const SizedBox.shrink(),
-                    ),
-                  ),
-                // rowContent on top: selected-day full circle, next-day white text.
-                rowContent,
-              ],
-            );
-          }
-          return rowContent;
-        }
+        if (!isSliding) return rowContent;
 
         // ── Sliding-circle overlay ─────────────────────────────────────────
         // The week strip (labels, week number, today faded circle) stays
@@ -4715,44 +4709,6 @@ class _WeekRowState extends State<_WeekRow> {
           clipBehavior: Clip.hardEdge,
           children: [
             rowContent,
-            // ── Multi Day sliding pill — translates with the circle ───────
-            // Same snap timing as the static pill and the header title.
-            // It uses the same _BloomDayCircle renderer as the selected circle.
-            // The blob wrapper only adds the existing horizontal deformation.
-            if (multiDayHasExtension && widget.collapseProgress > 0.0)
-              Positioned(
-                left:
-                    (multiDaySelCol! + 1.5) * cellW +
-                    circleTranslateX -
-                    restingIndicatorDiameter / 2,
-                top: kFixedTopPadding,
-                child: _BlobCircle(
-                  dragDeltaX: widget.blobDeltaX,
-                  snapCount: widget.blobSnapCount,
-                  alignment: Alignment.centerLeft,
-                  child: _BloomDayCircle(
-                    key: const ValueKey('multi-day-pill'),
-                    isSel: true,
-                    tapCount: _tapCount,
-                    lastTappedDate: _lastTappedDate,
-                    myDate: widget.selectedDate,
-                    settleCount: widget.settleCount,
-                    blobSnapCount: widget.blobSnapCount,
-                    pendingBloomDate: widget.pendingBloomDate,
-                    circleColor: resolveAccentColor(context).withOpacity(0.40),
-                    circleSize: restingIndicatorDiameter,
-                    indicatorWidth:
-                        cellW + restingIndicatorDiameter,
-                    indicatorHeight: restingIndicatorDiameter,
-                    indicatorShape: BoxShape.rectangle,
-                    indicatorBorderRadius: BorderRadius.circular(
-                      restingIndicatorDiameter / 2,
-                    ),
-                    fixedSize: true,
-                    child: const SizedBox.shrink(),
-                  ),
-                ),
-              ),
             // ── Numbers: always on top, never move ───────────────────────
             numbersOverlay,
           ],
