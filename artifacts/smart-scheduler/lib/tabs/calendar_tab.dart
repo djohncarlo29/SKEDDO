@@ -4484,7 +4484,16 @@ class _WeekRowState extends State<_WeekRow> {
                       pendingBloomDate: widget.pendingBloomDate,
                        circleColor: circleColor,
                        circleSize: dayIndicatorSize,
-                       fixedSize: widget.collapseProgress > 0.95,
+                        // The Multi Day pill is always authored at the
+                        // indicator diameter. Keep its selected/today
+                        // circles at that same diameter throughout the mode's
+                        // entry transition as well as during content swipes.
+                        // This does not change the swipe render tree: the
+                        // selected background still translates inside the
+                        // mounted _BloomDayCircle.
+                        fixedSize:
+                            widget.daySubMode == DayViewSubMode.multiDay ||
+                            widget.collapseProgress > 0.95,
                       child: Text(
                         '$displayDay',
                         style: TextStyle(
