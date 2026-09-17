@@ -3960,6 +3960,9 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
   // Color captured at the moment a selected circle begins deselecting,
   // held for the shrink animation so the circle stays visible while fading.
   Color? _shrinkColor;
+  late final AnimationController _pillBlobCtrl;
+  late Animation<double> _pillBlobSpring;
+  double _pillBlobStretch = 1.0;
 
   static const double _kPeak = 1.15;
 
@@ -4060,6 +4063,14 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
       begin: 1.0,
       end: 0.0,
     ).chain(CurveTween(curve: Curves.easeIn)).animate(_ctrl);
+    _pillBlobCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    );
+    _pillBlobSpring = Tween<double>(
+      begin: 1.0,
+      end: 1.0,
+    ).animate(_pillBlobCtrl);
     // Always start at rest — do not bloom on mount.
     // The month view mounts fresh each time a zoom-in settles (zoomT crosses
     // 0.999), so initState fires for every day cell, including the selected one.
@@ -4077,6 +4088,19 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
       _ctrl.stop();
       _ctrl.value = 1.0;
       _activeAnim = _DayAnim.none;
+    }
+
+    if (widget.pillBlobSnapCount != old.pillBlobSnapCount) {
+      _pillBlobSpring = Tween<double>(
+        begin: _pillBlobStretch,
+        end: 1.0,
+      ).animate(CurvedAnimation(parent: _pillBlobCtrl, curve: Curves.easeOutCubic));
+      _pillBlobCtrl.forward(from: 0.0);
+    } else if (widget.pillBlobDeltaX != null &&
+        widget.pillBlobDeltaX != 0.0) {
+      if (_pillBlobCtrl.isAnimating) _pillBlobCtrl.stop();
+      _pillBlobStretch =
+          1.0 + (widget.pillBlobDeltaX!.abs() * 0.06).clamp(0.0, 0.50);
     }
 
     // ── Pre-bloom: incoming navigation target ─────────────────────────────
@@ -4141,13 +4165,14 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
   @override
   void dispose() {
     _ctrl.dispose();
+    _pillBlobCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _ctrl,
+      animation: Listenable.merge([_ctrl, _pillBlobCtrl]),
       // The label changes to an empty widget during the live swipe while the
       // numbers overlay owns the visible text. Read it inside the builder so
       // AnimatedBuilder cannot retain the pre-swipe label across a rebuild.
@@ -4180,6 +4205,11 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
         final double renderedScale = widget.fixedSize
             ? 1.0
             : scale;
+        final pillBlobStretch = _pillBlobCtrl.isAnimating
+            ? _pillBlobSpring.value
+            : _pillBlobStretch;
+        final pillBlobDeformation =
+            (pillBlobStretch - 1.0).clamp(0.0, 0.50).toDouble();
         Widget transformedBackground(Widget background) {
           return Transform.translate(
             offset: Offset(widget.backgroundOffsetX, 0),
