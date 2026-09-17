@@ -4290,6 +4290,16 @@ class _WeekRowState extends State<_WeekRow> {
         // "pill size" here is what allowed the pill to retain the older,
         // larger diameter at the upper text-size ticks.
         final restingIndicatorDiameter = _dayIndicatorSizeFor(context);
+        // The selected circle is laid out inside the row's post-top-padding
+        // slot. At the larger text-size ticks that slot can be shorter than
+        // the scaled authored diameter, so the circle's visible bounds are
+        // clipped to this height while the overlay pill would otherwise keep
+        // painting at its full height. Match the pill to the circle's actual
+        // vertical paint slot, without changing the circle or its scaling.
+        final multiDayPillHeight = math.min(
+          restingIndicatorDiameter,
+          math.max(0.0, widget.rowHeight - kFixedTopPadding),
+        );
         final separatorColor = resolveThemeColor(kSeparatorColor, context);
         final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
         final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
@@ -4500,7 +4510,6 @@ class _WeekRowState extends State<_WeekRow> {
                         // swipe render tree: the selected background still
                         // translates inside the mounted _BloomDayCircle.
                         fixedSize:
-                            widget.collapseProgress > 0.0 ||
                             widget.daySubMode == DayViewSubMode.multiDay ||
                             multiDayPillActive ||
                             widget.collapseProgress > 0.95,
@@ -4583,10 +4592,10 @@ class _WeekRowState extends State<_WeekRow> {
                 // also stays visible for the whole exit.  Result: both snap together.
                 if (widget.collapseProgress > 0.0)
                   Positioned(
-                    left: selCX - restingIndicatorDiameter / 2,
+                    left: selCX - multiDayPillHeight / 2,
                     top: kFixedTopPadding,
-                    width: nextCX - selCX + restingIndicatorDiameter,
-                    height: restingIndicatorDiameter,
+                    width: nextCX - selCX + multiDayPillHeight,
+                    height: multiDayPillHeight,
                     child: Container(
                       decoration: ShapeDecoration(
                         color: resolveAccentColor(context).withOpacity(0.40),
@@ -4697,13 +4706,13 @@ class _WeekRowState extends State<_WeekRow> {
               Positioned(
                 left:
                     (multiDaySelCol! + 1.5) * cellW -
-                    restingIndicatorDiameter / 2 +
+                    multiDayPillHeight / 2 +
                     circleTranslateX,
                 top: kFixedTopPadding,
                 width:
                     cellW +
-                    restingIndicatorDiameter, // spans selDay centre to nextDay centre + caps
-                height: restingIndicatorDiameter,
+                    multiDayPillHeight, // spans selDay centre to nextDay centre + caps
+                height: multiDayPillHeight,
                 child: _BlobCircle(
                   dragDeltaX: widget.blobDeltaX,
                   snapCount: widget.blobSnapCount,
