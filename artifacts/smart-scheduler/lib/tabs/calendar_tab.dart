@@ -3901,6 +3901,8 @@ class _BloomDayCircle extends StatefulWidget {
     this.circleColor,
     required this.circleSize,
     this.fixedSize = false,
+    this.backgroundOffsetX = 0.0,
+    this.stationaryCircleColor,
   });
 
   final Widget child; // always rendered at scale 1.0 (day number text)
@@ -3922,6 +3924,14 @@ class _BloomDayCircle extends StatefulWidget {
   // animation, but allowing its overshoot in the pinned Day View strip makes
   // the selected and translucent today circles grow during a content swipe.
   final bool fixedSize;
+  // During a same-week Day View content swipe, keep this widget mounted and
+  // translate only its painted background.  Replacing the widget with a
+  // separately positioned Container changes the parent geometry at the first
+  // drag frame and makes large Dynamic Type circles appear to grow.
+  final double backgroundOffsetX;
+  // When the selected day is also today, keep today's translucent marker at
+  // its original day while the full-opacity selected marker slides away.
+  final Color? stationaryCircleColor;
 
   @override
   State<_BloomDayCircle> createState() => _BloomDayCircleState();
@@ -4127,9 +4137,10 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _ctrl,
-      // widget.child (the day-number Text) is cached here — it never scales.
-      child: widget.child,
-      builder: (ctx, label) {
+      // The label changes to an empty widget during the live swipe while the
+      // numbers overlay owns the visible text. Read it inside the builder so
+      // AnimatedBuilder cannot retain the pre-swipe label across a rebuild.
+      builder: (ctx, _) {
         final double scale = switch (_activeAnim) {
           _DayAnim.bloomIn => _bloomIn.value,
           _DayAnim.pulse => _pulse.value,
@@ -4164,19 +4175,31 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
           child: Stack(
             alignment: Alignment.center,
             children: [
+              if (widget.stationaryCircleColor != null)
+                Container(
+                  width: widget.circleSize,
+                  height: widget.circleSize,
+                  decoration: BoxDecoration(
+                    color: widget.stationaryCircleColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
               if (effectiveColor != null)
-                Transform.scale(
-                  scale: renderedScale,
-                  child: Container(
-                    width: widget.circleSize,
-                    height: widget.circleSize,
-                    decoration: BoxDecoration(
-                      color: effectiveColor,
-                      shape: BoxShape.circle,
+                Transform.translate(
+                  offset: Offset(widget.backgroundOffsetX, 0),
+                  child: Transform.scale(
+                    scale: renderedScale,
+                    child: Container(
+                      width: widget.circleSize,
+                      height: widget.circleSize,
+                      decoration: BoxDecoration(
+                        color: effectiveColor,
+                        shape: BoxShape.circle,
+                      ),
                     ),
                   ),
                 ),
-              label!, // day number — always scale 1.0
+              widget.child, // day number — always scale 1.0
             ],
           ),
         );
@@ -4268,6 +4291,10 @@ class _WeekRowState extends State<_WeekRow> {
         // 8 equally-spaced columns: col 0 = week-num, col 1-7 = Mon-Sun.
         // A 7px right margin keeps the last day column from being too tight.
         final cellW = (totalW - 7) / 8;
+        final circleTranslateX = isSliding
+            ? -widget.circleSlideX * cellW / totalW
+            : 0.0;
+        final curCX = (widget.selectedDate.weekday + 0.5) * cellW;
 
         // Pre-compute the selected column for Multi Day mode.
         // Used both to style the next-day cell text AND to draw the pill.
@@ -4287,6 +4314,23 @@ class _WeekRowState extends State<_WeekRow> {
         }
         final bool multiDayHasExtension =
             multiDaySelCol != null && multiDaySelCol < 6;
+        double? todayCX;
+        for (int c = 0; c < 7; c++) {
+          final i2 = firstIdx + c;
+          final d2 = i2 - offset + 1;
+          if (_sameDay(DateTime(widget.year, widget.month, d2), widget.today)) {
+            todayCX = (c + 1.5) * cellW;
+            break;
+          }
+        }
+        final todayUnderSlidingPill =
+            isSliding &&
+            todayCX != null &&
+            multiDayHasExtension &&
+            widget.collapseProgress > 0.0 &&
+            ((curCX + circleTranslateX - todayCX!).abs() < cellW * 0.5 ||
+                (curCX + circleTranslateX + cellW - todayCX).abs() <
+                    cellW * 0.5);
 
         final rowContent = Container(
           height: widget.rowHeight,
@@ -4348,11 +4392,33 @@ class _WeekRowState extends State<_WeekRow> {
 
                 final Widget dayCell;
                 if (isSliding) {
-                  // In sliding mode every per-cell background is suppressed.
-                  // The today indicator is rendered as a separate non-deforming
-                  // Positioned layer in the Stack below the blob, so the blob's
-                  // teardrop shape never distorts the today circle.
-                  dayCell = const SizedBox.shrink();
+                  // Keep the same indicator widget mounted while the content
+                  // swipe moves it. Only the selected background translates;
+                  // the number is painted by numbersOverlay above the row.
+                  dayCell = _BloomDayCircle(
+                    key: ValueKey(date),
+                    isSel: isSel,
+                    tapCount: _tapCount,
+                    lastTappedDate: _lastTappedDate,
+                    myDate: date,
+                    settleCount: widget.settleCount,
+                    blobSnapCount: widget.blobSnapCount,
+                    pendingBloomDate: widget.pendingBloomDate,
+                    circleColor: isSel
+                        ? resolveAccentColor(context)
+                        : isToday && !todayUnderSlidingPill
+                        ? resolveAccentColor(context).withOpacity(0.40)
+                        : null,
+                    circleSize: dayIndicatorSize,
+                    fixedSize: true,
+                    backgroundOffsetX: isSel ? circleTranslateX : 0.0,
+                    stationaryCircleColor: isSel &&
+                            isToday &&
+                            !todayUnderSlidingPill
+                        ? resolveAccentColor(context).withOpacity(0.40)
+                        : null,
+                    child: const SizedBox.shrink(),
+                  );
                 } else {
                   // Normal (non-sliding) mode — wrap in gel/bloom animation.
                   //
@@ -4528,8 +4594,6 @@ class _WeekRowState extends State<_WeekRow> {
         // At a full swipe (|circleSlideX| == totalW) the circle has moved
         // exactly one cellW — landing precisely on the adjacent column.
         // Column centres: weekday 1 (Mon) → col 1 → (1 + 0.5) * cellW, etc.
-        final curCX = (widget.selectedDate.weekday + 0.5) * cellW;
-        final circleTranslateX = -widget.circleSlideX * cellW / totalW;
 
         // ── Numbers overlay (top layer) ────────────────────────────────
         // Drawn above the sliding circle so numbers never move, only the
@@ -4547,7 +4611,6 @@ class _WeekRowState extends State<_WeekRow> {
                   final date2 = DateTime(widget.year, widget.month, day2);
                   final isOverflow2 = day2 < 1 || day2 > days;
                   final isToday2 = _sameDay(date2, widget.today);
-                  final isSel2 = _sameDay(date2, widget.selectedDate);
 
                   if (isOverflow2 && !widget.showOverflow) {
                     return const Expanded(child: SizedBox.shrink());
@@ -4602,56 +4665,10 @@ class _WeekRowState extends State<_WeekRow> {
           ),
         );
 
-        // Locate today's column in this row — includes overflow cells so the
-        // indicator stays visible when today falls in a cross-month week strip.
-        // Dart's DateTime handles out-of-range day numbers correctly (e.g.
-        // DateTime(2026, 6, 0) == May 31, 2026), so no bounds guard is needed.
-        double? todayCX;
-        for (int c = 0; c < 7; c++) {
-          final i2 = firstIdx + c;
-          final d2 = i2 - offset + 1;
-          if (_sameDay(DateTime(widget.year, widget.month, d2), widget.today)) {
-            todayCX = (c + 1.5) * cellW;
-            break;
-          }
-        }
-
-        // Whether today's cell falls within the sliding pill's range.
-        // When true the pill already provides the 40%-opacity tint, so
-        // the separate Positioned today indicator is suppressed to prevent
-        // double-compositing (two 40%-opacity layers stacking to ~64%).
-        // The pill spans from the blob centre (circleCenter) to one cellW
-        // to its right; a today circle at todayCX is "under the pill" if
-        // it sits within half a cell of either of those two positions.
-        final double circleCenter2 = curCX + circleTranslateX;
-        final bool todayUnderPill =
-            todayCX != null &&
-            multiDayHasExtension &&
-            widget.collapseProgress > 0.0 &&
-            ((circleCenter2 - todayCX!).abs() < cellW * 0.5 ||
-                (circleCenter2 + cellW - todayCX!).abs() < cellW * 0.5);
-
         return Stack(
           clipBehavior: Clip.hardEdge,
           children: [
             rowContent,
-            // ── Today indicator: fixed circle, not affected by blob shape ─
-            // Suppressed when today is already covered by the sliding Multi
-            // Day pill — the pill alone provides the 40% tint, and rendering
-            // both would compound two semi-transparent layers.
-            if (todayCX != null && !todayUnderPill)
-              Positioned(
-                left: todayCX - dayIndicatorSize / 2,
-                top: kFixedTopPadding,
-                child: Container(
-                  width: dayIndicatorSize,
-                  height: dayIndicatorSize,
-                  decoration: BoxDecoration(
-                    color: resolveAccentColor(context).withOpacity(0.40),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
             // ── Multi Day sliding pill — translates with the circle ───────
             // Same snap timing as the static pill and the header title.
             // Its authored width and height match the static pill. The shared
@@ -4680,25 +4697,6 @@ class _WeekRowState extends State<_WeekRow> {
                   ),
                 ),
               ),
-            // ── Full-opacity sliding circle (no text) ─────────────────────
-            // Keep this circle exactly at the authored static diameter while
-            // it translates. The translucent Multi Day pill above it owns the
-            // drag blob; applying that velocity deformation to this circle
-            // makes the selected indicator visibly grow during every swipe.
-            // The day number is painted separately by numbersOverlay so it
-            // never translates or stretches with the overlay.
-            Positioned(
-              left: curCX - dayIndicatorSize / 2 + circleTranslateX,
-              top: kFixedTopPadding,
-              child: Container(
-                width: dayIndicatorSize,
-                height: dayIndicatorSize,
-                decoration: BoxDecoration(
-                  color: resolveAccentColor(context),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
             // ── Numbers: always on top, never move ───────────────────────
             numbersOverlay,
           ],
