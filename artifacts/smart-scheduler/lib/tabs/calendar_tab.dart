@@ -4285,14 +4285,6 @@ class _WeekRowState extends State<_WeekRow> {
       builder: (context, constraints) {
         final totalW = constraints.maxWidth;
         final dayIndicatorSize = _dayIndicatorSizeFor(context);
-        // Multi-Day indicators use the fixed authored circle size. The row
-        // itself still reserves the Dynamic Type-aware height above, but the
-        // selected/today circles and the spanning pill must share this exact
-        // painted diameter at every text-size tick.
-        final paintedIndicatorSize =
-            widget.daySubMode == DayViewSubMode.multiDay
-            ? _kDayIndicatorDiameter
-            : dayIndicatorSize;
         final separatorColor = resolveThemeColor(kSeparatorColor, context);
         final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
         final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
@@ -4417,7 +4409,7 @@ class _WeekRowState extends State<_WeekRow> {
                         : isToday && !todayUnderSlidingPill
                         ? resolveAccentColor(context).withOpacity(0.40)
                         : null,
-                    circleSize: paintedIndicatorSize,
+                    circleSize: dayIndicatorSize,
                     fixedSize: true,
                     backgroundOffsetX: isSel ? circleTranslateX : 0.0,
                     stationaryCircleColor: isSel &&
@@ -4491,7 +4483,7 @@ class _WeekRowState extends State<_WeekRow> {
                       blobSnapCount: widget.blobSnapCount,
                       pendingBloomDate: widget.pendingBloomDate,
                        circleColor: circleColor,
-                        circleSize: paintedIndicatorSize,
+                       circleSize: dayIndicatorSize,
                         // The Multi Day pill is always authored at the
                         // indicator diameter. Keep its selected/today
                         // circles at that same diameter throughout the mode's
@@ -4581,10 +4573,10 @@ class _WeekRowState extends State<_WeekRow> {
                 // also stays visible for the whole exit.  Result: both snap together.
                 if (widget.collapseProgress > 0.0)
                   Positioned(
-                    left: selCX - paintedIndicatorSize / 2,
+                    left: selCX - dayIndicatorSize / 2,
                     top: kFixedTopPadding,
-                    width: nextCX - selCX + paintedIndicatorSize,
-                    height: paintedIndicatorSize,
+                    width: nextCX - selCX + dayIndicatorSize,
+                    height: dayIndicatorSize,
                     child: Container(
                       decoration: ShapeDecoration(
                         color: resolveAccentColor(context).withOpacity(0.40),
@@ -4695,13 +4687,13 @@ class _WeekRowState extends State<_WeekRow> {
               Positioned(
                 left:
                     (multiDaySelCol! + 1.5) * cellW -
-                    paintedIndicatorSize / 2 +
+                    dayIndicatorSize / 2 +
                     circleTranslateX,
                 top: kFixedTopPadding,
                 width:
                     cellW +
-                    paintedIndicatorSize, // spans selDay centre to nextDay centre + caps
-                height: paintedIndicatorSize,
+                    dayIndicatorSize, // spans selDay centre to nextDay centre + caps
+                height: dayIndicatorSize,
                 child: _BlobCircle(
                   dragDeltaX: widget.blobDeltaX,
                   snapCount: widget.blobSnapCount,
