@@ -1211,7 +1211,12 @@ class CalendarTabState extends State<CalendarTab>
         from: _slideX,
         to: _screenW,
         then: applyP,
-        onBloom: _computeBloom(isNext: false),
+        // Do not pre-bloom the incoming day during a user swipe.  That
+        // animation changes the indicator's painted diameter while the
+        // gesture is still moving, which is especially visible at the larger
+        // OS text-size stops.  Selection feedback can happen after the slide
+        // has finished; the indicator itself must remain static-size during
+        // the complete drag/snap path.
       );
     } else if (_slideX < -_screenW * frac || vel < -500) {
       _navLocked = true;
@@ -1219,7 +1224,8 @@ class CalendarTabState extends State<CalendarTab>
         from: _slideX,
         to: -_screenW,
         then: applyN,
-        onBloom: _computeBloom(isNext: true),
+        // See the previous branch: no selection bloom is allowed to start
+        // before a user-driven swipe has landed.
       );
     } else {
       _animateSlide(from: _slideX, to: 0.0, then: () {});
