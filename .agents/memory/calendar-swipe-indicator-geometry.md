@@ -11,4 +11,4 @@ Selection bloom and swipe deformation are separate effects. User-driven calendar
 
 The Multi-Day pill overlay must also cap its painted height to the week row's post-top-padding slot. At larger text sizes, the selected circle can be clipped by that slot while a positioned overlay pill would otherwise paint its full authored diameter, even when both widgets receive the same nominal height.
 
-When the selected circle has an independent bloom/settle transform, nominal sizes still do not guarantee visual parity. The pill overlay must observe the selected circle's rendered scale and apply that scale to its own centered height and cap geometry.
+When the selected circle has an independent bloom/settle transform, nominal sizes still do not guarantee visual parity. The pill overlay must observe the selected circle's rendered scale, transform the authored circle interval around its center, intersect that interval with the row clip slot, and use the resulting top/bottom bounds for its own cap geometry. Scaling a pre-clipped height is incorrect when the transformed circle is clipped.

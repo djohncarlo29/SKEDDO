@@ -4284,7 +4284,8 @@ class _WeekRowState extends State<_WeekRow> {
   }
 
   Widget _scaledPillPositioned({
-    required double baseHeight,
+    required double authoredDiameter,
+    required double maxPaintHeight,
     required double centerX,
     required double spanBetweenCenters,
     required double baseTop,
@@ -4293,12 +4294,33 @@ class _WeekRowState extends State<_WeekRow> {
     return ValueListenableBuilder<double>(
       valueListenable: _selectedCircleRenderedScale,
       builder: (context, renderedScale, _) {
-        final visibleHeight = baseHeight * renderedScale;
-        final top = baseTop + (baseHeight - visibleHeight) / 2;
+        // The circle is transformed around the centre of its authored square,
+        // then clipped by the week row's post-top-padding slot.  The pill is
+        // an overlay, so giving it the same nominal height is not enough: its
+        // StadiumBorder would otherwise paint the full rectangle even when
+        // the selected circle's transformed bounds are clipped by the row.
+        //
+        // Derive the actual painted interval first, then give the pill exactly
+        // that interval.  This keeps the circle as the sole geometry reference
+        // and leaves its widget, scale, animation, and clipping untouched.
+        final scaledHeight = authoredDiameter * renderedScale;
+        final transformedTop =
+            baseTop + (authoredDiameter - scaledHeight) / 2;
+        final transformedBottom = transformedTop + scaledHeight;
+        final clipTop = baseTop;
+        final clipBottom = baseTop + maxPaintHeight;
+        final paintTop = math.max(transformedTop, clipTop);
+        final paintBottom = math.min(transformedBottom, clipBottom);
+        final visibleHeight = math.max(0.0, paintBottom - paintTop);
+        // Keep the existing horizontal cap/span behavior. Only the vertical
+        // painted interval is corrected; swipe width and cap travel remain
+        // driven by the same pre-clipped scaled diameter as before.
+        final horizontalCapDiameter =
+            math.min(authoredDiameter, maxPaintHeight) * renderedScale;
         return Positioned(
-          left: centerX - visibleHeight / 2,
-          top: top,
-          width: spanBetweenCenters + visibleHeight,
+          left: centerX - horizontalCapDiameter / 2,
+          top: paintTop,
+          width: spanBetweenCenters + horizontalCapDiameter,
           height: visibleHeight,
           child: childBuilder(),
         );
@@ -4340,10 +4362,8 @@ class _WeekRowState extends State<_WeekRow> {
         // clipped to this height while the overlay pill would otherwise keep
         // painting at its full height. Match the pill to the circle's actual
         // vertical paint slot, without changing the circle or its scaling.
-        final multiDayPillHeight = math.min(
-          restingIndicatorDiameter,
-          math.max(0.0, widget.rowHeight - kFixedTopPadding),
-        );
+        final indicatorPaintSlotHeight =
+            math.max(0.0, widget.rowHeight - kFixedTopPadding);
         final separatorColor = resolveThemeColor(kSeparatorColor, context);
         final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
         final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
@@ -4642,7 +4662,8 @@ class _WeekRowState extends State<_WeekRow> {
                 // also stays visible for the whole exit.  Result: both snap together.
                 if (widget.collapseProgress > 0.0)
                   _scaledPillPositioned(
-                    baseHeight: multiDayPillHeight,
+                    authoredDiameter: restingIndicatorDiameter,
+                    maxPaintHeight: indicatorPaintSlotHeight,
                     centerX: selCX,
                     spanBetweenCenters: nextCX - selCX,
                     baseTop: kFixedTopPadding,
@@ -4754,7 +4775,8 @@ class _WeekRowState extends State<_WeekRow> {
             // height fixed and expanding from the left edge toward the right.
             if (multiDayHasExtension && widget.collapseProgress > 0.0)
               _scaledPillPositioned(
-                baseHeight: multiDayPillHeight,
+                authoredDiameter: restingIndicatorDiameter,
+                maxPaintHeight: indicatorPaintSlotHeight,
                 centerX:
                     (multiDaySelCol! + 1.5) * cellW + circleTranslateX,
                 spanBetweenCenters: cellW,
