@@ -4659,25 +4659,21 @@ class _WeekRowState extends State<_WeekRow> {
                 ),
               ),
             // ── Full-opacity sliding circle (no text) ─────────────────────
-            // Keep the vertical envelope at the static indicator diameter,
-            // while retaining the horizontal blob/squish response used by
-            // Single Day and Multi Day. The day number is painted separately
-            // by numbersOverlay so it never stretches with the blob.
+            // Keep this circle exactly at the authored static diameter while
+            // it translates. The translucent Multi Day pill above it owns the
+            // drag blob; applying that velocity deformation to this circle
+            // makes the selected indicator visibly grow during every swipe.
+            // The day number is painted separately by numbersOverlay so it
+            // never translates or stretches with the overlay.
             Positioned(
               left: curCX - dayIndicatorSize / 2 + circleTranslateX,
               top: kFixedTopPadding,
-              width: dayIndicatorSize,
-              height: dayIndicatorSize,
-              child: _BlobCircle(
-                dragDeltaX: widget.blobDeltaX,
-                snapCount: widget.blobSnapCount,
-                child: Container(
-                  width: dayIndicatorSize,
-                  height: dayIndicatorSize,
-                  decoration: BoxDecoration(
-                    color: resolveAccentColor(context),
-                    shape: BoxShape.circle,
-                  ),
+              child: Container(
+                width: dayIndicatorSize,
+                height: dayIndicatorSize,
+                decoration: BoxDecoration(
+                  color: resolveAccentColor(context),
+                  shape: BoxShape.circle,
                 ),
               ),
             ),
