@@ -3900,10 +3900,13 @@ class _BloomDayCircle extends StatefulWidget {
     this.pendingBloomDate,
     this.circleColor,
     required this.circleSize,
+    this.indicatorWidth,
+    this.indicatorHeight,
+    this.indicatorShape = BoxShape.circle,
+    this.indicatorBorderRadius,
     this.fixedSize = false,
     this.backgroundOffsetX = 0.0,
     this.stationaryCircleColor,
-    this.renderedScaleNotifier,
   });
 
   final Widget child; // always rendered at scale 1.0 (day number text)
@@ -3920,6 +3923,13 @@ class _BloomDayCircle extends StatefulWidget {
   // null = no background circle (plain day cell).
   final Color? circleColor;
   final double circleSize;
+  // The selected indicator uses the default square/circle geometry.  The
+  // Multi-Day indicator reuses this exact renderer with a wider rectangular
+  // view box and stadium corners.
+  final double? indicatorWidth;
+  final double? indicatorHeight;
+  final BoxShape indicatorShape;
+  final BorderRadius? indicatorBorderRadius;
   // Day View indicators must remain physically fixed while the content swipe
   // moves them horizontally.  Month View can still use the authored bloom
   // animation, but allowing its overshoot in the pinned Day View strip makes
@@ -3933,10 +3943,6 @@ class _BloomDayCircle extends StatefulWidget {
   // When the selected day is also today, keep today's translucent marker at
   // its original day while the full-opacity selected marker slides away.
   final Color? stationaryCircleColor;
-  // Optional bridge for the Multi-Day pill. The circle remains the owner of
-  // its animation; the pill only observes the already-rendered scale so its
-  // separate overlay cannot paint at a different visible height.
-  final ValueNotifier<double>? renderedScaleNotifier;
 
   @override
   State<_BloomDayCircle> createState() => _BloomDayCircleState();
@@ -4174,17 +4180,11 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
         final double renderedScale = widget.fixedSize
             ? 1.0
             : scale;
-        final scaleNotifier = widget.renderedScaleNotifier;
-        if (scaleNotifier != null && scaleNotifier.value != renderedScale) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && scaleNotifier.value != renderedScale) {
-              scaleNotifier.value = renderedScale;
-            }
-          });
-        }
+        final indicatorWidth = widget.indicatorWidth ?? widget.circleSize;
+        final indicatorHeight = widget.indicatorHeight ?? widget.circleSize;
         return SizedBox(
-          width: widget.circleSize,
-          height: widget.circleSize,
+          width: indicatorWidth,
+          height: indicatorHeight,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -4203,11 +4203,12 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
                   child: Transform.scale(
                     scale: renderedScale,
                     child: Container(
-                      width: widget.circleSize,
-                      height: widget.circleSize,
+                      width: indicatorWidth,
+                      height: indicatorHeight,
                       decoration: BoxDecoration(
                         color: effectiveColor,
-                        shape: BoxShape.circle,
+                        shape: widget.indicatorShape,
+                        borderRadius: widget.indicatorBorderRadius,
                       ),
                     ),
                   ),
@@ -4274,59 +4275,6 @@ class _WeekRowState extends State<_WeekRow> {
   // Tracks taps so _BloomDayCircle can distinguish re-taps from new selections.
   int _tapCount = 0;
   DateTime? _lastTappedDate;
-  final ValueNotifier<double> _selectedCircleRenderedScale =
-      ValueNotifier<double>(1.0);
-
-  @override
-  void dispose() {
-    _selectedCircleRenderedScale.dispose();
-    super.dispose();
-  }
-
-  Widget _scaledPillPositioned({
-    required double authoredDiameter,
-    required double maxPaintHeight,
-    required double centerX,
-    required double spanBetweenCenters,
-    required double baseTop,
-    required Widget Function() childBuilder,
-  }) {
-    return ValueListenableBuilder<double>(
-      valueListenable: _selectedCircleRenderedScale,
-      builder: (context, renderedScale, _) {
-        // The circle is transformed around the centre of its authored square,
-        // then clipped by the week row's post-top-padding slot.  The pill is
-        // an overlay, so giving it the same nominal height is not enough: its
-        // StadiumBorder would otherwise paint the full rectangle even when
-        // the selected circle's transformed bounds are clipped by the row.
-        //
-        // Derive the actual painted interval first, then give the pill exactly
-        // that interval.  This keeps the circle as the sole geometry reference
-        // and leaves its widget, scale, animation, and clipping untouched.
-        final scaledHeight = authoredDiameter * renderedScale;
-        final transformedTop =
-            baseTop + (authoredDiameter - scaledHeight) / 2;
-        final transformedBottom = transformedTop + scaledHeight;
-        final clipTop = baseTop;
-        final clipBottom = baseTop + maxPaintHeight;
-        final paintTop = math.max(transformedTop, clipTop);
-        final paintBottom = math.min(transformedBottom, clipBottom);
-        final visibleHeight = math.max(0.0, paintBottom - paintTop);
-        // Keep the existing horizontal cap/span behavior. Only the vertical
-        // painted interval is corrected; swipe width and cap travel remain
-        // driven by the same pre-clipped scaled diameter as before.
-        final horizontalCapDiameter =
-            math.min(authoredDiameter, maxPaintHeight) * renderedScale;
-        return Positioned(
-          left: centerX - horizontalCapDiameter / 2,
-          top: paintTop,
-          width: spanBetweenCenters + horizontalCapDiameter,
-          height: visibleHeight,
-          child: childBuilder(),
-        );
-      },
-    );
-  }
 
   void _onDayTap(DateTime date) {
     setState(() {
@@ -4352,18 +4300,10 @@ class _WeekRowState extends State<_WeekRow> {
         final totalW = constraints.maxWidth;
         // One source of truth for the resting indicator geometry. This value
         // remains Dynamic Type-aware, but it must be shared by the selected
-        // circle and both Multi Day pill render paths. Keeping a second
-        // "pill size" here is what allowed the pill to retain the older,
-        // larger diameter at the upper text-size ticks.
+        // circle and both Multi Day pill render paths. The pill now reuses the
+        // same authored height and renderer instead of maintaining a separate
+        // vertical geometry calculation.
         final restingIndicatorDiameter = _dayIndicatorSizeFor(context);
-        // The selected circle is laid out inside the row's post-top-padding
-        // slot. At the larger text-size ticks that slot can be shorter than
-        // the scaled authored diameter, so the circle's visible bounds are
-        // clipped to this height while the overlay pill would otherwise keep
-        // painting at its full height. Match the pill to the circle's actual
-        // vertical paint slot, without changing the circle or its scaling.
-        final indicatorPaintSlotHeight =
-            math.max(0.0, widget.rowHeight - kFixedTopPadding);
         final separatorColor = resolveThemeColor(kSeparatorColor, context);
         final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
         final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
@@ -4493,9 +4433,6 @@ class _WeekRowState extends State<_WeekRow> {
                     circleSize: restingIndicatorDiameter,
                     fixedSize: true,
                     backgroundOffsetX: isSel ? circleTranslateX : 0.0,
-                    renderedScaleNotifier: isSel
-                        ? _selectedCircleRenderedScale
-                        : null,
                     stationaryCircleColor: isSel &&
                             isToday &&
                             !todayUnderSlidingPill
@@ -4520,7 +4457,7 @@ class _WeekRowState extends State<_WeekRow> {
 
                   // In Multi Day mode the day after the selection is part of
                   // the extended view — render it with white text so it is
-                  // readable against the 40%-opacity circle added in the Stack.
+                  // readable against the 40%-opacity indicator added in the Stack.
                   // Only true when the selected day is in THIS row AND is not
                   // Sunday (selCol < 6), i.e. when the extension is drawn.
                   // Gated on collapseProgress > 0.0 — same snap threshold as the
@@ -4542,8 +4479,8 @@ class _WeekRowState extends State<_WeekRow> {
                     textColor = CupertinoColors.white;
                     fontWeight = FontWeight.w600;
                   } else if (isNextDayMulti) {
-                    // No circle here — the 40%-opacity indicator is drawn as
-                    // a Positioned layer in the Stack after rowContent.
+                    // No background here — the 40%-opacity indicator is drawn
+                    // by the shared _BloomDayCircle renderer in the Stack.
                     circleColor = null;
                     textColor = CupertinoColors.white;
                     fontWeight = FontWeight.w600;
@@ -4568,9 +4505,6 @@ class _WeekRowState extends State<_WeekRow> {
                       pendingBloomDate: widget.pendingBloomDate,
                        circleColor: circleColor,
                        circleSize: restingIndicatorDiameter,
-                       renderedScaleNotifier: isSel
-                           ? _selectedCircleRenderedScale
-                           : null,
                         // Day View indicator circles must stay at the authored
                         // diameter. The pill is a fixed-height shape, so
                         // allowing _BloomDayCircle's bloom Transform.scale to
@@ -4639,9 +4573,9 @@ class _WeekRowState extends State<_WeekRow> {
         );
 
         if (!isSliding) {
-          // In Multi Day mode draw a single pill spanning both the selected day
-          // and the next day.  The pill sits BEHIND rowContent so the full-opacity
-          // selected-day circle (_BloomDayCircle, inside rowContent) renders on top.
+          // In Multi Day mode draw a single _BloomDayCircle pill spanning both
+          // the selected day and the next day. It sits BEHIND rowContent so the
+          // full-opacity selected-day circle renders on top.
           // The pill is gated on collapseProgress so it fades out when transitioning
           // back to Month View and never bleeds into the non-Day-View grid.
           if (multiDayHasExtension) {
@@ -4653,25 +4587,38 @@ class _WeekRowState extends State<_WeekRow> {
 
             return Stack(
               children: [
-                // True pill: left-rounded at selDay, right-rounded at nextDay.
-                // 40 % opacity — the full-opacity circle from rowContent sits on top.
+                // The pill uses the same _BloomDayCircle renderer as the
+                // selected indicator. Its only differences are the rectangular
+                // view box, stadium corners, and 40% opacity.
                 // Snaps in sync with the header title: _view becomes CalendarView.day
                 // BEFORE _collapseCtrl.forward() fires, so the title reads "Jul 09"
                 // from frame 0 of the enter animation (colT > 0).  On exit, _view
                 // stays day until reverse() fully completes (colT → 0), so the pill
                 // also stays visible for the whole exit.  Result: both snap together.
                 if (widget.collapseProgress > 0.0)
-                  _scaledPillPositioned(
-                    authoredDiameter: restingIndicatorDiameter,
-                    maxPaintHeight: indicatorPaintSlotHeight,
-                    centerX: selCX,
-                    spanBetweenCenters: nextCX - selCX,
-                    baseTop: kFixedTopPadding,
-                    childBuilder: () => Container(
-                      decoration: ShapeDecoration(
-                        color: resolveAccentColor(context).withOpacity(0.40),
-                        shape: const StadiumBorder(),
+                  Positioned(
+                    left: selCX - restingIndicatorDiameter / 2,
+                    top: kFixedTopPadding,
+                    child: _BloomDayCircle(
+                      key: const ValueKey('multi-day-pill'),
+                      isSel: true,
+                      tapCount: _tapCount,
+                      lastTappedDate: _lastTappedDate,
+                      myDate: widget.selectedDate,
+                      settleCount: widget.settleCount,
+                      blobSnapCount: widget.blobSnapCount,
+                      pendingBloomDate: widget.pendingBloomDate,
+                      circleColor: resolveAccentColor(context).withOpacity(0.40),
+                      circleSize: restingIndicatorDiameter,
+                      indicatorWidth:
+                          nextCX - selCX + restingIndicatorDiameter,
+                      indicatorHeight: restingIndicatorDiameter,
+                      indicatorShape: BoxShape.rectangle,
+                      indicatorBorderRadius: BorderRadius.circular(
+                        restingIndicatorDiameter / 2,
                       ),
+                      fixedSize: true,
+                      child: const SizedBox.shrink(),
                     ),
                   ),
                 // rowContent on top: selected-day full circle, next-day white text.
@@ -4770,26 +4717,39 @@ class _WeekRowState extends State<_WeekRow> {
             rowContent,
             // ── Multi Day sliding pill — translates with the circle ───────
             // Same snap timing as the static pill and the header title.
-            // Its authored width and height match the static pill. The shared
-            // stretch transform adds the blob/squish effect while keeping the
-            // height fixed and expanding from the left edge toward the right.
+            // It uses the same _BloomDayCircle renderer as the selected circle.
+            // The blob wrapper only adds the existing horizontal deformation.
             if (multiDayHasExtension && widget.collapseProgress > 0.0)
-              _scaledPillPositioned(
-                authoredDiameter: restingIndicatorDiameter,
-                maxPaintHeight: indicatorPaintSlotHeight,
-                centerX:
-                    (multiDaySelCol! + 1.5) * cellW + circleTranslateX,
-                spanBetweenCenters: cellW,
-                baseTop: kFixedTopPadding,
-                childBuilder: () => _BlobCircle(
+              Positioned(
+                left:
+                    (multiDaySelCol! + 1.5) * cellW +
+                    circleTranslateX -
+                    restingIndicatorDiameter / 2,
+                top: kFixedTopPadding,
+                child: _BlobCircle(
                   dragDeltaX: widget.blobDeltaX,
                   snapCount: widget.blobSnapCount,
                   alignment: Alignment.centerLeft,
-                  child: Container(
-                    decoration: ShapeDecoration(
-                      color: resolveAccentColor(context).withOpacity(0.40),
-                      shape: const StadiumBorder(),
+                  child: _BloomDayCircle(
+                    key: const ValueKey('multi-day-pill'),
+                    isSel: true,
+                    tapCount: _tapCount,
+                    lastTappedDate: _lastTappedDate,
+                    myDate: widget.selectedDate,
+                    settleCount: widget.settleCount,
+                    blobSnapCount: widget.blobSnapCount,
+                    pendingBloomDate: widget.pendingBloomDate,
+                    circleColor: resolveAccentColor(context).withOpacity(0.40),
+                    circleSize: restingIndicatorDiameter,
+                    indicatorWidth:
+                        cellW + restingIndicatorDiameter,
+                    indicatorHeight: restingIndicatorDiameter,
+                    indicatorShape: BoxShape.rectangle,
+                    indicatorBorderRadius: BorderRadius.circular(
+                      restingIndicatorDiameter / 2,
                     ),
+                    fixedSize: true,
+                    child: const SizedBox.shrink(),
                   ),
                 ),
               ),
