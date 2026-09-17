@@ -3903,6 +3903,7 @@ class _BloomDayCircle extends StatefulWidget {
     this.fixedSize = false,
     this.backgroundOffsetX = 0.0,
     this.stationaryCircleColor,
+    this.renderedScaleNotifier,
   });
 
   final Widget child; // always rendered at scale 1.0 (day number text)
@@ -3932,6 +3933,10 @@ class _BloomDayCircle extends StatefulWidget {
   // When the selected day is also today, keep today's translucent marker at
   // its original day while the full-opacity selected marker slides away.
   final Color? stationaryCircleColor;
+  // Optional bridge for the Multi-Day pill. The circle remains the owner of
+  // its animation; the pill only observes the already-rendered scale so its
+  // separate overlay cannot paint at a different visible height.
+  final ValueNotifier<double>? renderedScaleNotifier;
 
   @override
   State<_BloomDayCircle> createState() => _BloomDayCircleState();
@@ -4169,6 +4174,14 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
         final double renderedScale = widget.fixedSize
             ? 1.0
             : scale;
+        final scaleNotifier = widget.renderedScaleNotifier;
+        if (scaleNotifier != null && scaleNotifier.value != renderedScale) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && scaleNotifier.value != renderedScale) {
+              scaleNotifier.value = renderedScale;
+            }
+          });
+        }
         return SizedBox(
           width: widget.circleSize,
           height: widget.circleSize,
@@ -4261,6 +4274,37 @@ class _WeekRowState extends State<_WeekRow> {
   // Tracks taps so _BloomDayCircle can distinguish re-taps from new selections.
   int _tapCount = 0;
   DateTime? _lastTappedDate;
+  final ValueNotifier<double> _selectedCircleRenderedScale =
+      ValueNotifier<double>(1.0);
+
+  @override
+  void dispose() {
+    _selectedCircleRenderedScale.dispose();
+    super.dispose();
+  }
+
+  Widget _scaledPillPositioned({
+    required double baseHeight,
+    required double centerX,
+    required double spanBetweenCenters,
+    required double baseTop,
+    required Widget Function() childBuilder,
+  }) {
+    return ValueListenableBuilder<double>(
+      valueListenable: _selectedCircleRenderedScale,
+      builder: (context, renderedScale, _) {
+        final visibleHeight = baseHeight * renderedScale;
+        final top = baseTop + (baseHeight - visibleHeight) / 2;
+        return Positioned(
+          left: centerX - visibleHeight / 2,
+          top: top,
+          width: spanBetweenCenters + visibleHeight,
+          height: visibleHeight,
+          child: childBuilder(),
+        );
+      },
+    );
+  }
 
   void _onDayTap(DateTime date) {
     setState(() {
@@ -4429,6 +4473,9 @@ class _WeekRowState extends State<_WeekRow> {
                     circleSize: restingIndicatorDiameter,
                     fixedSize: true,
                     backgroundOffsetX: isSel ? circleTranslateX : 0.0,
+                    renderedScaleNotifier: isSel
+                        ? _selectedCircleRenderedScale
+                        : null,
                     stationaryCircleColor: isSel &&
                             isToday &&
                             !todayUnderSlidingPill
@@ -4501,6 +4548,9 @@ class _WeekRowState extends State<_WeekRow> {
                       pendingBloomDate: widget.pendingBloomDate,
                        circleColor: circleColor,
                        circleSize: restingIndicatorDiameter,
+                       renderedScaleNotifier: isSel
+                           ? _selectedCircleRenderedScale
+                           : null,
                         // Day View indicator circles must stay at the authored
                         // diameter. The pill is a fixed-height shape, so
                         // allowing _BloomDayCircle's bloom Transform.scale to
@@ -4591,12 +4641,12 @@ class _WeekRowState extends State<_WeekRow> {
                 // stays day until reverse() fully completes (colT → 0), so the pill
                 // also stays visible for the whole exit.  Result: both snap together.
                 if (widget.collapseProgress > 0.0)
-                  Positioned(
-                    left: selCX - multiDayPillHeight / 2,
-                    top: kFixedTopPadding,
-                    width: nextCX - selCX + multiDayPillHeight,
-                    height: multiDayPillHeight,
-                    child: Container(
+                  _scaledPillPositioned(
+                    baseHeight: multiDayPillHeight,
+                    centerX: selCX,
+                    spanBetweenCenters: nextCX - selCX,
+                    baseTop: kFixedTopPadding,
+                    childBuilder: () => Container(
                       decoration: ShapeDecoration(
                         color: resolveAccentColor(context).withOpacity(0.40),
                         shape: const StadiumBorder(),
@@ -4703,17 +4753,13 @@ class _WeekRowState extends State<_WeekRow> {
             // stretch transform adds the blob/squish effect while keeping the
             // height fixed and expanding from the left edge toward the right.
             if (multiDayHasExtension && widget.collapseProgress > 0.0)
-              Positioned(
-                left:
-                    (multiDaySelCol! + 1.5) * cellW -
-                    multiDayPillHeight / 2 +
-                    circleTranslateX,
-                top: kFixedTopPadding,
-                width:
-                    cellW +
-                    multiDayPillHeight, // spans selDay centre to nextDay centre + caps
-                height: multiDayPillHeight,
-                child: _BlobCircle(
+              _scaledPillPositioned(
+                baseHeight: multiDayPillHeight,
+                centerX:
+                    (multiDaySelCol! + 1.5) * cellW + circleTranslateX,
+                spanBetweenCenters: cellW,
+                baseTop: kFixedTopPadding,
+                childBuilder: () => _BlobCircle(
                   dragDeltaX: widget.blobDeltaX,
                   snapCount: widget.blobSnapCount,
                   alignment: Alignment.centerLeft,
