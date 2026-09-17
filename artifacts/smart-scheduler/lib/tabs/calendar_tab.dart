@@ -4284,7 +4284,12 @@ class _WeekRowState extends State<_WeekRow> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalW = constraints.maxWidth;
-        final dayIndicatorSize = _dayIndicatorSizeFor(context);
+        // One source of truth for the resting indicator geometry. This value
+        // remains Dynamic Type-aware, but it must be shared by the selected
+        // circle and both Multi Day pill render paths. Keeping a second
+        // "pill size" here is what allowed the pill to retain the older,
+        // larger diameter at the upper text-size ticks.
+        final restingIndicatorDiameter = _dayIndicatorSizeFor(context);
         final separatorColor = resolveThemeColor(kSeparatorColor, context);
         final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
         final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
@@ -4314,6 +4319,8 @@ class _WeekRowState extends State<_WeekRow> {
         }
         final bool multiDayHasExtension =
             multiDaySelCol != null && multiDaySelCol < 6;
+        final multiDayPillActive =
+            multiDayHasExtension && widget.collapseProgress > 0.0;
         double? todayCX;
         for (int c = 0; c < 7; c++) {
           final i2 = firstIdx + c;
@@ -4349,7 +4356,7 @@ class _WeekRowState extends State<_WeekRow> {
                   child: Padding(
                     padding: const EdgeInsets.only(top: kFixedTopPadding),
                     child: SizedBox(
-                      height: dayIndicatorSize,
+                      height: restingIndicatorDiameter,
                       child: Center(
                         child: Text(
                           '$weekNum',
@@ -4409,7 +4416,7 @@ class _WeekRowState extends State<_WeekRow> {
                         : isToday && !todayUnderSlidingPill
                         ? resolveAccentColor(context).withOpacity(0.40)
                         : null,
-                    circleSize: dayIndicatorSize,
+                    circleSize: restingIndicatorDiameter,
                     fixedSize: true,
                     backgroundOffsetX: isSel ? circleTranslateX : 0.0,
                     stationaryCircleColor: isSel &&
@@ -4483,7 +4490,7 @@ class _WeekRowState extends State<_WeekRow> {
                       blobSnapCount: widget.blobSnapCount,
                       pendingBloomDate: widget.pendingBloomDate,
                        circleColor: circleColor,
-                       circleSize: dayIndicatorSize,
+                       circleSize: restingIndicatorDiameter,
                         // The Multi Day pill is always authored at the
                         // indicator diameter. Keep its selected/today
                         // circles at that same diameter throughout the mode's
@@ -4493,6 +4500,7 @@ class _WeekRowState extends State<_WeekRow> {
                         // mounted _BloomDayCircle.
                         fixedSize:
                             widget.daySubMode == DayViewSubMode.multiDay ||
+                            multiDayPillActive ||
                             widget.collapseProgress > 0.95,
                       child: Text(
                         '$displayDay',
@@ -4573,10 +4581,10 @@ class _WeekRowState extends State<_WeekRow> {
                 // also stays visible for the whole exit.  Result: both snap together.
                 if (widget.collapseProgress > 0.0)
                   Positioned(
-                    left: selCX - dayIndicatorSize / 2,
+                    left: selCX - restingIndicatorDiameter / 2,
                     top: kFixedTopPadding,
-                    width: nextCX - selCX + dayIndicatorSize,
-                    height: dayIndicatorSize,
+                    width: nextCX - selCX + restingIndicatorDiameter,
+                    height: restingIndicatorDiameter,
                     child: Container(
                       decoration: ShapeDecoration(
                         color: resolveAccentColor(context).withOpacity(0.40),
@@ -4687,13 +4695,13 @@ class _WeekRowState extends State<_WeekRow> {
               Positioned(
                 left:
                     (multiDaySelCol! + 1.5) * cellW -
-                    dayIndicatorSize / 2 +
+                    restingIndicatorDiameter / 2 +
                     circleTranslateX,
                 top: kFixedTopPadding,
                 width:
                     cellW +
-                    dayIndicatorSize, // spans selDay centre to nextDay centre + caps
-                height: dayIndicatorSize,
+                    restingIndicatorDiameter, // spans selDay centre to nextDay centre + caps
+                height: restingIndicatorDiameter,
                 child: _BlobCircle(
                   dragDeltaX: widget.blobDeltaX,
                   snapCount: widget.blobSnapCount,
