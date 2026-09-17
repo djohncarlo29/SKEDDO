@@ -3900,6 +3900,7 @@ class _BloomDayCircle extends StatefulWidget {
     this.pendingBloomDate,
     this.circleColor,
     required this.circleSize,
+    this.fixedSize = false,
   });
 
   final Widget child; // always rendered at scale 1.0 (day number text)
@@ -3916,6 +3917,11 @@ class _BloomDayCircle extends StatefulWidget {
   // null = no background circle (plain day cell).
   final Color? circleColor;
   final double circleSize;
+  // Day View indicators must remain physically fixed while the content swipe
+  // moves them horizontally.  Month View can still use the authored bloom
+  // animation, but allowing its overshoot in the pinned Day View strip makes
+  // the selected and translucent today circles grow during a content swipe.
+  final bool fixedSize;
 
   @override
   State<_BloomDayCircle> createState() => _BloomDayCircleState();
@@ -4046,6 +4052,12 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
   void didUpdateWidget(_BloomDayCircle old) {
     super.didUpdateWidget(old);
 
+    if (widget.fixedSize && !old.fixedSize) {
+      _ctrl.stop();
+      _ctrl.value = 1.0;
+      _activeAnim = _DayAnim.none;
+    }
+
     // ── Pre-bloom: incoming navigation target ─────────────────────────────
     // The 55% bloom timer set _pendingBloomDate to this day before the nav
     // commit.  Start the settle animation NOW — while the slide is still
@@ -4143,6 +4155,9 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
           _DayAnim.shrink => _shrinkColor,
           _ => widget.circleColor,
         };
+        final double renderedScale = widget.fixedSize
+            ? 1.0
+            : scale;
         return SizedBox(
           width: widget.circleSize,
           height: widget.circleSize,
@@ -4151,7 +4166,7 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
             children: [
               if (effectiveColor != null)
                 Transform.scale(
-                  scale: scale,
+                  scale: renderedScale,
                   child: Container(
                     width: widget.circleSize,
                     height: widget.circleSize,
@@ -4403,6 +4418,7 @@ class _WeekRowState extends State<_WeekRow> {
                       pendingBloomDate: widget.pendingBloomDate,
                        circleColor: circleColor,
                        circleSize: dayIndicatorSize,
+                       fixedSize: widget.collapseProgress > 0.95,
                       child: Text(
                         '$displayDay',
                         style: TextStyle(
