@@ -4422,14 +4422,18 @@ class _WeekRowState extends State<_WeekRow> {
                     settleCount: widget.settleCount,
                     blobSnapCount: widget.blobSnapCount,
                     pendingBloomDate: widget.pendingBloomDate,
-                    circleColor: isSel || isNextDayMulti
+                    circleColor: isSel
                         ? resolveAccentColor(context)
+                        : isNextDayMulti
+                        ? resolveAccentColor(context).withOpacity(0.40)
                         : isToday && !todayUnderSlidingCircle
                         ? resolveAccentColor(context).withOpacity(0.40)
                         : null,
                     circleSize: restingIndicatorDiameter,
                     fixedSize: true,
-                    backgroundOffsetX: isSel ? circleTranslateX : 0.0,
+                    backgroundOffsetX: isSel || isNextDayMulti
+                        ? circleTranslateX
+                        : 0.0,
                     stationaryCircleColor: isSel &&
                             isToday &&
                             !todayUnderSlidingCircle
@@ -4461,8 +4465,9 @@ class _WeekRowState extends State<_WeekRow> {
                     fontWeight = FontWeight.w600;
                   } else if (isNextDayMulti) {
                     // Multi-Day shows the adjacent date as its own circle,
-                    // using the same renderer and paint as the selected date.
-                    circleColor = resolveAccentColor(context);
+                    // using the same renderer, following the selected circle
+                    // during the swipe, but at 40% opacity.
+                    circleColor = resolveAccentColor(context).withOpacity(0.40);
                     textColor = CupertinoColors.white;
                     fontWeight = FontWeight.w600;
                   } else if (isToday) {
