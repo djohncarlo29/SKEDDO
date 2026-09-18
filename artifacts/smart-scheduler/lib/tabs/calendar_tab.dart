@@ -4199,14 +4199,15 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
                 ),
               if (hasPaintedBackground)
                 transformedBackground(
-                  CustomPaint(
-                    size: Size.square(widget.circleSize),
-                    painter: _DayIndicatorPainter(
-                      circleSize: widget.circleSize,
-                      circleColor: effectiveColor,
+                  Container(
+                    width: widget.circleSize,
+                    height: widget.circleSize,
+                    decoration: BoxDecoration(
+                      color: effectiveColor,
+                      shape: BoxShape.circle,
                     ),
                   ),
-                  ),
+                ),
               widget.child, // day number — always scale 1.0
             ],
           ),
@@ -4214,34 +4215,6 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
       },
     );
   }
-}
-
-class _DayIndicatorPainter extends CustomPainter {
-  const _DayIndicatorPainter({
-    required this.circleSize,
-    required this.circleColor,
-  });
-
-  final double circleSize;
-  final Color? circleColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..isAntiAlias = true;
-
-    if (circleColor != null) {
-      canvas.drawCircle(
-        Offset(circleSize / 2, circleSize / 2),
-        circleSize / 2,
-        paint..color = circleColor!,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DayIndicatorPainter oldDelegate) =>
-      oldDelegate.circleSize != circleSize ||
-      oldDelegate.circleColor != circleColor;
 }
 
 class _WeekRow extends StatefulWidget {
