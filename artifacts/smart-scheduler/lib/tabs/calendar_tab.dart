@@ -123,9 +123,8 @@ double _dayViewWeekStripHeight(BuildContext context) {
 }
 
 /// The authored day-circle diameter follows the same text-size profile as the
-/// 17 pt day number.  The static circle, the 40%-opacity today circle, and the
-/// Multi Day pill must all use this exact value; otherwise the pill changes
-/// apparent height when the sliding overlay takes over.
+/// 17 pt day number. The static circle and the 40%-opacity today circle use
+/// this exact value.
 double _dayIndicatorSizeFor(BuildContext context) =>
     _kDayIndicatorDiameter * textScaleRatioFor(context, 17.0);
 
@@ -3900,10 +3899,6 @@ class _BloomDayCircle extends StatefulWidget {
     this.pendingBloomDate,
     this.circleColor,
     required this.circleSize,
-    this.pillWidth,
-    this.pillColor,
-    this.pillBlobDeltaX,
-    this.pillBlobSnapCount = 0,
     this.fixedSize = false,
     this.backgroundOffsetX = 0.0,
     this.stationaryCircleColor,
@@ -3923,13 +3918,6 @@ class _BloomDayCircle extends StatefulWidget {
   // null = no background circle (plain day cell).
   final Color? circleColor;
   final double circleSize;
-  // Optional Multi-Day extension. It is painted inside this same renderer,
-  // before the selected circle, so both backgrounds share the exact same
-  // transform, view box, compositing order, and parent clipping.
-  final double? pillWidth;
-  final Color? pillColor;
-  final double? pillBlobDeltaX;
-  final int pillBlobSnapCount;
   // Day View indicators must remain physically fixed while the content swipe
   // moves them horizontally.  Month View can still use the authored bloom
   // animation, but allowing its overshoot in the pinned Day View strip makes
@@ -3960,9 +3948,6 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
   // Color captured at the moment a selected circle begins deselecting,
   // held for the shrink animation so the circle stays visible while fading.
   Color? _shrinkColor;
-  late final AnimationController _pillBlobCtrl;
-  late Animation<double> _pillBlobSpring;
-  double _pillBlobStretch = 1.0;
 
   static const double _kPeak = 1.15;
 
@@ -4063,14 +4048,6 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
       begin: 1.0,
       end: 0.0,
     ).chain(CurveTween(curve: Curves.easeIn)).animate(_ctrl);
-    _pillBlobCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 320),
-    );
-    _pillBlobSpring = Tween<double>(
-      begin: 1.0,
-      end: 1.0,
-    ).animate(_pillBlobCtrl);
     // Always start at rest — do not bloom on mount.
     // The month view mounts fresh each time a zoom-in settles (zoomT crosses
     // 0.999), so initState fires for every day cell, including the selected one.
@@ -4088,19 +4065,6 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
       _ctrl.stop();
       _ctrl.value = 1.0;
       _activeAnim = _DayAnim.none;
-    }
-
-    if (widget.pillBlobSnapCount != old.pillBlobSnapCount) {
-      _pillBlobSpring = Tween<double>(
-        begin: _pillBlobStretch,
-        end: 1.0,
-      ).animate(CurvedAnimation(parent: _pillBlobCtrl, curve: Curves.easeOutCubic));
-      _pillBlobCtrl.forward(from: 0.0);
-    } else if (widget.pillBlobDeltaX != null &&
-        widget.pillBlobDeltaX != 0.0) {
-      if (_pillBlobCtrl.isAnimating) _pillBlobCtrl.stop();
-      _pillBlobStretch =
-          1.0 + (widget.pillBlobDeltaX!.abs() * 0.06).clamp(0.0, 0.50);
     }
 
     // ── Pre-bloom: incoming navigation target ─────────────────────────────
@@ -4165,14 +4129,13 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
   @override
   void dispose() {
     _ctrl.dispose();
-    _pillBlobCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([_ctrl, _pillBlobCtrl]),
+      animation: _ctrl,
       // The label changes to an empty widget during the live swipe while the
       // numbers overlay owns the visible text. Read it inside the builder so
       // AnimatedBuilder cannot retain the pre-swipe label across a rebuild.
@@ -4205,11 +4168,6 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
         final double renderedScale = widget.fixedSize
             ? 1.0
             : scale;
-        final pillBlobStretch = _pillBlobCtrl.isAnimating
-            ? _pillBlobSpring.value
-            : _pillBlobStretch;
-        final pillBlobDeformation =
-            (pillBlobStretch - 1.0).clamp(0.0, 0.50).toDouble();
         Widget transformedBackground(Widget background) {
           return Transform.translate(
             offset: Offset(widget.backgroundOffsetX, 0),
@@ -4220,26 +4178,8 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
           );
         }
 
-        Widget? pillBackground;
-        if (widget.pillWidth != null && widget.pillColor != null) {
-          pillBackground = Container(
-            width: widget.pillWidth,
-            height: widget.circleSize,
-            decoration: BoxDecoration(
-              color: widget.pillColor,
-              shape: BoxShape.rectangle,
-              borderRadius: BorderRadius.circular(widget.circleSize / 2),
-            ),
-          );
-          if (widget.pillBlobDeltaX != null) {
-            pillBackground = _BlobCircle(
-              dragDeltaX: widget.pillBlobDeltaX!,
-              snapCount: widget.pillBlobSnapCount,
-              alignment: Alignment.centerLeft,
-              child: pillBackground,
-            );
-          }
-        }
+        final hasPaintedBackground =
+            effectiveColor != null && widget.circleSize > 0;
 
         return SizedBox(
           width: widget.circleSize,
@@ -4248,14 +4188,6 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
             clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
-              if (pillBackground != null)
-                Positioned(
-                  left: (widget.circleSize - widget.pillWidth!) / 2,
-                  top: 0,
-                  width: widget.pillWidth,
-                  height: widget.circleSize,
-                  child: transformedBackground(pillBackground),
-                ),
               if (widget.stationaryCircleColor != null)
                 Container(
                   width: widget.circleSize,
@@ -4265,17 +4197,16 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
                     shape: BoxShape.circle,
                   ),
                 ),
-              if (effectiveColor != null)
+              if (hasPaintedBackground)
                 transformedBackground(
-                  Container(
-                    width: widget.circleSize,
-                    height: widget.circleSize,
-                    decoration: BoxDecoration(
-                      color: effectiveColor,
-                      shape: BoxShape.circle,
+                  CustomPaint(
+                    size: Size.square(widget.circleSize),
+                    painter: _DayIndicatorPainter(
+                      circleSize: widget.circleSize,
+                      circleColor: effectiveColor,
                     ),
                   ),
-                ),
+                  ),
               widget.child, // day number — always scale 1.0
             ],
           ),
@@ -4283,6 +4214,34 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
       },
     );
   }
+}
+
+class _DayIndicatorPainter extends CustomPainter {
+  const _DayIndicatorPainter({
+    required this.circleSize,
+    required this.circleColor,
+  });
+
+  final double circleSize;
+  final Color? circleColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..isAntiAlias = true;
+
+    if (circleColor != null) {
+      canvas.drawCircle(
+        Offset(circleSize / 2, circleSize / 2),
+        circleSize / 2,
+        paint..color = circleColor!,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DayIndicatorPainter oldDelegate) =>
+      oldDelegate.circleSize != circleSize ||
+      oldDelegate.circleColor != circleColor;
 }
 
 class _WeekRow extends StatefulWidget {
@@ -4362,10 +4321,7 @@ class _WeekRowState extends State<_WeekRow> {
       builder: (context, constraints) {
         final totalW = constraints.maxWidth;
         // One source of truth for the resting indicator geometry. This value
-        // remains Dynamic Type-aware, but it must be shared by the selected
-        // circle and both Multi Day pill render paths. The pill now reuses the
-        // same authored height and renderer instead of maintaining a separate
-        // vertical geometry calculation.
+        // remains Dynamic Type-aware and is shared by both Multi-Day circles.
         final restingIndicatorDiameter = _dayIndicatorSizeFor(context);
         final separatorColor = resolveThemeColor(kSeparatorColor, context);
         final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
@@ -4379,8 +4335,7 @@ class _WeekRowState extends State<_WeekRow> {
         final curCX = (widget.selectedDate.weekday + 0.5) * cellW;
 
         // Pre-compute the selected column for Multi Day mode.
-        // Used both to style the next-day cell text AND to draw the pill.
-        // multiDayHasExtension is true only when the selected day is in this
+        // multiDayHasAdjacentDay is true only when the selected day is in this
         // row AND is not the last column (Sunday), so the next day fits here.
         int? multiDaySelCol;
         if (widget.daySubMode == DayViewSubMode.multiDay) {
@@ -4394,10 +4349,10 @@ class _WeekRowState extends State<_WeekRow> {
             }
           }
         }
-        final bool multiDayHasExtension =
+        final bool multiDayHasAdjacentDay =
             multiDaySelCol != null && multiDaySelCol < 6;
-        final multiDayPillActive =
-            multiDayHasExtension && widget.collapseProgress > 0.0;
+        final multiDayCirclesActive =
+            multiDayHasAdjacentDay && widget.collapseProgress > 0.0;
         double? todayCX;
         for (int c = 0; c < 7; c++) {
           final i2 = firstIdx + c;
@@ -4407,10 +4362,10 @@ class _WeekRowState extends State<_WeekRow> {
             break;
           }
         }
-        final todayUnderSlidingPill =
+        final todayUnderSlidingCircle =
             isSliding &&
             todayCX != null &&
-            multiDayHasExtension &&
+            multiDayHasAdjacentDay &&
             widget.collapseProgress > 0.0 &&
             ((curCX + circleTranslateX - todayCX!).abs() < cellW * 0.5 ||
                 (curCX + circleTranslateX + cellW - todayCX).abs() <
@@ -4458,6 +4413,12 @@ class _WeekRowState extends State<_WeekRow> {
                 final displayDay = date.day;
                 final isToday = _sameDay(date, widget.today);
                 final isSel = _sameDay(date, widget.selectedDate);
+                final isNextDayMulti =
+                    multiDayCirclesActive &&
+                    _sameDay(
+                      date,
+                      widget.selectedDate.add(const Duration(days: 1)),
+                    );
                 // The month-list dot follows the first event in the same
                 // ordering shown below: all-day events first, then timed
                 // sections in time order. Do not use the raw EventStore order
@@ -4488,27 +4449,17 @@ class _WeekRowState extends State<_WeekRow> {
                     settleCount: widget.settleCount,
                     blobSnapCount: widget.blobSnapCount,
                     pendingBloomDate: widget.pendingBloomDate,
-                    circleColor: isSel
+                    circleColor: isSel || isNextDayMulti
                         ? resolveAccentColor(context)
-                        : isToday && !todayUnderSlidingPill
+                        : isToday && !todayUnderSlidingCircle
                         ? resolveAccentColor(context).withOpacity(0.40)
                         : null,
                     circleSize: restingIndicatorDiameter,
-                    pillWidth: isSel && multiDayPillActive
-                        ? cellW + restingIndicatorDiameter
-                        : null,
-                    pillColor: isSel && multiDayPillActive
-                        ? resolveAccentColor(context).withOpacity(0.40)
-                        : null,
-                    pillBlobDeltaX: isSel && multiDayPillActive
-                        ? widget.blobDeltaX
-                        : null,
-                    pillBlobSnapCount: widget.blobSnapCount,
                     fixedSize: true,
                     backgroundOffsetX: isSel ? circleTranslateX : 0.0,
                     stationaryCircleColor: isSel &&
                             isToday &&
-                            !todayUnderSlidingPill
+                            !todayUnderSlidingCircle
                         ? resolveAccentColor(context).withOpacity(0.40)
                         : null,
                     child: const SizedBox.shrink(),
@@ -4528,22 +4479,6 @@ class _WeekRowState extends State<_WeekRow> {
                       widget.pendingBloomDate != null &&
                       _sameDay(widget.pendingBloomDate!, date);
 
-                  // In Multi Day mode the day after the selection is part of
-                  // the extended view — render it with white text so it is
-                  // readable against the 40%-opacity indicator added in the Stack.
-                  // Only true when the selected day is in THIS row AND is not
-                  // Sunday (selCol < 6), i.e. when the extension is drawn.
-                  // Gated on collapseProgress > 0.0 — same snap threshold as the
-                  // 40%-opacity pill — so the white text and the pill appear and
-                  // disappear together, in sync with the header-title transition.
-                  final bool isNextDayMulti =
-                      multiDayHasExtension &&
-                      widget.collapseProgress > 0.0 &&
-                      _sameDay(
-                        date,
-                        widget.selectedDate.add(const Duration(days: 1)),
-                      );
-
                   final Color? circleColor;
                   final Color textColor;
                   final FontWeight fontWeight;
@@ -4552,9 +4487,9 @@ class _WeekRowState extends State<_WeekRow> {
                     textColor = CupertinoColors.white;
                     fontWeight = FontWeight.w600;
                   } else if (isNextDayMulti) {
-                    // No background here — the 40%-opacity indicator is drawn
-                    // by the shared _BloomDayCircle renderer in the Stack.
-                    circleColor = null;
+                    // Multi-Day shows the adjacent date as its own circle,
+                    // using the same renderer and paint as the selected date.
+                    circleColor = resolveAccentColor(context);
                     textColor = CupertinoColors.white;
                     fontWeight = FontWeight.w600;
                   } else if (isToday) {
@@ -4578,23 +4513,10 @@ class _WeekRowState extends State<_WeekRow> {
                       pendingBloomDate: widget.pendingBloomDate,
                        circleColor: circleColor,
                        circleSize: restingIndicatorDiameter,
-                        pillWidth: isSel && multiDayPillActive
-                            ? cellW + restingIndicatorDiameter
-                            : null,
-                        pillColor: isSel && multiDayPillActive
-                            ? resolveAccentColor(context).withOpacity(0.40)
-                            : null,
-                        // Day View indicator circles must stay at the authored
-                        // diameter. The pill is a fixed-height shape, so
-                        // allowing _BloomDayCircle's bloom Transform.scale to
-                        // run here makes the circle visibly shorter than the
-                        // pill at large Dynamic Type sizes even though their
-                        // layout boxes are identical. This does not change the
-                        // swipe render tree: the selected background still
-                        // translates inside the mounted _BloomDayCircle.
+                         // Day View indicator circles must stay at the authored
+                         // diameter during Multi-Day transitions and swipes.
                         fixedSize:
                             widget.daySubMode == DayViewSubMode.multiDay ||
-                            multiDayPillActive ||
                             widget.collapseProgress > 0.95,
                       child: Text(
                         '$displayDay',
@@ -4687,27 +4609,22 @@ class _WeekRowState extends State<_WeekRow> {
                   }
 
                   // White if the sliding circle is currently over this column,
-                  // or if today's faded circle sits here, or if this column is
-                  // covered by the Multi Day pill's second cell (the extension
-                  // that slides one cell to the right of the blob).  Without
-                  // this last condition the "next day" text snaps to normal
-                  // at the very first frame of a drag instead of tracking the
-                  // pill smoothly.
+                  // if today's faded circle sits here, or if this column is
+                  // the adjacent Multi-Day circle.
                   final double circleCenter = curCX + circleTranslateX;
                   final double colCenter = (col + 1.5) * cellW;
                   final bool isUnderCircle =
                       (circleCenter - colCenter).abs() < cellW * 0.5;
-                  // The sliding pill always extends one cellW to the right of the
-                  // blob centre.  A column is "under the pill extension" when its
-                  // centre is within half a cell of that extended position.
-                  final bool isUnderPillExtension =
-                      multiDayHasExtension &&
+                  // The adjacent Multi-Day circle stays one cell to the right
+                  // of the selected circle while the selected circle slides.
+                  final bool isUnderAdjacentCircle =
+                      multiDayHasAdjacentDay &&
                       widget.collapseProgress > 0.0 &&
                       (circleCenter + cellW - colCenter).abs() < cellW * 0.5;
 
                   final Color c;
                   final FontWeight fw;
-                  if (isUnderCircle || isUnderPillExtension || isToday2) {
+                  if (isUnderCircle || isUnderAdjacentCircle || isToday2) {
                     c = CupertinoColors.white;
                     fw = FontWeight.w600;
                   } else {
