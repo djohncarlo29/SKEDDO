@@ -4425,7 +4425,7 @@ class _WeekRowState extends State<_WeekRow> {
                     circleColor: isSel
                         ? resolveAccentColor(context)
                         : isNextDayMulti
-                        ? null
+                        ? resolveAccentColor(context).withOpacity(0.40)
                         : isToday && !todayUnderSlidingCircle
                         ? resolveAccentColor(context).withOpacity(0.40)
                         : null,
@@ -4434,7 +4434,11 @@ class _WeekRowState extends State<_WeekRow> {
                     backgroundOffsetX: isSel || isNextDayMulti
                         ? circleTranslateX
                         : 0.0,
-                    stationaryCircleColor: null,
+                    stationaryCircleColor: isSel &&
+                            isToday &&
+                            !todayUnderSlidingCircle
+                        ? resolveAccentColor(context).withOpacity(0.40)
+                        : null,
                     child: const SizedBox.shrink(),
                   );
                 } else {
@@ -4630,23 +4634,6 @@ class _WeekRowState extends State<_WeekRow> {
         return Stack(
           clipBehavior: Clip.hardEdge,
           children: [
-            if (multiDayCirclesActive)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: CustomPaint(
-                    painter: _MultiDayFadedCirclesPainter(
-                      color: resolveAccentColor(context).withOpacity(0.40),
-                      circleSize: restingIndicatorDiameter,
-                      selectedCenterX: curCX,
-                      circleTranslateX: circleTranslateX,
-                      cellW: cellW,
-                      showStationaryCircle:
-                          _sameDay(widget.selectedDate, widget.today) &&
-                          !todayUnderSlidingCircle,
-                    ),
-                  ),
-                ),
-              ),
             rowContent,
             // ── Numbers: always on top, never move ───────────────────────
             numbersOverlay,
@@ -4655,68 +4642,6 @@ class _WeekRowState extends State<_WeekRow> {
       },
     );
   }
-}
-
-class _MultiDayFadedCirclesPainter extends CustomPainter {
-  const _MultiDayFadedCirclesPainter({
-    required this.color,
-    required this.circleSize,
-    required this.selectedCenterX,
-    required this.circleTranslateX,
-    required this.cellW,
-    required this.showStationaryCircle,
-  });
-
-  final Color color;
-  final double circleSize;
-  final double selectedCenterX;
-  final double circleTranslateX;
-  final double cellW;
-  final bool showStationaryCircle;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final centerY = kFixedTopPadding + circleSize / 2;
-    final radius = circleSize / 2;
-    final path = Path();
-
-    if (showStationaryCircle) {
-      path.addOval(
-        Rect.fromCircle(
-          center: Offset(selectedCenterX, centerY),
-          radius: radius,
-        ),
-      );
-    }
-
-    path.addOval(
-      Rect.fromCircle(
-        center: Offset(
-          selectedCenterX + circleTranslateX + cellW,
-          centerY,
-        ),
-        radius: radius,
-      ),
-    );
-
-    // Both faded circles are filled as one path, so their intersection is
-    // composited once at 40% instead of source-over compositing twice.
-    canvas.drawPath(
-      path,
-      Paint()
-        ..isAntiAlias = true
-        ..color = color,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _MultiDayFadedCirclesPainter oldDelegate) =>
-      oldDelegate.color != color ||
-      oldDelegate.circleSize != circleSize ||
-      oldDelegate.selectedCenterX != selectedCenterX ||
-      oldDelegate.circleTranslateX != circleTranslateX ||
-      oldDelegate.cellW != cellW ||
-      oldDelegate.showStationaryCircle != showStationaryCircle;
 }
 
 class _MonthEventDots extends StatelessWidget {
