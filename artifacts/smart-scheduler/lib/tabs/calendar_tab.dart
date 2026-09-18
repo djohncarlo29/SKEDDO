@@ -4517,6 +4517,7 @@ class _WeekRowState extends State<_WeekRow> {
                          // diameter during Multi-Day transitions and swipes.
                         fixedSize:
                             widget.daySubMode == DayViewSubMode.multiDay ||
+                             multiDayCirclesActive ||
                             widget.collapseProgress > 0.95,
                       child: Text(
                         '$displayDay',
