@@ -4322,23 +4322,13 @@ class _WeekRowState extends State<_WeekRow> {
         final totalW = constraints.maxWidth;
         // One source of truth for the resting indicator geometry. This value
         // remains Dynamic Type-aware and is shared by both Multi-Day circles.
+        final restingIndicatorDiameter = _dayIndicatorSizeFor(context);
         final separatorColor = resolveThemeColor(kSeparatorColor, context);
         final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
         final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
         // 8 equally-spaced columns: col 0 = week-num, col 1-7 = Mon-Sun.
         // A 7px right margin keeps the last day column from being too tight.
         final cellW = (totalW - 7) / 8;
-        final scaledIndicatorDiameter = _dayIndicatorSizeFor(context);
-        // Multi-Day uses the authored circle size instead of letting a large
-        // Dynamic Type stop enlarge the circles into neighboring day columns.
-        // Keep a small side gap on unusually narrow screens as well.
-        final restingIndicatorDiameter =
-            widget.daySubMode == DayViewSubMode.multiDay
-            ? math.min(
-                _kDayIndicatorDiameter,
-                math.max(0.0, cellW - 4.0),
-              )
-            : scaledIndicatorDiameter;
         final circleTranslateX = isSliding
             ? -widget.circleSlideX * cellW / totalW
             : 0.0;
