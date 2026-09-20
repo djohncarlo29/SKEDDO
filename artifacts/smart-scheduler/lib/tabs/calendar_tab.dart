@@ -3924,8 +3924,8 @@ class _BloomDayCircle extends StatefulWidget {
   // separately positioned Container changes the parent geometry at the first
   // drag frame and makes large Dynamic Type circles appear to grow.
   final double backgroundOffsetX;
-  // When the selected day is also today, keep today's translucent marker at
-  // its original day while the full-opacity selected marker slides away.
+  // When the selected day is also today, keep today's marker at its original
+  // day while the full-opacity selected marker slides away.
   final Color? stationaryCircleColor;
 
   @override
@@ -4322,23 +4322,6 @@ class _WeekRowState extends State<_WeekRow> {
             multiDaySelCol != null && multiDaySelCol < 6;
         final multiDayCirclesActive =
             multiDayHasAdjacentDay && widget.collapseProgress > 0.0;
-        double? todayCX;
-        for (int c = 0; c < 7; c++) {
-          final i2 = firstIdx + c;
-          final d2 = i2 - offset + 1;
-          if (_sameDay(DateTime(widget.year, widget.month, d2), widget.today)) {
-            todayCX = (c + 1.5) * cellW;
-            break;
-          }
-        }
-        final todayUnderSlidingCircle =
-            isSliding &&
-            todayCX != null &&
-            multiDayHasAdjacentDay &&
-            widget.collapseProgress > 0.0 &&
-            ((curCX + circleTranslateX - todayCX!).abs() < cellW * 0.5 ||
-                (curCX + circleTranslateX + cellW - todayCX).abs() <
-                    cellW * 0.5);
         final rowContent = Container(
           height: widget.rowHeight,
           decoration: BoxDecoration(
@@ -4421,8 +4404,7 @@ class _WeekRowState extends State<_WeekRow> {
                         ? resolveAccentColor(context)
                         : isNextDayMulti
                         ? resolveAccentColor(context)
-                        : isToday &&
-                            !todayUnderSlidingCircle
+                        : isToday
                         ? widget.daySubMode == DayViewSubMode.multiDay
                             ? resolveAccentColor(context)
                             : resolveAccentColor(context).withOpacity(0.40)
@@ -4433,8 +4415,7 @@ class _WeekRowState extends State<_WeekRow> {
                         ? circleTranslateX
                         : 0.0,
                     stationaryCircleColor: isSel &&
-                            isToday &&
-                            !todayUnderSlidingCircle
+                            isToday
                         ? widget.daySubMode == DayViewSubMode.multiDay
                             ? resolveAccentColor(context)
                             : resolveAccentColor(context).withOpacity(0.40)
@@ -4560,9 +4541,9 @@ class _WeekRowState extends State<_WeekRow> {
         if (!isSliding) return rowContent;
 
         // ── Sliding-circle overlay ─────────────────────────────────────────
-        // The week strip (labels, week number, today faded circle) stays
-        // completely stationary.  Only the selected-day full-opacity circle
-        // translates between column positions as the user drags.
+        // The week strip (labels, week number, and today's circle) stays
+        // completely stationary.  The selected and adjacent Multi-Day circles
+        // translate between column positions as the user drags.
         //
         // circleSlideX < 0 → dragging left → next day (circle moves RIGHT)
         // circleSlideX > 0 → dragging right → prev day (circle moves LEFT)
