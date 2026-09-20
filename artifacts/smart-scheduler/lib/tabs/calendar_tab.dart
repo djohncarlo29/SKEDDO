@@ -93,7 +93,6 @@ const double _kMonthListDotDiameter = 5.0;
 const double _kMonthListSectionTrailingContentPadding = 16.0;
 const double _kMonthListFinalContentGap = 16.0;
 const double _kDayIndicatorDiameter = 36.0;
-const double _kDayIndicatorBottomGap = 8.0;
 const double _kRowHeightCompact = 68.0;
 const double _kRowHeightStacked = 96.0;
 const double _kRowHeightDetails = 128.0;
@@ -114,13 +113,10 @@ const double _kDayBannerHeight = 36.0;
 // vertical padding token.
 const double _kCalendarHeaderToDowGap = 8.0;
 
-double _dayViewWeekStripHeight(BuildContext context) {
-  final indicatorSize = _dayIndicatorSizeFor(context);
-  return math.max(
-    _kRowHeightList,
-    kFixedTopPadding + indicatorSize + _kDayIndicatorBottomGap,
-  );
-}
+// The Day View week strip has a fixed row geometry.  The day circle still
+// follows the active text/system scaling profile, but it must not change the
+// strip's hit-test, translation, or collapse geometry.
+double _dayViewWeekStripHeight(BuildContext context) => _kRowHeightList;
 
 /// The authored day-circle diameter follows the same text-size profile as the
 /// 17 pt day number. The static circle and the 40%-opacity today circle use
@@ -3810,9 +3806,9 @@ class _AnimatedWeekRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Current row height: lerps from the Month View mode height to the Day
-    // View strip height. The latter grows only when needed to preserve the
-    // indicator's minimum bottom gap.
+    // Current row height: lerps from the Month View mode height to the fixed
+    // Day View week-strip height. Circle diameter scaling is independent of
+    // this row geometry.
     final currentRowHeight = lerpDouble(
       viewModeRowHeight,
       _dayViewWeekStripHeight(context),
