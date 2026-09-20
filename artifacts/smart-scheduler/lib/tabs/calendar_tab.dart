@@ -4213,6 +4213,59 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
   }
 }
 
+/// Composites the two faded Multi-Day markers once while preserving each
+/// marker's own fixed circle bounds. The children are positioned independently
+/// so the opacity layer cannot change their diameter or turn them into a
+/// scaled union during a swipe.
+class _MultiDayFadedCircleOverlay extends StatelessWidget {
+  const _MultiDayFadedCircleOverlay({
+    required this.circleSize,
+    required this.todayCenterX,
+    required this.movingCenterX,
+    required this.top,
+    required this.color,
+  });
+
+  final double circleSize;
+  final double todayCenterX;
+  final double movingCenterX;
+  final double top;
+  final Color color;
+
+  Widget _circle() => DecoratedBox(
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = circleSize / 2;
+    return Positioned.fill(
+      child: Opacity(
+        opacity: 0.40,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: todayCenterX - radius,
+              top: top,
+              width: circleSize,
+              height: circleSize,
+              child: _circle(),
+            ),
+            Positioned(
+              left: movingCenterX - radius,
+              top: top,
+              width: circleSize,
+              height: circleSize,
+              child: _circle(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _WeekRow extends StatefulWidget {
   const _WeekRow({
     required this.year,
@@ -4339,6 +4392,21 @@ class _WeekRowState extends State<_WeekRow> {
             ((curCX + circleTranslateX - todayCX!).abs() < cellW * 0.5 ||
                 (curCX + circleTranslateX + cellW - todayCX).abs() <
                     cellW * 0.5);
+        // The two faded markers share one opacity layer only while both are
+        // present during a swipe. Each marker remains its own fixed-size
+        // positioned circle inside that layer, so crossing cannot compound
+        // their alpha to 80% or alter either marker's diameter.
+        final todayIsAdjacentMultiDay =
+            todayCX != null &&
+            _sameDay(
+              widget.today,
+              widget.selectedDate.add(const Duration(days: 1)),
+            );
+        final unifiedFadedCirclesActive =
+            isSliding &&
+            multiDayCirclesActive &&
+            todayCX != null &&
+            !todayIsAdjacentMultiDay;
         final rowContent = Container(
           height: widget.rowHeight,
           decoration: BoxDecoration(
@@ -4419,10 +4487,11 @@ class _WeekRowState extends State<_WeekRow> {
                     pendingBloomDate: widget.pendingBloomDate,
                     circleColor: isSel
                         ? resolveAccentColor(context)
-                        : isNextDayMulti
+                        : isNextDayMulti && !unifiedFadedCirclesActive
                         ? resolveAccentColor(context).withOpacity(0.40)
                         : isToday &&
-                            !todayUnderSlidingCircle
+                            !todayUnderSlidingCircle &&
+                            !unifiedFadedCirclesActive
                         ? resolveAccentColor(context).withOpacity(0.40)
                         : null,
                     circleSize: restingIndicatorDiameter,
@@ -4432,7 +4501,8 @@ class _WeekRowState extends State<_WeekRow> {
                         : 0.0,
                     stationaryCircleColor: isSel &&
                             isToday &&
-                            !todayUnderSlidingCircle
+                            !todayUnderSlidingCircle &&
+                            !unifiedFadedCirclesActive
                         ? resolveAccentColor(context).withOpacity(0.40)
                         : null,
                     child: const SizedBox.shrink(),
@@ -4639,6 +4709,14 @@ class _WeekRowState extends State<_WeekRow> {
         return Stack(
           clipBehavior: Clip.hardEdge,
           children: [
+            if (unifiedFadedCirclesActive)
+              _MultiDayFadedCircleOverlay(
+                circleSize: restingIndicatorDiameter,
+                todayCenterX: todayCX!,
+                movingCenterX: curCX + cellW + circleTranslateX,
+                top: kFixedTopPadding,
+                color: resolveAccentColor(context),
+              ),
             rowContent,
             // ── Numbers: always on top, never move ───────────────────────
             numbersOverlay,

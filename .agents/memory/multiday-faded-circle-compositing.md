@@ -1,10 +1,10 @@
 ---
-name: Independent Multi-Day faded circles
-description: Keep today and adjacent Multi-Day markers visually fixed-size while their centers move during horizontal drags.
+name: Multi-Day faded-circle compositing
+description: Composite today and adjacent Multi-Day markers once without changing their independent fixed geometry.
 ---
 
-Render the fixed today marker and moving adjacent Multi-Day marker as separate circles at the authored diameter and 40% opacity. During a swipe, translate their centers only; never paint them as one union shape or apply a scale to their faded marker layer.
+Render the fixed today marker and moving adjacent Multi-Day marker as separate fixed-size circle widgets inside one opacity layer. Apply 40% opacity to the parent layer, not to either child, so overlap remains 40% rather than becoming 80%.
 
-**Why:** A shared opaque union makes the two markers read as one wider shape as the moving marker approaches today, even when each mathematical radius is unchanged.
+**Why:** Separate 40% source-over circles compound alpha where they overlap. A custom-painter union also made the markers read as an enlarged combined shape during the drag.
 
-**How to apply:** Keep faded markers in the normal day-circle render tree with fixed-size enabled. The selected marker may translate independently, while today and the adjacent marker retain their own circle bounds.
+**How to apply:** Position each child with its own fixed diameter and translate only its center. Keep the overlay behind the full-opacity selected marker and the number overlay; do not apply a scale or draw both markers as one custom-painter silhouette.
