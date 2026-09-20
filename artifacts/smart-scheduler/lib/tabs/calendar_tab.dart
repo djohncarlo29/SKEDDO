@@ -4213,65 +4213,6 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
   }
 }
 
-/// Removes only the extra alpha from the intersection of the two independently
-/// rendered faded markers. The markers themselves stay in their fixed-size
-/// day-cell widgets; this mask never paints their union or transforms them.
-class _MultiDayFadedOverlapMask extends CustomPainter {
-  const _MultiDayFadedOverlapMask({
-    required this.circleSize,
-    required this.todayCenterX,
-    required this.movingCenterX,
-    required this.top,
-    required this.backgroundColor,
-  });
-
-  final double circleSize;
-  final double todayCenterX;
-  final double movingCenterX;
-  final double top;
-  final Color backgroundColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final radius = circleSize / 2;
-    final centerY = top + radius;
-    final todayPath = Path()
-      ..addOval(
-        Rect.fromCircle(
-          center: Offset(todayCenterX, centerY),
-          radius: radius,
-        ),
-      );
-    final movingPath = Path()
-      ..addOval(
-        Rect.fromCircle(
-          center: Offset(movingCenterX, centerY),
-          radius: radius,
-        ),
-      );
-    final overlap = Path.combine(
-      PathOperation.intersect,
-      todayPath,
-      movingPath,
-    );
-
-    // Two source-over 40% passes produce 64% alpha in the overlap. Painting
-    // the opaque row background at 37.5% over that result gives:
-    //   0.375 + (1 - 0.375) * 0.64 = 0.40
-    // without changing either circle's fixed geometry.
-    final paint = Paint()..color = backgroundColor.withOpacity(0.375);
-    canvas.drawPath(overlap, paint);
-  }
-
-  @override
-  bool shouldRepaint(_MultiDayFadedOverlapMask oldDelegate) =>
-      oldDelegate.circleSize != circleSize ||
-      oldDelegate.todayCenterX != todayCenterX ||
-      oldDelegate.movingCenterX != movingCenterX ||
-      oldDelegate.top != top ||
-      oldDelegate.backgroundColor != backgroundColor;
-}
-
 class _WeekRow extends StatefulWidget {
   const _WeekRow({
     required this.year,
@@ -4398,20 +4339,6 @@ class _WeekRowState extends State<_WeekRow> {
             ((curCX + circleTranslateX - todayCX!).abs() < cellW * 0.5 ||
                 (curCX + circleTranslateX + cellW - todayCX).abs() <
                     cellW * 0.5);
-        // When both faded markers cross, keep them in their original fixed-size
-        // day-cell widgets. The overlap mask below corrects their alpha without
-        // replacing those widgets with a moving overlay.
-        final todayIsAdjacentMultiDay =
-            todayCX != null &&
-            _sameDay(
-              widget.today,
-              widget.selectedDate.add(const Duration(days: 1)),
-            );
-        final fadedOverlapMaskActive =
-            isSliding &&
-            multiDayCirclesActive &&
-            todayCX != null &&
-            !todayIsAdjacentMultiDay;
         final rowContent = Container(
           height: widget.rowHeight,
           decoration: BoxDecoration(
@@ -4495,7 +4422,7 @@ class _WeekRowState extends State<_WeekRow> {
                         : isNextDayMulti
                         ? resolveAccentColor(context).withOpacity(0.40)
                         : isToday &&
-                            !todayUnderSlidingCircle &&
+                            !todayUnderSlidingCircle
                         ? resolveAccentColor(context).withOpacity(0.40)
                         : null,
                     circleSize: restingIndicatorDiameter,
@@ -4712,21 +4639,6 @@ class _WeekRowState extends State<_WeekRow> {
         return Stack(
           clipBehavior: Clip.hardEdge,
           children: [
-            if (fadedOverlapMaskActive)
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _MultiDayFadedOverlapMask(
-                    circleSize: restingIndicatorDiameter,
-                    todayCenterX: todayCX!,
-                    movingCenterX: curCX + cellW + circleTranslateX,
-                    top: kFixedTopPadding,
-                    backgroundColor: resolveThemeColor(
-                      kBackgroundColor,
-                      context,
-                    ),
-                  ),
-                ),
-              ),
             rowContent,
             // ── Numbers: always on top, never move ───────────────────────
             numbersOverlay,

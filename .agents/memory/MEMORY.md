@@ -1,4 +1,4 @@
-- [Multi-Day faded-circle compositing](multiday-faded-circle-compositing.md) — composite separate fixed-size marker widgets once at 40%; never use a custom-painter union that can read as enlarged during drag.
+- [Independent Multi-Day faded circles](multiday-faded-circle-compositing.md) — render today and adjacent 40% markers as separate fixed-size circles; a shared union reads as a larger shape during drag.
 - [Transparent icon overlay compositing](transparent-icon-overlay-compositing.md) — BlendMode.clear holes must stay on the AppShell canvas; move icon opacity/scale into the painter instead of wrapping it in layers.
 - [AnimatedBuilder child caching](animated-builder-child-caching.md) — never pass setState-driven widgets as AnimatedBuilder.child; move them inline into the builder callback instead.
 - [Native STT channels](native-stt-channels.md) — speech_to_text replaced by native MethodChannel+EventChannel; iOS uses SFSpeechRecognizer, Android uses SpeechRecognizer.
