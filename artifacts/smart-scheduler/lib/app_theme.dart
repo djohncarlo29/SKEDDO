@@ -445,6 +445,60 @@ const kAccentSwatches = <CupertinoDynamicColor>[
   kCatSand,
 ];
 
+// Multi-Day day-circle marker colors in the same order as [kAccentSwatches].
+// These are intentionally separate from the selected-circle accent colors:
+// each marker has its own exact Light Mode / Dark Mode pair.
+const kMultiDayMarkerSwatches = <CupertinoDynamicColor>[
+  CupertinoDynamicColor.withBrightness(
+    color: Color(0xFFF7A9A7),
+    darkColor: Color(0xFF661D17),
+  ), // Red
+  CupertinoDynamicColor.withBrightness(
+    color: Color(0xFFF7CD93),
+    darkColor: Color(0xFF674005),
+  ), // Orange
+  CupertinoDynamicColor.withBrightness(
+    color: Color(0xFFF6E394),
+    darkColor: Color(0xFF655603),
+  ), // Yellow
+  CupertinoDynamicColor.withBrightness(
+    color: Color(0xFFA7E1B8),
+    darkColor: Color(0xFF125522),
+  ), // Green
+  CupertinoDynamicColor.withBrightness(
+    color: Color(0xFFB4E1F8),
+    darkColor: Color(0xFF295465),
+  ), // Light Blue
+  CupertinoDynamicColor.withBrightness(
+    color: Color(0xFF91C2FA),
+    darkColor: Color(0xFF033566),
+  ), // Blue
+  CupertinoDynamicColor.withBrightness(
+    color: Color(0xFFB4B4EA),
+    darkColor: Color(0xFF26265C),
+  ), // Violet
+  CupertinoDynamicColor.withBrightness(
+    color: Color(0xFFF6A3B5),
+    darkColor: Color(0xFF671627),
+  ), // Pink
+  CupertinoDynamicColor.withBrightness(
+    color: Color(0xFFD8B2ED),
+    darkColor: Color(0xFF4C2462),
+  ), // Purple
+  CupertinoDynamicColor.withBrightness(
+    color: Color(0xFFD4CEBE),
+    darkColor: Color(0xFF4E4735),
+  ), // Tan
+  CupertinoDynamicColor.withBrightness(
+    color: Color(0xFFB9C3CC),
+    darkColor: Color(0xFF3D4248),
+  ), // Slate
+  CupertinoDynamicColor.withBrightness(
+    color: Color(0xFFE7DED9),
+    darkColor: Color(0xFF5E554E),
+  ), // Sand
+];
+
 /// Categories persist their color as a plain ARGB int (see _UserCategory.
 /// toJson/fromJson in events_tab.dart), which loses the dynamic light/dark
 /// pairing. This maps a stored color back to its dynamic swatch by matching
@@ -508,6 +562,22 @@ Color resolveAccentColor(BuildContext context) {
 /// comparisons via [resolveCategorySwatch]).
 CupertinoDynamicColor dynamicAccentColor(BuildContext context) =>
     AppAccentColor.maybeOf(context)?.accent ?? kAccentColor;
+
+/// Resolves the exact Multi-Day marker color for the active accent swatch.
+///
+/// The marker palette follows [kAccentSwatches] by index. If a future custom
+/// accent is introduced outside the built-in palette, fall back to the active
+/// accent rather than selecting an unrelated marker color.
+Color resolveMultiDayMarkerColor(BuildContext context) {
+  final accent = dynamicAccentColor(context);
+  final swatchIndex = kAccentSwatches.indexWhere(
+    (swatch) => swatch.value == accent.value,
+  );
+  final marker = swatchIndex >= 0
+      ? kMultiDayMarkerSwatches[swatchIndex]
+      : accent;
+  return CupertinoDynamicColor.resolve(marker, context);
+}
 
 /// Renders a stored category color for the current context.
 ///
