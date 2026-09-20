@@ -4420,10 +4420,12 @@ class _WeekRowState extends State<_WeekRow> {
                     circleColor: isSel
                         ? resolveAccentColor(context)
                         : isNextDayMulti
-                        ? resolveAccentColor(context).withOpacity(0.40)
+                        ? resolveAccentColor(context)
                         : isToday &&
                             !todayUnderSlidingCircle
-                        ? resolveAccentColor(context).withOpacity(0.40)
+                        ? widget.daySubMode == DayViewSubMode.multiDay
+                            ? resolveAccentColor(context)
+                            : resolveAccentColor(context).withOpacity(0.40)
                         : null,
                     circleSize: restingIndicatorDiameter,
                     fixedSize: true,
@@ -4433,7 +4435,9 @@ class _WeekRowState extends State<_WeekRow> {
                     stationaryCircleColor: isSel &&
                             isToday &&
                             !todayUnderSlidingCircle
-                        ? resolveAccentColor(context).withOpacity(0.40)
+                        ? widget.daySubMode == DayViewSubMode.multiDay
+                            ? resolveAccentColor(context)
+                            : resolveAccentColor(context).withOpacity(0.40)
                         : null,
                     child: const SizedBox.shrink(),
                   );
@@ -4461,13 +4465,18 @@ class _WeekRowState extends State<_WeekRow> {
                     fontWeight = FontWeight.w600;
                   } else if (isNextDayMulti) {
                     // Multi-Day shows the adjacent date as its own circle,
-                    // using the same renderer, following the selected circle
-                    // during the swipe, but at 40% opacity.
-                    circleColor = resolveAccentColor(context).withOpacity(0.40);
+                    // using the exact same renderer and full-opacity styling
+                    // as the selected circle.
+                    circleColor = resolveAccentColor(context);
                     textColor = CupertinoColors.white;
                     fontWeight = FontWeight.w600;
                   } else if (isToday) {
-                    circleColor = resolveAccentColor(context).withOpacity(0.40);
+                    // Multi-Day's today marker is rendered exactly like the
+                    // selected circle. Keep the established faded treatment
+                    // for Single Day and Month View.
+                    circleColor = widget.daySubMode == DayViewSubMode.multiDay
+                        ? resolveAccentColor(context)
+                        : resolveAccentColor(context).withOpacity(0.40);
                     textColor = CupertinoColors.white;
                     fontWeight = FontWeight.w600;
                   } else {
