@@ -123,3 +123,4 @@
 - [Liquid Glass SF glyph normalization](liquid-glass-sf-glyph-normalization.md) — custom SF font glyphs need one shared slot and unconstrained rendering; per-glyph FittedBox sizing distorts optical comparisons.
 - [Date-picker weekday headers](date-picker-weekday-headers.md) — all calendar and modal date-picker weekday rows use single letters, `M T W T F S S`.
 - [Calendar swipe indicator geometry](calendar-swipe-indicator-geometry.md) — cap bloom overshoot globally and keep the selected swipe overlay blob-wrapped so fixed-height circles still deform horizontally.
+- [Multi-Day faded circle compositing](multiday-faded-circle-compositing.md) — draw overlapping faded markers in one opaque union layer, then apply 40% opacity once.
