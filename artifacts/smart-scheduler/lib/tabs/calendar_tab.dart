@@ -4701,14 +4701,23 @@ class _WeekRowState extends State<_WeekRow> {
                   }
 
                   return Expanded(
-                    child: Center(
-                      child: Text(
-                        '${date2.day}',
-                        style: TextStyle(
-                          fontFamily: kSFProText,
-                          fontSize: 17,
-                          fontWeight: fw,
-                          color: c,
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: kFixedTopPadding),
+                        child: SizedBox(
+                          height: restingIndicatorDiameter,
+                          child: Center(
+                            child: Text(
+                              '${date2.day}',
+                              style: TextStyle(
+                                fontFamily: kSFProText,
+                                fontSize: 17,
+                                fontWeight: fw,
+                                color: c,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
