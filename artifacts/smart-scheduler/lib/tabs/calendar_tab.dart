@@ -4415,8 +4415,8 @@ class _WeekRowState extends State<_WeekRow> {
                     backgroundOffsetX: isSel || isNextDayMulti
                         ? circleTranslateX
                         : 0.0,
-                    stationaryCircleColor: isSel &&
-                            isToday
+                    stationaryCircleColor: isToday &&
+                            (isSel || isNextDayMulti)
                         ? widget.daySubMode == DayViewSubMode.multiDay
                             ? multiDayMarkerColor
                             : resolveAccentColor(context).withOpacity(0.40)
@@ -4478,6 +4478,12 @@ class _WeekRowState extends State<_WeekRow> {
                       pendingBloomDate: widget.pendingBloomDate,
                        circleColor: circleColor,
                        circleSize: restingIndicatorDiameter,
+                       stationaryCircleColor:
+                           widget.daySubMode == DayViewSubMode.multiDay &&
+                               isNextDayMulti &&
+                               isToday
+                           ? multiDayMarkerColor
+                           : null,
                          // Day View indicator circles must stay at the authored
                          // diameter during Multi-Day transitions and swipes.
                         fixedSize:
