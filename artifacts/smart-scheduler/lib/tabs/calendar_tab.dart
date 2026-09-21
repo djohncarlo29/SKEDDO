@@ -4303,6 +4303,19 @@ class _WeekRowState extends State<_WeekRow> {
             ? -widget.circleSlideX * cellW / totalW
             : 0.0;
         final curCX = (widget.selectedDate.weekday + 0.5) * cellW;
+        bool selectedDateInRow = false;
+        for (int c = 0; c < 7; c++) {
+          final selectedRowDay = firstIdx + c - offset + 1;
+          final selectedRowDate =
+              DateTime(widget.year, widget.month, selectedRowDay);
+          final selectedRowIsOverflow =
+              selectedRowDay < 1 || selectedRowDay > days;
+          if (_sameDay(selectedRowDate, widget.selectedDate) &&
+              (widget.showOverflow || !selectedRowIsOverflow)) {
+            selectedDateInRow = true;
+            break;
+          }
+        }
 
         // Pre-compute the selected column for Multi Day mode.
         // multiDayHasAdjacentDay is true only when the selected day is in this
@@ -4401,7 +4414,7 @@ class _WeekRowState extends State<_WeekRow> {
                     settleCount: widget.settleCount,
                     blobSnapCount: widget.blobSnapCount,
                     pendingBloomDate: widget.pendingBloomDate,
-                    circleColor: isSel
+                    circleColor: isSel && !isSliding
                         ? resolveAccentColor(context)
                         : isNextDayMulti
                         ? multiDayMarkerColor
@@ -4558,6 +4571,24 @@ class _WeekRowState extends State<_WeekRow> {
         // At a full swipe (|circleSlideX| == totalW) the circle has moved
         // exactly one cellW — landing precisely on the adjacent column.
         // Column centres: weekday 1 (Mon) → col 1 → (1 + 0.5) * cellW, etc.
+        //
+        // Paint the moving selected circle above the stationary row content.
+        // Without this foreground layer, the circle can travel into a later
+        // day cell and be painted underneath that cell's today marker.
+        final selectedCircleOverlay = selectedDateInRow
+            ? Positioned(
+                left: curCX + circleTranslateX - restingIndicatorDiameter / 2,
+                top: kFixedTopPadding,
+                width: restingIndicatorDiameter,
+                height: restingIndicatorDiameter,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: resolveAccentColor(context),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              )
+            : null;
 
         // ── Numbers overlay (top layer) ────────────────────────────────
         // Drawn above the sliding circle so numbers never move, only the
@@ -4637,6 +4668,7 @@ class _WeekRowState extends State<_WeekRow> {
           clipBehavior: Clip.hardEdge,
           children: [
             rowContent,
+            if (selectedCircleOverlay != null) selectedCircleOverlay,
             // ── Numbers: always on top, never move ───────────────────────
             numbersOverlay,
           ],
