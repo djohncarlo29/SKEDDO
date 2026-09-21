@@ -2082,6 +2082,8 @@ class CalendarTabState extends State<CalendarTab>
                                     rowHeight: rowHeight,
                                      viewMode: _viewMode,
                                     pendingBloomDate: _pendingBloomDate,
+                                     suppressScaleAnimation:
+                                         inDayView && slideX != 0.0,
                                     scrollController: _previewScrollCtrl(
                                       isPrev: true,
                                       key:
@@ -2121,6 +2123,8 @@ class CalendarTabState extends State<CalendarTab>
                                   blobDeltaX: circleMode ? _blobDeltaX : 0.0,
                                   blobSnapCount: _blobSnapCount,
                                   pendingBloomDate: _pendingBloomDate,
+                                  suppressScaleAnimation:
+                                      inDayView && slideX != 0.0,
                                   daySubMode: widget.daySubMode,
                                    onEditEvent: widget.onEditEvent,
                                   scrollController: _monthViewScrollCtrl,
@@ -2198,6 +2202,8 @@ class CalendarTabState extends State<CalendarTab>
                                     collapseWeekRow: nextColRow,
                                     rowHeight: rowHeight,
                                      viewMode: _viewMode,
+                                     suppressScaleAnimation:
+                                         inDayView && slideX != 0.0,
                                     scrollController: _previewScrollCtrl(
                                       isPrev: false,
                                       key:
@@ -3383,6 +3389,7 @@ class _MonthView extends StatelessWidget {
     this.blobDeltaX = 0.0,
     this.blobSnapCount = 0,
     this.pendingBloomDate,
+    this.suppressScaleAnimation = false,
     this.daySubMode = DayViewSubMode.singleDay,
     this.scrollController,
     this.scrollViewportKey,
@@ -3405,6 +3412,7 @@ class _MonthView extends StatelessWidget {
   final double blobDeltaX; // per-frame gesture delta → blob stretch
   final int blobSnapCount; // incremented on release → spring-back
   final DateTime? pendingBloomDate; // pre-bloom target for incoming navigation
+  final bool suppressScaleAnimation;
   final DayViewSubMode daySubMode;
 
   /// External scroll controller attached to the SingleChildScrollView so the
@@ -3614,6 +3622,7 @@ class _MonthView extends StatelessWidget {
                                 : 0.0,
                             blobSnapCount: blobSnapCount,
                             pendingBloomDate: pendingBloomDate,
+                            suppressScaleAnimation: suppressScaleAnimation,
                             daySubMode: daySubMode,
                           ),
                       ],
@@ -3774,6 +3783,7 @@ class _AnimatedWeekRow extends StatelessWidget {
     this.blobDeltaX = 0.0,
     this.blobSnapCount = 0,
     this.pendingBloomDate,
+    this.suppressScaleAnimation = false,
     this.daySubMode = DayViewSubMode.singleDay,
     this.scrollOffset = 0.0,
     this.eventsByDay = const {},
@@ -3794,6 +3804,7 @@ class _AnimatedWeekRow extends StatelessWidget {
   final double blobDeltaX;
   final int blobSnapCount;
   final DateTime? pendingBloomDate;
+  final bool suppressScaleAnimation;
   final DayViewSubMode daySubMode;
   final Map<String, List<ScheduledEvent>> eventsByDay;
   final CalendarViewMode viewMode;
@@ -3865,6 +3876,7 @@ class _AnimatedWeekRow extends StatelessWidget {
         blobDeltaX: blobDeltaX,
         blobSnapCount: blobSnapCount,
         pendingBloomDate: pendingBloomDate,
+        suppressScaleAnimation: suppressScaleAnimation,
         daySubMode: daySubMode,
         collapseProgress: collapseProgress,
       ),
@@ -3896,6 +3908,7 @@ class _BloomDayCircle extends StatefulWidget {
     this.circleColor,
     required this.circleSize,
     this.fixedSize = false,
+    this.suppressScaleAnimation = false,
     this.backgroundOffsetX = 0.0,
     this.stationaryCircleColor,
   });
@@ -3919,6 +3932,9 @@ class _BloomDayCircle extends StatefulWidget {
   // animation, but allowing its overshoot in the pinned Day View strip makes
   // the selected and translucent today circles grow during a content swipe.
   final bool fixedSize;
+  // Horizontal panel/strip motion must keep the selected marker at its
+  // authored size and must not start a bloom animation mid-gesture.
+  final bool suppressScaleAnimation;
   // During a same-week Day View content swipe, keep this widget mounted and
   // translate only its painted background.  Replacing the widget with a
   // separately positioned Container changes the parent geometry at the first
@@ -4057,6 +4073,16 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
   void didUpdateWidget(_BloomDayCircle old) {
     super.didUpdateWidget(old);
 
+    // Horizontal calendar motion owns the marker geometry.  Do not allow a
+    // pending bloom, pulse, or settle animation to change the selected
+    // circle's size while the week strip or adjacent day panel is moving.
+    if (widget.suppressScaleAnimation) {
+      _ctrl.stop();
+      _ctrl.value = 1.0;
+      _activeAnim = _DayAnim.none;
+      return;
+    }
+
     if (widget.fixedSize && !old.fixedSize) {
       _ctrl.stop();
       _ctrl.value = 1.0;
@@ -4161,7 +4187,8 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
           _DayAnim.shrink => _shrinkColor,
           _ => widget.circleColor,
         };
-        final double renderedScale = widget.fixedSize
+        final double renderedScale =
+            widget.fixedSize || widget.suppressScaleAnimation
             ? 1.0
             : scale;
         Widget transformedBackground(Widget background) {
@@ -4229,6 +4256,7 @@ class _WeekRow extends StatefulWidget {
     this.blobDeltaX = 0.0,
     this.blobSnapCount = 0,
     this.pendingBloomDate,
+    this.suppressScaleAnimation = false,
     this.daySubMode = DayViewSubMode.singleDay,
     this.collapseProgress = 1.0,
     this.eventsByDay = const {},
@@ -4251,6 +4279,7 @@ class _WeekRow extends StatefulWidget {
   final int blobSnapCount;
   // Target date for pre-bloom: circle starts settle animation before selection.
   final DateTime? pendingBloomDate;
+  final bool suppressScaleAnimation;
   final DayViewSubMode daySubMode;
   // 0 = month view, 1 = day view — used to fade the multi-day pill so it
   // doesn't persist while transitioning back to Month View.
@@ -4425,6 +4454,7 @@ class _WeekRowState extends State<_WeekRow> {
                         : null,
                     circleSize: restingIndicatorDiameter,
                     fixedSize: true,
+                    suppressScaleAnimation: widget.suppressScaleAnimation,
                     backgroundOffsetX: isSel || isNextDayMulti
                         ? circleTranslateX
                         : 0.0,
@@ -4491,6 +4521,8 @@ class _WeekRowState extends State<_WeekRow> {
                       pendingBloomDate: widget.pendingBloomDate,
                        circleColor: circleColor,
                        circleSize: restingIndicatorDiameter,
+                       suppressScaleAnimation:
+                           widget.suppressScaleAnimation,
                        stationaryCircleColor:
                            widget.daySubMode == DayViewSubMode.multiDay &&
                                isNextDayMulti &&
