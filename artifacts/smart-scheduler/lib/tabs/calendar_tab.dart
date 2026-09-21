@@ -116,7 +116,7 @@ const double _kDayBannerHeight = 36.0;
 // vertical padding token.
 const double _kCalendarHeaderToDowGap = 8.0;
 
-// The Day View week strip has a fixed row geometry.  The day circle still
+// The Day View week strip has a fixed row geometry. The day circle still
 // follows the active text/system scaling profile, but it must not change the
 // strip's hit-test, translation, or collapse geometry.
 double _dayViewWeekStripHeight(BuildContext context) => _kRowHeightList;
@@ -4443,6 +4443,25 @@ class _WeekRowState extends State<_WeekRow> {
             multiDaySelCol != null && multiDaySelCol < 6;
         final multiDayCirclesActive =
             multiDayHasAdjacentDay && widget.collapseProgress > 0.0;
+        final multiDayPill = multiDayCirclesActive
+            ? Positioned(
+                left:
+                    curCX +
+                    circleTranslateX -
+                    restingIndicatorDiameter / 2,
+                top: kFixedTopPadding,
+                width: cellW + restingIndicatorDiameter,
+                height: restingIndicatorDiameter,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: multiDayMarkerColor,
+                    borderRadius: BorderRadius.circular(
+                      restingIndicatorDiameter / 2,
+                    ),
+                  ),
+                ),
+              )
+            : null;
         final rowContent = Container(
           height: widget.rowHeight,
           decoration: BoxDecoration(
@@ -4450,8 +4469,12 @@ class _WeekRowState extends State<_WeekRow> {
               bottom: BorderSide(color: separatorColor, width: 0.5),
             ),
           ),
-          child: Row(
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
+              if (multiDayPill != null) multiDayPill,
+              Row(
+                children: [
               // Week number — equal-width column (same as day columns)
               // Top-aligned to match day-circle vertical centre (kDayCircleOffset).
               Expanded(
@@ -4688,6 +4711,8 @@ class _WeekRowState extends State<_WeekRow> {
               }),
               // 7px right margin — last day column ends 7px from the edge.
               const SizedBox(width: 7),
+                ],
+              ),
             ],
           ),
         );
