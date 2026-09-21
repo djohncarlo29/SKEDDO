@@ -4247,8 +4247,13 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
           _DayAnim.shrink => _shrinkColor,
           _ => widget.circleColor,
         };
+        // The selected marker is fixed geometry even if a stateful legacy
+        // handoff briefly leaves this renderer mounted.  Selection feedback
+        // must never be able to change the selected circle's diameter.
         final double renderedScale =
-            widget.fixedSize || widget.suppressScaleAnimation
+            widget.isSel ||
+                widget.fixedSize ||
+                widget.suppressScaleAnimation
             ? 1.0
             : scale;
         Widget transformedBackground(Widget background) {
