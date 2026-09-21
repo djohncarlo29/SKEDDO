@@ -15,6 +15,7 @@ void main() {
 
       for (final scale in <double>[0.85, 1.0, 1.30, 1.60]) {
         var calendarRatio = 0.0;
+        var calendarSize = 0.0;
         var pickerRatio = 0.0;
         var yearViewScale = 0.0;
         var pickerItemExtent = 0.0;
@@ -27,8 +28,10 @@ void main() {
             child: Builder(
               builder: (context) {
                 final scaler = MediaQuery.textScalerOf(context);
-                final calendarSize =
-                    calendarCircle * textScaleRatioFor(context, calendarFont);
+                // The Calendar Tab circle is an authored 36 pt geometry
+                // baseline. Its size follows the OS scaler directly rather
+                // than being recomputed from the strip's 17 pt Text widget.
+                calendarSize = scaler.scale(calendarCircle);
                 final pickerSize =
                     pickerCircle * textScaleRatioFor(context, pickerFont);
                 final yearViewScaler =
@@ -50,7 +53,11 @@ void main() {
           ),
         );
 
-        expect(calendarRatio, closeTo(calendarCircle / calendarFont, 0.000001));
+        expect(
+          calendarRatio,
+          closeTo(calendarCircle / calendarFont, 0.000001),
+        );
+        expect(calendarSize, closeTo(scale * calendarCircle, 0.000001));
         expect(pickerRatio, closeTo(pickerCircle / pickerFont, 0.000001));
         expect(yearViewScale, closeTo(scale > 1.0 ? 1.0 : scale, 0.000001));
         expect(

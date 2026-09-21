@@ -92,7 +92,10 @@ const double _kMonthListDotDiameter = 5.0;
 // collapsed section header.
 const double _kMonthListSectionTrailingContentPadding = 16.0;
 const double _kMonthListFinalContentGap = 16.0;
-const double _kDayIndicatorDiameter = 36.0;
+// Calendar Tab day-circle diameter at the default System text size.  This is
+// circle geometry, not a value derived from any individual strip Text widget.
+// The active OS TextScaler applies Dynamic Type to this one authored baseline.
+const double _kCalendarDayCircleDiameter = 36.0;
 const double _kRowHeightCompact = 68.0;
 const double _kRowHeightStacked = 96.0;
 const double _kRowHeightDetails = 128.0;
@@ -118,11 +121,13 @@ const double _kCalendarHeaderToDowGap = 8.0;
 // strip's hit-test, translation, or collapse geometry.
 double _dayViewWeekStripHeight(BuildContext context) => _kRowHeightList;
 
-/// The authored day-circle diameter follows the same text-size profile as the
-/// 17 pt day number. The static circle and the 40%-opacity today circle use
-/// this exact value.
-double _dayIndicatorSizeFor(BuildContext context) =>
-    _kDayIndicatorDiameter * textScaleRatioFor(context, 17.0);
+/// Resolves the fixed Calendar Tab day-circle diameter for the active OS text
+/// size. Selected, adjacent, and today circles all use this exact diameter.
+///
+/// Keep this independent from the strip's day-number Text widgets: the circle
+/// baseline is explicitly authored above, then scaled once by the OS profile.
+double _calendarDayCircleDiameterFor(BuildContext context) =>
+    MediaQuery.textScalerOf(context).scale(_kCalendarDayCircleDiameter);
 
 /// Year View keeps its authored geometry at the default OS size or larger.
 /// Smaller accessibility/text-size settings are still honoured.
@@ -2794,6 +2799,7 @@ class _MorphOverlay extends StatelessWidget {
     final yearDayScale =
         _yearViewTextScaler(context).scale(yearFontSize) / yearFontSize;
     final monthDayScale = textScaleRatioFor(context, 17.0);
+    final monthDayCircleDiameter = _calendarDayCircleDiameterFor(context);
     return ClipRect(
       child: CustomPaint(
         painter: _MorphPainter(
@@ -2815,6 +2821,7 @@ class _MorphOverlay extends StatelessWidget {
           separatorColor: sepC,
           yearDayScale: yearDayScale,
           monthDayScale: monthDayScale,
+          monthDayCircleDiameter: monthDayCircleDiameter,
         ),
       ),
     );
@@ -2841,6 +2848,7 @@ class _MorphPainter extends CustomPainter {
     required this.viewModeRowHeight,
     required this.yearDayScale,
     required this.monthDayScale,
+    required this.monthDayCircleDiameter,
     this.measuredRowTops,
   });
 
@@ -2861,6 +2869,7 @@ class _MorphPainter extends CustomPainter {
   final double viewModeRowHeight;
   final double yearDayScale;
   final double monthDayScale;
+  final double monthDayCircleDiameter;
   final List<double>? measuredRowTops;
 
   final Paint _p = Paint()..isAntiAlias = true;
@@ -2877,6 +2886,7 @@ class _MorphPainter extends CustomPainter {
       o.viewModeRowHeight != viewModeRowHeight ||
       o.yearDayScale != yearDayScale ||
       o.monthDayScale != monthDayScale ||
+      o.monthDayCircleDiameter != monthDayCircleDiameter ||
       o.bgColor != bgColor;
 
   // ── Multiply a color's alpha by [a] without discarding its inherent opacity ─
@@ -3073,7 +3083,7 @@ class _MorphPainter extends CustomPainter {
           final cy = lerpDouble(yearCY, sFinal * (yearCY - focalY), t)!;
           final r = lerpDouble(
             cellSz * 0.575 * yearDayScale,
-            18.0 * monthDayScale,
+            monthDayCircleDiameter / 2,
             t,
           )!;
           final fSize = lerpDouble(
@@ -3122,7 +3132,7 @@ class _MorphPainter extends CustomPainter {
     }
 
     final monthDayCircleOffset =
-        kFixedTopPadding + (_kDayIndicatorDiameter * monthDayScale) / 2;
+        kFixedTopPadding + monthDayCircleDiameter / 2;
 
     // 3. Selected-month day cells — per-element lerp year → month ─────────────
     for (var d = 1; d <= daysInMonth; d++) {
@@ -3151,7 +3161,7 @@ class _MorphPainter extends CustomPainter {
       final cy = lerpDouble(yearCY, monthCY, t)!;
       final r = lerpDouble(
         cellSz * 0.575 * yearDayScale,
-        18.0 * monthDayScale,
+        monthDayCircleDiameter / 2,
         t,
       )!;
       final fSize = lerpDouble(
@@ -4315,7 +4325,8 @@ class _WeekRowState extends State<_WeekRow> {
         final totalW = constraints.maxWidth;
         // One source of truth for the resting indicator geometry. This value
         // remains Dynamic Type-aware and is shared by both Multi-Day circles.
-        final restingIndicatorDiameter = _dayIndicatorSizeFor(context);
+        final restingIndicatorDiameter =
+            _calendarDayCircleDiameterFor(context);
         final separatorColor = resolveThemeColor(kSeparatorColor, context);
         final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
         final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
@@ -4724,7 +4735,7 @@ class _MonthEventDots extends StatelessWidget {
 }
 
 double _monthListDotTop(double rowHeight) =>
-    ((rowHeight - kFixedTopPadding + _kDayIndicatorDiameter) / 2) -
+    ((rowHeight - kFixedTopPadding + _kCalendarDayCircleDiameter) / 2) -
     (_kMonthListDotDiameter / 2);
 
 class _MonthSelectedEvents extends StatelessWidget {
