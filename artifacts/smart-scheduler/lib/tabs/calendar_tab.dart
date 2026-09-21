@@ -3895,6 +3895,61 @@ class _AnimatedWeekRow extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// _StaticDayCircle — selected-day marker with no animation state.
+//
+// The selected marker is intentionally only geometry + paint. Horizontal
+// gestures may translate it, but they can never change its diameter.
+// ══════════════════════════════════════════════════════════════════════════════
+class _StaticDayCircle extends StatelessWidget {
+  const _StaticDayCircle({
+    required this.circleSize,
+    required this.child,
+    this.circleColor,
+    this.stationaryCircleColor,
+    this.backgroundOffsetX = 0.0,
+  });
+
+  final double circleSize;
+  final Widget child;
+  final Color? circleColor;
+  final Color? stationaryCircleColor;
+  final double backgroundOffsetX;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget background(Color color) {
+      return Container(
+        width: circleSize,
+        height: circleSize,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: circleSize,
+      height: circleSize,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          if (stationaryCircleColor != null)
+            background(stationaryCircleColor!),
+          if (circleColor != null)
+            Transform.translate(
+              offset: Offset(backgroundOffsetX, 0),
+              child: background(circleColor!),
+            ),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // _BloomDayCircle — gel/bloom animation wrapper for day-selection circles.
 //
 // Wraps any day-cell child.  Triggers:
@@ -4437,41 +4492,52 @@ class _WeekRowState extends State<_WeekRow> {
 
                 final Widget dayCell;
                 if (isSliding) {
-                  // Keep the same indicator widget mounted while the content
-                  // swipe moves it. Only the selected background translates;
-                  // the number is painted by numbersOverlay above the row.
-                  dayCell = _BloomDayCircle(
-                    key: ValueKey(date),
-                    isSel: isSel,
-                    tapCount: _tapCount,
-                    lastTappedDate: _lastTappedDate,
-                    myDate: date,
-                    settleCount: widget.settleCount,
-                    blobSnapCount: widget.blobSnapCount,
-                    pendingBloomDate: widget.pendingBloomDate,
-                    circleColor: isSel && !isSliding
-                        ? resolveAccentColor(context)
-                        : isNextDayMulti
-                        ? multiDayMarkerColor
-                        : isToday
-                        ? widget.daySubMode == DayViewSubMode.multiDay
-                            ? multiDayMarkerColor
-                            : resolveAccentColor(context).withOpacity(0.40)
-                        : null,
-                    circleSize: restingIndicatorDiameter,
-                    fixedSize: true,
-                    suppressScaleAnimation: widget.suppressScaleAnimation,
-                    backgroundOffsetX: isSel || isNextDayMulti
-                        ? circleTranslateX
-                        : 0.0,
-                    stationaryCircleColor: isToday &&
-                            (isSel || isNextDayMulti)
-                        ? widget.daySubMode == DayViewSubMode.multiDay
-                            ? multiDayMarkerColor
-                            : resolveAccentColor(context).withOpacity(0.40)
-                        : null,
-                    child: const SizedBox.shrink(),
-                  );
+                  // The selected marker is stateless while dragging. Its
+                  // visible copy is the row-level overlay below; this cell
+                  // keeps only today's stationary marker when selected=today.
+                  if (isSel) {
+                    dayCell = _StaticDayCircle(
+                      circleSize: restingIndicatorDiameter,
+                      stationaryCircleColor: isToday
+                          ? widget.daySubMode == DayViewSubMode.multiDay
+                              ? multiDayMarkerColor
+                              : resolveAccentColor(context).withOpacity(0.40)
+                          : null,
+                      child: const SizedBox.shrink(),
+                    );
+                  } else {
+                    // Adjacent and today markers retain their existing
+                    // renderer, but are also fixed-size during the drag.
+                    dayCell = _BloomDayCircle(
+                      key: ValueKey(date),
+                      isSel: false,
+                      tapCount: _tapCount,
+                      lastTappedDate: _lastTappedDate,
+                      myDate: date,
+                      settleCount: widget.settleCount,
+                      blobSnapCount: widget.blobSnapCount,
+                      pendingBloomDate: widget.pendingBloomDate,
+                      circleColor: isNextDayMulti
+                          ? multiDayMarkerColor
+                          : isToday
+                          ? widget.daySubMode == DayViewSubMode.multiDay
+                              ? multiDayMarkerColor
+                              : resolveAccentColor(context).withOpacity(0.40)
+                          : null,
+                      circleSize: restingIndicatorDiameter,
+                      fixedSize: true,
+                      suppressScaleAnimation: widget.suppressScaleAnimation,
+                      backgroundOffsetX: isNextDayMulti
+                          ? circleTranslateX
+                          : 0.0,
+                      stationaryCircleColor: isToday && isNextDayMulti
+                          ? widget.daySubMode == DayViewSubMode.multiDay
+                              ? multiDayMarkerColor
+                              : resolveAccentColor(context).withOpacity(0.40)
+                          : null,
+                      child: const SizedBox.shrink(),
+                    );
+                  }
                 } else {
                   // Normal (non-sliding) mode — wrap in gel/bloom animation.
                   //
@@ -4516,31 +4582,12 @@ class _WeekRowState extends State<_WeekRow> {
                     fontWeight = FontWeight.w400;
                   }
 
-                    dayCell = _BloomDayCircle(
-                      key: ValueKey(date),
-                      isSel: isSel,
-                      tapCount: _tapCount,
-                      lastTappedDate: _lastTappedDate,
-                      myDate: date,
-                      settleCount: widget.settleCount,
-                      blobSnapCount: widget.blobSnapCount,
-                      pendingBloomDate: widget.pendingBloomDate,
-                       circleColor: circleColor,
-                       circleSize: restingIndicatorDiameter,
-                       suppressScaleAnimation:
-                           widget.suppressScaleAnimation,
-                       stationaryCircleColor:
-                           widget.daySubMode == DayViewSubMode.multiDay &&
-                               isNextDayMulti &&
-                               isToday
-                           ? multiDayMarkerColor
-                           : null,
-                         // Day View indicator circles must stay at the authored
-                         // diameter during Multi-Day transitions and swipes.
-                         // Every Calendar marker keeps one authored diameter.
-                         // Selection feedback must not resize the selected
-                         // circle while still or during horizontal motion.
-                         fixedSize: true,
+                  if (isSel) {
+                    // The selected marker has no animation controller. It is
+                    // exactly the resolved diameter at rest and in motion.
+                    dayCell = _StaticDayCircle(
+                      circleSize: restingIndicatorDiameter,
+                      circleColor: circleColor,
                       child: Text(
                         '$displayDay',
                         style: TextStyle(
@@ -4551,6 +4598,38 @@ class _WeekRowState extends State<_WeekRow> {
                         ),
                       ),
                     );
+                  } else {
+                    dayCell = _BloomDayCircle(
+                      key: ValueKey(date),
+                      isSel: false,
+                      tapCount: _tapCount,
+                      lastTappedDate: _lastTappedDate,
+                      myDate: date,
+                      settleCount: widget.settleCount,
+                      blobSnapCount: widget.blobSnapCount,
+                      pendingBloomDate: widget.pendingBloomDate,
+                      circleColor: circleColor,
+                      circleSize: restingIndicatorDiameter,
+                      suppressScaleAnimation:
+                          widget.suppressScaleAnimation,
+                      stationaryCircleColor:
+                          widget.daySubMode == DayViewSubMode.multiDay &&
+                              isNextDayMulti &&
+                              isToday
+                          ? multiDayMarkerColor
+                          : null,
+                      fixedSize: true,
+                      child: Text(
+                        '$displayDay',
+                        style: TextStyle(
+                          fontFamily: kSFProText,
+                          fontSize: 17,
+                          fontWeight: fontWeight,
+                          color: textColor,
+                        ),
+                      ),
+                    );
+                  }
                 }
 
                 return Expanded(
@@ -4619,11 +4698,10 @@ class _WeekRowState extends State<_WeekRow> {
                 top: kFixedTopPadding,
                 width: restingIndicatorDiameter,
                 height: restingIndicatorDiameter,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: resolveAccentColor(context),
-                    shape: BoxShape.circle,
-                  ),
+                child: _StaticDayCircle(
+                  circleSize: restingIndicatorDiameter,
+                  circleColor: resolveAccentColor(context),
+                  child: const SizedBox.shrink(),
                 ),
               )
             : null;
