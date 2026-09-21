@@ -4073,20 +4073,15 @@ class _BloomDayCircleState extends State<_BloomDayCircle>
   void didUpdateWidget(_BloomDayCircle old) {
     super.didUpdateWidget(old);
 
-    // Horizontal calendar motion owns the marker geometry.  Do not allow a
-    // pending bloom, pulse, or settle animation to change the selected
-    // circle's size while the week strip or adjacent day panel is moving.
-    if (widget.suppressScaleAnimation) {
+    // Calendar marker geometry is fixed. Do not allow a pending bloom, pulse,
+    // or settle animation to start when the circle is rendered at authored
+    // size; otherwise a later rebuild can restart the scale animation even
+    // though the current frame is clamped.
+    if (widget.fixedSize || widget.suppressScaleAnimation) {
       _ctrl.stop();
       _ctrl.value = 1.0;
       _activeAnim = _DayAnim.none;
       return;
-    }
-
-    if (widget.fixedSize && !old.fixedSize) {
-      _ctrl.stop();
-      _ctrl.value = 1.0;
-      _activeAnim = _DayAnim.none;
     }
 
     // ── Pre-bloom: incoming navigation target ─────────────────────────────
@@ -4531,10 +4526,10 @@ class _WeekRowState extends State<_WeekRow> {
                            : null,
                          // Day View indicator circles must stay at the authored
                          // diameter during Multi-Day transitions and swipes.
-                        fixedSize:
-                            widget.daySubMode == DayViewSubMode.multiDay ||
-                             multiDayCirclesActive ||
-                            widget.collapseProgress > 0.95,
+                         // Every Calendar marker keeps one authored diameter.
+                         // Selection feedback must not resize the selected
+                         // circle while still or during horizontal motion.
+                         fixedSize: true,
                       child: Text(
                         '$displayDay',
                         style: TextStyle(
