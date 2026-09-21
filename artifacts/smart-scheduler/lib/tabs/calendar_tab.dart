@@ -4383,10 +4383,22 @@ class _WeekRowState extends State<_WeekRow> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalW = constraints.maxWidth;
-        // One source of truth for the resting indicator geometry. This value
-        // remains Dynamic Type-aware and is shared by both Multi-Day circles.
-        final restingIndicatorDiameter =
+        // One source of truth for the visible indicator geometry. The Day View
+        // row is intentionally fixed at 52 px, leaving only 44 px after the
+        // authored top padding. Without this bound, the in-cell circle is
+        // constrained by the cell while the row-level swipe overlay receives
+        // the full Dynamic-Type diameter and visibly grows on first movement.
+        // Resolve the same bounded diameter for both paths.
+        final authoredIndicatorDiameter =
             _calendarDayCircleDiameterFor(context);
+        final indicatorSlotHeight = math.max(
+          0.0,
+          widget.rowHeight - kFixedTopPadding,
+        );
+        final restingIndicatorDiameter = math.min(
+          authoredIndicatorDiameter,
+          indicatorSlotHeight,
+        );
         final separatorColor = resolveThemeColor(kSeparatorColor, context);
         final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
         final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
