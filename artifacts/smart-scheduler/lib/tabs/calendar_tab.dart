@@ -114,6 +114,7 @@ const double _kHourHeight = 64.0;
 const double _kTimelinePad =
     8.0; // breathing room above 12 am and below midnight
 const double _kDayBannerHeight = 36.0;
+const double _kDayBannerVerticalInset = 4.0;
 // Fixed 8 pt breathing room between the large app header and the Month/Day
 // DOW row. Keep this independent from text scaling and the shared 16 pt
 // vertical padding token.
@@ -5613,9 +5614,11 @@ class _DayBannerState extends State<_DayBanner>
       );
     }
 
-    return needsWrap
-        ? math.max(_kDayBannerHeight, _lineHeight(context) * 2)
-        : _kDayBannerHeight;
+    final lineCount = needsWrap ? 2 : 1;
+    final textHeight = _lineHeight(context) * lineCount;
+    final minimumTextWithInsets =
+        textHeight + _kDayBannerVerticalInset * 2;
+    return math.max(_kDayBannerHeight, minimumTextWithInsets);
   }
 
   Widget _responsiveLabel(
