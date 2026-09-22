@@ -11776,37 +11776,82 @@ class _AddCategoryButtonState extends State<_AddCategoryButton>
 
 DateTime _utilityDay(DateTime date) => DateTime(date.year, date.month, date.day);
 
-String _utilityDateHeader(DateTime date) {
-  const weekdays = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
-  ];
+class _DcvUtilitySection {
+  final String key;
+  final String label;
+  final DateTime sortDate;
+
+  const _DcvUtilitySection({
+    required this.key,
+    required this.label,
+    required this.sortDate,
+  });
+}
+
+_DcvUtilitySection _utilitySectionForDate(
+  DateTime date, {
+  DateTime? now,
+}) {
   const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
+    'January',
+    'February',
+    'March',
+    'April',
     'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
+  final today = _utilityDay(now ?? DateTime.now());
   final day = _utilityDay(date);
-  final now = DateTime.now();
-  final today = _utilityDay(now);
-  if (day == today) return 'Today';
-  if (day == today.subtract(const Duration(days: 1))) return 'Yesterday';
-  return '${weekdays[day.weekday - 1]} - '
-      '${months[day.month - 1]} ${day.day}, ${day.year}';
+  final daysAgo = today.difference(day).inDays;
+
+  if (daysAgo <= 0) {
+    return _DcvUtilitySection(
+      key: 'today',
+      label: 'Today',
+      sortDate: today,
+    );
+  }
+  if (daysAgo == 1) {
+    return _DcvUtilitySection(
+      key: 'yesterday',
+      label: 'Yesterday',
+      sortDate: today.subtract(const Duration(days: 1)),
+    );
+  }
+  if (daysAgo <= 7) {
+    return _DcvUtilitySection(
+      key: 'previous-7-days',
+      label: 'Previous 7 Days',
+      sortDate: today.subtract(const Duration(days: 2)),
+    );
+  }
+  if (daysAgo <= 30) {
+    return _DcvUtilitySection(
+      key: 'previous-30-days',
+      label: 'Previous 30 Days',
+      sortDate: today.subtract(const Duration(days: 8)),
+    );
+  }
+  if (daysAgo > 365) {
+    return const _DcvUtilitySection(
+      key: 'older',
+      label: 'Older',
+      sortDate: DateTime(1970),
+    );
+  }
+
+  final monthStart = DateTime(day.year, day.month);
+  return _DcvUtilitySection(
+    key: 'month-${day.year}-${day.month}',
+    label: '${months[day.month - 1]} ${day.year}',
+    sortDate: monthStart,
+  );
 }
 
 class _DcvUtilityItem {
@@ -11885,7 +11930,7 @@ class _DcvUtilityContent extends StatefulWidget {
 }
 
 class _DcvUtilityContentState extends State<_DcvUtilityContent> {
-  final Set<int> _collapsedSections = {};
+  final Set<String> _collapsedSections = {};
 
   List<ScheduledEvent> _sortedChildEvents(
     Iterable<ScheduledEvent> events,
@@ -12217,10 +12262,10 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
 
   Widget _buildSection(
     BuildContext context,
-    DateTime date,
+    _DcvUtilitySection section,
     List<_DcvUtilityItem> items,
   ) {
-    final sectionKey = date.millisecondsSinceEpoch;
+    final sectionKey = section.key;
     final isCollapsed = _collapsedSections.contains(sectionKey);
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -12228,7 +12273,7 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _DcvSectionLabel(
-            text: _utilityDateHeader(date),
+            text: section.label,
             isFirst: true,
             isCollapsed: isCollapsed,
             accentColor: widget.categoryColor,
@@ -12282,20 +12327,25 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
 
   @override
   Widget build(BuildContext context) {
-    final grouped = <DateTime, List<_DcvUtilityItem>>{};
+    final grouped = <String, List<_DcvUtilityItem>>{};
+    final sections = <String, _DcvUtilitySection>{};
     for (final item in _items()) {
-      (grouped[_utilityDay(item.date)] ??= []).add(item);
+      final section = _utilitySectionForDate(item.date);
+      (grouped[section.key] ??= []).add(item);
+      sections[section.key] = section;
     }
-    final dates = grouped.keys.toList()
+    final orderedSections = sections.values.toList()
       ..sort(
         (a, b) =>
-            widget.sortNewestFirst ? b.compareTo(a) : a.compareTo(b),
+            widget.sortNewestFirst
+                ? b.sortDate.compareTo(a.sortDate)
+                : a.sortDate.compareTo(b.sortDate),
       );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var index = 0; index < dates.length; index++)
-          _buildSection(context, dates[index], grouped[dates[index]]!),
+        for (final section in orderedSections)
+          _buildSection(context, section, grouped[section.key]!),
       ],
     );
   }
