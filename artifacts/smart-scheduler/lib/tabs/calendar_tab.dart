@@ -118,12 +118,6 @@ const double _kDayBannerHeight = 36.0;
 // vertical padding token.
 const double _kCalendarHeaderToDowGap = 8.0;
 
-<<<<<<< HEAD
-// The Day View week strip has a fixed row geometry. The day circle still
-// follows the active text/system scaling profile, but it must not change the
-// strip's hit-test, translation, or collapse geometry.
-double _dayViewWeekStripHeight(BuildContext context) => _kRowHeightList;
-=======
 // The Day View circle slot is the same bounded slot that prevents the
 // row-level swipe copy from resolving to a larger Dynamic-Type diameter than
 // the in-cell marker. Extra row height is reserved below this slot, never
@@ -145,7 +139,6 @@ double _dayViewWeekStripHeight(BuildContext context) {
         _kDayIndicatorBottomPadding,
   );
 }
->>>>>>> da70cbd (Update calendar tab logic and swipe indicator geometry)
 
 /// Resolves the fixed Calendar Tab day-circle diameter for the active OS text
 /// size. Selected, adjacent, and today circles all use this exact diameter.

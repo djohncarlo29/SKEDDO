@@ -45,6 +45,7 @@
 - [Subscreen checkmark layout](subscreen-checkmark-layout.md) — selectable rows share an OS-scaled checkmark slot with fixed 16px label and edge gaps.
 - [Flutter APK Gradle stability](flutter-apk-gradle-stability.md) — SIGBUS fix requires DEFAULT_JVM_OPTS in gradlew (not just gradle.properties); daemon=false runs in wrapper JVM which ignores org.gradle.jvmargs.
 - [Shorebird patch environment](shorebird-patch-env.md) — set TMPDIR to workspace before every patch push; /tmp overlayfs fails on large writes. shorebird-push.sh now auto-restores symlinks and sets TMPDIR.
+- [Shorebird conflict-marker preflight](shorebird-conflict-marker-preflight.md) — committed merge markers cause misleading "'double' isn't a type" cascades; scan sources before patching.
 - [Shorebird release build verification](shorebird-release-build-verification.md) — a successful Flutter APK build can still end with duplicate-release handoff failure; verify and deliver the generated APK separately.
 - [Shorebird native diff safety](shorebird-native-diff.md) — DEX field/method differences mean the patch no longer matches the installed release’s native baseline; publish a new release instead of allowing native diffs.
 - [Dart 3.9 collection nesting](dart39-collection-nesting.md) — if→for→if collection elements crash Dart 3.9 parser; fold outer if into for-loop condition instead.
