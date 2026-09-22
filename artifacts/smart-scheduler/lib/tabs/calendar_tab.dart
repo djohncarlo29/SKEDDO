@@ -6644,16 +6644,53 @@ class _CurrentTimeIndicator extends StatelessWidget {
   // anchored in the hour-label column.
   final double multiDayWholeShiftX;
 
-  String get _label {
+  String get _fullLabel {
     final suffix = hour < 12 ? 'am' : 'pm';
     final displayH = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
     final mm = minute.toString().padLeft(2, '0');
     return '$displayH:$mm $suffix';
   }
 
+  String get _compactLabel {
+    final displayH = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    final mm = minute.toString().padLeft(2, '0');
+    return '$displayH:$mm';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final labelColW = _hourLabelColW(MediaQuery.textScalerOf(context));
+    final scaler = MediaQuery.textScalerOf(context);
+    final labelColW = _hourLabelColW(scaler);
+    const pillHorizontalPadding = 6.0;
+    const pillRightMargin = 4.0;
+    final availableTextWidth = math.max(
+      0.0,
+      labelColW - (pillHorizontalPadding * 2) - pillRightMargin,
+    );
+    final labelStyle = TextStyle(
+      fontFamily: kSFProText,
+      fontSize: 10,
+      fontWeight: FontWeight.w600,
+      color: CupertinoColors.white,
+    );
+    final fullLabel = _fullLabel;
+    final compactLabel = _compactLabel;
+    final fullFits =
+        _measureCurrentTimeLabel(fullLabel, scaler, labelStyle) <=
+        availableTextWidth;
+    final compactFits =
+        _measureCurrentTimeLabel(compactLabel, scaler, labelStyle) <=
+        availableTextWidth;
+    // Keep the period suffix on one line when possible. Once it no longer
+    // fits, remove only the suffix before allowing the pill to become
+    // multiline. At extreme Dynamic Type sizes the full label is retained so
+    // the natural space remains available as the line break.
+    final label = fullFits
+        ? fullLabel
+        : compactFits
+        ? compactLabel
+        : fullLabel;
+    final allowWrap = !fullFits && !compactFits;
     final pill = SizedBox(
       width: labelColW,
       child: Align(
@@ -6665,13 +6702,14 @@ class _CurrentTimeIndicator extends StatelessWidget {
             color: resolveAccentColor(context),
             shape: const BoundedSquircleStadiumBorder(radius: 10),
           ),
-          child: Text(
-            _label,
-            style: TextStyle(
-              fontFamily: kSFProText,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: CupertinoColors.white,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: availableTextWidth),
+            child: Text(
+              label,
+              maxLines: allowWrap ? 2 : 1,
+              softWrap: allowWrap,
+              overflow: TextOverflow.clip,
+              style: labelStyle,
             ),
           ),
         ),
@@ -6753,6 +6791,19 @@ class _CurrentTimeIndicator extends StatelessWidget {
       ],
     );
   }
+}
+
+double _measureCurrentTimeLabel(
+  String label,
+  TextScaler scaler,
+  TextStyle style,
+) {
+  final painter = TextPainter(
+    text: TextSpan(text: label, style: style),
+    textDirection: TextDirection.ltr,
+    textScaler: scaler,
+  )..layout();
+  return painter.width;
 }
 
 class _CurrentTimeDot extends StatelessWidget {
