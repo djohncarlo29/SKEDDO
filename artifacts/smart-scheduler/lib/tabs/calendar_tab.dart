@@ -6486,7 +6486,11 @@ class _DayTimelineState extends State<_DayTimeline>
 }
 
 // Hour-label column width: 16 px left margin + widest label text + 8 px gap.
-// Measured fresh each call — no cache — so fonts are guaranteed to be loaded.
+// Keep the baseline width tied to the default system text size. Dynamic Type
+// changes the label text, not this area, until even the compact label cannot
+// preserve the right inset.
+const double _kHourLabelLeftPadding = 16.0;
+const double _kHourLabelRightPadding = 8.0;
 final _kHourLabelStyle = TextStyle(
   fontFamily: kSFProText,
   fontSize: 11,
@@ -6494,15 +6498,63 @@ final _kHourLabelStyle = TextStyle(
 );
 final _kHourMeasureStyle = TextStyle(fontFamily: kSFProText, fontSize: 11);
 
-// Measures the hour-label column width at the device's current text scale so
-// the column never mismatches the rendered label width.
-double _hourLabelColW(TextScaler scaler) {
+double _measureHourLabel(String text, TextScaler scaler) {
   final tp = TextPainter(
-    text: TextSpan(text: '10:00 pm', style: _kHourMeasureStyle),
+    text: TextSpan(text: text, style: _kHourMeasureStyle),
     textDirection: TextDirection.ltr,
     textScaler: scaler,
   )..layout();
-  return 16.0 + tp.width + 8.0;
+  return tp.width;
+}
+
+String _fullHourLabel(int hour) {
+  if (hour == 0) return '12:00 am';
+  if (hour < 12) return '$hour:00 am';
+  if (hour == 12) return '12:00 pm';
+  return '${hour - 12}:00 pm';
+}
+
+String _compactHourLabel(int hour) {
+  if (hour == 0) return '12 am';
+  if (hour < 12) return '$hour am';
+  if (hour == 12) return '12 pm';
+  return '${hour - 12} pm';
+}
+
+String _tightHourLabel(int hour) {
+  if (hour == 0) return '12am';
+  if (hour < 12) return '${hour}am';
+  if (hour == 12) return '12pm';
+  return '${hour - 12}pm';
+}
+
+double _defaultHourLabelColW() =>
+    _kHourLabelLeftPadding +
+    _measureHourLabel('10:00 pm', TextScaler.noScaling) +
+    _kHourLabelRightPadding;
+
+// Measures the shared hour-label column at the default system text size. At
+// larger sizes, the full label contracts before the column is allowed to grow.
+double _hourLabelColW(TextScaler scaler) {
+  final defaultWidth = _defaultHourLabelColW();
+  final availableTextWidth =
+      defaultWidth - _kHourLabelLeftPadding - _kHourLabelRightPadding;
+  var expandedWidth = defaultWidth;
+
+  // Only the final no-space fallback is allowed to grow the column. This
+  // keeps the timeline geometry fixed for the normal and compact forms.
+  for (var hour = 0; hour < 24; hour++) {
+    final tightWidth = _measureHourLabel(_tightHourLabel(hour), scaler);
+    if (tightWidth > availableTextWidth) {
+      expandedWidth = math.max(
+        expandedWidth,
+        _kHourLabelLeftPadding +
+            tightWidth +
+            _kHourLabelRightPadding,
+      );
+    }
+  }
+  return expandedWidth;
 }
 
 class _HourSlot extends StatelessWidget {
@@ -6513,16 +6565,20 @@ class _HourSlot extends StatelessWidget {
   final int hour;
   final double lineStartInset;
 
-  String get _label {
-    if (hour == 0) return '12:00 am';
-    if (hour < 12) return '$hour:00 am';
-    if (hour == 12) return '12:00 pm';
-    return '${hour - 12}:00 pm';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final double colW = _hourLabelColW(MediaQuery.textScalerOf(context));
+    final scaler = MediaQuery.textScalerOf(context);
+    final double colW = _hourLabelColW(scaler);
+    final availableTextWidth =
+        colW - _kHourLabelLeftPadding - _kHourLabelRightPadding;
+    final fullLabel = _fullHourLabel(hour);
+    final compactLabel = _compactHourLabel(hour);
+    final tightLabel = _tightHourLabel(hour);
+    final label = _measureHourLabel(fullLabel, scaler) <= availableTextWidth
+        ? fullLabel
+        : _measureHourLabel(compactLabel, scaler) <= availableTextWidth
+        ? compactLabel
+        : tightLabel;
     final hourLabelStyle = _kHourLabelStyle.copyWith(
       color: resolveThemeColor(kSecondaryLabel, context),
     );
@@ -6547,9 +6603,15 @@ class _HourSlot extends StatelessWidget {
               SizedBox(
                 width: colW,
                 child: Padding(
-                  padding: const EdgeInsets.only(left: 16, right: 8),
+                  padding: const EdgeInsets.only(
+                    left: _kHourLabelLeftPadding,
+                    right: _kHourLabelRightPadding,
+                  ),
                   child: Text(
-                    _label,
+                    label,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.clip,
                     textAlign: TextAlign.right,
                     style: hourLabelStyle,
                   ),
