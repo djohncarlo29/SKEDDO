@@ -8325,6 +8325,7 @@ class EventsTabState extends State<EventsTab>
                     specialContentBuilder:
                         isArchivedUtility && hasArchivedUtilityItems
                             ? (_) => _DcvUtilityContent(
+                              categoryColor: dcvColor,
                               archivedSmartLabels: _archivedSmartLabels,
                               archivedCategories: _archivedUserCategories,
                               archivedEvents:
@@ -8361,6 +8362,7 @@ class EventsTabState extends State<EventsTab>
                             : isRecentlyDeletedUtility &&
                                 hasRecentlyDeletedUtilityItems
                             ? (_) => _DcvUtilityContent(
+                              categoryColor: dcvColor,
                               deletedEvents:
                                   EventStore.instance.deletedEvents.value,
                               deletedSmartLabels: _recentlyDeletedSmartCategories,
@@ -11818,6 +11820,10 @@ class _DcvUtilityItem {
 }
 
 class _DcvUtilityContent extends StatefulWidget {
+  /// The color of the utility category whose DCV is open. This is the
+  /// category-level fallback for utility-owned accents, not a replacement for
+  /// the original colors of archived/deleted child categories.
+  final Color categoryColor;
   final List<String> archivedSmartLabels;
   final List<_UserCategory> archivedCategories;
   final List<ScheduledEvent> archivedEvents;
@@ -11840,6 +11846,7 @@ class _DcvUtilityContent extends StatefulWidget {
   final ValueChanged<_UserCategory>? onDeletedCategoryTap;
 
   const _DcvUtilityContent({
+    required this.categoryColor,
     this.archivedSmartLabels = const [],
     this.archivedCategories = const [],
     this.archivedEvents = const [],
@@ -11920,7 +11927,7 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
             name: label,
             description: '',
             count: 0,
-            color: kCatSlate,
+            color: widget.categoryColor,
             icon: SFIcons.sf_archivebox,
           ),
           onTap: () => widget.onArchivedSmartCategoryTap?.call(label),
@@ -11978,7 +11985,7 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
             name: label,
             description: '',
             count: 0,
-            color: kCatSlate,
+            color: widget.categoryColor,
             icon: SFIcons.sf_archivebox,
           ),
           onTap: () => widget.onDeletedSmartCategoryTap?.call(label),
@@ -12146,7 +12153,11 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
   }) {
     final card = _ScheduledEventCard(
       event: event,
-      dotColor: resolveEventCategoryColor(context, event),
+      dotColor: resolveEventCategoryColor(
+        context,
+        event,
+        fallbackColor: widget.categoryColor,
+      ),
       isGrouped: true,
       isFirst: false,
       isLast: isLast,
@@ -12187,7 +12198,7 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
             text: _utilityDateHeader(date),
             isFirst: true,
             isCollapsed: isCollapsed,
-            accentColor: resolveAccentColor(context),
+            accentColor: widget.categoryColor,
             onTap: () {
               setState(() {
                 if (isCollapsed) {
@@ -18421,8 +18432,9 @@ Widget buildDcvEventCard({
 /// category colour without inheriting the colour of the surrounding DCV.
 Color resolveEventCategoryColor(
   BuildContext context,
-  ScheduledEvent event,
-) {
+  ScheduledEvent event, {
+  Color? fallbackColor,
+}) {
   const uncategorizedIds = {'', 'uncategorized', 'sys-uncategorized'};
   final categoryId =
       uncategorizedIds.contains(event.categoryId)
@@ -18430,7 +18442,7 @@ Color resolveEventCategoryColor(
           : event.categoryId;
   final meta = CategoryRegistry.get(categoryId);
   return meta == null
-      ? resolveAccentColor(context)
+      ? fallbackColor ?? resolveAccentColor(context)
       : renderCategoryColor(meta.rawColor, context);
 }
 
