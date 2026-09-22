@@ -250,8 +250,15 @@ class DeterministicMatcher implements SmartCategoryMatcher {
     // Expand to synonyms so rules like "Eat" match events titled "Lunch".
     final expanded = Set<String>.from(base);
     for (final kw in List<String>.from(base)) {
+      final variants = <String>{kw};
+      if (kw.endsWith('ies') && kw.length > 4) {
+        variants.add('${kw.substring(0, kw.length - 3)}y');
+      } else if (kw.endsWith('s') && !kw.endsWith('ss') && kw.length > 3) {
+        variants.add(kw.substring(0, kw.length - 1));
+      }
+      expanded.addAll(variants);
       for (final group in _kSynonymGroups) {
-        if (group.contains(kw)) {
+        if (variants.any(group.contains)) {
           expanded.addAll(group);
           break;
         }

@@ -21,7 +21,13 @@ import '../../services/event_model.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 class HybridMatcher implements SmartCategoryMatcher {
   /// Cosine similarity threshold: events with score >= this are included.
-  static const double _threshold = 0.18;
+  ///
+  /// 0.18 was too permissive for the event text used here. Because event
+  /// embeddings also contain shared date/time context, that threshold could
+  /// admit nearly every scheduled event for a short rule such as "Birthdays".
+  /// A higher floor keeps semantic matches useful without making the matcher
+  /// depend on exact title wording.
+  static const double _threshold = 0.35;
 
   /// Top-N events returned from semantic search (before date post-filter).
   static const int _topN = 50;
@@ -449,8 +455,15 @@ class HybridMatcher implements SmartCategoryMatcher {
   static Set<String> _expandWithSynonyms(Set<String> keywords) {
     final expanded = Set<String>.from(keywords);
     for (final kw in List<String>.from(keywords)) {
+      final variants = <String>{kw};
+      if (kw.endsWith('ies') && kw.length > 4) {
+        variants.add('${kw.substring(0, kw.length - 3)}y');
+      } else if (kw.endsWith('s') && !kw.endsWith('ss') && kw.length > 3) {
+        variants.add(kw.substring(0, kw.length - 1));
+      }
+      expanded.addAll(variants);
       for (final group in _kSynonymGroups) {
-        if (group.contains(kw)) {
+        if (variants.any(group.contains)) {
           expanded.addAll(group);
           break;
         }

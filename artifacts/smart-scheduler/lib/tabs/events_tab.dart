@@ -7785,6 +7785,7 @@ class EventsTabState extends State<EventsTab>
                   .match(
                     candidates: allEvents,
                     rule: cat.smartDescription,
+                    categoryName: cat.name,
                     now: now,
                   )
                   .length;

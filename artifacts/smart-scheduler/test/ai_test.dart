@@ -507,7 +507,45 @@ void main() {
       expect(r.map((e) => e.id), contains('1'));
       expect(r.map((e) => e.id), isNot(contains('2')));
     });
+
+    test('plural birthday rules expand to the birthday concept', () {
+      final r = matcher.match(
+        candidates: [birthday, other],
+        rule: 'Birthdays',
+      );
+      expect(r.map((e) => e.id), contains('1'));
+      expect(r.map((e) => e.id), isNot(contains('2')));
+    });
   });
+
+  test(
+    'HybridMatcher rejects weak semantic matches instead of admitting every event',
+    () {
+      final matcher = HybridMatcher();
+      final birthday = ScheduledEvent(
+        id: 'birthday',
+        title: "Mom's special day",
+        parsedDate: ParsedDate(absoluteDate: DateTime(2025, 6, 12)),
+      );
+      final unrelated = ScheduledEvent(
+        id: 'unrelated',
+        title: 'Team budget review',
+        parsedDate: ParsedDate(absoluteDate: DateTime(2025, 6, 13)),
+      );
+      matcher.setCategoryEmbedding('Birthday', const [1.0, 0.0]);
+      matcher.setEventEmbedding('birthday', const [1.0, 0.0]);
+      // Cosine similarity is 0.20: above the old 0.18 floor, below the
+      // stricter relevance floor.
+      matcher.setEventEmbedding('unrelated', const [0.2, 0.979795897]);
+
+      final result = matcher.match(
+        candidates: [birthday, unrelated],
+        rule: 'Birthdays',
+        categoryName: 'Birthday',
+      );
+      expect(result.map((event) => event.id), ['birthday']);
+    },
+  );
 
   // ── E. HybridMatcher weekday + time-of-day hard filters ───────────────────
   //
