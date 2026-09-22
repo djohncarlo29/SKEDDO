@@ -1867,12 +1867,6 @@ class CalendarTabState extends State<CalendarTab>
             final zoomT = _zoomAnim.value;
             final colT = _collapseAnim.value;
             final dayWeekStripHeight = _dayViewWeekStripHeight(context);
-            final dayBannerHeight = _DayBannerState.requiredHeight(
-              context,
-              width: sw,
-              date: _selected,
-              daySubMode: widget.daySubMode,
-            );
             // Animated row height driven by the view-mode transition.
             final rowHeight = lerpDouble(
               _fromHeight,
@@ -1892,6 +1886,40 @@ class CalendarTabState extends State<CalendarTab>
             // During a snap animation use the interpolated value; during a
             // free drag use the raw _slideX field.
             final slideX = _snapCtrl.isAnimating ? _snapAnim.value : _slideX;
+            final currentDayBannerHeight = _DayBannerState.requiredHeight(
+              context,
+              width: sw,
+              date: _selected,
+              daySubMode: widget.daySubMode,
+            );
+            final dayBannerHeight = () {
+              if (widget.daySubMode == DayViewSubMode.list ||
+                  slideX == 0.0) {
+                return currentDayBannerHeight;
+              }
+
+              // The week strip can navigate by a full week; content swipes
+              // navigate by one day. Measure the banner at the destination
+              // before it enters, then interpolate its height along with the
+              // horizontal label motion.
+              final bannerDayStep = _weekStripDrag ? 7 : 1;
+              final targetDate = slideX < 0
+                  ? _selected.add(Duration(days: bannerDayStep))
+                  : _selected.subtract(Duration(days: bannerDayStep));
+              final targetDayBannerHeight =
+                  _DayBannerState.requiredHeight(
+                    context,
+                    width: sw,
+                    date: targetDate,
+                    daySubMode: widget.daySubMode,
+                  );
+              final slideProgress = (slideX.abs() / sw).clamp(0.0, 1.0);
+              return lerpDouble(
+                currentDayBannerHeight,
+                targetDayBannerHeight,
+                slideProgress,
+              )!;
+            }();
 
             // Adjacent year / month / day for the three-panel rendering
             final prevYear = _dispYear - 1;
