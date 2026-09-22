@@ -1866,6 +1866,12 @@ class CalendarTabState extends State<CalendarTab>
             final zoomT = _zoomAnim.value;
             final colT = _collapseAnim.value;
             final dayWeekStripHeight = _dayViewWeekStripHeight(context);
+            final dayBannerHeight = _DayBannerState.requiredHeight(
+              context,
+              width: sw,
+              date: _selected,
+              daySubMode: widget.daySubMode,
+            );
             // Animated row height driven by the view-mode transition.
             final rowHeight = lerpDouble(
               _fromHeight,
@@ -2285,7 +2291,7 @@ class CalendarTabState extends State<CalendarTab>
                             _kCalendarHeaderToDowGap +
                             _kDayLabelHeight +
                             dayWeekStripHeight,
-                        height: _kDayBannerHeight,
+                        height: dayBannerHeight,
                         child: Opacity(
                           opacity: ((colT - 0.55) / 0.45).clamp(0.0, 1.0),
                           child: Transform.translate(
@@ -2361,7 +2367,7 @@ class CalendarTabState extends State<CalendarTab>
                             _kCalendarHeaderToDowGap +
                             _kDayLabelHeight +
                             dayWeekStripHeight +
-                            _kDayBannerHeight,
+                            dayBannerHeight,
                         bottom: 0,
                         child: Opacity(
                           opacity: ((colT - 0.55) / 0.45).clamp(0.0, 1.0),
@@ -5546,6 +5552,132 @@ class _DayBannerState extends State<_DayBanner>
       '${_kWeekdaysShort[d.weekday - 1]}, '
       '${_kMonths[d.month - 1]} ${d.day.toString().padLeft(2, '0')}';
 
+  static double _lineHeight(BuildContext context) {
+    final style = resolveThemeTextStyle(_kLabelStyleBase, context);
+    final painter = TextPainter(
+      text: TextSpan(text: 'Wednesday', style: style),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    return painter.preferredLineHeight;
+  }
+
+  static bool _fitsSingleLine(
+    BuildContext context, {
+    required String text,
+    required TextStyle style,
+    required double width,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    // A centered label gets four logical pixels of protection on each side.
+    return painter.width <= math.max(0.0, width - 8.0);
+  }
+
+  static double requiredHeight(
+    BuildContext context, {
+    required double width,
+    required DateTime date,
+    required DayViewSubMode daySubMode,
+  }) {
+    final style = resolveThemeTextStyle(_kLabelStyleBase, context);
+    final datePart =
+        '${_kMonths[date.month - 1]} ${date.day.toString().padLeft(2, '0')}';
+    final labelWidth = daySubMode == DayViewSubMode.multiDay
+        ? (width - _hourLabelColW(MediaQuery.textScalerOf(context))) / 2
+        : width;
+    final currentText = daySubMode == DayViewSubMode.multiDay
+        ? '${_kWeekdaysShort[date.weekday - 1]}, $datePart'
+        : '${_kWeekdays[date.weekday - 1]} \u2013 $datePart, ${date.year}';
+    var needsWrap = !_fitsSingleLine(
+      context,
+      text: currentText,
+      style: style,
+      width: labelWidth,
+    );
+
+    if (daySubMode == DayViewSubMode.multiDay) {
+      final nextDate = date.add(const Duration(days: 1));
+      final nextDatePart =
+          '${_kMonths[nextDate.month - 1]} ${nextDate.day.toString().padLeft(2, '0')}';
+      needsWrap |= !_fitsSingleLine(
+        context,
+        text: '${_kWeekdaysShort[nextDate.weekday - 1]}, $nextDatePart',
+        style: style,
+        width: labelWidth,
+      );
+    }
+
+    return needsWrap
+        ? math.max(_kDayBannerHeight, _lineHeight(context) * 2)
+        : _kDayBannerHeight;
+  }
+
+  Widget _responsiveLabel(
+    BuildContext context,
+    DateTime date, {
+    required double width,
+    required bool short,
+  }) {
+    final style = _styleFor(date, context);
+    final weekday = short
+        ? _kWeekdaysShort[date.weekday - 1]
+        : _kWeekdays[date.weekday - 1];
+    final monthDay =
+        '${_kMonths[date.month - 1]} ${date.day.toString().padLeft(2, '0')}';
+    final secondLine = short ? monthDay : '$monthDay, ${date.year}';
+    final singleLine = short
+        ? '$weekday, $monthDay'
+        : '$weekday \u2013 $secondLine';
+
+    if (_fitsSingleLine(
+      context,
+      text: singleLine,
+      style: style,
+      width: width,
+    )) {
+      return Text(
+        singleLine,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.clip,
+        textAlign: TextAlign.center,
+        style: style,
+      );
+    }
+
+    // Wrapped labels intentionally omit the separator punctuation. This keeps
+    // the weekday and date as two clean rows instead of leaving a dangling
+    // dash or comma at the end of the first row.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          weekday,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.clip,
+          textAlign: TextAlign.center,
+          style: style,
+        ),
+        Text(
+          secondLine,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.clip,
+          textAlign: TextAlign.center,
+          style: style,
+        ),
+      ],
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -5667,10 +5799,15 @@ class _DayBannerState extends State<_DayBanner>
                     top: 0,
                     bottom: 0,
                     child: ClipRect(
-                      child: Center(
-                        child: Text(
-                          _shortLabel(date),
-                          style: _styleFor(date, ctx),
+                      child: SizedBox(
+                        width: colW,
+                        child: Center(
+                          child: _responsiveLabel(
+                            ctx,
+                            date,
+                            width: colW,
+                            short: true,
+                          ),
                         ),
                       ),
                     ),
@@ -5714,6 +5851,109 @@ class _DayBannerState extends State<_DayBanner>
                     if (goingLeft && labelAt(Aplus2, posAplus2) != null)
                       labelAt(Aplus2, posAplus2)!,
                   ],
+                );
+              }
+
+              // At rest, use the responsive two-column version so each
+              // Multi-Day label can wrap independently without changing the
+              // separator geometry or the swipe transition.
+              if (t >= 0.99 &&
+                  widget.daySubMode == DayViewSubMode.multiDay) {
+                final colW = contentW / 2;
+                return Stack(
+                  clipBehavior: Clip.hardEdge,
+                  children: [
+                    Positioned(
+                      left: labelColW,
+                      width: colW,
+                      top: 0,
+                      bottom: 0,
+                      child: Center(
+                        child: SizedBox(
+                          width: colW,
+                          child: Center(
+                            child: _responsiveLabel(
+                              ctx,
+                              widget.date,
+                              width: colW,
+                              short: true,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: midX,
+                      width: colW,
+                      top: 0,
+                      bottom: 0,
+                      child: Center(
+                        child: SizedBox(
+                          width: colW,
+                          child: Center(
+                            child: _responsiveLabel(
+                              ctx,
+                              nextDate,
+                              width: colW,
+                              short: true,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left:
+                          labelColW +
+                          _kMultiDayIndicatorDividerShift -
+                          0.25,
+                      top: 0,
+                      bottom: 0,
+                      width: 0.5,
+                      child: ColoredBox(color: separatorColor),
+                    ),
+                    Positioned(
+                      left: midX - 0.25,
+                      top: 0,
+                      bottom: 0,
+                      width: 0.5,
+                      child: ColoredBox(color: separatorColor),
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: 0.5,
+                      child: ColoredBox(color: separatorColor),
+                    ),
+                  ],
+                );
+              }
+
+              // Single-Day stays centered in the full banner. When the
+              // complete label cannot retain the required 4dp side inset,
+              // the weekday and date become two centered rows.
+              if (widget.daySubMode == DayViewSubMode.singleDay &&
+                  t <= 0.01 &&
+                  !_fitsSingleLine(
+                    ctx,
+                    text:
+                        '${_kWeekdays[widget.date.weekday - 1]} \u2013 '
+                        '$monthDay$yearStr',
+                    style: _styleFor(widget.date, ctx),
+                    width: totalW,
+                  )) {
+                return Center(
+                  child: SizedBox(
+                    width: totalW,
+                    child: Center(
+                      child: _responsiveLabel(
+                        ctx,
+                        widget.date,
+                        width: totalW,
+                        short: false,
+                      ),
+                    ),
+                  ),
                 );
               }
 
