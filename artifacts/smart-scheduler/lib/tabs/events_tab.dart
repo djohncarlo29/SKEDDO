@@ -11839,7 +11839,7 @@ _DcvUtilitySection _utilitySectionForDate(
     );
   }
   if (daysAgo > 365) {
-    return const _DcvUtilitySection(
+    return _DcvUtilitySection(
       key: 'older',
       label: 'Older',
       sortDate: DateTime(1970),
