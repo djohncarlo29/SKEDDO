@@ -6069,7 +6069,8 @@ class _DayTimelineState extends State<_DayTimeline>
                         return Stack(
                           clipBehavior: Clip.none,
                           children: [
-                            // Hour slot lines + labels
+                            // Hour slot lines + labels. Keep the line start
+                            // aligned with Multi-Day throughout the transition.
                             for (int h = 0; h < 24; h++)
                               Positioned(
                                 left: 0,
@@ -6077,8 +6078,7 @@ class _DayTimelineState extends State<_DayTimeline>
                                 top: _kTimelinePad + h * _kHourHeight,
                                 child: _HourSlot(
                                   hour: h,
-                                  lineStartInset:
-                                      _kMultiDayHourLineInset * t,
+                                  lineStartInset: _kMultiDayHourLineInset,
                                 ),
                               ),
 
@@ -6204,16 +6204,21 @@ class _DayTimelineState extends State<_DayTimeline>
                 );
               }
 
-              // ── Single-day layout (unchanged) ──────────────────────────────
+              // ── Single-day layout ───────────────────────────────────────────
               return Stack(
                 children: [
                   // Hour slot lines + labels — shifted down by the top pad.
+                  // Use the same left inset as Multi-Day so the hairlines have
+                  // identical visible lengths in both Day View modes.
                   for (int h = 0; h < 24; h++)
                     Positioned(
                       left: 0,
                       right: 0,
                       top: _kTimelinePad + h * _kHourHeight,
-                      child: _HourSlot(hour: h),
+                      child: _HourSlot(
+                        hour: h,
+                        lineStartInset: _kMultiDayHourLineInset,
+                      ),
                     ),
 
                   // End-of-day hairline — +8 px so it sits at the same visual
