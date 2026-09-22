@@ -6675,12 +6675,12 @@ class _CurrentTimeIndicator extends StatelessWidget {
     );
     final fullLabel = _fullLabel;
     final compactLabel = _compactLabel;
-    final fullFits =
-        _measureCurrentTimeLabel(fullLabel, scaler, labelStyle) <=
-        availableTextWidth;
-    final compactFits =
-        _measureCurrentTimeLabel(compactLabel, scaler, labelStyle) <=
-        availableTextWidth;
+    final fullLabelWidth =
+        _measureCurrentTimeLabel(fullLabel, scaler, labelStyle);
+    final compactLabelWidth =
+        _measureCurrentTimeLabel(compactLabel, scaler, labelStyle);
+    final fullFits = fullLabelWidth <= availableTextWidth;
+    final compactFits = compactLabelWidth <= availableTextWidth;
     // Keep the period suffix on one line when possible. Once it no longer
     // fits, remove only the suffix before allowing the pill to become
     // multiline. At extreme Dynamic Type sizes the full label is retained so
@@ -6691,24 +6691,35 @@ class _CurrentTimeIndicator extends StatelessWidget {
         ? compactLabel
         : fullLabel;
     final allowWrap = !fullFits && !compactFits;
+    // Keep the capsule wide enough to read as a pill when the suffix is
+    // removed. Use the widest normal full label as the visual baseline, but
+    // let the available label column win at very large text sizes.
+    final widestFullLabelWidth =
+        _measureCurrentTimeLabel('10:00 pm', scaler, labelStyle);
+    final pillTextWidth = math.min(
+      availableTextWidth,
+      math.max(fullLabelWidth, widestFullLabelWidth),
+    );
     final pill = SizedBox(
       width: labelColW,
       child: Align(
         alignment: Alignment.centerRight,
         child: Container(
+          width: pillTextWidth + (pillHorizontalPadding * 2),
           margin: const EdgeInsets.only(right: 4),
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: ShapeDecoration(
             color: resolveAccentColor(context),
             shape: const BoundedSquircleStadiumBorder(radius: 10),
           ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: availableTextWidth),
+          child: SizedBox(
+            width: pillTextWidth,
             child: Text(
               label,
               maxLines: allowWrap ? 2 : 1,
               softWrap: allowWrap,
               overflow: TextOverflow.clip,
+              textAlign: TextAlign.center,
               style: labelStyle,
             ),
           ),
