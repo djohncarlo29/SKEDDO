@@ -8165,6 +8165,18 @@ class EventsTabState extends State<EventsTab>
                       cat?.id == _kIdSysArchivedCategories;
                   final isRecentlyDeletedUtility =
                       cat?.id == _kIdSysRecentlyDeleted;
+                   const builtInSmartCategoryLabels = {
+                     'Today',
+                     'Tomorrow',
+                     'This Week',
+                     'Next Week',
+                     'Scheduled',
+                     'Unscheduled',
+                     'All Events',
+                     'Completed',
+                   };
+                   final isBuiltInSmartCategory =
+                       builtInSmartCategoryLabels.contains(dcvLabel);
                   if (dcvLabel == null || dcvLabel.isEmpty) {
                     dcvEvents = const [];
                   } else if (isArchivedUtility || isRecentlyDeletedUtility) {
@@ -8182,17 +8194,7 @@ class EventsTabState extends State<EventsTab>
                     );
                   } else {
                     // Built-in smart tile — date-range filtering.
-                    const builtIns = {
-                      'Today',
-                      'Tomorrow',
-                      'This Week',
-                      'Next Week',
-                      'Scheduled',
-                      'Unscheduled',
-                      'All Events',
-                      'Completed',
-                    };
-                    if (builtIns.contains(dcvLabel)) {
+                    if (isBuiltInSmartCategory) {
                       dcvEvents = AIServices.matcher.match(
                         candidates: allEvents,
                         rule: dcvLabel,
@@ -8270,6 +8272,7 @@ class EventsTabState extends State<EventsTab>
                     icon: cat?.iconOrSvg,
                     categoryType: cat?.categoryType ?? 'Standard',
                     showStandardCategoryName:
+                        isBuiltInSmartCategory ||
                         cat?.categoryType == 'Smart Category',
                     events: dcvEvents,
                     sortBy:
