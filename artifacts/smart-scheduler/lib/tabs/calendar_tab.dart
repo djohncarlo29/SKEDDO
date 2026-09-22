@@ -35,6 +35,7 @@ import 'events_tab.dart'
       buildDcvEventCard,
       buildDcvSectionLabel,
       buildDcvEventList,
+      buildDcvEmptyState,
       dcvTimeSectionKey,
       resolveEventCategoryColor,
       wrapSearchEventTileWithActions,
@@ -5186,71 +5187,27 @@ class _DayListPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
-    final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
-    final emptyIcon = resolveThemeColor(kEmptyStateIcon, context);
-    // CustomScrollView gives the content area the same rubber-band overscroll
-    // feel as the other screens (Month View, Events Tab).  SliverFillRemaining
-    // with hasScrollBody:false keeps the content centred while still allowing
-    // the bounce gesture to register.
+    // Keep the exact DCV empty-state widget here so icon geometry, typography,
+    // spacing, and centering cannot drift between the two list surfaces.
+    final emptyStateContent = Padding(
+      padding: EdgeInsets.only(
+        bottom: floatingTabBarContentBottomClearance(context),
+      ),
+      child: buildDcvEmptyState(label: 'Calendar List'),
+    );
+
+    // Match the DCV scroll structure: the content is centered in the space
+    // left after the floating-tab-bar clearance, while the scroll view still
+    // provides the same rubber-band overscroll behavior.
     return CustomScrollView(
+      primary: false,
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
       ),
       slivers: [
         SliverFillRemaining(
           hasScrollBody: false,
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FixedSFIcon(
-                    SFIcons.sf_list_bullet,
-                    fontSize: 65,
-                    color: emptyIcon,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  SizedBox(height: 18),
-                  Text(
-                    'No Events',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      inherit: false,
-                      color: primaryLabel,
-                      fontSize: 22,
-                      fontFamily: kSFProText,
-                      fontWeight: FontWeight.w700,
-                      fontStyle: FontStyle.normal,
-                      letterSpacing: -0.3,
-                      height: 1.15,
-                    ),
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    'Add a new event by tapping + button',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      inherit: false,
-                      color: secondaryLabel,
-                      fontSize: 15,
-                      fontFamily: kSFProText,
-                      fontWeight: FontWeight.w400,
-                      fontStyle: FontStyle.normal,
-                      letterSpacing: kTracking16,
-                      height: kLineHeight,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: SizedBox(
-            height: floatingTabBarContentBottomClearance(context),
-          ),
+          child: emptyStateContent,
         ),
       ],
     );

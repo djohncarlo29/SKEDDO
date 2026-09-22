@@ -16733,6 +16733,307 @@ Widget _buildDcvCatIcon(
   return inner;
 }
 
+/// Shared empty state used by the Events Tab DCV and Calendar Day View List.
+///
+/// Keeping the complete content block together is important: the icon's
+/// intrinsic footprint, the 16/8 pt vertical gaps, and the centered text
+/// layout must move as one unit across both screens.
+Widget buildDcvEmptyState({
+  required String label,
+  Object? icon,
+  String categoryType = 'Standard',
+}) {
+  return _DcvEmptyState(
+    label: label,
+    icon: icon,
+    categoryType: categoryType,
+  );
+}
+
+class _DcvEmptyState extends StatelessWidget {
+  const _DcvEmptyState({
+    required this.label,
+    this.icon,
+    this.categoryType = 'Standard',
+  });
+
+  final String label;
+  final Object? icon;
+  final String categoryType;
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
+    final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
+
+    return Center(
+      key: ValueKey('placeholder_$label'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RepaintBoundary(
+              child: _buildDcvEmptyStateIcon(
+                context,
+                label: label,
+                icon: icon,
+                categoryType: categoryType,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _dcvEmptyStateTitle(categoryType: categoryType, label: label),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                inherit: false,
+                color: primaryLabel,
+                fontSize: 22,
+                fontFamily: kSFProText,
+                fontWeight: FontWeight.w700,
+                fontStyle: FontStyle.normal,
+                letterSpacing: -0.3,
+                height: 1.15,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _dcvEmptyStateSubtitle(
+                categoryType: categoryType,
+                label: label,
+              ),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                inherit: false,
+                color: secondaryLabel,
+                fontSize: 15,
+                fontFamily: kSFProText,
+                fontWeight: FontWeight.w400,
+                fontStyle: FontStyle.normal,
+                letterSpacing: kTracking16,
+                height: kLineHeight,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _dcvEmptyStateTitle({
+  required String categoryType,
+  required String label,
+}) {
+  switch (label) {
+    case _kArchivedUtilityLabel:
+      return 'No Archived Items';
+    case 'Recently Deleted':
+      return 'No Recently Deleted Items';
+    default:
+      return categoryType == 'Shopping List' ? 'Add Shopping Items' : 'No Events';
+  }
+}
+
+String _dcvEmptyStateSubtitle({
+  required String categoryType,
+  required String label,
+}) {
+  if (categoryType == 'Shopping List') {
+    return 'Items added to this category are automatically\n'
+        'categorized into sections.';
+  }
+  switch (label) {
+    case 'Today':
+      return 'Events due today will appear here.';
+    case 'Tomorrow':
+      return 'Events due tomorrow will appear here.';
+    case 'This Week':
+      return 'Events due this week will appear here.';
+    case 'Next Week':
+      return 'Events due next week will appear here.';
+    case 'Scheduled':
+      return 'Events with a date or time will appear here.';
+    case 'Unscheduled':
+      return 'Events without a date will appear here.';
+    case 'All Events':
+      return 'All of your events will appear here.';
+    case 'Completed':
+      return 'Completed events will appear here.';
+    case _kArchivedUtilityLabel:
+      return 'Archived categories and events will appear here.';
+    case 'Recently Deleted':
+      return 'Deleted events and categories will appear here.';
+    default:
+      return 'Add a new event by tapping + button';
+  }
+}
+
+Widget _buildDcvEmptyStateIcon(
+  BuildContext context, {
+  required String label,
+  Object? icon,
+  required String categoryType,
+}) {
+  final dcvDetailColor = CupertinoDynamicColor.resolve(
+    kEmptyStateIcon,
+    context,
+  );
+  final Color? dcvTwoToneBallContainerColor =
+      CupertinoTheme.brightnessOf(context) == Brightness.dark
+          ? resolveThemeColor(kBackgroundColor, context)
+          : null;
+
+  if (categoryType == 'Groceries') {
+    return FixedSFIcon(
+      SFIcons.sf_carrot_fill,
+      fontSize: 64,
+      color: kEmptyStateIcon,
+    );
+  }
+
+  final now = DateTime.now();
+  final tomorrow = now.add(const Duration(days: 1));
+  final thisMonday = now.subtract(
+    Duration(days: now.weekday - DateTime.monday),
+  );
+  final nextMonday = thisMonday.add(const Duration(days: 7));
+
+  int? dayNum;
+  switch (label) {
+    case 'Today':
+      dayNum = now.day;
+      break;
+    case 'Tomorrow':
+      dayNum = tomorrow.day;
+      break;
+    case 'This Week':
+      dayNum = _isoWeekNumber(thisMonday);
+      break;
+    case 'Next Week':
+      dayNum = _isoWeekNumber(nextMonday);
+      break;
+  }
+
+  if (dayNum != null) {
+    return SizedBox(
+      key: ValueKey('icon_$label'),
+      width: 64,
+      height: 64,
+      child: Stack(
+        fit: StackFit.expand,
+        clipBehavior: Clip.none,
+        children: [
+          SvgPicture.asset(
+            'assets/icons/calendar_frame.svg',
+            colorFilter: const ColorFilter.mode(
+              kEmptyStateIcon,
+              BlendMode.srcIn,
+            ),
+          ),
+          Positioned(
+            top: 24,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Transform.scale(
+                scale: 1.05,
+                scaleY: 1.3,
+                child: Text(
+                  '$dayNum',
+                  textScaler: TextScaler.noScaling,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    inherit: false,
+                    color: kEmptyStateIcon,
+                    fontSize: 27.6,
+                    fontFamily: kSFProText,
+                    fontWeight: FontWeight.w700,
+                    fontStyle: FontStyle.normal,
+                    height: 1.0,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // String SVG overrides are used by user-created categories, just as they
+  // are in the original DCV implementation.
+  if (icon is String) {
+    return KeyedSubtree(
+      key: ValueKey('icon_$label'),
+      child: _buildDcvCatIcon(
+        icon,
+        dcvDetailColor,
+        containerColor: dcvTwoToneBallContainerColor,
+        ctx: context,
+      ),
+    );
+  }
+
+  final IconData iconData;
+  bool isUserCategory = false;
+  switch (label) {
+    case 'Scheduled':
+      iconData = CupertinoIcons.calendar;
+      break;
+    case 'Unscheduled':
+      iconData = CupertinoIcons.clock;
+      break;
+    case 'All Events':
+      iconData = CupertinoIcons.tray_fill;
+      break;
+    case 'Completed':
+      iconData = CupertinoIcons.checkmark;
+      break;
+    default:
+      iconData = (icon as IconData?) ?? SFIcons.sf_list_bullet;
+      isUserCategory = true;
+      break;
+  }
+  if (isUserCategory) {
+    return KeyedSubtree(
+      key: ValueKey('icon_$label'),
+      child: _buildDcvCatIcon(
+        iconData,
+        dcvDetailColor,
+        containerColor: dcvTwoToneBallContainerColor,
+        ctx: context,
+      ),
+    );
+  }
+  if (iconData == SFIcons.sf_music_note) {
+    return _BeamedNoteIcon(
+      key: ValueKey('icon_$label'),
+      size: 64,
+      color: kEmptyStateIcon,
+    );
+  }
+  if (iconData.fontPackage == 'flutter_sficon') {
+    return KeyedSubtree(
+      key: ValueKey('icon_$label'),
+      child: _buildDcvCatIcon(
+        iconData,
+        dcvDetailColor,
+        containerColor: dcvTwoToneBallContainerColor,
+        ctx: context,
+      ),
+    );
+  }
+
+  return SearchWeightedIcon(
+    key: ValueKey('icon_$label'),
+    iconData,
+    size: 64,
+    color: kEmptyStateIcon,
+  );
+}
+
 // Used exclusively by _buildIconCard (the icon picker grid).
 //
 // Why a separate function instead of _renderCatIcon?
@@ -19783,206 +20084,6 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     ];
   }
 
-  // ── Empty-state helpers ───────────────────────────────────────────────────────
-
-  String get _emptyStateTitle {
-    switch (widget.label) {
-      case _kArchivedUtilityLabel:
-        return 'No Archived Items';
-      case 'Recently Deleted':
-        return 'No Recently Deleted Items';
-      default:
-        return widget.categoryType == 'Shopping List'
-            ? 'Add Shopping Items'
-            : 'No Events';
-    }
-  }
-
-  String get _emptyStateSubtitle {
-    if (widget.categoryType == 'Shopping List') {
-      return 'Items added to this category are automatically\n'
-          'categorized into sections.';
-    }
-    switch (widget.label) {
-      case 'Today':
-        return 'Events due today will appear here.';
-      case 'Tomorrow':
-        return 'Events due tomorrow will appear here.';
-      case 'This Week':
-        return 'Events due this week will appear here.';
-      case 'Next Week':
-        return 'Events due next week will appear here.';
-      case 'Scheduled':
-        return 'Events with a date or time will appear here.';
-      case 'Unscheduled':
-        return 'Events without a date will appear here.';
-      case 'All Events':
-        return 'All of your events will appear here.';
-      case 'Completed':
-        return 'Completed events will appear here.';
-      case _kArchivedUtilityLabel:
-        return 'Archived categories and events will appear here.';
-      case 'Recently Deleted':
-        return 'Deleted events and categories will appear here.';
-      default:
-        return 'Add a new event by tapping + button';
-    }
-  }
-
-  // Builds the large icon for the empty-state, matching the icon shown in
-  // the tile's blue circle (scaled up, tinted kTertiaryLabel instead of white).
-  Widget _buildIcon() {
-    final dcvDetailColor = CupertinoDynamicColor.resolve(
-      kEmptyStateIcon,
-      context,
-    );
-    // Light Mode intentionally keeps the original monochrome DCV icon.
-    // Dark Mode uses the two-color ball treatment so the light detail color
-    // remains legible against the dark page background.
-    final Color? dcvTwoToneBallContainerColor =
-        CupertinoTheme.brightnessOf(context) == Brightness.dark
-            ? resolveThemeColor(kBackgroundColor, context)
-            : null;
-    // Groceries category type — fixed carrot icon regardless of user's icon.
-    if (widget.categoryType == 'Groceries') {
-      return FixedSFIcon(
-        SFIcons.sf_carrot_fill,
-        fontSize: 64,
-        color: kEmptyStateIcon,
-      );
-    }
-    final now = DateTime.now();
-    final tomorrow = now.add(const Duration(days: 1));
-    final thisMonday = now.subtract(
-      Duration(days: now.weekday - DateTime.monday),
-    );
-    final nextMonday = thisMonday.add(const Duration(days: 7));
-
-    int? dayNum;
-    switch (widget.label) {
-      case 'Today':
-        dayNum = now.day;
-        break;
-      case 'Tomorrow':
-        dayNum = tomorrow.day;
-        break;
-      case 'This Week':
-        dayNum = _isoWeekNumber(thisMonday);
-        break;
-      case 'Next Week':
-        dayNum = _isoWeekNumber(nextMonday);
-        break;
-    }
-
-    if (dayNum != null) {
-      // Calendar frame + day/week number — mirrors tile layout scaled to 64 px.
-      // In the tile: 22 px SVG centred in a 32 px circle, number at top:14
-      // in the circle → top:9 within SVG → 9/22 = 40.9 % → top:26 at 64 px.
-      return SizedBox(
-        key: ValueKey('icon_${widget.label}'),
-        width: 64,
-        height: 64,
-        child: Stack(
-          fit: StackFit.expand,
-          clipBehavior: Clip.none,
-          children: [
-            SvgPicture.asset(
-              'assets/icons/calendar_frame.svg',
-              colorFilter: const ColorFilter.mode(
-                kEmptyStateIcon,
-                BlendMode.srcIn,
-              ),
-            ),
-            Positioned(
-              top: 24,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Transform.scale(
-                  scale: 1.05,
-                  scaleY: 1.3,
-                  child: Text(
-                    '$dayNum',
-                    textScaler: TextScaler.noScaling,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      inherit: false,
-                      color: kEmptyStateIcon,
-                      fontSize: 27.6, // 9.5 × (64/22) — proportional to tile
-                      fontFamily: kSFProText,
-                      fontWeight: FontWeight.w700,
-                      fontStyle: FontStyle.normal,
-                      height: 1.0,
-                      letterSpacing: 0,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // User category — SVG asset: raw visual icon, no bounding SizedBox.
-    if (widget.icon is String) {
-      return KeyedSubtree(
-        key: ValueKey('icon_${widget.label}'),
-        child: _buildDcvCatIcon(
-          widget.icon!,
-          dcvDetailColor,
-          containerColor: dcvTwoToneBallContainerColor,
-          ctx: context,
-        ),
-      );
-    }
-    final IconData iconData;
-    bool isUserCategory = false;
-    switch (widget.label) {
-      case 'Scheduled':
-        iconData = CupertinoIcons.calendar;
-        break;
-      case 'Unscheduled':
-        iconData = CupertinoIcons.clock;
-        break;
-      case 'All Events':
-        iconData = CupertinoIcons.tray_fill;
-        break;
-      case 'Completed':
-        iconData = CupertinoIcons.checkmark;
-        break;
-      default:
-        iconData = (widget.icon as IconData?) ?? SFIcons.sf_list_bullet;
-        isUserCategory = true;
-        break;
-    }
-    // User category — IconData: raw visual icon, no bounding SizedBox.
-    if (isUserCategory) {
-      return KeyedSubtree(
-        key: ValueKey('icon_${widget.label}'),
-        child: _buildDcvCatIcon(
-          iconData,
-          dcvDetailColor,
-          containerColor: dcvTwoToneBallContainerColor,
-          ctx: context,
-        ),
-      );
-    }
-    if (iconData == SFIcons.sf_music_note) {
-      return _BeamedNoteIcon(
-        key: ValueKey('icon_${widget.label}'),
-        size: 64,
-        color: kEmptyStateIcon,
-      );
-    }
-    return SearchWeightedIcon(
-      key: ValueKey('icon_${widget.label}'),
-      iconData,
-      size: 64,
-      color: kEmptyStateIcon,
-    );
-  }
-
   /// Builds one event row inside a grouped section card.
   ///
   /// The [AnimatedBuilder] applies the FLIP sort-animation translation.
@@ -20154,9 +20255,6 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
 
   @override
   Widget build(BuildContext context) {
-    final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
-    final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
-
     // Utility categories still use the normal detailed-category shell and
     // scrolling behavior; only their body content is specialized.
     final specialContent = widget.specialContentBuilder?.call(context);
@@ -20400,53 +20498,15 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     // Plain SizedBox.expand avoids the multi-pass scroll-geometry layout of
     // CustomScrollView + SliverFillRemaining, which could cause a one-frame
     // positional flash on Flutter web before the sliver settled to center.
-    final content = Center(
-      key: ValueKey('placeholder_${widget.label}'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RepaintBoundary(child: _buildIcon()),
-            SizedBox(height: 16),
-            Text(
-              _emptyStateTitle,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                inherit: false,
-                color: primaryLabel,
-                fontSize: 22,
-                fontFamily: kSFProText,
-                fontWeight: FontWeight.w700,
-                fontStyle: FontStyle.normal,
-                letterSpacing: -0.3,
-                height: 1.15,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              _emptyStateSubtitle,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                inherit: false,
-                color: secondaryLabel,
-                fontSize: 15,
-                fontFamily: kSFProText,
-                fontWeight: FontWeight.w400,
-                fontStyle: FontStyle.normal,
-                letterSpacing: kTracking16,
-                height: kLineHeight,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
     final emptyStateContent = Padding(
       padding: EdgeInsets.only(
         bottom: floatingTabBarContentBottomClearance(context),
       ),
-      child: content,
+      child: buildDcvEmptyState(
+        label: widget.label,
+        icon: widget.icon,
+        categoryType: widget.categoryType,
+      ),
     );
     // Rubber-band overscroll is needed for every visible empty DCV, including
     // the web preview. When label is empty the DCV is always off-screen
