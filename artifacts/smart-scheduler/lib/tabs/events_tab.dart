@@ -699,7 +699,7 @@ class _ContextMenuOverlay extends StatelessWidget {
     if (isEvent) {
       return [
         ActionItem(
-          label: 'Edit Event',
+          label: 'Edit Event Info',
           icon: SFIcons.sf_pencil,
           iconSize: 22,
           iconWeight: FontWeight.w500,
@@ -14055,8 +14055,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         dayTop: 14.6 * modalGeometryScale,
         dayFontSize: 9.5 * modalGeometryScale,
         circleScale: circleScale,
-        dayScale: 1.02,
-        dayScaleY: 1.27,
+        // Keep the badge centered while reducing it by one authored pixel
+        // across each visual axis in the large Card 1 preview.
+        dayScale: 0.97,
+        dayScaleY: 1.22,
       );
     }
 
@@ -14120,7 +14122,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
 
   // ── card helpers ──────────────────────────────────────────────────────────
 
-  Widget _card(List<Widget> rows) {
+  Widget _card(List<Widget> rows, {bool clipToShape = false}) {
     final cardColor = resolveThemeColor(kModalCard, context);
     final shadows = resolveThemeShadows(kCardShadow, context);
     final ShapeBorder shape = const BoundedSquircleStadiumBorder();
@@ -14130,10 +14132,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         shape: shape,
         shadows: shadows,
       ),
-      // Keep the 16pt layout inset, but do not make it a paint boundary for
-      // gel-bloom controls. Their visual scale is allowed to grow into the
-      // inset and the card's transparent margins without being cut off.
-      clipBehavior: Clip.none,
+      // Most cards keep the 16pt layout inset open so gel-bloom controls can
+      // grow into the transparent margins. Card 1 opts into the authored
+      // squircle clip so overflowing subtitle fades cannot square off the
+      // card's corners.
+      clipBehavior: clipToShape ? Clip.antiAlias : Clip.none,
       child: Column(mainAxisSize: MainAxisSize.min, children: rows),
     );
   }
@@ -14539,7 +14542,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
           ),
         ),
       ), // CupertinoTextField stack + DefaultSelectionStyle + CupertinoTheme
-    ]);
+    ], clipToShape: true);
   }
 
   // ── Card 2: Category Type ─────────────────────────────────────────────────
