@@ -6700,17 +6700,26 @@ class _CurrentTimeIndicator extends StatelessWidget {
       availableTextWidth,
       math.max(fullLabelWidth, widestFullLabelWidth),
     );
+    // In the compact label-column state, right alignment can make the pill
+    // reach the phone's leading edge. Center the visible capsule in the
+    // label area instead, leaving the indicator dot/line as the next element.
+    final centerPill =
+        pillTextWidth + (pillHorizontalPadding * 2) + pillRightMargin >=
+        labelColW;
+    final pillMarginRight = centerPill ? 0.0 : pillRightMargin;
     final pill = SizedBox(
       width: labelColW,
       child: Align(
-        alignment: Alignment.centerRight,
+        alignment: centerPill ? Alignment.center : Alignment.centerRight,
         child: Container(
           width: pillTextWidth + (pillHorizontalPadding * 2),
-          margin: const EdgeInsets.only(right: 4),
+          margin: EdgeInsets.only(right: pillMarginRight),
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: ShapeDecoration(
             color: resolveAccentColor(context),
-            shape: const BoundedSquircleStadiumBorder(radius: 10),
+            // StadiumBorder keeps each end exactly circular, so the corner
+            // radius is always half of the pill's current height.
+            shape: const StadiumBorder(),
           ),
           child: SizedBox(
             width: pillTextWidth,
