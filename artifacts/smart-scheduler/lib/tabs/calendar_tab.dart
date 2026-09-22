@@ -100,6 +100,8 @@ const double _kRowHeightCompact = 68.0;
 const double _kRowHeightStacked = 96.0;
 const double _kRowHeightDetails = 128.0;
 const double kFixedTopPadding = 8.0; // top padding above the day circle
+const double _kDayIndicatorBottomPadding =
+    8.0; // minimum breathing room above the separator
 const double kDayCircleOffset =
     26.0; // circle centre from row top (= kFixedTopPadding + 18)
 const double _kDayLabelHeight = 28.0;
@@ -116,10 +118,34 @@ const double _kDayBannerHeight = 36.0;
 // vertical padding token.
 const double _kCalendarHeaderToDowGap = 8.0;
 
+<<<<<<< HEAD
 // The Day View week strip has a fixed row geometry. The day circle still
 // follows the active text/system scaling profile, but it must not change the
 // strip's hit-test, translation, or collapse geometry.
 double _dayViewWeekStripHeight(BuildContext context) => _kRowHeightList;
+=======
+// The Day View circle slot is the same bounded slot that prevents the
+// row-level swipe copy from resolving to a larger Dynamic-Type diameter than
+// the in-cell marker. Extra row height is reserved below this slot, never
+// passed back into the circle's size.
+double _dayViewCircleDiameterFor(BuildContext context) => math.min(
+      _calendarDayCircleDiameterFor(context),
+      _kRowHeightList - kFixedTopPadding,
+    );
+
+// Keep the compact row when the scaled marker fits. For larger text sizes,
+// grow only the row's empty space so the fixed-size marker still has at least
+// 8 dp between its bottom edge and the separator.
+double _dayViewWeekStripHeight(BuildContext context) {
+  final indicatorDiameter = _dayViewCircleDiameterFor(context);
+  return math.max(
+    _kRowHeightList,
+    kFixedTopPadding +
+        indicatorDiameter +
+        _kDayIndicatorBottomPadding,
+  );
+}
+>>>>>>> da70cbd (Update calendar tab logic and swipe indicator geometry)
 
 /// Resolves the fixed Calendar Tab day-circle diameter for the active OS text
 /// size. Selected, adjacent, and today circles all use this exact diameter.
@@ -4383,12 +4409,11 @@ class _WeekRowState extends State<_WeekRow> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalW = constraints.maxWidth;
-        // One source of truth for the visible indicator geometry. The Day View
-        // row is intentionally fixed at 52 px, leaving only 44 px after the
-        // authored top padding. Without this bound, the in-cell circle is
-        // constrained by the cell while the row-level swipe overlay receives
-        // the full Dynamic-Type diameter and visibly grows on first movement.
-        // Resolve the same bounded diameter for both paths.
+        // One source of truth for the visible indicator geometry. During Day
+        // View and its transition, keep the marker in the original bounded
+        // slot even when the row grows to provide bottom padding. Without
+        // this, the in-cell circle is constrained differently from the
+        // row-level swipe overlay and visibly grows on first movement.
         final authoredIndicatorDiameter =
             _calendarDayCircleDiameterFor(context);
         final indicatorSlotHeight = math.max(
@@ -4396,7 +4421,9 @@ class _WeekRowState extends State<_WeekRow> {
           widget.rowHeight - kFixedTopPadding,
         );
         final restingIndicatorDiameter = math.min(
-          authoredIndicatorDiameter,
+          widget.collapseProgress > 0.0
+              ? _dayViewCircleDiameterFor(context)
+              : authoredIndicatorDiameter,
           indicatorSlotHeight,
         );
         final separatorColor = resolveThemeColor(kSeparatorColor, context);
