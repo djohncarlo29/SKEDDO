@@ -8712,6 +8712,8 @@ Widget _buildUnifiedCalendarIconUnit({
   required double dayTop,
   required double dayFontSize,
   required double circleScale,
+  double dayScale = 1.05,
+  double dayScaleY = 1.3,
 }) {
   return SizedBox(
     width: authoredCircleSize * circleScale,
@@ -8746,8 +8748,8 @@ Widget _buildUnifiedCalendarIconUnit({
                 right: 0,
                 child: Center(
                   child: Transform.scale(
-                    scale: 1.05,
-                    scaleY: 1.3,
+                    scale: dayScale,
+                    scaleY: dayScaleY,
                     child: Text(
                       '$day',
                       textAlign: TextAlign.center,
@@ -14026,6 +14028,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         dayTop: 14.6 * modalGeometryScale,
         dayFontSize: 9.5 * modalGeometryScale,
         circleScale: circleScale,
+        dayScale: 1.02,
+        dayScaleY: 1.27,
       );
     }
 
@@ -16952,8 +16956,10 @@ Widget _buildDcvEmptyStateIcon(
             right: 0,
             child: Center(
               child: Transform.scale(
-                scale: 1.05,
-                scaleY: 1.3,
+                // Reduce the number uniformly by less than 1 px in each
+                // direction while keeping Transform.scale centered.
+                scale: 1.02,
+                scaleY: 1.27,
                 child: Text(
                   '$dayNum',
                   textScaler: TextScaler.noScaling,

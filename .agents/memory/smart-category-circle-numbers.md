@@ -3,16 +3,16 @@ name: Smart category circle numbers
 description: Scope of the Events smart-category number alignment adjustment.
 ---
 
-The Today, Tomorrow, This Week, and Next Week numbers are adjusted only inside
-their small Events-tab smart-category circles. Larger smart-category previews
-and detail/empty-state icons retain their existing number placement.
+The Today, Tomorrow, This Week, and Next Week numbers keep the original sizing
+in the small Events-tab grid circles, while the Edit Category Card 1 preview
+and Detailed Category View empty-state icon use a centered sub-1 px reduction.
 
-**Why:** The user clarified that the movement is intended for the numbers in the
-smart-category icon circles, and there alone.
+**Why:** The grid badge is already visually calibrated, while the larger modal
+preview and detail placeholder need the smaller centered number treatment.
 
-**How to apply:** When tuning these numbers, change the main smart tile and its
-matching drag ghost together, but leave the add/edit preview and detail
-placeholder layouts unchanged.
+**How to apply:** Keep the shared calendar helper's defaults for the grid tile
+and drag ghost. Pass the reduced scale only from the modal preview, and mirror
+it in the four date-based empty-state icons.
 
 The calendar frame and day badge must be composed at authored coordinates and
 fitted together as one final-sized visual unit. Keep the normal Text renderer;
