@@ -8330,6 +8330,7 @@ class EventsTabState extends State<EventsTab>
                         isArchivedUtility && hasArchivedUtilityItems
                             ? (_) => _DcvUtilityContent(
                               categoryColor: dcvColor,
+                              smartCategoryColors: _smartCategoryColors,
                               archivedSmartLabels: _archivedSmartLabels,
                               archivedCategories: _archivedUserCategories,
                               archivedEvents:
@@ -8367,6 +8368,7 @@ class EventsTabState extends State<EventsTab>
                                 hasRecentlyDeletedUtilityItems
                             ? (_) => _DcvUtilityContent(
                               categoryColor: dcvColor,
+                              smartCategoryColors: _smartCategoryColors,
                               deletedEvents:
                                   EventStore.instance.deletedEvents.value,
                               deletedSmartLabels: _recentlyDeletedSmartCategories,
@@ -11830,6 +11832,8 @@ class _DcvUtilityContent extends StatefulWidget {
   /// category-level fallback for utility-owned accents, not a replacement for
   /// the original colors of archived/deleted child categories.
   final Color categoryColor;
+  /// Original swatches for built-in Smart Categories shown as utility items.
+  final Map<String, Color> smartCategoryColors;
   final List<String> archivedSmartLabels;
   final List<_UserCategory> archivedCategories;
   final List<ScheduledEvent> archivedEvents;
@@ -11853,6 +11857,7 @@ class _DcvUtilityContent extends StatefulWidget {
 
   const _DcvUtilityContent({
     required this.categoryColor,
+    this.smartCategoryColors = const {},
     this.archivedSmartLabels = const [],
     this.archivedCategories = const [],
     this.archivedEvents = const [],
@@ -11933,7 +11938,8 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
             name: label,
             description: '',
             count: 0,
-            color: widget.categoryColor,
+            color:
+                widget.smartCategoryColors[label] ?? widget.categoryColor,
             icon: SFIcons.sf_archivebox,
           ),
           onTap: () => widget.onArchivedSmartCategoryTap?.call(label),
@@ -11991,7 +11997,8 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
             name: label,
             description: '',
             count: 0,
-            color: widget.categoryColor,
+            color:
+                widget.smartCategoryColors[label] ?? widget.categoryColor,
             icon: SFIcons.sf_archivebox,
           ),
           onTap: () => widget.onDeletedSmartCategoryTap?.call(label),
@@ -12159,11 +12166,7 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
   }) {
     final card = _ScheduledEventCard(
       event: event,
-      dotColor: resolveEventCategoryColor(
-        context,
-        event,
-        fallbackColor: widget.categoryColor,
-      ),
+      dotColor: _resolveUtilityEventColor(context, event),
       isGrouped: true,
       isFirst: false,
       isLast: isLast,
@@ -12186,6 +12189,30 @@ class _DcvUtilityContentState extends State<_DcvUtilityContent> {
           onTap: onTap,
           child: indentedCard,
         );
+  }
+
+  Color _resolveUtilityEventColor(
+    BuildContext context,
+    ScheduledEvent event,
+  ) {
+    _UserCategory? sourceCategory;
+    for (final category in [
+      ...widget.archivedCategories,
+      ...widget.deletedCategories,
+    ]) {
+      if (category.id == event.categoryId) {
+        sourceCategory = category;
+        break;
+      }
+    }
+    if (sourceCategory != null) {
+      return renderCategoryColor(sourceCategory.color, context);
+    }
+    return resolveEventCategoryColor(
+      context,
+      event,
+      fallbackColor: widget.categoryColor,
+    );
   }
 
   Widget _buildSection(

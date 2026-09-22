@@ -113,6 +113,7 @@
 - [Emoji category selection repaint](emoji-category-selection-repaint.md) — paint selection alpha in the emoji TextStyle; Opacity layers can retain stale variation-selector glyphs.
 - [Calendar List DCV parity](calendar-list-dcv-parity.md) — Month List should embed the Events DCV implementation, including its exact-time reorder boundaries.
 - [Utility DCV visual parity](utility-dcv-visual-parity.md) — Archived and Recently Deleted content must use shared DCV section, event, and category primitives with normal Dynamic Type fallbacks.
+- [Utility color provenance](utility-color-provenance.md) — utility child dots and category circles use saved original category swatches, not slate/red utility accents.
 - [Event utility provenance](event-provenance.md) — persist archive/delete origins; never guess legacy provenance from current category membership.
 - [Utility child separators](utility-child-separators.md) — final child event owns the category-block boundary; the wrapper must not paint a second line.
 - [Smart Category metadata wiring](smart-category-metadata-wiring.md) — shared event-card support still requires enabling the flag at the Smart Category detail-view call site.
