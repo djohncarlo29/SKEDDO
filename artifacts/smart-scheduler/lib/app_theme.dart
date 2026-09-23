@@ -2561,20 +2561,11 @@ class FrostedGlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Android's backdrop filter is substantially more expensive while sheets
-    // and panels are animating. Keep the frosted fill, but use a smaller
-    // sampling radius on Android so the material does not dominate the raster
-    // thread during gestures and transitions.
-    final blurScale = defaultTargetPlatform == TargetPlatform.android
-        ? 0.55
-        : 1.0;
-    final blur = blurSigma * blurScale * progress;
+    final blur = blurSigma * progress;
     final fill = (fillOpacity * progress).clamp(0.0, 1.0);
     final shadow = CupertinoTheme.brightnessOf(context) == Brightness.dark
         ? 0.0
-        : shadowOpacity *
-              progress *
-              (defaultTargetPlatform == TargetPlatform.android ? 0.45 : 1.0);
+        : shadowOpacity * progress;
     final effectiveShape =
         shape ??
         (borderRadius == null
@@ -2818,63 +2809,6 @@ class _GelBloomButtonState extends State<GelBloomButton>
 
   void _bloom() => _ctrl.forward(from: 0.0);
 
-  void _handleTap() {
-    _bloom();
-
-    // Dismiss/save controls used a 120–130 ms delay so their bloom could be
-    // seen before the route changed. On Android that delay compounds with
-    // raster work and makes taps feel ignored, so actions fire immediately.
-    // Keep the old timing on iOS where the glass path is cheaper.
-    final effectiveTapDelay = defaultTargetPlatform == TargetPlatform.android
-        ? Duration.zero
-        : widget.tapDelay;
-    if (effectiveTapDelay == Duration.zero) {
-      widget.onTap();
-    } else {
-      Future.delayed(effectiveTapDelay, () {
-        if (mounted) widget.onTap();
-      });
-    }
-  }
-
-  Widget _buildAndroidCircleButton(
-    BuildContext context,
-    LiquidGlassGelCircle circle,
-  ) {
-    final isLightMode =
-        CupertinoTheme.brightnessOf(context) == Brightness.light;
-    final surfaceColor = circle.isCheckmark || !isLightMode
-        ? circle.color
-        : const Color(0xFFFFFFFF);
-
-    // A solid, bounded circle avoids a shader-backed backdrop capture for
-    // Android's most frequently repeated controls. The border preserves the
-    // lightweight edge definition without another blur layer.
-    return AnimatedBuilder(
-      animation: _scale,
-      builder: (context, child) =>
-          Transform.scale(scale: _scale.value, child: child),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: surfaceColor,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: const Color(0x26FFFFFF),
-            width: 0.5,
-          ),
-        ),
-        child: SizedBox.square(
-          dimension: circle.size,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _handleTap,
-            child: Center(child: circle.child),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildLiquidGlassButton(
     BuildContext context,
     LiquidGlassGelCircle circle,
@@ -2976,7 +2910,16 @@ class _GelBloomButtonState extends State<GelBloomButton>
                   touch: const LiquidGlassTouch(),
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                     onTap: _handleTap,
+                    onTap: () {
+                      _bloom();
+                      if (widget.tapDelay == Duration.zero) {
+                        widget.onTap();
+                      } else {
+                        Future.delayed(widget.tapDelay, () {
+                          if (mounted) widget.onTap();
+                        });
+                      }
+                    },
                     child: Center(child: circle.child),
                   ),
                 ),
@@ -2994,15 +2937,21 @@ class _GelBloomButtonState extends State<GelBloomButton>
         ? widget.child as LiquidGlassGelCircle
         : null;
     if (circle != null) {
-      if (defaultTargetPlatform == TargetPlatform.android) {
-        return _buildAndroidCircleButton(context, circle);
-      }
       return _buildLiquidGlassButton(context, circle);
     }
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: _handleTap,
+      onTap: () {
+        _bloom();
+        if (widget.tapDelay == Duration.zero) {
+          widget.onTap();
+        } else {
+          Future.delayed(widget.tapDelay, () {
+            if (mounted) widget.onTap();
+          });
+        }
+      },
       child: AnimatedBuilder(
         animation: _scale,
         builder: (context, child) =>
