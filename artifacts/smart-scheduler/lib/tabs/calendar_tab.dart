@@ -1630,34 +1630,38 @@ class CalendarTabState extends State<CalendarTab>
   }
 
   void _scheduleClock() {
-    // Fire every second to keep the Day View time indicator live.
-    // We deliberately do NOT call setState here on every tick — doing so
-    // would rebuild the AnimatedBuilder/GestureDetector tree each second and
-    // re-deliver stale drag-end events on web (the ±2 nav bug).
-    // Instead: push the current time into _nowNotifier (picked up by
-    // _DayTimeline's own ValueListenableBuilder) and call setState only on
-    // the rare midnight transition so "today" highlights stay correct.
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+    // The indicator is snapped to whole minutes, so a per-second timer only
+    // wakes the app without changing the rendered result. Align one-shot
+    // timers to the next minute boundary instead.
+    final now = DateTime.now();
+    final nextMinute = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute + 1,
+    );
+    _clockTimer = Timer(nextMinute.difference(now), () {
       if (!mounted) return;
-      final now = DateTime.now();
+
+      final current = DateTime.now();
       final oldDay = _today;
-      // Always update _nowNotifier so _DayTimeline's indicator ticks.
-      _nowNotifier.value = now;
-      // ── Midnight auto-advance ─────────────────────────────────────────────
-      // When the calendar day rolls over, update _today via setState so the
-      // "today" circle in month/year view repaints, then animate selection
-      // forward in all views when the user was viewing yesterday.
+      _nowNotifier.value = current;
+
+      // Midnight is the only time the surrounding CalendarTab needs a
+      // rebuild. The timeline itself is isolated behind _nowNotifier.
       final dayChanged =
-          now.day != oldDay.day ||
-          now.month != oldDay.month ||
-          now.year != oldDay.year;
+          current.day != oldDay.day ||
+          current.month != oldDay.month ||
+          current.year != oldDay.year;
       if (dayChanged) {
-        setState(() => _today = now);
-        _midnightAdvance(now);
+        setState(() => _today = current);
+        _midnightAdvance(current);
       } else {
-        // Not midnight — just keep _today in sync without triggering a rebuild.
-        _today = now;
+        _today = current;
       }
+
+      _scheduleClock();
     });
   }
 
