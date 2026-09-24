@@ -2932,10 +2932,6 @@ class StaticLiquidGlassSurface extends StatelessWidget {
     // policy from the shared implementation.
     final glassColor = color.withValues(alpha: 1.0);
     final cardShadows = resolveThemeShadows(kCardShadow, context);
-    final surfacePainter = _StaticLiquidGlassSurfacePainter(
-      shape: shape,
-      shadows: cardShadows,
-    );
     final outlinePainter = showOpticalBorder
         ? _StaticLiquidGlassOutlinePainter(
             shape: shape,
@@ -2960,56 +2956,61 @@ class StaticLiquidGlassSurface extends StatelessWidget {
       // exists only for the explicit cancel-control outline opt-in.
       return showOpticalBorder
           ? CustomPaint(
-              painter: surfacePainter,
               foregroundPainter: outlinePainter,
               child: fallback,
             )
           : fallback;
     }
-    return CustomPaint(
-      painter: surfacePainter,
-      foregroundPainter: outlinePainter,
-      child: IntrinsicHeight(
-        child: ClipPath(
-          clipper: ShapeBorderClipper(shape: shape),
-          // The outer transform is deliberately above the native lens so only
-          // the lens paint receives the overhang. The inverse transform on the
-          // lens child cancels it for the PlatformView and every Flutter child
-          // inside the surface: text, fades, icons, and placeholders retain
-          // their authored size and exact surface bounds.
-          child: Transform.scale(
-            scale: 1.06,
-            child: LiquidGlassView(
-              key: ValueKey<int>(color.toARGB32()),
-              backgroundWidget: ClipPath(
-                clipper: ShapeBorderClipper(shape: shape),
-                child: ColoredBox(color: glassColor),
-              ),
-              realTimeCapture: false,
-              useSync: true,
-              // Static surfaces have no live refraction and must stay
-              // attached to their local route transform. The screen-space
-              // Impeller filter can drift when the covered route is scaled
-              // by a Cupertino sheet. Native surfaces therefore use the
-              // same local capture path as the stable action-button glass.
-              // Keep web automatic so CanvasKit continues using its supported
-              // capture implementation without forcing an unsupported mode.
-              useImpellerBackdrop: kIsWeb ? null : false,
-              child: LiquidGlassLens(
-                style: _staticLiquidGlassStyle(
-                  glassColor: glassColor,
-                  cornerRadius: lensCornerRadius,
-                  // The exact-shape foreground painter owns this rim so it
-                  // is not carried beyond the clipped surface.
-                  showOpticalBorder: false,
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        shape: shape,
+        shadows: cardShadows,
+      ),
+      child: CustomPaint(
+        foregroundPainter: outlinePainter,
+        child: IntrinsicHeight(
+          child: ClipPath(
+            clipper: ShapeBorderClipper(shape: shape),
+            // The outer transform is deliberately above the native lens so
+            // only the lens paint receives the overhang. The inverse
+            // transform on the lens child cancels it for the PlatformView and
+            // every Flutter child inside the surface: text, fades, icons,
+            // and placeholders retain their authored size and exact bounds.
+            child: Transform.scale(
+              scale: 1.06,
+              child: LiquidGlassView(
+                key: ValueKey<int>(color.toARGB32()),
+                backgroundWidget: ClipPath(
+                  clipper: ShapeBorderClipper(shape: shape),
+                  child: ColoredBox(color: glassColor),
                 ),
-                // No LiquidGlassTouch: this surface is deliberately inert.
-                // Keep the original single-lens child layout for the Notes
-                // PlatformView. The inverse paint transform prevents the
-                // outer lens overhang from scaling the child content.
-                child: Transform.scale(
-                  scale: 1 / 1.06,
-                  child: SizedBox.expand(child: child),
+                realTimeCapture: false,
+                useSync: true,
+                // Static surfaces have no live refraction and must stay
+                // attached to their local route transform. The screen-space
+                // Impeller filter can drift when the covered route is scaled
+                // by a Cupertino sheet. Native surfaces therefore use the
+                // same local capture path as the stable action-button glass.
+                // Keep web automatic so CanvasKit continues using its
+                // supported capture implementation without forcing an
+                // unsupported mode.
+                useImpellerBackdrop: kIsWeb ? null : false,
+                child: LiquidGlassLens(
+                  style: _staticLiquidGlassStyle(
+                    glassColor: glassColor,
+                    cornerRadius: lensCornerRadius,
+                    // The exact-shape foreground painter owns this rim so it
+                    // is not carried beyond the clipped surface.
+                    showOpticalBorder: false,
+                  ),
+                  // No LiquidGlassTouch: this surface is deliberately inert.
+                  // Keep the original single-lens child layout for the Notes
+                  // PlatformView. The inverse paint transform prevents the
+                  // outer lens overhang from scaling the child content.
+                  child: Transform.scale(
+                    scale: 1 / 1.06,
+                    child: SizedBox.expand(child: child),
+                  ),
                 ),
               ),
             ),
@@ -3018,35 +3019,6 @@ class StaticLiquidGlassSurface extends StatelessWidget {
       ),
     );
   }
-}
-
-class _StaticLiquidGlassSurfacePainter extends CustomPainter {
-  const _StaticLiquidGlassSurfacePainter({
-    required this.shape,
-    required this.shadows,
-  });
-
-  final ShapeBorder shape;
-  final List<BoxShadow> shadows;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final path = shape.getOuterPath(rect);
-    for (final shadow in shadows) {
-      canvas.drawShadow(
-        path.shift(shadow.offset),
-        shadow.color,
-        shadow.blurRadius,
-        true,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _StaticLiquidGlassSurfacePainter oldDelegate) =>
-      oldDelegate.shape != shape ||
-      oldDelegate.shadows != shadows;
 }
 
 /// Foreground-only hairline for the one glass control that needs to remain
