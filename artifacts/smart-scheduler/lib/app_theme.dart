@@ -2893,12 +2893,18 @@ double _staticLiquidGlassSurfaceCornerRadius(ShapeBorder shape) {
   return kCornerRadius;
 }
 
+// Shared by every native StaticLiquidGlassSurface. The inverse transform
+// below keeps each surface's child content at its authored size and bounds.
+const double _kStaticLiquidGlassOverhangScale = 1.06;
+
 /// A non-interactive rich Liquid Glass surface for cards and panels.
 ///
 /// This is intentionally separate from [StaticLiquidGlassActionButton]:
 /// there is no gesture detector, bloom animation, or tap callback. It paints
 /// the same historical lens treatment as the action button, without the
-/// button-only interaction and animation layers.
+/// button-only interaction and animation layers. Its shadow renderer, native
+/// capture settings, lens overhang, child-size compensation, clipping, and
+/// fallback behavior are shared by every instance.
 class StaticLiquidGlassSurface extends StatelessWidget {
   const StaticLiquidGlassSurface({
     super.key,
@@ -2977,7 +2983,7 @@ class StaticLiquidGlassSurface extends StatelessWidget {
             // every Flutter child inside the surface: text, fades, icons,
             // and placeholders retain their authored size and exact bounds.
             child: Transform.scale(
-              scale: 1.06,
+              scale: _kStaticLiquidGlassOverhangScale,
               child: LiquidGlassView(
                 key: ValueKey<int>(color.toARGB32()),
                 backgroundWidget: ClipPath(
@@ -3008,7 +3014,7 @@ class StaticLiquidGlassSurface extends StatelessWidget {
                   // PlatformView. The inverse paint transform prevents the
                   // outer lens overhang from scaling the child content.
                   child: Transform.scale(
-                    scale: 1 / 1.06,
+                    scale: 1 / _kStaticLiquidGlassOverhangScale,
                     child: SizedBox.expand(child: child),
                   ),
                 ),
