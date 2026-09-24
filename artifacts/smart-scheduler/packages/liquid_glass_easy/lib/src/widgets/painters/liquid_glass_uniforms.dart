@@ -50,6 +50,7 @@ void packLiquidGlassUniforms(
   required Offset lensPosition,
   required double lensWidth,
   required double lensHeight,
+  double? cornerRadius,
   required double magnification,
   required double distortion,
 
@@ -109,7 +110,7 @@ void packLiquidGlassUniforms(
   final double selectedBorderMode =
       (shape.borderMode == LiquidGlassBorderMode.classic) ? 0 : 1;
 
-  final double cornerRadius = shape.cornerRadius;
+  final double resolvedCornerRadius = cornerRadius ?? shape.cornerRadius;
   // The shape type alone selects the corner SDF in the shader:
   // 2 = continuous (capsule), 1 = squircle (full smoothing), 0 = circular.
   final double cornerStyle = liquidGlassCornerStyle(shape);
@@ -126,7 +127,7 @@ void packLiquidGlassUniforms(
   shader.setFloat(i++, lensWidth * scale);
   shader.setFloat(i++, lensHeight * scale);
   // u_cornerRadius
-  shader.setFloat(i++, cornerRadius * scale);
+  shader.setFloat(i++, resolvedCornerRadius * scale);
   // u_cornerStyle (0 = circular, 1 = squircle, 2 = continuous — never scaled)
   shader.setFloat(i++, cornerStyle);
 

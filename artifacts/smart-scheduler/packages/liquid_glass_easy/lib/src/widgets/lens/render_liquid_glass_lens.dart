@@ -319,6 +319,8 @@ class RenderLiquidGlassLens extends RenderProxyBox
     required double scale,
     required double borderWidth,
     required bool includeLensColor,
+    Size? lensSize,
+    double? cornerRadius,
     // Lens-anywhere lenses never honor the captured backdrop's alpha: the
     // capture is treated as opaque so the optical rim/body survive over dark
     // or empty regions. Only the slider/toggle (a separate painter path) opt
@@ -335,8 +337,9 @@ class RenderLiquidGlassLens extends RenderProxyBox
       scale: scale,
       resolution: resolution,
       lensPosition: lensPosition,
-      lensWidth: size.width,
-      lensHeight: size.height,
+      lensWidth: (lensSize ?? size).width,
+      lensHeight: (lensSize ?? size).height,
+      cornerRadius: cornerRadius,
       magnification: _refraction.magnification,
       distortion: _refraction.effectiveDistortion,
       distortionWidth: _refraction.effectiveDistortionWidth,
@@ -384,19 +387,36 @@ class RenderLiquidGlassLens extends RenderProxyBox
 
   void _paintImpeller(PaintingContext context, Offset offset) {
     // Under ImageFilter.shader, FlutterFragCoord() is screen-space
-    // physical pixels, so position/resolution are global. Computed at
-    // paint time, where the transform is exact for this frame.
-    final Offset globalTopLeft =
-        MatrixUtils.transformPoint(getTransformTo(null), Offset.zero);
+    // physical pixels, so position/resolution are global. The route below a
+    // Cupertino sheet is temporarily scaled while the sheet opens or is
+    // interactively dismissed. In that state the lens's local size is not the
+    // size of the painted glass on screen, so use the complete render
+    // transform for both the origin and dimensions. Otherwise the shader
+    // continues to draw an unscaled surface inside a scaled clip, which looks
+    // like a drifting overlay until the route reaches scale 1.0.
+    final Matrix4 globalTransform = getTransformTo(null);
+    final Rect globalRect = MatrixUtils.transformRect(
+      globalTransform,
+      Offset.zero & size,
+    );
+    final double transformScaleX =
+        size.width > 0 ? globalRect.width / size.width : 1.0;
+    final double transformScaleY =
+        size.height > 0 ? globalRect.height / size.height : 1.0;
+    final double uniformTransformScale =
+        (transformScaleX + transformScaleY) / 2.0;
 
     _packUniforms(
       _mainShader,
       resolution: _screenSize,
-      lensPosition: globalTopLeft,
+      lensPosition: globalRect.topLeft,
       scale: _devicePixelRatio,
+      lensSize: globalRect.size,
+      cornerRadius: liquidGlassClipCornerRadius(_shape) *
+          uniformTransformScale,
       // The main shader draws its own border on this path: the blur
       // pass sits BELOW the shader pass, so the rim stays sharp.
-      borderWidth: _fullBorderWidth,
+      borderWidth: _fullBorderWidth * uniformTransformScale,
       includeLensColor: true,
       // Impeller's live backdrop alpha is not a transparency signal
       // (reads 0 over dark regions); ignore it so the rim/body survive.
