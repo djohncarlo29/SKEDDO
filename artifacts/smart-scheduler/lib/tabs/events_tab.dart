@@ -1850,6 +1850,18 @@ class EventsTabState extends State<EventsTab>
   /// immediately whenever events are added, edited, or removed.
   Map<String, int> _liveEventCounts = {};
 
+  // Recurring-event expansion is independent of ordinary widget rebuilds.
+  // Keep the computed occurrences while the active event-list identity and
+  // calendar day are unchanged; event mutations replace the ValueNotifier
+  // list, and the day key invalidates the rolling expansion window at midnight.
+  List<ScheduledEvent>? _expandedEventsCache;
+  List<ScheduledEvent>? _expandedEventsSource;
+  DateTime? _expandedEventsCacheDay;
+  List<ScheduledEvent>? _smartMatchSource;
+  DateTime? _smartMatchDay;
+  int? _smartMatchCategorySignature;
+  Map<String, int>? _smartMatchCountsCache;
+
   // Labels of smart tiles the user has archived (hidden from the grid).
   // Like user-category archiving, there's no reveal/unarchive UI yet.
   final Set<String> _archivedSmartCategories = {};
@@ -5906,7 +5918,7 @@ class EventsTabState extends State<EventsTab>
   }
 
   int _smartCategoryMatchCount(String categoryName) {
-    final allEvents = EventStore.instance.expandedEvents();
+    final allEvents = _expandedEventsFor(DateTime.now());
     if (_kDCVLabels.contains(categoryName)) {
       return AIServices.matcher
           .match(
@@ -6784,6 +6796,7 @@ class EventsTabState extends State<EventsTab>
 
   Timer? _midnightTimer;
   Timer? _clockTimer;
+  DateTime _clockDate = DateTime.now();
 
   void _scheduleMidnightRefresh() {
     final now = DateTime.now();
@@ -6833,7 +6846,15 @@ class EventsTabState extends State<EventsTab>
     // Per-second clock so date numbers (today/tomorrow/week) update live
     // without requiring tab switches.
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
+      final now = DateTime.now();
+      final dayChanged =
+          now.year != _clockDate.year ||
+          now.month != _clockDate.month ||
+          now.day != _clockDate.day;
+      if (dayChanged) {
+        _clockDate = now;
+        if (mounted) setState(() {});
+      }
     });
     EventStore.instance.events.addListener(_onEventsChanged);
     EventStore.instance.archivedEvents.addListener(_onEventsChanged);
@@ -7542,6 +7563,64 @@ class EventsTabState extends State<EventsTab>
     });
   }
 
+  List<ScheduledEvent> _expandedEventsFor(DateTime now) {
+    final source = EventStore.instance.events.value;
+    final day = DateTime(now.year, now.month, now.day);
+    if (_expandedEventsCache == null ||
+        !identical(_expandedEventsSource, source) ||
+        _expandedEventsCacheDay != day) {
+      _expandedEventsSource = source;
+      _expandedEventsCacheDay = day;
+      _expandedEventsCache = EventStore.instance.expandedEvents();
+    }
+    return _expandedEventsCache!;
+  }
+
+  Map<String, int> _smartMatchCountsFor(
+    List<ScheduledEvent> allEvents,
+    DateTime now,
+  ) {
+    final categories = [..._userCategories, ..._pinnedUserCategories];
+    final signature = Object.hashAll(
+      categories.map(
+        (category) => Object.hash(
+          category.id,
+          category.name,
+          category.categoryType,
+          category.smartDescription,
+        ),
+      ),
+    );
+    final day = DateTime(now.year, now.month, now.day);
+    if (_smartMatchCountsCache != null &&
+        identical(_smartMatchSource, allEvents) &&
+        _smartMatchDay == day &&
+        _smartMatchCategorySignature == signature) {
+      return _smartMatchCountsCache!;
+    }
+
+    final counts = <String, int>{};
+    for (final category in categories) {
+      if (category.categoryType == 'Smart Category' &&
+          category.smartDescription.isNotEmpty) {
+        counts[category.id] =
+            AIServices.matcher
+                .match(
+                  candidates: allEvents,
+                  rule: category.smartDescription,
+                  categoryName: category.name,
+                  now: now,
+                )
+                .length;
+      }
+    }
+    _smartMatchSource = allEvents;
+    _smartMatchDay = day;
+    _smartMatchCategorySignature = signature;
+    _smartMatchCountsCache = counts;
+    return counts;
+  }
+
   /// Debounced 150 ms search trigger.  Clears results immediately when the
   /// query is empty so the overlay shows a blank state, not stale hits.
   void _scheduleSearch() {
@@ -7561,7 +7640,7 @@ class EventsTabState extends State<EventsTab>
     _searchDebounce = Timer(const Duration(milliseconds: 150), () async {
       // Search is global in every tab and every DCV. Recurring events are
       // expanded so a query for a concrete occurrence date can find it.
-      final all = EventStore.instance.expandedEvents();
+      final all = _expandedEventsFor(DateTime.now());
       final scopeIds = _activeDcvScopeIds(all);
       final results = await SearchService().query(
         q,
@@ -7751,8 +7830,8 @@ class EventsTabState extends State<EventsTab>
     // allEvents  — recurring events expanded into concrete occurrences over a
     // rolling 1-year window; used for date-based tile counts and all matching.
     final baseEvents = EventStore.instance.events.value;
-    final allEvents = EventStore.instance.expandedEvents();
     final now = DateTime.now();
+    final allEvents = _expandedEventsFor(now);
 
     // Recompute live counts per user category so list rows and pinned grid
     // tiles always show the real event count rather than the persisted
@@ -7775,22 +7854,9 @@ class EventsTabState extends State<EventsTab>
                 : e.categoryId;
         counts[id] = (counts[id] ?? 0) + 1;
       }
-      // Smart user categories match events by rule (not by categoryId), so run
-      // the AI matcher for each Smart Category and store the count separately.
-      for (final cat in [..._userCategories, ..._pinnedUserCategories]) {
-        if (cat.categoryType == 'Smart Category' &&
-            cat.smartDescription.isNotEmpty) {
-          counts[cat.id] =
-              AIServices.matcher
-                  .match(
-                    candidates: allEvents,
-                    rule: cat.smartDescription,
-                    categoryName: cat.name,
-                    now: now,
-                  )
-                  .length;
-        }
-      }
+      // Smart user categories match events by rule (not by categoryId).
+      // Matching is cached until the event list, day, or saved rule changes.
+      counts.addAll(_smartMatchCountsFor(allEvents, now));
       counts[_kIdSysArchivedCategories] =
           _archivedSmartLabels.length +
           _archivedUserCategories.length +
