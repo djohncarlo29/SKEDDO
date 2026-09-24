@@ -6795,8 +6795,6 @@ class EventsTabState extends State<EventsTab>
   }
 
   Timer? _midnightTimer;
-  Timer? _clockTimer;
-  DateTime _clockDate = DateTime.now();
 
   void _scheduleMidnightRefresh() {
     final now = DateTime.now();
@@ -6843,19 +6841,6 @@ class EventsTabState extends State<EventsTab>
     _searchController.addListener(_onSearchTextChanged);
     WidgetsBinding.instance.addObserver(this);
     _scheduleMidnightRefresh();
-    // Per-second clock so date numbers (today/tomorrow/week) update live
-    // without requiring tab switches.
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      final now = DateTime.now();
-      final dayChanged =
-          now.year != _clockDate.year ||
-          now.month != _clockDate.month ||
-          now.day != _clockDate.day;
-      if (dayChanged) {
-        _clockDate = now;
-        if (mounted) setState(() {});
-      }
-    });
     EventStore.instance.events.addListener(_onEventsChanged);
     EventStore.instance.archivedEvents.addListener(_onEventsChanged);
     _scrollController.addListener(_enforceScrollLock);
@@ -6901,7 +6886,6 @@ class EventsTabState extends State<EventsTab>
     _dragAutoScrollTicker?.dispose();
     _dragAutoScrollTicker = null;
     _midnightTimer?.cancel();
-    _clockTimer?.cancel();
     _searchDebounce?.cancel();
     _listDragOverlayEntry?.remove();
     _listDragOverlayEntry = null;
