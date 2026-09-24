@@ -1581,25 +1581,6 @@ class _NoteInputCardState extends State<_NoteInputCard>
               ),
             ],
           ),
-          // Native platform views (NativeTextInput) render outside Flutter's
-          // compositor layer, so BackdropFilter cannot reach them. This tinted
-          // cover sits on top of the entire card (clipped to the squircle by
-          // the parent Container) and visually obscures the native content
-          // when the attach-menu is open — giving the frosted-glass effect.
-          IgnorePointer(
-            ignoring: !_attachMenuOpen,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {},
-              child: AnimatedOpacity(
-                opacity: _attachMenuOpen ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 180),
-                child: Container(
-                  color: resolveThemeColor(kAttachmentMenuOverlay, context),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
