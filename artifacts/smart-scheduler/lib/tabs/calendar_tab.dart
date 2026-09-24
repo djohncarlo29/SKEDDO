@@ -329,7 +329,8 @@ class CalendarTabState extends State<CalendarTab>
   int _zoomMonthIdx = 0; // 0–11, which mini-month was tapped (sets zoom origin)
   double _zoomScrollOffset =
       0.0; // year-view scroll offset captured the moment zoom begins
-  double _zoomPrevT = 1.0; // tracks previous t for t=0.5 header-snap crossing
+  double _zoomPrevT = 1.0; // tracks previous t for the midpoint view handoff
+  CalendarView? _zoomTargetView;
   ScrollController _yearScrollCtrl = ScrollController();
 
   // ── Year scroll offset — same single carried-forward source-of-truth model
@@ -544,6 +545,8 @@ class CalendarTabState extends State<CalendarTab>
   // ── Month ↔ Day  (0 = month, 1 = day) ────────────────────────────────────────
   late final AnimationController _collapseCtrl;
   late final CurvedAnimation _collapseAnim;
+  double _collapsePrevT = 0.0;
+  CalendarView? _collapseTargetView;
   int _collapseRow = 0; // which week-row stays pinned during day transition
   int _settleCount =
       0; // incremented on cross-week navigation; triggers settle anim
@@ -644,14 +647,16 @@ class CalendarTabState extends State<CalendarTab>
 
   String get headerTitle {
     final t = _zoomCtrl.value;
+    if (_zoomTargetView == CalendarView.month) {
+      return t < 0.5 ? '$_dispYear' : _kMonthNames[_dispMonth - 1];
+    }
+    if (_zoomTargetView == CalendarView.year) {
+      return t >= 0.5 ? _kMonthNames[_zoomMonthIdx] : '$_dispYear';
+    }
     switch (_view) {
       case CalendarView.year:
-        // month→year reverse: keep month title until t drops below 0.35
-        if (t >= 0.35) return _kMonthNames[_zoomMonthIdx];
         return '$_dispYear';
       case CalendarView.month:
-        // year→month forward: keep year title until t reaches 0.65
-        if (t < 0.65) return '$_dispYear';
         return _kMonthNames[_dispMonth - 1];
       case CalendarView.day:
         return '${_kShortMonthNames[_selected.month - 1]} ${_selected.day}';
@@ -664,7 +669,7 @@ class CalendarTabState extends State<CalendarTab>
     final t = _zoomCtrl.value;
     // During morph, return adjacent titles matching whichever view owns the title
     if (t > 0.01 && t < 0.99) {
-      if (t >= 0.65) {
+      if (t >= 0.5) {
         final prevM = _dispMonth == 1
             ? (_dispYear - 1, 12)
             : (_dispYear, _dispMonth - 1);
@@ -832,6 +837,9 @@ class CalendarTabState extends State<CalendarTab>
     _weekStripDrag = false;
     _navLocked = false;
     _zoomPrevT = 1.0;
+    _zoomTargetView = null;
+    _collapsePrevT = 1.0;
+    _collapseTargetView = null;
 
     setState(() {
       _view = CalendarView.day;
@@ -1321,10 +1329,10 @@ class CalendarTabState extends State<CalendarTab>
     _zoomScrollOffset = _yearScrollCtrl.hasClients
         ? _yearScrollCtrl.offset
         : 0.0;
+    _zoomTargetView = CalendarView.month;
     setState(() {
       _zoomMonthIdx = monthIdx;
       _dispMonth = monthIdx + 1;
-      _view = CalendarView.month;
     });
     _notify();
     await _zoomCtrl.animateWith(
@@ -1338,7 +1346,14 @@ class CalendarTabState extends State<CalendarTab>
     // Spring tolerance (~0.001) can leave the value just below 1.0.
     // Snap to the exact target so the morph condition (zoomT < 1.0) is
     // false and the overlay is cleared.
-    if (mounted) _zoomCtrl.value = 1.0;
+    if (mounted) {
+      _zoomCtrl.value = 1.0;
+      if (_zoomTargetView != null) {
+        setState(() => _view = _zoomTargetView!);
+        _zoomTargetView = null;
+        _notify();
+      }
+    }
   }
 
   Future<void> _exitToYear({bool fast = false}) async {
@@ -1347,6 +1362,7 @@ class CalendarTabState extends State<CalendarTab>
     if (_monthViewScrollCtrl.hasClients) {
       _savedMonthScrollOffset = _monthViewScrollCtrl.offset;
     }
+    _zoomTargetView = CalendarView.year;
     setState(() => _zoomMonthIdx = _dispMonth - 1);
     await _zoomCtrl.animateWith(
       SpringSimulation(
@@ -1358,14 +1374,18 @@ class CalendarTabState extends State<CalendarTab>
     );
     if (mounted) {
       _zoomCtrl.value = 0.0;
-      setState(() => _view = CalendarView.year);
-      _notify();
+      if (_zoomTargetView != null) {
+        setState(() => _view = _zoomTargetView!);
+        _zoomTargetView = null;
+        _notify();
+      }
     }
   }
 
-  // Fires _notify() at the header-snap thresholds:
-  //   year→month: snap to month title at t = 0.65 (grid feels "landed")
-  //   month→year: snap to year  title at t = 0.35 (65 % of reverse done)
+  // Fires the shared hierarchy handoff at t = 0.5 in either direction. The
+  // Calendar view remains committed to the outgoing view before that point and
+  // becomes the incoming view after it, so the header, controls, and dependent
+  // content all change as one unit.
   //
   // Year→Month scroll restoration:
   //   _MonthView is conditionally mounted only when zoomT > 0.999.  When
@@ -1384,8 +1404,18 @@ class CalendarTabState extends State<CalendarTab>
   //   previous frame, so _MonthView was unmounted), making dispose() safe.
   void _onZoomTick() {
     final t = _zoomCtrl.value;
-    if (_zoomPrevT < 0.65 && t >= 0.65) _notify();
-    if (_zoomPrevT >= 0.35 && t < 0.35) _notify();
+    final target = _zoomTargetView;
+    if (target != null) {
+      final crossedForward = _zoomPrevT < 0.5 && t >= 0.5;
+      final crossedReverse = _zoomPrevT >= 0.5 && t < 0.5;
+      if ((crossedForward || crossedReverse) &&
+          ((t >= 0.5 && target == CalendarView.month) ||
+              (t < 0.5 && target == CalendarView.year))) {
+        setState(() => _view = target);
+        _zoomTargetView = null;
+        _notify();
+      }
+    }
     if (_zoomPrevT < 0.999 && t >= 0.999 && _savedMonthScrollOffset > 0) {
       // Recreate the controller with the saved offset as its initial position.
       // The old controller has no clients at this point (safe to dispose).
@@ -1401,6 +1431,23 @@ class CalendarTabState extends State<CalendarTab>
     _zoomPrevT = t;
   }
 
+  void _onCollapseTick() {
+    final t = _collapseAnim.value;
+    final target = _collapseTargetView;
+    if (target != null) {
+      final crossedForward = _collapsePrevT < 0.5 && t >= 0.5;
+      final crossedReverse = _collapsePrevT >= 0.5 && t < 0.5;
+      if ((crossedForward || crossedReverse) &&
+          ((t >= 0.5 && target == CalendarView.day) ||
+              (t < 0.5 && target == CalendarView.month))) {
+        setState(() => _view = target);
+        _collapseTargetView = null;
+        _notify();
+      }
+    }
+    _collapsePrevT = t;
+  }
+
   void _enterDay(DateTime date, {bool fast = false}) {
     // Capture the current scroll offset of the month-view content area BEFORE
     // setState triggers a rebuild.  This value is used by _AnimatedWeekRow to
@@ -1414,8 +1461,8 @@ class CalendarTabState extends State<CalendarTab>
       _collapseRow = _weekRowForDate(date);
       _collapseScrollOffset = capturedOffset;
       _savedMonthScrollOffset = capturedOffset; // remembered for exit
-      _view = CalendarView.day;
     });
+    _collapseTargetView = CalendarView.day;
     _notify();
     final collapse = fast
         ? _collapseCtrl.animateTo(
@@ -1435,6 +1482,11 @@ class CalendarTabState extends State<CalendarTab>
         _monthViewScrollCtrl.jumpTo(0);
       }
       if (mounted) setState(() => _collapseScrollOffset = 0.0);
+      if (mounted && _collapseTargetView != null) {
+        setState(() => _view = _collapseTargetView!);
+        _collapseTargetView = null;
+        _notify();
+      }
     });
   }
 
@@ -1450,6 +1502,7 @@ class CalendarTabState extends State<CalendarTab>
       }
       setState(() => _collapseScrollOffset = _savedMonthScrollOffset);
     }
+    _collapseTargetView = CalendarView.month;
     if (fast) {
       await _collapseCtrl.animateBack(
         0.0,
@@ -1466,10 +1519,13 @@ class CalendarTabState extends State<CalendarTab>
     // Month View at that exact offset, and it must survive any subsequent
     // Year View excursion.
     setState(() {
-      _view = CalendarView.month;
       _collapseScrollOffset = 0.0;
     });
-    _notify();
+    if (_collapseTargetView != null) {
+      setState(() => _view = _collapseTargetView!);
+      _collapseTargetView = null;
+      _notify();
+    }
   }
 
   @override
@@ -1494,6 +1550,7 @@ class CalendarTabState extends State<CalendarTab>
       parent: _collapseCtrl,
       curve: Curves.easeInOutCubic,
     );
+    _collapseCtrl.addListener(_onCollapseTick);
     _snapCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 185),
@@ -2297,7 +2354,7 @@ class CalendarTabState extends State<CalendarTab>
                     // the DOW alignment remains independent of panel motion.
                     if (colT > 0.01 &&
                         widget.daySubMode != DayViewSubMode.list)
-                      const Positioned(
+                      Positioned(
                         // Cover the complete boundary below the app header.
                         // The week rows are vertically transformed while
                         // collapsing into Day View and can otherwise paint
@@ -2306,7 +2363,12 @@ class CalendarTabState extends State<CalendarTab>
                         left: 0,
                         right: 0,
                         height: _kCalendarHeaderToDowGap + _kDayLabelHeight,
-                        child: _DayViewDowMask(),
+                        child: _DayViewDowMask(
+                          labelOpacity: ((colT -
+                                      _kMonthDayTransitionThreshold) /
+                                  (1.0 - _kMonthDayTransitionThreshold))
+                              .clamp(0.0, 1.0),
+                        ),
                       ),
                     // (Strip slides off-screen via stripSlideY Transform on each
                     // _MonthView panel; the mask above also seals the header
@@ -2328,7 +2390,9 @@ class CalendarTabState extends State<CalendarTab>
                             dayWeekStripHeight,
                         height: dayBannerHeight,
                         child: Opacity(
-                          opacity: ((colT - 0.55) / 0.45).clamp(0.0, 1.0),
+                          opacity: ((colT - _kMonthDayTransitionThreshold) /
+                                  (1.0 - _kMonthDayTransitionThreshold))
+                              .clamp(0.0, 1.0),
                           child: Transform.translate(
                             offset: Offset(0, 36.0 * (1.0 - colT)),
                             child: IgnorePointer(
@@ -2407,7 +2471,9 @@ class CalendarTabState extends State<CalendarTab>
                             dayBannerHeight,
                         bottom: 0,
                         child: Opacity(
-                          opacity: ((colT - 0.55) / 0.45).clamp(0.0, 1.0),
+                          opacity: ((colT - _kMonthDayTransitionThreshold) /
+                                  (1.0 - _kMonthDayTransitionThreshold))
+                              .clamp(0.0, 1.0),
                           child: Transform.translate(
                             offset: Offset(0, 36.0 * (1.0 - colT)),
                             child: IgnorePointer(
@@ -2492,7 +2558,9 @@ class CalendarTabState extends State<CalendarTab>
                         top: 0,
                         bottom: 0,
                         child: Opacity(
-                          opacity: ((colT - 0.55) / 0.45).clamp(0.0, 1.0),
+                          opacity: ((colT - _kMonthDayTransitionThreshold) /
+                                  (1.0 - _kMonthDayTransitionThreshold))
+                              .clamp(0.0, 1.0),
                           child: Transform.translate(
                             offset: Offset(0, 36.0 * (1.0 - colT)),
                             child: const _DayListPlaceholder(),
@@ -4460,7 +4528,7 @@ class _WeekRowState extends State<_WeekRow> {
           widget.rowHeight - kFixedTopPadding,
         );
         final restingIndicatorDiameter = math.min(
-          widget.collapseProgress > 0.0
+          widget.collapseProgress > _kMonthDayTransitionThreshold
               ? _dayViewCircleDiameterFor(context)
               : authoredIndicatorDiameter,
           indicatorSlotHeight,
@@ -4508,7 +4576,8 @@ class _WeekRowState extends State<_WeekRow> {
         final bool multiDayHasAdjacentDay =
             multiDaySelCol != null && multiDaySelCol < 6;
         final multiDayCirclesActive =
-            multiDayHasAdjacentDay && widget.collapseProgress > 0.0;
+            multiDayHasAdjacentDay &&
+            widget.collapseProgress > _kMonthDayTransitionThreshold;
         final multiDayPill = multiDayCirclesActive
             ? Positioned(
                 left:
@@ -4846,7 +4915,7 @@ class _WeekRowState extends State<_WeekRow> {
                   // of the selected circle while the selected circle slides.
                   final bool isUnderAdjacentCircle =
                       multiDayHasAdjacentDay &&
-                      widget.collapseProgress > 0.0 &&
+                      widget.collapseProgress > _kMonthDayTransitionThreshold &&
                       (circleCenter + cellW - colCenter).abs() < cellW * 0.5;
 
                   final Color c;
@@ -5264,7 +5333,9 @@ class _DayListPlaceholder extends StatelessWidget {
 // horizontally-sliding month panels, otherwise an adjacent panel's translated
 // week row can bleed through the DOW boundary.
 class _DayViewDowMask extends StatelessWidget {
-  const _DayViewDowMask();
+  const _DayViewDowMask({this.labelOpacity = 1.0});
+
+  final double labelOpacity;
 
   @override
   Widget build(BuildContext context) {
@@ -5283,14 +5354,17 @@ class _DayViewDowMask extends StatelessWidget {
                   7,
                   (i) => Expanded(
                     child: Center(
-                      child: Text(
-                        _kDayLetters[i],
-                        style: TextStyle(
-                          fontFamily: kSFProText,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: secondaryLabel,
-                          letterSpacing: -0.1,
+                      child: Opacity(
+                        opacity: labelOpacity,
+                        child: Text(
+                          _kDayLetters[i],
+                          style: TextStyle(
+                            fontFamily: kSFProText,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: secondaryLabel,
+                            letterSpacing: -0.1,
+                          ),
                         ),
                       ),
                     ),

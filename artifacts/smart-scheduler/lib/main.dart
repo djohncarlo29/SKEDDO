@@ -801,8 +801,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   String _calendarNextTitle = '';
 
   // True when the header is displaying a month name — drives view-mode icon
-  // visibility so it syncs with the title snap (t=0.35/0.65 threshold) rather
-  // than the animation endpoint.  Month titles have no digits and no spaces.
+  // visibility so it syncs with the shared midpoint title handoff rather than
+  // the animation endpoint. Month titles have no digits and no spaces.
   bool get _calendarShowsMonthTitle =>
       _calendarTitle.isNotEmpty &&
       int.tryParse(_calendarTitle) == null &&
@@ -2400,7 +2400,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                  ),
                                                                 // ── View-mode (Calendar → Month) ───────────────────
                                                                 // Visibility driven by _calendarShowsMonthTitle so
-                                                                // it syncs to the t=0.35/0.65 title-snap threshold
+                                                                // it syncs to the shared midpoint title handoff
                                                                 // during year↔month zoom, not the animation endpoint.
                                                                 // Align.bottomLeft matches the hamburger's bottom-0
                                                                 // positioning so their midpoints are level.

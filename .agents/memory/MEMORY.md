@@ -131,3 +131,4 @@
 - [Multi-Day faded circle compositing](multiday-faded-circle-compositing.md) — draw overlapping faded markers in one opaque union layer, then apply 40% opacity once.
 - [Smart Category semantic threshold](smart-category-semantic-threshold.md) — shared date/time text makes low cosine floors admit unrelated scheduled events; keep semantic matching conservative and normalize plural rules.
 - [Native iOS tab bar bridge](native-ios-tab-bar-bridge.md) — keep UIKit tab chrome across iOS versions; UIKit selects classic or floating styling and Flutter content clearance follows.
+- [Calendar midpoint view handoff](calendar-midpoint-view-handoff.md) — hierarchy-dependent Calendar UI switches at 50% in both directions; accelerated Year↔Day keeps the same handoff.
