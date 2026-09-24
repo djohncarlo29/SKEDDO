@@ -1295,7 +1295,9 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                         minimumIcon: 'TextSizeSmaller',
                         maximumIcon: 'TextSizeLarger',
                         iconSize: 20,
+                        divisions: 6,
                         accentColor: widget.accentColor,
+                        tickColor: inactiveColor,
                         darkMode:
                             CupertinoTheme.brightnessOf(context) ==
                             Brightness.dark,
@@ -1538,7 +1540,9 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
         minimumIcon: 'LiquidGlassLeft',
         maximumIcon: 'LiquidGlassRight',
         iconSize: 34,
+        divisions: 10,
         accentColor: widget.activeColor,
+        tickColor: widget.inactiveColor,
         darkMode: widget.darkMode,
         height: _kSettingsRowHeight,
         onChangeStart: (_) {

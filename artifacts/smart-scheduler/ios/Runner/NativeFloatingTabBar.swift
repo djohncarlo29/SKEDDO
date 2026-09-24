@@ -145,7 +145,9 @@ private struct NativeFluidSliderConfiguration {
     let minimumIcon: String
     let maximumIcon: String
     let iconSize: CGFloat
+    let divisions: Int
     var accentColor: Color
+    var tickColor: Color
     var darkMode: Bool
 }
 
@@ -207,6 +209,25 @@ private struct NativeFluidSliderRow: View {
             )
             .tint(model.configuration.accentColor)
             .accessibilityIdentifier("native-fluid-slider")
+            .overlay {
+                GeometryReader { geometry in
+                    let divisions = max(model.configuration.divisions, 1)
+                    ForEach(0...divisions, id: \.self) { index in
+                        Capsule()
+                            .fill(model.configuration.tickColor)
+                            .frame(width: 2, height: 3)
+                            .position(
+                                x: 13
+                                    + (geometry.size.width - 26)
+                                    * CGFloat(index)
+                                    / CGFloat(divisions),
+                                y: geometry.size.height / 2 + 8
+                            )
+                    }
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
 
             edgeIcon(name: model.configuration.maximumIcon, isLeading: false)
         }
@@ -374,7 +395,9 @@ private final class NativeFluidSliderPlatformView: NSObject,
             iconSize: CGFloat(
                 (values["iconSize"] as? NSNumber)?.doubleValue ?? 20
             ),
+            divisions: (values["divisions"] as? NSNumber)?.intValue ?? 0,
             accentColor: color(from: values["accentColor"] as? NSNumber),
+            tickColor: color(from: values["tickColor"] as? NSNumber),
             darkMode: values["darkMode"] as? Bool ?? false
         )
     }

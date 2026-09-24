@@ -12,7 +12,9 @@ class NativeFluidSliderRow extends StatefulWidget {
   final String minimumIcon;
   final String maximumIcon;
   final double iconSize;
+  final int divisions;
   final Color accentColor;
+  final Color tickColor;
   final bool darkMode;
   final double height;
   final ValueChanged<double> onChanged;
@@ -27,7 +29,9 @@ class NativeFluidSliderRow extends StatefulWidget {
     required this.minimumIcon,
     required this.maximumIcon,
     required this.iconSize,
+    required this.divisions,
     required this.accentColor,
+    required this.tickColor,
     required this.darkMode,
     required this.height,
     required this.onChanged,
@@ -55,7 +59,9 @@ class _NativeFluidSliderRowState extends State<NativeFluidSliderRow> {
     'minimumIcon': widget.minimumIcon,
     'maximumIcon': widget.maximumIcon,
     'iconSize': widget.iconSize,
+    'divisions': widget.divisions,
     'accentColor': widget.accentColor.toARGB32(),
+    'tickColor': widget.tickColor.toARGB32(),
     'darkMode': widget.darkMode,
   };
 
@@ -95,7 +101,9 @@ class _NativeFluidSliderRowState extends State<NativeFluidSliderRow> {
         oldWidget.minimumIcon != widget.minimumIcon ||
         oldWidget.maximumIcon != widget.maximumIcon ||
         oldWidget.iconSize != widget.iconSize ||
+        oldWidget.divisions != widget.divisions ||
         oldWidget.accentColor != widget.accentColor ||
+        oldWidget.tickColor != widget.tickColor ||
         oldWidget.darkMode != widget.darkMode) {
       final methodChannel = _methodChannel;
       if (methodChannel != null) {
