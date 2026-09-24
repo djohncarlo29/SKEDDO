@@ -2903,6 +2903,8 @@ class StaticLiquidGlassSurface extends StatelessWidget {
     this.shape = const BoundedSquircleStadiumBorder(),
     this.cornerRadius,
     this.useLiquidGlass,
+    this.showOpticalBorder = false,
+    this.outlineColor = const Color(0x80FFFFFF),
   });
 
   final Color color;
@@ -2910,6 +2912,11 @@ class StaticLiquidGlassSurface extends StatelessWidget {
   final ShapeBorder shape;
   final double? cornerRadius;
   final bool? useLiquidGlass;
+  /// Opt-in only for controls that should receive the package's optical rim.
+  /// Regular glass surfaces intentionally leave this disabled.
+  final bool showOpticalBorder;
+  /// Hairline outline color used when [showOpticalBorder] is enabled.
+  final Color outlineColor;
 
   @override
   Widget build(BuildContext context) {
@@ -2921,8 +2928,13 @@ class StaticLiquidGlassSurface extends StatelessWidget {
     // policy from the shared implementation.
     final glassColor = color.withValues(alpha: 1.0);
     final cardShadows = resolveThemeShadows(kCardShadow, context);
+    final surfacePainter = _StaticLiquidGlassSurfacePainter(
+      shape: shape,
+      shadows: cardShadows,
+      outlineColor: showOpticalBorder ? outlineColor : null,
+    );
     if (!staticLiquidGlassSupported(override: useLiquidGlass)) {
-      return IntrinsicHeight(
+      final fallback = IntrinsicHeight(
         child: DecoratedBox(
           decoration: ShapeDecoration(
             color: glassColor,
@@ -2935,12 +2947,14 @@ class StaticLiquidGlassSurface extends StatelessWidget {
           ),
         ),
       );
+      // Keep regular surfaces on their original fallback tree. The painter
+      // exists only for the explicit cancel-control outline opt-in.
+      return showOpticalBorder
+          ? CustomPaint(painter: surfacePainter, child: fallback)
+          : fallback;
     }
     return CustomPaint(
-      painter: _StaticLiquidGlassSurfacePainter(
-        shape: shape,
-        shadows: cardShadows,
-      ),
+      painter: surfacePainter,
       child: IntrinsicHeight(
         child: ClipPath(
             clipper: ShapeBorderClipper(shape: shape),
@@ -2964,9 +2978,7 @@ class StaticLiquidGlassSurface extends StatelessWidget {
                 style: _staticLiquidGlassStyle(
                   glassColor: glassColor,
                    cornerRadius: lensCornerRadius,
-                  // Static surfaces never use an optical edge rim. This is
-                  // intentionally not configurable on the surface API.
-                  showOpticalBorder: false,
+                   showOpticalBorder: showOpticalBorder,
                 ),
                 // No LiquidGlassTouch: this surface is deliberately inert.
                 child: child,
@@ -2982,10 +2994,12 @@ class _StaticLiquidGlassSurfacePainter extends CustomPainter {
   const _StaticLiquidGlassSurfacePainter({
     required this.shape,
     required this.shadows,
+    this.outlineColor,
   });
 
   final ShapeBorder shape;
   final List<BoxShadow> shadows;
+  final Color? outlineColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2999,12 +3013,23 @@ class _StaticLiquidGlassSurfacePainter extends CustomPainter {
         true,
       );
     }
+    final outline = outlineColor;
+    if (outline != null) {
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = outline
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.5,
+      );
+    }
   }
 
   @override
   bool shouldRepaint(covariant _StaticLiquidGlassSurfacePainter oldDelegate) =>
       oldDelegate.shape != shape ||
-      oldDelegate.shadows != shadows;
+      oldDelegate.shadows != shadows ||
+      oldDelegate.outlineColor != outlineColor;
 }
 
 class _GelBloomButtonState extends State<GelBloomButton>
