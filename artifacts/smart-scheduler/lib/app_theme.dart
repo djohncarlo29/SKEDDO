@@ -2912,6 +2912,14 @@ class StaticLiquidGlassSurface extends StatelessWidget {
               ),
               realTimeCapture: false,
               useSync: true,
+               // Static surfaces have no live refraction and must stay
+               // attached to their local route transform. The screen-space
+               // Impeller filter can drift when the covered route is scaled
+               // by a Cupertino sheet. Native surfaces therefore use the
+               // same local capture path as the stable action-button glass.
+               // Keep web automatic so CanvasKit continues using its supported
+               // capture implementation without forcing an unsupported mode.
+               useImpellerBackdrop: kIsWeb ? null : false,
               child: LiquidGlassLens(
                 style: _staticLiquidGlassStyle(
                   glassColor: glassColor,
