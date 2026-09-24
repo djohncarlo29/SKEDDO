@@ -2885,20 +2885,22 @@ class StaticLiquidGlassSurface extends StatelessWidget {
     required this.color,
     required this.child,
     this.shape = const BoundedSquircleStadiumBorder(),
-    this.shadows = const <BoxShadow>[],
   });
 
   final Color color;
   final Widget child;
   final ShapeBorder shape;
-  final List<BoxShadow> shadows;
 
   @override
   Widget build(BuildContext context) {
     final cornerRadius = _staticLiquidGlassSurfaceCornerRadius(shape);
     final glassColor = color.withValues(alpha: 0.8);
+    final cardShadows = resolveThemeShadows(kCardShadow, context);
     return CustomPaint(
-      painter: _StaticLiquidGlassSurfacePainter(shape: shape, shadows: shadows),
+      painter: _StaticLiquidGlassSurfacePainter(
+        shape: shape,
+        shadows: cardShadows,
+      ),
       child: IntrinsicHeight(
         child: ClipPath(
             clipper: ShapeBorderClipper(shape: shape),

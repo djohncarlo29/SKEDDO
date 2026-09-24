@@ -1306,14 +1306,12 @@ class _NoteInputCardState extends State<_NoteInputCard>
     final clearIconSize = textScaler.scale(kSearchBarMicIconSize + 0.5);
     final micIconSize = actionIconSize;
     final surfaceColor = resolveThemeColor(kSbSurface, context);
-    final cardShadows = resolveThemeShadows(kCardShadow, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     final tertiaryLabel = resolveThemeColor(kTertiaryLabel, context);
     return StaticLiquidGlassSurface(
       color: surfaceColor,
       shape: const BoundedSquircleStadiumBorder(),
-      shadows: cardShadows,
       child: Stack(
         children: [
           Column(
