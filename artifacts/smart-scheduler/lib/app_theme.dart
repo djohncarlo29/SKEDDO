@@ -2931,8 +2931,13 @@ class StaticLiquidGlassSurface extends StatelessWidget {
     final surfacePainter = _StaticLiquidGlassSurfacePainter(
       shape: shape,
       shadows: cardShadows,
-      outlineColor: showOpticalBorder ? outlineColor : null,
     );
+    final outlinePainter = showOpticalBorder
+        ? _StaticLiquidGlassOutlinePainter(
+            shape: shape,
+            color: outlineColor,
+          )
+        : null;
     if (!staticLiquidGlassSupported(override: useLiquidGlass)) {
       final fallback = IntrinsicHeight(
         child: DecoratedBox(
@@ -2950,11 +2955,16 @@ class StaticLiquidGlassSurface extends StatelessWidget {
       // Keep regular surfaces on their original fallback tree. The painter
       // exists only for the explicit cancel-control outline opt-in.
       return showOpticalBorder
-          ? CustomPaint(painter: surfacePainter, child: fallback)
+          ? CustomPaint(
+              painter: surfacePainter,
+              foregroundPainter: outlinePainter,
+              child: fallback,
+            )
           : fallback;
     }
     return CustomPaint(
       painter: surfacePainter,
+      foregroundPainter: outlinePainter,
       child: IntrinsicHeight(
         child: ClipPath(
             clipper: ShapeBorderClipper(shape: shape),
@@ -2994,12 +3004,10 @@ class _StaticLiquidGlassSurfacePainter extends CustomPainter {
   const _StaticLiquidGlassSurfacePainter({
     required this.shape,
     required this.shadows,
-    this.outlineColor,
   });
 
   final ShapeBorder shape;
   final List<BoxShadow> shadows;
-  final Color? outlineColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -3013,23 +3021,39 @@ class _StaticLiquidGlassSurfacePainter extends CustomPainter {
         true,
       );
     }
-    final outline = outlineColor;
-    if (outline != null) {
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = outline
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 0.5,
-      );
-    }
   }
 
   @override
   bool shouldRepaint(covariant _StaticLiquidGlassSurfacePainter oldDelegate) =>
       oldDelegate.shape != shape ||
-      oldDelegate.shadows != shadows ||
-      oldDelegate.outlineColor != outlineColor;
+      oldDelegate.shadows != shadows;
+}
+
+/// Foreground-only hairline for the one glass control that needs to remain
+/// visible above its complete lens and child content.
+class _StaticLiquidGlassOutlinePainter extends CustomPainter {
+  const _StaticLiquidGlassOutlinePainter({
+    required this.shape,
+    required this.color,
+  });
+
+  final ShapeBorder shape;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawPath(
+      shape.getOuterPath(Offset.zero & size),
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.5,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _StaticLiquidGlassOutlinePainter oldDelegate) =>
+      oldDelegate.shape != shape || oldDelegate.color != color;
 }
 
 class _GelBloomButtonState extends State<GelBloomButton>
