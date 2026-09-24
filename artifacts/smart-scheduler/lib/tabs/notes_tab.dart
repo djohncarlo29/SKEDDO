@@ -1310,13 +1310,10 @@ class _NoteInputCardState extends State<_NoteInputCard>
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
     final tertiaryLabel = resolveThemeColor(kTertiaryLabel, context);
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: ShapeDecoration(
-        color: surfaceColor,
-        shape: const BoundedSquircleStadiumBorder(),
-        shadows: cardShadows,
-      ),
+    return StaticLiquidGlassSurface(
+      color: surfaceColor,
+      shape: const BoundedSquircleStadiumBorder(),
+      shadows: cardShadows,
       child: Stack(
         children: [
           Column(

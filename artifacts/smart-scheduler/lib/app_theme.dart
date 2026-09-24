@@ -2813,6 +2813,106 @@ class StaticLiquidGlassActionButton extends StatelessWidget {
   }
 }
 
+/// A non-interactive static Liquid Glass surface for cards and panels.
+///
+/// This is intentionally separate from [StaticLiquidGlassActionButton]:
+/// there is no gesture detector, bloom animation, or tap callback. It paints
+/// only the inexpensive fixed-color material treatment and clips its child to
+/// the supplied shape.
+class StaticLiquidGlassSurface extends StatelessWidget {
+  const StaticLiquidGlassSurface({
+    super.key,
+    required this.color,
+    required this.child,
+    this.shape = const BoundedSquircleStadiumBorder(),
+    this.shadows = const <BoxShadow>[],
+  });
+
+  final Color color;
+  final Widget child;
+  final ShapeBorder shape;
+  final List<BoxShadow> shadows;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _StaticLiquidGlassSurfacePainter(
+        color: color,
+        shape: shape,
+        shadows: shadows,
+      ),
+      child: ClipPath(
+        clipper: ShapeBorderClipper(shape: shape),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _StaticLiquidGlassSurfacePainter extends CustomPainter {
+  const _StaticLiquidGlassSurfacePainter({
+    required this.color,
+    required this.shape,
+    required this.shadows,
+  });
+
+  final Color color;
+  final ShapeBorder shape;
+  final List<BoxShadow> shadows;
+
+  Color _opaqueBlend(Color target, Color blend, double amount) {
+    return Color.lerp(
+      target.withValues(alpha: 1.0),
+      blend.withValues(alpha: 1.0),
+      amount,
+    )!.withValues(alpha: target.a);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final path = shape.getOuterPath(rect);
+    for (final shadow in shadows) {
+      canvas.drawShadow(
+        path.shift(shadow.offset),
+        shadow.color,
+        shadow.blurRadius,
+        true,
+      );
+    }
+
+    final top = _opaqueBlend(color, const Color(0xFFFFFFFF), 0.10);
+    final bottom = _opaqueBlend(color, const Color(0xFF000000), 0.06);
+    final fill = Paint()
+      ..isAntiAlias = true
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [top, color, bottom],
+        stops: const [0.0, 0.42, 1.0],
+      ).createShader(rect);
+    canvas.drawPath(path, fill);
+
+    // One restrained highlight follows the top edge without sampling the
+    // content behind the card.
+    final highlightPath = shape.getOuterPath(rect.deflate(0.7));
+    canvas.drawPath(
+      highlightPath,
+      Paint()
+        ..isAntiAlias = true
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.7
+        ..color = const Color(0x24FFFFFF),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _StaticLiquidGlassSurfacePainter oldDelegate) =>
+      oldDelegate.color != color ||
+      oldDelegate.shape != shape ||
+      oldDelegate.shadows != shadows;
+}
+
 /// A small, fixed-color glass surface for compact action buttons.
 ///
 /// These buttons do not need to reveal or magnify content behind them. Keep
