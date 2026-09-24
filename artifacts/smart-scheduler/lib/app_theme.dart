@@ -2894,7 +2894,11 @@ class StaticLiquidGlassSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cornerRadius = _staticLiquidGlassSurfaceCornerRadius(shape);
-    final glassColor = color.withValues(alpha: 0.8);
+    // Static surfaces are solid app-owned fills. Keep the caller's color
+    // opaque so these surfaces match a normal Container using the same color.
+    // All current and future StaticLiquidGlassSurface instances inherit this
+    // policy from the shared implementation.
+    final glassColor = color.withValues(alpha: 1.0);
     final cardShadows = resolveThemeShadows(kCardShadow, context);
     return CustomPaint(
       painter: _StaticLiquidGlassSurfacePainter(
