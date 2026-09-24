@@ -14,3 +14,9 @@ The cancel control's `showOpticalBorder` opt-in must be forwarded into the nativ
 **Why:** A glass-surface refactor preserved the call-site opt-in and visible outline while hardcoding the lens style's optical border off, which made the cancel button appear flat.
 
 **How to apply:** When changing `StaticLiquidGlassSurface`, pass the opt-in through to `_staticLiquidGlassStyle`; keep the surrounding exact-shape clip so the rim stays inside the circle.
+
+Regular static surfaces should remain solid by default; controls that need the native lens must opt in explicitly and independently from `showOpticalBorder`.
+
+**Why:** The Notes text-input card should not pay for or visually receive the glass lens, while the cancel-search control still needs its optical rim and lens treatment.
+
+**How to apply:** Keep the shared surface's lens opt-in disabled for ordinary cards and enable it only at the cancel-search call site.

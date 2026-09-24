@@ -796,6 +796,7 @@ class _SearchCancelButtonState extends State<SearchCancelButton>
               color: surfaceColor,
               shape: const CircleBorder(),
               cornerRadius: circleSize / 2,
+              useGlassLens: true,
               // This is the one glass surface that intentionally receives
               // both the package rim highlight and a visible hairline.
               // The circle size already follows the OS text scaler.

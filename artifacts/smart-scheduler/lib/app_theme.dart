@@ -2897,14 +2897,15 @@ double _staticLiquidGlassSurfaceCornerRadius(ShapeBorder shape) {
 // below keeps each surface's child content at its authored size and bounds.
 const double _kStaticLiquidGlassOverhangScale = 1.06;
 
-/// A non-interactive rich Liquid Glass surface for cards and panels.
+/// A non-interactive surface for cards and panels.
 ///
 /// This is intentionally separate from [StaticLiquidGlassActionButton]:
 /// there is no gesture detector, bloom animation, or tap callback. It paints
-/// the same historical lens treatment as the action button, without the
-/// button-only interaction and animation layers. Its shadow renderer, native
-/// capture settings, lens overhang, child-size compensation, clipping, and
-/// fallback behavior are shared by every instance.
+/// a solid app-owned surface by default. The historical Liquid Glass lens is
+/// an explicit opt-in for controls such as the cancel-search button. Its
+/// shadow renderer, native capture settings, lens overhang, child-size
+/// compensation, clipping, and fallback behavior are shared by every
+/// lens-enabled instance.
 class StaticLiquidGlassSurface extends StatelessWidget {
   const StaticLiquidGlassSurface({
     super.key,
@@ -2913,6 +2914,7 @@ class StaticLiquidGlassSurface extends StatelessWidget {
     this.shape = const BoundedSquircleStadiumBorder(),
     this.cornerRadius,
     this.useLiquidGlass,
+    this.useGlassLens = false,
     this.showOpticalBorder = false,
     this.outlineColor = const Color(0x80FFFFFF),
   });
@@ -2922,6 +2924,9 @@ class StaticLiquidGlassSurface extends StatelessWidget {
   final ShapeBorder shape;
   final double? cornerRadius;
   final bool? useLiquidGlass;
+  /// Enables the native Liquid Glass lens. Regular static surfaces stay solid
+  /// unless a caller explicitly opts in.
+  final bool useGlassLens;
   /// Opt-in only for controls that should receive the package's optical rim.
   /// Regular glass surfaces intentionally leave this disabled.
   final bool showOpticalBorder;
@@ -2944,7 +2949,8 @@ class StaticLiquidGlassSurface extends StatelessWidget {
             color: outlineColor,
           )
         : null;
-    if (!staticLiquidGlassSupported(override: useLiquidGlass)) {
+    if (!useGlassLens ||
+        !staticLiquidGlassSupported(override: useLiquidGlass)) {
       final fallback = IntrinsicHeight(
         child: DecoratedBox(
           decoration: ShapeDecoration(
@@ -2958,8 +2964,8 @@ class StaticLiquidGlassSurface extends StatelessWidget {
           ),
         ),
       );
-      // Keep regular surfaces on their original fallback tree. The painter
-      // exists only for the explicit cancel-control outline opt-in.
+      // Keep regular surfaces on the solid tree. The painter exists only for
+      // the explicit cancel-control outline opt-in.
       return showOpticalBorder
           ? CustomPaint(
               foregroundPainter: outlinePainter,
