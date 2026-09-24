@@ -2,8 +2,13 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart'
-    show kIsWeb, defaultTargetPlatform, TargetPlatform;
+    show kIsWeb, defaultTargetPlatform, TargetPlatform, ValueNotifier;
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
+
+/// Updated by AppShell after the native iOS tab-bar bridge reports its style.
+/// Flutter tab content uses this to reserve the correct bottom clearance.
+final ValueNotifier<bool> usesClassicNativeTabBarForLayout =
+    ValueNotifier<bool>(false);
 
 const kAccentColor = CupertinoDynamicColor.withBrightness(
   color: Color(0xFF007AFF),
@@ -33,6 +38,7 @@ const kCardColor = CupertinoDynamicColor.withBrightness(
 const double kFloatingTabBarHorizontalMargin = 24.0;
 const double kFloatingTabBarBottomSpacing = 16.0;
 const double kFloatingTabBarHeight = 50.0;
+const double kClassicNativeTabBarHeight = 49.0;
 const double kFloatingTabBarTouchTargetHeight = 44.0;
 // The floating bar is a deliberately compact navigation control. Keep its
 // content on a bounded scaler so extreme OS text sizes cannot change the
@@ -111,17 +117,17 @@ double systemSafeAreaBottomInset(BuildContext context) => math.max(
 );
 
 /// Extra scroll-content clearance needed so the final item in a tab can be
-/// scrolled fully above the floating pill rather than ending underneath it.
+/// scrolled fully above the active tab bar rather than ending underneath it.
 double floatingTabBarContentBottomClearance(
   BuildContext context, {
   double existingTrailingContentPadding = 0,
   double finalContentGap = kFloatingTabBarSafetyMargin,
 }) {
+  final barAndBottomInset = usesClassicNativeTabBarForLayout.value
+      ? kClassicNativeTabBarHeight + systemSafeAreaBottomInset(context)
+      : kFloatingTabBarHeight + floatingTabBarBottomOffset(context);
   final clearance =
-      kFloatingTabBarHeight +
-      floatingTabBarBottomOffset(context) +
-      finalContentGap -
-      existingTrailingContentPadding;
+      barAndBottomInset + finalContentGap - existingTrailingContentPadding;
   return math.max(0.0, clearance);
 }
 

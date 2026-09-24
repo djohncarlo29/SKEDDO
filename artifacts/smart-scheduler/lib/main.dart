@@ -1783,8 +1783,26 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       final available = await _nativeTabBarChannel.invokeMethod<bool>(
         'isAvailable',
       );
+      if (!mounted || available != true) return;
+
+      // Older iOS releases have a standard bottom UITabBar; iOS 26+ presents
+      // the floating native style. Keep the older native bridge compatible:
+      // before this query existed, an available native bar meant iOS 26+.
+      var isFloatingNativeTabBar = true;
+      try {
+        isFloatingNativeTabBar =
+            await _nativeTabBarChannel.invokeMethod<bool>('isFloating') ??
+            true;
+      } on MissingPluginException {
+        // An earlier iOS 26 build already used the floating native tab bar.
+      } on PlatformException {
+        // Preserve the existing floating native behavior if the style query
+        // is unavailable in an older installed native shell.
+      }
+
       if (!mounted) return;
-      setState(() => _usesNativeTabBar = available == true);
+      usesClassicNativeTabBarForLayout.value = !isFloatingNativeTabBar;
+      setState(() => _usesNativeTabBar = true);
       if (_usesNativeTabBar) {
         await _nativeTabBarChannel.invokeMethod<void>(
           'setSelectedIndex',
@@ -1792,7 +1810,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         );
       }
     } on MissingPluginException {
-      // Older iOS builds do not include the iOS 26 native overlay.
+      // Older app builds can still fall back to the Flutter tab pill.
     } on PlatformException {
       // Keep the Flutter tab bar if the native bridge is unavailable.
     }

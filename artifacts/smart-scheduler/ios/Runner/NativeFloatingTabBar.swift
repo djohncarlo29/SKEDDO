@@ -1,14 +1,14 @@
 import Flutter
 import UIKit
 
-/// iOS 26's native tab-bar surface. UITabBarController owns the floating
-/// Liquid Glass presentation; Flutter continues to own the actual tab content.
+/// Native tab-bar surface. UITabBarController owns the system presentation:
+/// classic bottom bar on older iOS and floating Liquid Glass on iOS 26+.
+/// Flutter continues to own the actual tab content.
 ///
 /// The transparent child controllers are intentional. The Flutter view remains
 /// the content surface underneath this controller, while this overlay owns
 /// only the native tab-bar chrome and its hit testing.
-@available(iOS 26.0, *)
-final class NativeFloatingTabBarController: UITabBarController,
+final class NativeSystemTabBarController: UITabBarController,
     UITabBarControllerDelegate {
     private let channel: FlutterMethodChannel
 
@@ -74,6 +74,12 @@ final class NativeFloatingTabBarController: UITabBarController,
         switch call.method {
         case "isAvailable":
             result(true)
+        case "isFloating":
+            if #available(iOS 26.0, *) {
+                result(true)
+            } else {
+                result(false)
+            }
         case "setSelectedIndex":
             guard let index = call.arguments as? Int,
                   index >= 0,
@@ -105,7 +111,6 @@ final class NativeFloatingTabBarController: UITabBarController,
     }
 }
 
-@available(iOS 26.0, *)
 private final class NativeTabPlaceholderViewController: UIViewController {
     override func loadView() {
         view = UIView()
@@ -115,7 +120,6 @@ private final class NativeTabPlaceholderViewController: UIViewController {
 }
 
 /// Lets Flutter receive all touches outside the native tab-bar subtree.
-@available(iOS 26.0, *)
 private final class NativeTabBarPassthroughView: UIView {
     weak var interactiveView: UIView?
 

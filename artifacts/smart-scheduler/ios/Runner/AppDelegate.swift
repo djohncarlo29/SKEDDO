@@ -5,7 +5,7 @@ import UIKit
 @objc class AppDelegate: FlutterAppDelegate {
   private var nativeStt: NativeSttPlugin?
   private var offlineOcr: NativeOfflineOcrPlugin?
-  private var nativeFloatingTabBar: UIViewController?
+  private var nativeTabBarController: UIViewController?
 
   override func application(
     _ application: UIApplication,
@@ -76,25 +76,23 @@ import UIKit
         ])
       }
     }
-    // Native STT — register after plugin registration so the binary
+    // Native bridges — register after plugin registration so the binary
     // messenger is fully initialised.
     if let controller = window?.rootViewController as? FlutterViewController {
       nativeStt = NativeSttPlugin(messenger: controller.binaryMessenger)
       offlineOcr = NativeOfflineOcrPlugin(messenger: controller.binaryMessenger)
-      if #available(iOS 26.0, *) {
-        let nativeTabBar = NativeFloatingTabBarController(
-          messenger: controller.binaryMessenger
-        )
-        controller.addChild(nativeTabBar)
-        nativeTabBar.view.frame = controller.view.bounds
-        nativeTabBar.view.autoresizingMask = [
-          .flexibleWidth,
-          .flexibleHeight,
-        ]
-        controller.view.addSubview(nativeTabBar.view)
-        nativeTabBar.didMove(toParent: controller)
-        nativeFloatingTabBar = nativeTabBar
-      }
+      let nativeTabBar = NativeSystemTabBarController(
+        messenger: controller.binaryMessenger
+      )
+      controller.addChild(nativeTabBar)
+      nativeTabBar.view.frame = controller.view.bounds
+      nativeTabBar.view.autoresizingMask = [
+        .flexibleWidth,
+        .flexibleHeight,
+      ]
+      controller.view.addSubview(nativeTabBar.view)
+      nativeTabBar.didMove(toParent: controller)
+      nativeTabBarController = nativeTabBar
     }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }

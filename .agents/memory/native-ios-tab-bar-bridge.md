@@ -1,10 +1,10 @@
 ---
 name: Native iOS tab bar bridge
-description: How the Flutter shell adopts Apple’s iOS 26 floating tab bar without rewriting tab content.
+description: How the Flutter shell uses classic native tabs on older iOS and floating native tabs on iOS 26+.
 ---
 
-On iOS 26+, use a native `UITabBarController` overlay for the floating Liquid Glass tab bar and bridge selection through a Flutter method channel; keep the Flutter tab pill for web, Android, and older iOS.
+Use a native `UITabBarController` overlay on iOS versions supported by the app. UIKit supplies the classic bottom bar on versions before iOS 26 and the floating Liquid Glass presentation on iOS 26+. Keep the Flutter tab pill on web and Android, and keep Flutter responsible for the actual tab content and selected-index state.
 
-**Why:** A SwiftUI `TabView` cannot replace one Flutter widget in place without moving the app’s tab content into native hosting controllers. UIKit’s system tab-bar controller provides the same Apple-owned iOS 26 presentation while preserving Flutter’s existing content and navigation lifecycle.
+**Why:** A SwiftUI `TabView` cannot replace one Flutter widget in place without moving the app’s tab content into native hosting controllers. The UIKit overlay can provide OS-appropriate native tab chrome while preserving Flutter’s existing content and navigation lifecycle. The classic bar is edge-anchored, so it needs different scroll clearance from the floating pill.
 
-**How to apply:** Keep native child controllers transparent and pass hit testing through to Flutter outside the native tab-bar subtree. Flutter remains responsible for tab content, search cleanup, and selected-index state; native selection sends an event to Flutter, and Flutter can push programmatic selection back to native.
+**How to apply:** Keep native child controllers transparent and pass hit testing through to Flutter outside the native tab-bar subtree. Bridge native selection to Flutter and programmatic selection back to native. Report whether UIKit is using the floating style so shared Flutter content padding reserves either the classic bar plus bottom safe area or the floating pill plus its offset and gap. Browser previews cannot verify native UIKit rendering.
