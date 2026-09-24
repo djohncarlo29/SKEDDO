@@ -1,4 +1,5 @@
 import Flutter
+import SwiftUI
 import UIKit
 
 /// Native tab-bar surface. UITabBarController owns the system presentation:
@@ -134,5 +135,258 @@ private final class NativeTabBarPassthroughView: UIView {
             return nil
         }
         return hit
+    }
+}
+
+private struct NativeFluidSliderConfiguration {
+    var value: Double
+    let minimumValue: Double
+    let maximumValue: Double
+    let minimumIcon: String
+    let maximumIcon: String
+    let iconSize: CGFloat
+    var accentColor: Color
+    var darkMode: Bool
+}
+
+private final class NativeFluidSliderModel: ObservableObject {
+    @Published var configuration: NativeFluidSliderConfiguration
+
+    init(configuration: NativeFluidSliderConfiguration) {
+        self.configuration = configuration
+    }
+}
+
+private final class NativeFluidSliderEventRelay {
+    var sink: FlutterEventSink?
+}
+
+private struct NativeFluidSliderRow: View {
+    @ObservedObject var model: NativeFluidSliderModel
+    let relay: NativeFluidSliderEventRelay
+
+    private var progress: Double {
+        let range = model.configuration.maximumValue - model.configuration.minimumValue
+        guard range > 0 else { return 0 }
+        return min(
+            max(
+                (model.configuration.value - model.configuration.minimumValue) / range,
+                0
+            ),
+            1
+        )
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            edgeIcon(name: model.configuration.minimumIcon, isLeading: true)
+
+            Slider(
+                value: Binding(
+                    get: { model.configuration.value },
+                    set: { value in
+                        var configuration = model.configuration
+                        configuration.value = min(
+                            max(value, configuration.minimumValue),
+                            configuration.maximumValue
+                        )
+                        model.configuration = configuration
+                        relay.sink?([
+                            "phase": "change",
+                            "value": configuration.value,
+                        ])
+                    }
+                ),
+                in: model.configuration.minimumValue...model.configuration.maximumValue,
+                onEditingChanged: { isEditing in
+                    relay.sink?([
+                        "phase": isEditing ? "start" : "end",
+                        "value": model.configuration.value,
+                    ])
+                }
+            )
+            .tint(model.configuration.accentColor)
+            .accessibilityIdentifier("native-fluid-slider")
+
+            edgeIcon(name: model.configuration.maximumIcon, isLeading: false)
+        }
+        .padding(.horizontal, 18)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Capsule())
+        .clipShape(Capsule())
+        .environment(
+            \.colorScheme,
+            model.configuration.darkMode ? .dark : .light
+        )
+    }
+
+    private func edgeIcon(name: String, isLeading: Bool) -> some View {
+        let pressure: Double
+        if isLeading {
+            pressure = min(max((0.05 - progress) / 0.05, 0), 1)
+        } else {
+            pressure = min(max((progress - 0.95) / 0.05, 0), 1)
+        }
+
+        return Image(name)
+            .resizable()
+            .scaledToFit()
+            .frame(
+                width: model.configuration.iconSize,
+                height: model.configuration.iconSize
+            )
+            .scaleEffect(1 - pressure * 0.16)
+            .offset(x: (isLeading ? -1 : 1) * pressure * 10)
+            .animation(
+                .interactiveSpring(
+                    response: 0.34,
+                    dampingFraction: 0.74,
+                    blendDuration: 0.16
+                ),
+                value: pressure
+            )
+            .accessibilityHidden(true)
+    }
+}
+
+final class NativeFluidSliderFactory: NSObject, FlutterPlatformViewFactory {
+    static let viewType = "com.smartscheduler/native_fluid_slider"
+
+    private let messenger: FlutterBinaryMessenger
+
+    init(messenger: FlutterBinaryMessenger) {
+        self.messenger = messenger
+        super.init()
+    }
+
+    func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
+        FlutterStandardMessageCodec.sharedInstance()
+    }
+
+    func create(
+        withFrame frame: CGRect,
+        viewIdentifier viewId: Int64,
+        arguments args: Any?
+    ) -> FlutterPlatformView {
+        NativeFluidSliderPlatformView(
+            frame: frame,
+            viewId: viewId,
+            arguments: args as? [String: Any] ?? [:],
+            messenger: messenger
+        )
+    }
+}
+
+private final class NativeFluidSliderPlatformView: NSObject,
+    FlutterPlatformView,
+    FlutterStreamHandler {
+    private let hostingController: UIHostingController<NativeFluidSliderRow>
+    private let relay: NativeFluidSliderEventRelay
+    private let methodChannel: FlutterMethodChannel
+    private let eventChannel: FlutterEventChannel
+
+    init(
+        frame: CGRect,
+        viewId: Int64,
+        arguments: [String: Any],
+        messenger: FlutterBinaryMessenger
+    ) {
+        let model = NativeFluidSliderModel(
+            configuration: Self.configuration(from: arguments)
+        )
+        let relay = NativeFluidSliderEventRelay()
+        let channelSuffix = "\(viewId)"
+
+        self.relay = relay
+        self.methodChannel = FlutterMethodChannel(
+            name: "com.smartscheduler/native_fluid_slider/\(channelSuffix)",
+            binaryMessenger: messenger
+        )
+        self.eventChannel = FlutterEventChannel(
+            name: "com.smartscheduler/native_fluid_slider_events/\(channelSuffix)",
+            binaryMessenger: messenger
+        )
+        self.hostingController = UIHostingController(
+            rootView: NativeFluidSliderRow(model: model, relay: relay)
+        )
+
+        super.init()
+
+        hostingController.view.frame = frame
+        hostingController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        hostingController.view.backgroundColor = .clear
+        hostingController.view.isOpaque = false
+        eventChannel.setStreamHandler(self)
+        methodChannel.setMethodCallHandler { [weak model] call, result in
+            guard call.method == "update",
+                  let values = call.arguments as? [String: Any],
+                  let model = model
+            else {
+                result(FlutterMethodNotImplemented)
+                return
+            }
+            model.configuration = Self.configuration(
+                from: values,
+                preservingValue: model.configuration.value
+            )
+            result(nil)
+        }
+    }
+
+    func view() -> UIView {
+        hostingController.view
+    }
+
+    func onListen(
+        withArguments arguments: Any?,
+        eventSink events: @escaping FlutterEventSink
+    ) -> FlutterError? {
+        relay.sink = events
+        return nil
+    }
+
+    func onCancel(withArguments arguments: Any?) -> FlutterError? {
+        relay.sink = nil
+        return nil
+    }
+
+    deinit {
+        methodChannel.setMethodCallHandler(nil)
+        eventChannel.setStreamHandler(nil)
+    }
+
+    private static func configuration(
+        from values: [String: Any],
+        preservingValue oldValue: Double? = nil
+    ) -> NativeFluidSliderConfiguration {
+        let minimumValue = (values["minimumValue"] as? NSNumber)?.doubleValue ?? 0
+        let maximumValue = (values["maximumValue"] as? NSNumber)?.doubleValue ?? 1
+        let normalizedMaximum = max(maximumValue, minimumValue + 0.0001)
+        let requestedValue =
+            (values["value"] as? NSNumber)?.doubleValue ?? oldValue ?? minimumValue
+
+        return NativeFluidSliderConfiguration(
+            value: min(max(requestedValue, minimumValue), normalizedMaximum),
+            minimumValue: minimumValue,
+            maximumValue: normalizedMaximum,
+            minimumIcon: values["minimumIcon"] as? String ?? "TextSizeSmaller",
+            maximumIcon: values["maximumIcon"] as? String ?? "TextSizeLarger",
+            iconSize: CGFloat(
+                (values["iconSize"] as? NSNumber)?.doubleValue ?? 20
+            ),
+            accentColor: color(from: values["accentColor"] as? NSNumber),
+            darkMode: values["darkMode"] as? Bool ?? false
+        )
+    }
+
+    private static func color(from number: NSNumber?) -> Color {
+        let argb = number?.uint32Value ?? 0xFF007AFF
+        return Color(
+            .sRGB,
+            red: Double((argb >> 16) & 0xFF) / 255,
+            green: Double((argb >> 8) & 0xFF) / 255,
+            blue: Double(argb & 0xFF) / 255,
+            opacity: Double((argb >> 24) & 0xFF) / 255
+        )
     }
 }

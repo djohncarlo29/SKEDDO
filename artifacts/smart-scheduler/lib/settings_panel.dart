@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,6 +15,7 @@ import 'widgets/accent_tinted_image.dart';
 import 'widgets/fixed_size_icon.dart';
 import 'widgets/floating_tab_pill.dart';
 import 'widgets/header_title_scroller.dart';
+import 'widgets/native_fluid_slider_row.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SettingsPanel — full-screen slide-in settings surface with sub-screen nav.
@@ -1285,45 +1287,75 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                 alignment: Alignment.center,
                 minWidth: sliderWidth,
                 maxWidth: sliderWidth,
-                child: LiquidGlassSlider(
-                  value: _dragValue ?? _indexAnimation.value / 6,
-                  minimumValue: 0,
-                  maximumValue: 1,
-                  width: sliderWidth,
-                  height: _kSettingsRowHeight,
-                  layout: _liquidGlassSliderLayout,
-                  isContinuous: true,
-                  divisions: 6,
-                  activeColor: widget.accentColor,
-                  inactiveColor: inactiveColor,
-                  thumbColor: const Color(0xFFFDFDFD),
-                  minimumIcon: Icon(
-                    SFIcons.sf_textformat_size_smaller,
-                    size: 20,
-                    color: emptyStateGreyColor,
-                  ),
-                  maximumIcon: Icon(
-                    SFIcons.sf_textformat_size_larger,
-                    size: 20,
-                    color: emptyStateGreyColor,
-                  ),
-                  onChangeStart: (_) {
-                    if (!_isDragging) {
-                      setState(() => _isDragging = true);
-                    }
-                  },
-                  onChanged: (raw) {
-                    setState(() => _dragValue = raw);
-                    widget.onChanged(raw * 6);
-                  },
-                  onChangeEnd: (raw) {
-                    setState(() {
-                      _dragValue = raw;
-                      _isDragging = false;
-                    });
-                    widget.onChangeEnd(raw * 6);
-                  },
-                ),
+                child: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
+                    ? NativeFluidSliderRow(
+                        value: _dragValue ?? _indexAnimation.value / 6,
+                        minimumValue: 0,
+                        maximumValue: 1,
+                        minimumIcon: 'TextSizeSmaller',
+                        maximumIcon: 'TextSizeLarger',
+                        iconSize: 20,
+                        accentColor: widget.accentColor,
+                        darkMode:
+                            CupertinoTheme.brightnessOf(context) ==
+                            Brightness.dark,
+                        height: _kSettingsRowHeight,
+                        onChangeStart: (_) {
+                          if (!_isDragging) {
+                            setState(() => _isDragging = true);
+                          }
+                        },
+                        onChanged: (raw) {
+                          setState(() => _dragValue = raw);
+                          widget.onChanged(raw * 6);
+                        },
+                        onChangeEnd: (raw) {
+                          setState(() {
+                            _dragValue = raw;
+                            _isDragging = false;
+                          });
+                          widget.onChangeEnd(raw * 6);
+                        },
+                      )
+                    : LiquidGlassSlider(
+                        value: _dragValue ?? _indexAnimation.value / 6,
+                        minimumValue: 0,
+                        maximumValue: 1,
+                        width: sliderWidth,
+                        height: _kSettingsRowHeight,
+                        layout: _liquidGlassSliderLayout,
+                        isContinuous: true,
+                        divisions: 6,
+                        activeColor: widget.accentColor,
+                        inactiveColor: inactiveColor,
+                        thumbColor: const Color(0xFFFDFDFD),
+                        minimumIcon: Icon(
+                          SFIcons.sf_textformat_size_smaller,
+                          size: 20,
+                          color: emptyStateGreyColor,
+                        ),
+                        maximumIcon: Icon(
+                          SFIcons.sf_textformat_size_larger,
+                          size: 20,
+                          color: emptyStateGreyColor,
+                        ),
+                        onChangeStart: (_) {
+                          if (!_isDragging) {
+                            setState(() => _isDragging = true);
+                          }
+                        },
+                        onChanged: (raw) {
+                          setState(() => _dragValue = raw);
+                          widget.onChanged(raw * 6);
+                        },
+                        onChangeEnd: (raw) {
+                          setState(() {
+                            _dragValue = raw;
+                            _isDragging = false;
+                          });
+                          widget.onChangeEnd(raw * 6);
+                        },
+                      ),
               );
             },
           ),
@@ -1416,6 +1448,7 @@ class _LiquidGlassSection extends StatelessWidget {
                         secondaryColor: emptyStateGrey,
                         activeColor: accent,
                         inactiveColor: inactive,
+                        darkMode: isDark,
                         onChanged: _setLiquidGlassOpacityLive,
                         onChangeEnd: _setLiquidGlassOpacity,
                       ),
@@ -1440,6 +1473,7 @@ class _LiquidGlassTestIcons extends StatefulWidget {
   final Color secondaryColor;
   final Color activeColor;
   final Color inactiveColor;
+  final bool darkMode;
   final ValueChanged<double> onChanged;
   final ValueChanged<double> onChangeEnd;
 
@@ -1449,6 +1483,7 @@ class _LiquidGlassTestIcons extends StatefulWidget {
     required this.secondaryColor,
     required this.activeColor,
     required this.inactiveColor,
+    required this.darkMode,
     required this.onChanged,
     required this.onChangeEnd,
   });
@@ -1495,6 +1530,35 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
 
   @override
   Widget build(BuildContext context) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      return NativeFluidSliderRow(
+        value: _dragValue ?? widget.value,
+        minimumValue: 0,
+        maximumValue: 1,
+        minimumIcon: 'LiquidGlassLeft',
+        maximumIcon: 'LiquidGlassRight',
+        iconSize: 34,
+        accentColor: widget.activeColor,
+        darkMode: widget.darkMode,
+        height: _kSettingsRowHeight,
+        onChangeStart: (_) {
+          if (!_isDragging) {
+            setState(() => _isDragging = true);
+          }
+        },
+        onChanged: (value) {
+          setState(() => _dragValue = value);
+          widget.onChanged(value);
+        },
+        onChangeEnd: (value) {
+          setState(() {
+            _dragValue = value;
+            _isDragging = false;
+          });
+          widget.onChangeEnd(value);
+        },
+      );
+    }
     return FutureBuilder<List<String>>(
       future: _svgSources,
       builder: (context, snapshot) {

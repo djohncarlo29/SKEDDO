@@ -39,6 +39,7 @@ const double kFloatingTabBarHorizontalMargin = 24.0;
 const double kFloatingTabBarBottomSpacing = 16.0;
 const double kFloatingTabBarHeight = 50.0;
 const double kClassicNativeTabBarHeight = 49.0;
+const double kClassicNativeTabBarMinimumContentGap = 16.0;
 const double kFloatingTabBarTouchTargetHeight = 44.0;
 // The floating bar is a deliberately compact navigation control. Keep its
 // content on a bounded scaler so extreme OS text sizes cannot change the
@@ -123,11 +124,15 @@ double floatingTabBarContentBottomClearance(
   double existingTrailingContentPadding = 0,
   double finalContentGap = kFloatingTabBarSafetyMargin,
 }) {
-  final barAndBottomInset = usesClassicNativeTabBarForLayout.value
+  final usesClassicNativeTabBar = usesClassicNativeTabBarForLayout.value;
+  final barAndBottomInset = usesClassicNativeTabBar
       ? kClassicNativeTabBarHeight + systemSafeAreaBottomInset(context)
       : kFloatingTabBarHeight + floatingTabBarBottomOffset(context);
+  final contentGap = usesClassicNativeTabBar
+      ? math.max(finalContentGap, kClassicNativeTabBarMinimumContentGap)
+      : finalContentGap;
   final clearance =
-      barAndBottomInset + finalContentGap - existingTrailingContentPadding;
+      barAndBottomInset + contentGap - existingTrailingContentPadding;
   return math.max(0.0, clearance);
 }
 

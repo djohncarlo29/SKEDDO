@@ -1,0 +1,21 @@
+Here is a precise, professional developer prompt you can copy and paste. It is structured using standard mobile architecture terms so any developer will immediately understand the requirement.
+------------------------------
+Subject: Implementation of Native iOS Fluid Slider Row via Platform Views
+Objective:
+We need to replace our current custom-built Flutter slider row with a native SwiftUI component using Platform Views (UIKitView / UiKitViewFactory / SwiftUI Embedding). The goal is to achieve the high-fidelity "Fluid/Liquid" look and edge-pushing behavior seen in modern iOS.
+Technical Requirements:
+
+   1. Architecture (Option 1):
+   * The entire row (Left Icon + Slider + Right Icon) must be built natively in SwiftUI, rather than just embedding the slider bar alone.
+      * Expose the slider value back to Flutter via a Method Channel / Event Channel so the Flutter app state stays synchronized.
+   2. UI & Layout Constraints:
+   * Icons: We want to use our custom design assets instead of SF Symbols. I will provide the asset files. Please import them into the Xcode Assets.xcassets folder and load them dynamically in the SwiftUI view.
+      * Concentricity & Corner Radius: Do not use hardcoded or fixed corner radius values for the outer row container. Please utilize SwiftUI’s native layout systems (like Capsule(), custom paddings, or the system's container clipping) to ensure perfect mathematical corner concentricity matching the native OS look.
+   3. Interaction & Physics ("Pushing" Effect):
+   * Implement custom view modifiers or interactive spring animations (.interactiveSpring()) inside the SwiftUI row.
+      * When the native Slider thumb approaches the absolute boundaries (e.g., < 0.05 or > 0.95), the respective side icon should smoothly scale down and offset outward (the "nudged/pushed" effect).
+   
+Please let me know if you need the design asset files or if you want to align on the Method Channel naming convention before starting!
+------------------------------
+Would you like me to also provide the actual Swift/SwiftUI starter code that matches this prompt, so you can hand it directly to your developer as a reference?
+

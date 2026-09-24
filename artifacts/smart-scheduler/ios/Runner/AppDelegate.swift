@@ -84,6 +84,11 @@ import UIKit
       let nativeTabBar = NativeSystemTabBarController(
         messenger: controller.binaryMessenger
       )
+      let fluidSliderRegistrar = registrar(forPlugin: "NativeFluidSliderPlugin")
+      fluidSliderRegistrar.register(
+        NativeFluidSliderFactory(messenger: controller.binaryMessenger),
+        withId: NativeFluidSliderFactory.viewType
+      )
       controller.addChild(nativeTabBar)
       nativeTabBar.view.frame = controller.view.bounds
       nativeTabBar.view.autoresizingMask = [
