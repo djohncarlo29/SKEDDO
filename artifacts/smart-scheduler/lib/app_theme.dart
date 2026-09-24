@@ -2971,36 +2971,63 @@ class StaticLiquidGlassSurface extends StatelessWidget {
       foregroundPainter: outlinePainter,
       child: IntrinsicHeight(
         child: ClipPath(
-            clipper: ShapeBorderClipper(shape: shape),
-            child: LiquidGlassView(
-              key: ValueKey<int>(color.toARGB32()),
-              backgroundWidget: ClipPath(
-                clipper: ShapeBorderClipper(shape: shape),
-                child: ColoredBox(color: glassColor),
-              ),
-              realTimeCapture: false,
-              useSync: true,
-               // Static surfaces have no live refraction and must stay
-               // attached to their local route transform. The screen-space
-               // Impeller filter can drift when the covered route is scaled
-               // by a Cupertino sheet. Native surfaces therefore use the
-               // same local capture path as the stable action-button glass.
-               // Keep web automatic so CanvasKit continues using its supported
-               // capture implementation without forcing an unsupported mode.
-               useImpellerBackdrop: kIsWeb ? null : false,
-              child: LiquidGlassLens(
-                style: _staticLiquidGlassStyle(
-                  glassColor: glassColor,
-                   cornerRadius: lensCornerRadius,
-                   showOpticalBorder: showOpticalBorder,
+          clipper: ShapeBorderClipper(shape: shape),
+          // Give the native lens a small centered overhang, then use this
+          // surface clip as the final silhouette. This prevents a
+          // shrink-wrapped glyph/content stack from leaving the glass inset
+          // from the shape's edge.
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              const overflowScale = 1.06;
+              final width = constraints.hasBoundedWidth
+                  ? constraints.maxWidth * overflowScale
+                  : constraints.maxWidth;
+              final height = constraints.hasBoundedHeight
+                  ? constraints.maxHeight * overflowScale
+                  : constraints.maxHeight;
+              return OverflowBox(
+                alignment: Alignment.center,
+                minWidth: width,
+                maxWidth: width,
+                minHeight: height,
+                maxHeight: height,
+                child: SizedBox.expand(
+                  child: LiquidGlassView(
+                    key: ValueKey<int>(color.toARGB32()),
+                    backgroundWidget: ClipPath(
+                      clipper: ShapeBorderClipper(shape: shape),
+                      child: ColoredBox(color: glassColor),
+                    ),
+                    realTimeCapture: false,
+                    useSync: true,
+                    // Static surfaces have no live refraction and must stay
+                    // attached to their local route transform. The
+                    // screen-space Impeller filter can drift when the covered
+                    // route is scaled by a Cupertino sheet. Native surfaces
+                    // therefore use the same local capture path as the stable
+                    // action-button glass. Keep web automatic so CanvasKit
+                    // continues using its supported capture implementation
+                    // without forcing an unsupported mode.
+                    useImpellerBackdrop: kIsWeb ? null : false,
+                    child: SizedBox.expand(
+                      child: LiquidGlassLens(
+                        style: _staticLiquidGlassStyle(
+                          glassColor: glassColor,
+                          cornerRadius: lensCornerRadius,
+                          showOpticalBorder: showOpticalBorder,
+                        ),
+                        // No LiquidGlassTouch: this surface is deliberately
+                        // inert. The lens and its content both fill the
+                        // overhanging native view; the outer ClipPath above
+                        // trims it back to the exact surface shape.
+                        child: SizedBox.expand(child: child),
+                      ),
+                    ),
+                  ),
                 ),
-                // No LiquidGlassTouch: this surface is deliberately inert.
-                 // LiquidGlassLens is layout-driven and otherwise shrink-wraps
-                 // to its child. Static surfaces own the full container shape,
-                 // so make the lens fill that shape before laying out content.
-                 child: SizedBox.expand(child: child),
-              ),
-            ),
+              );
+            },
+          ),
         ),
       ),
     );
