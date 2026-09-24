@@ -2773,10 +2773,9 @@ class LiquidGlassGelCircle extends StatelessWidget {
 
 /// The optimized button for fixed-color circular actions.
 ///
-/// This deliberately routes back through [LiquidGlassButton]. The package
-/// button owns the original Liquid Glass shape, clipping, tint, and child
-/// layout; its cheap fallback keeps the live backdrop blur while opting out of
-/// the expensive optical lens pipeline.
+/// This deliberately routes through [LiquidGlassButton]. The package button
+/// owns the original Impeller Liquid Glass shape, clipping, tint, refraction,
+/// and child layout.
 class StaticLiquidGlassActionButton extends StatelessWidget {
   const StaticLiquidGlassActionButton({
     super.key,
@@ -3002,17 +3001,11 @@ class _GelBloomButtonState extends State<GelBloomButton>
         height: circle.size,
         padding: EdgeInsets.zero,
         foregroundColor: const Color(0x00000000),
-        useImpellerBackdrop: false,
+        useImpellerBackdrop: true,
         style: LiquidGlassButton.defaultStyle.copyWith(
           appearance: LiquidGlassAppearance(
             color: glassColor,
             blur: const LiquidGlassBlur(sigmaX: 3, sigmaY: 3),
-          ),
-          refraction: const LiquidGlassRefraction(
-            distortion: 0,
-            distortionWidth: 0,
-            magnification: 1,
-            chromaticAberration: 0,
           ),
         ),
         onPressed: () {
