@@ -2771,6 +2771,129 @@ class LiquidGlassGelCircle extends StatelessWidget {
   }
 }
 
+/// A small, fixed-color glass surface for compact action buttons.
+///
+/// These buttons do not need to reveal or magnify content behind them. Keep
+/// their glass identity through a translucent directional fill, a soft rim,
+/// and a bounded contact shadow, but avoid allocating a backdrop capture and
+/// optical lens shader for every xmark/checkmark/chevron circle.
+class _StaticLiquidGlassCircle extends StatelessWidget {
+  const _StaticLiquidGlassCircle({
+    required this.size,
+    required this.color,
+    required this.isLightMode,
+    required this.child,
+  });
+
+  final double size;
+  final Color color;
+  final bool isLightMode;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipOval(
+      child: SizedBox.square(
+        dimension: size,
+        child: CustomPaint(
+          painter: _StaticLiquidGlassCirclePainter(
+            color: color,
+            isLightMode: isLightMode,
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _StaticLiquidGlassCirclePainter extends CustomPainter {
+  const _StaticLiquidGlassCirclePainter({
+    required this.color,
+    required this.isLightMode,
+  });
+
+  final Color color;
+  final bool isLightMode;
+
+  Color _opaqueBlend(Color target, Color blend, double amount) {
+    return Color.lerp(
+      target.withValues(alpha: 1.0),
+      blend.withValues(alpha: 1.0),
+      amount,
+    )!.withValues(alpha: target.a);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = math.min(size.width, size.height) / 2;
+    final bounds = Rect.fromCircle(center: center, radius: radius);
+
+    // A small, unblurred contact shade keeps the control grounded without
+    // creating the broad backdrop/shadow filter used by the full glass path.
+    if (isLightMode) {
+      canvas.drawCircle(
+        center + const Offset(1.0, 1.5),
+        radius,
+        Paint()
+          ..isAntiAlias = true
+          ..color = const Color(0x16000000),
+      );
+    }
+
+    final top = _opaqueBlend(
+      color,
+      const Color(0xFFFFFFFF),
+      isLightMode ? 0.16 : 0.08,
+    );
+    final bottom = _opaqueBlend(
+      color,
+      const Color(0xFF000000),
+      isLightMode ? 0.06 : 0.10,
+    );
+    final fill = Paint()
+      ..isAntiAlias = true
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [top, color, bottom],
+        stops: const [0.0, 0.46, 1.0],
+      ).createShader(bounds);
+    canvas.drawCircle(center, radius, fill);
+
+    // A restrained upper-left highlight gives the static material its liquid
+    // edge without sampling or distorting the content below it.
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius - 1.0),
+      math.pi * 1.08,
+      math.pi * 0.84,
+      false,
+      Paint()
+        ..isAntiAlias = true
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8
+        ..color = const Color(0x35FFFFFF),
+    );
+
+    // Preserve the compact silhouette ring shared by the previous lens path.
+    canvas.drawCircle(
+      center,
+      radius - 0.25,
+      Paint()
+        ..isAntiAlias = true
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.5
+        ..color = const Color(0x26FFFFFF),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _StaticLiquidGlassCirclePainter oldDelegate) =>
+      oldDelegate.color != color ||
+      oldDelegate.isLightMode != isLightMode;
+}
+
 class _GelBloomButtonState extends State<GelBloomButton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
@@ -2824,108 +2947,31 @@ class _GelBloomButtonState extends State<GelBloomButton>
     final glassColor = circle.isCheckmark && isLightMode
         ? surfaceColor
         : surfaceColor.withValues(alpha: 0.8);
-    final style = LiquidGlassButton.defaultStyle.copyWith(
-      appearance: LiquidGlassAppearance(
-        color: glassColor,
-        blur: const LiquidGlassBlur(sigmaX: 2, sigmaY: 2),
-      ),
-      refraction: const LiquidGlassRefraction(
-        distortion: 0.06,
-        distortionWidth: 14,
-        magnification: 1,
-        chromaticAberration: 0.0002,
-      ),
-      // The package's shader-native squircle matches the app's bounded
-      // squircle geometry more closely than its continuous-rounded variant.
-      // The surrounding ClipOval keeps this circular control bounded to its
-      // actual rect while the lens uses the same softened corner family.
-      shape: LiquidGlassShape.squircle(
-        cornerRadius: circle.size / 2,
-        borderWidth: 0.5,
-        lightIntensity: 0.38,
-        lightDirection: 62,
-        borderType: const OpticalBorder(
-          borderSaturation: 1.0,
-          ambientIntensity: 0.18,
-          borderSolidity: 0.16,
-          lightSpread: 0.14,
-        ),
-      ),
-    );
 
     return AnimatedBuilder(
       animation: _scale,
       builder: (context, child) =>
           Transform.scale(scale: _scale.value, child: child),
-      // Apply the same pronounced gel bloom used by the non-glass path. The
-      // old LiquidGlass branch only received the package's flexing response,
-      // so its tap bloom looked noticeably flatter than regular buttons.
-      child: LiquidGlassShadow(
-        // Keep this close to the silhouette: it is an edge-defining ring,
-        // not a broad elevation shadow.
-        blur: isLightMode ? 8.0 : 2.25,
-        opacity: isLightMode ? 0.20 : 0.0,
-        offset: const Offset(1.0, 1.5),
-        cornerRadius: circle.size / 2,
-        child: ClipOval(
-          child: SizedBox.square(
-            dimension: circle.size,
-            // Keep the package's real shader active when this control sits
-            // above an occluding route. The local view captures a stable
-            // backdrop once and the lens evaluates its optical rim against
-            // that cached image.
-            child: DecoratedBox(
-              // This is deliberately separate from the glass lens' optical
-              // rim light: it is a stable, white 15% hairline around the
-              // complete button silhouette in both appearances.
-              position: DecorationPosition.foreground,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.fromBorderSide(
-                  BorderSide(color: Color(0x26FFFFFF), width: 0.5),
-                ),
-              ),
-              child: LiquidGlassView(
-                 // This view keeps a one-shot backdrop capture for stable,
-                 // inexpensive optical lighting. Recreate that capture when
-                 // a category/checkmark surface changes color; otherwise the
-                 // lens body updates while its rim still refracts the old
-                 // color from the cached sheet backdrop.
-                 key: ValueKey<int>(surfaceColor.toARGB32()),
-                // LiquidGlassView paints its capture surface as a rectangle.
-                // The backgroundWidget clip alone is not enough: the view/lens
-                // output can still expose that rectangular surface on Android.
-                // Clip the complete view so the gel remains circular.
-                backgroundWidget: ClipOval(
-                  child: ColoredBox(color: surfaceColor.withValues(alpha: 0.8)),
-                ),
-                realTimeCapture: false,
-                useSync: true,
-                useImpellerBackdrop: false,
-                child: LiquidGlassLens(
-                  style: style,
-                  // The wrapper owns the same bloom as regular GelBloomButton.
-                  // Avoid a second package flex animation changing the scale
-                  // and making this path look flatter or out of sync.
-                  touch: const LiquidGlassTouch(),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      _bloom();
-                      if (widget.tapDelay == Duration.zero) {
-                        widget.onTap();
-                      } else {
-                        Future.delayed(widget.tapDelay, () {
-                          if (mounted) widget.onTap();
-                        });
-                      }
-                    },
-                    child: Center(child: circle.child),
-                  ),
-                ),
-              ),
-            ),
-          ),
+      // The circle controls use a static glass surface: their resolved color
+      // is the material, so there is no backdrop capture or optical lens to
+      // update underneath the existing bloom animation.
+      child: _StaticLiquidGlassCircle(
+        size: circle.size,
+        color: glassColor,
+        isLightMode: isLightMode,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            _bloom();
+            if (widget.tapDelay == Duration.zero) {
+              widget.onTap();
+            } else {
+              Future.delayed(widget.tapDelay, () {
+                if (mounted) widget.onTap();
+              });
+            }
+          },
+          child: Center(child: circle.child),
         ),
       ),
     );
