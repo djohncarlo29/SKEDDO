@@ -2771,6 +2771,48 @@ class LiquidGlassGelCircle extends StatelessWidget {
   }
 }
 
+/// The default optimized button for fixed-color circular actions.
+///
+/// Use this for new xmark, checkmark, and chevron buttons instead of
+/// constructing a raw `LiquidGlassButton`. It deliberately routes through
+/// [LiquidGlassGelCircle], whose static surface has no backdrop capture,
+/// refraction, blur, or optical sampling.
+class StaticLiquidGlassActionButton extends StatelessWidget {
+  const StaticLiquidGlassActionButton({
+    super.key,
+    required this.color,
+    required this.child,
+    required this.onTap,
+    this.size = 40,
+    this.isCheckmark = false,
+    this.peakScale = 1.15,
+    this.tapDelay = Duration.zero,
+  });
+
+  final Color color;
+  final Widget child;
+  final VoidCallback onTap;
+  final double size;
+  final bool isCheckmark;
+  final double peakScale;
+  final Duration tapDelay;
+
+  @override
+  Widget build(BuildContext context) {
+    return GelBloomButton(
+      peakScale: peakScale,
+      tapDelay: tapDelay,
+      onTap: onTap,
+      child: LiquidGlassGelCircle(
+        color: color,
+        size: size,
+        isCheckmark: isCheckmark,
+        child: child,
+      ),
+    );
+  }
+}
+
 /// A small, fixed-color glass surface for compact action buttons.
 ///
 /// These buttons do not need to reveal or magnify content behind them. Keep
