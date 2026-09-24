@@ -48,6 +48,7 @@ class LiquidGlassButton extends StatelessWidget {
     this.iconSize = 20,
     this.touch,
     this.child,
+    this.useImpellerBackdrop,
   }) : assert(label != null || icon != null || child != null,
             'Give the button something to show: a label, an icon, or a child.');
 
@@ -67,6 +68,13 @@ class LiquidGlassButton extends StatelessWidget {
   /// [fontSize], [fontWeight] and [iconSize], so it matches the built-in
   /// row by default. Give the widget its own color to paint it yourself.
   final Widget? child;
+
+  /// Whether the button may use the Impeller optical lens renderer.
+  ///
+  /// Set this to `false` for compact controls that should retain the
+  /// LiquidGlassButton shape, tint, clipping, and live backdrop blur without
+  /// paying for magnification, refraction, or chromatic aberration.
+  final bool? useImpellerBackdrop;
 
   /// Tap callback.
   final VoidCallback? onPressed;
@@ -205,6 +213,7 @@ class LiquidGlassButton extends StatelessWidget {
           appearance: resolved.appearance,
           refraction: resolved.refraction,
         ),
+        useImpellerBackdrop: useImpellerBackdrop,
         visibility: visibility,
         child: Material(
           color: Colors.transparent,

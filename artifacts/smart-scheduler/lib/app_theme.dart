@@ -2750,7 +2750,7 @@ class GelBloomButton extends StatefulWidget {
 }
 
 /// Child marker used by [GelBloomButton] to retain compact circular geometry
-/// and the persistent material fallback behind LiquidGlassButton.
+/// and the material fallback behind LiquidGlassButton.
 class LiquidGlassGelCircle extends StatelessWidget {
   const LiquidGlassGelCircle({
     super.key,
@@ -2771,12 +2771,12 @@ class LiquidGlassGelCircle extends StatelessWidget {
   }
 }
 
-/// The default optimized button for fixed-color circular actions.
+/// The optimized button for fixed-color circular actions.
 ///
-/// Use this for new xmark, checkmark, and chevron buttons instead of
-/// constructing a raw `LiquidGlassButton`. It deliberately routes through
-/// [LiquidGlassGelCircle], whose hybrid surface uses one bounded, low-sigma
-/// backdrop blur without the full refraction or optical lens pipeline.
+/// This deliberately routes back through [LiquidGlassButton]. The package
+/// button owns the original Liquid Glass shape, clipping, tint, and child
+/// layout; its cheap fallback keeps the live backdrop blur while opting out of
+/// the expensive optical lens pipeline.
 class StaticLiquidGlassActionButton extends StatelessWidget {
   const StaticLiquidGlassActionButton({
     super.key,
@@ -2939,160 +2939,6 @@ LinearGradient _staticGlassSurfaceGradient(
   );
 }
 
-/// A small, fixed-color glass surface for compact action buttons.
-///
-/// These buttons do not need to reveal or magnify content behind them. Keep
-/// their glass identity through a translucent directional fill, a soft rim,
-/// and a bounded contact shadow, but avoid allocating a backdrop capture and
-/// optical lens shader for every xmark/checkmark/chevron circle.
-class _StaticLiquidGlassCircle extends StatelessWidget {
-  const _StaticLiquidGlassCircle({
-    required this.size,
-    required this.color,
-    required this.isLightMode,
-    required this.child,
-  });
-
-  final double size;
-  final Color color;
-  final bool isLightMode;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipOval(
-      child: SizedBox.square(
-        dimension: size,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: 5.0,
-            sigmaY: 5.0,
-            tileMode: TileMode.clamp,
-          ),
-          child: CustomPaint(
-            painter: _StaticLiquidGlassCirclePainter(
-              color: color,
-              isLightMode: isLightMode,
-            ),
-            child: child,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StaticLiquidGlassCirclePainter extends CustomPainter {
-  const _StaticLiquidGlassCirclePainter({
-    required this.color,
-    required this.isLightMode,
-  });
-
-  final Color color;
-  final bool isLightMode;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final radius = math.min(size.width, size.height) / 2;
-    final bounds = Rect.fromCircle(center: center, radius: radius);
-
-    // A small, unblurred contact shade keeps the control grounded without
-    // creating the broad backdrop/shadow filter used by the full glass path.
-    if (isLightMode) {
-      canvas.drawCircle(
-        center + const Offset(1.0, 1.5),
-        radius,
-        Paint()
-          ..isAntiAlias = true
-          ..color = const Color(0x16000000),
-      );
-    }
-
-    final alpha = isLightMode ? 0.68 : 0.76;
-    final top = _blend(
-      color,
-      const Color(0xFFFFFFFF),
-      isLightMode ? 0.16 : 0.08,
-      alpha + 0.05,
-    );
-    final bottom = _blend(
-      color,
-      const Color(0xFF000000),
-      isLightMode ? 0.06 : 0.10,
-      alpha,
-    );
-    final fill = Paint()
-      ..isAntiAlias = true
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [top, color.withValues(alpha: alpha), bottom],
-        stops: const [0.0, 0.42, 1.0],
-      ).createShader(bounds);
-    canvas.drawCircle(center, radius, fill);
-
-    // A soft specular bloom restores the rounded depth of the original lens
-    // without magnification or chromatic-aberration work.
-    canvas.drawCircle(
-      center - Offset(radius * 0.24, radius * 0.28),
-      radius * 0.58,
-      Paint()
-        ..isAntiAlias = true
-        ..shader = RadialGradient(
-          colors: const [Color(0x28FFFFFF), Color(0x00FFFFFF)],
-        ).createShader(
-          Rect.fromCircle(
-            center: center - Offset(radius * 0.24, radius * 0.28),
-            radius: radius * 0.58,
-          ),
-        ),
-    );
-
-    // The highlight follows the upper-left contour rather than outlining the
-    // whole circle uniformly, which keeps the material from looking flat.
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius - 1.0),
-      math.pi * 1.08,
-      math.pi * 0.84,
-      false,
-      Paint()
-        ..isAntiAlias = true
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.8
-        ..color = isLightMode
-            ? const Color(0x52FFFFFF)
-            : const Color(0x42FFFFFF),
-    );
-
-    // Preserve a quiet silhouette ring at the edge of the live material.
-    canvas.drawCircle(
-      center,
-      radius - 0.25,
-      Paint()
-        ..isAntiAlias = true
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.5
-        ..color = isLightMode
-            ? const Color(0x32FFFFFF)
-            : const Color(0x2AFFFFFF),
-    );
-  }
-
-  Color _blend(Color target, Color blend, double amount, double alpha) {
-    return Color.lerp(
-      target.withValues(alpha: 1.0),
-      blend.withValues(alpha: 1.0),
-      amount,
-    )!.withValues(alpha: alpha);
-  }
-
-  @override
-  bool shouldRepaint(covariant _StaticLiquidGlassCirclePainter oldDelegate) =>
-      oldDelegate.color != color ||
-      oldDelegate.isLightMode != isLightMode;
-}
-
 class _GelBloomButtonState extends State<GelBloomButton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
@@ -3151,27 +2997,35 @@ class _GelBloomButtonState extends State<GelBloomButton>
       animation: _scale,
       builder: (context, child) =>
           Transform.scale(scale: _scale.value, child: child),
-      // The circle controls use a static glass surface: their resolved color
-      // is the material, so there is no backdrop capture or optical lens to
-      // update underneath the existing bloom animation.
-      child: _StaticLiquidGlassCircle(
-        size: circle.size,
-        color: glassColor,
-        isLightMode: isLightMode,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () {
-            _bloom();
-            if (widget.tapDelay == Duration.zero) {
-              widget.onTap();
-            } else {
-              Future.delayed(widget.tapDelay, () {
-                if (mounted) widget.onTap();
-              });
-            }
-          },
-          child: Center(child: circle.child),
+      child: LiquidGlassButton(
+        width: circle.size,
+        height: circle.size,
+        padding: EdgeInsets.zero,
+        foregroundColor: const Color(0x00000000),
+        useImpellerBackdrop: false,
+        style: LiquidGlassButton.defaultStyle.copyWith(
+          appearance: LiquidGlassAppearance(
+            color: glassColor,
+            blur: const LiquidGlassBlur(sigmaX: 3, sigmaY: 3),
+          ),
+          refraction: const LiquidGlassRefraction(
+            distortion: 0,
+            distortionWidth: 0,
+            magnification: 1,
+            chromaticAberration: 0,
+          ),
         ),
+        onPressed: () {
+          _bloom();
+          if (widget.tapDelay == Duration.zero) {
+            widget.onTap();
+          } else {
+            Future.delayed(widget.tapDelay, () {
+              if (mounted) widget.onTap();
+            });
+          }
+        },
+        child: circle.child,
       ),
     );
   }
