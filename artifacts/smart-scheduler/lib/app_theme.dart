@@ -3046,6 +3046,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
   void _bloom() => _ctrl.forward(from: 0.0);
 
   Widget _buildSolidCircleFallback(
+    BuildContext context,
     LiquidGlassGelCircle circle,
     Color surfaceColor,
   ) {
@@ -3071,6 +3072,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
             decoration: BoxDecoration(
               color: surfaceColor,
               shape: BoxShape.circle,
+              boxShadow: resolveThemeShadows(kCardShadow, context),
             ),
             child: Center(child: circle.child),
           ),
@@ -3092,7 +3094,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
         ? circle.color
         : const Color(0xFFFFFFFF);
     if (!staticLiquidGlassSupported(override: circle.useLiquidGlass)) {
-      return _buildSolidCircleFallback(circle, surfaceColor);
+      return _buildSolidCircleFallback(context, circle, surfaceColor);
     }
     final glassColor = circle.isCheckmark && isLightMode
         ? surfaceColor
