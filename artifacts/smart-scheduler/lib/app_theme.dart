@@ -3104,6 +3104,9 @@ class _GelBloomButtonState extends State<GelBloomButton>
     LiquidGlassGelCircle circle,
     Color surfaceColor,
   ) {
+    final cardShadows = circle.showShadow
+        ? resolveThemeShadows(kCardShadow, context)
+        : const <BoxShadow>[];
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
@@ -3123,10 +3126,10 @@ class _GelBloomButtonState extends State<GelBloomButton>
         child: SizedBox.square(
           dimension: circle.size,
           child: DecoratedBox(
-            decoration: BoxDecoration(
+            decoration: ShapeDecoration(
               color: surfaceColor,
-              shape: BoxShape.circle,
-              boxShadow: resolveThemeShadows(kCardShadow, context),
+              shape: const CircleBorder(),
+              shadows: cardShadows,
             ),
             child: Center(child: circle.child),
           ),
@@ -3218,6 +3221,9 @@ class _GelBloomButtonState extends State<GelBloomButton>
             ),
           ),
         );
+    final cardShadows = circle.showShadow
+        ? resolveThemeShadows(kCardShadow, context)
+        : const <BoxShadow>[];
     return AnimatedBuilder(
       animation: _scale,
       builder: (context, child) =>
@@ -3225,17 +3231,13 @@ class _GelBloomButtonState extends State<GelBloomButton>
       // Apply the same pronounced gel bloom used by the non-glass path. The
       // old LiquidGlass branch only received the package's flexing response,
       // so its tap bloom looked noticeably flatter than regular buttons.
-      child: circle.showShadow
-          ? LiquidGlassShadow(
-              // Keep this close to the silhouette: it is an edge-defining
-              // ring, not a broad elevation shadow.
-              blur: isLightMode ? 8.0 : 2.25,
-              opacity: isLightMode ? 0.20 : 0.0,
-              offset: const Offset(1.0, 1.5),
-              cornerRadius: circle.size / 2,
-              child: glass,
-            )
-          : glass,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          shape: const CircleBorder(),
+          shadows: cardShadows,
+        ),
+        child: glass,
+      ),
     );
   }
 
