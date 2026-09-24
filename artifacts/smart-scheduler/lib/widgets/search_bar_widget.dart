@@ -740,6 +740,7 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
       groupId: kSbGroupId,
       child: StaticLiquidGlassActionButton(
         color: surfaceColor,
+        showShadow: false,
         peakScale: 1.15,
         tapDelay: const Duration(milliseconds: 130),
         onTap: widget.onTap,

@@ -2758,12 +2758,14 @@ class LiquidGlassGelCircle extends StatelessWidget {
     required this.child,
     this.size = 40,
     this.isCheckmark = false,
+    this.showShadow = true,
   });
 
   final Color color;
   final Widget child;
   final double size;
   final bool isCheckmark;
+  final bool showShadow;
 
   @override
   Widget build(BuildContext context) {
@@ -2784,6 +2786,7 @@ class StaticLiquidGlassActionButton extends StatelessWidget {
     required this.onTap,
     this.size = 40,
     this.isCheckmark = false,
+    this.showShadow = true,
     this.peakScale = 1.15,
     this.tapDelay = Duration.zero,
   });
@@ -2793,6 +2796,7 @@ class StaticLiquidGlassActionButton extends StatelessWidget {
   final VoidCallback onTap;
   final double size;
   final bool isCheckmark;
+  final bool showShadow;
   final double peakScale;
   final Duration tapDelay;
 
@@ -2806,6 +2810,7 @@ class StaticLiquidGlassActionButton extends StatelessWidget {
         color: color,
         size: size,
         isCheckmark: isCheckmark,
+        showShadow: showShadow,
         child: child,
       ),
     );
@@ -2814,11 +2819,12 @@ class StaticLiquidGlassActionButton extends StatelessWidget {
 
 LiquidGlassShape _staticLiquidGlassShape({
   required double cornerRadius,
+  bool showOpticalBorder = true,
 }) {
   return LiquidGlassShape.squircle(
     cornerRadius: cornerRadius,
-    borderWidth: 0.5,
-    lightIntensity: 0.38,
+    borderWidth: showOpticalBorder ? 0.5 : 0,
+    lightIntensity: showOpticalBorder ? 0.38 : 0,
     lightDirection: 62,
     borderType: const OpticalBorder(
       borderSaturation: 1.0,
@@ -2832,6 +2838,7 @@ LiquidGlassShape _staticLiquidGlassShape({
 LiquidGlassStyle _staticLiquidGlassStyle({
   required Color glassColor,
   required double cornerRadius,
+  bool showOpticalBorder = true,
 }) {
   // Build the shared optical style directly instead of copying
   // LiquidGlassButton.defaultStyle. This keeps the renderer identical while
@@ -2853,7 +2860,10 @@ LiquidGlassStyle _staticLiquidGlassStyle({
       magnification: 1,
       chromaticAberration: 0,
     ),
-    shape: _staticLiquidGlassShape(cornerRadius: cornerRadius),
+    shape: _staticLiquidGlassShape(
+      cornerRadius: cornerRadius,
+      showOpticalBorder: showOpticalBorder,
+    ),
   );
 }
 
@@ -2876,12 +2886,14 @@ class StaticLiquidGlassSurface extends StatelessWidget {
     required this.child,
     this.shape = const BoundedSquircleStadiumBorder(),
     this.shadows = const <BoxShadow>[],
+    this.showOpticalBorder = true,
   });
 
   final Color color;
   final Widget child;
   final ShapeBorder shape;
   final List<BoxShadow> shadows;
+  final bool showOpticalBorder;
 
   @override
   Widget build(BuildContext context) {
@@ -2904,6 +2916,7 @@ class StaticLiquidGlassSurface extends StatelessWidget {
                 style: _staticLiquidGlassStyle(
                   glassColor: glassColor,
                   cornerRadius: cornerRadius,
+                  showOpticalBorder: showOpticalBorder,
                 ),
                 // No LiquidGlassTouch: this surface is deliberately inert.
                 child: child,
@@ -3002,21 +3015,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
       cornerRadius: circle.size / 2,
     );
 
-    return AnimatedBuilder(
-      animation: _scale,
-      builder: (context, child) =>
-          Transform.scale(scale: _scale.value, child: child),
-      // Apply the same pronounced gel bloom used by the non-glass path. The
-      // old LiquidGlass branch only received the package's flexing response,
-      // so its tap bloom looked noticeably flatter than regular buttons.
-      child: LiquidGlassShadow(
-        // Keep this close to the silhouette: it is an edge-defining ring,
-        // not a broad elevation shadow.
-        blur: isLightMode ? 8.0 : 2.25,
-        opacity: isLightMode ? 0.20 : 0.0,
-        offset: const Offset(1.0, 1.5),
-        cornerRadius: circle.size / 2,
-        child: ClipOval(
+    final glass = ClipOval(
           child: SizedBox.square(
             dimension: circle.size,
             // Keep the package's real shader active when this control sits
@@ -3075,8 +3074,25 @@ class _GelBloomButtonState extends State<GelBloomButton>
               ),
             ),
           ),
-        ),
-      ),
+        );
+    return AnimatedBuilder(
+      animation: _scale,
+      builder: (context, child) =>
+          Transform.scale(scale: _scale.value, child: child),
+      // Apply the same pronounced gel bloom used by the non-glass path. The
+      // old LiquidGlass branch only received the package's flexing response,
+      // so its tap bloom looked noticeably flatter than regular buttons.
+      child: circle.showShadow
+          ? LiquidGlassShadow(
+              // Keep this close to the silhouette: it is an edge-defining
+              // ring, not a broad elevation shadow.
+              blur: isLightMode ? 8.0 : 2.25,
+              opacity: isLightMode ? 0.20 : 0.0,
+              offset: const Offset(1.0, 1.5),
+              cornerRadius: circle.size / 2,
+              child: glass,
+            )
+          : glass,
     );
   }
 
