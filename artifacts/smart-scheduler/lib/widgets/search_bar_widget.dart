@@ -800,7 +800,7 @@ class _SearchCancelButtonState extends State<SearchCancelButton>
               // both the package rim highlight and a visible hairline.
               // The circle size already follows the OS text scaler.
               showOpticalBorder: true,
-              outlineColor: const Color(0x80FFFFFF),
+              outlineColor: kLiquidGlassHairlineColor,
               child: Center(
                 child: SearchWeightedIcon(
                   CupertinoIcons.xmark,

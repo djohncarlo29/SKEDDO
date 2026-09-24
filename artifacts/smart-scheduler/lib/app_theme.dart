@@ -164,6 +164,10 @@ const kModalHandleColor = CupertinoDynamicColor.withBrightness(
 // This is the established weight used by the search cancel button.
 const double kGelBloomIconWeight = 0.4;
 
+// Shared 0.5 px white hairline used by liquid-glass action controls.
+// 0x26 is 38/255, or approximately 15% opacity.
+const kLiquidGlassHairlineColor = Color(0x26FFFFFF);
+
 const kPreviewCardBackground = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFF9F9FB),
   darkColor: Color(0xFF2C2C2E),
@@ -3168,7 +3172,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.fromBorderSide(
-                  BorderSide(color: Color(0x26FFFFFF), width: 0.5),
+                  BorderSide(color: kLiquidGlassHairlineColor, width: 0.5),
                 ),
               ),
               child: LiquidGlassView(
