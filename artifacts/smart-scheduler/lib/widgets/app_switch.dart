@@ -1,13 +1,15 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
+import 'package:cupertino_native/cupertino_native.dart';
 
 import '../app_theme.dart';
 
-/// The app-wide liquid-glass switch.
+/// The app-wide switch.
 ///
 /// All switch controls go through this wrapper so their interaction sizing,
 /// disabled treatment, and theme colors stay consistent while the visual
-/// control is always [LiquidGlassSwitch].
+/// control uses Apple's native switch on iOS and Liquid Glass elsewhere.
 class AppSwitch extends StatelessWidget {
   const AppSwitch({
     super.key,
@@ -28,6 +30,8 @@ class AppSwitch extends StatelessWidget {
   Widget build(BuildContext context) {
     final activeColor = color ?? CupertinoTheme.of(context).primaryColor;
     final inactiveColor = resolveThemeColor(kTertiaryLabel, context);
+    final useNativeAppleSwitch =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
     return IgnorePointer(
       ignoring: !enabled,
@@ -36,14 +40,22 @@ class AppSwitch extends StatelessWidget {
         child: SizedBox(
           height: height,
           child: Center(
-            child: LiquidGlassSwitch(
-              value: value,
-              onChanged: onChanged,
-              width: 70.0,
-              height: 31.0,
-              activeColor: activeColor,
-              inactiveColor: inactiveColor,
-            ),
+            child: useNativeAppleSwitch
+                ? CNSwitch(
+                    value: value,
+                    enabled: enabled,
+                    onChanged: onChanged,
+                    height: height,
+                    color: activeColor,
+                  )
+                : LiquidGlassSwitch(
+                    value: value,
+                    onChanged: onChanged,
+                    width: 70.0,
+                    height: 31.0,
+                    activeColor: activeColor,
+                    inactiveColor: inactiveColor,
+                  ),
           ),
         ),
       ),

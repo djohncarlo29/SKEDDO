@@ -97,6 +97,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.9"
+  cupertino_native:
+    dependency: "direct main"
+    description:
+      name: cupertino_native
+      sha256: "9256895d0a1a7b0e6c824d39a1ce95a2fe178c394c603e4e35704566db3e313a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.1"
   device_info_plus:
     dependency: transitive
     description:

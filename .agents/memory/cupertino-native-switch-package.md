@@ -1,10 +1,10 @@
 ---
-name: Cupertino native switch package
-description: The iOS-native CNSwitch implementation uses cupertino_native, not cupertino_native_plus, with an iOS 14 Podfile target.
+name: Native iOS switch routing
+description: Route app-owned switches through the native iOS switch while preserving Liquid Glass on other platforms.
 ---
 
-For the native UISwitch-backed CNSwitch, use the `cupertino_native` package and import `package:cupertino_native/cupertino_native.dart`. Keep the iOS Podfile and Xcode deployment target at 14.0 or higher. Wrap it in the app's shared switch widget so Android and web use a CupertinoSwitch fallback instead of the package's Material Switch.
+Use `CNSwitch` from `cupertino_native` only when `!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS`. This package's iOS implementation hosts a SwiftUI `Toggle`, which renders Apple's native switch. Keep the existing `LiquidGlassSwitch` for web, Android, macOS, and other non-iOS platforms.
 
-**Why:** `cupertino_native_plus` exposes a similarly named CNSwitch but does not provide the same package/API/platform implementation the iOS 26 examples refer to.
+**Why:** The app's established appearance outside iOS is Liquid Glass, and web can report an iOS target platform while running in a browser. The web guard prevents the native platform view from being selected there.
 
-**How to apply:** When adding or reviewing switch controls, verify the dependency/import and remember that browser preview validates compilation and fallback behavior, not native iOS rendering.
+**How to apply:** Keep all app-owned switches on the shared wrapper. Verify the wrapper's native iOS branch and retain the non-iOS fallback; browser builds validate compilation and fallback behavior, not native iOS rendering.
