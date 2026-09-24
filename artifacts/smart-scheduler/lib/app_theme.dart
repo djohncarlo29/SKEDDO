@@ -2886,17 +2886,12 @@ class StaticLiquidGlassSurface extends StatelessWidget {
     required this.child,
     this.shape = const BoundedSquircleStadiumBorder(),
     this.shadows = const <BoxShadow>[],
-    // Static surfaces never use the interactive button's optical edge rim.
-    // Action buttons keep their own historical rim through the separate
-    // StaticLiquidGlassActionButton path.
-    this.showOpticalBorder = false,
   });
 
   final Color color;
   final Widget child;
   final ShapeBorder shape;
   final List<BoxShadow> shadows;
-  final bool showOpticalBorder;
 
   @override
   Widget build(BuildContext context) {
@@ -2919,7 +2914,9 @@ class StaticLiquidGlassSurface extends StatelessWidget {
                 style: _staticLiquidGlassStyle(
                   glassColor: glassColor,
                   cornerRadius: cornerRadius,
-                  showOpticalBorder: showOpticalBorder,
+                  // Static surfaces never use an optical edge rim. This is
+                  // intentionally not configurable on the surface API.
+                  showOpticalBorder: false,
                 ),
                 // No LiquidGlassTouch: this surface is deliberately inert.
                 child: child,

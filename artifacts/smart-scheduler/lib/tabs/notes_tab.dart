@@ -1314,7 +1314,6 @@ class _NoteInputCardState extends State<_NoteInputCard>
       color: surfaceColor,
       shape: const BoundedSquircleStadiumBorder(),
       shadows: cardShadows,
-      showOpticalBorder: false,
       child: Stack(
         children: [
           Column(
