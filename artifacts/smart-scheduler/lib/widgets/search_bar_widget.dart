@@ -648,12 +648,48 @@ class SearchCancelButton extends StatefulWidget {
   State<SearchCancelButton> createState() => _SearchCancelButtonState();
 }
 
-class _SearchCancelButtonState extends State<SearchCancelButton> {
+class _SearchCancelButtonState extends State<SearchCancelButton>
+    with SingleTickerProviderStateMixin {
   // Preserve the existing default proportion: the X glyph was 20 pt inside
   // the 40 pt Liquid Glass circle. Both now scale as one unit with the search
   // bar instead of scaling the glyph independently.
   static const double _kDefaultCircleSize = 40.0;
   static const double _kDefaultXmarkSize = 20.0;
+  static const Duration _kTapDelay = Duration(milliseconds: 130);
+
+  late final AnimationController _bloomCtrl;
+  late final Animation<double> _bloomScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _bloomCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _bloomScale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.0,
+          end: 1.15,
+        ).chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 52,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.15,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 48,
+      ),
+    ]).animate(_bloomCtrl);
+  }
+
+  @override
+  void dispose() {
+    _bloomCtrl.dispose();
+    super.dispose();
+  }
 
   double _circleSize(BuildContext context) => searchBarHeight(context);
 
@@ -669,6 +705,13 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
       scale: scale,
       child: circle,
     );
+  }
+
+  void _handleTap() {
+    _bloomCtrl.forward(from: 0.0);
+    Future.delayed(_kTapDelay, () {
+      if (mounted) widget.onTap();
+    });
   }
 
   @override
@@ -738,26 +781,36 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     return TapRegion(
       groupId: kSbGroupId,
-      child: StaticLiquidGlassActionButton(
-        color: surfaceColor,
-        showShadow: false,
-        peakScale: 1.15,
-        tapDelay: const Duration(milliseconds: 130),
-        onTap: widget.onTap,
-        size: circleSize,
-        child: Center(
-            child: SearchWeightedIcon(
-              CupertinoIcons.xmark,
-              // Keep the default 20:40 glyph-to-circle ratio as one united
-              // element. The circle size already follows the search bar's
-              // Dynamic Type height, so the X follows it without a second
-              // independent scaler.
-              size:
-                  circleSize *
-                  (_kDefaultXmarkSize / _kDefaultCircleSize),
-              color: primaryLabel,
-              weight: kGelBloomIconWeight,
+      child: AnimatedBuilder(
+        animation: _bloomScale,
+        builder: (context, child) => Transform.scale(
+          scale: _bloomScale.value,
+          child: child,
+        ),
+        child: SizedBox.square(
+          dimension: circleSize,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _handleTap,
+            child: StaticLiquidGlassSurface(
+              color: surfaceColor,
+              shape: const BoundedSquircleStadiumBorder(),
+              child: Center(
+                child: SearchWeightedIcon(
+                  CupertinoIcons.xmark,
+                  // Keep the default 20:40 glyph-to-circle ratio as one
+                  // united element. The circle size already follows the
+                  // search bar's Dynamic Type height, so the X follows it
+                  // without a second independent scaler.
+                  size:
+                      circleSize *
+                      (_kDefaultXmarkSize / _kDefaultCircleSize),
+                  color: primaryLabel,
+                  weight: kGelBloomIconWeight,
+                ),
+              ),
             ),
+          ),
         ),
       ),
     );
