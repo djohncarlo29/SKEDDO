@@ -1526,13 +1526,12 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     final _xFamily = _xIcon.fontPackage != null
         ? 'packages/${_xIcon.fontPackage}/${_xIcon.fontFamily}'
         : (_xIcon.fontFamily ?? '');
-    final xBtn = GelBloomButton(
+    final xBtn = StaticLiquidGlassActionButton(
+      color: cardColor,
       peakScale: 1.15,
       tapDelay: const Duration(milliseconds: 130),
       onTap: _close,
-      child: LiquidGlassGelCircle(
-        color: cardColor,
-        child: Center(
+      child: Center(
           child: SizedBox(
             width: 20,
             height: 20,
@@ -1565,7 +1564,6 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
               ),
             ),
           ),
-        ),
       ),
     );
 

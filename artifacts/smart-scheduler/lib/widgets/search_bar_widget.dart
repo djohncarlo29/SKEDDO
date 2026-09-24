@@ -738,14 +738,13 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     return TapRegion(
       groupId: kSbGroupId,
-      child: GelBloomButton(
+      child: StaticLiquidGlassActionButton(
+        color: surfaceColor,
         peakScale: 1.15,
         tapDelay: const Duration(milliseconds: 130),
         onTap: widget.onTap,
-        child: LiquidGlassGelCircle(
-          size: circleSize,
-          color: surfaceColor,
-          child: Center(
+        size: circleSize,
+        child: Center(
             child: SearchWeightedIcon(
               CupertinoIcons.xmark,
               // Keep the default 20:40 glyph-to-circle ratio as one united
@@ -758,7 +757,6 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
               color: primaryLabel,
               weight: kGelBloomIconWeight,
             ),
-          ),
         ),
       ),
     );

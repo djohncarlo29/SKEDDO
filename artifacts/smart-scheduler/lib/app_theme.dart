@@ -2771,11 +2771,11 @@ class LiquidGlassGelCircle extends StatelessWidget {
   }
 }
 
-/// The optimized button for fixed-color circular actions.
+/// The rich, fixed-color action button for circular controls.
 ///
-/// This deliberately routes through [LiquidGlassButton]. The package button
-/// owns the original Impeller Liquid Glass shape, clipping, tint, refraction,
-/// and child layout.
+/// This is the const public wrapper for the historical app-owned glass
+/// renderer. The visual lens is kept in [_GelBloomButtonState] so existing
+/// delayed-dismiss and tap-bloom behavior remains unchanged.
 class StaticLiquidGlassActionButton extends StatelessWidget {
   const StaticLiquidGlassActionButton({
     super.key,
@@ -2812,12 +2812,57 @@ class StaticLiquidGlassActionButton extends StatelessWidget {
   }
 }
 
-/// A non-interactive, low-cost live Liquid Glass surface for cards and panels.
+LiquidGlassShape _staticLiquidGlassShape({
+  required double cornerRadius,
+}) {
+  return LiquidGlassShape.squircle(
+    cornerRadius: cornerRadius,
+    borderWidth: 0.5,
+    lightIntensity: 0.38,
+    lightDirection: 62,
+    borderType: const OpticalBorder(
+      borderSaturation: 1.0,
+      ambientIntensity: 0.18,
+      borderSolidity: 0.16,
+      lightSpread: 0.14,
+    ),
+  );
+}
+
+LiquidGlassStyle _staticLiquidGlassStyle({
+  required Color glassColor,
+  required double cornerRadius,
+}) {
+  return LiquidGlassButton.defaultStyle.copyWith(
+    appearance: LiquidGlassAppearance(
+      color: glassColor,
+      blur: const LiquidGlassBlur(sigmaX: 2, sigmaY: 2),
+    ),
+    // Keep the historical rich renderer's geometry while removing the three
+    // requested optical effects: refraction, magnification, and chromatic
+    // aberration.
+    refraction: const LiquidGlassRefraction(
+      distortion: 0,
+      distortionWidth: 0,
+      magnification: 1,
+      chromaticAberration: 0,
+    ),
+    shape: _staticLiquidGlassShape(cornerRadius: cornerRadius),
+  );
+}
+
+double _staticLiquidGlassSurfaceCornerRadius(ShapeBorder shape) {
+  if (shape is BoundedSquircleStadiumBorder) return shape.radius;
+  if (shape is SquircleStadiumBorder) return shape.radius;
+  return kCornerRadius;
+}
+
+/// A non-interactive rich Liquid Glass surface for cards and panels.
 ///
 /// This is intentionally separate from [StaticLiquidGlassActionButton]:
 /// there is no gesture detector, bloom animation, or tap callback. It paints
-/// a translucent material over one bounded backdrop blur and clips its child
-/// to the supplied shape.
+/// the same historical lens treatment as the action button, without the
+/// button-only interaction and animation layers.
 class StaticLiquidGlassSurface extends StatelessWidget {
   const StaticLiquidGlassSurface({
     super.key,
@@ -2834,32 +2879,30 @@ class StaticLiquidGlassSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLightMode =
-        CupertinoTheme.brightnessOf(context) == Brightness.light;
+    final cornerRadius = _staticLiquidGlassSurfaceCornerRadius(shape);
+    final glassColor = color.withValues(alpha: 0.8);
     return CustomPaint(
-      painter: _StaticLiquidGlassSurfacePainter(
-        color: color,
-        shape: shape,
-        shadows: shadows,
-        isLightMode: isLightMode,
-      ),
-      child: ClipPath(
-        clipper: ShapeBorderClipper(shape: shape),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: 6.0,
-            sigmaY: 6.0,
-            tileMode: TileMode.clamp,
-          ),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: _staticGlassSurfaceGradient(
-                color,
-                isLightMode: isLightMode,
+      painter: _StaticLiquidGlassSurfacePainter(shape: shape, shadows: shadows),
+      child: IntrinsicHeight(
+        child: ClipPath(
+            clipper: ShapeBorderClipper(shape: shape),
+            child: LiquidGlassView(
+              key: ValueKey<int>(color.toARGB32()),
+              backgroundWidget: ClipPath(
+                clipper: ShapeBorderClipper(shape: shape),
+                child: ColoredBox(color: glassColor),
+              ),
+              realTimeCapture: false,
+              useSync: true,
+              child: LiquidGlassLens(
+                style: _staticLiquidGlassStyle(
+                  glassColor: glassColor,
+                  cornerRadius: cornerRadius,
+                ),
+                // No LiquidGlassTouch: this surface is deliberately inert.
+                child: child,
               ),
             ),
-            child: child,
-          ),
         ),
       ),
     );
@@ -2868,16 +2911,12 @@ class StaticLiquidGlassSurface extends StatelessWidget {
 
 class _StaticLiquidGlassSurfacePainter extends CustomPainter {
   const _StaticLiquidGlassSurfacePainter({
-    required this.color,
     required this.shape,
     required this.shadows,
-    required this.isLightMode,
   });
 
-  final Color color;
   final ShapeBorder shape;
   final List<BoxShadow> shadows;
-  final bool isLightMode;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2891,51 +2930,12 @@ class _StaticLiquidGlassSurfacePainter extends CustomPainter {
         true,
       );
     }
-
-    // The outline is intentionally painted separately from the translucent
-    // fill so the live backdrop remains visible below the material.
-    final highlightPath = shape.getOuterPath(rect.deflate(0.65));
-    canvas.drawPath(
-      highlightPath,
-      Paint()
-        ..isAntiAlias = true
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = isLightMode ? 0.8 : 0.65
-        ..color = isLightMode
-            ? const Color(0x52FFFFFF)
-            : const Color(0x38FFFFFF),
-    );
   }
 
   @override
   bool shouldRepaint(covariant _StaticLiquidGlassSurfacePainter oldDelegate) =>
-      oldDelegate.color != color ||
       oldDelegate.shape != shape ||
-      oldDelegate.shadows != shadows ||
-      oldDelegate.isLightMode != isLightMode;
-}
-
-LinearGradient _staticGlassSurfaceGradient(
-  Color color, {
-  required bool isLightMode,
-}) {
-  final alpha = isLightMode ? 0.66 : 0.74;
-  final top = Color.lerp(
-    color.withValues(alpha: 1.0),
-    const Color(0xFFFFFFFF),
-    isLightMode ? 0.24 : 0.12,
-  )!.withValues(alpha: alpha + 0.04);
-  final bottom = Color.lerp(
-    color.withValues(alpha: 1.0),
-    const Color(0xFF000000),
-    isLightMode ? 0.08 : 0.14,
-  )!.withValues(alpha: alpha);
-  return LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [top, color.withValues(alpha: alpha), bottom],
-    stops: const [0.0, 0.38, 1.0],
-  );
+      oldDelegate.shadows != shadows;
 }
 
 class _GelBloomButtonState extends State<GelBloomButton>
@@ -2991,33 +2991,9 @@ class _GelBloomButtonState extends State<GelBloomButton>
     final glassColor = circle.isCheckmark && isLightMode
         ? surfaceColor
         : surfaceColor.withValues(alpha: 0.8);
-    final style = LiquidGlassButton.defaultStyle.copyWith(
-      appearance: LiquidGlassAppearance(
-        color: glassColor,
-        blur: const LiquidGlassBlur(sigmaX: 2, sigmaY: 2),
-      ),
-      refraction: const LiquidGlassRefraction(
-        distortion: 0,
-        distortionWidth: 0,
-        magnification: 1,
-        chromaticAberration: 0,
-      ),
-      // The package's shader-native squircle matches the app's bounded
-      // squircle geometry more closely than its continuous-rounded variant.
-      // The surrounding ClipOval keeps this circular control bounded to its
-      // actual rect while the lens uses the same softened corner family.
-      shape: LiquidGlassShape.squircle(
-        cornerRadius: circle.size / 2,
-        borderWidth: 0.5,
-        lightIntensity: 0.38,
-        lightDirection: 62,
-        borderType: const OpticalBorder(
-          borderSaturation: 1.0,
-          ambientIntensity: 0.18,
-          borderSolidity: 0.16,
-          lightSpread: 0.14,
-        ),
-      ),
+    final style = _staticLiquidGlassStyle(
+      glassColor: glassColor,
+      cornerRadius: circle.size / 2,
     );
 
     return AnimatedBuilder(

@@ -17516,14 +17516,13 @@ class _ModalCircleButton extends StatelessWidget {
 
     final resolvedContainerColor = resolveThemeColor(containerColor, context);
     final resolvedIconColor = resolveThemeColor(iconColor, context);
-    return GelBloomButton(
+    return StaticLiquidGlassActionButton(
+      color: resolvedContainerColor,
+      isCheckmark: icon == CupertinoIcons.checkmark,
       peakScale: 1.15,
       tapDelay: tapDelay,
       onTap: onTap,
-      child: LiquidGlassGelCircle(
-        color: resolvedContainerColor,
-        isCheckmark: icon == CupertinoIcons.checkmark,
-        child: Center(
+      child: Center(
           child: SizedBox(
             width: 20,
             height: 20,
@@ -17555,7 +17554,6 @@ class _ModalCircleButton extends StatelessWidget {
               ),
             ),
           ),
-        ),
       ),
     );
   }

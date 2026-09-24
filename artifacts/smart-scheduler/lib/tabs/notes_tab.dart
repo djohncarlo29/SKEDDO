@@ -3791,14 +3791,13 @@ class _PreviewCircleButton extends StatelessWidget {
 
     final resolvedContainerColor = resolveThemeColor(containerColor, context);
     final resolvedIconColor = resolveThemeColor(iconColor, context);
-    return GelBloomButton(
+    return StaticLiquidGlassActionButton(
+      color: resolvedContainerColor,
+      isCheckmark: isCheckmark,
       peakScale: 1.15,
       tapDelay: tapDelay,
       onTap: onTap,
-      child: LiquidGlassGelCircle(
-        color: resolvedContainerColor,
-        isCheckmark: isCheckmark,
-        child: Center(
+      child: Center(
           child: Transform.translate(
             offset: Offset(0, verticalIconOffset),
             child: Transform.scale(
@@ -3833,7 +3832,6 @@ class _PreviewCircleButton extends StatelessWidget {
               ),
             ),
           ),
-        ),
       ),
     );
   }
