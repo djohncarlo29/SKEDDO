@@ -2759,6 +2759,7 @@ class LiquidGlassGelCircle extends StatelessWidget {
     this.size = 40,
     this.isCheckmark = false,
     this.showShadow = true,
+    this.useLiquidGlass,
   });
 
   final Color color;
@@ -2766,6 +2767,7 @@ class LiquidGlassGelCircle extends StatelessWidget {
   final double size;
   final bool isCheckmark;
   final bool showShadow;
+  final bool? useLiquidGlass;
 
   @override
   Widget build(BuildContext context) {
@@ -2789,6 +2791,7 @@ class StaticLiquidGlassActionButton extends StatelessWidget {
     this.showShadow = true,
     this.peakScale = 1.15,
     this.tapDelay = Duration.zero,
+    this.useLiquidGlass,
   });
 
   final Color color;
@@ -2799,6 +2802,7 @@ class StaticLiquidGlassActionButton extends StatelessWidget {
   final bool showShadow;
   final double peakScale;
   final Duration tapDelay;
+  final bool? useLiquidGlass;
 
   @override
   Widget build(BuildContext context) {
@@ -2811,10 +2815,22 @@ class StaticLiquidGlassActionButton extends StatelessWidget {
         size: size,
         isCheckmark: isCheckmark,
         showShadow: showShadow,
+        useLiquidGlass: useLiquidGlass,
         child: child,
       ),
     );
   }
+}
+
+/// Whether a static glass effect is safe to use on this renderer.
+///
+/// Web previews and non-shader backends use the solid fallback rather than
+/// asking the liquid-glass package to build its more expensive frosted
+/// fallback. Callers can explicitly pass `false` for devices that support
+/// shaders but still need the low-cost path.
+bool staticLiquidGlassSupported({bool? override}) {
+  if (override != null) return override;
+  return !kIsWeb && ImageFilter.isShaderFilterSupported;
 }
 
 LiquidGlassShape _staticLiquidGlassShape({
@@ -2885,21 +2901,41 @@ class StaticLiquidGlassSurface extends StatelessWidget {
     required this.color,
     required this.child,
     this.shape = const BoundedSquircleStadiumBorder(),
+    this.cornerRadius,
+    this.useLiquidGlass,
   });
 
   final Color color;
   final Widget child;
   final ShapeBorder shape;
+  final double? cornerRadius;
+  final bool? useLiquidGlass;
 
   @override
   Widget build(BuildContext context) {
-    final cornerRadius = _staticLiquidGlassSurfaceCornerRadius(shape);
+    final lensCornerRadius =
+        cornerRadius ?? _staticLiquidGlassSurfaceCornerRadius(shape);
     // Static surfaces are solid app-owned fills. Keep the caller's color
     // opaque so these surfaces match a normal Container using the same color.
     // All current and future StaticLiquidGlassSurface instances inherit this
     // policy from the shared implementation.
     final glassColor = color.withValues(alpha: 1.0);
     final cardShadows = resolveThemeShadows(kCardShadow, context);
+    if (!staticLiquidGlassSupported(override: useLiquidGlass)) {
+      return IntrinsicHeight(
+        child: DecoratedBox(
+          decoration: ShapeDecoration(
+            color: glassColor,
+            shadows: cardShadows,
+            shape: shape,
+          ),
+          child: ClipPath(
+            clipper: ShapeBorderClipper(shape: shape),
+            child: child,
+          ),
+        ),
+      );
+    }
     return CustomPaint(
       painter: _StaticLiquidGlassSurfacePainter(
         shape: shape,
@@ -2927,7 +2963,7 @@ class StaticLiquidGlassSurface extends StatelessWidget {
               child: LiquidGlassLens(
                 style: _staticLiquidGlassStyle(
                   glassColor: glassColor,
-                  cornerRadius: cornerRadius,
+                   cornerRadius: lensCornerRadius,
                   // Static surfaces never use an optical edge rim. This is
                   // intentionally not configurable on the surface API.
                   showOpticalBorder: false,
@@ -3009,6 +3045,40 @@ class _GelBloomButtonState extends State<GelBloomButton>
 
   void _bloom() => _ctrl.forward(from: 0.0);
 
+  Widget _buildSolidCircleFallback(
+    LiquidGlassGelCircle circle,
+    Color surfaceColor,
+  ) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        _bloom();
+        if (widget.tapDelay == Duration.zero) {
+          widget.onTap();
+        } else {
+          Future.delayed(widget.tapDelay, () {
+            if (mounted) widget.onTap();
+          });
+        }
+      },
+      child: AnimatedBuilder(
+        animation: _scale,
+        builder: (context, child) =>
+            Transform.scale(scale: _scale.value, child: child),
+        child: SizedBox.square(
+          dimension: circle.size,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: surfaceColor,
+              shape: BoxShape.circle,
+            ),
+            child: Center(child: circle.child),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildLiquidGlassButton(
     BuildContext context,
     LiquidGlassGelCircle circle,
@@ -3021,6 +3091,9 @@ class _GelBloomButtonState extends State<GelBloomButton>
     final surfaceColor = circle.isCheckmark || !isLightMode
         ? circle.color
         : const Color(0xFFFFFFFF);
+    if (!staticLiquidGlassSupported(override: circle.useLiquidGlass)) {
+      return _buildSolidCircleFallback(circle, surfaceColor);
+    }
     final glassColor = circle.isCheckmark && isLightMode
         ? surfaceColor
         : surfaceColor.withValues(alpha: 0.8);

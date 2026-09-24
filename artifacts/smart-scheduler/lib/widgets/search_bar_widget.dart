@@ -794,7 +794,8 @@ class _SearchCancelButtonState extends State<SearchCancelButton>
             onTap: _handleTap,
             child: StaticLiquidGlassSurface(
               color: surfaceColor,
-              shape: const BoundedSquircleStadiumBorder(),
+              shape: const CircleBorder(),
+              cornerRadius: circleSize / 2,
               child: Center(
                 child: SearchWeightedIcon(
                   CupertinoIcons.xmark,
