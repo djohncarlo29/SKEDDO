@@ -130,3 +130,4 @@
 - [Day banner swipe height](day-banner-swipe-height.md) — interpolate banner height toward incoming Single Day labels or Multi Day pairs during horizontal navigation.
 - [Multi-Day faded circle compositing](multiday-faded-circle-compositing.md) — draw overlapping faded markers in one opaque union layer, then apply 40% opacity once.
 - [Smart Category semantic threshold](smart-category-semantic-threshold.md) — shared date/time text makes low cosine floors admit unrelated scheduled events; keep semantic matching conservative and normalize plural rules.
+- [Native iOS tab bar bridge](native-ios-tab-bar-bridge.md) — use a UIKit iOS 26 overlay with a Flutter selection channel; preserve Flutter content and fall back on older platforms.

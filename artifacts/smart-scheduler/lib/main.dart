@@ -823,6 +823,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   final _calendarStripSlide = ValueNotifier<double>(0.0);
 
   int _selectedIndex = 0;
+  static const _nativeTabBarChannel = MethodChannel(
+    'com.smartscheduler/native_tab_bar',
+  );
+  bool _usesNativeTabBar = false;
   bool _menuOpen = false;
   String? _dcvCategory;
   // The tapped category's own colour, captured at DCV-entry time. While DCV
@@ -1507,6 +1511,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _nativeTabBarChannel.setMethodCallHandler(_handleNativeTabBarCall);
+    unawaited(_configureNativeTabBar());
 
     // Restore persisted per-category sort settings.
     LocalStorage.instance.loadCategorySortMaps().then((maps) {
@@ -1571,6 +1577,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _nativeTabBarChannel.setMethodCallHandler(null);
     _midnightTimer?.cancel();
     _dcvSlideController.dispose();
     _searchModeController.dispose();
@@ -1753,6 +1760,42 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       // tabs and is restored when the user returns to Events tab.
     });
     _searchModeController.value = 0;
+    if (_usesNativeTabBar) {
+      unawaited(
+        _nativeTabBarChannel.invokeMethod<void>(
+          'setSelectedIndex',
+          _selectedIndex,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleNativeTabBarCall(MethodCall call) async {
+    if (call.method != 'tabSelected') return;
+    final index = call.arguments is int ? call.arguments as int : null;
+    if (index == null || index < 0 || index > 2 || !mounted) return;
+    _switchTab(index);
+  }
+
+  Future<void> _configureNativeTabBar() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return;
+    try {
+      final available = await _nativeTabBarChannel.invokeMethod<bool>(
+        'isAvailable',
+      );
+      if (!mounted) return;
+      setState(() => _usesNativeTabBar = available == true);
+      if (_usesNativeTabBar) {
+        await _nativeTabBarChannel.invokeMethod<void>(
+          'setSelectedIndex',
+          _selectedIndex,
+        );
+      }
+    } on MissingPluginException {
+      // Older iOS builds do not include the iOS 26 native overlay.
+    } on PlatformException {
+      // Keep the Flutter tab bar if the native bridge is unavailable.
+    }
   }
 
   String get _headerTitle {
@@ -2684,11 +2727,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                       ? (_dcvColor ?? resolveAccentColor(context))
                       : resolveAccentColor(context);
                   return Positioned.fill(
-                    child: FloatingTabPill(
-                      selectedIndex: _selectedIndex,
-                      eventsAccent: eventsAccent,
-                      onTabSelected: _switchTab,
-                    ),
+                    child: _usesNativeTabBar
+                        ? const SizedBox.shrink()
+                        : FloatingTabPill(
+                            selectedIndex: _selectedIndex,
+                            eventsAccent: eventsAccent,
+                            onTabSelected: _switchTab,
+                          ),
                   );
                 },
               ),
