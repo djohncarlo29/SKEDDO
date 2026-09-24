@@ -2995,7 +2995,10 @@ class StaticLiquidGlassSurface extends StatelessWidget {
                    showOpticalBorder: showOpticalBorder,
                 ),
                 // No LiquidGlassTouch: this surface is deliberately inert.
-                child: child,
+                 // LiquidGlassLens is layout-driven and otherwise shrink-wraps
+                 // to its child. Static surfaces own the full container shape,
+                 // so make the lens fill that shape before laying out content.
+                 child: SizedBox.expand(child: child),
               ),
             ),
         ),
