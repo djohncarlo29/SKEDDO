@@ -2546,9 +2546,6 @@ class ActionMenuOverlay extends StatelessWidget {
   // mini panels inside modal sheets.
   final bool bouncingScroll;
   final bool useLiquidGlass;
-  // Optional close-duration override forwarded to ActionPanel. Useful when
-  // the owning overlay has a matching removal delay.
-  final int? closeDurationOverrideMs;
   // Modal sheet picker-row panels intentionally retain their compact legacy
   // spacing. All other action panels use the standard trailing-icon geometry.
   final bool isPickerMiniPanel;
@@ -2565,7 +2562,6 @@ class ActionMenuOverlay extends StatelessWidget {
     this.labelFontSize = 16,
     this.bouncingScroll = true,
     this.useLiquidGlass = false,
-    this.closeDurationOverrideMs,
     this.isPickerMiniPanel = false,
   });
 
@@ -2649,7 +2645,6 @@ class ActionMenuOverlay extends StatelessWidget {
             labelFontSize: labelFontSize,
             bouncingScroll: bouncingScroll,
             useLiquidGlass: useLiquidGlass,
-            closeDurationOverrideMs: closeDurationOverrideMs,
             enforceTrailingIconSpacing: !isPickerMiniPanel,
           ),
         ),

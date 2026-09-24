@@ -1377,14 +1377,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
     final current = _activeDaySubMode;
     void doSelect(DayViewSubMode mode) {
-      _hideDayViewModeMenu(
-        afterClosed: () {
-          if (!mounted) return;
-          setState(() => _activeDaySubMode = mode);
-          SharedPreferences.getInstance().then(
-            (p) => p.setString('day_view_sub_mode', mode.name),
-          );
-        },
+      _hideDayViewModeMenu();
+      setState(() => _activeDaySubMode = mode);
+      SharedPreferences.getInstance().then(
+        (p) => p.setString('day_view_sub_mode', mode.name),
       );
     }
 
@@ -1437,30 +1433,25 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         onDismiss: _hideDayViewModeMenu,
         actions: items,
         chevronColumn: true,
-        closeDurationOverrideMs: 240,
       ),
     );
     Overlay.of(context).insert(_dayViewModeOverlay!);
   }
 
-  void _hideDayViewModeMenu({VoidCallback? afterClosed}) {
-    if (!_dayViewModeMenuOpen) {
-      afterClosed?.call();
-      return;
-    }
+  void _hideDayViewModeMenu() {
+    if (!_dayViewModeMenuOpen) return;
     _dayViewModeMenuOpen = false;
     setState(() {});
     _dayViewModeClosing.value = true;
-    // The Day View panel closes in 240 ms; keep an 80 ms removal buffer so
-    // the overlay is removed only after its animation has fully settled.
-    Future.delayed(const Duration(milliseconds: 320), () {
+    // Three rows close in about 358 ms at the shared ActionPanel duration.
+    // Match the other three-row panels and leave time for the close to settle.
+    Future.delayed(const Duration(milliseconds: 420), () {
       _dayViewModeOverlay?.remove();
       _dayViewModeOverlay = null;
       if (mounted) {
         _dayViewModeClosing.value = false;
         setState(() {});
       }
-      afterClosed?.call();
     });
   }
 
