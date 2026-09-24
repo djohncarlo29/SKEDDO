@@ -2332,57 +2332,59 @@ class CalendarTabState extends State<CalendarTab>
                           child: Transform.translate(
                             offset: Offset(0, 36.0 * (1.0 - colT)),
                             child: IgnorePointer(
-                              child:
-                                  widget.daySubMode == DayViewSubMode.multiDay
-                                  // Single instance keyed by GlobalKey so the morph
-                                  // animation state survives the subtree-type switch
-                                  // from the 3-panel Stack to the single-widget form.
-                                  ? _DayBanner(
-                                      key: _bannerCenterKey,
-                                      date: _selected,
-                                      today: _today,
-                                      daySubMode: widget.daySubMode,
-                                      slideX: slideX,
-                                      screenW: sw,
-                                    )
-                                  : Stack(
-                                      children: [
-                                        Positioned(
-                                          left: slideX - sw,
-                                          top: 0,
-                                          bottom: 0,
-                                          width: sw,
-                                          child: _DayBanner(
-                                            date: prevDay,
-                                            today: _today,
-                                            daySubMode: widget.daySubMode,
+                              child: RepaintBoundary(
+                                child: widget.daySubMode ==
+                                        DayViewSubMode.multiDay
+                                    // Single instance keyed by GlobalKey so the morph
+                                    // animation state survives the subtree-type switch
+                                    // from the 3-panel Stack to the single-widget form.
+                                    ? _DayBanner(
+                                        key: _bannerCenterKey,
+                                        date: _selected,
+                                        today: _today,
+                                        daySubMode: widget.daySubMode,
+                                        slideX: slideX,
+                                        screenW: sw,
+                                      )
+                                    : Stack(
+                                        children: [
+                                          Positioned(
+                                            left: slideX - sw,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: sw,
+                                            child: _DayBanner(
+                                              date: prevDay,
+                                              today: _today,
+                                              daySubMode: widget.daySubMode,
+                                            ),
                                           ),
-                                        ),
-                                        Positioned(
-                                          left: slideX,
-                                          top: 0,
-                                          bottom: 0,
-                                          width: sw,
-                                          child: _DayBanner(
-                                            key: _bannerCenterKey,
-                                            date: _selected,
-                                            today: _today,
-                                            daySubMode: widget.daySubMode,
+                                          Positioned(
+                                            left: slideX,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: sw,
+                                            child: _DayBanner(
+                                              key: _bannerCenterKey,
+                                              date: _selected,
+                                              today: _today,
+                                              daySubMode: widget.daySubMode,
+                                            ),
                                           ),
-                                        ),
-                                        Positioned(
-                                          left: slideX + sw,
-                                          top: 0,
-                                          bottom: 0,
-                                          width: sw,
-                                          child: _DayBanner(
-                                            date: nextDay,
-                                            today: _today,
-                                            daySubMode: widget.daySubMode,
+                                          Positioned(
+                                            left: slideX + sw,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: sw,
+                                            child: _DayBanner(
+                                              date: nextDay,
+                                              today: _today,
+                                              daySubMode: widget.daySubMode,
+                                            ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
+                                        ],
+                                      ),
+                              ),
                             ),
                           ),
                         ),
@@ -2410,68 +2412,70 @@ class CalendarTabState extends State<CalendarTab>
                             offset: Offset(0, 36.0 * (1.0 - colT)),
                             child: IgnorePointer(
                               ignoring: colT < 0.85,
-                              child:
-                                  widget.daySubMode == DayViewSubMode.multiDay
-                                  ? _DayTimelineMulti(
-                                      // Constant key → state survives date navigation
-                                      // so sep-entrance animation only plays once on
-                                      // mode-enter, not on every day change.
-                                      key: const Key('multi-timeline'),
-                                      selectedDate: _selected,
-                                      today: _today,
-                                      nowNotifier: _nowNotifier,
-                                      slideX: timelineSlideX,
-                                      screenW: sw,
-                                    )
-                                  : Stack(
-                                      children: [
-                                        Positioned(
-                                          left: timelineSlideX - sw,
-                                          top: 0,
-                                          bottom: 0,
-                                          width: sw,
-                                          child: _DayTimeline(
-                                            key: ValueKey(
-                                              'day-${prevDay.year}${prevDay.month}${prevDay.day}',
+                              child: RepaintBoundary(
+                                child: widget.daySubMode ==
+                                        DayViewSubMode.multiDay
+                                    ? _DayTimelineMulti(
+                                        // Constant key → state survives date navigation
+                                        // so sep-entrance animation only plays once on
+                                        // mode-enter, not on every day change.
+                                        key: const Key('multi-timeline'),
+                                        selectedDate: _selected,
+                                        today: _today,
+                                        nowNotifier: _nowNotifier,
+                                        slideX: timelineSlideX,
+                                        screenW: sw,
+                                      )
+                                    : Stack(
+                                        children: [
+                                          Positioned(
+                                            left: timelineSlideX - sw,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: sw,
+                                            child: _DayTimeline(
+                                              key: ValueKey(
+                                                'day-${prevDay.year}${prevDay.month}${prevDay.day}',
+                                              ),
+                                              selectedDate: prevDay,
+                                              today: _today,
+                                              nowNotifier: _nowNotifier,
+                                              daySubMode: widget.daySubMode,
                                             ),
-                                            selectedDate: prevDay,
-                                            today: _today,
-                                            nowNotifier: _nowNotifier,
-                                            daySubMode: widget.daySubMode,
                                           ),
-                                        ),
-                                        Positioned(
-                                          left: timelineSlideX,
-                                          top: 0,
-                                          bottom: 0,
-                                          width: sw,
-                                          child: _DayTimeline(
-                                            key: ValueKey(
-                                              'day-${_selected.year}${_selected.month}${_selected.day}',
+                                          Positioned(
+                                            left: timelineSlideX,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: sw,
+                                            child: _DayTimeline(
+                                              key: ValueKey(
+                                                'day-${_selected.year}${_selected.month}${_selected.day}',
+                                              ),
+                                              selectedDate: _selected,
+                                              today: _today,
+                                              nowNotifier: _nowNotifier,
+                                              daySubMode: widget.daySubMode,
                                             ),
-                                            selectedDate: _selected,
-                                            today: _today,
-                                            nowNotifier: _nowNotifier,
-                                            daySubMode: widget.daySubMode,
                                           ),
-                                        ),
-                                        Positioned(
-                                          left: timelineSlideX + sw,
-                                          top: 0,
-                                          bottom: 0,
-                                          width: sw,
-                                          child: _DayTimeline(
-                                            key: ValueKey(
-                                              'day-${nextDay.year}${nextDay.month}${nextDay.day}',
+                                          Positioned(
+                                            left: timelineSlideX + sw,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: sw,
+                                            child: _DayTimeline(
+                                              key: ValueKey(
+                                                'day-${nextDay.year}${nextDay.month}${nextDay.day}',
+                                              ),
+                                              selectedDate: nextDay,
+                                              today: _today,
+                                              nowNotifier: _nowNotifier,
+                                              daySubMode: widget.daySubMode,
                                             ),
-                                            selectedDate: nextDay,
-                                            today: _today,
-                                            nowNotifier: _nowNotifier,
-                                            daySubMode: widget.daySubMode,
                                           ),
-                                        ),
-                                      ],
-                                    ),
+                                        ],
+                                      ),
+                              ),
                             ),
                           ),
                         ),
@@ -6284,7 +6288,26 @@ class _DayTimelineState extends State<_DayTimeline>
                     final contentW = totalW - labelColW;
                     return AnimatedBuilder(
                       animation: _sepAnim,
-                      builder: (_, __) {
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          ..._hourSlotRows(
+                            ctx,
+                            labelColumnWidth: labelColW,
+                            lineStartInset: _kMultiDayHourLineInset,
+                          ),
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            top: _kTimelinePad + 24 * _kHourHeight + 8,
+                            child: Container(
+                              height: 0.5,
+                              color: separatorColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      builder: (_, staticTimeline) {
                         final t = _sepAnim.value;
                         // Left separator slides in from BEYOND the LEFT edge.
                         // At t=0: -0.5 (hidden left). At t=1: the label
@@ -6303,29 +6326,9 @@ class _DayTimelineState extends State<_DayTimeline>
                         return Stack(
                           clipBehavior: Clip.none,
                           children: [
-                            // Hour slot lines + labels. Keep the line start
-                            // aligned with Multi-Day throughout the transition.
-                            for (int h = 0; h < 24; h++)
-                              Positioned(
-                                left: 0,
-                                right: 0,
-                                top: _kTimelinePad + h * _kHourHeight,
-                                child: _HourSlot(
-                                  hour: h,
-                                  lineStartInset: _kMultiDayHourLineInset,
-                                ),
-                              ),
-
-                            // End-of-day hairline — offset by 8 px to match the
-                            // ~8 px internal offset of _HourSlot hairlines, so the
-                            // time indicator aligns with this line exactly at midnight.
-                            Positioned(
-                              left: 0,
-                              right: 0,
-                              top: _kTimelinePad + 24 * _kHourHeight + 8,
-                              child: Container(
-                                height: 0.5,
-                                color: separatorColor,
+                            Positioned.fill(
+                              child: RepaintBoundary(
+                                child: staticTimeline!,
                               ),
                             ),
 
@@ -6377,17 +6380,11 @@ class _DayTimelineState extends State<_DayTimeline>
                     return Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        // Hour slot lines + labels
-                        for (int h = 0; h < 24; h++)
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            top: _kTimelinePad + h * _kHourHeight,
-                            child: _HourSlot(
-                              hour: h,
-                              lineStartInset: _kMultiDayHourLineInset,
-                            ),
-                          ),
+                        ..._hourSlotRows(
+                          ctx,
+                          labelColumnWidth: labelColW,
+                          lineStartInset: _kMultiDayHourLineInset,
+                        ),
 
                         // End-of-day hairline — same +8 offset as the animated
                         // path (line above) so the hairline sits at the same
@@ -6441,19 +6438,12 @@ class _DayTimelineState extends State<_DayTimeline>
               // ── Single-day layout ───────────────────────────────────────────
               return Stack(
                 children: [
-                  // Hour slot lines + labels — shifted down by the top pad.
                   // Use the same left inset as Multi-Day so the hairlines have
                   // identical visible lengths in both Day View modes.
-                  for (int h = 0; h < 24; h++)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      top: _kTimelinePad + h * _kHourHeight,
-                      child: _HourSlot(
-                        hour: h,
-                        lineStartInset: _kMultiDayHourLineInset,
-                      ),
-                    ),
+                  ..._hourSlotRows(
+                    context,
+                    lineStartInset: _kMultiDayHourLineInset,
+                  ),
 
                   // End-of-day hairline — +8 px so it sits at the same visual
                   // depth as every _HourSlot hairline (~7-8 px from slot top).
@@ -6539,16 +6529,30 @@ double _defaultHourLabelColW() =>
     _measureHourLabel('10:00 pm', TextScaler.noScaling) +
     _kHourLabelRightPadding;
 
-// Measures the shared hour-label column at the default system text size. At
-// larger sizes, the full label contracts before the column is allowed to grow.
-double _hourLabelColW(TextScaler scaler) {
+class _HourLabelMetrics {
+  const _HourLabelMetrics({required this.columnWidth, required this.labels});
+
+  final double columnWidth;
+  final List<String> labels;
+}
+
+_HourLabelMetrics? _cachedHourLabelMetrics;
+double? _cachedHourLabelFontSize;
+
+// Measures hour labels once per effective font size. The same metrics serve all
+// 24 rows and all three adjacent-day panels.
+_HourLabelMetrics _hourLabelMetrics(TextScaler scaler) {
+  final effectiveFontSize = scaler.scale(_kHourMeasureStyle.fontSize!);
+  final cached = _cachedHourLabelMetrics;
+  if (cached != null && _cachedHourLabelFontSize == effectiveFontSize) {
+    return cached;
+  }
+
   final defaultWidth = _defaultHourLabelColW();
   final availableTextWidth =
       defaultWidth - _kHourLabelLeftPadding - _kHourLabelRightPadding;
   var expandedWidth = defaultWidth;
 
-  // Only the final no-space fallback is allowed to grow the column. This
-  // keeps the timeline geometry fixed for the normal and compact forms.
   for (var hour = 0; hour < 24; hour++) {
     final tightWidth = _measureHourLabel(_tightHourLabel(hour), scaler);
     if (tightWidth > availableTextWidth) {
@@ -6560,35 +6564,76 @@ double _hourLabelColW(TextScaler scaler) {
       );
     }
   }
-  return expandedWidth;
+
+  final labelWidth =
+      expandedWidth - _kHourLabelLeftPadding - _kHourLabelRightPadding;
+  final labels = List<String>.generate(24, (hour) {
+    final fullLabel = _fullHourLabel(hour);
+    if (_measureHourLabel(fullLabel, scaler) <= labelWidth) return fullLabel;
+    final compactLabel = _compactHourLabel(hour);
+    if (_measureHourLabel(compactLabel, scaler) <= labelWidth) {
+      return compactLabel;
+    }
+    return _tightHourLabel(hour);
+  }, growable: false);
+
+  final metrics = _HourLabelMetrics(
+    columnWidth: expandedWidth,
+    labels: List<String>.unmodifiable(labels),
+  );
+  _cachedHourLabelFontSize = effectiveFontSize;
+  _cachedHourLabelMetrics = metrics;
+  return metrics;
+}
+
+double _hourLabelColW(TextScaler scaler) =>
+    _hourLabelMetrics(scaler).columnWidth;
+
+List<Widget> _hourSlotRows(
+  BuildContext context, {
+  required double lineStartInset,
+  double? labelColumnWidth,
+}) {
+  final metrics = _hourLabelMetrics(MediaQuery.textScalerOf(context));
+  final columnWidth = labelColumnWidth ?? metrics.columnWidth;
+  final hourLabelStyle = _kHourLabelStyle.copyWith(
+    color: resolveThemeColor(kSecondaryLabel, context),
+  );
+  final separatorColor = resolveThemeColor(kSeparatorColor, context);
+
+  return [
+    for (var hour = 0; hour < 24; hour++)
+      Positioned(
+        left: 0,
+        right: 0,
+        top: _kTimelinePad + hour * _kHourHeight,
+        child: _HourSlot(
+          label: metrics.labels[hour],
+          labelColumnWidth: columnWidth,
+          lineStartInset: lineStartInset,
+          hourLabelStyle: hourLabelStyle,
+          separatorColor: separatorColor,
+        ),
+      ),
+  ];
 }
 
 class _HourSlot extends StatelessWidget {
   const _HourSlot({
-    required this.hour,
+    required this.label,
+    required this.labelColumnWidth,
+    required this.hourLabelStyle,
+    required this.separatorColor,
     this.lineStartInset = 0.0,
   });
-  final int hour;
+  final String label;
+  final double labelColumnWidth;
+  final TextStyle hourLabelStyle;
+  final Color separatorColor;
   final double lineStartInset;
 
   @override
   Widget build(BuildContext context) {
-    final scaler = MediaQuery.textScalerOf(context);
-    final double colW = _hourLabelColW(scaler);
-    final availableTextWidth =
-        colW - _kHourLabelLeftPadding - _kHourLabelRightPadding;
-    final fullLabel = _fullHourLabel(hour);
-    final compactLabel = _compactHourLabel(hour);
-    final tightLabel = _tightHourLabel(hour);
-    final label = _measureHourLabel(fullLabel, scaler) <= availableTextWidth
-        ? fullLabel
-        : _measureHourLabel(compactLabel, scaler) <= availableTextWidth
-        ? compactLabel
-        : tightLabel;
-    final hourLabelStyle = _kHourLabelStyle.copyWith(
-      color: resolveThemeColor(kSecondaryLabel, context),
-    );
-    final separatorColor = resolveThemeColor(kSeparatorColor, context);
     // The label and hairline are placed in a Row with CrossAxisAlignment.center
     // so their midpoints align exactly.  The Row is pinned near the top of the
     // slot (top: 8 − half-of-row-height ≈ a few px) via an Align so the visual
@@ -6607,7 +6652,7 @@ class _HourSlot extends StatelessWidget {
             children: [
               // Time label — right-aligned inside the measured label column.
               SizedBox(
-                width: colW,
+                width: labelColumnWidth,
                 child: Padding(
                   padding: const EdgeInsets.only(
                     left: _kHourLabelLeftPadding,
@@ -7093,7 +7138,32 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
 
                   return AnimatedBuilder(
                     animation: _sepAnim,
-                    builder: (_, __) {
+                    child: RepaintBoundary(
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          ..._hourSlotRows(
+                            ctx,
+                            labelColumnWidth: labelColW,
+                            lineStartInset: _kMultiDayHourLineInset,
+                          ),
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            top: _kTimelinePad + 24 * _kHourHeight + 8,
+                            child: Container(
+                              height: 0.5,
+                              color: separatorColor,
+                            ),
+                          ),
+                          if (!goingLeft) contentColumn(Aminus1, posAminus1),
+                          contentColumn(A, posA),
+                          contentColumn(Aplus1, posAplus1),
+                          if (goingLeft) contentColumn(Aplus2, posAplus2),
+                        ],
+                      ),
+                    ),
+                    builder: (_, staticLayer) {
                       final t = _sepAnim.value;
                       // Left separator slides in from beyond the left edge.
                       // At t=0: -0.5 (hidden). At t=1: the shifted label
@@ -7116,35 +7186,7 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                         // endpoints.
                         clipBehavior: Clip.none,
                         children: [
-                          // ── Base layer: hour labels + full-width hairlines ──
-                          for (int h = 0; h < 24; h++)
-                            Positioned(
-                              left: 0,
-                              right: 0,
-                              top: _kTimelinePad + h * _kHourHeight,
-                              child: _HourSlot(
-                                hour: h,
-                                lineStartInset: _kMultiDayHourLineInset,
-                              ),
-                            ),
-                          // End-of-day hairline — +8 px so it sits at the same
-                          // visual depth as every _HourSlot hairline (~7-8 px
-                          // from slot top) and the indicator crosses it at midnight.
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            top: _kTimelinePad + 24 * _kHourHeight + 8,
-                            child: Container(
-                              height: 0.5,
-                              color: separatorColor,
-                            ),
-                          ),
-
-                          // ── Sliding day content columns ─────────────────
-                          if (!goingLeft) contentColumn(Aminus1, posAminus1),
-                          contentColumn(A, posA),
-                          contentColumn(Aplus1, posAplus1),
-                          if (goingLeft) contentColumn(Aplus2, posAplus2),
+                          Positioned.fill(child: staticLayer!),
 
                           // ── Animated vertical separators ───────────────
                           // Left sep slides from beyond-left → label-col edge.
