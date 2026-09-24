@@ -2775,8 +2775,8 @@ class LiquidGlassGelCircle extends StatelessWidget {
 ///
 /// Use this for new xmark, checkmark, and chevron buttons instead of
 /// constructing a raw `LiquidGlassButton`. It deliberately routes through
-/// [LiquidGlassGelCircle], whose static surface has no backdrop capture,
-/// refraction, blur, or optical sampling.
+/// [LiquidGlassGelCircle], whose hybrid surface uses one bounded, low-sigma
+/// backdrop blur without the full refraction or optical lens pipeline.
 class StaticLiquidGlassActionButton extends StatelessWidget {
   const StaticLiquidGlassActionButton({
     super.key,
@@ -2813,12 +2813,12 @@ class StaticLiquidGlassActionButton extends StatelessWidget {
   }
 }
 
-/// A non-interactive static Liquid Glass surface for cards and panels.
+/// A non-interactive, low-cost live Liquid Glass surface for cards and panels.
 ///
 /// This is intentionally separate from [StaticLiquidGlassActionButton]:
 /// there is no gesture detector, bloom animation, or tap callback. It paints
-/// only the inexpensive fixed-color material treatment and clips its child to
-/// the supplied shape.
+/// a translucent material over one bounded backdrop blur and clips its child
+/// to the supplied shape.
 class StaticLiquidGlassSurface extends StatelessWidget {
   const StaticLiquidGlassSurface({
     super.key,
@@ -2835,15 +2835,33 @@ class StaticLiquidGlassSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLightMode =
+        CupertinoTheme.brightnessOf(context) == Brightness.light;
     return CustomPaint(
       painter: _StaticLiquidGlassSurfacePainter(
         color: color,
         shape: shape,
         shadows: shadows,
+        isLightMode: isLightMode,
       ),
       child: ClipPath(
         clipper: ShapeBorderClipper(shape: shape),
-        child: child,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 6.0,
+            sigmaY: 6.0,
+            tileMode: TileMode.clamp,
+          ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: _staticGlassSurfaceGradient(
+                color,
+                isLightMode: isLightMode,
+              ),
+            ),
+            child: child,
+          ),
+        ),
       ),
     );
   }
@@ -2854,19 +2872,13 @@ class _StaticLiquidGlassSurfacePainter extends CustomPainter {
     required this.color,
     required this.shape,
     required this.shadows,
+    required this.isLightMode,
   });
 
   final Color color;
   final ShapeBorder shape;
   final List<BoxShadow> shadows;
-
-  Color _opaqueBlend(Color target, Color blend, double amount) {
-    return Color.lerp(
-      target.withValues(alpha: 1.0),
-      blend.withValues(alpha: 1.0),
-      amount,
-    )!.withValues(alpha: target.a);
-  }
+  final bool isLightMode;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2881,28 +2893,18 @@ class _StaticLiquidGlassSurfacePainter extends CustomPainter {
       );
     }
 
-    final top = _opaqueBlend(color, const Color(0xFFFFFFFF), 0.10);
-    final bottom = _opaqueBlend(color, const Color(0xFF000000), 0.06);
-    final fill = Paint()
-      ..isAntiAlias = true
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [top, color, bottom],
-        stops: const [0.0, 0.42, 1.0],
-      ).createShader(rect);
-    canvas.drawPath(path, fill);
-
-    // One restrained highlight follows the top edge without sampling the
-    // content behind the card.
-    final highlightPath = shape.getOuterPath(rect.deflate(0.7));
+    // The outline is intentionally painted separately from the translucent
+    // fill so the live backdrop remains visible below the material.
+    final highlightPath = shape.getOuterPath(rect.deflate(0.65));
     canvas.drawPath(
       highlightPath,
       Paint()
         ..isAntiAlias = true
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.7
-        ..color = const Color(0x24FFFFFF),
+        ..strokeWidth = isLightMode ? 0.8 : 0.65
+        ..color = isLightMode
+            ? const Color(0x52FFFFFF)
+            : const Color(0x38FFFFFF),
     );
   }
 
@@ -2910,7 +2912,31 @@ class _StaticLiquidGlassSurfacePainter extends CustomPainter {
   bool shouldRepaint(covariant _StaticLiquidGlassSurfacePainter oldDelegate) =>
       oldDelegate.color != color ||
       oldDelegate.shape != shape ||
-      oldDelegate.shadows != shadows;
+      oldDelegate.shadows != shadows ||
+      oldDelegate.isLightMode != isLightMode;
+}
+
+LinearGradient _staticGlassSurfaceGradient(
+  Color color, {
+  required bool isLightMode,
+}) {
+  final alpha = isLightMode ? 0.66 : 0.74;
+  final top = Color.lerp(
+    color.withValues(alpha: 1.0),
+    const Color(0xFFFFFFFF),
+    isLightMode ? 0.24 : 0.12,
+  )!.withValues(alpha: alpha + 0.04);
+  final bottom = Color.lerp(
+    color.withValues(alpha: 1.0),
+    const Color(0xFF000000),
+    isLightMode ? 0.08 : 0.14,
+  )!.withValues(alpha: alpha);
+  return LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [top, color.withValues(alpha: alpha), bottom],
+    stops: const [0.0, 0.38, 1.0],
+  );
 }
 
 /// A small, fixed-color glass surface for compact action buttons.
@@ -2937,12 +2963,19 @@ class _StaticLiquidGlassCircle extends StatelessWidget {
     return ClipOval(
       child: SizedBox.square(
         dimension: size,
-        child: CustomPaint(
-          painter: _StaticLiquidGlassCirclePainter(
-            color: color,
-            isLightMode: isLightMode,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 5.0,
+            sigmaY: 5.0,
+            tileMode: TileMode.clamp,
           ),
-          child: child,
+          child: CustomPaint(
+            painter: _StaticLiquidGlassCirclePainter(
+              color: color,
+              isLightMode: isLightMode,
+            ),
+            child: child,
+          ),
         ),
       ),
     );
@@ -2957,14 +2990,6 @@ class _StaticLiquidGlassCirclePainter extends CustomPainter {
 
   final Color color;
   final bool isLightMode;
-
-  Color _opaqueBlend(Color target, Color blend, double amount) {
-    return Color.lerp(
-      target.withValues(alpha: 1.0),
-      blend.withValues(alpha: 1.0),
-      amount,
-    )!.withValues(alpha: target.a);
-  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2984,28 +3009,48 @@ class _StaticLiquidGlassCirclePainter extends CustomPainter {
       );
     }
 
-    final top = _opaqueBlend(
+    final alpha = isLightMode ? 0.68 : 0.76;
+    final top = _blend(
       color,
       const Color(0xFFFFFFFF),
       isLightMode ? 0.16 : 0.08,
+      alpha + 0.05,
     );
-    final bottom = _opaqueBlend(
+    final bottom = _blend(
       color,
       const Color(0xFF000000),
       isLightMode ? 0.06 : 0.10,
+      alpha,
     );
     final fill = Paint()
       ..isAntiAlias = true
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [top, color, bottom],
-        stops: const [0.0, 0.46, 1.0],
+        colors: [top, color.withValues(alpha: alpha), bottom],
+        stops: const [0.0, 0.42, 1.0],
       ).createShader(bounds);
     canvas.drawCircle(center, radius, fill);
 
-    // A restrained upper-left highlight gives the static material its liquid
-    // edge without sampling or distorting the content below it.
+    // A soft specular bloom restores the rounded depth of the original lens
+    // without magnification or chromatic-aberration work.
+    canvas.drawCircle(
+      center - Offset(radius * 0.24, radius * 0.28),
+      radius * 0.58,
+      Paint()
+        ..isAntiAlias = true
+        ..shader = RadialGradient(
+          colors: const [Color(0x28FFFFFF), Color(0x00FFFFFF)],
+        ).createShader(
+          Rect.fromCircle(
+            center: center - Offset(radius * 0.24, radius * 0.28),
+            radius: radius * 0.58,
+          ),
+        ),
+    );
+
+    // The highlight follows the upper-left contour rather than outlining the
+    // whole circle uniformly, which keeps the material from looking flat.
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius - 1.0),
       math.pi * 1.08,
@@ -3015,10 +3060,12 @@ class _StaticLiquidGlassCirclePainter extends CustomPainter {
         ..isAntiAlias = true
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.8
-        ..color = const Color(0x35FFFFFF),
+        ..color = isLightMode
+            ? const Color(0x52FFFFFF)
+            : const Color(0x42FFFFFF),
     );
 
-    // Preserve the compact silhouette ring shared by the previous lens path.
+    // Preserve a quiet silhouette ring at the edge of the live material.
     canvas.drawCircle(
       center,
       radius - 0.25,
@@ -3026,8 +3073,18 @@ class _StaticLiquidGlassCirclePainter extends CustomPainter {
         ..isAntiAlias = true
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.5
-        ..color = const Color(0x26FFFFFF),
+        ..color = isLightMode
+            ? const Color(0x32FFFFFF)
+            : const Color(0x2AFFFFFF),
     );
+  }
+
+  Color _blend(Color target, Color blend, double amount, double alpha) {
+    return Color.lerp(
+      target.withValues(alpha: 1.0),
+      blend.withValues(alpha: 1.0),
+      amount,
+    )!.withValues(alpha: alpha);
   }
 
   @override
