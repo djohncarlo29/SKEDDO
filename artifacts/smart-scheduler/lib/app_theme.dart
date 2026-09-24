@@ -2972,10 +2972,11 @@ class StaticLiquidGlassSurface extends StatelessWidget {
       child: IntrinsicHeight(
         child: ClipPath(
           clipper: ShapeBorderClipper(shape: shape),
-          // Transform does not participate in intrinsic measurement, so the
-          // Notes card keeps its authored height while the native lens paints
-          // slightly beyond it. The ClipPath above remains the final exact
-          // surface mask.
+          // The outer transform is deliberately above the native lens so only
+          // the lens paint receives the overhang. The inverse transform on the
+          // lens child cancels it for the PlatformView and every Flutter child
+          // inside the surface: text, fades, icons, and placeholders retain
+          // their authored size and exact surface bounds.
           child: Transform.scale(
             scale: 1.06,
             child: LiquidGlassView(
@@ -3004,8 +3005,12 @@ class StaticLiquidGlassSurface extends StatelessWidget {
                 ),
                 // No LiquidGlassTouch: this surface is deliberately inert.
                 // Keep the original single-lens child layout for the Notes
-                // PlatformView; only the native glass paint overhangs.
-                child: SizedBox.expand(child: child),
+                // PlatformView. The inverse paint transform prevents the
+                // outer lens overhang from scaling the child content.
+                child: Transform.scale(
+                  scale: 1 / 1.06,
+                  child: SizedBox.expand(child: child),
+                ),
               ),
             ),
           ),
