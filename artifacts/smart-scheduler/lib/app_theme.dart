@@ -3005,9 +3005,10 @@ class StaticLiquidGlassSurface extends StatelessWidget {
                   style: _staticLiquidGlassStyle(
                     glassColor: glassColor,
                     cornerRadius: lensCornerRadius,
-                    // The exact-shape foreground painter owns this rim so it
-                    // is not carried beyond the clipped surface.
-                    showOpticalBorder: false,
+                    // The cancel-search control opts into the package's
+                    // directional optical rim. The surrounding ClipPath keeps
+                    // that highlight inside the exact surface silhouette.
+                    showOpticalBorder: showOpticalBorder,
                   ),
                   // No LiquidGlassTouch: this surface is deliberately inert.
                   // Keep the original single-lens child layout for the Notes
