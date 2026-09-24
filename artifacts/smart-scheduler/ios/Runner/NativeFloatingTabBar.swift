@@ -179,6 +179,27 @@ private struct NativeFluidSliderRow: View {
         )
     }
 
+    private func snappedValue(_ value: Double) -> Double {
+        let minimumValue = model.configuration.minimumValue
+        let maximumValue = model.configuration.maximumValue
+        let clampedValue = min(max(value, minimumValue), maximumValue)
+        let divisions = model.configuration.divisions
+        guard divisions > 0, maximumValue > minimumValue else {
+            return clampedValue
+        }
+
+        let step = (maximumValue - minimumValue) / Double(divisions)
+        guard step > 0 else { return clampedValue }
+        return min(
+            max(
+                minimumValue
+                    + ((clampedValue - minimumValue) / step).rounded() * step,
+                minimumValue
+            ),
+            maximumValue
+        )
+    }
+
     var body: some View {
         HStack(spacing: 8) {
             edgeIcon(name: model.configuration.minimumIcon, isLeading: true)
@@ -201,9 +222,24 @@ private struct NativeFluidSliderRow: View {
                 ),
                 in: model.configuration.minimumValue...model.configuration.maximumValue,
                 onEditingChanged: { isEditing in
+                    let currentValue = model.configuration.value
+                    // Match Flutter's continuous drag and snap on release;
+                    // Slider(step:) would quantize every movement instead.
+                    let value = isEditing ? currentValue : snappedValue(currentValue)
+
+                    if !isEditing, value != currentValue {
+                        var configuration = model.configuration
+                        configuration.value = value
+                        model.configuration = configuration
+                        relay.sink?([
+                            "phase": "change",
+                            "value": value,
+                        ])
+                    }
+
                     relay.sink?([
                         "phase": isEditing ? "start" : "end",
-                        "value": model.configuration.value,
+                        "value": value,
                     ])
                 }
             )
