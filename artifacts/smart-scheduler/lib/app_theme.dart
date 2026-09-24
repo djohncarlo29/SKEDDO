@@ -2833,10 +2833,16 @@ LiquidGlassStyle _staticLiquidGlassStyle({
   required Color glassColor,
   required double cornerRadius,
 }) {
-  return LiquidGlassButton.defaultStyle.copyWith(
+  // Build the shared optical style directly instead of copying
+  // LiquidGlassButton.defaultStyle. This keeps the renderer identical while
+  // ensuring action-button appearance settings, including its shadow policy,
+  // can never leak into non-interactive surfaces.
+  return LiquidGlassStyle(
     appearance: LiquidGlassAppearance(
       color: glassColor,
       blur: const LiquidGlassBlur(sigmaX: 2, sigmaY: 2),
+      // Static surfaces receive their app-owned BoxShadow outside the lens.
+      shadow: null,
     ),
     // Keep the historical rich renderer's geometry while removing the three
     // requested optical effects: refraction, magnification, and chromatic
