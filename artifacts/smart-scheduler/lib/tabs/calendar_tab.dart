@@ -89,6 +89,9 @@ const _kDayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 // ── Layout constants ──────────────────────────────────────────────────────────
 const double _kRowHeightList = 52.0;
 const double _kRowHeightMonthList = 64.0;
+// Year↔Month title ownership, view-state handoff, and Month List-only markers
+// all switch at this same point in the hierarchy morph.
+const double _kYearMonthHandoffThreshold = 0.5;
 // Month List content changes to Day View at the same midpoint used by the
 // header/content transition. Keep all List-only adornments on this boundary so
 // they cannot leak into the incoming Day View week strip.
@@ -667,10 +670,14 @@ class CalendarTabState extends State<CalendarTab>
   String get headerTitle {
     final t = _zoomCtrl.value;
     if (_zoomTargetView == CalendarView.month) {
-      return t < 0.5 ? '$_dispYear' : _kMonthNames[_dispMonth - 1];
+      return t < _kYearMonthHandoffThreshold
+          ? '$_dispYear'
+          : _kMonthNames[_dispMonth - 1];
     }
     if (_zoomTargetView == CalendarView.year) {
-      return t >= 0.5 ? _kMonthNames[_zoomMonthIdx] : '$_dispYear';
+      return t >= _kYearMonthHandoffThreshold
+          ? _kMonthNames[_zoomMonthIdx]
+          : '$_dispYear';
     }
     switch (_view) {
       case CalendarView.year:
@@ -688,7 +695,7 @@ class CalendarTabState extends State<CalendarTab>
     final t = _zoomCtrl.value;
     // During morph, return adjacent titles matching whichever view owns the title
     if (t > 0.01 && t < 0.99) {
-      if (t >= 0.5) {
+      if (t >= _kYearMonthHandoffThreshold) {
         final prevM = _dispMonth == 1
             ? (_dispYear - 1, 12)
             : (_dispYear, _dispMonth - 1);
@@ -1425,11 +1432,17 @@ class CalendarTabState extends State<CalendarTab>
     final t = _zoomCtrl.value;
     final target = _zoomTargetView;
     if (target != null) {
-      final crossedForward = _zoomPrevT < 0.5 && t >= 0.5;
-      final crossedReverse = _zoomPrevT >= 0.5 && t < 0.5;
+      final crossedForward =
+          _zoomPrevT < _kYearMonthHandoffThreshold &&
+          t >= _kYearMonthHandoffThreshold;
+      final crossedReverse =
+          _zoomPrevT >= _kYearMonthHandoffThreshold &&
+          t < _kYearMonthHandoffThreshold;
       if ((crossedForward || crossedReverse) &&
-          ((t >= 0.5 && target == CalendarView.month) ||
-              (t < 0.5 && target == CalendarView.year))) {
+          ((t >= _kYearMonthHandoffThreshold &&
+                  target == CalendarView.month) ||
+              (t < _kYearMonthHandoffThreshold &&
+                  target == CalendarView.year))) {
         setState(() => _view = target);
         _zoomTargetView = null;
         _notify();
@@ -2274,6 +2287,9 @@ class CalendarTabState extends State<CalendarTab>
                             year: _dispYear,
                             today: _today,
                             selectedDate: _selected,
+                            viewMode: _viewMode,
+                            monthListOrderByDay: _monthListOrderByDay,
+                            monthListOrderRevision: _monthListOrderRevision,
                             scrollOffset: _zoomScrollOffset,
                             monthScrollOffset: _savedMonthScrollOffset,
                             screenW: sw,
@@ -2954,6 +2970,9 @@ class _MorphOverlay extends StatelessWidget {
     required this.year,
     required this.today,
     required this.selectedDate,
+    required this.viewMode,
+    required this.monthListOrderByDay,
+    required this.monthListOrderRevision,
     required this.scrollOffset,
     required this.monthScrollOffset,
     required this.screenW,
@@ -2966,6 +2985,9 @@ class _MorphOverlay extends StatelessWidget {
   final int year;
   final DateTime today;
   final DateTime selectedDate;
+  final CalendarViewMode viewMode;
+  final Map<String, List<String>> monthListOrderByDay;
+  final int monthListOrderRevision;
   final double scrollOffset; // _yearScrollCtrl offset at zoom start
   /// Saved month-view scroll offset (_savedMonthScrollOffset).  Applied to all
   /// month-side (t=1) positions in the morph so the painter's end-frame matches
@@ -2993,6 +3015,45 @@ class _MorphOverlay extends StatelessWidget {
         _yearViewTextScaler(context).scale(yearFontSize) / yearFontSize;
     final monthDayScale = textScaleRatioFor(context, 17.0);
     final monthDayCircleDiameter = _calendarDayCircleDiameterFor(context);
+    final List<Color?> monthListDotColors;
+    if (viewMode == CalendarViewMode.list &&
+        t >= _kYearMonthHandoffThreshold) {
+      final month = zoomMonthIdx + 1;
+      final firstGridDay = DateTime(year, month, 1).subtract(
+        Duration(days: _firstWeekday(year, month)),
+      );
+      final monthListData = _monthListDataFor(
+        sourceEvents: EventStore.instance.events.value,
+        year: year,
+        month: month,
+        firstGridDay: firstGridDay,
+        totalRows: _totalWeekRows(year, month),
+        savedOrderByDay: monthListOrderByDay,
+        orderRevision: monthListOrderRevision,
+      );
+      monthListDotColors = List<Color?>.filled(
+        _daysInMonth(year, month) + 1,
+        null,
+      );
+      for (var day = 1; day < monthListDotColors.length; day++) {
+        final dateKey = _calendarDateKey(DateTime(year, month, day));
+        final dayEvents = [
+          for (final group in _groupMonthEvents(
+            monthListData.orderedEventsByDay[dateKey] ??
+                const <ScheduledEvent>[],
+          ))
+            ...group,
+        ];
+        if (dayEvents.isNotEmpty) {
+          monthListDotColors[day] = resolveEventCategoryColor(
+            context,
+            dayEvents.first,
+          );
+        }
+      }
+    } else {
+      monthListDotColors = const <Color?>[];
+    }
     return ClipRect(
       child: CustomPaint(
         painter: _MorphPainter(
@@ -3001,6 +3062,7 @@ class _MorphOverlay extends StatelessWidget {
           year: year,
           today: today,
           selectedDate: selectedDate,
+          monthListDotColors: monthListDotColors,
           scrollOffset: scrollOffset,
           monthScrollOffset: monthScrollOffset,
           screenW: screenW,
@@ -3246,6 +3308,7 @@ class _MorphPainter extends CustomPainter {
     required this.year,
     required this.today,
     required this.selectedDate,
+    required this.monthListDotColors,
     required this.scrollOffset,
     required this.monthScrollOffset,
     required this.screenW,
@@ -3267,6 +3330,7 @@ class _MorphPainter extends CustomPainter {
   final int year;
   final DateTime today;
   final DateTime selectedDate;
+  final List<Color?> monthListDotColors;
   final double scrollOffset;
   final double monthScrollOffset;
   final double screenW;
@@ -3294,6 +3358,7 @@ class _MorphPainter extends CustomPainter {
       o.zoomMonthIdx != zoomMonthIdx ||
       o.year != year ||
       o.selectedDate != selectedDate ||
+      o.monthListDotColors != monthListDotColors ||
       o.scrollOffset != scrollOffset ||
       o.monthScrollOffset != monthScrollOffset ||
       o.screenW != screenW ||
@@ -3630,6 +3695,29 @@ class _MorphPainter extends CustomPainter {
         ls: lerpDouble(-0.3, 0.0, t)!,
         wght: wght,
       );
+
+      // Month List's event markers belong to the Month side of this
+      // transition. They enter at the same 0.5 handoff as the shared title,
+      // then travel with their day cell to the exact settled Month List offset.
+      if (d < monthListDotColors.length) {
+        final dotColor = monthListDotColors[d];
+        if (dotColor != null) {
+          final dotCX = lerpDouble(yearCX, monthCX, t)!;
+          final monthDotCY =
+              monthCY -
+              monthDayCircleOffset +
+              kFixedTopPadding +
+              _monthListDotTop(viewModeRowHeight) +
+              _kMonthListDotDiameter / 2;
+          final dotCY = lerpDouble(yearCY, monthDotCY, t)!;
+          _p.color = dotColor;
+          canvas.drawCircle(
+            Offset(dotCX, dotCY),
+            _kMonthListDotDiameter / 2,
+            _p,
+          );
+        }
+      }
     }
 
     // 4. Week numbers + separator lines ────────────────────────────────────────
