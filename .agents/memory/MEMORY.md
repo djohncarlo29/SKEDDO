@@ -7,7 +7,7 @@
 - [Overlay scroll view primary controller reset](overlay-scroll-primary.md) — any CustomScrollView added as a Stack overlay inside CupertinoTabScaffold must set primary:false or it adopts the tab's scroll controller and resets the offset to 0.
 - [Calendar Day View dual-axis swipe isolation](calendar-swipe-isolation.md) — week-strip drags and timeline drags must use separate slideX variables; header sync via ValueNotifier + onStripSlide callback.
 - [Multi-Day current-time indicator](calendar-multiday-current-time-indicator.md) — left-side today stays full-width; the indicator follows the active day column and is clipped to the right side when today is on the right.
-- [Calendar year↔month single-Transform zoom](calendar-year-zoom-transform.md) — the only working approach: one Matrix4 on the entire _YearView; no per-cell morph widgets.
+- [Calendar year↔month shared-element morph](calendar-year-zoom-transform.md) — the current transition uses a per-element CustomPainter overlay; the prior single-Matrix4 note is stale.
 - [Calendar 3-panel swipe ±2 bug](calendar-3panel-plusminus2-bug.md) — early doThen remaps panel slots mid-animation, carrying header one extra step; fix is doThen at 100% only.
 - [Calendar month panel clipping](calendar-month-panel-clipping.md) — clip each horizontally positioned month panel before vertical strip transforms so off-screen week rows cannot bleed into the DOW boundary.
 - [ScrollController remount resync](calendar-scrollctrl-remount-resync.md) — a key-forced Scrollable remount resets to the controller's stale original initialScrollOffset, not the last jumpTo() value; recreate before remounting.
