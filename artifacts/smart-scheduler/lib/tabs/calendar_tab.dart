@@ -9,7 +9,9 @@ import 'package:flutter/gestures.dart' show DeviceGestureSettings, kTouchSlop;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/physics.dart';
-import 'package:flutter/services.dart' show HapticFeedback;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/services.dart' show HapticFeedback, MethodChannel;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -21,6 +23,7 @@ import '../widgets/native_text_input.dart';
 import '../widgets/text_editing_helpers.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/search_bar_widget.dart';
+import '../widgets/selection_handle_haptics.dart';
 import '../widgets/vertical_edge_fade.dart';
 import '../widgets/horizontal_edge_fade.dart';
 import '../widgets/action_panel.dart';
@@ -42,6 +45,10 @@ import 'events_tab.dart'
       wrapSearchEventTileWithPressScale;
 import '../widgets/smart_search_results.dart';
 import '../widgets/delete_confirmation_sheet.dart';
+
+const MethodChannel _dropMetadataChannel = MethodChannel(
+  'com.smartscheduler/drop_metadata',
+);
 
 void _dismissModalSheetFocus() {
   NativeTextInput.unfocusAll();
@@ -8307,6 +8314,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           style: _kLabelStyle,
           cursorColor: renderCategoryColor(_categoryColor, context),
           decoration: null,
+          selectionControls: hapticQuietCupertinoTextSelectionControls,
           textCapitalization: TextCapitalization.sentences,
           maxLines: maxLinesOverride ?? (multiline ? null : 1),
           minLines: minLinesOverride ?? (multiline ? 3 : 1),
@@ -10080,6 +10088,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     onChanged: (_) => setState(() {}),
                     textCapitalization: TextCapitalization.sentences,
                     decoration: null,
+                    selectionControls:
+                        hapticQuietCupertinoTextSelectionControls,
                     textInputAction: TextInputAction.next,
                     onTap: () {
                       if (shouldMoveTextFieldCaretToEnd(focusNode)) {
@@ -10151,11 +10161,11 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     ctrl.clear();
                     setState(() {});
                   },
-                  child: Align(
-                    // Center the smaller clear icon in the same action slot as
-                    // the map pin. _locationClearFieldGap() measures this
-                    // visual leading inset so the fade ends 8 px before it.
-                    alignment: Alignment.center,
+                   child: Align(
+                     // Keep the clear icon's right edge on the same trailing
+                     // edge as the map-pin circle. The row's outer 16 px
+                     // padding then applies equally to both actions.
+                     alignment: Alignment.centerRight,
                     child: Icon(
                       kSearchClearCircleIcon,
                       color: kEmptyStateIcon,
@@ -11232,6 +11242,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
       // the display name on DataReaderFile. Read the URI name before consuming
       // the file so the row can preserve the source filename.
       String? uriName;
+      Uri? fileUri;
       if (reader.canProvide(Formats.fileUri)) {
         final uriCompleter = Completer<Uri?>();
         final uriProgress = reader.getValue<Uri>(
@@ -11245,18 +11256,42 @@ class _NewEventSheetState extends State<_NewEventSheet>
         );
         if (uriProgress != null) {
           final uri = await uriCompleter.future;
+          fileUri = uri;
           if (uri != null && uri.pathSegments.isNotEmpty) {
             final lastSegment = Uri.decodeComponent(uri.pathSegments.last);
-            if (lastSegment.trim().isNotEmpty) uriName = lastSegment;
+            final candidate = _usableDroppedFileName(lastSegment);
+            if (candidate != null &&
+                (uri.scheme != 'content' ||
+                    _attachmentExtension(candidate).isNotEmpty)) {
+              uriName = candidate;
+            }
+          }
+          if (uriName == null && uri != null) {
+            for (final key in const ['displayName', 'filename', 'name']) {
+              final queryName = uri.queryParameters[key];
+              if (_usableDroppedFileName(queryName) != null) {
+                uriName = queryName;
+                break;
+              }
+            }
           }
         }
       }
+      final nativeMetadata = await _readAndroidDropMetadata(fileUri);
+      final nativeName = _usableDroppedFileName(
+        nativeMetadata?['displayName'] as String?,
+      );
+      final nativeMimeType = nativeMetadata?['mimeType'] as String?;
 
       final fileFormats = reader
           .getFormats(Formats.standardFormats)
           .whereType<FileFormat>()
           .toList(growable: false);
       final format = fileFormats.isEmpty ? null : fileFormats.first;
+      final formatExtension = _droppedFormatExtension(
+        format,
+        reader.platformFormats,
+      ) ?? _droppedMimeExtension(nativeMimeType);
       final completer = Completer<PlatformFile?>();
 
       void complete(PlatformFile? file) {
@@ -11267,11 +11302,16 @@ class _NewEventSheetState extends State<_NewEventSheet>
         try {
           final bytes = await dataFile.readAll();
           final suggestedName = await reader.getSuggestedName();
-          final name =
+          final sourceName =
+              nativeName ??
               _usableDroppedFileName(dataFile.fileName) ??
               _usableDroppedFileName(suggestedName) ??
               _usableDroppedFileName(uriName) ??
-              'Attachment';
+              'Dropped file';
+          final name = _appendDroppedFormatExtension(
+            sourceName,
+            formatExtension,
+          );
           complete(PlatformFile(name: name, size: bytes.length, bytes: bytes));
         } catch (_) {
           complete(null);
@@ -11285,18 +11325,171 @@ class _NewEventSheetState extends State<_NewEventSheet>
     return dropped;
   }
 
+  Future<Map<String, Object?>?> _readAndroidDropMetadata(Uri? uri) async {
+    if (defaultTargetPlatform != TargetPlatform.android ||
+        uri?.scheme != 'content') {
+      return null;
+    }
+    try {
+      return await _dropMetadataChannel.invokeMapMethod<String, Object?>(
+        'resolveUriMetadata',
+        {'uri': uri.toString()},
+      );
+    } catch (_) {
+      // Some providers grant read access for the drop bytes but not metadata.
+      // Keep the normal DataReader and URI fallbacks working in that case.
+      return null;
+    }
+  }
+
   /// Reject names emitted by drag providers as placeholders. Smart Hub can
   /// expose "DROP" as a drag label rather than the source file name.
   String? _usableDroppedFileName(String? value) {
-    final name = value?.trim();
-    if (name == null || name.isEmpty) return null;
+    final rawName = value?.trim();
+    if (rawName == null || rawName.isEmpty) return null;
+    var name = rawName.replaceAll('\\', '/').split('/').last.trim();
+    final colon = name.lastIndexOf(':');
+    if (colon >= 0 && colon < name.length - 1) {
+      name = name.substring(colon + 1).trim();
+    }
+    if (name.isEmpty) return null;
     final normalized = name.toLowerCase();
     if (normalized == 'drop' ||
         normalized == 'dropped attachment' ||
-        normalized == 'dropped file') {
+        normalized == 'dropped file' ||
+        normalized == 'attachment') {
       return null;
     }
     return name;
+  }
+
+  String _appendDroppedFormatExtension(String name, String? extension) {
+    if (extension == null || extension.isEmpty) return name;
+    final existing = _attachmentExtension(name).toLowerCase();
+    if (existing.isNotEmpty) return name;
+    return '$name.$extension';
+  }
+
+  String? _droppedFormatExtension(
+    FileFormat? format,
+    List<PlatformFormat> platformFormats,
+  ) {
+    if (format == Formats.jpeg) return 'jpg';
+    if (format == Formats.png) return 'png';
+    if (format == Formats.svg) return 'svg';
+    if (format == Formats.gif) return 'gif';
+    if (format == Formats.webp) return 'webp';
+    if (format == Formats.tiff) return 'tiff';
+    if (format == Formats.bmp) return 'bmp';
+    if (format == Formats.ico) return 'ico';
+    if (format == Formats.heic) return 'heic';
+    if (format == Formats.heif) return 'heif';
+    if (format == Formats.mp4) return 'mp4';
+    if (format == Formats.mov) return 'mov';
+    if (format == Formats.m4v) return 'm4v';
+    if (format == Formats.avi) return 'avi';
+    if (format == Formats.mpeg) return 'mpeg';
+    if (format == Formats.webm) return 'webm';
+    if (format == Formats.ogg) return 'ogg';
+    if (format == Formats.wmv) return 'wmv';
+    if (format == Formats.flv) return 'flv';
+    if (format == Formats.mkv) return 'mkv';
+    if (format == Formats.ts) return 'ts';
+    if (format == Formats.mp3) return 'mp3';
+    if (format == Formats.oga) return 'oga';
+    if (format == Formats.aac) return 'aac';
+    if (format == Formats.wav) return 'wav';
+    if (format == Formats.opus) return 'opus';
+    if (format == Formats.flac) return 'flac';
+    if (format == Formats.pdf) return 'pdf';
+    if (format == Formats.doc) return 'doc';
+    if (format == Formats.docx) return 'docx';
+    if (format == Formats.epub) return 'epub';
+    if (format == Formats.md) return 'md';
+    if (format == Formats.csv) return 'csv';
+    if (format == Formats.xls) return 'xls';
+    if (format == Formats.xlsx) return 'xlsx';
+    if (format == Formats.ppt) return 'ppt';
+    if (format == Formats.pptx) return 'pptx';
+    if (format == Formats.rtf) return 'rtf';
+    if (format == Formats.json) return 'json';
+    if (format == Formats.zip) return 'zip';
+    if (format == Formats.tar) return 'tar';
+    if (format == Formats.gzip) return 'gz';
+    if (format == Formats.bzip2) return 'bz2';
+    if (format == Formats.xz) return 'xz';
+    if (format == Formats.rar) return 'rar';
+    if (format == Formats.jar) return 'jar';
+    if (format == Formats.sevenZip) return '7z';
+    if (format == Formats.dmg) return 'dmg';
+    if (format == Formats.iso) return 'iso';
+    if (format == Formats.deb) return 'deb';
+    if (format == Formats.rpm) return 'rpm';
+    if (format == Formats.apk) return 'apk';
+    if (format == Formats.exe) return 'exe';
+    if (format == Formats.msi) return 'msi';
+    if (format == Formats.dll) return 'dll';
+
+    final knownMimeExtensions = <String, String>{
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/svg+xml': 'svg',
+      'image/gif': 'gif',
+      'image/webp': 'webp',
+      'application/pdf': 'pdf',
+      'text/csv': 'csv',
+      'application/json': 'json',
+      'application/zip': 'zip',
+      'audio/mpeg': 'mp3',
+      'audio/wav': 'wav',
+      'video/mp4': 'mp4',
+    };
+    for (final platformFormat in platformFormats) {
+      final extension = knownMimeExtensions[platformFormat.toLowerCase()];
+      if (extension != null) return extension;
+    }
+    return null;
+  }
+
+  String? _droppedMimeExtension(String? mimeType) {
+    final mime = mimeType?.split(';').first.trim().toLowerCase();
+    if (mime == null || mime.isEmpty) return null;
+    const extensions = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/svg+xml': 'svg',
+      'image/gif': 'gif',
+      'image/webp': 'webp',
+      'image/heic': 'heic',
+      'image/heif': 'heif',
+      'application/pdf': 'pdf',
+      'text/plain': 'txt',
+      'text/markdown': 'md',
+      'text/csv': 'csv',
+      'application/json': 'json',
+      'application/rtf': 'rtf',
+      'application/zip': 'zip',
+      'application/vnd.rar': 'rar',
+      'application/x-7z-compressed': '7z',
+      'application/vnd.ms-excel': 'xls',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+          'xlsx',
+      'application/msword': 'doc',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+          'docx',
+      'application/vnd.ms-powerpoint': 'ppt',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+          'pptx',
+      'audio/mpeg': 'mp3',
+      'audio/wav': 'wav',
+      'audio/ogg': 'ogg',
+      'audio/aac': 'aac',
+      'audio/flac': 'flac',
+      'video/mp4': 'mp4',
+      'video/quicktime': 'mov',
+      'video/webm': 'webm',
+    };
+    return extensions[mime];
   }
 
   Future<void> _onAttachmentDrop(PerformDropEvent event) async {

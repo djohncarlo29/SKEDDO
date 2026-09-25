@@ -2,6 +2,7 @@
 - [Transparent icon overlay compositing](transparent-icon-overlay-compositing.md) — BlendMode.clear holes must stay on the AppShell canvas; move icon opacity/scale into the painter instead of wrapping it in layers.
 - [AnimatedBuilder child caching](animated-builder-child-caching.md) — never pass setState-driven widgets as AnimatedBuilder.child; move them inline into the builder callback instead.
 - [Native STT channels](native-stt-channels.md) — speech_to_text replaced by native MethodChannel+EventChannel; iOS uses SFSpeechRecognizer, Android uses SpeechRecognizer.
+- [Android selection-handle haptics](android-selection-handle-haptics.md) — suppress only selection-click feedback during handle presses; keep tap selection and unrelated haptics intact.
 - [Events Tab keyboard dismissal root cause](events-tab-keyboard-root-cause.md) — keyboard dismissed by off-screen DCV CustomScrollView winning gesture arena; fix is SizedBox.expand when label.isEmpty.
 - [Overlay scroll view primary controller reset](overlay-scroll-primary.md) — any CustomScrollView added as a Stack overlay inside CupertinoTabScaffold must set primary:false or it adopts the tab's scroll controller and resets the offset to 0.
 - [Calendar Day View dual-axis swipe isolation](calendar-swipe-isolation.md) — week-strip drags and timeline drags must use separate slideX variables; header sync via ValueNotifier + onStripSlide callback.

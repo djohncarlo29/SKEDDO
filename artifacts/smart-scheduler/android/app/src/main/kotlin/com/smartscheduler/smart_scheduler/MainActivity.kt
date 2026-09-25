@@ -1,13 +1,20 @@
 package com.smartscheduler.smart_scheduler
 
+import android.app.Activity
+import android.content.res.Configuration
+import android.net.Uri
+import android.provider.OpenableColumns
+import android.util.TypedValue
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.platform.PlatformPlugin
 import io.flutter.plugin.common.MethodChannel
-import android.content.res.Configuration
-import android.util.TypedValue
+import io.flutter.plugin.platform.SelectionQuietPlatformPlugin
 
 class MainActivity : FlutterActivity() {
     private val textScaleChannel = "com.smartscheduler/text_scale"
+    private val dropMetadataChannel = "com.smartscheduler/drop_metadata"
+    private val selectionHapticsChannel = "com.smartscheduler/selection_haptics"
     // These are probe sizes, not app-defined text stops. They let Flutter
     // reproduce Android's non-linear accessibility curve for every native
     // setting exposed by the device.
@@ -65,8 +72,70 @@ class MainActivity : FlutterActivity() {
                     )
                 )
             }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, dropMetadataChannel)
+            .setMethodCallHandler { call, result ->
+                if (call.method != "resolveUriMetadata") {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                }
+                val uriValue = call.argument<String>("uri")
+                if (uriValue.isNullOrBlank()) {
+                    result.success(null)
+                    return@setMethodCallHandler
+                }
+                result.success(resolveUriMetadata(Uri.parse(uriValue)))
+            }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, selectionHapticsChannel)
+            .setMethodCallHandler { call, result ->
+                if (call.method != "setSelectionHandleDragging") {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                }
+                SelectionQuietPlatformPlugin.setSelectionHandleDragging(
+                    call.arguments as? Boolean ?: false,
+                )
+                result.success(null)
+            }
         nativeStt = NativeSttPlugin(this, flutterEngine.dartExecutor.binaryMessenger)
         offlineOcr = NativeOfflineOcrPlugin(this, flutterEngine.dartExecutor.binaryMessenger)
+    }
+
+    override fun providePlatformPlugin(
+        activity: Activity?,
+        flutterEngine: FlutterEngine,
+    ): PlatformPlugin {
+        return SelectionQuietPlatformPlugin(
+            this,
+            flutterEngine.platformChannel,
+            this,
+        )
+    }
+
+    private fun resolveUriMetadata(uri: Uri): Map<String, String?> {
+        val displayName = if (uri.scheme.equals("content", ignoreCase = true)) {
+            runCatching {
+                contentResolver.query(
+                    uri,
+                    arrayOf(OpenableColumns.DISPLAY_NAME),
+                    null,
+                    null,
+                    null,
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val nameColumn = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (nameColumn >= 0) cursor.getString(nameColumn) else null
+                    } else {
+                        null
+                    }
+                }
+            }.getOrNull()
+        } else if (uri.scheme.equals("file", ignoreCase = true)) {
+            uri.lastPathSegment
+        } else {
+            null
+        }
+        val mimeType = runCatching { contentResolver.getType(uri) }.getOrNull()
+        return mapOf("displayName" to displayName, "mimeType" to mimeType)
     }
 
     private fun nativeFontScaleStops(): List<Double> {
@@ -152,6 +221,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        SelectionQuietPlatformPlugin.setSelectionHandleDragging(false)
         offlineOcr?.dispose()
         nativeStt?.dispose()
         super.onDestroy()

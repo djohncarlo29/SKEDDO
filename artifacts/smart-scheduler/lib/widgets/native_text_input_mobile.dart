@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'edge_fade_metrics.dart';
+import 'selection_handle_haptics.dart';
 import 'text_editing_helpers.dart';
 
 /// Cupertino-native text input used across the app's search bars and the
@@ -221,7 +222,9 @@ class _NativeTextInputState extends State<NativeTextInput> {
           : TextAlignVertical.center,
       padding: widget.padding,
       cursorColor: widget.cursorColor,
-      selectionControls: widget.selectionControls,
+      selectionControls:
+          widget.selectionControls ??
+          hapticQuietCupertinoTextSelectionControls,
       cursorOpacityAnimates: true,
       enableInteractiveSelection: true,
       onTap: widget.caretToEndOnFirstTap

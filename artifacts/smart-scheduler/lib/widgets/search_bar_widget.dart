@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/gestures.dart' show DeviceGestureSettings, kTouchSlop;
+import 'package:flutter/gestures.dart'
+    show DeviceGestureSettings, kTouchSlop;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import '../app_theme.dart';
 import '../services/speech_service.dart';
 import 'native_text_input.dart';
+import 'selection_handle_haptics.dart';
 import 'fixed_size_icon.dart';
 import 'horizontal_edge_fade.dart';
 
@@ -28,8 +30,7 @@ const String kSbGroupId = 'smart-scheduler-text-fields';
 /// identity makes EditableText recreate the selection overlay and can disrupt
 /// cursor/selection gestures mid-interaction.
 class TintedCupertinoTextSelectionControls
-    extends CupertinoTextSelectionControls
-    with TextSelectionHandleControls {
+    extends HapticQuietCupertinoTextSelectionControls {
   TintedCupertinoTextSelectionControls(this.colorNotifier);
 
   final ValueNotifier<Color> colorNotifier;

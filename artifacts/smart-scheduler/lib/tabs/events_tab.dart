@@ -27,6 +27,7 @@ import '../widgets/text_editing_helpers.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/search_bar_widget.dart';
+import '../widgets/selection_handle_haptics.dart';
 import '../widgets/horizontal_edge_fade.dart';
 import '../widgets/app_switch.dart';
 import '../widgets/fixed_size_icon.dart';
@@ -13066,6 +13067,8 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                                             height: kLineHeight,
                                           ),
                                           cursorColor: resolveAccentColor(context),
+                                          selectionControls:
+                                              hapticQuietCupertinoTextSelectionControls,
                                           padding: EdgeInsets.only(
                                             left: 0,
                                             right:
@@ -15019,8 +15022,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                       ctrl.clear();
                       setState(() {});
                     },
-                    child: Center(
-                      child: Icon(
+                     child: Align(
+                       // Keep the clear icon's right edge on the same trailing
+                       // edge as the map-pin circle. The row's outer 16 px
+                       // padding then applies equally to both actions.
+                       alignment: Alignment.centerRight,
+                       child: Icon(
                         kSearchClearCircleIcon,
                         color: kEmptyStateIcon,
                         size: clearIconSize,
