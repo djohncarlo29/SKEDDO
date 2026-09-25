@@ -4100,6 +4100,11 @@ class _MonthView extends StatelessWidget {
         // section wrapper's trailing 16 pt, rather than retaining an estimated
         // event-tile height.
         final monthListUsesNaturalHeight = showMonthList && !selectedDayIsEmpty;
+        // The selected day’s Month List content is the virtual final strip
+        // after the calendar week rows. Like every strip below the selected
+        // week, it travels down by the same viewport-scaled offset and returns
+        // from there when the Month↔Day transition reverses.
+        final monthListStripOffsetY = constraints.maxHeight * collapseProgress;
 
         final document = ClipRect(
           child: Stack(
@@ -4147,30 +4152,44 @@ class _MonthView extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (showMonthList) ...[
-                    _monthSelectedEventsWidgetFor(
-                      data: monthListData!,
-                      selectedDayIndex: selectedListChildIndex,
-                      height: monthListUsesNaturalHeight ? null : listContentH,
-                      emptyStateHeight: selectedListIsEmpty
-                          ? listContentH
-                          : availableListEmptyStateH,
-                      onEditEvent: onEditEvent,
-                      scrollController: scrollController,
-                      scrollViewportKey: scrollViewportKey,
-                      onOrderChanged: onMonthListOrderChanged,
-                    ),
-                    if (monthListUsesNaturalHeight)
-                      SizedBox(height: eventContentClearance),
-                  ] else if (emptyH > 0)
-                    SizedBox(
-                      height: emptyH,
+                  if (showMonthList)
+                    Transform.translate(
+                      offset: Offset(0, monthListStripOffsetY),
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          SizedBox(
-                            height: emptyStateH,
+                          _monthSelectedEventsWidgetFor(
+                            data: monthListData!,
+                            selectedDayIndex: selectedListChildIndex,
+                            height: monthListUsesNaturalHeight
+                                ? null
+                                : listContentH,
+                            emptyStateHeight: selectedListIsEmpty
+                                ? listContentH
+                                : availableListEmptyStateH,
+                            onEditEvent: onEditEvent,
+                            scrollController: scrollController,
+                            scrollViewportKey: scrollViewportKey,
+                            onOrderChanged: onMonthListOrderChanged,
+                          ),
+                          if (monthListUsesNaturalHeight)
+                            SizedBox(height: eventContentClearance),
+                        ],
+                      ),
+                    )
+                  else if (emptyH > 0)
+                    Transform.translate(
+                      offset: Offset(0, monthListStripOffsetY),
+                      child: SizedBox(
+                        height: emptyH,
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              height: emptyStateH,
                             child: Opacity(
-                              opacity: collapseProgress <
+                              opacity:
+                                  collapseProgress <
                                       _kMonthDayTransitionThreshold
                                   ? (1.0 - collapseProgress * 4.0).clamp(
                                       0.0,
@@ -4190,12 +4209,13 @@ class _MonthView extends StatelessWidget {
                                     fontSize: kEmptyStateLabelFontSize,
                                     color: secondaryC,
                                   ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          SizedBox(height: emptyH - emptyStateH),
-                        ],
+                            SizedBox(height: emptyH - emptyStateH),
+                          ],
+                        ),
                       ),
                     ),
                 ],
