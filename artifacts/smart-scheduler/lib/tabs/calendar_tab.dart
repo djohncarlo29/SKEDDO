@@ -193,6 +193,8 @@ bool _sameDay(DateTime a, DateTime b) =>
 String _calendarDateKey(DateTime date) =>
     '${date.year}-${date.month}-${date.day}';
 
+void _ignoreCalendarDayTap(DateTime _) {}
+
 DateTime? _calendarEventDate(String? rawDate) {
   if (rawDate == null || rawDate.trim().isEmpty) return null;
   final parsed = DateTime.tryParse(rawDate.trim());
@@ -397,6 +399,10 @@ class CalendarTabState extends State<CalendarTab>
   ScrollController _monthViewScrollCtrl = ScrollController();
   final GlobalKey _monthViewScrollViewportKey = GlobalKey();
   final Map<String, List<String>> _monthListOrderByDay = {};
+  int _monthListOrderRevision = 0;
+  // The hierarchy AnimatedBuilder runs every transition frame. Reuse the
+  // preview panel widget when its actual visual inputs have not changed.
+  final Map<String, _MonthView> _monthPreviewWidgetCache = {};
   // The single-day timeline has no dependency on the hierarchy animation.
   // Keep the widget instances stable so the parent transition builder can
   // move the three panels without marking all 72 hour rows dirty every frame.
@@ -1818,7 +1824,68 @@ class CalendarTabState extends State<CalendarTab>
     _monthListOrderByDay[dayKey] = [
       for (final event in orderedEvents) event.id,
     ];
+    _monthListOrderRevision++;
     if (mounted) setState(() {});
+  }
+
+  _MonthView _monthPreviewView({
+    required bool isPrev,
+    required int year,
+    required int month,
+    required DateTime today,
+    required DateTime selectedDate,
+    required double collapseProgress,
+    required int collapseWeekRow,
+    required double rowHeight,
+    required DateTime? pendingBloomDate,
+    required bool suppressScaleAnimation,
+  }) {
+    final panelKey = '$year-$month-${selectedDate.day}';
+    final scrollController = _previewScrollCtrl(
+      isPrev: isPrev,
+      key: panelKey,
+    );
+    final cacheKey = [
+      panelKey,
+      '${today.year}-${today.month}-${today.day}',
+      collapseProgress,
+      collapseWeekRow,
+      rowHeight,
+      _viewMode.index,
+      pendingBloomDate == null
+          ? ''
+          : '${pendingBloomDate.year}-${pendingBloomDate.month}-${pendingBloomDate.day}',
+      suppressScaleAnimation,
+      widget.daySubMode.index,
+      _monthListOrderRevision,
+      identityHashCode(scrollController),
+    ].join('|');
+    final cached = _monthPreviewWidgetCache[cacheKey];
+    if (cached != null) return cached;
+
+    final preview = _MonthView(
+      key: ValueKey(panelKey),
+      year: year,
+      month: month,
+      today: today,
+      selectedDate: selectedDate,
+      collapseProgress: collapseProgress,
+      collapseWeekRow: collapseWeekRow,
+      rowHeight: rowHeight,
+      viewMode: _viewMode,
+      pendingBloomDate: pendingBloomDate,
+      suppressScaleAnimation: suppressScaleAnimation,
+      scrollController: scrollController,
+      monthListOrderByDay: _monthListOrderByDay,
+      monthListOrderRevision: _monthListOrderRevision,
+      onMonthListOrderChanged: _onMonthListOrderChanged,
+      onDayTap: _ignoreCalendarDayTap,
+    );
+    if (_monthPreviewWidgetCache.length >= 8) {
+      _monthPreviewWidgetCache.remove(_monthPreviewWidgetCache.keys.first);
+    }
+    _monthPreviewWidgetCache[cacheKey] = preview;
+    return preview;
   }
 
   Widget _singleDayTimelineFor(DateTime date) {
@@ -2232,32 +2299,19 @@ class CalendarTabState extends State<CalendarTab>
                                  child: Transform.translate(
                                    offset: Offset(0, stripSlideY),
                                    child: IgnorePointer(
-                                     child: _MonthView(
-                                    key: ValueKey(
-                                      '$prevPanelYear-$prevPanelMonth-${prevPanelSel.day}',
-                                    ),
-                                    year: prevPanelYear,
-                                    month: prevPanelMonth,
-                                    today: _today,
-                                    selectedDate: prevPanelSel,
-                                    collapseProgress: prevColT,
-                                    collapseWeekRow: prevColRow,
-                                    rowHeight: rowHeight,
-                                     viewMode: _viewMode,
-                                    pendingBloomDate: _pendingBloomDate,
-                                     suppressScaleAnimation:
-                                         inDayView && slideX != 0.0,
-                                    scrollController: _previewScrollCtrl(
-                                      isPrev: true,
-                                      key:
-                                          '$prevPanelYear-$prevPanelMonth-${prevPanelSel.day}',
-                                    ),
-                                     monthListOrderByDay:
-                                         _monthListOrderByDay,
-                                     onMonthListOrderChanged:
-                                         _onMonthListOrderChanged,
-                                    onDayTap: (_) {},
-                                     ),
+                                      child: _monthPreviewView(
+                                        isPrev: true,
+                                        year: prevPanelYear,
+                                        month: prevPanelMonth,
+                                        today: _today,
+                                        selectedDate: prevPanelSel,
+                                        collapseProgress: prevColT,
+                                        collapseWeekRow: prevColRow,
+                                        rowHeight: rowHeight,
+                                        pendingBloomDate: _pendingBloomDate,
+                                        suppressScaleAnimation:
+                                            inDayView && slideX != 0.0,
+                                      ),
                                    ),
                                 ),
                               ),
@@ -2295,6 +2349,8 @@ class CalendarTabState extends State<CalendarTab>
                                       _monthViewScrollViewportKey,
                                    monthListOrderByDay:
                                        _monthListOrderByDay,
+                                   monthListOrderRevision:
+                                       _monthListOrderRevision,
                                    onMonthListOrderChanged:
                                        _onMonthListOrderChanged,
                                   collapseScrollOffset: _collapseScrollOffset,
@@ -2353,31 +2409,19 @@ class CalendarTabState extends State<CalendarTab>
                                  child: Transform.translate(
                                    offset: Offset(0, stripSlideY),
                                    child: IgnorePointer(
-                                     child: _MonthView(
-                                    key: ValueKey(
-                                      '$nextPanelYear-$nextPanelMonth-${nextPanelSel.day}',
-                                    ),
-                                    year: nextPanelYear,
-                                    month: nextPanelMonth,
-                                    today: _today,
-                                    selectedDate: nextPanelSel,
-                                    collapseProgress: nextColT,
-                                    collapseWeekRow: nextColRow,
-                                    rowHeight: rowHeight,
-                                     viewMode: _viewMode,
-                                     suppressScaleAnimation:
-                                         inDayView && slideX != 0.0,
-                                    scrollController: _previewScrollCtrl(
-                                      isPrev: false,
-                                      key:
-                                          '$nextPanelYear-$nextPanelMonth-${nextPanelSel.day}',
-                                    ),
-                                     monthListOrderByDay:
-                                         _monthListOrderByDay,
-                                     onMonthListOrderChanged:
-                                         _onMonthListOrderChanged,
-                                    onDayTap: (_) {},
-                                     ),
+                                      child: _monthPreviewView(
+                                        isPrev: false,
+                                        year: nextPanelYear,
+                                        month: nextPanelMonth,
+                                        today: _today,
+                                        selectedDate: nextPanelSel,
+                                        collapseProgress: nextColT,
+                                        collapseWeekRow: nextColRow,
+                                        rowHeight: rowHeight,
+                                        pendingBloomDate: null,
+                                        suppressScaleAnimation:
+                                            inDayView && slideX != 0.0,
+                                      ),
                                    ),
                                 ),
                               ),
@@ -2977,6 +3021,223 @@ class _MorphOverlay extends StatelessWidget {
   }
 }
 
+class _MonthListData {
+  const _MonthListData({
+    required this.sourceEvents,
+    required this.year,
+    required this.month,
+    required this.orderRevision,
+    required this.orderedEventsByDay,
+    required this.dayKeys,
+    required this.dayGroups,
+  });
+
+  final List<ScheduledEvent> sourceEvents;
+  final int year;
+  final int month;
+  final int orderRevision;
+  final Map<String, List<ScheduledEvent>> orderedEventsByDay;
+  final List<String> dayKeys;
+  final List<List<List<ScheduledEvent>>> dayGroups;
+}
+
+// Bounded caches keep the Month List's expanded/grouped data and event subtree
+// stable across parent animation ticks. Event snapshots and order revisions
+// invalidate the entries, while the ValueListenableBuilder still reacts to
+// actual event changes.
+final Map<String, _MonthListData> _monthListDataCache = {};
+
+class _MorphDayCell {
+  const _MorphDayCell({
+    required this.day,
+    required this.dayColumn,
+    required this.weekRow,
+  });
+
+  final int day;
+  final int dayColumn;
+  final int weekRow;
+}
+
+class _MorphMonthLayout {
+  _MorphMonthLayout(int year, int month)
+    : weekdayOffset = _firstWeekday(year, month),
+      totalRows = _totalWeekRows(year, month),
+      days = List.generate(_daysInMonth(year, month), (index) {
+        final day = index + 1;
+        final slot = _firstWeekday(year, month) + index;
+        return _MorphDayCell(
+          day: day,
+          dayColumn: slot % 7,
+          weekRow: slot ~/ 7,
+        );
+      }),
+      weekNumbers = List.generate(
+        _totalWeekRows(year, month),
+        (weekRow) => _isoWeekNumber(
+          DateTime(year, month, weekRow * 7 - _firstWeekday(year, month) + 1),
+        ),
+      );
+
+  final int weekdayOffset;
+  final int totalRows;
+  final List<_MorphDayCell> days;
+  final List<int> weekNumbers;
+}
+
+class _MorphYearLayout {
+  _MorphYearLayout(int year)
+    : months = List.generate(
+        12,
+        (index) => _MorphMonthLayout(year, index + 1),
+      ),
+      rowMaxWeeks = List.generate(4, (row) {
+        var maxRows = 0;
+        for (var col = 0; col < 3; col++) {
+          maxRows = math.max(maxRows, _totalWeekRows(year, row * 3 + col + 1));
+        }
+        return maxRows;
+      });
+
+  final List<_MorphMonthLayout> months;
+  final List<int> rowMaxWeeks;
+}
+
+final Map<int, _MorphYearLayout> _morphYearLayoutCache = {};
+
+_MorphYearLayout _morphLayoutForYear(int year) {
+  final cached = _morphYearLayoutCache.remove(year);
+  if (cached != null) {
+    _morphYearLayoutCache[year] = cached;
+    return cached;
+  }
+  final layout = _MorphYearLayout(year);
+  if (_morphYearLayoutCache.length >= 4) {
+    _morphYearLayoutCache.remove(_morphYearLayoutCache.keys.first);
+  }
+  _morphYearLayoutCache[year] = layout;
+  return layout;
+}
+
+_MonthListData _monthListDataFor({
+  required List<ScheduledEvent> sourceEvents,
+  required int year,
+  required int month,
+  required DateTime firstGridDay,
+  required int totalRows,
+  required Map<String, List<String>> savedOrderByDay,
+  required int orderRevision,
+}) {
+  final cacheKey =
+      '${identityHashCode(sourceEvents)}|$year|$month|$orderRevision';
+  final cached = _monthListDataCache.remove(cacheKey);
+  if (cached != null &&
+      identical(cached.sourceEvents, sourceEvents) &&
+      cached.year == year &&
+      cached.month == month &&
+      cached.orderRevision == orderRevision) {
+    _monthListDataCache[cacheKey] = cached;
+    return cached;
+  }
+
+  final lastGridDay = firstGridDay.add(Duration(days: totalRows * 7 - 1));
+  final events = EventStore.instance.expandedEvents(
+    from: firstGridDay,
+    to: lastGridDay.add(const Duration(days: 1)),
+  );
+  final eventsByDay = <String, List<ScheduledEvent>>{};
+  for (final event in events) {
+    final start = _calendarEventStartDate(event);
+    if (start == null) continue;
+    final end = _calendarEventEndDate(event) ?? start;
+    if (end.isBefore(firstGridDay) || start.isAfter(lastGridDay)) continue;
+    var day = start.isBefore(firstGridDay) ? firstGridDay : start;
+    final clampedEnd = end.isAfter(lastGridDay) ? lastGridDay : end;
+    while (!day.isAfter(clampedEnd)) {
+      (eventsByDay[_calendarDateKey(day)] ??= []).add(event);
+      day = day.add(const Duration(days: 1));
+    }
+  }
+  final orderedEventsByDay = <String, List<ScheduledEvent>>{
+    for (final entry in eventsByDay.entries)
+      entry.key: _applyMonthListOrder(
+        entry.value,
+        savedOrderByDay[entry.key],
+      ),
+  };
+  final dayKeys = [
+    for (var i = 0; i < totalRows * 7; i++)
+      _calendarDateKey(firstGridDay.add(Duration(days: i))),
+  ];
+  final dayGroups = [
+    for (final dayKey in dayKeys)
+      _groupMonthEvents(orderedEventsByDay[dayKey] ?? const []),
+  ];
+  final result = _MonthListData(
+    sourceEvents: sourceEvents,
+    year: year,
+    month: month,
+    orderRevision: orderRevision,
+    orderedEventsByDay: orderedEventsByDay,
+    dayKeys: dayKeys,
+    dayGroups: dayGroups,
+  );
+  if (_monthListDataCache.length >= 12) {
+    _monthListDataCache.remove(_monthListDataCache.keys.first);
+  }
+  _monthListDataCache[cacheKey] = result;
+  return result;
+}
+
+final Map<String, _MonthSelectedEvents> _monthSelectedEventsWidgetCache = {};
+
+_MonthSelectedEvents _monthSelectedEventsWidgetFor({
+  required _MonthListData data,
+  required int selectedDayIndex,
+  required double? height,
+  required double emptyStateHeight,
+  required void Function(ScheduledEvent event)? onEditEvent,
+  required ScrollController? scrollController,
+  required GlobalKey? scrollViewportKey,
+  required void Function(String dayKey, List<ScheduledEvent> orderedEvents)?
+      onOrderChanged,
+}) {
+  final cacheKey = [
+    identityHashCode(data),
+    selectedDayIndex,
+    height,
+    emptyStateHeight,
+    onEditEvent?.hashCode ?? 0,
+    identityHashCode(scrollController),
+    identityHashCode(scrollViewportKey),
+    onOrderChanged?.hashCode ?? 0,
+  ].join('|');
+  final cached = _monthSelectedEventsWidgetCache.remove(cacheKey);
+  if (cached != null) {
+    _monthSelectedEventsWidgetCache[cacheKey] = cached;
+    return cached;
+  }
+
+  final widget = _MonthSelectedEvents(
+    dayKeys: data.dayKeys,
+    dayGroups: data.dayGroups,
+    selectedDayIndex: selectedDayIndex,
+    height: height,
+    emptyStateHeight: emptyStateHeight,
+    onEditEvent: onEditEvent,
+    scrollController: scrollController,
+    scrollViewportKey: scrollViewportKey,
+    onOrderChanged: onOrderChanged,
+  );
+  if (_monthSelectedEventsWidgetCache.length >= 12) {
+    _monthSelectedEventsWidgetCache.remove(
+      _monthSelectedEventsWidgetCache.keys.first,
+    );
+  }
+  _monthSelectedEventsWidgetCache[cacheKey] = widget;
+  return widget;
+}
+
 // ─── CustomPainter: all morph drawing via canvas calls, zero widget tree ──────
 class _MorphPainter extends CustomPainter {
   _MorphPainter({
@@ -3123,6 +3384,7 @@ class _MorphPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     _frameTextCache.clear();
     final sw = screenW;
+    final yearLayout = _morphLayoutForYear(year);
     final miniW = (sw - 2 * _kYearOuterPad - 2 * _kYearColGap) / 3;
     final cellSz = miniW / 7;
     final sFinal = sw / miniW;
@@ -3131,21 +3393,16 @@ class _MorphPainter extends CustomPainter {
     final zCol = zoomMonthIdx % 3;
     final zRow = zoomMonthIdx ~/ 3;
     final zMonth = zoomMonthIdx + 1;
+    final zoomMonthLayout = yearLayout.months[zoomMonthIdx];
 
     // ── Row geometry ─────────────────────────────────────────────────────────
     final List<double> rowTop;
     if (measuredRowTops != null && measuredRowTops!.length == 4) {
       rowTop = measuredRowTops!;
     } else {
-      final rowMaxWeeks = List.generate(4, (r) {
-        var mx = 0;
-        for (var c = 1; c <= 3; c++)
-          mx = math.max(mx, _totalWeekRows(year, r * 3 + c));
-        return mx;
-      });
       final rowH = List.generate(
         4,
-        (r) => cellSz * (2.35 + rowMaxWeeks[r]) + 7.0,
+        (r) => cellSz * (2.35 + yearLayout.rowMaxWeeks[r]) + 7.0,
       );
       final computed = <double>[];
       var ry = 17.5;
@@ -3165,9 +3422,7 @@ class _MorphPainter extends CustomPainter {
     double yZ(double py) => s * py - sFinal * focalY * t;
 
     final mCellW = (sw - 7) / 8;
-    final offset = _firstWeekday(year, zMonth);
-    final daysInMonth = _daysInMonth(year, zMonth);
-    final totalRows = _totalWeekRows(year, zMonth);
+    final totalRows = zoomMonthLayout.totalRows;
     final nameColor = (today.year == year && today.month == zMonth)
         ? accentColor
         : primaryColor;
@@ -3225,12 +3480,11 @@ class _MorphPainter extends CustomPainter {
 
       // Day cells (per-cell shared-element morph)
       if (cellAlpha > 0) {
-        final otherOffset = _firstWeekday(year, mMon);
-        final otherDays = _daysInMonth(year, mMon);
-        for (var d = 1; d <= otherDays; d++) {
-          final idx = otherOffset + d - 1;
-          final dow = idx % 7;
-          final weekRow = idx ~/ 7;
+        final monthLayout = yearLayout.months[mi];
+        for (final dayCell in monthLayout.days) {
+          final d = dayCell.day;
+          final dow = dayCell.dayColumn;
+          final weekRow = dayCell.weekRow;
 
           // Year-view cell centre. +2.0 = SizedBox(height:2) gap in _MiniMonthGrid.
           final yearCX = mnX + (dow + 0.5) * cellSz;
@@ -3251,9 +3505,23 @@ class _MorphPainter extends CustomPainter {
             t,
           )!.clamp(1.0, 200.0);
 
-          final date = DateTime(year, mMon, d);
-          final isToday = _sameDay(date, today);
-          final isSelected = _sameDay(date, selectedDate);
+          // Avoid constructing TextPainters for cells that are already wholly
+          // outside the clipped morph viewport. This matters most late in the
+          // zoom, when the other month grids have moved off-screen.
+          final textCullRadius = fSize * 1.5;
+          if (cx + textCullRadius < 0 ||
+              cx - textCullRadius > sw ||
+              cy + textCullRadius < 0 ||
+              cy - textCullRadius > size.height) {
+            continue;
+          }
+
+          final isToday =
+              today.year == year && today.month == mMon && today.day == d;
+          final isSelected =
+              selectedDate.year == year &&
+              selectedDate.month == mMon &&
+              selectedDate.day == d;
 
           if (isSelected || isToday) {
             _p.color = _fade(
@@ -3294,10 +3562,10 @@ class _MorphPainter extends CustomPainter {
         kFixedTopPadding + monthDayCircleDiameter / 2;
 
     // 3. Selected-month day cells — per-element lerp year → month ─────────────
-    for (var d = 1; d <= daysInMonth; d++) {
-      final idx = offset + d - 1;
-      final dow = idx % 7;
-      final weekRow = idx ~/ 7;
+    for (final dayCell in zoomMonthLayout.days) {
+      final d = dayCell.day;
+      final dow = dayCell.dayColumn;
+      final weekRow = dayCell.weekRow;
 
       // Year-view cell centre (focalY = top of DOW row; +2.0 = height:2 gap)
       final yearCX = focalX + (dow + 0.5) * cellSz;
@@ -3329,9 +3597,12 @@ class _MorphPainter extends CustomPainter {
         t,
       )!.clamp(1.0, 200.0);
 
-      final date = DateTime(year, zMonth, d);
-      final isToday = _sameDay(date, today);
-      final isSelected = _sameDay(date, selectedDate);
+      final isToday =
+          today.year == year && today.month == zMonth && today.day == d;
+      final isSelected =
+          selectedDate.year == year &&
+          selectedDate.month == zMonth &&
+          selectedDate.day == d;
 
       if (isSelected || isToday) {
         _p.color = _fade(accentColor, isSelected ? 1.0 : 0.40);
@@ -3365,8 +3636,7 @@ class _MorphPainter extends CustomPainter {
     // Week numbers travel from the mini-month left edge to the wk-num column.
     // Separators widen from mini-month width → full screen width.
     for (var wr = 0; wr < totalRows; wr++) {
-      final firstDayNum = wr * 7 - offset + 1;
-      final wkNum = _isoWeekNumber(DateTime(year, zMonth, firstDayNum));
+      final wkNum = zoomMonthLayout.weekNumbers[wr];
 
       final wkCX = lerpDouble(focalX, mCellW / 2, t)!;
       final wkCY = lerpDouble(
@@ -3563,6 +3833,7 @@ class _MonthView extends StatelessWidget {
     this.scrollController,
     this.scrollViewportKey,
     this.monthListOrderByDay = const {},
+    this.monthListOrderRevision = 0,
     this.onMonthListOrderChanged,
     this.collapseScrollOffset = 0.0,
   });
@@ -3589,6 +3860,7 @@ class _MonthView extends StatelessWidget {
   final ScrollController? scrollController;
   final GlobalKey? scrollViewportKey;
   final Map<String, List<String>> monthListOrderByDay;
+  final int monthListOrderRevision;
   final void Function(String dayKey, List<ScheduledEvent> orderedEvents)?
       onMonthListOrderChanged;
 
@@ -3601,7 +3873,7 @@ class _MonthView extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<List<ScheduledEvent>>(
       valueListenable: EventStore.instance.events,
-      builder: (context, _, __) {
+      builder: (context, eventsSnapshot, __) {
         final firstGridDay = DateTime(year, month, 1).subtract(
           Duration(days: _firstWeekday(year, month)),
         );
@@ -3614,52 +3886,26 @@ class _MonthView extends StatelessWidget {
         final showMonthList =
             viewMode == CalendarViewMode.list &&
             collapseProgress < _kMonthDayTransitionThreshold;
-        final Map<String, List<ScheduledEvent>> orderedEventsByDay;
-        final List<String> listDayKeys;
-        final List<List<List<ScheduledEvent>>> listDayGroups;
+        final _MonthListData? monthListData;
         if (showMonthList) {
-          final lastGridDay = firstGridDay.add(
-            Duration(days: totalRows * 7 - 1),
+          monthListData = _monthListDataFor(
+            sourceEvents: eventsSnapshot,
+            year: year,
+            month: month,
+            firstGridDay: firstGridDay,
+            totalRows: totalRows,
+            savedOrderByDay: monthListOrderByDay,
+            orderRevision: monthListOrderRevision,
           );
-          final events = EventStore.instance.expandedEvents(
-            from: firstGridDay,
-            to: lastGridDay.add(const Duration(days: 1)),
-          );
-          final eventsByDay = <String, List<ScheduledEvent>>{};
-          for (final event in events) {
-            final start = _calendarEventStartDate(event);
-            if (start == null) continue;
-            final end = _calendarEventEndDate(event) ?? start;
-            if (end.isBefore(firstGridDay) || start.isAfter(lastGridDay)) {
-              continue;
-            }
-            var day = start.isBefore(firstGridDay) ? firstGridDay : start;
-            final clampedEnd = end.isAfter(lastGridDay) ? lastGridDay : end;
-            while (!day.isAfter(clampedEnd)) {
-              (eventsByDay[_calendarDateKey(day)] ??= []).add(event);
-              day = day.add(const Duration(days: 1));
-            }
-          }
-          orderedEventsByDay = <String, List<ScheduledEvent>>{
-            for (final entry in eventsByDay.entries)
-              entry.key: _applyMonthListOrder(
-                entry.value,
-                monthListOrderByDay[entry.key],
-              ),
-          };
-          listDayKeys = [
-            for (var i = 0; i < totalRows * 7; i++)
-              _calendarDateKey(firstGridDay.add(Duration(days: i))),
-          ];
-          listDayGroups = [
-            for (final dayKey in listDayKeys)
-              _groupMonthEvents(orderedEventsByDay[dayKey] ?? const []),
-          ];
         } else {
-          orderedEventsByDay = const {};
-          listDayKeys = const [];
-          listDayGroups = const [];
+          monthListData = null;
         }
+        final orderedEventsByDay =
+            monthListData?.orderedEventsByDay ??
+            const <String, List<ScheduledEvent>>{};
+        final listDayKeys = monthListData?.dayKeys ?? const <String>[];
+        final listDayGroups =
+            monthListData?.dayGroups ?? const <List<List<ScheduledEvent>>>[];
         final selectedDayKey = _calendarDateKey(selectedDate);
         final selectedListIndex = listDayKeys.indexOf(selectedDayKey);
         final selectedListChildIndex =
@@ -3814,9 +4060,8 @@ class _MonthView extends StatelessWidget {
                     ),
                   ),
                   if (showMonthList) ...[
-                    _MonthSelectedEvents(
-                      dayKeys: listDayKeys,
-                      dayGroups: listDayGroups,
+                    _monthSelectedEventsWidgetFor(
+                      data: monthListData!,
                       selectedDayIndex: selectedListChildIndex,
                       height: monthListUsesNaturalHeight ? null : listContentH,
                       emptyStateHeight: selectedListIsEmpty
