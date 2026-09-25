@@ -397,6 +397,12 @@ class CalendarTabState extends State<CalendarTab>
   ScrollController _monthViewScrollCtrl = ScrollController();
   final GlobalKey _monthViewScrollViewportKey = GlobalKey();
   final Map<String, List<String>> _monthListOrderByDay = {};
+  // The single-day timeline has no dependency on the hierarchy animation.
+  // Keep the widget instances stable so the parent transition builder can
+  // move the three panels without marking all 72 hour rows dirty every frame.
+  // The cache key includes the inputs that affect the timeline's own layout;
+  // a new date or Day sub-mode gets a fresh stateful timeline.
+  final Map<String, Widget> _singleDayTimelineWidgetCache = {};
   double _collapseScrollOffset = 0.0;
   double _savedMonthScrollOffset = 0.0;
 
@@ -1815,6 +1821,33 @@ class CalendarTabState extends State<CalendarTab>
     if (mounted) setState(() {});
   }
 
+  Widget _singleDayTimelineFor(DateTime date) {
+    final dateKey = '${date.year}-${date.month}-${date.day}';
+    final todayKey = '${_today.year}-${_today.month}-${_today.day}';
+    final cacheKey =
+        '$dateKey|$todayKey|${widget.daySubMode.index}|${_nowNotifier.hashCode}';
+    final cached = _singleDayTimelineWidgetCache[cacheKey];
+    if (cached != null) return cached;
+
+    final timeline = _DayTimeline(
+      key: ValueKey('day-${date.year}${date.month}${date.day}'),
+      selectedDate: date,
+      today: _today,
+      nowNotifier: _nowNotifier,
+      daySubMode: widget.daySubMode,
+    );
+    _singleDayTimelineWidgetCache[cacheKey] = timeline;
+    // Keep the cache bounded when repeatedly swiping through dates. The
+    // currently mounted widgets remain in the tree; evicted entries are only
+    // widget configurations, not live State objects.
+    while (_singleDayTimelineWidgetCache.length > 12) {
+      _singleDayTimelineWidgetCache.remove(
+        _singleDayTimelineWidgetCache.keys.first,
+      );
+    }
+    return timeline;
+  }
+
   // ── Full-screen search overlay (mirrors EventsTab._buildGridSearchOverlay) ──
   Widget _buildSearchOverlay() {
     final showResults = _searchFocused && _searchText.isNotEmpty;
@@ -2506,45 +2539,21 @@ class CalendarTabState extends State<CalendarTab>
                                             top: 0,
                                             bottom: 0,
                                             width: sw,
-                                            child: _DayTimeline(
-                                              key: ValueKey(
-                                                'day-${prevDay.year}${prevDay.month}${prevDay.day}',
-                                              ),
-                                              selectedDate: prevDay,
-                                              today: _today,
-                                              nowNotifier: _nowNotifier,
-                                              daySubMode: widget.daySubMode,
-                                            ),
+                                          child: _singleDayTimelineFor(prevDay),
                                           ),
                                           Positioned(
                                             left: timelineSlideX,
                                             top: 0,
                                             bottom: 0,
                                             width: sw,
-                                            child: _DayTimeline(
-                                              key: ValueKey(
-                                                'day-${_selected.year}${_selected.month}${_selected.day}',
-                                              ),
-                                              selectedDate: _selected,
-                                              today: _today,
-                                              nowNotifier: _nowNotifier,
-                                              daySubMode: widget.daySubMode,
-                                            ),
+                                          child: _singleDayTimelineFor(_selected),
                                           ),
                                           Positioned(
                                             left: timelineSlideX + sw,
                                             top: 0,
                                             bottom: 0,
                                             width: sw,
-                                            child: _DayTimeline(
-                                              key: ValueKey(
-                                                'day-${nextDay.year}${nextDay.month}${nextDay.day}',
-                                              ),
-                                              selectedDate: nextDay,
-                                              today: _today,
-                                              nowNotifier: _nowNotifier,
-                                              daySubMode: widget.daySubMode,
-                                            ),
+                                          child: _singleDayTimelineFor(nextDay),
                                           ),
                                         ],
                                       ),
@@ -3013,6 +3022,10 @@ class _MorphPainter extends CustomPainter {
   final List<double>? measuredRowTops;
 
   final Paint _p = Paint()..isAntiAlias = true;
+  // Many calendar cells share the same label and style during one morph
+  // frame. Reuse those layouts for this paint pass; the cache is cleared
+  // before the next frame because size, alpha, and weight change continuously.
+  final Map<String, TextPainter> _frameTextCache = {};
 
   @override
   bool shouldRepaint(_MorphPainter o) =>
@@ -3048,7 +3061,10 @@ class _MorphPainter extends CustomPainter {
     double? wght,
   }) {
     if (a <= 0 || sz < 1) return;
-    final tp = TextPainter(
+    final fadedColor = _fade(color, a);
+    final key =
+        'c|$str|$sz|${fw.index}|${wght ?? -1}|${fadedColor.toARGB32()}|$ls';
+    final tp = _frameTextCache[key] ??= TextPainter(
       text: TextSpan(
         text: str,
         style: TextStyle(
@@ -3062,7 +3078,7 @@ class _MorphPainter extends CustomPainter {
           // box height as the widget's Center() wrapper, eliminating the snap.
           fontWeight: fw,
           fontVariations: wght != null ? [FontVariation('wght', wght)] : null,
-          color: _fade(color, a),
+          color: fadedColor,
           letterSpacing: ls,
         ),
       ),
@@ -3084,7 +3100,9 @@ class _MorphPainter extends CustomPainter {
     double ls = 0.0,
   }) {
     if (a <= 0 || sz < 1) return;
-    final tp = TextPainter(
+    final fadedColor = _fade(color, a);
+    final key = 'l|$str|$sz|${fw.index}|${fadedColor.toARGB32()}|$ls';
+    final tp = _frameTextCache[key] ??= TextPainter(
       text: TextSpan(
         text: str,
         style: TextStyle(
@@ -3092,7 +3110,7 @@ class _MorphPainter extends CustomPainter {
           fontSize: sz,
           height: 1.0,
           fontWeight: fw,
-          color: _fade(color, a),
+          color: fadedColor,
           letterSpacing: ls,
         ),
       ),
@@ -3103,6 +3121,7 @@ class _MorphPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    _frameTextCache.clear();
     final sw = screenW;
     final miniW = (sw - 2 * _kYearOuterPad - 2 * _kYearColGap) / 3;
     final cellSz = miniW / 7;
@@ -3587,52 +3606,67 @@ class _MonthView extends StatelessWidget {
           Duration(days: _firstWeekday(year, month)),
         );
         final totalRows = _totalWeekRows(year, month);
-        final lastGridDay = firstGridDay.add(
-          Duration(days: totalRows * 7 - 1),
-        );
-        final events = EventStore.instance.expandedEvents(
-          from: firstGridDay,
-          to: lastGridDay.add(const Duration(days: 1)),
-        );
-        final eventsByDay = <String, List<ScheduledEvent>>{};
-        for (final event in events) {
-          final start = _calendarEventStartDate(event);
-          if (start == null) continue;
-          final end = _calendarEventEndDate(event) ?? start;
-          if (end.isBefore(firstGridDay) || start.isAfter(lastGridDay)) {
-            continue;
+        // The grid is the only content used by Compact, Stacked, and Details
+        // modes.  During Month↔Day transitions it is also the only content
+        // visible after the midpoint.  Do not expand recurring events or
+        // build the month-list data model on every animation tick when none
+        // of that data can be painted.
+        final showMonthList =
+            viewMode == CalendarViewMode.list &&
+            collapseProgress < _kMonthDayTransitionThreshold;
+        final Map<String, List<ScheduledEvent>> orderedEventsByDay;
+        final List<String> listDayKeys;
+        final List<List<List<ScheduledEvent>>> listDayGroups;
+        if (showMonthList) {
+          final lastGridDay = firstGridDay.add(
+            Duration(days: totalRows * 7 - 1),
+          );
+          final events = EventStore.instance.expandedEvents(
+            from: firstGridDay,
+            to: lastGridDay.add(const Duration(days: 1)),
+          );
+          final eventsByDay = <String, List<ScheduledEvent>>{};
+          for (final event in events) {
+            final start = _calendarEventStartDate(event);
+            if (start == null) continue;
+            final end = _calendarEventEndDate(event) ?? start;
+            if (end.isBefore(firstGridDay) || start.isAfter(lastGridDay)) {
+              continue;
+            }
+            var day = start.isBefore(firstGridDay) ? firstGridDay : start;
+            final clampedEnd = end.isAfter(lastGridDay) ? lastGridDay : end;
+            while (!day.isAfter(clampedEnd)) {
+              (eventsByDay[_calendarDateKey(day)] ??= []).add(event);
+              day = day.add(const Duration(days: 1));
+            }
           }
-          var day = start.isBefore(firstGridDay) ? firstGridDay : start;
-          final clampedEnd = end.isAfter(lastGridDay) ? lastGridDay : end;
-          while (!day.isAfter(clampedEnd)) {
-            (eventsByDay[_calendarDateKey(day)] ??= []).add(event);
-            day = day.add(const Duration(days: 1));
-          }
+          orderedEventsByDay = <String, List<ScheduledEvent>>{
+            for (final entry in eventsByDay.entries)
+              entry.key: _applyMonthListOrder(
+                entry.value,
+                monthListOrderByDay[entry.key],
+              ),
+          };
+          listDayKeys = [
+            for (var i = 0; i < totalRows * 7; i++)
+              _calendarDateKey(firstGridDay.add(Duration(days: i))),
+          ];
+          listDayGroups = [
+            for (final dayKey in listDayKeys)
+              _groupMonthEvents(orderedEventsByDay[dayKey] ?? const []),
+          ];
+        } else {
+          orderedEventsByDay = const {};
+          listDayKeys = const [];
+          listDayGroups = const [];
         }
-        final orderedEventsByDay = <String, List<ScheduledEvent>>{
-          for (final entry in eventsByDay.entries)
-            entry.key: _applyMonthListOrder(
-              entry.value,
-              monthListOrderByDay[entry.key],
-            ),
-        };
-        final listDayKeys = [
-          for (var i = 0; i < totalRows * 7; i++)
-            _calendarDateKey(firstGridDay.add(Duration(days: i))),
-        ];
-        final listDayGroups = [
-          for (final dayKey in listDayKeys)
-            _groupMonthEvents(orderedEventsByDay[dayKey] ?? const []),
-        ];
         final selectedDayKey = _calendarDateKey(selectedDate);
         final selectedListIndex = listDayKeys.indexOf(selectedDayKey);
         final selectedListChildIndex =
             selectedListIndex < 0 ? 0 : selectedListIndex;
-        final selectedListGroups =
-            listDayGroups[selectedListChildIndex];
-        final showMonthList =
-            viewMode == CalendarViewMode.list &&
-            collapseProgress < _kMonthDayTransitionThreshold;
+        final selectedListGroups = listDayGroups.isEmpty
+            ? const <List<ScheduledEvent>>[]
+            : listDayGroups[selectedListChildIndex];
         final estimatedListContentH = showMonthList
             ? _monthListEstimatedHeight(selectedListGroups)
             : 80.0;
@@ -3658,6 +3692,7 @@ class _MonthView extends StatelessWidget {
           constraints.maxHeight - gridH - emptyStateFloatingClearance,
         );
         final selectedDayIsEmpty =
+            listDayGroups.isEmpty ||
             listDayGroups[selectedListChildIndex].isEmpty;
         final emptyStateLabelH =
             kEmptyStateLabelFontSize * kLineHeight;
@@ -4661,12 +4696,21 @@ class _WeekRowState extends State<_WeekRow> {
                 // sections in time order. Do not use the raw EventStore order
                 // here, or a timed event can incorrectly win over an all-day
                 // event for the dot color.
-                final dayEvents = [
-                  for (final group in _groupMonthEvents(
-                    widget.eventsByDay[_calendarDateKey(date)] ?? const [],
-                  ))
-                    ...group,
-                ];
+                // Event dots are only painted by Month List.  Avoid grouping
+                // and flattening every day's events for all 7 columns when
+                // the grid is in Compact, Stacked, or Details mode (which is
+                // also the hot path during Month↔Day collapse).
+                final dayEvents = widget.viewMode == CalendarViewMode.list &&
+                        widget.collapseProgress <
+                            _kMonthDayTransitionThreshold
+                    ? [
+                        for (final group in _groupMonthEvents(
+                          widget.eventsByDay[_calendarDateKey(date)] ??
+                              const [],
+                        ))
+                          ...group,
+                      ]
+                    : const <ScheduledEvent>[];
 
                 if (isOverflow && !widget.showOverflow) {
                   return const Expanded(child: SizedBox.shrink());
@@ -11277,21 +11321,27 @@ class _NewEventSheetState extends State<_NewEventSheet>
           }
         }
       }
-      final nativeMetadata = await _readAndroidDropMetadata(fileUri);
+      final nativeMetadata = await _readDropMetadata(
+        fileUri,
+        reader.platformFormats,
+      );
       final nativeName = _usableDroppedFileName(
         nativeMetadata?['displayName'] as String?,
       );
       final nativeMimeType = nativeMetadata?['mimeType'] as String?;
+      final nativeExtension = _usableDroppedFileExtension(
+        nativeMetadata?['preferredExtension'],
+      );
 
       final fileFormats = reader
           .getFormats(Formats.standardFormats)
           .whereType<FileFormat>()
           .toList(growable: false);
       final format = fileFormats.isEmpty ? null : fileFormats.first;
-      final formatExtension = _droppedFormatExtension(
-        format,
-        reader.platformFormats,
-      ) ?? _droppedMimeExtension(nativeMimeType);
+      final formatExtension =
+          _droppedFormatExtension(format, reader.platformFormats) ??
+          nativeExtension ??
+          _droppedMimeExtension(nativeMimeType);
       final completer = Completer<PlatformFile?>();
 
       void complete(PlatformFile? file) {
@@ -11302,10 +11352,14 @@ class _NewEventSheetState extends State<_NewEventSheet>
         try {
           final bytes = await dataFile.readAll();
           final suggestedName = await reader.getSuggestedName();
+          final androidName = defaultTargetPlatform == TargetPlatform.android
+              ? nativeName
+              : null;
           final sourceName =
-              nativeName ??
+              androidName ??
               _usableDroppedFileName(dataFile.fileName) ??
               _usableDroppedFileName(suggestedName) ??
+              nativeName ??
               _usableDroppedFileName(uriName) ??
               'Dropped file';
           final name = _appendDroppedFormatExtension(
@@ -11325,21 +11379,40 @@ class _NewEventSheetState extends State<_NewEventSheet>
     return dropped;
   }
 
-  Future<Map<String, Object?>?> _readAndroidDropMetadata(Uri? uri) async {
-    if (defaultTargetPlatform != TargetPlatform.android ||
-        uri?.scheme != 'content') {
+  Future<Map<String, Object?>?> _readDropMetadata(
+    Uri? uri,
+    List<PlatformFormat> platformFormats,
+  ) async {
+    final isAndroidContentUri =
+        defaultTargetPlatform == TargetPlatform.android &&
+        uri?.scheme == 'content';
+    final isIosDrop = defaultTargetPlatform == TargetPlatform.iOS;
+    if (!isAndroidContentUri && !isIosDrop) {
       return null;
     }
     try {
       return await _dropMetadataChannel.invokeMapMethod<String, Object?>(
         'resolveUriMetadata',
-        {'uri': uri.toString()},
+        {
+          'uri': uri?.toString(),
+          if (isIosDrop)
+            'typeIdentifiers': platformFormats.cast<String>(),
+        },
       );
     } catch (_) {
-      // Some providers grant read access for the drop bytes but not metadata.
-      // Keep the normal DataReader and URI fallbacks working in that case.
+      // Some providers grant access to the dropped bytes but not metadata.
+      // Keep the DataReader and filename/format fallbacks working in that case.
       return null;
     }
+  }
+
+  String? _usableDroppedFileExtension(Object? value) {
+    if (value is! String) return null;
+    final extension = value.trim().replaceFirst(RegExp(r'^\.'), '');
+    if (!RegExp(r'^[a-zA-Z0-9][a-zA-Z0-9._+-]*$').hasMatch(extension)) {
+      return null;
+    }
+    return extension.toLowerCase();
   }
 
   /// Reject names emitted by drag providers as placeholders. Smart Hub can
