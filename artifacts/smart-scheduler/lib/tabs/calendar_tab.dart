@@ -3053,30 +3053,141 @@ class _MorphOverlay extends StatelessWidget {
       monthListDotColors = const <Color?>[];
     }
     return ClipRect(
-      child: CustomPaint(
-        painter: _MorphPainter(
-          t: t,
-          zoomMonthIdx: zoomMonthIdx,
-          year: year,
-          today: today,
-          selectedDate: selectedDate,
-          monthListDotColors: monthListDotColors,
-          scrollOffset: scrollOffset,
-          monthScrollOffset: monthScrollOffset,
-          screenW: screenW,
-          measuredRowTops: measuredRowTops,
-          viewModeRowHeight: viewModeRowHeight,
-          bgColor: bgC,
-          primaryColor: priC,
-          accentColor: accC,
-          secondaryColor: secC,
-          tertiaryColor: terC,
-          separatorColor: sepC,
-          yearDayScale: yearDayScale,
-          monthDayScale: monthDayScale,
-          monthDayCircleDiameter: monthDayCircleDiameter,
-        ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          CustomPaint(
+            painter: _MorphPainter(
+              t: t,
+              zoomMonthIdx: zoomMonthIdx,
+              year: year,
+              today: today,
+              selectedDate: selectedDate,
+              monthListDotColors: monthListDotColors,
+              scrollOffset: scrollOffset,
+              monthScrollOffset: monthScrollOffset,
+              screenW: screenW,
+              measuredRowTops: measuredRowTops,
+              viewModeRowHeight: viewModeRowHeight,
+              bgColor: bgC,
+              primaryColor: priC,
+              accentColor: accC,
+              secondaryColor: secC,
+              tertiaryColor: terC,
+              separatorColor: sepC,
+              yearDayScale: yearDayScale,
+              monthDayScale: monthDayScale,
+              monthDayCircleDiameter: monthDayCircleDiameter,
+            ),
+          ),
+          if (viewMode == CalendarViewMode.list &&
+              t >= _kYearMonthHandoffThreshold)
+            _MonthListMorphContent(
+              year: year,
+              month: zoomMonthIdx + 1,
+              selectedDate: selectedDate,
+              monthListOrderByDay: monthListOrderByDay,
+              monthListOrderRevision: monthListOrderRevision,
+              viewModeRowHeight: viewModeRowHeight,
+              monthScrollOffset: monthScrollOffset,
+            ),
+        ],
       ),
+    );
+  }
+}
+
+class _MonthListMorphContent extends StatelessWidget {
+  const _MonthListMorphContent({
+    required this.year,
+    required this.month,
+    required this.selectedDate,
+    required this.monthListOrderByDay,
+    required this.monthListOrderRevision,
+    required this.viewModeRowHeight,
+    required this.monthScrollOffset,
+  });
+
+  final int year;
+  final int month;
+  final DateTime selectedDate;
+  final Map<String, List<String>> monthListOrderByDay;
+  final int monthListOrderRevision;
+  final double viewModeRowHeight;
+  final double monthScrollOffset;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final firstGridDay = DateTime(year, month, 1).subtract(
+          Duration(days: _firstWeekday(year, month)),
+        );
+        final totalRows = _totalWeekRows(year, month);
+        final data = _monthListDataFor(
+          sourceEvents: EventStore.instance.events.value,
+          year: year,
+          month: month,
+          firstGridDay: firstGridDay,
+          totalRows: totalRows,
+          savedOrderByDay: monthListOrderByDay,
+          orderRevision: monthListOrderRevision,
+        );
+        final selectedDayIndex = data.dayKeys.indexOf(
+          _calendarDateKey(selectedDate),
+        );
+        final selectedListChildIndex =
+            selectedDayIndex < 0 ? 0 : selectedDayIndex;
+        final selectedGroups = data.dayGroups.isEmpty
+            ? const <List<ScheduledEvent>>[]
+            : data.dayGroups[selectedListChildIndex];
+        final selectedDayIsEmpty = selectedGroups.isEmpty;
+        final gridHeight =
+            _kCalendarHeaderToDowGap +
+            _kDayLabelHeight +
+            totalRows * viewModeRowHeight;
+        final emptyStateFloatingClearance =
+            floatingTabBarContentBottomClearance(
+              context,
+              finalContentGap: 16.0,
+            );
+        final availableListEmptyStateHeight = math.max(
+          0.0,
+          constraints.maxHeight -
+              monthScrollOffset -
+              emptyStateFloatingClearance,
+        );
+        final emptyStateLabelHeight = kEmptyStateLabelFontSize * kLineHeight;
+        final emptyStateFallbackHeight = emptyStateLabelHeight + 32.0;
+        final emptyStateNeedsScrollableFallback =
+            selectedDayIsEmpty &&
+            availableListEmptyStateHeight < emptyStateFallbackHeight;
+        final emptyStateHeight = selectedDayIsEmpty
+            ? emptyStateNeedsScrollableFallback
+                ? emptyStateFallbackHeight
+                : availableListEmptyStateHeight
+            : 0.0;
+
+        return Positioned(
+          top: gridHeight - monthScrollOffset,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: _monthSelectedEventsWidgetFor(
+              data: data,
+              selectedDayIndex: selectedListChildIndex,
+              height: selectedDayIsEmpty ? emptyStateHeight : null,
+              emptyStateHeight: emptyStateHeight,
+              onEditEvent: null,
+              scrollController: null,
+              scrollViewportKey: null,
+              onOrderChanged: null,
+            ),
+          ),
+        );
+      },
     );
   }
 }
