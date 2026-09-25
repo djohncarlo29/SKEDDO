@@ -611,6 +611,10 @@ class CalendarTabState extends State<CalendarTab>
   // transition has completed, so the DOW row and banner leave with the strip.
   bool _dayChromeModeTransitionActive = false;
   DayViewSubMode? _dayChromeSubMode;
+  // Multi-Day separator morphs are reserved for an explicit Single↔Multi
+  // switch while already in Day View. Mounting Multi Day for List or
+  // Month↔Day transitions must start at its settled two-column geometry.
+  bool _animateMultiDayTransition = false;
 
   // ── View-mode state ───────────────────────────────────────────────────────────
   CalendarViewMode _viewMode = CalendarViewMode.compact;
@@ -1486,6 +1490,7 @@ class CalendarTabState extends State<CalendarTab>
   }
 
   void _enterDay(DateTime date, {bool fast = false}) {
+    _animateMultiDayTransition = false;
     // Capture the current scroll offset of the month-view content area BEFORE
     // setState triggers a rebuild.  This value is used by _AnimatedWeekRow to
     // offset its Y-translation so the selected row lands at visual-y = 0 even
@@ -1528,6 +1533,7 @@ class CalendarTabState extends State<CalendarTab>
   }
 
   Future<void> _exitToMonth({bool fast = false}) async {
+    _animateMultiDayTransition = false;
     // Restore the saved scroll position BEFORE starting the reverse animation
     // so that _collapseScrollOffset is non-zero throughout the reverse.
     // With _collapseScrollOffset = saved, _AnimatedWeekRow's translateY formula
@@ -1804,6 +1810,10 @@ class CalendarTabState extends State<CalendarTab>
     if (oldWidget.daySubMode != widget.daySubMode) {
       final inDayView = _collapseAnim.value > 0.1;
       _dayChromeModeTransitionActive = inDayView;
+      _animateMultiDayTransition =
+          inDayView &&
+          oldWidget.daySubMode != DayViewSubMode.list &&
+          widget.daySubMode != DayViewSubMode.list;
       _dayChromeSubMode = inDayView && widget.daySubMode == DayViewSubMode.list
           ? oldWidget.daySubMode
           : widget.daySubMode;
@@ -2544,6 +2554,8 @@ class CalendarTabState extends State<CalendarTab>
                                         date: _selected,
                                         today: _today,
                                         daySubMode: dayHeaderSubMode,
+                                        animateMultiDayTransition:
+                                            _animateMultiDayTransition,
                                         slideX: slideX,
                                         screenW: sw,
                                       )
@@ -2558,6 +2570,8 @@ class CalendarTabState extends State<CalendarTab>
                                               date: prevDay,
                                               today: _today,
                                               daySubMode: dayHeaderSubMode,
+                                              animateMultiDayTransition:
+                                                  _animateMultiDayTransition,
                                             ),
                                           ),
                                           Positioned(
@@ -2570,6 +2584,8 @@ class CalendarTabState extends State<CalendarTab>
                                               date: _selected,
                                               today: _today,
                                               daySubMode: dayHeaderSubMode,
+                                              animateMultiDayTransition:
+                                                  _animateMultiDayTransition,
                                             ),
                                           ),
                                           Positioned(
@@ -2581,6 +2597,8 @@ class CalendarTabState extends State<CalendarTab>
                                               date: nextDay,
                                               today: _today,
                                               daySubMode: dayHeaderSubMode,
+                                              animateMultiDayTransition:
+                                                  _animateMultiDayTransition,
                                             ),
                                           ),
                                         ],
@@ -2628,6 +2646,8 @@ class CalendarTabState extends State<CalendarTab>
                                         nowNotifier: _nowNotifier,
                                         slideX: timelineSlideX,
                                         screenW: sw,
+                                        animateEntrance:
+                                            _animateMultiDayTransition,
                                       )
                                     : Stack(
                                         children: [
@@ -6134,6 +6154,7 @@ class _DayBanner extends StatefulWidget {
     required this.date,
     required this.today,
     this.daySubMode = DayViewSubMode.singleDay,
+    this.animateMultiDayTransition = false,
     // slideX / screenW are non-zero only in Multi Day navigation mode.
     // When set, the banner renders column-level sliding (shared day at half
     // speed) instead of the normal static/morphing layout.
@@ -6143,6 +6164,7 @@ class _DayBanner extends StatefulWidget {
   final DateTime date;
   final DateTime today;
   final DayViewSubMode daySubMode;
+  final bool animateMultiDayTransition;
   final double slideX;
   final double screenW;
 
@@ -6346,23 +6368,31 @@ class _DayBannerState extends State<_DayBanner>
     _ctrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 320),
-      // Always start at 0 so the separator-slide animation plays every time
-      // the banner enters the tree (i.e. each time Day View is opened).
-      value: 0.0,
+      // A newly mounted Multi-Day banner is already settled unless this is an
+      // explicit Single↔Multi switch inside Day View.
+      value: widget.daySubMode == DayViewSubMode.multiDay &&
+              !widget.animateMultiDayTransition
+          ? 1.0
+          : 0.0,
     );
     _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
-    // Multi Day mode: play the morph immediately on first appearance.
-    // Single Day mode: stays at 0 (no separators needed).
-    if (widget.daySubMode == DayViewSubMode.multiDay) _ctrl.forward();
+    if (widget.daySubMode == DayViewSubMode.multiDay &&
+        widget.animateMultiDayTransition) {
+      _ctrl.forward();
+    }
   }
 
   @override
   void didUpdateWidget(_DayBanner old) {
     super.didUpdateWidget(old);
     if (widget.daySubMode != old.daySubMode) {
-      widget.daySubMode == DayViewSubMode.multiDay
-          ? _ctrl.forward()
-          : _ctrl.reverse();
+      if (widget.animateMultiDayTransition) {
+        widget.daySubMode == DayViewSubMode.multiDay
+            ? _ctrl.forward()
+            : _ctrl.reverse();
+      } else {
+        _ctrl.value = widget.daySubMode == DayViewSubMode.multiDay ? 1.0 : 0.0;
+      }
     }
   }
 
@@ -7550,6 +7580,7 @@ class _DayTimelineMulti extends StatefulWidget {
     required this.nowNotifier,
     required this.slideX,
     required this.screenW,
+    this.animateEntrance = false,
   });
 
   final DateTime selectedDate;
@@ -7561,6 +7592,7 @@ class _DayTimelineMulti extends StatefulWidget {
 
   /// Total screen width — used to scale column positions correctly.
   final double screenW;
+  final bool animateEntrance;
 
   @override
   State<_DayTimelineMulti> createState() => _DayTimelineMultiState();
@@ -7587,9 +7619,10 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
     _sepCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 320),
-      value: 0.0,
-    )..forward();
+      value: widget.animateEntrance ? 0.0 : 1.0,
+    );
     _sepAnim = CurvedAnimation(parent: _sepCtrl, curve: Curves.easeInOut);
+    if (widget.animateEntrance) _sepCtrl.forward();
   }
 
   @override
