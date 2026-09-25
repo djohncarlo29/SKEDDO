@@ -2452,6 +2452,9 @@ class CalendarTabState extends State<CalendarTab>
                     // Paint one opaque mask at the parent level, above all
                     // three panels, and render the labels again inside it so
                     // the DOW alignment remains independent of panel motion.
+                    // Keep the same row visible for the full Month↔Day
+                    // transition; it is shared chrome, not view-specific
+                    // content, so it must not fade out at the midpoint.
                     if (colT > 0.01 &&
                         widget.daySubMode != DayViewSubMode.list)
                       Positioned(
@@ -2463,12 +2466,7 @@ class CalendarTabState extends State<CalendarTab>
                         left: 0,
                         right: 0,
                         height: _kCalendarHeaderToDowGap + _kDayLabelHeight,
-                        child: _DayViewDowMask(
-                          labelOpacity: ((colT -
-                                      _kMonthDayTransitionThreshold) /
-                                  (1.0 - _kMonthDayTransitionThreshold))
-                              .clamp(0.0, 1.0),
-                        ),
+                        child: const _DayViewDowMask(),
                       ),
                     // (Strip slides off-screen via stripSlideY Transform on each
                     // _MonthView panel; the mask above also seals the header
@@ -5737,9 +5735,7 @@ class _DayListPlaceholder extends StatelessWidget {
 // horizontally-sliding month panels, otherwise an adjacent panel's translated
 // week row can bleed through the DOW boundary.
 class _DayViewDowMask extends StatelessWidget {
-  const _DayViewDowMask({this.labelOpacity = 1.0});
-
-  final double labelOpacity;
+  const _DayViewDowMask();
 
   @override
   Widget build(BuildContext context) {
@@ -5758,17 +5754,14 @@ class _DayViewDowMask extends StatelessWidget {
                   7,
                   (i) => Expanded(
                     child: Center(
-                      child: Opacity(
-                        opacity: labelOpacity,
-                        child: Text(
-                          _kDayLetters[i],
-                          style: TextStyle(
-                            fontFamily: kSFProText,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: secondaryLabel,
-                            letterSpacing: -0.1,
-                          ),
+                      child: Text(
+                        _kDayLetters[i],
+                        style: TextStyle(
+                          fontFamily: kSFProText,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: secondaryLabel,
+                          letterSpacing: -0.1,
                         ),
                       ),
                     ),
