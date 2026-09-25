@@ -37,6 +37,10 @@ dev_dependencies:
   flutter_lints: ^5.0.0
 
 dependency_overrides:
+  # Android content providers may list a file's MIME type without exposing
+  # its URI through super_native_extensions, which hides the original name.
+  super_native_extensions:
+    path: packages/super_native_extensions
   liquid_glass_easy:
     path: packages/liquid_glass_easy
   # Keep ONNX Runtime's Dart/iOS/macOS implementation, but do not expose the
