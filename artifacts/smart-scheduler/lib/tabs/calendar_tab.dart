@@ -1988,67 +1988,67 @@ class CalendarTabState extends State<CalendarTab>
         opacity: _greyFadeIn ? 1.0 : 0.0,
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOut,
-        // Keep this overlay transparent. The previous full-screen ColoredBox
-        // painted a second surface over the calendar viewport, which appeared
-        // as a grey scrim throughout the Year↔Month morph in List mode.
-        child: CustomScrollView(
-          primary: false,
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics(),
-          ),
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-          slivers: [
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _CalSearchHeaderDelegate(
-                searchBarRow: searchBarRow,
-                extent: searchBarHeaderExtent(context),
-                showSeparator: true,
-              ),
+        child: ColoredBox(
+          color: resolveThemeColor(kBackgroundColor, context),
+          child: CustomScrollView(
+            primary: false,
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
             ),
-            if (showResults)
-              SmartSearchResultsSliver(
-                hits: _searchHits,
-                suggestedQuery: _searchSuggestion,
-                onSuggestionTap: _applySearchSuggestion,
-                eventTopPadding: 18,
-                eventTileWrapper: (hit, child, previewBuilder) =>
-                    wrapSearchEventTileWithActions(
-                      hit: hit,
-                      child: child,
-                      previewBuilder: previewBuilder,
-                      onEdit: widget.onEditEvent == null
-                          ? null
-                          : () {
-                              // Exit Calendar's overlay search session
-                              // before presenting the edit sheet.  The
-                              // search field is focus-locked while search
-                              // mode is active; leaving it mounted makes
-                              // it reclaim focus when a sheet text field is
-                              // tapped.
-                              cancelSearch();
-                              widget.onEditEvent!(hit.event);
-                            },
-                      onDelete: () => confirmDeleteEvent(context, hit.event),
-                    ),
-                eventTilePressWrapper: wrapSearchEventTileWithPressScale,
-              )
-            else
-              const SliverFillRemaining(
-                hasScrollBody: false,
-                child: SizedBox.expand(),
-              ),
-            if (!showResults || _searchHits.isNotEmpty)
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: floatingTabBarContentBottomClearance(
-                    context,
-                    existingTrailingContentPadding: 32,
-                    finalContentGap: 20,
-                  ),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+            slivers: [
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _CalSearchHeaderDelegate(
+                  searchBarRow: searchBarRow,
+                  extent: searchBarHeaderExtent(context),
+                  showSeparator: true,
                 ),
               ),
-          ],
+              if (showResults)
+                SmartSearchResultsSliver(
+                  hits: _searchHits,
+                  suggestedQuery: _searchSuggestion,
+                  onSuggestionTap: _applySearchSuggestion,
+                  eventTopPadding: 18,
+                  eventTileWrapper: (hit, child, previewBuilder) =>
+                      wrapSearchEventTileWithActions(
+                        hit: hit,
+                        child: child,
+                        previewBuilder: previewBuilder,
+                        onEdit: widget.onEditEvent == null
+                            ? null
+                            : () {
+                                // Exit Calendar's overlay search session
+                                // before presenting the edit sheet.  The
+                                // search field is focus-locked while search
+                                // mode is active; leaving it mounted makes
+                                // it reclaim focus when a sheet text field is
+                                // tapped.
+                                cancelSearch();
+                                widget.onEditEvent!(hit.event);
+                              },
+                        onDelete: () => confirmDeleteEvent(context, hit.event),
+                      ),
+                  eventTilePressWrapper: wrapSearchEventTileWithPressScale,
+                )
+              else
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: SizedBox.expand(),
+                ),
+              if (!showResults || _searchHits.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: floatingTabBarContentBottomClearance(
+                      context,
+                      existingTrailingContentPadding: 32,
+                      finalContentGap: 20,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
