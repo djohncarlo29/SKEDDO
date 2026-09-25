@@ -134,4 +134,3 @@
 - [Native iOS tab bar bridge](native-ios-tab-bar-bridge.md) — keep UIKit tab chrome across iOS versions; UIKit selects classic or floating styling and Flutter content clearance follows.
 - [Calendar midpoint view handoff](calendar-midpoint-view-handoff.md) — hierarchy-dependent Calendar UI switches at 50% in both directions; accelerated Year↔Day keeps the same handoff.
 - [Calendar Day List header transition](calendar-day-list-header-transition.md) — DOW, week strip, and day banner must share one mounted vertical transition when entering or leaving List mode.
-- [Calendar search overlay scrim](calendar-search-overlay-scrim.md) — a full-viewport search background can mimic a Year↔Month scrim while leaving the AppShell header unchanged.
