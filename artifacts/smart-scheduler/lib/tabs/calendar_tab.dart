@@ -3231,7 +3231,10 @@ class _MonthListMorphContent extends StatelessWidget {
           top: gridHeight - monthScrollOffset,
           left: 0,
           right: 0,
-          bottom: 0,
+          // Keep the morph layer bounded to the actual List content. A
+          // bottom constraint makes this Positioned fill the rest of the
+          // viewport, allowing the embedded DCV's viewport surface to read as
+          // a full-screen grey scrim during the Year↔Month transition.
           child: Align(
             alignment: Alignment.topCenter,
             child: _monthSelectedEventsWidgetFor(
