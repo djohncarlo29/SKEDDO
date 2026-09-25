@@ -3660,11 +3660,11 @@ class _MorphPainter extends CustomPainter {
         ? accentColor
         : primaryColor;
 
-    // 1. Background ────────────────────────────────────────────────────────────
-    _p.color = bgColor;
-    canvas.drawRect(Offset.zero & size, _p);
+    // The calendar stack already paints its resolved background. Do not paint a
+    // second full-frame color here: that opaque rectangle acts like a grey
+    // scrim over the entire Year↔Month morph.
 
-    // 2. Non-selected mini months — headers + per-cell shared-element morph ───
+    // 1. Non-selected mini months — headers + per-cell shared-element morph ───
     for (var mi = 0; mi < 12; mi++) {
       if (mi == zoomMonthIdx) continue;
       final mCol = mi % 3;
