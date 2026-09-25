@@ -133,3 +133,4 @@
 - [Smart Category semantic threshold](smart-category-semantic-threshold.md) — shared date/time text makes low cosine floors admit unrelated scheduled events; keep semantic matching conservative and normalize plural rules.
 - [Native iOS tab bar bridge](native-ios-tab-bar-bridge.md) — keep UIKit tab chrome across iOS versions; UIKit selects classic or floating styling and Flutter content clearance follows.
 - [Calendar midpoint view handoff](calendar-midpoint-view-handoff.md) — hierarchy-dependent Calendar UI switches at 50% in both directions; accelerated Year↔Day keeps the same handoff.
+- [Calendar Day List header transition](calendar-day-list-header-transition.md) — DOW, week strip, and day banner must share one mounted vertical transition when entering or leaving List mode.

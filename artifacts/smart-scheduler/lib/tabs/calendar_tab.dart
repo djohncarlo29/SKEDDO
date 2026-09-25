@@ -600,12 +600,17 @@ class CalendarTabState extends State<CalendarTab>
   late final ValueNotifier<DateTime> _nowNotifier;
   Timer? _clockTimer;
 
-  // ── List-mode strip-slide ─────────────────────────────────────────────────────
-  // Drives the week strip off-screen above the header when in List Day View.
-  //   0.0 → strip at its normal Day View pinned position
-  //   1.0 → strip translated -(kDayLabelHeight + kRowHeightList) above viewport
+  // ── List-mode Day-header slide ────────────────────────────────────────────────
+  // Drives the DOW row, week strip, and day banner off-screen as one group when
+  // in List Day View.
+  //   0.0 → header group at its normal Day View position
+  //   1.0 → full header group translated above the viewport
   // Multiplied by colT so the effect is zero while in Month/Year View.
   late final AnimationController _listModeCtrl;
+  // Keep outgoing Day View chrome mounted until the shared List-mode
+  // transition has completed, so the DOW row and banner leave with the strip.
+  bool _dayChromeModeTransitionActive = false;
+  DayViewSubMode? _dayChromeSubMode;
 
   // ── View-mode state ───────────────────────────────────────────────────────────
   CalendarViewMode _viewMode = CalendarViewMode.compact;
@@ -1613,6 +1618,19 @@ class CalendarTabState extends State<CalendarTab>
       duration: const Duration(milliseconds: 280),
       value: widget.daySubMode == DayViewSubMode.list ? 1.0 : 0.0,
     );
+    _listModeCtrl.addStatusListener((status) {
+      final finishedLeavingChrome =
+          status == AnimationStatus.completed &&
+          widget.daySubMode == DayViewSubMode.list;
+      final finishedRestoringChrome =
+          status == AnimationStatus.dismissed &&
+          widget.daySubMode != DayViewSubMode.list;
+      if ((finishedLeavingChrome || finishedRestoringChrome) &&
+          _dayChromeModeTransitionActive &&
+          mounted) {
+        setState(() => _dayChromeModeTransitionActive = false);
+      }
+    });
     // View-mode transition controller (200 ms, ease-in-out).
     _viewModeCtrl = AnimationController(
       vsync: this,
@@ -1784,10 +1802,14 @@ class CalendarTabState extends State<CalendarTab>
     // strip offset is driven purely by colT*_listModeCtrl so no extra gesture
     // is needed — the collapse animation carries it.
     if (oldWidget.daySubMode != widget.daySubMode) {
+      final inDayView = _collapseAnim.value > 0.1;
+      _dayChromeModeTransitionActive = inDayView;
+      _dayChromeSubMode = inDayView && widget.daySubMode == DayViewSubMode.list
+          ? oldWidget.daySubMode
+          : widget.daySubMode;
       // When the strip isn't visible (e.g. Month View on cold-start pref restore),
       // snap the controller value directly so there is no visible animation.
       // When already in Day View, animate so the strip slides smoothly on/off.
-      final inDayView = _collapseAnim.value > 0.1;
       if (widget.daySubMode == DayViewSubMode.list) {
         if (inDayView)
           _listModeCtrl.forward();
@@ -2056,27 +2078,23 @@ class CalendarTabState extends State<CalendarTab>
               _toHeight,
               _viewModeCtrl.value,
             )!;
-            // How far the week strip has slid upward out of the viewport.
-            //   0.0 = strip at normal Day View pinned position
-            //   1.0 = strip fully above the app header (off-screen)
-            // Multiplied by colT so the offset is zero in Month/Year View.
-            final double listModeT = colT * _listModeCtrl.value;
-            final double stripSlideY =
-                -listModeT *
-                    (_kCalendarHeaderToDowGap +
-                        _kDayLabelHeight +
-                        dayWeekStripHeight);
             // During a snap animation use the interpolated value; during a
             // free drag use the raw _slideX field.
             final slideX = _snapCtrl.isAnimating ? _snapAnim.value : _slideX;
+            final dayHeaderSubMode =
+                widget.daySubMode == DayViewSubMode.list &&
+                    _dayChromeModeTransitionActive &&
+                    _dayChromeSubMode != null
+                ? _dayChromeSubMode!
+                : widget.daySubMode;
             final currentDayBannerHeight = _DayBannerState.requiredHeight(
               context,
               width: sw,
               date: _selected,
-              daySubMode: widget.daySubMode,
+              daySubMode: dayHeaderSubMode,
             );
             final dayBannerHeight = () {
-              if (widget.daySubMode == DayViewSubMode.list ||
+              if (dayHeaderSubMode == DayViewSubMode.list ||
                   slideX == 0.0) {
                 return currentDayBannerHeight;
               }
@@ -2094,7 +2112,7 @@ class CalendarTabState extends State<CalendarTab>
                     context,
                     width: sw,
                     date: targetDate,
-                    daySubMode: widget.daySubMode,
+                    daySubMode: dayHeaderSubMode,
                   );
               final slideProgress = (slideX.abs() / sw).clamp(0.0, 1.0);
               return lerpDouble(
@@ -2103,6 +2121,23 @@ class CalendarTabState extends State<CalendarTab>
                 slideProgress,
               )!;
             }();
+            // How far the week strip has slid upward out of the viewport.
+            //   0.0 = strip at normal Day View pinned position
+            //   1.0 = strip fully above the app header (off-screen)
+            // Multiplied by colT so the offset is zero in Month/Year View.
+            final double listModeT = colT * _listModeCtrl.value;
+            // One shared offset moves the DOW row, week strip, and day banner
+            // as a single Day View header group.
+            final double dayHeaderGroupSlideY =
+                -listModeT *
+                    (_kCalendarHeaderToDowGap +
+                        _kDayLabelHeight +
+                        dayWeekStripHeight +
+                        dayBannerHeight);
+            final showDayHeaderChrome =
+                colT > 0.01 &&
+                (widget.daySubMode != DayViewSubMode.list ||
+                    _dayChromeModeTransitionActive);
 
             // Adjacent year / month / day for the three-panel rendering
             final prevYear = _dispYear - 1;
@@ -2313,7 +2348,7 @@ class CalendarTabState extends State<CalendarTab>
                               width: sw,
                                child: ClipRect(
                                  child: Transform.translate(
-                                   offset: Offset(0, stripSlideY),
+                                    offset: Offset(0, dayHeaderGroupSlideY),
                                    child: IgnorePointer(
                                       child: _monthPreviewView(
                                         isPrev: true,
@@ -2340,7 +2375,7 @@ class CalendarTabState extends State<CalendarTab>
                               width: sw,
                                child: ClipRect(
                                  child: Transform.translate(
-                                   offset: Offset(0, stripSlideY),
+                                    offset: Offset(0, dayHeaderGroupSlideY),
                                    child: _MonthView(
                                   key: ValueKey('$_dispYear-$_dispMonth'),
                                   year: _dispYear,
@@ -2423,7 +2458,7 @@ class CalendarTabState extends State<CalendarTab>
                               width: sw,
                                child: ClipRect(
                                  child: Transform.translate(
-                                   offset: Offset(0, stripSlideY),
+                                    offset: Offset(0, dayHeaderGroupSlideY),
                                    child: IgnorePointer(
                                       child: _monthPreviewView(
                                         isPrev: false,
@@ -2445,40 +2480,40 @@ class CalendarTabState extends State<CalendarTab>
                           ],
                         ),
                       ),
-                    // ── Day-view DOW mask ───────────────────────────────────
+                    // ── Day-view header chrome ──────────────────────────────
+                    // The DOW row, week strip, and day banner share one
+                    // vertical offset during List-mode changes. Keep the
+                    // outgoing group mounted until the controller completes,
+                    // then remove it as one unit.
                     // The three month panels each contain their own DOW row,
                     // but their translated week rows can still paint across
                     // that row before an individual panel's clip is applied.
                     // Paint one opaque mask at the parent level, above all
                     // three panels, and render the labels again inside it so
                     // the DOW alignment remains independent of panel motion.
-                    // Keep the same row visible for the full Month↔Day
-                    // transition; it is shared chrome, not view-specific
-                    // content, so it must not fade out at the midpoint.
-                    if (colT > 0.01 &&
-                        widget.daySubMode != DayViewSubMode.list)
+                    if (showDayHeaderChrome)
                       Positioned(
                         // Cover the complete boundary below the app header.
                         // The week rows are vertically transformed while
                         // collapsing into Day View and can otherwise paint
-                    // through the small gap above the DOW letters.
+                        // through the small gap above the DOW letters.
                         top: 0,
                         left: 0,
                         right: 0,
                         height: _kCalendarHeaderToDowGap + _kDayLabelHeight,
-                        child: const _DayViewDowMask(),
+                        child: Transform.translate(
+                          offset: Offset(0, dayHeaderGroupSlideY),
+                          child: const _DayViewDowMask(),
+                        ),
                       ),
-                    // (Strip slides off-screen via stripSlideY Transform on each
-                    // _MonthView panel; the mask above also seals the header
-                    // boundary while the strip is settling.)
 
                     // ── Day banner (weekday + full date) below week strip ──
                     // Multi Day: single banner instance handles column-level
                     // sliding — the shared day shifts at half speed.
                     // Single Day: classic 3-panel full-width approach.
-                    // Suppressed in List mode — the placeholder takes the
-                    // full area below the week strip instead.
-                    if (colT > 0.01 && widget.daySubMode != DayViewSubMode.list)
+                    // The placeholder takes the full area below the shared
+                    // header group when List mode is settled.
+                    if (showDayHeaderChrome)
                       Positioned(
                         left: 0,
                         right: 0,
@@ -2492,10 +2527,14 @@ class CalendarTabState extends State<CalendarTab>
                                   (1.0 - _kMonthDayTransitionThreshold))
                               .clamp(0.0, 1.0),
                           child: Transform.translate(
-                            offset: Offset(0, 36.0 * (1.0 - colT)),
+                            offset: Offset(
+                              0,
+                              dayHeaderGroupSlideY +
+                                  36.0 * (1.0 - colT),
+                            ),
                             child: IgnorePointer(
                               child: RepaintBoundary(
-                                child: widget.daySubMode ==
+                                child: dayHeaderSubMode ==
                                         DayViewSubMode.multiDay
                                     // Single instance keyed by GlobalKey so the morph
                                     // animation state survives the subtree-type switch
@@ -2504,7 +2543,7 @@ class CalendarTabState extends State<CalendarTab>
                                         key: _bannerCenterKey,
                                         date: _selected,
                                         today: _today,
-                                        daySubMode: widget.daySubMode,
+                                        daySubMode: dayHeaderSubMode,
                                         slideX: slideX,
                                         screenW: sw,
                                       )
@@ -2518,7 +2557,7 @@ class CalendarTabState extends State<CalendarTab>
                                             child: _DayBanner(
                                               date: prevDay,
                                               today: _today,
-                                              daySubMode: widget.daySubMode,
+                                              daySubMode: dayHeaderSubMode,
                                             ),
                                           ),
                                           Positioned(
@@ -2530,7 +2569,7 @@ class CalendarTabState extends State<CalendarTab>
                                               key: _bannerCenterKey,
                                               date: _selected,
                                               today: _today,
-                                              daySubMode: widget.daySubMode,
+                                              daySubMode: dayHeaderSubMode,
                                             ),
                                           ),
                                           Positioned(
@@ -2541,7 +2580,7 @@ class CalendarTabState extends State<CalendarTab>
                                             child: _DayBanner(
                                               date: nextDay,
                                               today: _today,
-                                              daySubMode: widget.daySubMode,
+                                              daySubMode: dayHeaderSubMode,
                                             ),
                                           ),
                                         ],
