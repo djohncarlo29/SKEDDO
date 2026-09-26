@@ -2144,6 +2144,38 @@ class CalendarTabState extends State<CalendarTab>
                         _kDayLabelHeight +
                         dayWeekStripHeight +
                         dayBannerHeight);
+            // Day View content stays at its settled position underneath the
+            // month grid. The selected week row is the moving cover: as its
+            // bottom edge travels to the pinned Day View strip position, the
+            // banner, timeline, or List placeholder is uncovered beneath it.
+            final currentCollapseRowHeight = lerpDouble(
+              rowHeight,
+              dayWeekStripHeight,
+              colT,
+            )!;
+            final selectedWeekRowTop =
+                _kCalendarHeaderToDowGap +
+                _kDayLabelHeight +
+                (currentCollapseRowHeight * _collapseRow -
+                        _collapseScrollOffset) *
+                    (1.0 - colT);
+            final dayContentTop =
+                _kCalendarHeaderToDowGap +
+                _kDayLabelHeight +
+                dayWeekStripHeight;
+            // When the selected row starts at the top of the grid (or when a
+            // compact row is shorter than the Day strip), use the remaining
+            // calendar viewport as the cover so Day content cannot flash
+            // through before the strip transition has begun.
+            final fallbackRevealTop = lerpDouble(
+              constraints.maxHeight,
+              dayContentTop,
+              colT,
+            )!;
+            final dayContentRevealTop = math.max(
+              fallbackRevealTop,
+              selectedWeekRowTop + currentCollapseRowHeight,
+            );
             final showDayHeaderChrome =
                 colT > 0.01 &&
                 (widget.daySubMode != DayViewSubMode.list ||
@@ -2517,31 +2549,30 @@ class CalendarTabState extends State<CalendarTab>
                         ),
                       ),
 
-                    // ── Day banner (weekday + full date) below week strip ──
-                    // Multi Day: single banner instance handles column-level
-                    // sliding — the shared day shifts at half speed.
-                    // Single Day: classic 3-panel full-width approach.
-                    // The placeholder takes the full area below the shared
-                    // header group when List mode is settled.
-                    if (showDayHeaderChrome)
-                      Positioned(
+                    // ── Day View content reveal ─────────────────────────────
+                    // Keep Day View content at its settled position. The
+                    // moving clip edge below is the only Month↔Day transition
+                    // applied to the banner, timeline, and List placeholder.
+                    if (colT > 0.01)
+                      Positioned.fill(
+                        child: ClipRect(
+                          clipper: _CalendarDayRevealClipper(
+                            top: dayContentRevealTop,
+                          ),
+                          child: Stack(
+                            clipBehavior: Clip.hardEdge,
+                            children: [
+                              // ── Day banner (weekday + full date) ────────
+                              if (showDayHeaderChrome)
+                                Positioned(
                         left: 0,
                         right: 0,
-                        top:
-                            _kCalendarHeaderToDowGap +
-                            _kDayLabelHeight +
-                            dayWeekStripHeight,
+                        top: dayContentTop,
                         height: dayBannerHeight,
                         child: Opacity(
-                          opacity: ((colT - _kMonthDayTransitionThreshold) /
-                                  (1.0 - _kMonthDayTransitionThreshold))
-                              .clamp(0.0, 1.0),
+                          opacity: 1.0,
                           child: Transform.translate(
-                            offset: Offset(
-                              0,
-                              dayHeaderGroupSlideY +
-                                  36.0 * (1.0 - colT),
-                            ),
+                            offset: Offset(0, dayHeaderGroupSlideY),
                             child: IgnorePointer(
                               child: RepaintBoundary(
                                 child: dayHeaderSubMode ==
@@ -2619,18 +2650,12 @@ class CalendarTabState extends State<CalendarTab>
                       Positioned(
                         left: 0,
                         right: 0,
-                        top:
-                            _kCalendarHeaderToDowGap +
-                            _kDayLabelHeight +
-                            dayWeekStripHeight +
-                            dayBannerHeight,
+                        top: dayContentTop + dayBannerHeight,
                         bottom: 0,
                         child: Opacity(
-                          opacity: ((colT - _kMonthDayTransitionThreshold) /
-                                  (1.0 - _kMonthDayTransitionThreshold))
-                              .clamp(0.0, 1.0),
+                          opacity: 1.0,
                           child: Transform.translate(
-                            offset: Offset(0, 36.0 * (1.0 - colT)),
+                            offset: Offset.zero,
                             child: IgnorePointer(
                               ignoring: colT < 0.85,
                               child: RepaintBoundary(
@@ -2691,12 +2716,14 @@ class CalendarTabState extends State<CalendarTab>
                         top: 0,
                         bottom: 0,
                         child: Opacity(
-                          opacity: ((colT - _kMonthDayTransitionThreshold) /
-                                  (1.0 - _kMonthDayTransitionThreshold))
-                              .clamp(0.0, 1.0),
+                          opacity: 1.0,
                           child: Transform.translate(
-                            offset: Offset(0, 36.0 * (1.0 - colT)),
+                            offset: Offset.zero,
                             child: const _DayListPlaceholder(),
+                          ),
+                        ),
+                      ),
+                            ],
                           ),
                         ),
                       ),
@@ -6002,6 +6029,24 @@ class _DayListPlaceholder extends StatelessWidget {
       ],
     );
   }
+}
+
+// Clips the fixed Day View layer to the moving bottom edge of the selected
+// Month View week row. The clip edge reverses naturally when leaving Day View.
+class _CalendarDayRevealClipper extends CustomClipper<Rect> {
+  const _CalendarDayRevealClipper({required this.top});
+
+  final double top;
+
+  @override
+  Rect getClip(Size size) {
+    final clippedTop = top.clamp(0.0, size.height);
+    return Rect.fromLTRB(0, clippedTop, size.width, size.height);
+  }
+
+  @override
+  bool shouldReclip(covariant _CalendarDayRevealClipper oldClipper) =>
+      oldClipper.top != top;
 }
 
 // Parent-level opaque cover for the Day View DOW row. This deliberately
