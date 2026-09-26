@@ -3073,8 +3073,7 @@ class _MorphOverlay extends StatelessWidget {
     final monthDayScale = textScaleRatioFor(context, 17.0);
     final monthDayCircleDiameter = _calendarDayCircleDiameterFor(context);
     final List<Color?> monthListDotColors;
-    if (viewMode == CalendarViewMode.list &&
-        t >= _kYearMonthHandoffThreshold) {
+    if (viewMode == CalendarViewMode.list) {
       final month = zoomMonthIdx + 1;
       final firstGridDay = DateTime(year, month, 1).subtract(
         Duration(days: _firstWeekday(year, month)),
@@ -3141,14 +3140,19 @@ class _MorphOverlay extends StatelessWidget {
           ),
           if (viewMode == CalendarViewMode.list &&
               t >= _kYearMonthHandoffThreshold)
-            _MonthListMorphContent(
-              year: year,
-              month: zoomMonthIdx + 1,
-              selectedDate: selectedDate,
-              monthListOrderByDay: monthListOrderByDay,
-              monthListOrderRevision: monthListOrderRevision,
-              viewModeRowHeight: viewModeRowHeight,
-              monthScrollOffset: monthScrollOffset,
+            Opacity(
+              opacity: ((t - _kYearMonthHandoffThreshold) /
+                      (1.0 - _kYearMonthHandoffThreshold))
+                  .clamp(0.0, 1.0),
+              child: _MonthListMorphContent(
+                year: year,
+                month: zoomMonthIdx + 1,
+                selectedDate: selectedDate,
+                monthListOrderByDay: monthListOrderByDay,
+                monthListOrderRevision: monthListOrderRevision,
+                viewModeRowHeight: viewModeRowHeight,
+                monthScrollOffset: monthScrollOffset,
+              ),
             ),
         ],
       ),
@@ -3235,30 +3239,58 @@ class _MonthListMorphContent extends StatelessWidget {
           top: contentTop,
           left: 0,
           right: 0,
-          // Keep the morph layer bounded to the actual List content. A
-          // bottom constraint makes this Positioned fill the rest of the
-          // viewport, allowing the embedded DCV's viewport surface to read as
-          // a full-screen grey scrim during the Year↔Month transition.
           child: Align(
             alignment: Alignment.topCenter,
-            // Without a height factor, Align expands to the loose viewport
-            // height supplied by Positioned even when its child is a short
-            // event list. Size this layer to the selected content instead.
-            heightFactor: 1.0,
-            child: _monthSelectedEventsWidgetFor(
-              data: data,
-              selectedDayIndex: selectedListChildIndex,
+            child: _MorphListContentViewport(
               height: selectedDayIsEmpty ? emptyStateHeight : null,
-              emptyStateHeight: emptyStateHeight,
-              onEditEvent: null,
-              scrollController: null,
-              scrollViewportKey: null,
-              onOrderChanged: null,
+              child: _monthSelectedEventsWidgetFor(
+                data: data,
+                selectedDayIndex: selectedListChildIndex,
+                height: selectedDayIsEmpty ? emptyStateHeight : null,
+                emptyStateHeight: emptyStateHeight,
+                onEditEvent: null,
+                scrollController: null,
+                scrollViewportKey: null,
+                onOrderChanged: null,
+              ),
             ),
           ),
         );
       },
     );
+  }
+}
+
+/// Gives the List-side content in the Year↔Month morph a real paint boundary.
+///
+/// The embedded DCV normally relies on its parent viewport for loose height
+/// constraints. Inside the full-screen morph Stack that fallback lets a
+/// viewport-sized surface paint beyond the actual event cards and read as a
+/// grey scrim. The morph must keep the cards/placeholder, but it must not give
+/// that subtree ownership of the unused calendar area.
+class _MorphListContentViewport extends StatelessWidget {
+  const _MorphListContentViewport({
+    required this.height,
+    required this.child,
+  });
+
+  final double? height;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = ClipRect(child: child);
+    if (height != null) {
+      return SizedBox(
+        width: double.infinity,
+        height: math.max(0.0, height!),
+        child: content,
+      );
+    }
+    // The embedded DCV path is a content-sized Column. IntrinsicHeight makes
+    // that contract explicit at the morph boundary instead of allowing the
+    // full-screen Stack's loose max-height to become the child's paint area.
+    return IntrinsicHeight(child: content);
   }
 }
 
@@ -3671,9 +3703,12 @@ class _MorphPainter extends CustomPainter {
         ? accentColor
         : primaryColor;
 
-    // The calendar stack already paints its resolved background. Do not paint a
-    // second full-frame color here: that opaque rectangle acts like a grey
-    // scrim over the entire Year↔Month morph.
+    // Keep the morph layer opaque. During the hierarchy handoff the regular
+    // calendar subtree can be temporarily transparent while the route beneath
+    // it is still composited; without this fill that route's gray backing layer
+    // shows through the List transition.
+    _p.color = bgColor;
+    canvas.drawRect(Offset.zero & size, _p);
 
     // 1. Non-selected mini months — headers + per-cell shared-element morph ───
     for (var mi = 0; mi < 12; mi++) {
@@ -3880,7 +3915,10 @@ class _MorphPainter extends CustomPainter {
       // then travel with their day cell to the exact settled Month List offset.
       if (d < monthListDotColors.length) {
         final dotColor = monthListDotColors[d];
-        if (dotColor != null) {
+        final dotAlpha = ((t - _kYearMonthHandoffThreshold) /
+                (1.0 - _kYearMonthHandoffThreshold))
+            .clamp(0.0, 1.0);
+        if (dotColor != null && dotAlpha > 0.0) {
           final dotCX = lerpDouble(yearCX, monthCX, t)!;
           final monthDotCY =
               monthCY -
@@ -3889,7 +3927,7 @@ class _MorphPainter extends CustomPainter {
               _monthListDotTop(viewModeRowHeight) +
               _kMonthListDotDiameter / 2;
           final dotCY = lerpDouble(yearCY, monthDotCY, t)!;
-          _p.color = dotColor;
+          _p.color = _fade(dotColor, dotAlpha);
           canvas.drawCircle(
             Offset(dotCX, dotCY),
             _kMonthListDotDiameter / 2,
