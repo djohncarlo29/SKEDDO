@@ -2239,149 +2239,6 @@ class CalendarTabState extends State<CalendarTab>
                     (zoomT > 0.95 && colT < 0.05) || // month view
                     (colT > 0.95)); // day view
 
-            // The Day View surface is present for the whole Month↔Day
-            // transition.  The moving Month week rows are its cover: while
-            // they are opening, the surface is painted underneath them and is
-            // revealed wherever the rows have moved away.  Once the rows have
-            // cleared the content area, move the same widgets above the Month
-            // panel so the settled Day View remains interactive.  Reversing
-            // this handoff makes the week rows cover the surface again.
-            final dayContentSurface = <Widget>[
-              if (showDayHeaderChrome)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top:
-                      _kCalendarHeaderToDowGap +
-                      _kDayLabelHeight +
-                      dayWeekStripHeight,
-                  height: dayBannerHeight,
-                  child: Transform.translate(
-                    offset: Offset(0, dayHeaderGroupSlideY),
-                    child: IgnorePointer(
-                      child: RepaintBoundary(
-                        child: dayHeaderSubMode == DayViewSubMode.multiDay
-                            // Single instance keyed by GlobalKey so the morph
-                            // animation state survives the subtree-type switch
-                            // from the 3-panel Stack to the single-widget form.
-                            ? _DayBanner(
-                                key: _bannerCenterKey,
-                                date: _selected,
-                                today: _today,
-                                daySubMode: dayHeaderSubMode,
-                                animateMultiDayTransition:
-                                    _animateMultiDayTransition,
-                                slideX: slideX,
-                                screenW: sw,
-                              )
-                            : Stack(
-                                children: [
-                                  Positioned(
-                                    left: slideX - sw,
-                                    top: 0,
-                                    bottom: 0,
-                                    width: sw,
-                                    child: _DayBanner(
-                                      date: prevDay,
-                                      today: _today,
-                                      daySubMode: dayHeaderSubMode,
-                                      animateMultiDayTransition:
-                                          _animateMultiDayTransition,
-                                    ),
-                                  ),
-                                  Positioned(
-                                    left: slideX,
-                                    top: 0,
-                                    bottom: 0,
-                                    width: sw,
-                                    child: _DayBanner(
-                                      key: _bannerCenterKey,
-                                      date: _selected,
-                                      today: _today,
-                                      daySubMode: dayHeaderSubMode,
-                                      animateMultiDayTransition:
-                                          _animateMultiDayTransition,
-                                    ),
-                                  ),
-                                  Positioned(
-                                    left: slideX + sw,
-                                    top: 0,
-                                    bottom: 0,
-                                    width: sw,
-                                    child: _DayBanner(
-                                      date: nextDay,
-                                      today: _today,
-                                      daySubMode: dayHeaderSubMode,
-                                      animateMultiDayTransition:
-                                          _animateMultiDayTransition,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                  ),
-                ),
-              if (colT > 0.01 && widget.daySubMode != DayViewSubMode.list)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top:
-                      _kCalendarHeaderToDowGap +
-                      _kDayLabelHeight +
-                      dayWeekStripHeight +
-                      dayBannerHeight,
-                  bottom: 0,
-                  child: IgnorePointer(
-                    ignoring: colT < 0.85,
-                    child: RepaintBoundary(
-                      child: widget.daySubMode == DayViewSubMode.multiDay
-                          ? _DayTimelineMulti(
-                              // Constant key → state survives date navigation
-                              // so sep-entrance animation only plays once on
-                              // mode-enter, not on every day change.
-                              key: const Key('multi-timeline'),
-                              selectedDate: _selected,
-                              today: _today,
-                              nowNotifier: _nowNotifier,
-                              slideX: timelineSlideX,
-                              screenW: sw,
-                              animateEntrance: _animateMultiDayTransition,
-                            )
-                          : Stack(
-                              children: [
-                                Positioned(
-                                  left: timelineSlideX - sw,
-                                  top: 0,
-                                  bottom: 0,
-                                  width: sw,
-                                  child: _singleDayTimelineFor(prevDay),
-                                ),
-                                Positioned(
-                                  left: timelineSlideX,
-                                  top: 0,
-                                  bottom: 0,
-                                  width: sw,
-                                  child: _singleDayTimelineFor(_selected),
-                                ),
-                                Positioned(
-                                  left: timelineSlideX + sw,
-                                  top: 0,
-                                  bottom: 0,
-                                  width: sw,
-                                  child: _singleDayTimelineFor(nextDay),
-                                ),
-                              ],
-                            ),
-                    ),
-                  ),
-                ),
-              if (colT > 0.01 && widget.daySubMode == DayViewSubMode.list)
-                Positioned.fill(
-                  child: const _DayListPlaceholder(),
-                ),
-            ];
-
             return GestureDetector(
               behavior: HitTestBehavior.translucent,
               onHorizontalDragStart: swipeEnabled ? _onHDragStart : null,
@@ -2493,8 +2350,6 @@ class CalendarTabState extends State<CalendarTab>
                       Positioned.fill(
                         child: Stack(
                           children: [
-                            if (colT > 0.01 && colT <= _kMonthDayTransitionThreshold)
-                              ...dayContentSurface,
                             // Prev panel — display only, no tap
                             Positioned(
                               left: monthSlideX - sw,
@@ -2635,16 +2490,17 @@ class CalendarTabState extends State<CalendarTab>
                           ],
                         ),
                       ),
-                    if (zoomT > 0.999 &&
-                        colT > _kMonthDayTransitionThreshold)
-                      ...dayContentSurface,
-                    // ── Day-view DOW header mask ────────────────────────────
+                    // ── Day-view header chrome ──────────────────────────────
+                    // The DOW row, week strip, and day banner share one
+                    // vertical offset during List-mode changes. Keep the
+                    // outgoing group mounted until the controller completes,
+                    // then remove it as one unit.
                     // The three month panels each contain their own DOW row,
                     // but their translated week rows can still paint across
                     // that row before an individual panel's clip is applied.
                     // Paint one opaque mask at the parent level, above all
-                    // three panels, so the DOW alignment remains independent
-                    // of panel motion.
+                    // three panels, and render the labels again inside it so
+                    // the DOW alignment remains independent of panel motion.
                     if (showDayHeaderChrome)
                       Positioned(
                         // Cover the complete boundary below the app header.
@@ -2661,6 +2517,189 @@ class CalendarTabState extends State<CalendarTab>
                         ),
                       ),
 
+                    // ── Day banner (weekday + full date) below week strip ──
+                    // Multi Day: single banner instance handles column-level
+                    // sliding — the shared day shifts at half speed.
+                    // Single Day: classic 3-panel full-width approach.
+                    // The placeholder takes the full area below the shared
+                    // header group when List mode is settled.
+                    if (showDayHeaderChrome)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top:
+                            _kCalendarHeaderToDowGap +
+                            _kDayLabelHeight +
+                            dayWeekStripHeight,
+                        height: dayBannerHeight,
+                        child: Opacity(
+                          opacity: ((colT - _kMonthDayTransitionThreshold) /
+                                  (1.0 - _kMonthDayTransitionThreshold))
+                              .clamp(0.0, 1.0),
+                          child: Transform.translate(
+                            offset: Offset(
+                              0,
+                              dayHeaderGroupSlideY +
+                                  36.0 * (1.0 - colT),
+                            ),
+                            child: IgnorePointer(
+                              child: RepaintBoundary(
+                                child: dayHeaderSubMode ==
+                                        DayViewSubMode.multiDay
+                                    // Single instance keyed by GlobalKey so the morph
+                                    // animation state survives the subtree-type switch
+                                    // from the 3-panel Stack to the single-widget form.
+                                    ? _DayBanner(
+                                        key: _bannerCenterKey,
+                                        date: _selected,
+                                        today: _today,
+                                        daySubMode: dayHeaderSubMode,
+                                        animateMultiDayTransition:
+                                            _animateMultiDayTransition,
+                                        slideX: slideX,
+                                        screenW: sw,
+                                      )
+                                    : Stack(
+                                        children: [
+                                          Positioned(
+                                            left: slideX - sw,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: sw,
+                                            child: _DayBanner(
+                                              date: prevDay,
+                                              today: _today,
+                                              daySubMode: dayHeaderSubMode,
+                                              animateMultiDayTransition:
+                                                  _animateMultiDayTransition,
+                                            ),
+                                          ),
+                                          Positioned(
+                                            left: slideX,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: sw,
+                                            child: _DayBanner(
+                                              key: _bannerCenterKey,
+                                              date: _selected,
+                                              today: _today,
+                                              daySubMode: dayHeaderSubMode,
+                                              animateMultiDayTransition:
+                                                  _animateMultiDayTransition,
+                                            ),
+                                          ),
+                                          Positioned(
+                                            left: slideX + sw,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: sw,
+                                            child: _DayBanner(
+                                              date: nextDay,
+                                              today: _today,
+                                              daySubMode: dayHeaderSubMode,
+                                              animateMultiDayTransition:
+                                                  _animateMultiDayTransition,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // ── Day timeline — three horizontal panels ─────────────
+                    // Multi Day: _DayTimelineMulti uses column-level sliding
+                    // so the shared day shifts at half speed; exiting/entering
+                    // days slide at full speed for seamless continuity.
+                    // Single Day: classic 3-panel full-width approach.
+                    // Suppressed in List mode — placeholder used instead.
+                    if (colT > 0.01 && widget.daySubMode != DayViewSubMode.list)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top:
+                            _kCalendarHeaderToDowGap +
+                            _kDayLabelHeight +
+                            dayWeekStripHeight +
+                            dayBannerHeight,
+                        bottom: 0,
+                        child: Opacity(
+                          opacity: ((colT - _kMonthDayTransitionThreshold) /
+                                  (1.0 - _kMonthDayTransitionThreshold))
+                              .clamp(0.0, 1.0),
+                          child: Transform.translate(
+                            offset: Offset(0, 36.0 * (1.0 - colT)),
+                            child: IgnorePointer(
+                              ignoring: colT < 0.85,
+                              child: RepaintBoundary(
+                                child: widget.daySubMode ==
+                                        DayViewSubMode.multiDay
+                                    ? _DayTimelineMulti(
+                                        // Constant key → state survives date navigation
+                                        // so sep-entrance animation only plays once on
+                                        // mode-enter, not on every day change.
+                                        key: const Key('multi-timeline'),
+                                        selectedDate: _selected,
+                                        today: _today,
+                                        nowNotifier: _nowNotifier,
+                                        slideX: timelineSlideX,
+                                        screenW: sw,
+                                        animateEntrance:
+                                            _animateMultiDayTransition,
+                                      )
+                                    : Stack(
+                                        children: [
+                                          Positioned(
+                                            left: timelineSlideX - sw,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: sw,
+                                          child: _singleDayTimelineFor(prevDay),
+                                          ),
+                                          Positioned(
+                                            left: timelineSlideX,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: sw,
+                                          child: _singleDayTimelineFor(_selected),
+                                          ),
+                                          Positioned(
+                                            left: timelineSlideX + sw,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: sw,
+                                          child: _singleDayTimelineFor(nextDay),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    // ── List mode placeholder ──────────────────────────────
+                    // Occupies the FULL content area (top:0, bottom:0) because
+                    // the week strip is now off-screen above the app header.
+                    // Centering via SliverFillRemaining works correctly when the
+                    // Positioned spans the full height.
+                    if (colT > 0.01 && widget.daySubMode == DayViewSubMode.list)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: Opacity(
+                          opacity: ((colT - _kMonthDayTransitionThreshold) /
+                                  (1.0 - _kMonthDayTransitionThreshold))
+                              .clamp(0.0, 1.0),
+                          child: Transform.translate(
+                            offset: Offset(0, 36.0 * (1.0 - colT)),
+                            child: const _DayListPlaceholder(),
+                          ),
+                        ),
+                      ),
                     // ── Full-screen search overlay (same pattern as EventsTab) ──
                     if (_greyActive) _buildSearchOverlay(),
                   ],
