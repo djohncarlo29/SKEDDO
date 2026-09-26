@@ -2131,9 +2131,9 @@ class CalendarTabState extends State<CalendarTab>
                 slideProgress,
               )!;
             }();
-            // This is only used by the Day View banner during an explicit
-            // Single/Multi/List mode change. The DOW header and Month View
-            // week veils never use this offset.
+            // List Day View keeps the original headerless settled layout:
+            // the Month View header group slides away as List mode enters.
+            // Single Day and Multi Day keep the DOW/week strip fixed.
             final double listModeT = colT * _listModeCtrl.value;
             final double dayHeaderGroupSlideY =
                 -listModeT *
@@ -2141,6 +2141,10 @@ class CalendarTabState extends State<CalendarTab>
                         _kDayLabelHeight +
                         dayWeekStripHeight +
                         dayBannerHeight);
+            final double monthPanelSlideY =
+                widget.daySubMode == DayViewSubMode.list
+                    ? dayHeaderGroupSlideY
+                    : 0.0;
             final dayContentTop =
                 _kCalendarHeaderToDowGap +
                 _kDayLabelHeight +
@@ -2497,7 +2501,12 @@ class CalendarTabState extends State<CalendarTab>
                           children: [
                             // Day View owns the layer underneath. The month
                             // rows below are the moving opaque veils.
-                            if (colT > 0.01) buildDayViewUnderlay(),
+                            // During the collapse the Month View remains on
+                            // top of the fully laid-out Day View. Once the
+                            // transition settles, put Day content back on
+                            // top so its native scroll views receive input.
+                            if (colT > 0.01 && colT < 0.99)
+                              buildDayViewUnderlay(),
                             // Prev panel — display only, no tap
                             Positioned(
                               left: monthSlideX - sw,
@@ -2505,7 +2514,9 @@ class CalendarTabState extends State<CalendarTab>
                               bottom: 0,
                               width: sw,
                                child: ClipRect(
-                                 child: IgnorePointer(
+                                 child: Transform.translate(
+                                   offset: Offset(0, monthPanelSlideY),
+                                   child: IgnorePointer(
                                       child: _monthPreviewView(
                                         isPrev: true,
                                         year: prevPanelYear,
@@ -2520,6 +2531,7 @@ class CalendarTabState extends State<CalendarTab>
                                             inDayView && slideX != 0.0,
                                       ),
                                    ),
+                                 ),
                               ),
                             ),
                             // Current month — fully interactive
@@ -2529,7 +2541,9 @@ class CalendarTabState extends State<CalendarTab>
                               bottom: 0,
                               width: sw,
                                child: ClipRect(
-                                 child: _MonthView(
+                                 child: Transform.translate(
+                                   offset: Offset(0, monthPanelSlideY),
+                                   child: _MonthView(
                                   key: ValueKey('$_dispYear-$_dispMonth'),
                                   year: _dispYear,
                                   month: _dispMonth,
@@ -2600,6 +2614,7 @@ class CalendarTabState extends State<CalendarTab>
                                     }
                                   },
                                    ),
+                                 ),
                               ),
                             ),
                             // Next panel — display only, no tap
@@ -2609,7 +2624,9 @@ class CalendarTabState extends State<CalendarTab>
                               bottom: 0,
                               width: sw,
                                child: ClipRect(
-                                 child: IgnorePointer(
+                                 child: Transform.translate(
+                                   offset: Offset(0, monthPanelSlideY),
+                                   child: IgnorePointer(
                                       child: _monthPreviewView(
                                         isPrev: false,
                                         year: nextPanelYear,
@@ -2624,11 +2641,13 @@ class CalendarTabState extends State<CalendarTab>
                                             inDayView && slideX != 0.0,
                                       ),
                                    ),
+                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
+                    if (colT >= 0.99) buildDayViewUnderlay(),
                     // ── Day-view header chrome ──────────────────────────────
                     // The DOW row, week strip, and day banner share one
                     // vertical offset during List-mode changes. Keep the
@@ -2650,7 +2669,10 @@ class CalendarTabState extends State<CalendarTab>
                         left: 0,
                         right: 0,
                         height: _kCalendarHeaderToDowGap + _kDayLabelHeight,
-                        child: const _DayViewDowMask(),
+                        child: Transform.translate(
+                          offset: Offset(0, monthPanelSlideY),
+                          child: const _DayViewDowMask(),
+                        ),
                       ),
 
                     // ── Full-screen search overlay (same pattern as EventsTab) ──
