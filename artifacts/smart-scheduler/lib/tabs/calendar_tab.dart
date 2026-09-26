@@ -2559,9 +2559,19 @@ class CalendarTabState extends State<CalendarTab>
                           clipper: _CalendarDayRevealClipper(
                             top: dayContentRevealTop,
                           ),
-                          child: Stack(
-                            clipBehavior: Clip.hardEdge,
-                            children: [
+                          // Keep the Day View directly underneath the moving
+                          // cover edge. Without this matching translation, the
+                          // fixed banner stays above the clip and leaves an
+                          // empty background band between the week rows and
+                          // the timeline during the handoff.
+                          child: Transform.translate(
+                            offset: Offset(
+                              0,
+                              dayContentRevealTop - dayContentTop,
+                            ),
+                            child: Stack(
+                              clipBehavior: Clip.hardEdge,
+                              children: [
                               // ── Day banner (weekday + full date) ────────
                               if (showDayHeaderChrome)
                                 Positioned(
@@ -2723,7 +2733,8 @@ class CalendarTabState extends State<CalendarTab>
                           ),
                         ),
                       ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
