@@ -2131,51 +2131,20 @@ class CalendarTabState extends State<CalendarTab>
                 slideProgress,
               )!;
             }();
-            // How far the week strip has slid upward out of the viewport.
-            //   0.0 = strip at normal Day View pinned position
-            //   1.0 = strip fully above the app header (off-screen)
-            // Multiplied by colT so the offset is zero in Month/Year View.
+            // This is only used by the Day View banner during an explicit
+            // Single/Multi/List mode change. The DOW header and Month View
+            // week veils never use this offset.
             final double listModeT = colT * _listModeCtrl.value;
-            // One shared offset moves the DOW row, week strip, and day banner
-            // as a single Day View header group.
             final double dayHeaderGroupSlideY =
                 -listModeT *
                     (_kCalendarHeaderToDowGap +
                         _kDayLabelHeight +
                         dayWeekStripHeight +
                         dayBannerHeight);
-            // Day View content stays at its settled position underneath the
-            // month grid. The selected week row is the moving cover: as its
-            // bottom edge travels to the pinned Day View strip position, the
-            // banner, timeline, or List placeholder is uncovered beneath it.
-            final currentCollapseRowHeight = lerpDouble(
-              rowHeight,
-              dayWeekStripHeight,
-              colT,
-            )!;
-            final selectedWeekRowTop =
-                _kCalendarHeaderToDowGap +
-                _kDayLabelHeight +
-                (currentCollapseRowHeight * _collapseRow -
-                        _collapseScrollOffset) *
-                    (1.0 - colT);
             final dayContentTop =
                 _kCalendarHeaderToDowGap +
                 _kDayLabelHeight +
                 dayWeekStripHeight;
-            // When the selected row starts at the top of the grid (or when a
-            // compact row is shorter than the Day strip), use the remaining
-            // calendar viewport as the cover so Day content cannot flash
-            // through before the strip transition has begun.
-            final fallbackRevealTop = lerpDouble(
-              constraints.maxHeight,
-              dayContentTop,
-              colT,
-            )!;
-            final dayContentRevealTop = math.max(
-              fallbackRevealTop,
-              selectedWeekRowTop + currentCollapseRowHeight,
-            );
             final showDayHeaderChrome =
                 colT > 0.01 &&
                 (widget.daySubMode != DayViewSubMode.list ||
@@ -2270,6 +2239,150 @@ class CalendarTabState extends State<CalendarTab>
                 ((zoomT < 0.05) || // year view
                     (zoomT > 0.95 && colT < 0.05) || // month view
                     (colT > 0.95)); // day view
+
+            // The Day View is laid out first and remains underneath the
+            // Month View. The individual _AnimatedWeekRow widgets are the
+            // opaque veils that reveal it as rows above the selected week move
+            // up and rows below move down.
+            Widget buildDayViewUnderlay() => Positioned.fill(
+              child: Stack(
+                clipBehavior: Clip.hardEdge,
+                children: [
+                  // ── Day banner (weekday + full date) ────────────────
+                  if (showDayHeaderChrome)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: dayContentTop,
+                      height: dayBannerHeight,
+                      child: Transform.translate(
+                        offset: Offset(0, dayHeaderGroupSlideY),
+                        child: IgnorePointer(
+                          child: RepaintBoundary(
+                            child: dayHeaderSubMode == DayViewSubMode.multiDay
+                                ? _DayBanner(
+                                    key: _bannerCenterKey,
+                                    date: _selected,
+                                    today: _today,
+                                    daySubMode: dayHeaderSubMode,
+                                    animateMultiDayTransition:
+                                        _animateMultiDayTransition,
+                                    slideX: slideX,
+                                    screenW: sw,
+                                  )
+                                : Stack(
+                                    children: [
+                                      Positioned(
+                                        left: slideX - sw,
+                                        top: 0,
+                                        bottom: 0,
+                                        width: sw,
+                                        child: _DayBanner(
+                                          date: prevDay,
+                                          today: _today,
+                                          daySubMode: dayHeaderSubMode,
+                                          animateMultiDayTransition:
+                                              _animateMultiDayTransition,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        left: slideX,
+                                        top: 0,
+                                        bottom: 0,
+                                        width: sw,
+                                        child: _DayBanner(
+                                          key: _bannerCenterKey,
+                                          date: _selected,
+                                          today: _today,
+                                          daySubMode: dayHeaderSubMode,
+                                          animateMultiDayTransition:
+                                              _animateMultiDayTransition,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        left: slideX + sw,
+                                        top: 0,
+                                        bottom: 0,
+                                        width: sw,
+                                        child: _DayBanner(
+                                          date: nextDay,
+                                          today: _today,
+                                          daySubMode: dayHeaderSubMode,
+                                          animateMultiDayTransition:
+                                              _animateMultiDayTransition,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // ── Day timeline — three horizontal panels ───────────
+                  if (colT > 0.01 && widget.daySubMode != DayViewSubMode.list)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: dayContentTop + dayBannerHeight,
+                      bottom: 0,
+                      child: IgnorePointer(
+                        ignoring: colT < 0.85,
+                        child: RepaintBoundary(
+                          child: widget.daySubMode == DayViewSubMode.multiDay
+                              ? _DayTimelineMulti(
+                                  key: const Key('multi-timeline'),
+                                  selectedDate: _selected,
+                                  today: _today,
+                                  nowNotifier: _nowNotifier,
+                                  slideX: timelineSlideX,
+                                  screenW: sw,
+                                  animateEntrance:
+                                      _animateMultiDayTransition,
+                                )
+                              : Stack(
+                                  children: [
+                                    Positioned(
+                                      left: timelineSlideX - sw,
+                                      top: 0,
+                                      bottom: 0,
+                                      width: sw,
+                                      child: _singleDayTimelineFor(prevDay),
+                                    ),
+                                    Positioned(
+                                      left: timelineSlideX,
+                                      top: 0,
+                                      bottom: 0,
+                                      width: sw,
+                                      child: _singleDayTimelineFor(_selected),
+                                    ),
+                                    Positioned(
+                                      left: timelineSlideX + sw,
+                                      top: 0,
+                                      bottom: 0,
+                                      width: sw,
+                                      child: _singleDayTimelineFor(nextDay),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ),
+
+                  // Keep the list content mounted underneath the week veils
+                  // from the first Month View frame. It is revealed only
+                  // where a veil has moved away.
+                  if (widget.daySubMode == DayViewSubMode.list)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: const _DayListPlaceholder(),
+                    ),
+                ],
+              ),
+            );
 
             return GestureDetector(
               behavior: HitTestBehavior.translucent,
@@ -2382,6 +2495,9 @@ class CalendarTabState extends State<CalendarTab>
                       Positioned.fill(
                         child: Stack(
                           children: [
+                            // Day View owns the layer underneath. The month
+                            // rows below are the moving opaque veils.
+                            if (colT > 0.01) buildDayViewUnderlay(),
                             // Prev panel — display only, no tap
                             Positioned(
                               left: monthSlideX - sw,
@@ -2389,9 +2505,7 @@ class CalendarTabState extends State<CalendarTab>
                               bottom: 0,
                               width: sw,
                                child: ClipRect(
-                                 child: Transform.translate(
-                                    offset: Offset(0, dayHeaderGroupSlideY),
-                                   child: IgnorePointer(
+                                 child: IgnorePointer(
                                       child: _monthPreviewView(
                                         isPrev: true,
                                         year: prevPanelYear,
@@ -2406,7 +2520,6 @@ class CalendarTabState extends State<CalendarTab>
                                             inDayView && slideX != 0.0,
                                       ),
                                    ),
-                                ),
                               ),
                             ),
                             // Current month — fully interactive
@@ -2416,9 +2529,7 @@ class CalendarTabState extends State<CalendarTab>
                               bottom: 0,
                               width: sw,
                                child: ClipRect(
-                                 child: Transform.translate(
-                                    offset: Offset(0, dayHeaderGroupSlideY),
-                                   child: _MonthView(
+                                 child: _MonthView(
                                   key: ValueKey('$_dispYear-$_dispMonth'),
                                   year: _dispYear,
                                   month: _dispMonth,
@@ -2489,7 +2600,6 @@ class CalendarTabState extends State<CalendarTab>
                                     }
                                   },
                                    ),
-                                 ),
                               ),
                             ),
                             // Next panel — display only, no tap
@@ -2499,9 +2609,7 @@ class CalendarTabState extends State<CalendarTab>
                               bottom: 0,
                               width: sw,
                                child: ClipRect(
-                                 child: Transform.translate(
-                                    offset: Offset(0, dayHeaderGroupSlideY),
-                                   child: IgnorePointer(
+                                 child: IgnorePointer(
                                       child: _monthPreviewView(
                                         isPrev: false,
                                         year: nextPanelYear,
@@ -2516,7 +2624,6 @@ class CalendarTabState extends State<CalendarTab>
                                             inDayView && slideX != 0.0,
                                       ),
                                    ),
-                                ),
                               ),
                             ),
                           ],
@@ -2543,201 +2650,9 @@ class CalendarTabState extends State<CalendarTab>
                         left: 0,
                         right: 0,
                         height: _kCalendarHeaderToDowGap + _kDayLabelHeight,
-                        child: Transform.translate(
-                          offset: Offset(0, dayHeaderGroupSlideY),
-                          child: const _DayViewDowMask(),
-                        ),
+                        child: const _DayViewDowMask(),
                       ),
 
-                    // ── Day View content reveal ─────────────────────────────
-                    // Keep Day View content at its settled position. The
-                    // moving clip edge below is the only Month↔Day transition
-                    // applied to the banner, timeline, and List placeholder.
-                    if (colT > 0.01)
-                      Positioned.fill(
-                        child: ClipRect(
-                          clipper: _CalendarDayRevealClipper(
-                            top: dayContentRevealTop,
-                          ),
-                          // Keep the Day View directly underneath the moving
-                          // cover edge. Without this matching translation, the
-                          // fixed banner stays above the clip and leaves an
-                          // empty background band between the week rows and
-                          // the timeline during the handoff.
-                          child: Transform.translate(
-                            offset: Offset(
-                              0,
-                              dayContentRevealTop - dayContentTop,
-                            ),
-                            child: Stack(
-                              clipBehavior: Clip.hardEdge,
-                              children: [
-                              // ── Day banner (weekday + full date) ────────
-                              if (showDayHeaderChrome)
-                                Positioned(
-                        left: 0,
-                        right: 0,
-                        top: dayContentTop,
-                        height: dayBannerHeight,
-                        child: Opacity(
-                          opacity: 1.0,
-                          child: Transform.translate(
-                            offset: Offset(0, dayHeaderGroupSlideY),
-                            child: IgnorePointer(
-                              child: RepaintBoundary(
-                                child: dayHeaderSubMode ==
-                                        DayViewSubMode.multiDay
-                                    // Single instance keyed by GlobalKey so the morph
-                                    // animation state survives the subtree-type switch
-                                    // from the 3-panel Stack to the single-widget form.
-                                    ? _DayBanner(
-                                        key: _bannerCenterKey,
-                                        date: _selected,
-                                        today: _today,
-                                        daySubMode: dayHeaderSubMode,
-                                        animateMultiDayTransition:
-                                            _animateMultiDayTransition,
-                                        slideX: slideX,
-                                        screenW: sw,
-                                      )
-                                    : Stack(
-                                        children: [
-                                          Positioned(
-                                            left: slideX - sw,
-                                            top: 0,
-                                            bottom: 0,
-                                            width: sw,
-                                            child: _DayBanner(
-                                              date: prevDay,
-                                              today: _today,
-                                              daySubMode: dayHeaderSubMode,
-                                              animateMultiDayTransition:
-                                                  _animateMultiDayTransition,
-                                            ),
-                                          ),
-                                          Positioned(
-                                            left: slideX,
-                                            top: 0,
-                                            bottom: 0,
-                                            width: sw,
-                                            child: _DayBanner(
-                                              key: _bannerCenterKey,
-                                              date: _selected,
-                                              today: _today,
-                                              daySubMode: dayHeaderSubMode,
-                                              animateMultiDayTransition:
-                                                  _animateMultiDayTransition,
-                                            ),
-                                          ),
-                                          Positioned(
-                                            left: slideX + sw,
-                                            top: 0,
-                                            bottom: 0,
-                                            width: sw,
-                                            child: _DayBanner(
-                                              date: nextDay,
-                                              today: _today,
-                                              daySubMode: dayHeaderSubMode,
-                                              animateMultiDayTransition:
-                                                  _animateMultiDayTransition,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                    // ── Day timeline — three horizontal panels ─────────────
-                    // Multi Day: _DayTimelineMulti uses column-level sliding
-                    // so the shared day shifts at half speed; exiting/entering
-                    // days slide at full speed for seamless continuity.
-                    // Single Day: classic 3-panel full-width approach.
-                    // Suppressed in List mode — placeholder used instead.
-                    if (colT > 0.01 && widget.daySubMode != DayViewSubMode.list)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        top: dayContentTop + dayBannerHeight,
-                        bottom: 0,
-                        child: Opacity(
-                          opacity: 1.0,
-                          child: Transform.translate(
-                            offset: Offset.zero,
-                            child: IgnorePointer(
-                              ignoring: colT < 0.85,
-                              child: RepaintBoundary(
-                                child: widget.daySubMode ==
-                                        DayViewSubMode.multiDay
-                                    ? _DayTimelineMulti(
-                                        // Constant key → state survives date navigation
-                                        // so sep-entrance animation only plays once on
-                                        // mode-enter, not on every day change.
-                                        key: const Key('multi-timeline'),
-                                        selectedDate: _selected,
-                                        today: _today,
-                                        nowNotifier: _nowNotifier,
-                                        slideX: timelineSlideX,
-                                        screenW: sw,
-                                        animateEntrance:
-                                            _animateMultiDayTransition,
-                                      )
-                                    : Stack(
-                                        children: [
-                                          Positioned(
-                                            left: timelineSlideX - sw,
-                                            top: 0,
-                                            bottom: 0,
-                                            width: sw,
-                                          child: _singleDayTimelineFor(prevDay),
-                                          ),
-                                          Positioned(
-                                            left: timelineSlideX,
-                                            top: 0,
-                                            bottom: 0,
-                                            width: sw,
-                                          child: _singleDayTimelineFor(_selected),
-                                          ),
-                                          Positioned(
-                                            left: timelineSlideX + sw,
-                                            top: 0,
-                                            bottom: 0,
-                                            width: sw,
-                                          child: _singleDayTimelineFor(nextDay),
-                                          ),
-                                        ],
-                                      ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    // ── List mode placeholder ──────────────────────────────
-                    // Occupies the FULL content area (top:0, bottom:0) because
-                    // the week strip is now off-screen above the app header.
-                    // Centering via SliverFillRemaining works correctly when the
-                    // Positioned spans the full height.
-                    if (colT > 0.01 && widget.daySubMode == DayViewSubMode.list)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        top: 0,
-                        bottom: 0,
-                        child: Opacity(
-                          opacity: 1.0,
-                          child: Transform.translate(
-                            offset: Offset.zero,
-                            child: const _DayListPlaceholder(),
-                          ),
-                        ),
-                      ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
                     // ── Full-screen search overlay (same pattern as EventsTab) ──
                     if (_greyActive) _buildSearchOverlay(),
                   ],
@@ -6090,24 +6005,6 @@ class _DayListPlaceholder extends StatelessWidget {
       ],
     );
   }
-}
-
-// Clips the fixed Day View layer to the moving bottom edge of the selected
-// Month View week row. The clip edge reverses naturally when leaving Day View.
-class _CalendarDayRevealClipper extends CustomClipper<Rect> {
-  const _CalendarDayRevealClipper({required this.top});
-
-  final double top;
-
-  @override
-  Rect getClip(Size size) {
-    final clippedTop = top.clamp(0.0, size.height);
-    return Rect.fromLTRB(0, clippedTop, size.width, size.height);
-  }
-
-  @override
-  bool shouldReclip(covariant _CalendarDayRevealClipper oldClipper) =>
-      oldClipper.top != top;
 }
 
 // Parent-level opaque cover for the Day View DOW row. This deliberately
