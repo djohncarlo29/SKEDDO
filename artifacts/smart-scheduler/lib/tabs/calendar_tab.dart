@@ -3210,10 +3210,14 @@ class _MonthListMorphContent extends StatelessWidget {
               context,
               finalContentGap: 16.0,
             );
+        // The morph content is positioned below the month grid. Measure the
+        // empty-state viewport from that same origin; using the full overlay
+        // height here makes the child extend through the entire morph layer.
+        final contentTop = math.max(0.0, gridHeight - monthScrollOffset);
         final availableListEmptyStateHeight = math.max(
           0.0,
           constraints.maxHeight -
-              monthScrollOffset -
+              contentTop -
               emptyStateFloatingClearance,
         );
         final emptyStateLabelHeight = kEmptyStateLabelFontSize * kLineHeight;
@@ -3228,7 +3232,7 @@ class _MonthListMorphContent extends StatelessWidget {
             : 0.0;
 
         return Positioned(
-          top: gridHeight - monthScrollOffset,
+          top: contentTop,
           left: 0,
           right: 0,
           // Keep the morph layer bounded to the actual List content. A
@@ -3237,6 +3241,10 @@ class _MonthListMorphContent extends StatelessWidget {
           // a full-screen grey scrim during the Year↔Month transition.
           child: Align(
             alignment: Alignment.topCenter,
+            // Without a height factor, Align expands to the loose viewport
+            // height supplied by Positioned even when its child is a short
+            // event list. Size this layer to the selected content instead.
+            heightFactor: 1.0,
             child: _monthSelectedEventsWidgetFor(
               data: data,
               selectedDayIndex: selectedListChildIndex,
