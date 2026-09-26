@@ -3795,6 +3795,21 @@ class _MorphPainter extends CustomPainter {
         ? accentColor
         : primaryColor;
 
+    // Week-row surfaces are part of the same shared element as the row's
+    // dates. Keep them separate per row so each strip carries its background
+    // to its destination instead of leaving a month-sized surface behind.
+    void paintWeekStripSurface({
+      required double left,
+      required double top,
+      required double width,
+      required double height,
+      double alpha = 1.0,
+    }) {
+      if (alpha <= 0.0 || width <= 0.0 || height <= 0.0) return;
+      _p.color = _fade(bgColor, alpha);
+      canvas.drawRect(Rect.fromLTWH(left, top, width, height), _p);
+    }
+
     // Keep the morph layer opaque. During the hierarchy handoff the regular
     // calendar subtree can be temporarily transparent while the route beneath
     // it is still composited; without this fill that route's gray backing layer
@@ -3845,6 +3860,23 @@ class _MorphPainter extends CustomPainter {
             hdrAlpha,
             Offset(xZ(mnX + (i + 0.5) * cellSz), yZ(otherFocalY + cellSz / 2)),
             ls: -0.1,
+          );
+        }
+      }
+
+      // Non-selected mini-month week rows also travel as individual strips
+      // while their month is being transformed. Paint the surface before the
+      // cells so the dates remain one unified row element.
+      if (cellAlpha > 0) {
+        final miniRowHeight = cellSz * s;
+        for (var wr = 0; wr < yearLayout.months[mi].totalRows; wr++) {
+          final miniRowTop = otherFocalY + (wr + 1) * cellSz + 2.0;
+          paintWeekStripSurface(
+            left: xZ(mnX),
+            top: yZ(miniRowTop),
+            width: miniW * s,
+            height: miniRowHeight,
+            alpha: cellAlpha,
           );
         }
       }
@@ -3927,6 +3959,24 @@ class _MorphPainter extends CustomPainter {
           );
         }
       }
+    }
+
+    // Selected-month week rows use the same per-strip treatment as the
+    // settled _WeekRow widget. Each surface follows its own year-view to
+    // month-view geometry, so no full month-grid background is left behind.
+    for (var wr = 0; wr < totalRows; wr++) {
+      final yearRowTop = focalY + (wr + 1) * cellSz + 2.0;
+      final monthRowTop =
+          _kCalendarHeaderToDowGap +
+          _kDayLabelHeight +
+          wr * viewModeRowHeight -
+          monthScrollOffset;
+      paintWeekStripSurface(
+        left: lerpDouble(focalX, 0.0, t)!,
+        top: lerpDouble(yearRowTop, monthRowTop, t)!,
+        width: lerpDouble(miniW, sw, t)!,
+        height: lerpDouble(cellSz, viewModeRowHeight, t)!,
+      );
     }
 
     final monthDayCircleOffset =
