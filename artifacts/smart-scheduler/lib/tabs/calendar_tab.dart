@@ -2927,89 +2927,94 @@ class _MiniMonthGrid extends StatelessWidget {
               .toList(),
         ),
         const SizedBox(height: 2),
-        // Week rows
+        // Week rows are explicit surfaces rather than transparent gaps. This
+        // matters while the year view participates in the year↔month morph:
+        // adjacent content must not show through the mini-calendar rows.
         for (int row = 0; row < rows; row++)
-          Row(
-            children: List.generate(7, (col) {
-              final idx = row * 7 + col;
-              final day = idx - offset + 1;
-              if (day < 1 || day > days) {
-                return SizedBox(width: cellSize, height: cellSize);
-              }
-              final date = DateTime(year, month, day);
-              final isToday = _sameDay(date, today);
-              final isSel = _sameDay(date, selectedDate);
-              // Year View shows ONLY today highlighted (full blue circle).
-              // The Month/Day selected day is not reflected here — users
-              // tap a month to enter that view, not to select days.
-              // Circle is slightly larger than the cell so it reads clearly
-              // at the mini-grid scale.
-              final fontSize = cellSize * 0.62 + 1.0;
-              final dayScale = yearViewDayScaler.scale(fontSize) / fontSize;
-              final circleSize = cellSize * 1.15 * dayScale;
+          ColoredBox(
+            color: resolveThemeColor(kBackgroundColor, context),
+            child: Row(
+              children: List.generate(7, (col) {
+                final idx = row * 7 + col;
+                final day = idx - offset + 1;
+                if (day < 1 || day > days) {
+                  return SizedBox(width: cellSize, height: cellSize);
+                }
+                final date = DateTime(year, month, day);
+                final isToday = _sameDay(date, today);
+                final isSel = _sameDay(date, selectedDate);
+                // Year View shows ONLY today highlighted (full blue circle).
+                // The Month/Day selected day is not reflected here — users
+                // tap a month to enter that view, not to select days.
+                // Circle is slightly larger than the cell so it reads clearly
+                // at the mini-grid scale.
+                final fontSize = cellSize * 0.62 + 1.0;
+                final dayScale = yearViewDayScaler.scale(fontSize) / fontSize;
+                final circleSize = cellSize * 1.15 * dayScale;
 
-              final Widget dayCell;
-              if (isSel) {
-                dayCell = Container(
-                  width: circleSize,
-                  height: circleSize,
-                  decoration: BoxDecoration(
-                    color: accentC,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      '$day',
-                      textScaler: yearViewDayScaler,
-                      style: TextStyle(
-                        fontFamily: kSFProText,
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.w600,
-                        color: whiteC,
+                final Widget dayCell;
+                if (isSel) {
+                  dayCell = Container(
+                    width: circleSize,
+                    height: circleSize,
+                    decoration: BoxDecoration(
+                      color: accentC,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$day',
+                        textScaler: yearViewDayScaler,
+                        style: TextStyle(
+                          fontFamily: kSFProText,
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.w600,
+                          color: whiteC,
+                        ),
                       ),
                     ),
-                  ),
-                );
-              } else if (isToday) {
-                dayCell = Container(
-                  width: circleSize,
-                  height: circleSize,
-                  decoration: BoxDecoration(
-                    color: accentFadedC,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      '$day',
-                      textScaler: yearViewDayScaler,
-                      style: TextStyle(
-                        fontFamily: kSFProText,
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.w600,
-                        color: whiteC,
+                  );
+                } else if (isToday) {
+                  dayCell = Container(
+                    width: circleSize,
+                    height: circleSize,
+                    decoration: BoxDecoration(
+                      color: accentFadedC,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$day',
+                        textScaler: yearViewDayScaler,
+                        style: TextStyle(
+                          fontFamily: kSFProText,
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.w600,
+                          color: whiteC,
+                        ),
                       ),
                     ),
-                  ),
-                );
-              } else {
-                dayCell = Text(
-                  '$day',
-                  textScaler: yearViewDayScaler,
-                  style: TextStyle(
-                    fontFamily: kSFProText,
-                    fontSize: fontSize,
-                    fontWeight: FontWeight.w500,
-                    color: numC,
-                  ),
-                );
-              }
+                  );
+                } else {
+                  dayCell = Text(
+                    '$day',
+                    textScaler: yearViewDayScaler,
+                    style: TextStyle(
+                      fontFamily: kSFProText,
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w500,
+                      color: numC,
+                    ),
+                  );
+                }
 
-              return SizedBox(
-                width: cellSize,
-                height: cellSize,
-                child: Center(child: dayCell),
-              );
-            }),
+                return SizedBox(
+                  width: cellSize,
+                  height: cellSize,
+                  child: Center(child: dayCell),
+                );
+              }),
+            ),
           ),
       ],
     );
@@ -5261,6 +5266,7 @@ class _WeekRowState extends State<_WeekRow> {
         final rowContent = Container(
           height: widget.rowHeight,
           decoration: BoxDecoration(
+            color: resolveThemeColor(kBackgroundColor, context),
             border: Border(
               bottom: BorderSide(color: separatorColor, width: 0.5),
             ),
