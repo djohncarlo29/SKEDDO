@@ -6,6 +6,7 @@
 - [Events Tab keyboard dismissal root cause](events-tab-keyboard-root-cause.md) — keyboard dismissed by off-screen DCV CustomScrollView winning gesture arena; fix is SizedBox.expand when label.isEmpty.
 - [Overlay scroll view primary controller reset](overlay-scroll-primary.md) — any CustomScrollView added as a Stack overlay inside CupertinoTabScaffold must set primary:false or it adopts the tab's scroll controller and resets the offset to 0.
 - [Calendar Day View dual-axis swipe isolation](calendar-swipe-isolation.md) — week-strip drags and timeline drags must use separate slideX variables; header sync via ValueNotifier + onStripSlide callback.
+- [Day content cover reveal](day-content-cover-reveal.md) — Month week rows cover a continuously mounted Day banner/timeline surface during Month↔Day transitions.
 - [Multi-Day current-time indicator](calendar-multiday-current-time-indicator.md) — left-side today stays full-width; the indicator follows the active day column and is clipped to the right side when today is on the right.
 - [Calendar year↔month shared-element morph](calendar-year-zoom-transform.md) — the current transition uses a per-element CustomPainter overlay; the prior single-Matrix4 note is stale.
 - [Calendar 3-panel swipe ±2 bug](calendar-3panel-plusminus2-bug.md) — early doThen remaps panel slots mid-animation, carrying header one extra step; fix is doThen at 100% only.
