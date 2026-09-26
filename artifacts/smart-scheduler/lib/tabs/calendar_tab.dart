@@ -3121,6 +3121,46 @@ class _MorphOverlay extends StatelessWidget {
                     viewModeRowHeight -
                 monthScrollOffset,
           );
+          final miniW =
+              (screenW - 2 * _kYearOuterPad - 2 * _kYearColGap) / 3;
+          final cellSz = miniW / 7;
+          final sFinal = screenW / miniW;
+          final zCol = zoomMonthIdx % 3;
+          final zRow = zoomMonthIdx ~/ 3;
+          final focalX = _kYearOuterPad +
+              zCol * (miniW + _kYearColGap);
+          final List<double> rowTop;
+          if (measuredRowTops != null && measuredRowTops!.length == 4) {
+            rowTop = measuredRowTops!;
+          } else {
+            final rowH = List.generate(
+              4,
+              (r) => cellSz * (2.35 + _morphLayoutForYear(year).rowMaxWeeks[r]) +
+                  7.0,
+            );
+            final computed = <double>[];
+            var ry = 17.5;
+            for (var r = 0; r < 4; r++) {
+              computed.add(ry);
+              ry += rowH[r] + _kYearRowGap;
+            }
+            rowTop = computed;
+          }
+          final focalY = rowTop[zRow] + cellSz * 1.35 + 5.0 - scrollOffset;
+          final totalRows = _totalWeekRows(year, zoomMonthIdx + 1);
+          // The List content is another part of the selected month. Its
+          // starting edge follows the same selected-month geometry as the
+          // grid: at t=0 it sits below the selected mini-month, then travels
+          // and grows into its full-width Month List position.
+          final yearListContentTop =
+              focalY + (totalRows + 1) * cellSz + 2.0;
+          final contentTop = lerpDouble(
+            yearListContentTop,
+            listContentTop,
+            t,
+          )!;
+          final contentLeft = lerpDouble(focalX, 0.0, t)!;
+          final contentScale = lerpDouble(1.0 / sFinal, 1.0, t)!;
           return Stack(
             fit: StackFit.expand,
             children: [
@@ -3148,25 +3188,26 @@ class _MorphOverlay extends StatelessWidget {
                   monthDayCircleDiameter: monthDayCircleDiameter,
                 ),
               ),
-              if (viewMode == CalendarViewMode.list &&
-                  t >= _kYearMonthHandoffThreshold)
+              if (viewMode == CalendarViewMode.list)
                 Positioned(
-                  top: listContentTop,
-                  left: 0,
-                  right: 0,
-                  child: _MonthListMorphContent(
-                    year: year,
-                    month: zoomMonthIdx + 1,
-                    selectedDate: selectedDate,
-                    monthListOrderByDay: monthListOrderByDay,
-                    monthListOrderRevision: monthListOrderRevision,
-                    viewModeRowHeight: viewModeRowHeight,
-                    monthScrollOffset: monthScrollOffset,
-                    viewportHeight: constraints.maxHeight,
-                    contentTop: listContentTop,
-                    contentOpacity: ((t - _kYearMonthHandoffThreshold) /
-                            (1.0 - _kYearMonthHandoffThreshold))
-                        .clamp(0.0, 1.0),
+                  top: contentTop,
+                  left: contentLeft,
+                  width: constraints.maxWidth,
+                  child: Transform.scale(
+                    alignment: Alignment.topLeft,
+                    scale: contentScale,
+                    child: _MonthListMorphContent(
+                      year: year,
+                      month: zoomMonthIdx + 1,
+                      selectedDate: selectedDate,
+                      monthListOrderByDay: monthListOrderByDay,
+                      monthListOrderRevision: monthListOrderRevision,
+                      viewModeRowHeight: viewModeRowHeight,
+                      monthScrollOffset: monthScrollOffset,
+                      viewportHeight: constraints.maxHeight,
+                      contentTop: listContentTop,
+                      contentOpacity: t.clamp(0.0, 1.0),
+                    ),
                   ),
                 ),
             ],
