@@ -135,3 +135,4 @@
 - [Calendar midpoint view handoff](calendar-midpoint-view-handoff.md) — hierarchy-dependent Calendar UI switches at 50% in both directions; accelerated Year↔Day keeps the same handoff.
 - [Calendar Day List header transition](calendar-day-list-header-transition.md) — DOW, week strip, and day banner must share one mounted vertical transition when entering or leaving List mode.
 - [Calendar morph content bounds](calendar-morph-content-bounds.md) — Positioned morph children need content-sized alignment; an unconstrained Align can expand a list layer across the transition viewport.
+- [Year↔Month List morph boundary](year-month-list-morph-boundary.md) — position the List handoff in the overlay and keep its opacity layer intrinsic to the event content.

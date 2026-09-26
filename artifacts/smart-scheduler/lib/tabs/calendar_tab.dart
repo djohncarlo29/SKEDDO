@@ -3111,50 +3111,67 @@ class _MorphOverlay extends StatelessWidget {
       monthListDotColors = const <Color?>[];
     }
     return ClipRect(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          CustomPaint(
-            painter: _MorphPainter(
-              t: t,
-              zoomMonthIdx: zoomMonthIdx,
-              year: year,
-              today: today,
-              selectedDate: selectedDate,
-              monthListDotColors: monthListDotColors,
-              scrollOffset: scrollOffset,
-              monthScrollOffset: monthScrollOffset,
-              screenW: screenW,
-              measuredRowTops: measuredRowTops,
-              viewModeRowHeight: viewModeRowHeight,
-              bgColor: bgC,
-              primaryColor: priC,
-              accentColor: accC,
-              secondaryColor: secC,
-              tertiaryColor: terC,
-              separatorColor: sepC,
-              yearDayScale: yearDayScale,
-              monthDayScale: monthDayScale,
-              monthDayCircleDiameter: monthDayCircleDiameter,
-            ),
-          ),
-          if (viewMode == CalendarViewMode.list &&
-              t >= _kYearMonthHandoffThreshold)
-            Opacity(
-              opacity: ((t - _kYearMonthHandoffThreshold) /
-                      (1.0 - _kYearMonthHandoffThreshold))
-                  .clamp(0.0, 1.0),
-              child: _MonthListMorphContent(
-                year: year,
-                month: zoomMonthIdx + 1,
-                selectedDate: selectedDate,
-                monthListOrderByDay: monthListOrderByDay,
-                monthListOrderRevision: monthListOrderRevision,
-                viewModeRowHeight: viewModeRowHeight,
-                monthScrollOffset: monthScrollOffset,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final listContentTop = math.max(
+            0.0,
+            _kCalendarHeaderToDowGap +
+                _kDayLabelHeight +
+                _totalWeekRows(year, zoomMonthIdx + 1) *
+                    viewModeRowHeight -
+                monthScrollOffset,
+          );
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              CustomPaint(
+                painter: _MorphPainter(
+                  t: t,
+                  zoomMonthIdx: zoomMonthIdx,
+                  year: year,
+                  today: today,
+                  selectedDate: selectedDate,
+                  monthListDotColors: monthListDotColors,
+                  scrollOffset: scrollOffset,
+                  monthScrollOffset: monthScrollOffset,
+                  screenW: screenW,
+                  measuredRowTops: measuredRowTops,
+                  viewModeRowHeight: viewModeRowHeight,
+                  bgColor: bgC,
+                  primaryColor: priC,
+                  accentColor: accC,
+                  secondaryColor: secC,
+                  tertiaryColor: terC,
+                  separatorColor: sepC,
+                  yearDayScale: yearDayScale,
+                  monthDayScale: monthDayScale,
+                  monthDayCircleDiameter: monthDayCircleDiameter,
+                ),
               ),
-            ),
-        ],
+              if (viewMode == CalendarViewMode.list &&
+                  t >= _kYearMonthHandoffThreshold)
+                Positioned(
+                  top: listContentTop,
+                  left: 0,
+                  right: 0,
+                  child: _MonthListMorphContent(
+                    year: year,
+                    month: zoomMonthIdx + 1,
+                    selectedDate: selectedDate,
+                    monthListOrderByDay: monthListOrderByDay,
+                    monthListOrderRevision: monthListOrderRevision,
+                    viewModeRowHeight: viewModeRowHeight,
+                    monthScrollOffset: monthScrollOffset,
+                    viewportHeight: constraints.maxHeight,
+                    contentTop: listContentTop,
+                    contentOpacity: ((t - _kYearMonthHandoffThreshold) /
+                            (1.0 - _kYearMonthHandoffThreshold))
+                        .clamp(0.0, 1.0),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -3169,6 +3186,9 @@ class _MonthListMorphContent extends StatelessWidget {
     required this.monthListOrderRevision,
     required this.viewModeRowHeight,
     required this.monthScrollOffset,
+    required this.viewportHeight,
+    required this.contentTop,
+    required this.contentOpacity,
   });
 
   final int year;
@@ -3178,85 +3198,73 @@ class _MonthListMorphContent extends StatelessWidget {
   final int monthListOrderRevision;
   final double viewModeRowHeight;
   final double monthScrollOffset;
+  final double viewportHeight;
+  final double contentTop;
+  final double contentOpacity;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final firstGridDay = DateTime(year, month, 1).subtract(
-          Duration(days: _firstWeekday(year, month)),
-        );
-        final totalRows = _totalWeekRows(year, month);
-        final data = _monthListDataFor(
-          sourceEvents: EventStore.instance.events.value,
-          year: year,
-          month: month,
-          firstGridDay: firstGridDay,
-          totalRows: totalRows,
-          savedOrderByDay: monthListOrderByDay,
-          orderRevision: monthListOrderRevision,
-        );
-        final selectedDayIndex = data.dayKeys.indexOf(
-          _calendarDateKey(selectedDate),
-        );
-        final selectedListChildIndex =
-            selectedDayIndex < 0 ? 0 : selectedDayIndex;
-        final selectedGroups = data.dayGroups.isEmpty
-            ? const <List<ScheduledEvent>>[]
-            : data.dayGroups[selectedListChildIndex];
-        final selectedDayIsEmpty = selectedGroups.isEmpty;
-        final gridHeight =
-            _kCalendarHeaderToDowGap +
-            _kDayLabelHeight +
-            totalRows * viewModeRowHeight;
-        final emptyStateFloatingClearance =
-            floatingTabBarContentBottomClearance(
-              context,
-              finalContentGap: 16.0,
-            );
-        // The morph content is positioned below the month grid. Measure the
-        // empty-state viewport from that same origin; using the full overlay
-        // height here makes the child extend through the entire morph layer.
-        final contentTop = math.max(0.0, gridHeight - monthScrollOffset);
-        final availableListEmptyStateHeight = math.max(
-          0.0,
-          constraints.maxHeight -
-              contentTop -
-              emptyStateFloatingClearance,
-        );
-        final emptyStateLabelHeight = kEmptyStateLabelFontSize * kLineHeight;
-        final emptyStateFallbackHeight = emptyStateLabelHeight + 32.0;
-        final emptyStateNeedsScrollableFallback =
-            selectedDayIsEmpty &&
-            availableListEmptyStateHeight < emptyStateFallbackHeight;
-        final emptyStateHeight = selectedDayIsEmpty
-            ? emptyStateNeedsScrollableFallback
-                ? emptyStateFallbackHeight
-                : availableListEmptyStateHeight
-            : 0.0;
+    final firstGridDay = DateTime(year, month, 1).subtract(
+      Duration(days: _firstWeekday(year, month)),
+    );
+    final totalRows = _totalWeekRows(year, month);
+    final data = _monthListDataFor(
+      sourceEvents: EventStore.instance.events.value,
+      year: year,
+      month: month,
+      firstGridDay: firstGridDay,
+      totalRows: totalRows,
+      savedOrderByDay: monthListOrderByDay,
+      orderRevision: monthListOrderRevision,
+    );
+    final selectedDayIndex = data.dayKeys.indexOf(
+      _calendarDateKey(selectedDate),
+    );
+    final selectedListChildIndex = selectedDayIndex < 0 ? 0 : selectedDayIndex;
+    final selectedGroups = data.dayGroups.isEmpty
+        ? const <List<ScheduledEvent>>[]
+        : data.dayGroups[selectedListChildIndex];
+    final selectedDayIsEmpty = selectedGroups.isEmpty;
+    final emptyStateFloatingClearance = floatingTabBarContentBottomClearance(
+      context,
+      finalContentGap: 16.0,
+    );
+    // _MorphOverlay owns the position. Keep the same origin here only to
+    // calculate the empty-state height without using the full overlay height.
+    final availableListEmptyStateHeight = math.max(
+      0.0,
+      viewportHeight - contentTop - emptyStateFloatingClearance,
+    );
+    final emptyStateLabelHeight = kEmptyStateLabelFontSize * kLineHeight;
+    final emptyStateFallbackHeight = emptyStateLabelHeight + 32.0;
+    final emptyStateNeedsScrollableFallback =
+        selectedDayIsEmpty &&
+        availableListEmptyStateHeight < emptyStateFallbackHeight;
+    final emptyStateHeight = selectedDayIsEmpty
+        ? emptyStateNeedsScrollableFallback
+            ? emptyStateFallbackHeight
+            : availableListEmptyStateHeight
+        : 0.0;
 
-        return Positioned(
-          top: contentTop,
-          left: 0,
-          right: 0,
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: _MorphListContentViewport(
-              height: selectedDayIsEmpty ? emptyStateHeight : null,
-              child: _monthSelectedEventsWidgetFor(
-                data: data,
-                selectedDayIndex: selectedListChildIndex,
-                height: selectedDayIsEmpty ? emptyStateHeight : null,
-                emptyStateHeight: emptyStateHeight,
-                onEditEvent: null,
-                scrollController: null,
-                scrollViewportKey: null,
-                onOrderChanged: null,
-              ),
-            ),
-          ),
-        );
-      },
+    // This is the content-sized child of the Positioned in _MorphOverlay.
+    // Do not add an unconstrained Align or Transform here: Align without a
+    // heightFactor expands to the loose viewport height and makes Opacity
+    // composite the entire calendar area as a scrim.
+    return Opacity(
+      opacity: contentOpacity,
+      child: _MorphListContentViewport(
+        height: selectedDayIsEmpty ? emptyStateHeight : null,
+        child: _monthSelectedEventsWidgetFor(
+          data: data,
+          selectedDayIndex: selectedListChildIndex,
+          height: selectedDayIsEmpty ? emptyStateHeight : null,
+          emptyStateHeight: emptyStateHeight,
+          onEditEvent: null,
+          scrollController: null,
+          scrollViewportKey: null,
+          onOrderChanged: null,
+        ),
+      ),
     );
   }
 }

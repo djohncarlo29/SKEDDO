@@ -43,18 +43,6 @@ router = "expo-domain"
 PORT = "24355"
 BASE_PATH = "/"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "sh /home/runner/workspace/artifacts/smart-scheduler/start.sh"
-cwd = "./artifacts/smart-scheduler"
-waitForPort = 24355
-ensurePreviewReachable = "/"
-router = "expo-domain"
-
-[workflows.workflow.tasks.env]
-PORT = "24355"
-BASE_PATH = "/"
-
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
