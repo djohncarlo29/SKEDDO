@@ -4703,7 +4703,12 @@ class _AnimatedWeekRow extends StatelessWidget {
         onDayLongPress: onDayLongPress,
         eventsByDay: eventsByDay,
         viewMode: viewMode,
+        // Overflow dates belong to the selected week strip's midpoint
+        // transition only. Applying the threshold to every row makes a
+        // non-selected first/last row reveal adjacent-month dates halfway
+        // through the Month↔Day animation.
         showOverflow:
+            row == collapseWeekRow &&
             collapseProgress > _kMonthDayTransitionThreshold,
         circleSlideX: circleSlideX,
         settleCount: settleCount,
