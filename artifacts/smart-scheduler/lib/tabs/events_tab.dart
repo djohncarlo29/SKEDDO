@@ -16091,9 +16091,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   static const _kIconGlyph = 20.0; // icon glyph size
 
   // ── Icon-grid pinch-to-resize state ───────────────────────────────────────
-  // OS text scaling chooses the starting column count around the authored
-  // seven-column layout. A pinch can move only one adjacent column from that
-  // starting point in either direction.
+  // Kept for reversibility. Pinch resizing is currently disabled; set the flag
+  // to true to restore the existing one-column-per-gesture behavior.
+  static const bool _kEnableIconPickerPinching = false;
   int _iconColumns = 7;
   int _automaticIconColumns = 7;
   bool _iconColumnsWasPinched = false;
@@ -16133,17 +16133,20 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     final cardInset = textScaler.scale(12.0);
     final minimumSpacing = textScaler.scale(6.0);
     return RawGestureDetector(
-      gestures: {
-        ScaleGestureRecognizer:
-            GestureRecognizerFactoryWithHandlers<ScaleGestureRecognizer>(
-              () => ScaleGestureRecognizer(debugOwner: this),
-              (r) =>
-                  r
-                    ..onStart = _onIconPinchStart
-                    ..onUpdate = _onIconPinchUpdate
-                    ..onEnd = (_) => _pinchHandled = false,
-            ),
-      },
+      gestures:
+          _kEnableIconPickerPinching
+              ? {
+                ScaleGestureRecognizer:
+                    GestureRecognizerFactoryWithHandlers<ScaleGestureRecognizer>(
+                      () => ScaleGestureRecognizer(debugOwner: this),
+                      (r) =>
+                          r
+                            ..onStart = _onIconPinchStart
+                            ..onUpdate = _onIconPinchUpdate
+                            ..onEnd = (_) => _pinchHandled = false,
+                    ),
+              }
+              : const {},
       child: _card([
         Padding(
           padding: EdgeInsets.all(cardInset),

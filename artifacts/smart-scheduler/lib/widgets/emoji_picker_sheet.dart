@@ -935,6 +935,9 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   static const double _emojiGestureSlop = 12.0;
   static const double _emojiAxisBias = 6.0;
   static const double _emojiPageVelocity = 700.0;
+  // Kept for reversibility. Set true to restore the existing one-column
+  // adjustment behavior without changing the picker layout code.
+  static const bool _kEnableEmojiPickerPinching = false;
   // These are layout dimensions, not text dimensions. Keep them fixed so
   // Dynamic Type cannot stretch this card farther below the parent sheet's
   // Card 1.
@@ -1061,7 +1064,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
       _emojiHorizontalGesture = _EmojiHorizontalGesture.undecided;
       _emojiScrollRubberbandOffset = 0.0;
     }
-    if (_emojiPointers.length == 2) {
+    if (_kEnableEmojiPickerPinching && _emojiPointers.length == 2) {
       _emojiEdgePointer = null;
       _emojiEdgeStart = null;
       _emojiHorizontalGesture = _EmojiHorizontalGesture.undecided;
@@ -1110,7 +1113,11 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
         }
       }
     }
-    if (!_emojiPinchActive || _emojiPinchHandled) return;
+    if (!_kEnableEmojiPickerPinching ||
+        !_emojiPinchActive ||
+        _emojiPinchHandled) {
+      return;
+    }
 
     final startDistance = _emojiPinchStartDistance;
     if (startDistance == null || startDistance == 0) return;
