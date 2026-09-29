@@ -1354,7 +1354,25 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     final minimumSpacing = textScaler.scale(2.0);
     final emojiFontSize = textScaler.scale(26.0);
     const authoredColumns = 7;
+    final screenSize = MediaQuery.sizeOf(context);
+    final isWideLayout = screenSize.width > screenSize.height;
+    // [maxWidth] is already inside the sheet's 16pt horizontal padding. Use
+    // the corresponding portrait-width content as the geometry baseline when
+    // the sheet is wider, so only the column count responds to width.
+    final portraitMaxWidth = isWideLayout
+        ? math.max(
+            1.0,
+            math.min(
+              maxWidth,
+              screenSize.shortestSide - 2 * _emojiSheetHorizontalInset,
+            ),
+          )
+        : maxWidth;
     final contentWidth = math.max(
+      1.0,
+      portraitMaxWidth - 2 * gridInset,
+    );
+    final availableContentWidth = math.max(
       1.0,
       maxWidth - 2 * gridInset,
     );
@@ -1365,7 +1383,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
         math.max(1.0, defaultCellSize * (emojiFontSize / 26.0));
     final automaticColumns = math.max(
       1,
-      ((contentWidth + minimumSpacing + 0.001) /
+      ((availableContentWidth + minimumSpacing + 0.001) /
               (targetCellSize + minimumSpacing))
           .floor(),
     );
@@ -1379,17 +1397,24 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     }
     final columns =
         _emojiColumnsWasPinched ? _emojiColumns : automaticColumns;
-    final cellSize = math.max(
-      1.0,
-      _emojiColumnsWasPinched
-          ? (contentWidth - minimumSpacing * (columns - 1)) / columns
-          : targetCellSize,
-    );
+    final cellSize = isWideLayout
+        ? targetCellSize
+        : math.max(
+            1.0,
+            _emojiColumnsWasPinched
+                ? (availableContentWidth -
+                          minimumSpacing * (columns - 1)) /
+                      columns
+                : targetCellSize,
+          );
     final cellFontSize =
         math.max(1.0, emojiFontSize * (cellSize / targetCellSize));
     final crossAxisSpacing =
-        columns > 1
-            ? (contentWidth - columns * cellSize) / (columns - 1)
+        isWideLayout
+            ? minimumSpacing
+            : columns > 1
+            ? (availableContentWidth - columns * cellSize) /
+                (columns - 1)
             : 0.0;
     final rowCount = (emojiCount / columns).ceil();
     final gridHeight =
@@ -1494,7 +1519,21 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     final minimumSpacing = textScaler.scale(2.0);
     final emojiFontSize = textScaler.scale(26.0);
     const authoredColumns = 7;
-    final contentWidth = math.max(1.0, cardWidth - 2 * gridInset);
+    final screenSize = MediaQuery.sizeOf(context);
+    final isWideLayout = screenSize.width > screenSize.height;
+    final portraitCardWidth = isWideLayout
+        ? math.max(
+            1.0,
+            math.min(
+              cardWidth,
+              screenSize.shortestSide - 2 * _emojiSheetHorizontalInset,
+            ),
+          )
+        : cardWidth;
+    final contentWidth = math.max(
+      1.0,
+      portraitCardWidth - 2 * gridInset,
+    );
     final defaultCellSize =
         (contentWidth - minimumSpacing * (authoredColumns - 1)) /
         authoredColumns;

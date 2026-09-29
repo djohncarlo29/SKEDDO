@@ -15974,10 +15974,25 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               const baseSwatchSize = 43.0;
               final textScaler = MediaQuery.textScalerOf(context);
               final textScaledSize = textScaler.scale(baseSwatchSize);
+              final screenSize = MediaQuery.sizeOf(context);
+              final isWideLayout = screenSize.width > screenSize.height;
+              // The card's horizontal padding is already removed from
+              // [constraints]. In a wide layout, use the same inner width the
+              // card would have in portrait on this device as the geometry
+              // baseline. Only the number of columns may grow with width.
+              final portraitAvailableWidth = isWideLayout
+                  ? max(
+                      1.0,
+                      min(
+                        availableWidth,
+                        screenSize.shortestSide - 32.0,
+                      ),
+                    )
+                  : availableWidth;
               final defaultSixColumnSize =
                   max(
                     0.0,
-                    (availableWidth -
+                    (portraitAvailableWidth -
                             (swatchCountPerRow - 1) * swatchGap) /
                         swatchCountPerRow,
                   );
@@ -15998,24 +16013,43 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   defaultTextScale <= 1.001
                       ? min(defaultSwatchSize, scaledFromDefault)
                       : scaledFromDefault;
-              final columns = max(
+              final portraitColumns = max(
                 1,
                 min(
                   swatchCountPerRow,
                   min(
                     _kColorOptions.length,
-                      ((availableWidth + swatchGap + 0.001) /
-                              (swatchSize + swatchGap))
-                          .floor(),
+                    ((portraitAvailableWidth + swatchGap + 0.001) /
+                            (swatchSize + swatchGap))
+                        .floor(),
                   ),
                 ),
               );
+              final portraitGap =
+                  portraitColumns > 1
+                      ? (portraitAvailableWidth -
+                              portraitColumns * swatchSize) /
+                          (portraitColumns - 1)
+                      : 0.0;
+              final columns = isWideLayout
+                  ? max(
+                      1,
+                      min(
+                        _kColorOptions.length,
+                        ((availableWidth + portraitGap + 0.001) /
+                                (swatchSize + portraitGap))
+                            .floor(),
+                      ),
+                    )
+                  : portraitColumns;
 
-              // Full rows fill the card so their outside circles stay 16pt
-              // from the card edges. A partial final row keeps this same
-              // spacing and remains left-aligned instead of stretching.
+              // Portrait keeps its existing full-row spacing. Wide layouts
+              // reuse that portrait-computed gap instead of stretching it
+              // across the larger screen.
               final gap =
-                  columns > 1
+                  isWideLayout
+                      ? portraitGap
+                      : columns > 1
                       ? (availableWidth - columns * swatchSize) /
                           (columns - 1)
                       : 0.0;
@@ -16107,8 +16141,19 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
           child: LayoutBuilder(
             builder: (context, constraints) {
               const authoredColumns = 7;
+              final screenSize = MediaQuery.sizeOf(context);
+              final isWideLayout = screenSize.width > screenSize.height;
+              final portraitAvailableWidth = isWideLayout
+                  ? max(
+                      1.0,
+                      min(
+                        constraints.maxWidth,
+                        screenSize.shortestSide - 2 * cardInset,
+                      ),
+                    )
+                  : constraints.maxWidth;
               final defaultItemSize =
-                  (constraints.maxWidth -
+                  (portraitAvailableWidth -
                       minimumSpacing * (authoredColumns - 1)) /
                   authoredColumns;
               final scaleRatio =
@@ -16135,17 +16180,17 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 _iconColumnsWasPinched = false;
               }
               final cols = _iconColumns;
-              // Once the OS-scaled column count is chosen, use the full row
-              // width with the scaled minimum gap. This prevents a discrete
-              // column drop from leaving undersized circles and oversized
-              // empty gaps; it also keeps automatic mode identical to pinch
-              // mode once both settle on the same column count.
-              final itemSize = max(
-                1.0,
-                (constraints.maxWidth -
-                        minimumSpacing * (cols - 1)) /
-                    cols,
-              );
+              // Portrait keeps its existing full-row sizing. In a wide
+              // layout, the portrait-derived cell remains fixed and only the
+              // number of cells changes; extra space stays after the grid.
+              final itemSize = isWideLayout
+                  ? targetItemSize
+                  : max(
+                      1.0,
+                      (constraints.maxWidth -
+                              minimumSpacing * (cols - 1)) /
+                          cols,
+                    );
               final spacing = minimumSpacing;
               final rowCount = (_kIconOptions.length / cols).ceil();
               // Height of the Stack follows both the scaled tile size and the
