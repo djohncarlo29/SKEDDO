@@ -19385,8 +19385,8 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
           final aAbs = a.parsedDate?.absoluteDate;
           final bAbs = b.parsedDate?.absoluteDate;
           if (aAbs == null && bAbs == null) return 0;
-          if (aAbs == null) return 1; // no date → end
-          if (bAbs == null) return -1;
+          if (aAbs == null) return -1; // no date → first
+          if (bAbs == null) return 1;
           final dc = aAbs.compareTo(bAbs);
           if (dc != 0) return asc ? dc : -dc;
           if (a.time != null && b.time != null) {
@@ -20261,7 +20261,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         return _buildGroupedSections(
           keyOf: (e) => _dateOnlyLabel(e.parsedDate?.absoluteDate),
           fallbackLabel: 'No Date',
-          fallbackAtEnd: true,
+          fallbackAtEnd: false,
         );
       case 'Creation Date':
         return _buildGroupedSections(

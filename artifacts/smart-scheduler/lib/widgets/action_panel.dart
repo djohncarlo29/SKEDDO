@@ -78,6 +78,7 @@ double _actionPanelLeadingColumnWidth(BuildContext context) {
 }
 
 double _actionPanelRightIconWidth(BuildContext context, ActionItem item) {
+  if (!item.showTrailingIcon) return 0.0;
   final scaler = MediaQuery.textScalerOf(context);
   if (item.iconBuilder != null) {
     // Custom action-panel icons are authored in a 24 px box. Keep that box
@@ -572,6 +573,9 @@ class ActionItem {
   // opacity (same as Calendar month-view separators) instead of the default
   // light hairline.  Height stays at ActionItem.separatorH (0.5 px).
   final bool strongSeparatorAbove;
+  // When false, the row uses the full width between its normal horizontal
+  // insets instead of reserving a trailing icon slot.
+  final bool showTrailingIcon;
   // When true, this row skips the open-phase stagger animation and renders at
   // full opacity/scale from frame 0 — giving a "shared element stays in place"
   // feel.  During close, the row animates out normally with the panel.
@@ -604,6 +608,7 @@ class ActionItem {
     this.iconBuilder,
     this.chevronOverride,
     this.strongSeparatorAbove = false,
+    this.showTrailingIcon = true,
     this.instantOnOpen = false,
     this.contentOpacity = 1.0,
     this.checkmarkColor,
@@ -1907,9 +1912,9 @@ class _ActionRowState extends State<_ActionRow> {
             leftWidget,
             const SizedBox(width: _actionPanelCheckmarkOptionGap),
             Expanded(child: labelBlock),
-            if (widget.enforceTrailingIconSpacing)
+            if (item.showTrailingIcon && widget.enforceTrailingIconSpacing)
               const SizedBox(width: _actionPanelLabelTrailingIconGap),
-            iconWidget,
+            if (item.showTrailingIcon) iconWidget,
           ]
         : [
             if (item.hasChevron || item.checkmark) ...[
@@ -1917,9 +1922,9 @@ class _ActionRowState extends State<_ActionRow> {
               const SizedBox(width: _chevGap),
             ],
             Expanded(child: labelBlock),
-            if (widget.enforceTrailingIconSpacing)
+            if (item.showTrailingIcon && widget.enforceTrailingIconSpacing)
               const SizedBox(width: _actionPanelLabelTrailingIconGap),
-            iconWidget,
+            if (item.showTrailingIcon) iconWidget,
           ];
 
     return GestureDetector(
