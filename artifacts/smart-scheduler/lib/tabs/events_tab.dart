@@ -16044,14 +16044,19 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   : portraitColumns;
 
               // Portrait keeps its existing full-row spacing. Wide layouts
-              // reuse that portrait-computed gap instead of stretching it
-              // across the larger screen.
+              // may only add space: the redistributed gap cannot be smaller
+              // than the portrait gap, and every wrapped row uses this same
+              // gap so a partial last row remains leading-aligned.
               final gap =
-                  isWideLayout
-                      ? portraitGap
-                      : columns > 1
-                      ? (availableWidth - columns * swatchSize) /
-                          (columns - 1)
+                  columns > 1
+                      ? isWideLayout
+                          ? max(
+                              portraitGap,
+                              (availableWidth - columns * swatchSize) /
+                                  (columns - 1),
+                            )
+                          : (availableWidth - columns * swatchSize) /
+                              (columns - 1)
                       : 0.0;
 
               return Align(
@@ -16166,9 +16171,34 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 1.0,
                 defaultItemSize * scaleRatio,
               );
+              // Resolve the actual portrait result first. The old wide-layout
+              // path used [targetItemSize] directly, but portrait may fit
+              // fewer columns and consequently grows each cell to fill the
+              // row. Landscape must preserve that final portrait cell size.
+              final portraitColumns = max(
+                1,
+                min(
+                  _kIconOptions.length,
+                  ((portraitAvailableWidth + minimumSpacing + 0.001) /
+                          (targetItemSize + minimumSpacing))
+                      .floor(),
+                ),
+              );
+              final portraitItemSize = max(
+                1.0,
+                (portraitAvailableWidth -
+                        minimumSpacing * (portraitColumns - 1)) /
+                    portraitColumns,
+              );
+              final portraitGap =
+                  portraitColumns > 1
+                      ? (portraitAvailableWidth -
+                              portraitColumns * portraitItemSize) /
+                          (portraitColumns - 1)
+                      : 0.0;
               // Keep the established portrait inset as the baseline. Wide
               // layouts use at least 16pt from the card edge, then distribute
-              // only the inter-cell space across each row.
+              // only additional inter-cell space across each full row.
               final wideHorizontalInset =
                   max(cardInset, 16.0);
               final wideInsetDelta = wideHorizontalInset - cardInset;
@@ -16182,8 +16212,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 1,
                 min(
                   _kIconOptions.length,
-                  ((availableGridWidth + minimumSpacing + 0.001) /
-                          (targetItemSize + minimumSpacing))
+                  ((availableGridWidth + portraitGap + 0.001) /
+                          (portraitItemSize + portraitGap))
                       .floor(),
                 ),
               );
@@ -16198,9 +16228,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               final cols = _iconColumns;
               // Portrait keeps its existing full-row sizing. In a wide
               // layout, the portrait-derived cell remains fixed and only the
-              // number of cells changes; extra space stays after the grid.
+              // number of cells changes. Full rows add space between cells;
+              // incomplete rows keep the same spacing and stay leading-aligned.
               final itemSize = isWideLayout
-                  ? targetItemSize
+                  ? portraitItemSize
                   : max(
                       1.0,
                       (constraints.maxWidth -
@@ -16211,7 +16242,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               final horizontalSpacing =
                   isWideLayout && cols > 1
                       ? max(
-                          minimumSpacing,
+                          portraitGap,
                           (availableGridWidth - cols * itemSize) /
                               (cols - 1),
                         )
@@ -16289,28 +16320,13 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                             twoToneBallUsesContainerFill ? circleBg : iconColor;
                         final twoToneBallDetailColor =
                             twoToneBallUsesContainerFill ? iconColor : circleBg;
-                        final rowStart = (i ~/ cols) * cols;
-                        final rowItemCount = min(
-                          cols,
-                          _kIconOptions.length - rowStart,
-                        );
-                        final rowSpacing =
-                            isWideLayout && rowItemCount > 1
-                                ? max(
-                                    minimumSpacing,
-                                    (availableGridWidth -
-                                            rowItemCount * itemSize) /
-                                        (rowItemCount - 1),
-                                  )
-                                : horizontalSpacing;
-
                         return AnimatedPositioned(
                           key: ValueKey(i),
                           duration: duration,
                           curve: curve,
                           left:
                               (isWideLayout ? wideInsetDelta : 0.0) +
-                              (i % cols) * (itemSize + rowSpacing),
+                              (i % cols) * (itemSize + horizontalSpacing),
                           top: (i ~/ cols) * (itemSize + verticalSpacing),
                           width: itemSize,
                           height: itemSize,

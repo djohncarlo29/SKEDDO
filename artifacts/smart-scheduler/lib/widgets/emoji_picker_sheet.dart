@@ -1386,12 +1386,30 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
         authoredColumns;
     final targetCellSize =
         math.max(1.0, defaultCellSize * (emojiFontSize / 26.0));
-    final automaticColumns = math.max(
+    // Resolve the portrait geometry first. Landscape keeps this cell size and
+    // only changes capacity and horizontal spacing; it must not use a new
+    // smaller cell based on the wider row.
+    final portraitColumns = math.max(
       1,
-      ((availableContentWidth + minimumSpacing + 0.001) /
+      ((contentWidth + minimumSpacing + 0.001) /
               (targetCellSize + minimumSpacing))
           .floor(),
     );
+    final portraitCellSize = targetCellSize;
+    final portraitGap =
+        portraitColumns > 1
+            ? (contentWidth - portraitColumns * portraitCellSize) /
+                (portraitColumns - 1)
+            : 0.0;
+    final automaticColumns =
+        isWideLayout
+            ? math.max(
+              1,
+              ((availableContentWidth + portraitGap + 0.001) /
+                      (portraitCellSize + portraitGap))
+                  .floor(),
+            )
+            : portraitColumns;
     // The column count belongs to the entire subsheet, not this category.
     // Reset a manual pinch offset if the OS-derived baseline changes.
     if (!_emojiColumnsWasPinched ||
@@ -1403,7 +1421,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     final columns =
         _emojiColumnsWasPinched ? _emojiColumns : automaticColumns;
     final cellSize = isWideLayout
-        ? targetCellSize
+        ? portraitCellSize
         : math.max(
             1.0,
             _emojiColumnsWasPinched
@@ -1416,7 +1434,13 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
         math.max(1.0, emojiFontSize * (cellSize / targetCellSize));
     final crossAxisSpacing =
         isWideLayout
-            ? minimumSpacing
+            ? (columns > 1
+                ? math.max(
+                    portraitGap,
+                    (availableContentWidth - columns * cellSize) /
+                        (columns - 1),
+                  )
+                : 0.0)
             : columns > 1
             ? (availableContentWidth - columns * cellSize) /
                 (columns - 1)
@@ -1468,27 +1492,6 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
             height: layout.gridHeight,
             child: Stack(
               children: List.generate(emojis.length, (i) {
-                final isWideLayout =
-                    MediaQuery.sizeOf(context).width >
-                    MediaQuery.sizeOf(context).height;
-                final rowStart = (i ~/ layout.columns) * layout.columns;
-                final rowItemCount = math.min(
-                  layout.columns,
-                  emojis.length - rowStart,
-                );
-                final rowContentWidth = math.max(
-                  1.0,
-                  constraints.maxWidth - 2 * layout.horizontalInset,
-                );
-                final rowSpacing =
-                    isWideLayout && rowItemCount > 1
-                        ? math.max(
-                            layout.minimumSpacing,
-                            (rowContentWidth -
-                                    rowItemCount * layout.cellSize) /
-                                (rowItemCount - 1),
-                          )
-                        : layout.crossAxisSpacing;
                 final emoji = Text(
                   emojis[i],
                   style: TextStyle(
@@ -1516,7 +1519,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                   left:
                       layout.horizontalInset +
                       (i % layout.columns) *
-                          (layout.cellSize + rowSpacing),
+                          (layout.cellSize + layout.crossAxisSpacing),
                   top:
                       layout.gridInset +
                       (i ~/ layout.columns) *
