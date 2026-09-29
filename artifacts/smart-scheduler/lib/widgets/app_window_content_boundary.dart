@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 
+import '../services/window_geometry_diagnostics.dart';
+
 /// Establishes the app-wide content rectangle inside the physical window.
 ///
 /// The window background remains outside this boundary so system/cutout areas
@@ -38,6 +40,7 @@ class AppWindowContentBoundary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    WindowGeometryDiagnostics.report(context);
     final mediaQuery = MediaQuery.of(context);
     final view = View.maybeOf(context);
     final viewData = view == null ? mediaQuery : MediaQueryData.fromView(view);

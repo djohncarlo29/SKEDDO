@@ -14,6 +14,18 @@ import UniformTypeIdentifiers
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
     if let controller = window?.rootViewController as? FlutterViewController {
+      configureEdgeToEdgeWindow(controller)
+      let windowGeometryChannel = FlutterMethodChannel(
+        name: "com.smartscheduler/window_geometry",
+        binaryMessenger: controller.binaryMessenger
+      )
+      windowGeometryChannel.setMethodCallHandler { call, result in
+        guard call.method == "getWindowGeometry" else {
+          result(FlutterMethodNotImplemented)
+          return
+        }
+        result(self.windowGeometry(for: controller))
+      }
       let textScaleChannel = FlutterMethodChannel(
         name: "com.smartscheduler/text_scale",
         binaryMessenger: controller.binaryMessenger
@@ -118,6 +130,68 @@ import UniformTypeIdentifiers
       nativeTabBarController = nativeTabBar
     }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  private func configureEdgeToEdgeWindow(_ controller: FlutterViewController) {
+    // FlutterViewController is the root view for the full application window.
+    // Keep UIKit from introducing an additional layout boundary; Flutter
+    // receives the real safe-area values through its view metrics and the
+    // shared Dart content boundary decides how SKEDDO uses them.
+    guard let hostWindow = window else { return }
+    hostWindow.backgroundColor = .clear
+    controller.edgesForExtendedLayout = [.top, .bottom, .left, .right]
+    controller.extendedLayoutIncludesOpaqueBars = true
+    controller.additionalSafeAreaInsets = .zero
+    controller.view.insetsLayoutMarginsFromSafeArea = false
+    controller.view.backgroundColor = .clear
+    controller.view.frame = hostWindow.bounds
+    controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+  }
+
+  private func rectDictionary(_ rect: CGRect) -> [String: Double] {
+    [
+      "x": Double(rect.origin.x),
+      "y": Double(rect.origin.y),
+      "width": Double(rect.size.width),
+      "height": Double(rect.size.height),
+    ]
+  }
+
+  private func insetsDictionary(_ insets: UIEdgeInsets) -> [String: Double] {
+    [
+      "left": Double(insets.left),
+      "top": Double(insets.top),
+      "right": Double(insets.right),
+      "bottom": Double(insets.bottom),
+    ]
+  }
+
+  private func windowGeometry(
+    for controller: FlutterViewController
+  ) -> [String: Any] {
+    let hostWindow = window
+    let scene = hostWindow?.windowScene
+    let screen = hostWindow?.screen ?? UIScreen.main
+    return [
+      "platform": "ios",
+      "edgeToEdgeRequested": true,
+      "windowBounds": hostWindow.map { rectDictionary($0.bounds) } ?? [:],
+      "rootViewBounds": rectDictionary(controller.view.bounds),
+      "rootViewFrame": rectDictionary(controller.view.frame),
+      "safeAreaInsets": insetsDictionary(controller.view.safeAreaInsets),
+      "additionalSafeAreaInsets": insetsDictionary(
+        controller.additionalSafeAreaInsets
+      ),
+      "screenBounds": rectDictionary(screen.bounds),
+      "screenNativeBounds": rectDictionary(screen.nativeBounds),
+      "screenScale": Double(screen.scale),
+      "interfaceOrientation": scene?.interfaceOrientation.rawValue ?? 0,
+      "statusBarFrame": scene?.statusBarManager.map {
+        rectDictionary($0.statusBarFrame)
+      } ?? [:],
+      "edgesForExtendedLayout": controller.edgesForExtendedLayout.rawValue,
+      "extendedLayoutIncludesOpaqueBars": controller.extendedLayoutIncludesOpaqueBars,
+    ]
   }
 
   private func resolveDropMetadata(
