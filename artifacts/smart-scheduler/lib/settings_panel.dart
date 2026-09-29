@@ -1665,8 +1665,11 @@ void _setLiquidGlassOpacity(double raw) {
       normalized * (kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity);
   if (snapped != appLiquidGlassOpacityNotifier.value) {
     appLiquidGlassOpacityNotifier.value = snapped;
-    saveAppSetting('Liquid Glass', snapped.toString());
   }
+  // The live drag callback has usually already set the notifier to this same
+  // snapped value. Persist on every release rather than using that equality as
+  // a save guard, otherwise the user's new value is lost on restart.
+  saveAppSetting('Liquid Glass', snapped.toString());
 }
 
 // ── Squircle card shell shared by both section types ──────────────────────────

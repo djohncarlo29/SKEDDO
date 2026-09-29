@@ -142,3 +142,4 @@
 - [Live rotation layout](live-rotation-layout.md) — never freeze the root MediaQuery during native rotation; every intermediate window metric must reach adaptive layouts.
 - [Live rotation geometry](live-rotation-geometry.md) — picker morphs use live window metrics projected between settled portrait/landscape endpoints, never a timer-based orientation animation.
 - [Picker geometry consolidation](picker-geometry-consolidation.md) — icon, emoji, and color pickers share one geometry model; landscape preserves item size and turns extra width into gaps.
+- [Live slider persistence](live-slider-persistence.md) — persist on gesture completion even when live preview state already equals the snapped value.

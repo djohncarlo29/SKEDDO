@@ -628,10 +628,18 @@ Future<void> saveAppSetting(String routeTitle, String value) {
           appDateLocaleNotifier.value.name,
         );
       case 'Liquid Glass':
-        await prefs.setDouble(
-          _kLiquidGlassOpacityKey,
-          appLiquidGlassOpacityNotifier.value,
-        );
+        final opacity = double.tryParse(value);
+        if (opacity != null && opacity.isFinite) {
+          await prefs.setDouble(
+            _kLiquidGlassOpacityKey,
+            opacity
+                .clamp(
+                  kLiquidGlassMinimumOpacity,
+                  kLiquidGlassMaximumOpacity,
+                )
+                .toDouble(),
+          );
+        }
     }
   });
   _settingsWriteQueue = next.catchError((Object _, StackTrace __) {});
