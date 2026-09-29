@@ -574,6 +574,21 @@ class SKEDDOApp extends StatefulWidget {
 
 class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
   Timer? _textScalePollTimer;
+  Timer? _windowMetricsSettleTimer;
+  Size? _settledWindowSize;
+  bool _holdingWindowMetrics = false;
+  int _windowMetricsGeneration = 0;
+
+  Size? _currentLogicalWindowSize() {
+    final view = PlatformDispatcher.instance.implicitView;
+    if (view == null || view.devicePixelRatio <= 0) return null;
+    final physicalSize = view.physicalSize;
+    if (physicalSize.isEmpty) return null;
+    return physicalSize / view.devicePixelRatio;
+  }
+
+  bool _sameWindowSize(Size a, Size b) =>
+      (a.width - b.width).abs() < 0.5 && (a.height - b.height).abs() < 0.5;
 
   @override
   void initState() {
@@ -613,8 +628,39 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
   }
 
   @override
+  void didChangeMetrics() {
+    final nextSize = _currentLogicalWindowSize();
+    final settledSize = _settledWindowSize;
+    if (nextSize == null || settledSize == null) return;
+    if (_sameWindowSize(nextSize, settledSize)) return;
+
+    _windowMetricsSettleTimer?.cancel();
+    final generation = ++_windowMetricsGeneration;
+    if (!_holdingWindowMetrics && mounted) {
+      setState(() => _holdingWindowMetrics = true);
+    }
+
+    // iOS reports several intermediate window sizes while the native rotation
+    // animation is running. Keep the last settled composition until the stream
+    // goes quiet, then let the same widget tree receive the final constraints.
+    _windowMetricsSettleTimer = Timer(
+      const Duration(milliseconds: 120),
+      () {
+        if (!mounted || generation != _windowMetricsGeneration) return;
+        final finalSize = _currentLogicalWindowSize();
+        if (finalSize == null) return;
+        setState(() {
+          _settledWindowSize = finalSize;
+          _holdingWindowMetrics = false;
+        });
+      },
+    );
+  }
+
+  @override
   void dispose() {
     _textScalePollTimer?.cancel();
+    _windowMetricsSettleTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -631,6 +677,7 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    _settledWindowSize ??= MediaQuery.sizeOf(context);
     return ListenableBuilder(
       listenable: Listenable.merge([
         appBrightnessNotifier,
@@ -751,6 +798,23 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
                     context,
                   ).copyWith(platformBrightness: brightness),
                   child: result,
+                );
+              }
+              if (_holdingWindowMetrics && _settledWindowSize != null) {
+                final frozenSize = _settledWindowSize!;
+                result = MediaQuery(
+                  data: MediaQuery.of(context).copyWith(size: frozenSize),
+                  child: ColoredBox(
+                    color: resolveThemeColor(kBackgroundColor, context),
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: SizedBox(
+                        width: frozenSize.width,
+                        height: frozenSize.height,
+                        child: result,
+                      ),
+                    ),
+                  ),
                 );
               }
               return result;
