@@ -16276,26 +16276,30 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     final textScaler = MediaQuery.textScalerOf(context);
     final cardInset = textScaler.scale(12.0);
     final minimumSpacing = textScaler.scale(6.0);
-    return RawGestureDetector(
-      gestures:
-          _kEnableIconPickerPinching
-              ? {
-                ScaleGestureRecognizer:
-                    GestureRecognizerFactoryWithHandlers<ScaleGestureRecognizer>(
-                      () => ScaleGestureRecognizer(debugOwner: this),
-                      (r) =>
-                          r
-                            ..onStart = _onIconPinchStart
-                            ..onUpdate = _onIconPinchUpdate
-                            ..onEnd = (_) => _pinchHandled = false,
-                    ),
-              }
-              : const {},
-      child: _card([
-        Padding(
-          padding: EdgeInsets.all(cardInset),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
+    return SizedBox(
+      width: double.infinity,
+      child: RawGestureDetector(
+        gestures:
+            _kEnableIconPickerPinching
+                ? {
+                  ScaleGestureRecognizer:
+                      GestureRecognizerFactoryWithHandlers<
+                        ScaleGestureRecognizer
+                      >(
+                        () => ScaleGestureRecognizer(debugOwner: this),
+                        (r) =>
+                            r
+                              ..onStart = _onIconPinchStart
+                              ..onUpdate = _onIconPinchUpdate
+                              ..onEnd = (_) => _pinchHandled = false,
+                      ),
+                }
+                : const {},
+        child: _card([
+          Padding(
+            padding: EdgeInsets.all(cardInset),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
               const authoredColumns = 7;
               final screenSize = MediaQuery.sizeOf(context);
               final rotation = InheritedRotationGeometry.maybeOf(context);
@@ -16503,10 +16507,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   },
                 ),
               );
-            },
+              },
+            ),
           ),
-        ),
-      ]),
+        ]),
+      ),
     );
   }
 
