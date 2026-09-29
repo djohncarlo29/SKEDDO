@@ -1428,6 +1428,10 @@ class CalendarTabState extends State<CalendarTab>
     _zoomScrollOffset = _yearScrollCtrl.hasClients
         ? _yearScrollCtrl.offset
         : 0.0;
+    // The Year View Scrollable is unmounted during the morph. Preserve the
+    // live offset before that happens so its later remount does not fall back
+    // to the controller's original initialScrollOffset (normally 0).
+    _savedYearScrollOffset = _zoomScrollOffset;
     _zoomTargetView = CalendarView.month;
     setState(() {
       _zoomMonthIdx = monthIdx;
@@ -1531,6 +1535,18 @@ class CalendarTabState extends State<CalendarTab>
       )..addListener(_syncPreviewScrollToCurrent);
       // setState triggers a rebuild in which zoomT > 0.999, so _MonthView
       // mounts for the first time already positioned at _savedMonthScrollOffset.
+      setState(() {});
+    }
+    if (_zoomPrevT > 0.001 && t <= 0.001) {
+      // Year View is about to mount again after the reverse morph. A
+      // ScrollController's initialScrollOffset is reused for every future
+      // ScrollPosition, so jumpTo() from the old attachment would not survive
+      // this remount. Recreate it while the Year View is still unmounted.
+      _yearScrollCtrl.removeListener(_syncYearPreviewScrollToCurrent);
+      _yearScrollCtrl.dispose();
+      _yearScrollCtrl = ScrollController(
+        initialScrollOffset: _savedYearScrollOffset,
+      )..addListener(_syncYearPreviewScrollToCurrent);
       setState(() {});
     }
     _zoomPrevT = t;
