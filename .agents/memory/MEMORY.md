@@ -12,6 +12,7 @@
 - [Calendar month panel clipping](calendar-month-panel-clipping.md) — clip each horizontally positioned month panel before vertical strip transforms so off-screen week rows cannot bleed into the DOW boundary.
 - [ScrollController remount resync](calendar-scrollctrl-remount-resync.md) — a key-forced Scrollable remount resets to the controller's stale original initialScrollOffset, not the last jumpTo() value; recreate before remounting.
 - [Smart Scheduler theme constants](smart-scheduler-theme-constants.md) — sheet-stack background and search-bar clear icon each have their own dedicated constant; don't reuse kBackgroundColor for the former.
+- [App-wide landscape content boundary](app-wide-landscape-content-boundary.md) — keep the background edge-to-edge and reserve the physical horizontal system area symmetrically above Navigator/Overlay.
 - [Dark-mode surface coverage](dark-mode-surface-coverage.md) — shared glass, attachment previews, import overlays, and action menus must resolve surfaces at build time.
 - [Custom-radius Cupertino sheet transition](rounded-cupertino-sheet.md) — showCupertinoSheet hardcodes a 12px radius with no public override; copy the private implementation to change it.
 - [Cupertino sheet gesture lifecycle](cupertino-sheet-gesture-lifecycle.md) — match Flutter's route recognizer and navigator user-gesture lifecycle; do not pre-filter pointer hits with a render-tree Listener.

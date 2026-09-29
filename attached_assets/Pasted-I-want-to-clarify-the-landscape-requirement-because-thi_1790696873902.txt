@@ -1,0 +1,44 @@
+I want to clarify the landscape requirement because this is broader than fixing the black strip visible on the left in the screenshot.
+
+There are effectively two physical landscape states:
+
+1. Landscape with the system/status-bar/cutout side on the LEFT.
+2. Landscape with the system/status-bar/cutout side on the RIGHT.
+
+I do not want SKEDDO to have a special layout that only works correctly for whichever side Android happens to place the system area on.
+
+The desired architecture is symmetrical:
+
+- The SKEDDO background/surface should extend edge-to-edge across the entire physical display.
+- The app's actual interactive content should remain inside the appropriate safe content bounds.
+- Both the LEFT and RIGHT landscape edges should be treated as possible system-inset/cutout edges.
+- If Android places the system area on the left, the content respects the left inset.
+- If Android places it on the right, the content respects the right inset.
+- The opposite side should also already be handled as an edge-to-edge/background boundary rather than producing a black/letterboxed region.
+- The app should not need two completely different landscape layouts depending on which physical side the system area occupies.
+
+In other words, I want the landscape window architecture to be symmetric and prepared for both landscape directions.
+
+Please audit the Android window/inset configuration with that requirement specifically in mind.
+
+Do not simply remove the current left inset.
+
+Do not hard-code a left-side or right-side inset.
+
+Do not add arbitrary padding to Flutter widgets.
+
+Instead, determine how Android's edge-to-edge and display-cutout/window-inset APIs should be configured so that:
+
+- the window/background occupies the entire display,
+- the system/cutout areas are represented as safe insets,
+- and Flutter receives the appropriate left/right safe-area information depending on which landscape direction the device is currently in.
+
+Please verify both physical landscape directions on the actual Android device if possible.
+
+The important distinction is:
+
+Background edge-to-edge ≠ content edge-to-edge.
+
+I want the former across both landscape edges, while the latter remains safely inset according to the actual system/window insets.
+
+Also keep this completely separate from the picker geometry and rotation work. Do not modify "PickerGridGeometry" or the picker transition implementation to solve this.

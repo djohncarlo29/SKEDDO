@@ -19,6 +19,7 @@ import 'tabs/events_tab.dart';
 import 'tabs/notes_tab.dart';
 import 'widgets/action_panel.dart';
 import 'widgets/accent_tinted_image.dart';
+import 'widgets/app_window_content_boundary.dart';
 import 'widgets/fixed_size_icon.dart';
 import 'widgets/floating_tab_pill.dart';
 import 'widgets/header_title_scroller.dart';
@@ -705,13 +706,7 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
               // descendant can call resolveAccentColor(context).
               Widget result = AppAccentColor(
                 accent: accentSwatch,
-                child: ColoredBox(
-                  color: resolveThemeColor(
-                    kAddCategorySheetBackground,
-                    context,
-                  ),
-                  child: child ?? const SizedBox.shrink(),
-                ),
+                child: child ?? const SizedBox.shrink(),
               );
               // Icons are visual controls, not text. Keep every Flutter icon
               // at its authored size even when the app's text scaler changes.
@@ -755,9 +750,26 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
                   child: result,
                 );
               }
+              // Establish the app-wide content rectangle once, above the
+              // Navigator/Overlay subtree. The outer surface remains
+              // full-window so the physical system/cutout side never reveals
+              // the engine clear color. Descendants receive a symmetric
+              // landscape width and zero horizontal safe-area values, so
+              // individual screens and sheets cannot add the same reservation
+              // a second time.
+              result = AppWindowContentBoundary(child: result);
+              result = ColoredBox(
+                color: resolveThemeColor(
+                  kAddCategorySheetBackground,
+                  context,
+                ),
+                child: result,
+              );
               // Keep one live, metrics-derived rotation state above every
               // screen and sheet. Adaptive widgets use this only for geometry
               // interpolation; it is not a whole-app orientation animation.
+              // This must stay outside AppWindowContentBoundary so its
+              // windowSize remains the physical live window during rotation.
               result = LiveRotationGeometry(child: result);
               return result;
             },
