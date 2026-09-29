@@ -16,6 +16,7 @@ typedef _EmojiCat = ({String icon, String name, List<String> emojis});
 
 class _EmojiGridLayout {
   final double gridInset;
+  final double horizontalInset;
   final double minimumSpacing;
   final double cellSize;
   final double cellFontSize;
@@ -25,6 +26,7 @@ class _EmojiGridLayout {
 
   const _EmojiGridLayout({
     required this.gridInset,
+    required this.horizontalInset,
     required this.minimumSpacing,
     required this.cellSize,
     required this.cellFontSize,
@@ -1368,13 +1370,16 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
             ),
           )
         : maxWidth;
+    final horizontalInset = isWideLayout
+        ? math.max(_emojiSheetHorizontalInset, gridInset)
+        : gridInset;
     final contentWidth = math.max(
       1.0,
       portraitMaxWidth - 2 * gridInset,
     );
     final availableContentWidth = math.max(
       1.0,
-      maxWidth - 2 * gridInset,
+      maxWidth - 2 * horizontalInset,
     );
     final defaultCellSize =
         (contentWidth - minimumSpacing * (authoredColumns - 1)) /
@@ -1424,6 +1429,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
 
     return _EmojiGridLayout(
       gridInset: gridInset,
+      horizontalInset: horizontalInset,
       minimumSpacing: minimumSpacing,
       cellSize: cellSize,
       cellFontSize: cellFontSize,
@@ -1462,6 +1468,27 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
             height: layout.gridHeight,
             child: Stack(
               children: List.generate(emojis.length, (i) {
+                final isWideLayout =
+                    MediaQuery.sizeOf(context).width >
+                    MediaQuery.sizeOf(context).height;
+                final rowStart = (i ~/ layout.columns) * layout.columns;
+                final rowItemCount = math.min(
+                  layout.columns,
+                  emojis.length - rowStart,
+                );
+                final rowContentWidth = math.max(
+                  1.0,
+                  constraints.maxWidth - 2 * layout.horizontalInset,
+                );
+                final rowSpacing =
+                    isWideLayout && rowItemCount > 1
+                        ? math.max(
+                            layout.minimumSpacing,
+                            (rowContentWidth -
+                                    rowItemCount * layout.cellSize) /
+                                (rowItemCount - 1),
+                          )
+                        : layout.crossAxisSpacing;
                 final emoji = Text(
                   emojis[i],
                   style: TextStyle(
@@ -1487,9 +1514,9 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                   duration: const Duration(milliseconds: 280),
                   curve: Curves.easeInOut,
                   left:
-                      layout.gridInset +
+                      layout.horizontalInset +
                       (i % layout.columns) *
-                          (layout.cellSize + layout.crossAxisSpacing),
+                          (layout.cellSize + rowSpacing),
                   top:
                       layout.gridInset +
                       (i ~/ layout.columns) *
@@ -1530,6 +1557,9 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
             ),
           )
         : cardWidth;
+    final horizontalInset = isWideLayout
+        ? math.max(_emojiSheetHorizontalInset, gridInset)
+        : gridInset;
     final contentWidth = math.max(
       1.0,
       portraitCardWidth - 2 * gridInset,
@@ -1544,7 +1574,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
 
     return math.max(
       0.0,
-      gridInset + targetCellSize / 2 - categorySlotWidth / 2,
+      horizontalInset + targetCellSize / 2 - categorySlotWidth / 2,
     );
   }
 

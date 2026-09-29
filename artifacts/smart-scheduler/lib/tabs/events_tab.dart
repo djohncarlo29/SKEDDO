@@ -16054,20 +16054,24 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                           (columns - 1)
                       : 0.0;
 
-              return Wrap(
-                alignment: WrapAlignment.start,
-                spacing: gap,
-                runSpacing: swatchGap,
-                // Keep the 16pt card inset as layout space, but do not turn
-                // it into a paint boundary for the swatch's gel bloom.
-                clipBehavior: Clip.none,
-                children: [
-                  for (final color in _kColorOptions)
-                    SizedBox(
-                      width: swatchSize,
-                      child: _colorSwatch(color, swatchSize),
-                    ),
-                ],
+              return Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Wrap(
+                  alignment: WrapAlignment.start,
+                  runAlignment: WrapAlignment.start,
+                  spacing: gap,
+                  runSpacing: swatchGap,
+                  // Keep the 16pt card inset as layout space, but do not turn
+                  // it into a paint boundary for the swatch's gel bloom.
+                  clipBehavior: Clip.none,
+                  children: [
+                    for (final color in _kColorOptions)
+                      SizedBox(
+                        width: swatchSize,
+                        child: _colorSwatch(color, swatchSize),
+                      ),
+                  ],
+                ),
               );
             },
           ),
@@ -16162,11 +16166,23 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 1.0,
                 defaultItemSize * scaleRatio,
               );
+              // Keep the established portrait inset as the baseline. Wide
+              // layouts use at least 16pt from the card edge, then distribute
+              // only the inter-cell space across each row.
+              final wideHorizontalInset =
+                  max(cardInset, 16.0);
+              final wideInsetDelta = wideHorizontalInset - cardInset;
+              final availableGridWidth = isWideLayout
+                  ? max(
+                      1.0,
+                      constraints.maxWidth - 2 * wideInsetDelta,
+                    )
+                  : constraints.maxWidth;
               final automaticColumns = max(
                 1,
                 min(
                   _kIconOptions.length,
-                  ((constraints.maxWidth + minimumSpacing + 0.001) /
+                  ((availableGridWidth + minimumSpacing + 0.001) /
                           (targetItemSize + minimumSpacing))
                       .floor(),
                 ),
@@ -16191,12 +16207,21 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                               minimumSpacing * (cols - 1)) /
                           cols,
                     );
-              final spacing = minimumSpacing;
+              final verticalSpacing = minimumSpacing;
+              final horizontalSpacing =
+                  isWideLayout && cols > 1
+                      ? max(
+                          minimumSpacing,
+                          (availableGridWidth - cols * itemSize) /
+                              (cols - 1),
+                        )
+                      : minimumSpacing;
               final rowCount = (_kIconOptions.length / cols).ceil();
               // Height of the Stack follows both the scaled tile size and the
               // scaled column count, so accessibility changes also resize the
               // card instead of leaving stale empty space.
-              final stackH = rowCount * itemSize + (rowCount - 1) * spacing;
+              final stackH =
+                  rowCount * itemSize + (rowCount - 1) * verticalSpacing;
               return AnimatedContainer(
                 duration: duration,
                 curve: curve,
@@ -16264,13 +16289,29 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                             twoToneBallUsesContainerFill ? circleBg : iconColor;
                         final twoToneBallDetailColor =
                             twoToneBallUsesContainerFill ? iconColor : circleBg;
+                        final rowStart = (i ~/ cols) * cols;
+                        final rowItemCount = min(
+                          cols,
+                          _kIconOptions.length - rowStart,
+                        );
+                        final rowSpacing =
+                            isWideLayout && rowItemCount > 1
+                                ? max(
+                                    minimumSpacing,
+                                    (availableGridWidth -
+                                            rowItemCount * itemSize) /
+                                        (rowItemCount - 1),
+                                  )
+                                : horizontalSpacing;
 
                         return AnimatedPositioned(
                           key: ValueKey(i),
                           duration: duration,
                           curve: curve,
-                          left: (i % cols) * (itemSize + spacing),
-                          top: (i ~/ cols) * (itemSize + spacing),
+                          left:
+                              (isWideLayout ? wideInsetDelta : 0.0) +
+                              (i % cols) * (itemSize + rowSpacing),
+                          top: (i ~/ cols) * (itemSize + verticalSpacing),
                           width: itemSize,
                           height: itemSize,
                           // LayoutBuilder reads the actual animated cell width

@@ -9,4 +9,4 @@ The portrait baseline is scale-derived rather than a stale raw-pixel snapshot. I
 
 **Why:** The portrait mobile layout is already visually correct. Larger landscape and tablet widths should add capacity without changing the established picker item size or touch behavior.
 
-**How to apply:** Keep portrait output unchanged. Measure available picker width after its existing insets, fit as many fixed-size cells plus the existing gaps as possible, and leave the final row naturally incomplete when needed.
+**How to apply:** Keep portrait output unchanged. Measure available picker width after its existing insets, fit as many fixed-size cells plus the existing gaps as possible, and leave the final row naturally incomplete when needed. When wide layouts redistribute horizontal gaps, keep vertical row spacing independent so the picker does not become taller.
