@@ -42,13 +42,11 @@ class _ColorPickerGeometry {
     required this.rects,
     required this.height,
     required this.swatchSize,
-    required this.gap,
   });
 
   final List<Rect> rects;
   final double height;
   final double swatchSize;
-  final double gap;
 }
 
 class _IconPickerGeometry {
@@ -16059,7 +16057,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 swatchGap: swatchGap,
                 baseSwatchSize: baseSwatchSize,
                 portraitSwatchSize: portrait.swatchSize,
-                portraitGap: portrait.gap,
               );
               final t = geometry.progress;
               final height = portrait.height +
@@ -16106,7 +16103,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     required double swatchGap,
     required double baseSwatchSize,
     double? portraitSwatchSize,
-    double? portraitGap,
   }) {
     final textScaledSize = textScaler.scale(baseSwatchSize);
     final defaultSixColumnSize = max(
@@ -16136,23 +16132,17 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         ),
       ),
     );
-    final calculatedPortraitGap = portraitColumns > 1
+    final portraitGap = portraitColumns > 1
         ? (availableWidth - portraitColumns * swatchSize) /
             (portraitColumns - 1)
         : 0.0;
-    // Landscape must use the actual portrait gap as its floor. It may
-    // redistribute extra width into a larger gap, but it must never compress
-    // the portrait spacing just because the endpoint has a different width.
-    final baselineGap = isWide
-        ? (portraitGap ?? calculatedPortraitGap)
-        : calculatedPortraitGap;
     final columns = isWide
         ? max(
             1,
             min(
               _kColorOptions.length,
-              ((availableWidth + baselineGap + 0.001) /
-                      (swatchSize + baselineGap))
+              ((availableWidth + portraitGap + 0.001) /
+                      (swatchSize + portraitGap))
                   .floor(),
             ),
           )
@@ -16160,7 +16150,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     final gap = columns > 1
         ? isWide
             ? max(
-                baselineGap,
+                portraitGap,
                 (availableWidth - columns * swatchSize) / (columns - 1),
               )
             : (availableWidth - columns * swatchSize) / (columns - 1)
@@ -16180,7 +16170,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       rects: rects,
       height: height,
       swatchSize: swatchSize,
-      gap: gap,
     );
   }
 
