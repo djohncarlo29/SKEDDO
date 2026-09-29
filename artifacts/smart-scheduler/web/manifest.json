@@ -6,7 +6,7 @@
     "background_color": "#FFFFFF",
     "theme_color": "#FFFFFF",
     "description": "SKEDDO",
-    "orientation": "portrait-primary",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

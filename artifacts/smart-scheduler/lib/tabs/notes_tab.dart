@@ -1271,8 +1271,11 @@ class _NoteInputCardState extends State<_NoteInputCard>
     super.dispose();
   }
 
-  double _noteInputHeight(BuildContext context, Color placeholderColor) {
-    final clearIconSize = MediaQuery.textScalerOf(context).scale(20);
+  double _noteInputHeight(
+    BuildContext context,
+    Color placeholderColor, {
+    required double availableWidth,
+  }) {
     final placeholderStyle = TextStyle(
       inherit: false,
       color: placeholderColor,
@@ -1283,9 +1286,11 @@ class _NoteInputCardState extends State<_NoteInputCard>
       letterSpacing: kTracking16,
       height: kLineHeight,
     );
-    // Card width minus the outer row insets and the clear-button column.
-    // The 16 px trailing inset is fixed; only the icon width scales.
-    final inputWidth = MediaQuery.sizeOf(context).width - 72.0 - clearIconSize;
+    // LayoutBuilder is inside the Expanded slot, so its maxWidth already
+    // excludes the row insets and clear-button column.  Using that local
+    // width preserves the authored portrait geometry while also adapting to
+    // landscape, split-screen, and a future foldable pane.
+    final inputWidth = availableWidth;
     final painter = TextPainter(
       text: TextSpan(
         text: 'Type your schedule here...',
@@ -1323,10 +1328,15 @@ class _NoteInputCardState extends State<_NoteInputCard>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: SizedBox(
-                        height: _noteInputHeight(context, secondaryLabel),
-                        child: ClipRect(
-                          child: TapRegion(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) => SizedBox(
+                          height: _noteInputHeight(
+                            context,
+                            secondaryLabel,
+                            availableWidth: constraints.maxWidth,
+                          ),
+                          child: ClipRect(
+                            child: TapRegion(
                             groupId: kSbGroupId,
                             onTapOutside: (_) => sbDismissTextFieldFocus(),
                             // When empty + unfocused: IgnorePointer makes the
@@ -1429,6 +1439,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
                                     ),
                                   ),
                               ],
+                            ),
                             ),
                           ),
                         ),
