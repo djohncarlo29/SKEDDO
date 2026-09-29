@@ -294,6 +294,7 @@ class _SettingsPanelState extends State<SettingsPanel>
         appSystemTextScaleNotifier,
         appStartOfWeekNotifier,
         appDefaultViewNotifier,
+         appFullMonthNameNotifier,
         appEventDurationNotifier,
          appDefaultCategoryNotifier,
          appDefaultCategoryLabelNotifier,
@@ -317,6 +318,7 @@ class _SettingsPanelState extends State<SettingsPanel>
             : 'Custom';
         final startOfWeekLabel = appStartOfWeekNotifier.value;
         final defaultViewLabel = appDefaultViewNotifier.value;
+        final fullMonthName = appFullMonthNameNotifier.value;
         final eventDurationLabel = appEventDurationNotifier.value;
         final defaultCategoryLabel = appDefaultCategoryLabelNotifier.value;
         final dateFormatLabel =
@@ -351,6 +353,7 @@ class _SettingsPanelState extends State<SettingsPanel>
                         textSizeLabel: textSizeLabel,
                         startOfWeekLabel: startOfWeekLabel,
                         defaultViewLabel: defaultViewLabel,
+                         fullMonthName: fullMonthName,
                         eventDurationLabel: eventDurationLabel,
                          defaultCategoryLabel: defaultCategoryLabel,
                         dateFormatLabel: dateFormatLabel,
@@ -420,6 +423,7 @@ class _MainSettingsContent extends StatelessWidget {
   final String textSizeLabel;
   final String startOfWeekLabel;
   final String defaultViewLabel;
+  final bool fullMonthName;
   final String eventDurationLabel;
   final String defaultCategoryLabel;
   final String dateFormatLabel;
@@ -434,6 +438,7 @@ class _MainSettingsContent extends StatelessWidget {
     required this.textSizeLabel,
     required this.startOfWeekLabel,
     required this.defaultViewLabel,
+    required this.fullMonthName,
     required this.eventDurationLabel,
     required this.defaultCategoryLabel,
     required this.dateFormatLabel,
@@ -529,6 +534,14 @@ class _MainSettingsContent extends StatelessWidget {
               title: 'Default Category',
               trailing: _ValueTrailing(defaultCategoryLabel),
               onTap: () => _tap('Default Category'),
+            ),
+            _SettingsToggleRow(
+              title: 'Full Month Name',
+              value: fullMonthName,
+              onChanged: (value) {
+                appFullMonthNameNotifier.value = value;
+                saveAppSetting('Full Month Name', value.toString());
+              },
             ),
             _SettingsRow(
               title: 'Date Format',

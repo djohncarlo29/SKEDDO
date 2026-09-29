@@ -744,22 +744,26 @@ class CalendarTabState extends State<CalendarTab>
     if (_zoomTargetView == CalendarView.month) {
       return t < _kYearMonthHandoffThreshold
           ? '$_dispYear'
-          : _kMonthNames[_dispMonth - 1];
+          : _monthHeaderName(_dispMonth);
     }
     if (_zoomTargetView == CalendarView.year) {
       return t >= _kYearMonthHandoffThreshold
-          ? _kMonthNames[_zoomMonthIdx]
+          ? _monthHeaderName(_zoomMonthIdx + 1)
           : '$_dispYear';
     }
     switch (_view) {
       case CalendarView.year:
         return '$_dispYear';
       case CalendarView.month:
-        return _kMonthNames[_dispMonth - 1];
+        return _monthHeaderName(_dispMonth);
       case CalendarView.day:
         return '${_kShortMonthNames[_selected.month - 1]} ${_selected.day}';
     }
   }
+
+  String _monthHeaderName(int month) => appFullMonthNameNotifier.value
+      ? _kMonthNames[month - 1]
+      : _kShortMonthNames[month - 1];
 
   // Prev / current / next titles for the three-panel header slide.
   (String, String, String) _adjacentTitles() {
@@ -774,7 +778,11 @@ class CalendarTabState extends State<CalendarTab>
         final nextM = _dispMonth == 12
             ? (_dispYear + 1, 1)
             : (_dispYear, _dispMonth + 1);
-        return (_kMonthNames[prevM.$2 - 1], curr, _kMonthNames[nextM.$2 - 1]);
+        return (
+          _monthHeaderName(prevM.$2),
+          curr,
+          _monthHeaderName(nextM.$2),
+        );
       } else {
         return ('${_dispYear - 1}', curr, '${_dispYear + 1}');
       }
@@ -789,7 +797,11 @@ class CalendarTabState extends State<CalendarTab>
         final nextM = _dispMonth == 12
             ? (_dispYear + 1, 1)
             : (_dispYear, _dispMonth + 1);
-        return (_kMonthNames[prevM.$2 - 1], curr, _kMonthNames[nextM.$2 - 1]);
+        return (
+          _monthHeaderName(prevM.$2),
+          curr,
+          _monthHeaderName(nextM.$2),
+        );
       case CalendarView.day:
         final prevD = _selected.subtract(const Duration(days: 1));
         final nextD = _selected.add(const Duration(days: 1));

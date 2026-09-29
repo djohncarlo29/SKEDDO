@@ -425,6 +425,9 @@ final ValueNotifier<String> appDefaultViewNotifier = ValueNotifier<String>(
   'Month',
 );
 
+/// Calendar — whether the Month View header uses full month names.
+final ValueNotifier<bool> appFullMonthNameNotifier = ValueNotifier<bool>(false);
+
 /// Event creation — default duration pre-filled in the time picker.
 final ValueNotifier<String> appEventDurationNotifier = ValueNotifier<String>(
   '1 hour',
@@ -471,6 +474,7 @@ const _kTextSizeIndexKey = 'app_text_size_index';
 const _kAccentIndexKey = 'app_accent_index';
 const _kStartOfWeekKey = 'app_start_of_week';
 const _kDefaultViewKey = 'app_default_view';
+const _kFullMonthNameKey = 'app_full_month_name';
 const _kEventDurationKey = 'app_event_duration';
 const _kDefaultCategoryKey = 'app_default_category';
 const _kDateLocaleKey = 'app_date_locale';
@@ -533,6 +537,11 @@ Future<void> loadAppSettings() async {
 
   final defaultView = prefs.getString(_kDefaultViewKey);
   if (defaultView != null) appDefaultViewNotifier.value = defaultView;
+
+  final fullMonthName = prefs.getBool(_kFullMonthNameKey);
+  if (fullMonthName != null) {
+    appFullMonthNameNotifier.value = fullMonthName;
+  }
 
   final eventDuration = prefs.getString(_kEventDurationKey);
   if (eventDuration != null) appEventDurationNotifier.value = eventDuration;
@@ -607,6 +616,8 @@ Future<void> saveAppSetting(String routeTitle, String value) {
         await prefs.setString(_kStartOfWeekKey, value);
       case 'Default View':
         await prefs.setString(_kDefaultViewKey, value);
+      case 'Full Month Name':
+        await prefs.setBool(_kFullMonthNameKey, value == 'true');
       case 'Default Event Duration':
         await prefs.setString(_kEventDurationKey, value);
       case 'Default Category':

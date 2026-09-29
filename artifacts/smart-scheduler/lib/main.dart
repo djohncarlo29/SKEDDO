@@ -642,6 +642,7 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
         appCustomTextScalerNotifier,
         appAccentNotifier,
         appDateLocaleNotifier,
+        appFullMonthNameNotifier,
       ]),
       builder: (context, _) {
         final brightness = appBrightnessNotifier.value;
@@ -1830,8 +1831,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         return 'All Notes';
       case 1:
         return _calendarTitle.isEmpty
-            ? _monthNames[DateTime.now().month - 1]
-            : _calendarTitle;
+            ? _formattedCalendarMonthTitle(
+                _monthNames[DateTime.now().month - 1],
+              )
+            : _formattedCalendarMonthTitle(_calendarTitle);
       case 2:
         return 'All Events';
       default:
@@ -1847,8 +1850,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         return 'All Notes';
       case 1:
         return _calendarTitle.isEmpty
-            ? _monthNames[DateTime.now().month - 1]
-            : _calendarTitle;
+            ? _formattedCalendarMonthTitle(
+                _monthNames[DateTime.now().month - 1],
+              )
+            : _formattedCalendarMonthTitle(_calendarTitle);
       case 2:
         return 'All Events';
       default:
@@ -1866,7 +1871,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
 
     Widget buildPanel(String title, {required bool isActive}) {
-      final isToday = _isTodayTitle(title, _calendarDisplayYear);
+      final displayTitle = _formattedCalendarMonthTitle(title);
+      final isToday = _isTodayTitle(displayTitle, _calendarDisplayYear);
       return Row(
         // Keep the title's text baseline on the same bottom edge as the
         // standard Notes/Events header title.
@@ -1875,7 +1881,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           // Title
           Expanded(
             child: HeaderTitleScroller(
-              title: title,
+              title: displayTitle,
               fadeColor: resolveThemeColor(kCardColor, context),
               onTap: isActive && isToday
                   ? _advanceCurrentCalendarHeader
@@ -1964,6 +1970,32 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
   }
 
+  String _formattedCalendarMonthTitle(String title) {
+    if (title.contains(' ') || int.tryParse(title) != null) return title;
+
+    final fullIndex = _monthNames.indexOf(title);
+    const shortNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final shortIndex = shortNames.indexOf(title);
+    final monthIndex = fullIndex >= 0 ? fullIndex : shortIndex;
+    if (monthIndex < 0) return title;
+    return appFullMonthNameNotifier.value
+        ? _monthNames[monthIndex]
+        : shortNames[monthIndex];
+  }
+
   void _advanceCurrentCalendarHeader() {
     final future = _calendarTabKey.currentState?.advanceCurrentHeader();
     if (future != null) unawaited(future);
@@ -2008,7 +2040,22 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       return title == '${s[today.month - 1]} ${today.day}';
     }
     if (displayYear != today.year) return false;
-    return title == _monthNames[today.month - 1];
+    return title == _monthNames[today.month - 1] ||
+        title ==
+            const [
+              'Jan',
+              'Feb',
+              'Mar',
+              'Apr',
+              'May',
+              'Jun',
+              'Jul',
+              'Aug',
+              'Sep',
+              'Oct',
+              'Nov',
+              'Dec',
+            ][today.month - 1];
   }
 
   // IndexedStack keeps every tab's subtree alive so the native text-input
