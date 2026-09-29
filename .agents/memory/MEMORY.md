@@ -141,3 +141,4 @@
 - [Smart Category count cache invalidation](smart-category-count-cache-invalidation.md) — matcher embeddings can change results asynchronously without changing the event list, so derived counts need matcher revisions.
 - [Live rotation layout](live-rotation-layout.md) — never freeze the root MediaQuery during native rotation; every intermediate window metric must reach adaptive layouts.
 - [Live rotation geometry](live-rotation-geometry.md) — picker morphs use live window metrics projected between settled portrait/landscape endpoints, never a timer-based orientation animation.
+- [Picker geometry consolidation](picker-geometry-consolidation.md) — icon, emoji, and color pickers share one geometry model; landscape preserves item size and turns extra width into gaps.

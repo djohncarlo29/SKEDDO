@@ -6,8 +6,6 @@ import 'dart:ui';
 import 'package:flutter/services.dart' show HapticFeedback;
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/gestures.dart'
-    show GestureRecognizerFactoryWithHandlers, ScaleGestureRecognizer;
 import 'package:flutter/material.dart'
     show ReorderableDragStartListener, ReorderableListView;
 import 'package:flutter/scheduler.dart' show Ticker;
@@ -31,37 +29,11 @@ import '../widgets/selection_handle_haptics.dart';
 import '../widgets/horizontal_edge_fade.dart';
 import '../widgets/app_switch.dart';
 import '../widgets/fixed_size_icon.dart';
-import '../widgets/live_rotation_geometry.dart';
+import '../widgets/picker_grid_geometry.dart';
 import '../ai/search/search_service.dart';
 import '../services/category_registry.dart';
 import '../widgets/smart_search_results.dart';
 import '../widgets/delete_confirmation_sheet.dart';
-
-class _ColorPickerGeometry {
-  const _ColorPickerGeometry({
-    required this.rects,
-    required this.height,
-    required this.swatchSize,
-  });
-
-  final List<Rect> rects;
-  final double height;
-  final double swatchSize;
-}
-
-class _IconPickerGeometry {
-  const _IconPickerGeometry({
-    required this.rects,
-    required this.height,
-    required this.columns,
-    required this.itemSize,
-  });
-
-  final List<Rect> rects;
-  final double height;
-  final int columns;
-  final double itemSize;
-}
 
 /// Returns the hourly bucket used by Today/Tomorrow DCV section headers.
 ///
@@ -16010,96 +15982,73 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       width: double.infinity,
       child: _card([
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(vertical: 14),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final availableWidth = constraints.maxWidth;
-              const swatchCountPerRow = 6;
-              const swatchGap = 16.0;
+              const horizontalInset = 16.0;
+              const authoredColumns = 6;
+              const minimumGap = 16.0;
               const baseSwatchSize = 43.0;
               final textScaler = MediaQuery.textScalerOf(context);
-              final textScaledSize = textScaler.scale(baseSwatchSize);
               final screenSize = MediaQuery.sizeOf(context);
               final isWideLayout = screenSize.width > screenSize.height;
-              final portraitAvailableWidth = isWideLayout
-                  ? max(
-                      1.0,
-                      min(
-                        availableWidth,
-                        screenSize.shortestSide - 32.0,
-                      ),
+              final portraitViewportWidth = isWideLayout
+                  ? min(constraints.maxWidth, screenSize.shortestSide)
+                  : constraints.maxWidth;
+              final swatchSize =
+                  PickerGridGeometry.scaledPortraitItemSize(
+                    viewportWidth: portraitViewportWidth,
+                    horizontalInset: horizontalInset,
+                    authoredColumns: authoredColumns,
+                    minimumGap: minimumGap,
+                    textScaleRatio:
+                        textScaler.scale(baseSwatchSize) / baseSwatchSize,
+                    maximumItemSize: baseSwatchSize,
+                  );
+              final portrait = PickerGridGeometry.resolve(
+                itemCount: _kColorOptions.length,
+                viewportWidth: portraitViewportWidth,
+                horizontalInset: horizontalInset,
+                targetItemSize: swatchSize,
+                minimumHorizontalGap: minimumGap,
+                verticalGap: minimumGap,
+                authoredMaximumColumns: authoredColumns,
+              );
+              final geometry = isWideLayout
+                  ? PickerGridGeometry.landscape(
+                      portrait: portrait,
+                      itemCount: _kColorOptions.length,
+                      viewportWidth: constraints.maxWidth,
+                      horizontalInset: horizontalInset,
+                      authoredMaximumColumns: _kColorOptions.length,
                     )
-                  : availableWidth;
-              final defaultSixColumnSize = max(
-                0.0,
-                (portraitAvailableWidth -
-                        (swatchCountPerRow - 1) * swatchGap) /
-                    swatchCountPerRow,
-              );
-              final defaultSwatchSize = min(
-                baseSwatchSize,
-                defaultSixColumnSize,
-              );
-              final defaultTextScale = textScaler.scale(16) / 16;
-              final scaledFromDefault =
-                  defaultSwatchSize * (textScaledSize / baseSwatchSize);
-              final swatchSize = defaultTextScale <= 1.001
-                  ? min(defaultSwatchSize, scaledFromDefault)
-                  : scaledFromDefault;
-              final portraitColumns = max(
-                1,
-                min(
-                  swatchCountPerRow,
-                  min(
-                    _kColorOptions.length,
-                    ((portraitAvailableWidth + swatchGap + 0.001) /
-                            (swatchSize + swatchGap))
-                        .floor(),
-                  ),
-                ),
-              );
-              final portraitGap = portraitColumns > 1
-                  ? (portraitAvailableWidth -
-                          portraitColumns * swatchSize) /
-                      (portraitColumns - 1)
-                  : 0.0;
-              final columns = isWideLayout
-                  ? max(
-                      1,
-                      min(
-                        _kColorOptions.length,
-                        ((availableWidth + portraitGap + 0.001) /
-                                (swatchSize + portraitGap))
-                            .floor(),
-                      ),
-                    )
-                  : portraitColumns;
-              final gap = columns > 1
-                  ? isWideLayout
-                      ? max(
-                          portraitGap,
-                          (availableWidth - columns * swatchSize) /
-                              (columns - 1),
-                        )
-                      : (availableWidth - columns * swatchSize) /
-                          (columns - 1)
-                  : 0.0;
+                  : portrait;
 
               return Align(
                 alignment: AlignmentDirectional.centerStart,
-                child: Wrap(
-                  alignment: WrapAlignment.start,
-                  runAlignment: WrapAlignment.start,
-                  spacing: gap,
-                  runSpacing: swatchGap,
-                  clipBehavior: Clip.none,
-                  children: [
-                    for (final color in _kColorOptions)
-                      SizedBox(
-                        width: swatchSize,
-                        child: _colorSwatch(color, swatchSize),
-                      ),
-                  ],
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: geometry.horizontalInset,
+                  ),
+                  child: SizedBox(
+                    width: geometry.contentWidth,
+                    height: geometry.height,
+                    child: Wrap(
+                      alignment: WrapAlignment.start,
+                      runAlignment: WrapAlignment.start,
+                      spacing: geometry.horizontalGap,
+                      runSpacing: geometry.verticalGap,
+                      clipBehavior: Clip.none,
+                      children: [
+                        for (final color in _kColorOptions)
+                          SizedBox(
+                            width: geometry.itemSize,
+                            height: geometry.itemSize,
+                            child: _colorSwatch(color, geometry.itemSize),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               );
             },
@@ -16109,635 +16058,127 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     );
   }
 
-  _ColorPickerGeometry _colorPickerGeometry(
-    double availableWidth,
-    TextScaler textScaler, {
-    required bool isWide,
-    required int swatchCountPerRow,
-    required double swatchGap,
-    required double baseSwatchSize,
-    double? portraitSwatchSize,
-  }) {
-    final textScaledSize = textScaler.scale(baseSwatchSize);
-    final defaultSixColumnSize = max(
-      0.0,
-      (availableWidth - (swatchCountPerRow - 1) * swatchGap) /
-          swatchCountPerRow,
-    );
-    final defaultSwatchSize = min(baseSwatchSize, defaultSixColumnSize);
-    final defaultTextScale = textScaler.scale(16) / 16;
-    final scaledFromDefault =
-        defaultSwatchSize * (textScaledSize / baseSwatchSize);
-    final calculatedSwatchSize = defaultTextScale <= 1.001
-        ? min(defaultSwatchSize, scaledFromDefault)
-        : scaledFromDefault;
-    final swatchSize = isWide
-        ? (portraitSwatchSize ?? calculatedSwatchSize)
-        : calculatedSwatchSize;
-    final portraitColumns = max(
-      1,
-      min(
-        swatchCountPerRow,
-        min(
-          _kColorOptions.length,
-          ((availableWidth + swatchGap + 0.001) /
-                  (swatchSize + swatchGap))
-              .floor(),
-        ),
-      ),
-    );
-    final portraitGap = portraitColumns > 1
-        ? (availableWidth - portraitColumns * swatchSize) /
-            (portraitColumns - 1)
-        : 0.0;
-    final columns = isWide
-        ? max(
-            1,
-            min(
-              _kColorOptions.length,
-              ((availableWidth + portraitGap + 0.001) /
-                      (swatchSize + portraitGap))
-                  .floor(),
-            ),
-          )
-        : portraitColumns;
-    final gap = columns > 1
-        ? isWide
-            ? max(
-                portraitGap,
-                (availableWidth - columns * swatchSize) / (columns - 1),
-              )
-            : (availableWidth - columns * swatchSize) / (columns - 1)
-        : 0.0;
-    final rowCount = (_kColorOptions.length / columns).ceil();
-    final height =
-        rowCount * swatchSize + max(0, rowCount - 1) * swatchGap;
-    final rects = List<Rect>.generate(_kColorOptions.length, (i) {
-      return Rect.fromLTWH(
-        (i % columns) * (swatchSize + gap),
-        (i ~/ columns) * (swatchSize + swatchGap),
-        swatchSize,
-        swatchSize,
-      );
-    });
-    return _ColorPickerGeometry(
-      rects: rects,
-      height: height,
-      swatchSize: swatchSize,
-    );
-  }
-
   // ── Card 7: Icon picker ───────────────────────────────────────────────────
 
   static const _kIconCircle = 40.0; // icon circle diameter
-  static const _kIconGlyph = 20.0; // icon glyph size
-
-  // ── Icon-grid pinch-to-resize state ───────────────────────────────────────
-  // Kept for reversibility. Pinch resizing is currently disabled; set the flag
-  // to true to restore the existing one-column-per-gesture behavior.
-  static const bool _kEnableIconPickerPinching = false;
-  int _iconColumns = 7;
-  int _automaticIconColumns = 7;
-  bool _iconColumnsWasPinched = false;
-  bool _pinchHandled = false; // only one tier-change per gesture
-
-  void _onIconPinchStart(ScaleStartDetails _) => _pinchHandled = false;
-
-  void _onIconPinchUpdate(ScaleUpdateDetails d) {
-    if (_pinchHandled) return;
-    if (d.pointerCount < 2) return; // require a true two-finger pinch
-    final minimumPinchColumns = max(1, _automaticIconColumns - 1);
-    final maximumPinchColumns = min(
-      _kIconOptions.length,
-      _automaticIconColumns + 1,
-    );
-    if (d.scale > 1.18 && _iconColumns > minimumPinchColumns) {
-      // Pinch open → zoom in → fewer per row
-      setState(() {
-        _iconColumns -= 1;
-        _iconColumnsWasPinched = true;
-      });
-      _pinchHandled = true;
-    } else if (d.scale < 0.84 && _iconColumns < maximumPinchColumns) {
-      // Pinch close → zoom out → more per row
-      setState(() {
-        _iconColumns += 1;
-        _iconColumnsWasPinched = true;
-      });
-      _pinchHandled = true;
-    }
-  }
-
-  _IconPickerGeometry _iconPickerGeometry({
-    required double availableWidth,
-    required bool isWide,
-    required double cardInset,
-    required double minimumSpacing,
-    required double portraitItemSize,
-    required double portraitGap,
-    int? forcedColumns,
-  }) {
-    final wideHorizontalInset = max(cardInset, 16.0);
-    final wideInsetDelta = wideHorizontalInset - cardInset;
-    final gridWidth = isWide
-        ? max(1.0, availableWidth - 2 * wideInsetDelta)
-        : availableWidth;
-    final automaticColumns = max(
-      1,
-      min(
-        _kIconOptions.length,
-        ((gridWidth + portraitGap + 0.001) /
-                (portraitItemSize + portraitGap))
-            .floor(),
-      ),
-    );
-    final columns = forcedColumns ?? automaticColumns;
-    final itemSize = isWide
-        ? portraitItemSize
-        : max(
-            1.0,
-            (gridWidth - minimumSpacing * (columns - 1)) / columns,
-          );
-    final horizontalSpacing = isWide && columns > 1
-        ? max(
-            portraitGap,
-            (gridWidth - columns * itemSize) / (columns - 1),
-          )
-        : minimumSpacing;
-    final rowCount = (_kIconOptions.length / columns).ceil();
-    final height =
-        rowCount * itemSize + max(0, rowCount - 1) * minimumSpacing;
-    final rects = List<Rect>.generate(_kIconOptions.length, (i) {
-      return Rect.fromLTWH(
-        (isWide ? wideInsetDelta : 0.0) +
-            (i % columns) * (itemSize + horizontalSpacing),
-        (i ~/ columns) * (itemSize + minimumSpacing),
-        itemSize,
-        itemSize,
-      );
-    });
-    return _IconPickerGeometry(
-      rects: rects,
-      height: height,
-      columns: columns,
-      itemSize: itemSize,
-    );
-  }
-
   Widget _buildIconCard() {
-    const duration = Duration(milliseconds: 280);
-    const curve = Curves.easeInOut;
     final textScaler = MediaQuery.textScalerOf(context);
-    final cardInset = textScaler.scale(12.0);
+    const horizontalInset = 16.0;
+    const authoredColumns = 7;
     final minimumSpacing = textScaler.scale(6.0);
+    final scaleRatio = textScaler.scale(_kIconCircle) / _kIconCircle;
     return SizedBox(
       width: double.infinity,
-      child: RawGestureDetector(
-        gestures:
-            _kEnableIconPickerPinching
-                ? {
-                  ScaleGestureRecognizer:
-                      GestureRecognizerFactoryWithHandlers<
-                        ScaleGestureRecognizer
-                      >(
-                        () => ScaleGestureRecognizer(debugOwner: this),
-                        (r) =>
-                            r
-                              ..onStart = _onIconPinchStart
-                              ..onUpdate = _onIconPinchUpdate
-                              ..onEnd = (_) => _pinchHandled = false,
-                      ),
-                }
-                : const {},
-        child: _card([
-          Padding(
-            padding: EdgeInsets.all(cardInset),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-              const authoredColumns = 7;
-              final screenSize = MediaQuery.sizeOf(context);
-              final rotation = InheritedRotationGeometry.maybeOf(context);
-              final outerInset = screenSize.width - constraints.maxWidth;
-              final geometry = rotation ??
-                  RotationGeometryData(
-                    windowSize: screenSize,
-                    portraitSize: screenSize.height >= screenSize.width
-                        ? screenSize
-                        : Size(screenSize.height, screenSize.width),
-                    landscapeSize: screenSize.width >= screenSize.height
-                        ? screenSize
-                        : Size(screenSize.height, screenSize.width),
-                    progress: screenSize.width > screenSize.height ? 1.0 : 0.0,
-                    isTransitioning: false,
-                  );
-              final portraitAvailableWidth = max(
-                1.0,
-                geometry.portraitSize.width - outerInset,
-              );
-              final landscapeAvailableWidth = max(
-                1.0,
-                geometry.landscapeSize.width - outerInset,
-              );
-              final scaleRatio =
-                  textScaler.scale(_kIconCircle) / _kIconCircle;
-              final portraitBaselineItemSize = max(
-                1.0,
-                ((portraitAvailableWidth -
-                            minimumSpacing * (authoredColumns - 1)) /
-                        authoredColumns) *
-                    scaleRatio,
-              );
-              final portraitColumns = max(
-                1,
-                min(
-                  _kIconOptions.length,
-                  ((portraitAvailableWidth + minimumSpacing + 0.001) /
-                          (portraitBaselineItemSize + minimumSpacing))
-                      .floor(),
-                ),
-              );
-              final portraitItemSize = max(
-                1.0,
-                (portraitAvailableWidth -
-                        minimumSpacing * (portraitColumns - 1)) /
-                    portraitColumns,
-              );
-              final portraitGap =
-                  portraitColumns > 1
-                      ? (portraitAvailableWidth -
-                              portraitColumns * portraitItemSize) /
-                          (portraitColumns - 1)
-                      : 0.0;
-              final forcedColumns =
-                  _iconColumnsWasPinched ? _iconColumns : null;
-              final portrait = _iconPickerGeometry(
-                availableWidth: portraitAvailableWidth,
-                isWide: false,
-                cardInset: cardInset,
-                minimumSpacing: minimumSpacing,
-                portraitItemSize: portraitItemSize,
-                portraitGap: portraitGap,
-                forcedColumns: forcedColumns,
-              );
-              final landscape = _iconPickerGeometry(
-                availableWidth: landscapeAvailableWidth,
-                isWide: true,
-                cardInset: cardInset,
-                minimumSpacing: minimumSpacing,
-                portraitItemSize: portraitItemSize,
-                portraitGap: portraitGap,
-                forcedColumns: forcedColumns,
-              );
-              final t = geometry.progress;
-              final stackH =
-                  portrait.height + (landscape.height - portrait.height) * t;
-              return SizedBox(
-                height: stackH,
-                child: Builder(
-                  builder: (context) {
-                    final brightness = CupertinoTheme.brightnessOf(context);
-                    final iconBackground = resolveThemeColor(
-                      kPillColor,
-                      context,
-                    );
-                    final primaryLabel = resolveThemeColor(
-                      kPrimaryLabel,
-                      context,
-                    );
-                    return ClipRect(
-                      // The wide layout starts four points inside this
-                      // card's 12pt portrait padding, making the physical
-                      // edge exactly 16pt. Do not let a selected/blooming
-                      // icon cross that boundary.
-                      child: Stack(
-                        // Keep the stack itself unclipped so each item's
-                        // local bloom can be painted before ClipRect applies
-                        // the card-content boundary.
-                        clipBehavior: Clip.none,
-                        children: List.generate(_kIconOptions.length, (i) {
-                        final icon = _kIconOptions[i];
-                        // Row-1 Icon-1 is the emoji button, not a selectable icon.
-                        final isEmojiTile = icon == _kEmojiLightSvg;
-                        // Selected when an emoji has been chosen (emoji tile) or
-                        // the icon path matches the current selection (others).
-                        final selected =
-                            isEmojiTile
-                                ? _isEmojiIcon(_selectedIcon)
-                                : icon == _selectedIcon;
-
-                        // Emoji tile always shows the brightness-resolved generic
-                        // emoji SVG — never the picked emoji character.  Other
-                        // tiles always show their own SVG / IconData.
-                        final displayIcon =
-                            isEmojiTile
-                                ? _resolveIconSvg(_kEmojiLightSvg, brightness)
-                                : icon;
-
-                        // Emoji tile: icon is always category colour (both modes).
-                        //   Unselected → resolved pill-color container.
-                        //   Selected   → 40 % category colour container.
-                        // Other tiles: unselected → kPrimaryLabel icon, pill-color bg.
-                        //              selected   → white icon, solid category colour bg.
-                        final iconColor =
-                            isEmojiTile
-                                ? _resolvedSelectedColor
-                                : (selected
-                                    ? CupertinoColors.white
-                                    : primaryLabel);
-                        final circleBg =
-                            isEmojiTile
-                                ? (selected
-                                    ? _resolvedSelectedColor.withOpacity(0.30)
-                                    : iconBackground)
-                                : (selected
-                                    ? _resolvedSelectedColor
-                                    : iconBackground);
-                        final twoToneBallUsesContainerFill =
-                            selected || brightness == Brightness.dark;
-                        final twoToneBallFillColor =
-                            twoToneBallUsesContainerFill ? circleBg : iconColor;
-                        final twoToneBallDetailColor =
-                            twoToneBallUsesContainerFill ? iconColor : circleBg;
-                        final rect = Rect.lerp(
-                          portrait.rects[i],
-                          landscape.rects[i],
-                          t,
-                        )!;
-                        final glyphScale = rect.width / _kIconCircle;
-                        final child = GelBloomButton(
-                          onTap:
-                              isEmojiTile
-                                  ? () => _openEmojiPicker(context)
-                                  : () => setState(
-                                    () => _selectedIcon = icon,
-                                  ),
-                          peakScale: 1.12,
-                          child: Builder(
-                            builder: (_) {
-
-                              // Selection shown via category-colour circle fill;
-                              // no ring indicator anywhere in the picker grid.
-                              final circle = Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: circleBg,
-                                ),
-                                child: Center(
-                                  child: Transform.scale(
-                                    scale: glyphScale,
-                                    child: _buildPickerIcon(
-                                      displayIcon,
-                                      iconColor,
-                                      ctx: context,
-                                      ballFillColor: twoToneBallFillColor,
-                                      ballDetailColor: twoToneBallDetailColor,
-                                    ),
-                                  ),
-                                ),
-                              );
-                              return circle;
-                            },
-                          ),
-                        );
-                          return geometry.isTransitioning
-                              ? Positioned.fromRect(
-                                key: ValueKey(i),
-                                rect: rect,
-                                child: child,
-                              )
-                              : AnimatedPositioned(
-                                key: ValueKey(i),
-                                duration: duration,
-                                curve: curve,
-                                left: rect.left,
-                                top: rect.top,
-                                width: rect.width,
-                                height: rect.height,
-                                child: child,
-                              );
-                        }),
-                      ),
-                    );
-                  },
-                ),
-              );
-              },
-            ),
-          ),
-        ]),
-      ),
-    );
-  }
-
-  Widget _buildIconCardFromCheckpoint() {
-    const duration = Duration(milliseconds: 280);
-    const curve = Curves.easeInOut;
-    final textScaler = MediaQuery.textScalerOf(context);
-    final cardInset = textScaler.scale(12.0);
-    final minimumSpacing = textScaler.scale(6.0);
-    return RawGestureDetector(
-      gestures:
-          _kEnableIconPickerPinching
-              ? {
-                ScaleGestureRecognizer:
-                    GestureRecognizerFactoryWithHandlers<ScaleGestureRecognizer>(
-                      () => ScaleGestureRecognizer(debugOwner: this),
-                      (r) =>
-                          r
-                            ..onStart = _onIconPinchStart
-                            ..onUpdate = _onIconPinchUpdate
-                            ..onEnd = (_) => _pinchHandled = false,
-                    ),
-              }
-              : const {},
       child: _card([
         Padding(
-          padding: EdgeInsets.all(cardInset),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              const authoredColumns = 7;
               final screenSize = MediaQuery.sizeOf(context);
               final isWideLayout = screenSize.width > screenSize.height;
-              final portraitAvailableWidth = isWideLayout
-                  ? max(
-                      1.0,
-                      min(
-                        constraints.maxWidth,
-                        screenSize.shortestSide - 2 * cardInset,
-                      ),
-                    )
+              final portraitViewportWidth = isWideLayout
+                  ? min(constraints.maxWidth, screenSize.shortestSide)
                   : constraints.maxWidth;
-              final defaultItemSize =
-                  (portraitAvailableWidth -
-                      minimumSpacing * (authoredColumns - 1)) /
-                  authoredColumns;
-              final scaleRatio =
-                  textScaler.scale(_kIconCircle) / _kIconCircle;
-              final targetItemSize = max(
-                1.0,
-                defaultItemSize * scaleRatio,
+              final targetItemSize =
+                  PickerGridGeometry.scaledPortraitItemSize(
+                    viewportWidth: portraitViewportWidth,
+                    horizontalInset: horizontalInset,
+                    authoredColumns: authoredColumns,
+                    minimumGap: minimumSpacing,
+                    textScaleRatio: scaleRatio,
+                  );
+              final portrait = PickerGridGeometry.resolve(
+                itemCount: _kIconOptions.length,
+                viewportWidth: portraitViewportWidth,
+                horizontalInset: horizontalInset,
+                targetItemSize: targetItemSize,
+                minimumHorizontalGap: minimumSpacing,
+                verticalGap: minimumSpacing,
+                authoredMaximumColumns: _kIconOptions.length,
               );
-              final portraitColumns = max(
-                1,
-                min(
-                  _kIconOptions.length,
-                  ((portraitAvailableWidth + minimumSpacing + 0.001) /
-                          (targetItemSize + minimumSpacing))
-                      .floor(),
-                ),
-              );
-              final portraitItemSize = max(
-                1.0,
-                (portraitAvailableWidth -
-                        minimumSpacing * (portraitColumns - 1)) /
-                    portraitColumns,
-              );
-              final portraitGap =
-                  portraitColumns > 1
-                      ? (portraitAvailableWidth -
-                              portraitColumns * portraitItemSize) /
-                          (portraitColumns - 1)
-                      : 0.0;
-              final wideHorizontalInset = max(cardInset, 16.0);
-              final wideInsetDelta = wideHorizontalInset - cardInset;
-              final availableGridWidth = isWideLayout
-                  ? max(
-                      1.0,
-                      constraints.maxWidth - 2 * wideInsetDelta,
+              final geometry = isWideLayout
+                  ? PickerGridGeometry.landscape(
+                      portrait: portrait,
+                      itemCount: _kIconOptions.length,
+                      viewportWidth: constraints.maxWidth,
+                      horizontalInset: horizontalInset,
+                      authoredMaximumColumns: _kIconOptions.length,
                     )
-                  : constraints.maxWidth;
-              final automaticColumns = max(
-                1,
-                min(
-                  _kIconOptions.length,
-                  ((availableGridWidth + portraitGap + 0.001) /
-                          (portraitItemSize + portraitGap))
-                      .floor(),
-                ),
+                  : portrait;
+              final brightness = CupertinoTheme.brightnessOf(context);
+              final iconBackground = resolveThemeColor(
+                kPillColor,
+                context,
               );
-              if (!_iconColumnsWasPinched ||
-                  automaticColumns != _automaticIconColumns) {
-                _automaticIconColumns = automaticColumns;
-                _iconColumns = automaticColumns;
-                _iconColumnsWasPinched = false;
-              }
-              final cols = _iconColumns;
-              final itemSize = isWideLayout
-                  ? portraitItemSize
-                  : max(
-                      1.0,
-                      (constraints.maxWidth -
-                              minimumSpacing * (cols - 1)) /
-                          cols,
-                    );
-              final verticalSpacing = minimumSpacing;
-              final horizontalSpacing =
-                  isWideLayout && cols > 1
-                      ? max(
-                          portraitGap,
-                          (availableGridWidth - cols * itemSize) /
-                              (cols - 1),
-                        )
-                      : minimumSpacing;
-              final rowCount = (_kIconOptions.length / cols).ceil();
-              final stackH =
-                  rowCount * itemSize + (rowCount - 1) * verticalSpacing;
-              return AnimatedContainer(
-                duration: duration,
-                curve: curve,
-                height: stackH,
-                child: Builder(
-                  builder: (context) {
-                    final brightness = CupertinoTheme.brightnessOf(context);
-                    final iconBackground = resolveThemeColor(
-                      kPillColor,
-                      context,
-                    );
-                    final primaryLabel = resolveThemeColor(
-                      kPrimaryLabel,
-                      context,
-                    );
-                    return Stack(
-                      clipBehavior: Clip.none,
-                      children: List.generate(_kIconOptions.length, (i) {
-                        final icon = _kIconOptions[i];
-                        final isEmojiTile = icon == _kEmojiLightSvg;
-                        final selected =
-                            isEmojiTile
-                                ? _isEmojiIcon(_selectedIcon)
-                                : icon == _selectedIcon;
-                        final displayIcon =
-                            isEmojiTile
-                                ? _resolveIconSvg(_kEmojiLightSvg, brightness)
-                                : icon;
-                        final iconColor =
-                            isEmojiTile
-                                ? _resolvedSelectedColor
-                                : (selected
-                                    ? CupertinoColors.white
-                                    : primaryLabel);
-                        final circleBg =
-                            isEmojiTile
-                                ? (selected
-                                    ? _resolvedSelectedColor.withOpacity(0.30)
-                                    : iconBackground)
-                                : (selected
-                                    ? _resolvedSelectedColor
-                                    : iconBackground);
-                        final twoToneBallUsesContainerFill =
-                            selected || brightness == Brightness.dark;
-                        final twoToneBallFillColor =
-                            twoToneBallUsesContainerFill ? circleBg : iconColor;
-                        final twoToneBallDetailColor =
-                            twoToneBallUsesContainerFill ? iconColor : circleBg;
-                        return AnimatedPositioned(
-                          key: ValueKey(i),
-                          duration: duration,
-                          curve: curve,
-                          left:
-                              (isWideLayout ? wideInsetDelta : 0.0) +
-                              (i % cols) * (itemSize + horizontalSpacing),
-                          top: (i ~/ cols) * (itemSize + verticalSpacing),
-                          width: itemSize,
-                          height: itemSize,
-                          child: LayoutBuilder(
-                            builder: (_, cellConstraints) {
-                              final glyphScale =
-                                  cellConstraints.maxWidth / _kIconCircle;
-                              final circle = Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: circleBg,
-                                ),
-                                child: Center(
-                                  child: Transform.scale(
-                                    scale: glyphScale,
-                                    child: _buildPickerIcon(
-                                      displayIcon,
-                                      iconColor,
-                                      ctx: context,
-                                      ballFillColor: twoToneBallFillColor,
-                                      ballDetailColor: twoToneBallDetailColor,
-                                    ),
-                                  ),
-                                ),
-                              );
-                              return GelBloomButton(
-                                onTap:
-                                    isEmojiTile
-                                        ? () => _openEmojiPicker(context)
-                                        : () => setState(
-                                          () => _selectedIcon = icon,
-                                        ),
-                                peakScale: 1.12,
-                                child: circle,
-                              );
-                            },
+              final primaryLabel = resolveThemeColor(
+                kPrimaryLabel,
+                context,
+              );
+              return SizedBox(
+                height: geometry.height,
+                child: ClipRect(
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: List.generate(_kIconOptions.length, (i) {
+                      final icon = _kIconOptions[i];
+                      final isEmojiTile = icon == _kEmojiLightSvg;
+                      final selected = isEmojiTile
+                          ? _isEmojiIcon(_selectedIcon)
+                          : icon == _selectedIcon;
+                      final displayIcon = isEmojiTile
+                          ? _resolveIconSvg(_kEmojiLightSvg, brightness)
+                          : icon;
+                      final iconColor = isEmojiTile
+                          ? _resolvedSelectedColor
+                          : (selected
+                              ? CupertinoColors.white
+                              : primaryLabel);
+                      final circleBg = isEmojiTile
+                          ? (selected
+                              ? _resolvedSelectedColor.withOpacity(0.30)
+                              : iconBackground)
+                          : (selected
+                              ? _resolvedSelectedColor
+                              : iconBackground);
+                      final twoToneBallUsesContainerFill =
+                          selected || brightness == Brightness.dark;
+                      final twoToneBallFillColor =
+                          twoToneBallUsesContainerFill ? circleBg : iconColor;
+                      final twoToneBallDetailColor =
+                          twoToneBallUsesContainerFill ? iconColor : circleBg;
+                      final rect = geometry.itemRects[i];
+                      final glyphScale = rect.width / _kIconCircle;
+                      final child = GelBloomButton(
+                        onTap: isEmojiTile
+                            ? () => _openEmojiPicker(context)
+                            : () => setState(() => _selectedIcon = icon),
+                        peakScale: 1.12,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: circleBg,
                           ),
-                        );
-                      }),
-                    );
-                  },
+                          child: Center(
+                            child: Transform.scale(
+                              scale: glyphScale,
+                              child: _buildPickerIcon(
+                                displayIcon,
+                                iconColor,
+                                ctx: context,
+                                ballFillColor: twoToneBallFillColor,
+                                ballDetailColor: twoToneBallDetailColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                      return Positioned.fromRect(
+                        key: ValueKey(i),
+                        rect: rect,
+                        child: child,
+                      );
+                    }),
+                  ),
                 ),
               );
             },
@@ -16917,7 +16358,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                         _buildColorCard(),
                         if (!_isSmart) ...[
                           const SizedBox(height: 18),
-                          _buildIconCardFromCheckpoint(),
+                          _buildIconCard(),
                         ],
                       ],
                     ),
