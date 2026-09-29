@@ -140,3 +140,4 @@
 - [Picker wide-layout geometry](picker-wide-layout-geometry.md) — reuse portrait-derived item/cell sizes and spacing at the current text scale, then fit extra left-aligned columns inside the sheet.
 - [Smart Category count cache invalidation](smart-category-count-cache-invalidation.md) — matcher embeddings can change results asynchronously without changing the event list, so derived counts need matcher revisions.
 - [Live rotation layout](live-rotation-layout.md) — never freeze the root MediaQuery during native rotation; every intermediate window metric must reach adaptive layouts.
+- [Live rotation geometry](live-rotation-geometry.md) — picker morphs use live window metrics projected between settled portrait/landscape endpoints, never a timer-based orientation animation.

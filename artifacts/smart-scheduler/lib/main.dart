@@ -22,6 +22,7 @@ import 'widgets/accent_tinted_image.dart';
 import 'widgets/fixed_size_icon.dart';
 import 'widgets/floating_tab_pill.dart';
 import 'widgets/header_title_scroller.dart';
+import 'widgets/live_rotation_geometry.dart';
 import 'widgets/native_text_input.dart';
 import 'widgets/search_bar_widget.dart';
 import 'widgets/view_mode_icons.dart';
@@ -753,6 +754,10 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
                   child: result,
                 );
               }
+              // Keep one live, metrics-derived rotation state above every
+              // screen and sheet. Adaptive widgets use this only for geometry
+              // interpolation; it is not a whole-app orientation animation.
+              result = LiveRotationGeometry(child: result);
               return result;
             },
             home: const AppShell(),

@@ -31,10 +31,37 @@ import '../widgets/selection_handle_haptics.dart';
 import '../widgets/horizontal_edge_fade.dart';
 import '../widgets/app_switch.dart';
 import '../widgets/fixed_size_icon.dart';
+import '../widgets/live_rotation_geometry.dart';
 import '../ai/search/search_service.dart';
 import '../services/category_registry.dart';
 import '../widgets/smart_search_results.dart';
 import '../widgets/delete_confirmation_sheet.dart';
+
+class _ColorPickerGeometry {
+  const _ColorPickerGeometry({
+    required this.rects,
+    required this.height,
+    required this.swatchSize,
+  });
+
+  final List<Rect> rects;
+  final double height;
+  final double swatchSize;
+}
+
+class _IconPickerGeometry {
+  const _IconPickerGeometry({
+    required this.rects,
+    required this.height,
+    required this.columns,
+    required this.itemSize,
+  });
+
+  final List<Rect> rects;
+  final double height;
+  final int columns;
+  final double itemSize;
+}
 
 /// Returns the hourly bucket used by Today/Tomorrow DCV section headers.
 ///
@@ -15991,107 +16018,65 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               const swatchGap = 16.0;
               const baseSwatchSize = 43.0;
               final textScaler = MediaQuery.textScalerOf(context);
-              final textScaledSize = textScaler.scale(baseSwatchSize);
               final screenSize = MediaQuery.sizeOf(context);
-              final isWideLayout = screenSize.width > screenSize.height;
-              // The card's horizontal padding is already removed from
-              // [constraints]. In a wide layout, use the same inner width the
-              // card would have in portrait on this device as the geometry
-              // baseline. Only the number of columns may grow with width.
-              final portraitAvailableWidth = isWideLayout
-                  ? max(
-                      1.0,
-                      min(
-                        availableWidth,
-                        screenSize.shortestSide - 32.0,
-                      ),
-                    )
-                  : availableWidth;
-              final defaultSixColumnSize =
-                  max(
-                    0.0,
-                    (portraitAvailableWidth -
-                            (swatchCountPerRow - 1) * swatchGap) /
-                        swatchCountPerRow,
+              final rotation = InheritedRotationGeometry.maybeOf(context);
+              final geometry = rotation ??
+                  RotationGeometryData(
+                    windowSize: screenSize,
+                    portraitSize: screenSize.height >= screenSize.width
+                        ? screenSize
+                        : Size(screenSize.height, screenSize.width),
+                    landscapeSize: screenSize.width >= screenSize.height
+                        ? screenSize
+                        : Size(screenSize.height, screenSize.width),
+                    progress: screenSize.width > screenSize.height ? 1.0 : 0.0,
+                    isTransitioning: false,
                   );
-              final defaultSwatchSize = min(
-                baseSwatchSize,
-                defaultSixColumnSize,
+              final outerInset = screenSize.width - availableWidth;
+              final portraitWidth = max(
+                1.0,
+                geometry.portraitSize.width - outerInset,
               );
-              final defaultTextScale = textScaler.scale(16) / 16;
-              // Default and smaller text sizes establish a six-column
-              // baseline. This prevents a narrow phone from starting at
-              // 5+5+2 while still allowing the swatches to grow or shrink
-              // with the OS setting. Once text is larger than the default,
-              // the scaled circles are never capped; the minimum gap then
-              // naturally determines when six columns become five.
-              final scaledFromDefault =
-                  defaultSwatchSize * (textScaledSize / baseSwatchSize);
-              final swatchSize =
-                  defaultTextScale <= 1.001
-                      ? min(defaultSwatchSize, scaledFromDefault)
-                      : scaledFromDefault;
-              final portraitColumns = max(
-                1,
-                min(
-                  swatchCountPerRow,
-                  min(
-                    _kColorOptions.length,
-                    ((portraitAvailableWidth + swatchGap + 0.001) /
-                            (swatchSize + swatchGap))
-                        .floor(),
-                  ),
-                ),
+              final landscapeWidth = max(
+                1.0,
+                geometry.landscapeSize.width - outerInset,
               );
-              final portraitGap =
-                  portraitColumns > 1
-                      ? (portraitAvailableWidth -
-                              portraitColumns * swatchSize) /
-                          (portraitColumns - 1)
-                      : 0.0;
-              final columns = isWideLayout
-                  ? max(
-                      1,
-                      min(
-                        _kColorOptions.length,
-                        ((availableWidth + portraitGap + 0.001) /
-                                (swatchSize + portraitGap))
-                            .floor(),
-                      ),
-                    )
-                  : portraitColumns;
+              final portrait = _colorPickerGeometry(
+                portraitWidth,
+                textScaler,
+                isWide: false,
+                swatchCountPerRow: swatchCountPerRow,
+                swatchGap: swatchGap,
+                baseSwatchSize: baseSwatchSize,
+              );
+              final landscape = _colorPickerGeometry(
+                landscapeWidth,
+                textScaler,
+                isWide: true,
+                swatchCountPerRow: swatchCountPerRow,
+                swatchGap: swatchGap,
+                baseSwatchSize: baseSwatchSize,
+              );
+              final t = geometry.progress;
+              final height = portrait.height +
+                  (landscape.height - portrait.height) * t;
+              final swatchSize = portrait.swatchSize +
+                  (landscape.swatchSize - portrait.swatchSize) * t;
 
-              // Portrait keeps its existing full-row spacing. Wide layouts
-              // may only add space: the redistributed gap cannot be smaller
-              // than the portrait gap, and every wrapped row uses this same
-              // gap so a partial last row remains leading-aligned.
-              final gap =
-                  columns > 1
-                      ? isWideLayout
-                          ? max(
-                              portraitGap,
-                              (availableWidth - columns * swatchSize) /
-                                  (columns - 1),
-                            )
-                          : (availableWidth - columns * swatchSize) /
-                              (columns - 1)
-                      : 0.0;
-
-              return Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Wrap(
-                  alignment: WrapAlignment.start,
-                  runAlignment: WrapAlignment.start,
-                  spacing: gap,
-                  runSpacing: swatchGap,
-                  // Keep the 16pt card inset as layout space, but do not turn
-                  // it into a paint boundary for the swatch's gel bloom.
+              return SizedBox(
+                width: double.infinity,
+                height: height,
+                child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    for (final color in _kColorOptions)
-                      SizedBox(
-                        width: swatchSize,
-                        child: _colorSwatch(color, swatchSize),
+                    for (var i = 0; i < _kColorOptions.length; i++)
+                      Positioned.fromRect(
+                        rect: Rect.lerp(
+                          portrait.rects[i],
+                          landscape.rects[i],
+                          t,
+                        )!,
+                        child: _colorSwatch(_kColorOptions[i], swatchSize),
                       ),
                   ],
                 ),
@@ -16100,6 +16085,80 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
           ),
         ),
       ]),
+    );
+  }
+
+  _ColorPickerGeometry _colorPickerGeometry(
+    double availableWidth,
+    TextScaler textScaler, {
+    required bool isWide,
+    required int swatchCountPerRow,
+    required double swatchGap,
+    required double baseSwatchSize,
+  }) {
+    final textScaledSize = textScaler.scale(baseSwatchSize);
+    final defaultSixColumnSize = max(
+      0.0,
+      (availableWidth - (swatchCountPerRow - 1) * swatchGap) /
+          swatchCountPerRow,
+    );
+    final defaultSwatchSize = min(baseSwatchSize, defaultSixColumnSize);
+    final defaultTextScale = textScaler.scale(16) / 16;
+    final scaledFromDefault =
+        defaultSwatchSize * (textScaledSize / baseSwatchSize);
+    final swatchSize = defaultTextScale <= 1.001
+        ? min(defaultSwatchSize, scaledFromDefault)
+        : scaledFromDefault;
+    final portraitColumns = max(
+      1,
+      min(
+        swatchCountPerRow,
+        min(
+          _kColorOptions.length,
+          ((availableWidth + swatchGap + 0.001) /
+                  (swatchSize + swatchGap))
+              .floor(),
+        ),
+      ),
+    );
+    final portraitGap = portraitColumns > 1
+        ? (availableWidth - portraitColumns * swatchSize) /
+            (portraitColumns - 1)
+        : 0.0;
+    final columns = isWide
+        ? max(
+            1,
+            min(
+              _kColorOptions.length,
+              ((availableWidth + portraitGap + 0.001) /
+                      (swatchSize + portraitGap))
+                  .floor(),
+            ),
+          )
+        : portraitColumns;
+    final gap = columns > 1
+        ? isWide
+            ? max(
+                portraitGap,
+                (availableWidth - columns * swatchSize) / (columns - 1),
+              )
+            : (availableWidth - columns * swatchSize) / (columns - 1)
+        : 0.0;
+    final rowCount = (_kColorOptions.length / columns).ceil();
+    final height =
+        rowCount * swatchSize + max(0, rowCount - 1) * swatchGap;
+    final rects = List<Rect>.generate(_kColorOptions.length, (i) {
+      return Rect.fromLTWH(
+        (i % columns) * (swatchSize + gap),
+        (i ~/ columns) * (swatchSize + swatchGap),
+        swatchSize,
+        swatchSize,
+      );
+    });
+    return _ColorPickerGeometry(
+      rects: rects,
+      height: height,
+      swatchSize: swatchSize,
     );
   }
 
@@ -16144,6 +16203,62 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     }
   }
 
+  _IconPickerGeometry _iconPickerGeometry({
+    required double availableWidth,
+    required bool isWide,
+    required double cardInset,
+    required double minimumSpacing,
+    required double portraitItemSize,
+    required double portraitGap,
+    int? forcedColumns,
+  }) {
+    final wideHorizontalInset = max(cardInset, 16.0);
+    final wideInsetDelta = wideHorizontalInset - cardInset;
+    final gridWidth = isWide
+        ? max(1.0, availableWidth - 2 * wideInsetDelta)
+        : availableWidth;
+    final automaticColumns = max(
+      1,
+      min(
+        _kIconOptions.length,
+        ((gridWidth + portraitGap + 0.001) /
+                (portraitItemSize + portraitGap))
+            .floor(),
+      ),
+    );
+    final columns = forcedColumns ?? automaticColumns;
+    final itemSize = isWide
+        ? portraitItemSize
+        : max(
+            1.0,
+            (gridWidth - minimumSpacing * (columns - 1)) / columns,
+          );
+    final horizontalSpacing = isWide && columns > 1
+        ? max(
+            portraitGap,
+            (gridWidth - columns * itemSize) / (columns - 1),
+          )
+        : minimumSpacing;
+    final rowCount = (_kIconOptions.length / columns).ceil();
+    final height =
+        rowCount * itemSize + max(0, rowCount - 1) * minimumSpacing;
+    final rects = List<Rect>.generate(_kIconOptions.length, (i) {
+      return Rect.fromLTWH(
+        (isWide ? wideInsetDelta : 0.0) +
+            (i % columns) * (itemSize + horizontalSpacing),
+        (i ~/ columns) * (itemSize + minimumSpacing),
+        itemSize,
+        itemSize,
+      );
+    });
+    return _IconPickerGeometry(
+      rects: rects,
+      height: height,
+      columns: columns,
+      itemSize: itemSize,
+    );
+  }
+
   Widget _buildIconCard() {
     const duration = Duration(milliseconds: 280);
     const curve = Curves.easeInOut;
@@ -16172,36 +16287,43 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             builder: (context, constraints) {
               const authoredColumns = 7;
               final screenSize = MediaQuery.sizeOf(context);
-              final isWideLayout = screenSize.width > screenSize.height;
-              final portraitAvailableWidth = isWideLayout
-                  ? max(
-                      1.0,
-                      min(
-                        constraints.maxWidth,
-                        screenSize.shortestSide - 2 * cardInset,
-                      ),
-                    )
-                  : constraints.maxWidth;
-              final defaultItemSize =
-                  (portraitAvailableWidth -
-                      minimumSpacing * (authoredColumns - 1)) /
-                  authoredColumns;
+              final rotation = InheritedRotationGeometry.maybeOf(context);
+              final outerInset = screenSize.width - constraints.maxWidth;
+              final geometry = rotation ??
+                  RotationGeometryData(
+                    windowSize: screenSize,
+                    portraitSize: screenSize.height >= screenSize.width
+                        ? screenSize
+                        : Size(screenSize.height, screenSize.width),
+                    landscapeSize: screenSize.width >= screenSize.height
+                        ? screenSize
+                        : Size(screenSize.height, screenSize.width),
+                    progress: screenSize.width > screenSize.height ? 1.0 : 0.0,
+                    isTransitioning: false,
+                  );
+              final portraitAvailableWidth = max(
+                1.0,
+                geometry.portraitSize.width - outerInset,
+              );
+              final landscapeAvailableWidth = max(
+                1.0,
+                geometry.landscapeSize.width - outerInset,
+              );
               final scaleRatio =
                   textScaler.scale(_kIconCircle) / _kIconCircle;
-              final targetItemSize = max(
+              final portraitBaselineItemSize = max(
                 1.0,
-                defaultItemSize * scaleRatio,
+                ((portraitAvailableWidth -
+                            minimumSpacing * (authoredColumns - 1)) /
+                        authoredColumns) *
+                    scaleRatio,
               );
-              // Resolve the actual portrait result first. The old wide-layout
-              // path used [targetItemSize] directly, but portrait may fit
-              // fewer columns and consequently grows each cell to fill the
-              // row. Landscape must preserve that final portrait cell size.
               final portraitColumns = max(
                 1,
                 min(
                   _kIconOptions.length,
                   ((portraitAvailableWidth + minimumSpacing + 0.001) /
-                          (targetItemSize + minimumSpacing))
+                          (portraitBaselineItemSize + minimumSpacing))
                       .floor(),
                 ),
               );
@@ -16217,70 +16339,31 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                               portraitColumns * portraitItemSize) /
                           (portraitColumns - 1)
                       : 0.0;
-              // Keep the established portrait inset as the baseline. Wide
-              // layouts use at least 16pt from the card edge, then distribute
-              // only additional inter-cell space across each full row.
-              final wideHorizontalInset =
-                  max(cardInset, 16.0);
-              final wideInsetDelta = wideHorizontalInset - cardInset;
-              final availableGridWidth = isWideLayout
-                  ? max(
-                      1.0,
-                      constraints.maxWidth - 2 * wideInsetDelta,
-                    )
-                  : constraints.maxWidth;
-              final automaticColumns = max(
-                1,
-                min(
-                  _kIconOptions.length,
-                  ((availableGridWidth + portraitGap + 0.001) /
-                          (portraitItemSize + portraitGap))
-                      .floor(),
-                ),
+              final forcedColumns =
+                  _iconColumnsWasPinched ? _iconColumns : null;
+              final portrait = _iconPickerGeometry(
+                availableWidth: portraitAvailableWidth,
+                isWide: false,
+                cardInset: cardInset,
+                minimumSpacing: minimumSpacing,
+                portraitItemSize: portraitItemSize,
+                portraitGap: portraitGap,
+                forcedColumns: forcedColumns,
               );
-              // If the OS-derived baseline changes, discard the previous
-              // manual offset so pinch remains adjacent to the new baseline.
-              if (!_iconColumnsWasPinched ||
-                  automaticColumns != _automaticIconColumns) {
-                _automaticIconColumns = automaticColumns;
-                _iconColumns = automaticColumns;
-                _iconColumnsWasPinched = false;
-              }
-              final cols = _iconColumns;
-              // Portrait keeps its existing full-row sizing. In a wide
-              // layout, the portrait-derived cell remains fixed and only the
-              // number of cells changes. Full rows add space between cells;
-              // incomplete rows keep the same spacing and stay leading-aligned.
-              final itemSize = isWideLayout
-                  ? portraitItemSize
-                  : max(
-                      1.0,
-                      (constraints.maxWidth -
-                              minimumSpacing * (cols - 1)) /
-                          cols,
-                    );
-              final verticalSpacing = minimumSpacing;
-              final horizontalSpacing =
-                  isWideLayout && cols > 1
-                      ? max(
-                          portraitGap,
-                          (availableGridWidth - cols * itemSize) /
-                              (cols - 1),
-                        )
-                      : minimumSpacing;
-              final rowCount = (_kIconOptions.length / cols).ceil();
-              // Height of the Stack follows both the scaled tile size and the
-              // scaled column count, so accessibility changes also resize the
-              // card instead of leaving stale empty space.
+              final landscape = _iconPickerGeometry(
+                availableWidth: landscapeAvailableWidth,
+                isWide: true,
+                cardInset: cardInset,
+                minimumSpacing: minimumSpacing,
+                portraitItemSize: portraitItemSize,
+                portraitGap: portraitGap,
+                forcedColumns: forcedColumns,
+              );
+              final t = geometry.progress;
               final stackH =
-                  rowCount * itemSize + (rowCount - 1) * verticalSpacing;
-              return AnimatedContainer(
-                duration: duration,
-                curve: curve,
+                  portrait.height + (landscape.height - portrait.height) * t;
+              return SizedBox(
                 height: stackH,
-                // Stack + AnimatedPositioned: every icon travels from its old
-                // grid slot to its new one (e.g. row-1 icon-7 flows down to
-                // row-2 icon-1 when columns drop from 7 → 6).
                 child: Builder(
                   builder: (context) {
                     final brightness = CupertinoTheme.brightnessOf(context);
@@ -16341,23 +16424,22 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                             twoToneBallUsesContainerFill ? circleBg : iconColor;
                         final twoToneBallDetailColor =
                             twoToneBallUsesContainerFill ? iconColor : circleBg;
-                        return AnimatedPositioned(
-                          key: ValueKey(i),
-                          duration: duration,
-                          curve: curve,
-                          left:
-                              (isWideLayout ? wideInsetDelta : 0.0) +
-                              (i % cols) * (itemSize + horizontalSpacing),
-                          top: (i ~/ cols) * (itemSize + verticalSpacing),
-                          width: itemSize,
-                          height: itemSize,
-                          // LayoutBuilder reads the actual animated cell width
-                          // each frame so the glyph scale tracks the circle as
-                          // it grows or shrinks — not just the target size.
-                          child: LayoutBuilder(
-                            builder: (_, cellConstraints) {
-                              final glyphScale =
-                                  cellConstraints.maxWidth / _kIconCircle;
+                        final rect = Rect.lerp(
+                          portrait.rects[i],
+                          landscape.rects[i],
+                          t,
+                        )!;
+                        final glyphScale = rect.width / _kIconCircle;
+                        final child = GelBloomButton(
+                          onTap:
+                              isEmojiTile
+                                  ? () => _openEmojiPicker(context)
+                                  : () => setState(
+                                    () => _selectedIcon = icon,
+                                  ),
+                          peakScale: 1.12,
+                          child: Builder(
+                            builder: (_) {
 
                               // Selection shown via category-colour circle fill;
                               // no ring indicator anywhere in the picker grid.
@@ -16379,20 +16461,26 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                                   ),
                                 ),
                               );
-
-                              return GelBloomButton(
-                                onTap:
-                                    isEmojiTile
-                                        ? () => _openEmojiPicker(context)
-                                        : () => setState(
-                                          () => _selectedIcon = icon,
-                                        ),
-                                peakScale: 1.12,
-                                child: circle,
-                              );
+                              return circle;
                             },
                           ),
                         );
+                        return geometry.isTransitioning
+                            ? Positioned.fromRect(
+                              key: ValueKey(i),
+                              rect: rect,
+                              child: child,
+                            )
+                            : AnimatedPositioned(
+                              key: ValueKey(i),
+                              duration: duration,
+                              curve: curve,
+                              left: rect.left,
+                              top: rect.top,
+                              width: rect.width,
+                              height: rect.height,
+                              child: child,
+                            );
                       }),
                     );
                   },
