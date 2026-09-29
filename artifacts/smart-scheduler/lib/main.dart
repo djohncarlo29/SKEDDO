@@ -30,6 +30,13 @@ import 'widgets/view_mode_icons.dart';
 import 'app_settings.dart';
 import 'settings_panel.dart';
 
+// Mirrors the AppShell search transition for the edge-to-edge background
+// layer. The header surface must extend through the landscape reservation even
+// while its height and colour animate into the search state.
+final ValueNotifier<double> appHeaderCollapseProgressNotifier = ValueNotifier(
+  0.0,
+);
+
 // ══════════════════════════════════════════════════════════════════════════════
 // _DcvMenuContent — stateful overlay widget for the DCV ellipsis menu.
 //
@@ -751,17 +758,45 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
                 );
               }
               // Establish the app-wide content rectangle once, above the
-              // Navigator/Overlay subtree. The outer surface remains
-              // full-window so the physical system/cutout side never reveals
-              // the engine clear color. Descendants receive a symmetric
-              // landscape width and zero horizontal safe-area values, so
-              // individual screens and sheets cannot add the same reservation
-              // a second time.
-              result = AppWindowContentBoundary(child: result);
-              result = ColoredBox(
-                color: resolveThemeColor(
-                  kAddCategorySheetBackground,
-                  context,
+              // Navigator/Overlay subtree. Background surfaces are painted by
+              // the boundary at physical-window width; only the Navigator/UI
+              // subtree receives the symmetric landscape reservation.
+              final contentBackground = resolveThemeColor(
+                kBackgroundColor,
+                context,
+              );
+              final headerSurface = resolveThemeColor(kCardColor, context);
+              result = AppWindowContentBoundary(
+                background: ValueListenableBuilder<double>(
+                  valueListenable: appHeaderCollapseProgressNotifier,
+                  builder: (context, collapseProgress, _) {
+                    final progress = collapseProgress.clamp(0.0, 1.0);
+                    final topInset = MediaQuery.viewPaddingOf(context).top;
+                    final headerHeight =
+                        topInset + 101.0 * (1.0 - progress);
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Positioned.fill(
+                          child: ColoredBox(color: contentBackground),
+                        ),
+                        if (headerHeight > 0.0)
+                          Positioned(
+                            top: 0.0,
+                            left: 0.0,
+                            right: 0.0,
+                            height: headerHeight,
+                            child: ColoredBox(
+                              color: Color.lerp(
+                                headerSurface,
+                                contentBackground,
+                                progress,
+                              )!,
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 ),
                 child: result,
               );
@@ -1557,6 +1592,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       parent: _searchModeController,
       curve: _kSearchModeCurve,
     );
+    _searchModeAnim.addListener(_publishHeaderCollapseProgress);
+    _publishHeaderCollapseProgress();
     _searchModeContentOpacity = Tween<double>(
       begin: 1.0,
       end: 0.0,
@@ -1598,11 +1635,19 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   void dispose() {
     _nativeTabBarChannel.setMethodCallHandler(null);
     _midnightTimer?.cancel();
+    _searchModeAnim.removeListener(_publishHeaderCollapseProgress);
+    appHeaderCollapseProgressNotifier.value = 0.0;
     _dcvSlideController.dispose();
     _searchModeController.dispose();
     _settingsController.dispose();
     _calendarStripSlide.dispose();
     super.dispose();
+  }
+
+  void _publishHeaderCollapseProgress() {
+    if (appHeaderCollapseProgressNotifier.value != _searchModeAnim.value) {
+      appHeaderCollapseProgressNotifier.value = _searchModeAnim.value;
+    }
   }
 
   // ── OS back gesture / back button handler ────────────────────────────────

@@ -11,8 +11,13 @@ import '../services/window_geometry_diagnostics.dart';
 /// horizontal system inset is reserved on both sides, regardless of which
 /// physical side currently reports the cutout or system area.
 class AppWindowContentBoundary extends StatelessWidget {
-  const AppWindowContentBoundary({super.key, required this.child});
+  const AppWindowContentBoundary({
+    super.key,
+    required this.background,
+    required this.child,
+  });
 
+  final Widget background;
   final Widget child;
 
   /// Returns the symmetric landscape reservation from the persistent platform
@@ -40,28 +45,40 @@ class AppWindowContentBoundary extends StatelessWidget {
       mediaQuery.copyWith(viewPadding: viewPadding),
     );
 
-    if (horizontalInset <= 0.0) return child;
+    Widget content = child;
+    if (horizontalInset > 0.0) {
+      final contentWidth = math.max(
+        0.0,
+        mediaQuery.size.width - horizontalInset * 2.0,
+      );
+      final contentMediaQuery = mediaQuery.copyWith(
+        size: Size(contentWidth, mediaQuery.size.height),
+        // The shared boundary owns the horizontal system space. Clearing these
+        // fields prevents SafeArea or a nested route from adding the same inset
+        // a second time inside the already-reserved content rectangle.
+        padding: mediaQuery.padding.copyWith(left: 0.0, right: 0.0),
+        viewPadding: mediaQuery.viewPadding.copyWith(left: 0.0, right: 0.0),
+        systemGestureInsets: mediaQuery.systemGestureInsets.copyWith(
+          left: 0.0,
+          right: 0.0,
+        ),
+      );
+      content = Padding(
+        padding: EdgeInsets.symmetric(horizontal: horizontalInset),
+        child: MediaQuery(data: contentMediaQuery, child: child),
+      );
+    }
 
-    final contentWidth = math.max(
-      0.0,
-      mediaQuery.size.width - horizontalInset * 2.0,
-    );
-    final contentMediaQuery = mediaQuery.copyWith(
-      size: Size(contentWidth, mediaQuery.size.height),
-      // The shared boundary owns the horizontal system space. Clearing these
-      // fields prevents SafeArea or a nested route from adding the same inset
-      // a second time inside the already-reserved content rectangle.
-      padding: mediaQuery.padding.copyWith(left: 0.0, right: 0.0),
-      viewPadding: mediaQuery.viewPadding.copyWith(left: 0.0, right: 0.0),
-      systemGestureInsets: mediaQuery.systemGestureInsets.copyWith(
-        left: 0.0,
-        right: 0.0,
-      ),
-    );
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: horizontalInset),
-      child: MediaQuery(data: contentMediaQuery, child: child),
+    // Backgrounds belong to the physical window, not to the inset content
+    // rectangle. This keeps header/content surfaces continuous through the
+    // reserved system area while the actual Navigator/UI subtree remains
+    // constrained by the symmetric landscape boundary.
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned.fill(child: background),
+        Positioned.fill(child: content),
+      ],
     );
   }
 }
