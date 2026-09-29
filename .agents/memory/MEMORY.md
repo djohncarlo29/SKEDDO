@@ -137,3 +137,4 @@
 - [Calendar morph content bounds](calendar-morph-content-bounds.md) — Positioned morph children need content-sized alignment; an unconstrained Align can expand a list layer across the transition viewport.
 - [Year↔Month List morph boundary](year-month-list-morph-boundary.md) — position the List handoff in the overlay and keep its opacity layer intrinsic to the event content.
 - [Calendar week-strip veil architecture](calendar-morph-week-strip-surfaces.md) — keep Day content underneath fixed DOW chrome; each full week row is an opaque moving veil.
+- [Picker wide-layout geometry](picker-wide-layout-geometry.md) — reuse portrait-derived item/cell sizes and spacing at the current text scale, then fit extra left-aligned columns inside the sheet.
