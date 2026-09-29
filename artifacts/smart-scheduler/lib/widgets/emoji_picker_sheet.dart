@@ -5,7 +5,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import '../app_theme.dart';
 import 'horizontal_edge_fade.dart';
+import 'live_rotation_geometry.dart';
 import 'picker_grid_geometry.dart';
+import 'picker_grid_transition_geometry.dart';
 import 'rounded_cupertino_sheet.dart';
 import 'vertical_edge_fade.dart';
 
@@ -1292,6 +1294,58 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     final emojiFontSize = textScaler.scale(26.0);
     const horizontalInset = _emojiSheetHorizontalInset;
     const authoredColumns = 7;
+    final rotation = InheritedRotationGeometry.maybeOf(context);
+    if (rotation?.isTransitioning ?? false) {
+      final portraitViewportWidth =
+          PickerGridTransitionGeometry.endpointViewportWidth(
+            rotation: rotation!,
+            currentViewportWidth: maxWidth,
+            landscape: false,
+          );
+      final landscapeViewportWidth =
+          PickerGridTransitionGeometry.endpointViewportWidth(
+            rotation: rotation,
+            currentViewportWidth: maxWidth,
+            landscape: true,
+          );
+      final targetCellSize = PickerGridGeometry.scaledPortraitItemSize(
+        viewportWidth: portraitViewportWidth,
+        horizontalInset: horizontalInset,
+        authoredColumns: authoredColumns,
+        minimumGap: minimumSpacing,
+        textScaleRatio: emojiFontSize / 26.0,
+      );
+      final portrait = PickerGridGeometry.resolve(
+        itemCount: emojiCount,
+        viewportWidth: portraitViewportWidth,
+        horizontalInset: horizontalInset,
+        targetItemSize: targetCellSize,
+        minimumHorizontalGap: minimumSpacing,
+        verticalGap: minimumSpacing,
+        verticalInset: gridInset,
+        authoredMaximumColumns: emojiCount,
+      );
+      final landscape = PickerGridGeometry.landscape(
+        portrait: portrait,
+        itemCount: emojiCount,
+        viewportWidth: landscapeViewportWidth,
+        horizontalInset: horizontalInset,
+        authoredMaximumColumns: emojiCount,
+      );
+      final geometry = PickerGridTransitionGeometry.interpolate(
+        portrait: portrait,
+        landscape: landscape,
+        progress: rotation.progress,
+      );
+      return _EmojiGridLayout(
+        geometry: geometry,
+        cellFontSize: math.max(
+          1.0,
+          emojiFontSize * (geometry.itemSize / targetCellSize),
+        ),
+      );
+    }
+
     final screenSize = MediaQuery.sizeOf(context);
     final isWideLayout = screenSize.width > screenSize.height;
     final portraitViewportWidth = isWideLayout
@@ -1435,10 +1489,14 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     required double width,
     required Widget child,
   }) {
+    final isRotating =
+        InheritedRotationGeometry.maybeOf(context)?.isTransitioning ?? false;
     return AnimatedPositioned(
       key: key,
       duration:
-          _isEmojiDragging ? Duration.zero : const Duration(milliseconds: 280),
+          _isEmojiDragging || isRotating
+              ? Duration.zero
+              : const Duration(milliseconds: 280),
       curve: Curves.easeInOutCubic,
       left: left,
       top: 0,

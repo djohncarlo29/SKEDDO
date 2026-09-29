@@ -30,6 +30,8 @@ import '../widgets/horizontal_edge_fade.dart';
 import '../widgets/app_switch.dart';
 import '../widgets/fixed_size_icon.dart';
 import '../widgets/picker_grid_geometry.dart';
+import '../widgets/picker_grid_transition_geometry.dart';
+import '../widgets/live_rotation_geometry.dart';
 import '../ai/search/search_service.dart';
 import '../services/category_registry.dart';
 import '../widgets/smart_search_results.dart';
@@ -15992,37 +15994,111 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               final textScaler = MediaQuery.textScalerOf(context);
               final screenSize = MediaQuery.sizeOf(context);
               final isWideLayout = screenSize.width > screenSize.height;
-              final portraitViewportWidth = isWideLayout
-                  ? min(constraints.maxWidth, screenSize.shortestSide)
-                  : constraints.maxWidth;
-              final swatchSize =
-                  PickerGridGeometry.scaledPortraitItemSize(
-                    viewportWidth: portraitViewportWidth,
-                    horizontalInset: horizontalInset,
-                    authoredColumns: authoredColumns,
-                    minimumGap: minimumGap,
-                    textScaleRatio:
-                        textScaler.scale(baseSwatchSize) / baseSwatchSize,
-                    maximumItemSize: baseSwatchSize,
-                  );
-              final portrait = PickerGridGeometry.resolve(
-                itemCount: _kColorOptions.length,
-                viewportWidth: portraitViewportWidth,
-                horizontalInset: horizontalInset,
-                targetItemSize: swatchSize,
-                minimumHorizontalGap: minimumGap,
-                verticalGap: minimumGap,
-                authoredMaximumColumns: authoredColumns,
-              );
-              final geometry = isWideLayout
-                  ? PickerGridGeometry.landscape(
-                      portrait: portrait,
-                      itemCount: _kColorOptions.length,
-                      viewportWidth: constraints.maxWidth,
+              final rotation = InheritedRotationGeometry.maybeOf(context);
+              final isRotating = rotation?.isTransitioning ?? false;
+              late final PickerGridGeometry geometry;
+
+              if (isRotating) {
+                final portraitViewportWidth =
+                    PickerGridTransitionGeometry.endpointViewportWidth(
+                      rotation: rotation!,
+                      currentViewportWidth: constraints.maxWidth,
+                      landscape: false,
+                    );
+                final landscapeViewportWidth =
+                    PickerGridTransitionGeometry.endpointViewportWidth(
+                      rotation: rotation,
+                      currentViewportWidth: constraints.maxWidth,
+                      landscape: true,
+                    );
+                final swatchSize =
+                    PickerGridGeometry.scaledPortraitItemSize(
+                      viewportWidth: portraitViewportWidth,
                       horizontalInset: horizontalInset,
-                      authoredMaximumColumns: _kColorOptions.length,
-                    )
-                  : portrait;
+                      authoredColumns: authoredColumns,
+                      minimumGap: minimumGap,
+                      textScaleRatio:
+                          textScaler.scale(baseSwatchSize) / baseSwatchSize,
+                      maximumItemSize: baseSwatchSize,
+                    );
+                final portrait = PickerGridGeometry.resolve(
+                  itemCount: _kColorOptions.length,
+                  viewportWidth: portraitViewportWidth,
+                  horizontalInset: horizontalInset,
+                  targetItemSize: swatchSize,
+                  minimumHorizontalGap: minimumGap,
+                  verticalGap: minimumGap,
+                  authoredMaximumColumns: authoredColumns,
+                );
+                final landscape = PickerGridGeometry.landscape(
+                  portrait: portrait,
+                  itemCount: _kColorOptions.length,
+                  viewportWidth: landscapeViewportWidth,
+                  horizontalInset: horizontalInset,
+                  authoredMaximumColumns: _kColorOptions.length,
+                );
+                geometry = PickerGridTransitionGeometry.interpolate(
+                  portrait: portrait,
+                  landscape: landscape,
+                  progress: rotation.progress,
+                );
+              } else {
+                final portraitViewportWidth = isWideLayout
+                    ? min(constraints.maxWidth, screenSize.shortestSide)
+                    : constraints.maxWidth;
+                final swatchSize =
+                    PickerGridGeometry.scaledPortraitItemSize(
+                      viewportWidth: portraitViewportWidth,
+                      horizontalInset: horizontalInset,
+                      authoredColumns: authoredColumns,
+                      minimumGap: minimumGap,
+                      textScaleRatio:
+                          textScaler.scale(baseSwatchSize) / baseSwatchSize,
+                      maximumItemSize: baseSwatchSize,
+                    );
+                final portrait = PickerGridGeometry.resolve(
+                  itemCount: _kColorOptions.length,
+                  viewportWidth: portraitViewportWidth,
+                  horizontalInset: horizontalInset,
+                  targetItemSize: swatchSize,
+                  minimumHorizontalGap: minimumGap,
+                  verticalGap: minimumGap,
+                  authoredMaximumColumns: authoredColumns,
+                );
+                geometry = isWideLayout
+                    ? PickerGridGeometry.landscape(
+                        portrait: portrait,
+                        itemCount: _kColorOptions.length,
+                        viewportWidth: constraints.maxWidth,
+                        horizontalInset: horizontalInset,
+                        authoredMaximumColumns: _kColorOptions.length,
+                      )
+                    : portrait;
+              }
+
+              if (isRotating) {
+                return Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: SizedBox(
+                    width: geometry.viewportWidth,
+                    height: geometry.height,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        for (var i = 0; i < _kColorOptions.length; i++)
+                          Positioned.fromRect(
+                            key: ValueKey(i),
+                            rect: geometry.itemRects[i],
+                            child: _colorSwatch(
+                              _kColorOptions[i],
+                              geometry.itemSize,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              }
 
               return Align(
                 alignment: AlignmentDirectional.centerStart,
@@ -16076,35 +16152,83 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
             builder: (context, constraints) {
               final screenSize = MediaQuery.sizeOf(context);
               final isWideLayout = screenSize.width > screenSize.height;
-              final portraitViewportWidth = isWideLayout
-                  ? min(constraints.maxWidth, screenSize.shortestSide)
-                  : constraints.maxWidth;
-              final targetItemSize =
-                  PickerGridGeometry.scaledPortraitItemSize(
-                    viewportWidth: portraitViewportWidth,
-                    horizontalInset: horizontalInset,
-                    authoredColumns: authoredColumns,
-                    minimumGap: minimumSpacing,
-                    textScaleRatio: scaleRatio,
-                  );
-              final portrait = PickerGridGeometry.resolve(
-                itemCount: _kIconOptions.length,
-                viewportWidth: portraitViewportWidth,
-                horizontalInset: horizontalInset,
-                targetItemSize: targetItemSize,
-                minimumHorizontalGap: minimumSpacing,
-                verticalGap: minimumSpacing,
-                authoredMaximumColumns: _kIconOptions.length,
-              );
-              final geometry = isWideLayout
-                  ? PickerGridGeometry.landscape(
-                      portrait: portrait,
-                      itemCount: _kIconOptions.length,
-                      viewportWidth: constraints.maxWidth,
+              final rotation = InheritedRotationGeometry.maybeOf(context);
+              final isRotating = rotation?.isTransitioning ?? false;
+              late final PickerGridGeometry geometry;
+
+              if (isRotating) {
+                final portraitViewportWidth =
+                    PickerGridTransitionGeometry.endpointViewportWidth(
+                      rotation: rotation!,
+                      currentViewportWidth: constraints.maxWidth,
+                      landscape: false,
+                    );
+                final landscapeViewportWidth =
+                    PickerGridTransitionGeometry.endpointViewportWidth(
+                      rotation: rotation,
+                      currentViewportWidth: constraints.maxWidth,
+                      landscape: true,
+                    );
+                final targetItemSize =
+                    PickerGridGeometry.scaledPortraitItemSize(
+                      viewportWidth: portraitViewportWidth,
                       horizontalInset: horizontalInset,
-                      authoredMaximumColumns: _kIconOptions.length,
-                    )
-                  : portrait;
+                      authoredColumns: authoredColumns,
+                      minimumGap: minimumSpacing,
+                      textScaleRatio: scaleRatio,
+                    );
+                final portrait = PickerGridGeometry.resolve(
+                  itemCount: _kIconOptions.length,
+                  viewportWidth: portraitViewportWidth,
+                  horizontalInset: horizontalInset,
+                  targetItemSize: targetItemSize,
+                  minimumHorizontalGap: minimumSpacing,
+                  verticalGap: minimumSpacing,
+                  authoredMaximumColumns: _kIconOptions.length,
+                );
+                final landscape = PickerGridGeometry.landscape(
+                  portrait: portrait,
+                  itemCount: _kIconOptions.length,
+                  viewportWidth: landscapeViewportWidth,
+                  horizontalInset: horizontalInset,
+                  authoredMaximumColumns: _kIconOptions.length,
+                );
+                geometry = PickerGridTransitionGeometry.interpolate(
+                  portrait: portrait,
+                  landscape: landscape,
+                  progress: rotation.progress,
+                );
+              } else {
+                final portraitViewportWidth = isWideLayout
+                    ? min(constraints.maxWidth, screenSize.shortestSide)
+                    : constraints.maxWidth;
+                final targetItemSize =
+                    PickerGridGeometry.scaledPortraitItemSize(
+                      viewportWidth: portraitViewportWidth,
+                      horizontalInset: horizontalInset,
+                      authoredColumns: authoredColumns,
+                      minimumGap: minimumSpacing,
+                      textScaleRatio: scaleRatio,
+                    );
+                final portrait = PickerGridGeometry.resolve(
+                  itemCount: _kIconOptions.length,
+                  viewportWidth: portraitViewportWidth,
+                  horizontalInset: horizontalInset,
+                  targetItemSize: targetItemSize,
+                  minimumHorizontalGap: minimumSpacing,
+                  verticalGap: minimumSpacing,
+                  authoredMaximumColumns: _kIconOptions.length,
+                );
+                geometry = isWideLayout
+                    ? PickerGridGeometry.landscape(
+                        portrait: portrait,
+                        itemCount: _kIconOptions.length,
+                        viewportWidth: constraints.maxWidth,
+                        horizontalInset: horizontalInset,
+                        authoredMaximumColumns: _kIconOptions.length,
+                      )
+                    : portrait;
+              }
               final brightness = CupertinoTheme.brightnessOf(context);
               final iconBackground = resolveThemeColor(
                 kPillColor,

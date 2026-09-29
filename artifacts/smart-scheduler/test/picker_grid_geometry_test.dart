@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/widgets/picker_grid_geometry.dart';
+import 'package:smart_scheduler/widgets/picker_grid_transition_geometry.dart';
 
 const _horizontalInset = 16.0;
 const _portraitWidth = 390.0;
@@ -241,6 +242,57 @@ void main() {
       }
       _expectRowEdges(landscape, itemCount: picker.itemCount);
     }
+  });
+
+  test('rotation interpolation preserves the complete picker geometry contract', () {
+    final portrait = PickerGridGeometry.resolve(
+      itemCount: 12,
+      viewportWidth: _portraitWidth,
+      horizontalInset: _horizontalInset,
+      targetItemSize: 43,
+      minimumHorizontalGap: 16,
+      verticalGap: 16,
+      authoredMaximumColumns: 6,
+    );
+    final landscape = PickerGridGeometry.landscape(
+      portrait: portrait,
+      itemCount: 12,
+      viewportWidth: _landscapeWidth,
+      horizontalInset: _horizontalInset,
+      authoredMaximumColumns: 12,
+    );
+    final middle = PickerGridTransitionGeometry.interpolate(
+      portrait: portrait,
+      landscape: landscape,
+      progress: 0.5,
+    );
+
+    expect(middle.itemRects.length, portrait.itemRects.length);
+    expect(middle.itemSize, closeTo(43, _epsilon));
+    expect(middle.verticalGap, closeTo(portrait.verticalGap, _epsilon));
+    expect(
+      middle.horizontalGap,
+      closeTo(
+        (portrait.horizontalGap + landscape.horizontalGap) / 2,
+        _epsilon,
+      ),
+    );
+    expect(
+      middle.contentBounds.left,
+      closeTo(_horizontalInset, _epsilon),
+    );
+    expect(
+      middle.contentBounds.right,
+      closeTo(middle.viewportWidth - _horizontalInset, _epsilon),
+    );
+    expect(
+      middle.height,
+      closeTo((portrait.height + landscape.height) / 2, _epsilon),
+    );
+    expect(
+      middle.itemRects.first.left,
+      closeTo(_horizontalInset, _epsilon),
+    );
   });
 
   test('icon and emoji incomplete final rows stay start-aligned', () {
