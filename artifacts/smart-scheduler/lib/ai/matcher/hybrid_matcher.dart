@@ -20,6 +20,11 @@ import '../../services/event_model.dart';
 // Phase 3 can tune the threshold or add re-ranking without changing callers.
 // ─────────────────────────────────────────────────────────────────────────────
 class HybridMatcher implements SmartCategoryMatcher {
+  int _revision = 0;
+
+  @override
+  int get revision => _revision;
+
   /// Cosine similarity threshold: events with score >= this are included.
   ///
   /// 0.18 was too permissive for the event text used here. Because event
@@ -61,22 +66,29 @@ class HybridMatcher implements SmartCategoryMatcher {
 
   void setCategoryEmbedding(String categoryName, List<double> embedding) {
     _categoryEmbeddings[categoryName] = embedding;
+    _revision++;
   }
 
   void setEventEmbedding(String eventId, List<double> embedding) {
     _eventEmbeddings[eventId] = embedding;
+    _revision++;
   }
 
   void removeEventEmbedding(String eventId) {
-    _eventEmbeddings.remove(eventId);
+    if (_eventEmbeddings.remove(eventId) != null) {
+      _revision++;
+    }
   }
 
   void setParsedRule(String rule, ParsedRule parsed) {
     _parsedRules[rule] = parsed;
+    _revision++;
   }
 
   void removeParsedRule(String rule) {
-    _parsedRules.remove(rule);
+    if (_parsedRules.remove(rule) != null) {
+      _revision++;
+    }
   }
 
   // ── SmartCategoryMatcher interface ────────────────────────────────────────

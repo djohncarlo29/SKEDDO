@@ -87,6 +87,12 @@ abstract class VectorIndex {
 // Phase 2 implementation: HybridMatcher (vector cosine + date metadata).
 // ─────────────────────────────────────────────────────────────────────────────
 abstract class SmartCategoryMatcher {
+  /// Changes whenever category or event matching data is registered or
+  /// removed.  Consumers can use this to invalidate derived count caches when
+  /// asynchronous embedding work changes the match result without changing
+  /// the candidate event list.
+  int get revision => 0;
+
   /// Return events from [candidates] that match [rule], ranked by relevance.
   ///
   /// [builtInLabel] identifies built-in smart tiles ('Today', 'Tomorrow',

@@ -1861,6 +1861,7 @@ class EventsTabState extends State<EventsTab>
   List<ScheduledEvent>? _smartMatchSource;
   DateTime? _smartMatchDay;
   int? _smartMatchCategorySignature;
+  int? _smartMatchMatcherRevision;
   Map<String, int>? _smartMatchCountsCache;
 
   // Labels of smart tiles the user has archived (hidden from the grid).
@@ -6815,6 +6816,16 @@ class EventsTabState extends State<EventsTab>
 
   // ── EventStore listener ───────────────────────────────────────────────────
   void _onEventsChanged() {
+    // EventStore normally replaces its list on mutation, but some flows only
+    // notify the existing list after updating section metadata. Invalidate the
+    // derived expansion and Smart Category caches explicitly so both cases
+    // recompute from the current event/matcher state.
+    _expandedEventsCache = null;
+    _expandedEventsSource = null;
+    _smartMatchSource = null;
+    _smartMatchMatcherRevision = null;
+    _smartMatchCountsCache = null;
+
     var addedUtilityDates = false;
     for (final event in EventStore.instance.archivedEvents.value) {
       final key = _utilityDateKey('archived-event', event.id);
@@ -7577,10 +7588,12 @@ class EventsTabState extends State<EventsTab>
       ),
     );
     final day = DateTime(now.year, now.month, now.day);
+    final matcherRevision = AIServices.matcher.revision;
     if (_smartMatchCountsCache != null &&
         identical(_smartMatchSource, allEvents) &&
         _smartMatchDay == day &&
-        _smartMatchCategorySignature == signature) {
+        _smartMatchCategorySignature == signature &&
+        _smartMatchMatcherRevision == matcherRevision) {
       return _smartMatchCountsCache!;
     }
 
@@ -7602,6 +7615,7 @@ class EventsTabState extends State<EventsTab>
     _smartMatchSource = allEvents;
     _smartMatchDay = day;
     _smartMatchCategorySignature = signature;
+    _smartMatchMatcherRevision = matcherRevision;
     _smartMatchCountsCache = counts;
     return counts;
   }
