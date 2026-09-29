@@ -98,6 +98,11 @@ double unifiedBottomPaddingForInset(double systemBottomInset) =>
 double unifiedBottomPadding(BuildContext context) =>
     unifiedBottomPaddingForInset(systemSafeAreaBottomInset(context));
 
+/// Bottom clearance for modal scroll content. This is the authored 16 px
+/// breathing room unless the persistent system inset is larger.
+double modalSheetBottomPadding(BuildContext context) =>
+    unifiedBottomPadding(context);
+
 double floatingTabBarBottomOffsetForInset(double systemBottomInset) =>
     unifiedBottomPaddingForInset(systemBottomInset);
 
@@ -112,10 +117,27 @@ double floatingTabBarBottomOffset(BuildContext context) =>
 /// Persistent bottom space occupied by system navigation or the home
 /// indicator. This intentionally ignores keyboard [viewInsets] and does not
 /// impose the Floating Tab Bar's separate 16 px design margin.
-double systemSafeAreaBottomInset(BuildContext context) => math.max(
-  MediaQuery.viewPaddingOf(context).bottom,
-  MediaQuery.systemGestureInsetsOf(context).bottom,
-);
+double systemSafeAreaBottomInset(BuildContext context) {
+  final mediaQuery = MediaQuery.of(context);
+  final view = View.maybeOf(context);
+  final viewData = view == null ? null : MediaQueryData.fromView(view);
+
+  // Read both the inherited values and the underlying FlutterView. Rounded
+  // sheet routes intentionally rewrite MediaQuery.padding for their page
+  // viewport, and some landscape Android configurations expose the persistent
+  // navigation region only through the view. Taking the maximum keeps the
+  // result stable without ever treating keyboard viewInsets as persistent
+  // space.
+  return math.max(
+    math.max(
+      mediaQuery.viewPadding.bottom,
+      mediaQuery.systemGestureInsets.bottom,
+    ),
+    viewData == null
+        ? 0.0
+        : math.max(viewData.viewPadding.bottom, viewData.systemGestureInsets.bottom),
+  );
+}
 
 /// Extra scroll-content clearance needed so the final item in a tab can be
 /// scrolled fully above the active tab bar rather than ending underneath it.

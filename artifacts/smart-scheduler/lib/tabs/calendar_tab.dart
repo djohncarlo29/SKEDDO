@@ -13387,7 +13387,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                         16,
                         8,
                         16,
-                        math.max(16, systemSafeAreaBottomInset(context)),
+                        modalSheetBottomPadding(context),
                       ),
                       child: Column(
                         children: [
@@ -15050,7 +15050,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                   16,
                   8,
                   16,
-                  math.max(16, systemSafeAreaBottomInset(context)),
+                  modalSheetBottomPadding(context),
                 ),
                 children: [
                   Column(
