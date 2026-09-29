@@ -1569,7 +1569,10 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                           shape: const BoundedSquircleStadiumBorder(),
                           shadows: resolveThemeShadows(kCardShadow, context),
                         ),
-                        clipBehavior: Clip.antiAlias,
+                        // Preserve the card's layout inset, but let picker
+                        // blooms paint beyond it instead of being clipped at
+                        // the card edge.
+                        clipBehavior: Clip.none,
                         child: Column(
                           children: [
                             // Row 1 — swipeable emoji grid

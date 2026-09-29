@@ -16116,9 +16116,10 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               );
               return SizedBox(
                 height: geometry.height,
-                child: ClipRect(
-                  child: Stack(
-                    clipBehavior: Clip.none,
+                // Keep the authored grid inset for layout, but do not make
+                // it a paint boundary for the gel bloom around edge icons.
+                child: Stack(
+                  clipBehavior: Clip.none,
                     children: List.generate(_kIconOptions.length, (i) {
                       final icon = _kIconOptions[i];
                       final isEmojiTile = icon == _kEmojiLightSvg;
@@ -16179,7 +16180,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                       );
                     }),
                   ),
-                ),
               );
             },
           ),
