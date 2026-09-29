@@ -165,6 +165,70 @@ double _calendarDayCircleDiameterFor(BuildContext context) =>
 TextScaler _yearViewTextScaler(BuildContext context) =>
     MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.0);
 
+class _YearGridGeometry {
+  const _YearGridGeometry({
+    required this.monthWidth,
+    required this.columnGap,
+    required this.columnCount,
+  });
+
+  final double monthWidth;
+  final double columnGap;
+  final int columnCount;
+
+  double get cellSize => monthWidth / 7.0;
+  int get rowCount => (12 + columnCount - 1) ~/ columnCount;
+}
+
+/// Derives Year View geometry from the portrait phone width, even when the
+/// current viewport is landscape. Landscape can fit more complete month grids
+/// and redistribute unused width into larger gaps, but it never shrinks the
+/// portrait month or cell size.
+_YearGridGeometry _yearGridGeometry(
+  BuildContext context,
+  double availableWidth,
+) {
+  final viewSize = MediaQuery.sizeOf(context);
+  final isLandscape = viewSize.width > viewSize.height;
+  final portraitWidth = isLandscape
+      ? math.min(viewSize.width, viewSize.height)
+      : availableWidth;
+  final portraitContentWidth = math.max(
+    0.0,
+    portraitWidth - 2.0 * _kYearOuterPad,
+  );
+  final portraitMonthWidth = math.max(
+    1.0,
+    (portraitContentWidth - 2.0 * _kYearColGap) / 3.0,
+  );
+  final contentWidth = math.max(
+    0.0,
+    availableWidth - 2.0 * _kYearOuterPad,
+  );
+
+  var columnCount = 3;
+  if (isLandscape) {
+    columnCount = ((contentWidth + _kYearColGap) /
+            (portraitMonthWidth + _kYearColGap))
+        .floor();
+    columnCount = columnCount.clamp(1, 12);
+  }
+
+  final columnGap = columnCount <= 1 || !isLandscape
+      ? _kYearColGap
+      : math.max(
+          _kYearColGap,
+          (contentWidth - columnCount * portraitMonthWidth) /
+              (columnCount - 1),
+        );
+
+  return _YearGridGeometry(
+    monthWidth: portraitMonthWidth,
+    columnGap: columnGap,
+    columnCount: columnCount,
+  );
+}
+
 // ── Date utilities ────────────────────────────────────────────────────────────
 int _daysInMonth(int year, int month) => DateTime(year, month + 1, 0).day;
 
@@ -549,12 +613,11 @@ class CalendarTabState extends State<CalendarTab>
     }
   }
 
-  // GlobalKeys placed on each of the 4 year-view row groups so we can read
+  // GlobalKeys placed on each possible year-view row group so we can read
   // their actual rendered top positions right before the zoom animation starts.
-  // Measured tops are stored here and fed to _MorphOverlay so it uses exact
-  // Flutter-layout positions rather than a formula that can drift due to
-  // sub-pixel font metrics or layout rounding.
-  final List<GlobalKey> _yearRowKeys = List.generate(4, (_) => GlobalKey());
+  // Landscape can reduce the year to two rows, so only mounted row keys are
+  // measured.
+  final List<GlobalKey> _yearRowKeys = List.generate(12, (_) => GlobalKey());
   List<double>?
   _yearMeasuredRowTops; // natural tops (scroll-offset-independent)
 
@@ -1342,11 +1405,12 @@ class CalendarTabState extends State<CalendarTab>
   void _measureYearRowTops() {
     final calBox = context.findRenderObject() as RenderBox?;
     if (calBox == null) return;
+    final grid = _yearGridGeometry(context, _screenW);
     final scrollOffset = _yearScrollCtrl.hasClients
         ? _yearScrollCtrl.offset
         : 0.0;
     final tops = <double>[];
-    for (final key in _yearRowKeys) {
+    for (final key in _yearRowKeys.take(grid.rowCount)) {
       final rowBox = key.currentContext?.findRenderObject() as RenderBox?;
       if (rowBox == null) return; // layout not ready; keep previous measurement
       final globalPos = rowBox.localToGlobal(Offset.zero);
@@ -1355,7 +1419,7 @@ class CalendarTabState extends State<CalendarTab>
       // (scroll-independent) y so the overlay can subtract it back itself.
       tops.add(localY + scrollOffset);
     }
-    if (tops.length == 4) _yearMeasuredRowTops = tops;
+    if (tops.length == grid.rowCount) _yearMeasuredRowTops = tops;
   }
 
   Future<void> _enterMonth(int monthIdx, {bool fast = false}) async {
@@ -2759,7 +2823,7 @@ class _YearView extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalW = constraints.maxWidth;
-        final miniW = (totalW - 2 * _kYearOuterPad - 2 * _kYearColGap) / 3;
+        final grid = _yearGridGeometry(context, totalW);
 
         return SingleChildScrollView(
           controller: controller,
@@ -2775,7 +2839,7 @@ class _YearView extends StatelessWidget {
           ),
           child: Column(
             children: [
-              for (int row = 0; row < 4; row++) ...[
+              for (int row = 0; row < grid.rowCount; row++) ...[
                 // KeyedSubtree lets CalendarTabState measure exact row positions
                 // via GlobalKey before the zoom animation starts, so _MorphOverlay
                 // can use actual Flutter-layout y coordinates instead of a formula.
@@ -2784,19 +2848,25 @@ class _YearView extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (int col = 0; col < 3; col++) ...[
-                        if (col > 0) const SizedBox(width: _kYearColGap),
+                      for (
+                        int col = 0;
+                        col < grid.columnCount &&
+                            row * grid.columnCount + col < 12;
+                        col++
+                      ) ...[
+                        if (col > 0) SizedBox(width: grid.columnGap),
                         SizedBox(
-                          width: miniW,
+                          width: grid.monthWidth,
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onTap: () => onMonthTap(row * 3 + col),
+                            onTap: () =>
+                                onMonthTap(row * grid.columnCount + col),
                             child: _MiniMonthGrid(
                               year: year,
-                              month: row * 3 + col + 1,
+                              month: row * grid.columnCount + col + 1,
                               today: today,
                               selectedDate: selectedDate,
-                              width: miniW,
+                              width: grid.monthWidth,
                             ),
                           ),
                         ),
@@ -2804,7 +2874,8 @@ class _YearView extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (row < 3) const SizedBox(height: _kYearRowGap),
+                if (row < grid.rowCount - 1)
+                  const SizedBox(height: _kYearRowGap),
               ],
             ],
           ),
@@ -3046,7 +3117,8 @@ class _MorphOverlay extends StatelessWidget {
     final secC = CupertinoDynamicColor.resolve(kSecondaryLabel, context);
     final terC = CupertinoDynamicColor.resolve(kTertiaryLabel, context);
     final sepC = CupertinoDynamicColor.resolve(kSeparatorColor, context);
-    final miniW = (screenW - 2 * _kYearOuterPad - 2 * _kYearColGap) / 3;
+    final grid = _yearGridGeometry(context, screenW);
+    final miniW = grid.monthWidth;
     final yearFontSize = miniW / 7 * 0.62 + 1.0;
     final yearDayScale =
         _yearViewTextScaler(context).scale(yearFontSize) / yearFontSize;
@@ -3101,26 +3173,25 @@ class _MorphOverlay extends StatelessWidget {
                     viewModeRowHeight -
                 monthScrollOffset,
           );
-          final miniW =
-              (screenW - 2 * _kYearOuterPad - 2 * _kYearColGap) / 3;
-          final cellSz = miniW / 7;
+          final cellSz = grid.cellSize;
           final sFinal = screenW / miniW;
-          final zCol = zoomMonthIdx % 3;
-          final zRow = zoomMonthIdx ~/ 3;
-          final focalX = _kYearOuterPad +
-              zCol * (miniW + _kYearColGap);
+          final zCol = zoomMonthIdx % grid.columnCount;
+          final zRow = zoomMonthIdx ~/ grid.columnCount;
+          final focalX =
+              _kYearOuterPad + zCol * (miniW + grid.columnGap);
           final List<double> rowTop;
-          if (measuredRowTops != null && measuredRowTops!.length == 4) {
+          if (measuredRowTops != null &&
+              measuredRowTops!.length == grid.rowCount) {
             rowTop = measuredRowTops!;
           } else {
+            final yearLayout = _morphLayoutForYear(year, grid.columnCount);
             final rowH = List.generate(
-              4,
-              (r) => cellSz * (2.35 + _morphLayoutForYear(year).rowMaxWeeks[r]) +
-                  7.0,
+              grid.rowCount,
+              (r) => cellSz * (2.35 + yearLayout.rowMaxWeeks[r]) + 7.0,
             );
             final computed = <double>[];
             var ry = 17.5;
-            for (var r = 0; r < 4; r++) {
+            for (var r = 0; r < grid.rowCount; r++) {
               computed.add(ry);
               ry += rowH[r] + _kYearRowGap;
             }
@@ -3155,6 +3226,7 @@ class _MorphOverlay extends StatelessWidget {
                   scrollOffset: scrollOffset,
                   monthScrollOffset: monthScrollOffset,
                   screenW: screenW,
+                  yearGrid: grid,
                   measuredRowTops: measuredRowTops,
                   viewModeRowHeight: viewModeRowHeight,
                   bgColor: bgC,
@@ -3388,36 +3460,45 @@ class _MorphMonthLayout {
 }
 
 class _MorphYearLayout {
-  _MorphYearLayout(int year)
+  _MorphYearLayout(int year, int columnCount)
     : months = List.generate(
         12,
         (index) => _MorphMonthLayout(year, index + 1),
       ),
-      rowMaxWeeks = List.generate(4, (row) {
+      rowMaxWeeks = List.generate(
+        (12 + columnCount - 1) ~/ columnCount,
+        (row) {
         var maxRows = 0;
-        for (var col = 0; col < 3; col++) {
-          maxRows = math.max(maxRows, _totalWeekRows(year, row * 3 + col + 1));
+        for (var col = 0; col < columnCount; col++) {
+          final monthIndex = row * columnCount + col;
+          if (monthIndex >= 12) break;
+          maxRows = math.max(
+            maxRows,
+            _totalWeekRows(year, monthIndex + 1),
+          );
         }
         return maxRows;
-      });
+      },
+      );
 
   final List<_MorphMonthLayout> months;
   final List<int> rowMaxWeeks;
 }
 
-final Map<int, _MorphYearLayout> _morphYearLayoutCache = {};
+final Map<String, _MorphYearLayout> _morphYearLayoutCache = {};
 
-_MorphYearLayout _morphLayoutForYear(int year) {
-  final cached = _morphYearLayoutCache.remove(year);
+_MorphYearLayout _morphLayoutForYear(int year, int columnCount) {
+  final cacheKey = '$year:$columnCount';
+  final cached = _morphYearLayoutCache.remove(cacheKey);
   if (cached != null) {
-    _morphYearLayoutCache[year] = cached;
+    _morphYearLayoutCache[cacheKey] = cached;
     return cached;
   }
-  final layout = _MorphYearLayout(year);
+  final layout = _MorphYearLayout(year, columnCount);
   if (_morphYearLayoutCache.length >= 4) {
     _morphYearLayoutCache.remove(_morphYearLayoutCache.keys.first);
   }
-  _morphYearLayoutCache[year] = layout;
+  _morphYearLayoutCache[cacheKey] = layout;
   return layout;
 }
 
@@ -3552,6 +3633,7 @@ class _MorphPainter extends CustomPainter {
     required this.scrollOffset,
     required this.monthScrollOffset,
     required this.screenW,
+    required this.yearGrid,
     required this.bgColor,
     required this.primaryColor,
     required this.accentColor,
@@ -3574,6 +3656,7 @@ class _MorphPainter extends CustomPainter {
   final double scrollOffset;
   final double monthScrollOffset;
   final double screenW;
+  final _YearGridGeometry yearGrid;
   final Color bgColor;
   final Color primaryColor;
   final Color accentColor;
@@ -3602,6 +3685,9 @@ class _MorphPainter extends CustomPainter {
       o.scrollOffset != scrollOffset ||
       o.monthScrollOffset != monthScrollOffset ||
       o.screenW != screenW ||
+      o.yearGrid.monthWidth != yearGrid.monthWidth ||
+      o.yearGrid.columnGap != yearGrid.columnGap ||
+      o.yearGrid.columnCount != yearGrid.columnCount ||
       o.viewModeRowHeight != viewModeRowHeight ||
       o.yearDayScale != yearDayScale ||
       o.monthDayScale != monthDayScale ||
@@ -3689,29 +3775,34 @@ class _MorphPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     _frameTextCache.clear();
     final sw = screenW;
-    final yearLayout = _morphLayoutForYear(year);
-    final miniW = (sw - 2 * _kYearOuterPad - 2 * _kYearColGap) / 3;
-    final cellSz = miniW / 7;
+    // Use the exact geometry resolved by _MorphOverlay so the canvas
+    // transition and the live Year View always share the same month width,
+    // gap, and column count.
+    final grid = yearGrid;
+    final yearLayout = _morphLayoutForYear(year, grid.columnCount);
+    final miniW = grid.monthWidth;
+    final cellSz = grid.cellSize;
     final sFinal = sw / miniW;
     final s = 1.0 + (sFinal - 1.0) * t;
 
-    final zCol = zoomMonthIdx % 3;
-    final zRow = zoomMonthIdx ~/ 3;
+    final zCol = zoomMonthIdx % grid.columnCount;
+    final zRow = zoomMonthIdx ~/ grid.columnCount;
     final zMonth = zoomMonthIdx + 1;
     final zoomMonthLayout = yearLayout.months[zoomMonthIdx];
 
     // ── Row geometry ─────────────────────────────────────────────────────────
     final List<double> rowTop;
-    if (measuredRowTops != null && measuredRowTops!.length == 4) {
+    if (measuredRowTops != null &&
+        measuredRowTops!.length == grid.rowCount) {
       rowTop = measuredRowTops!;
     } else {
       final rowH = List.generate(
-        4,
+        grid.rowCount,
         (r) => cellSz * (2.35 + yearLayout.rowMaxWeeks[r]) + 7.0,
       );
       final computed = <double>[];
       var ry = 17.5;
-      for (var r = 0; r < 4; r++) {
+      for (var r = 0; r < grid.rowCount; r++) {
         computed.add(ry);
         ry += rowH[r] + _kYearRowGap;
       }
@@ -3719,7 +3810,7 @@ class _MorphPainter extends CustomPainter {
     }
 
     // Focal point: selected month's DOW-row top-left in year-view screen coords
-    final focalX = _kYearOuterPad + zCol * (miniW + _kYearColGap);
+    final focalX = _kYearOuterPad + zCol * (miniW + grid.columnGap);
     final focalY = rowTop[zRow] + cellSz * 1.35 + 5.0 - scrollOffset;
 
     // Zoom-transform helpers
@@ -3757,10 +3848,10 @@ class _MorphPainter extends CustomPainter {
     // 1. Non-selected mini months — headers + per-cell shared-element morph ───
     for (var mi = 0; mi < 12; mi++) {
       if (mi == zoomMonthIdx) continue;
-      final mCol = mi % 3;
-      final mRow = mi ~/ 3;
+      final mCol = mi % grid.columnCount;
+      final mRow = mi ~/ grid.columnCount;
       final mMon = mi + 1;
-      final mnX = _kYearOuterPad + mCol * (miniW + _kYearColGap);
+      final mnX = _kYearOuterPad + mCol * (miniW + grid.columnGap);
       final mnY = rowTop[mRow] - scrollOffset;
       final otherFocalY = rowTop[mRow] + cellSz * 1.35 + 5.0 - scrollOffset;
 
