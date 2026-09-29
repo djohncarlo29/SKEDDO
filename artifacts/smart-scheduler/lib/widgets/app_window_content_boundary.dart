@@ -15,36 +15,30 @@ class AppWindowContentBoundary extends StatelessWidget {
 
   final Widget child;
 
-  /// Returns the symmetric landscape reservation derived from platform data.
+  /// Returns the symmetric landscape reservation from the persistent platform
+  /// safe area.
   ///
-  /// [mediaQuery] is the live inherited window metrics. [viewData] is read
-  /// directly from the underlying FlutterView when available, so a descendant
-  /// route's rewritten MediaQuery cannot erase the physical window inset.
-  static double landscapeSystemInsetFor(
-    MediaQueryData mediaQuery,
-    MediaQueryData viewData,
-  ) {
-    if (viewData.size.width <= viewData.size.height) return 0.0;
+  /// This intentionally uses only [MediaQueryData.viewPadding]. It represents
+  /// the platform safe area for the physical window and is independent of the
+  /// keyboard. Gesture, tappable-element, and descendant [padding] insets are
+  /// separate concepts and must not widen this app-wide reservation.
+  static double landscapeSystemInsetFor(MediaQueryData mediaQuery) {
+    if (mediaQuery.size.width <= mediaQuery.size.height) return 0.0;
 
-    return math.max(
-      math.max(
-        math.max(viewData.padding.left, viewData.padding.right),
-        math.max(viewData.viewPadding.left, viewData.viewPadding.right),
-      ),
-      math.max(
-        viewData.systemGestureInsets.left,
-        viewData.systemGestureInsets.right,
-      ),
-    );
+    return math.max(mediaQuery.viewPadding.left, mediaQuery.viewPadding.right);
   }
 
   @override
   Widget build(BuildContext context) {
     WindowGeometryDiagnostics.report(context);
     final mediaQuery = MediaQuery.of(context);
-    final view = View.maybeOf(context);
-    final viewData = view == null ? mediaQuery : MediaQueryData.fromView(view);
-    final horizontalInset = landscapeSystemInsetFor(mediaQuery, viewData);
+    // Read the persistent platform inset from MediaQuery.viewPadding. Do not
+    // use padding (which can be rewritten by a route or affected by the IME),
+    // viewInsets (keyboard), or gesture insets for this reservation.
+    final viewPadding = MediaQuery.viewPaddingOf(context);
+    final horizontalInset = landscapeSystemInsetFor(
+      mediaQuery.copyWith(viewPadding: viewPadding),
+    );
 
     if (horizontalInset <= 0.0) return child;
 

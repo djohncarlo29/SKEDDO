@@ -329,6 +329,9 @@ class MainActivity : FlutterActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val metrics = windowManager.currentWindowMetrics
             val windowInsets = metrics.windowInsets
+            val visibleSystemBars = windowInsets.getInsets(
+                WindowInsets.Type.systemBars(),
+            )
             val systemBars = windowInsets.getInsetsIgnoringVisibility(
                 WindowInsets.Type.systemBars(),
             )
@@ -340,6 +343,7 @@ class MainActivity : FlutterActivity() {
             )
             result["windowBoundsPx"] = rectMap(metrics.bounds)
             result["windowInsets"] = mapOf(
+                "systemBarsVisible" to insetsMap(visibleSystemBars),
                 "systemBars" to insetsMap(systemBars),
                 "systemGestures" to insetsMap(systemGestures),
                 "tappableElement" to insetsMap(tappable),

@@ -7,4 +7,4 @@ The app-wide landscape model must keep the themed background edge-to-edge while 
 
 **Why:** The operating system can report the landscape system area on either physical side. Applying only the reported side moves SKEDDO's content when the device rotates; putting the background inside the inset boundary can also expose the engine's black clear color.
 
-**How to apply:** Change the shared `CupertinoApp.builder`/window boundary and native window configuration rather than adding per-screen landscape padding. Use platform-provided view padding, padding, and gesture insets; never use keyboard viewInsets for this reservation.
+**How to apply:** Change the shared `CupertinoApp.builder`/window boundary and native window configuration rather than adding per-screen landscape padding. Derive the symmetric X exclusively from `MediaQuery.viewPadding.left/right`; do not widen it with `padding`, gesture/tappable insets, keyboard `viewInsets`, old window dimensions, or design margins. Native diagnostics may log those other values for comparison, but they are not reservation inputs.

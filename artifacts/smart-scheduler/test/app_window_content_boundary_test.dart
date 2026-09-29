@@ -12,14 +12,8 @@ void main() {
       viewPadding: const EdgeInsets.only(right: 52),
     );
 
-    expect(
-      AppWindowContentBoundary.landscapeSystemInsetFor(landscape, leftCutout),
-      52,
-    );
-    expect(
-      AppWindowContentBoundary.landscapeSystemInsetFor(landscape, rightCutout),
-      52,
-    );
+    expect(AppWindowContentBoundary.landscapeSystemInsetFor(leftCutout), 52);
+    expect(AppWindowContentBoundary.landscapeSystemInsetFor(rightCutout), 52);
   });
 
   test('does not reserve horizontal landscape space in portrait', () {
@@ -28,26 +22,37 @@ void main() {
       viewPadding: const EdgeInsets.only(left: 52),
     );
 
+    expect(AppWindowContentBoundary.landscapeSystemInsetFor(withInset), 0);
+  });
+
+  test('uses only persistent view padding, not padding or gesture insets', () {
+    final landscape = MediaQueryData(size: const Size(844, 390));
+    final withPlatformInsets = landscape.copyWith(
+      padding: const EdgeInsets.only(right: 96),
+      viewPadding: const EdgeInsets.only(right: 48),
+      viewInsets: const EdgeInsets.only(left: 120),
+      systemGestureInsets: const EdgeInsets.only(left: 144),
+    );
+
     expect(
-      AppWindowContentBoundary.landscapeSystemInsetFor(portrait, withInset),
-      0,
+      AppWindowContentBoundary.landscapeSystemInsetFor(withPlatformInsets),
+      48,
     );
   });
 
-  test('uses the largest physical horizontal platform reservation', () {
-    final landscape = MediaQueryData(size: const Size(844, 390));
-    final withPlatformInsets = landscape.copyWith(
-      padding: const EdgeInsets.only(right: 24),
-      viewPadding: const EdgeInsets.only(right: 48),
-      systemGestureInsets: const EdgeInsets.only(left: 56),
+  test('keyboard viewInsets do not change the landscape reservation', () {
+    final base = MediaQueryData(
+      size: const Size(844, 390),
+      viewPadding: const EdgeInsets.only(left: 52),
+    );
+    final keyboardVisible = base.copyWith(
+      viewInsets: const EdgeInsets.only(bottom: 280),
+      padding: const EdgeInsets.only(bottom: 280),
     );
 
     expect(
-      AppWindowContentBoundary.landscapeSystemInsetFor(
-        landscape,
-        withPlatformInsets,
-      ),
-      56,
+      AppWindowContentBoundary.landscapeSystemInsetFor(keyboardVisible),
+      AppWindowContentBoundary.landscapeSystemInsetFor(base),
     );
   });
 }
