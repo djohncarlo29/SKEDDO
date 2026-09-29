@@ -16018,74 +16018,88 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
               const swatchGap = 16.0;
               const baseSwatchSize = 43.0;
               final textScaler = MediaQuery.textScalerOf(context);
+              final textScaledSize = textScaler.scale(baseSwatchSize);
               final screenSize = MediaQuery.sizeOf(context);
-              final rotation = InheritedRotationGeometry.maybeOf(context);
-              final geometry = rotation ??
-                  RotationGeometryData(
-                    windowSize: screenSize,
-                    portraitSize: screenSize.height >= screenSize.width
-                        ? screenSize
-                        : Size(screenSize.height, screenSize.width),
-                    landscapeSize: screenSize.width >= screenSize.height
-                        ? screenSize
-                        : Size(screenSize.height, screenSize.width),
-                    progress: screenSize.width > screenSize.height ? 1.0 : 0.0,
-                    isTransitioning: false,
-                  );
-              final outerInset = screenSize.width - availableWidth;
-              final portraitWidth = max(
-                1.0,
-                geometry.portraitSize.width - outerInset,
+              final isWideLayout = screenSize.width > screenSize.height;
+              final portraitAvailableWidth = isWideLayout
+                  ? max(
+                      1.0,
+                      min(
+                        availableWidth,
+                        screenSize.shortestSide - 32.0,
+                      ),
+                    )
+                  : availableWidth;
+              final defaultSixColumnSize = max(
+                0.0,
+                (portraitAvailableWidth -
+                        (swatchCountPerRow - 1) * swatchGap) /
+                    swatchCountPerRow,
               );
-              final landscapeWidth = max(
-                1.0,
-                geometry.landscapeSize.width - outerInset,
+              final defaultSwatchSize = min(
+                baseSwatchSize,
+                defaultSixColumnSize,
               );
-              final portrait = _colorPickerGeometry(
-                portraitWidth,
-                textScaler,
-                isWide: false,
-                swatchCountPerRow: swatchCountPerRow,
-                swatchGap: swatchGap,
-                baseSwatchSize: baseSwatchSize,
-              );
-              final landscape = _colorPickerGeometry(
-                landscapeWidth,
-                textScaler,
-                isWide: true,
-                swatchCountPerRow: swatchCountPerRow,
-                swatchGap: swatchGap,
-                baseSwatchSize: baseSwatchSize,
-                portraitSwatchSize: portrait.swatchSize,
-              );
-              final t = geometry.progress;
-              final height = portrait.height +
-                  (landscape.height - portrait.height) * t;
-              // The portrait swatch is the visual baseline. Landscape may
-              // add columns and horizontal breathing room, but it must not
-              // resize the swatches or reduce the established portrait gap.
-              final swatchSize = portrait.swatchSize;
-
-              return SizedBox(
-                width: double.infinity,
-                height: height,
-                // The color card's parent Padding is the authored landscape
-                // inset. Keep gel selection growth inside that boundary.
-                child: ClipRect(
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      for (var i = 0; i < _kColorOptions.length; i++)
-                        Positioned.fromRect(
-                          rect: Rect.lerp(
-                            portrait.rects[i],
-                            landscape.rects[i],
-                            t,
-                          )!,
-                          child: _colorSwatch(_kColorOptions[i], swatchSize),
-                        ),
-                    ],
+              final defaultTextScale = textScaler.scale(16) / 16;
+              final scaledFromDefault =
+                  defaultSwatchSize * (textScaledSize / baseSwatchSize);
+              final swatchSize = defaultTextScale <= 1.001
+                  ? min(defaultSwatchSize, scaledFromDefault)
+                  : scaledFromDefault;
+              final portraitColumns = max(
+                1,
+                min(
+                  swatchCountPerRow,
+                  min(
+                    _kColorOptions.length,
+                    ((portraitAvailableWidth + swatchGap + 0.001) /
+                            (swatchSize + swatchGap))
+                        .floor(),
                   ),
+                ),
+              );
+              final portraitGap = portraitColumns > 1
+                  ? (portraitAvailableWidth -
+                          portraitColumns * swatchSize) /
+                      (portraitColumns - 1)
+                  : 0.0;
+              final columns = isWideLayout
+                  ? max(
+                      1,
+                      min(
+                        _kColorOptions.length,
+                        ((availableWidth + portraitGap + 0.001) /
+                                (swatchSize + portraitGap))
+                            .floor(),
+                      ),
+                    )
+                  : portraitColumns;
+              final gap = columns > 1
+                  ? isWideLayout
+                      ? max(
+                          portraitGap,
+                          (availableWidth - columns * swatchSize) /
+                              (columns - 1),
+                        )
+                      : (availableWidth - columns * swatchSize) /
+                          (columns - 1)
+                  : 0.0;
+
+              return Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Wrap(
+                  alignment: WrapAlignment.start,
+                  runAlignment: WrapAlignment.start,
+                  spacing: gap,
+                  runSpacing: swatchGap,
+                  clipBehavior: Clip.none,
+                  children: [
+                    for (final color in _kColorOptions)
+                      SizedBox(
+                        width: swatchSize,
+                        child: _colorSwatch(color, swatchSize),
+                      ),
+                  ],
                 ),
               );
             },
@@ -16515,6 +16529,224 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     );
   }
 
+  Widget _buildIconCardFromCheckpoint() {
+    const duration = Duration(milliseconds: 280);
+    const curve = Curves.easeInOut;
+    final textScaler = MediaQuery.textScalerOf(context);
+    final cardInset = textScaler.scale(12.0);
+    final minimumSpacing = textScaler.scale(6.0);
+    return RawGestureDetector(
+      gestures:
+          _kEnableIconPickerPinching
+              ? {
+                ScaleGestureRecognizer:
+                    GestureRecognizerFactoryWithHandlers<ScaleGestureRecognizer>(
+                      () => ScaleGestureRecognizer(debugOwner: this),
+                      (r) =>
+                          r
+                            ..onStart = _onIconPinchStart
+                            ..onUpdate = _onIconPinchUpdate
+                            ..onEnd = (_) => _pinchHandled = false,
+                    ),
+              }
+              : const {},
+      child: _card([
+        Padding(
+          padding: EdgeInsets.all(cardInset),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              const authoredColumns = 7;
+              final screenSize = MediaQuery.sizeOf(context);
+              final isWideLayout = screenSize.width > screenSize.height;
+              final portraitAvailableWidth = isWideLayout
+                  ? max(
+                      1.0,
+                      min(
+                        constraints.maxWidth,
+                        screenSize.shortestSide - 2 * cardInset,
+                      ),
+                    )
+                  : constraints.maxWidth;
+              final defaultItemSize =
+                  (portraitAvailableWidth -
+                      minimumSpacing * (authoredColumns - 1)) /
+                  authoredColumns;
+              final scaleRatio =
+                  textScaler.scale(_kIconCircle) / _kIconCircle;
+              final targetItemSize = max(
+                1.0,
+                defaultItemSize * scaleRatio,
+              );
+              final portraitColumns = max(
+                1,
+                min(
+                  _kIconOptions.length,
+                  ((portraitAvailableWidth + minimumSpacing + 0.001) /
+                          (targetItemSize + minimumSpacing))
+                      .floor(),
+                ),
+              );
+              final portraitItemSize = max(
+                1.0,
+                (portraitAvailableWidth -
+                        minimumSpacing * (portraitColumns - 1)) /
+                    portraitColumns,
+              );
+              final portraitGap =
+                  portraitColumns > 1
+                      ? (portraitAvailableWidth -
+                              portraitColumns * portraitItemSize) /
+                          (portraitColumns - 1)
+                      : 0.0;
+              final wideHorizontalInset = max(cardInset, 16.0);
+              final wideInsetDelta = wideHorizontalInset - cardInset;
+              final availableGridWidth = isWideLayout
+                  ? max(
+                      1.0,
+                      constraints.maxWidth - 2 * wideInsetDelta,
+                    )
+                  : constraints.maxWidth;
+              final automaticColumns = max(
+                1,
+                min(
+                  _kIconOptions.length,
+                  ((availableGridWidth + portraitGap + 0.001) /
+                          (portraitItemSize + portraitGap))
+                      .floor(),
+                ),
+              );
+              if (!_iconColumnsWasPinched ||
+                  automaticColumns != _automaticIconColumns) {
+                _automaticIconColumns = automaticColumns;
+                _iconColumns = automaticColumns;
+                _iconColumnsWasPinched = false;
+              }
+              final cols = _iconColumns;
+              final itemSize = isWideLayout
+                  ? portraitItemSize
+                  : max(
+                      1.0,
+                      (constraints.maxWidth -
+                              minimumSpacing * (cols - 1)) /
+                          cols,
+                    );
+              final verticalSpacing = minimumSpacing;
+              final horizontalSpacing =
+                  isWideLayout && cols > 1
+                      ? max(
+                          portraitGap,
+                          (availableGridWidth - cols * itemSize) /
+                              (cols - 1),
+                        )
+                      : minimumSpacing;
+              final rowCount = (_kIconOptions.length / cols).ceil();
+              final stackH =
+                  rowCount * itemSize + (rowCount - 1) * verticalSpacing;
+              return AnimatedContainer(
+                duration: duration,
+                curve: curve,
+                height: stackH,
+                child: Builder(
+                  builder: (context) {
+                    final brightness = CupertinoTheme.brightnessOf(context);
+                    final iconBackground = resolveThemeColor(
+                      kPillColor,
+                      context,
+                    );
+                    final primaryLabel = resolveThemeColor(
+                      kPrimaryLabel,
+                      context,
+                    );
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: List.generate(_kIconOptions.length, (i) {
+                        final icon = _kIconOptions[i];
+                        final isEmojiTile = icon == _kEmojiLightSvg;
+                        final selected =
+                            isEmojiTile
+                                ? _isEmojiIcon(_selectedIcon)
+                                : icon == _selectedIcon;
+                        final displayIcon =
+                            isEmojiTile
+                                ? _resolveIconSvg(_kEmojiLightSvg, brightness)
+                                : icon;
+                        final iconColor =
+                            isEmojiTile
+                                ? _resolvedSelectedColor
+                                : (selected
+                                    ? CupertinoColors.white
+                                    : primaryLabel);
+                        final circleBg =
+                            isEmojiTile
+                                ? (selected
+                                    ? _resolvedSelectedColor.withOpacity(0.30)
+                                    : iconBackground)
+                                : (selected
+                                    ? _resolvedSelectedColor
+                                    : iconBackground);
+                        final twoToneBallUsesContainerFill =
+                            selected || brightness == Brightness.dark;
+                        final twoToneBallFillColor =
+                            twoToneBallUsesContainerFill ? circleBg : iconColor;
+                        final twoToneBallDetailColor =
+                            twoToneBallUsesContainerFill ? iconColor : circleBg;
+                        return AnimatedPositioned(
+                          key: ValueKey(i),
+                          duration: duration,
+                          curve: curve,
+                          left:
+                              (isWideLayout ? wideInsetDelta : 0.0) +
+                              (i % cols) * (itemSize + horizontalSpacing),
+                          top: (i ~/ cols) * (itemSize + verticalSpacing),
+                          width: itemSize,
+                          height: itemSize,
+                          child: LayoutBuilder(
+                            builder: (_, cellConstraints) {
+                              final glyphScale =
+                                  cellConstraints.maxWidth / _kIconCircle;
+                              final circle = Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: circleBg,
+                                ),
+                                child: Center(
+                                  child: Transform.scale(
+                                    scale: glyphScale,
+                                    child: _buildPickerIcon(
+                                      displayIcon,
+                                      iconColor,
+                                      ctx: context,
+                                      ballFillColor: twoToneBallFillColor,
+                                      ballDetailColor: twoToneBallDetailColor,
+                                    ),
+                                  ),
+                                ),
+                              );
+                              return GelBloomButton(
+                                onTap:
+                                    isEmojiTile
+                                        ? () => _openEmojiPicker(context)
+                                        : () => setState(
+                                          () => _selectedIcon = icon,
+                                        ),
+                                peakScale: 1.12,
+                                child: circle,
+                              );
+                            },
+                          ),
+                        );
+                      }),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      ]),
+    );
+  }
+
   /// Opens the [EmojiPickerSheet] as a stacked rounded sheet so the parent
   /// category sheet scales back into the sheet stack behind it.
   void _openEmojiPicker(BuildContext context) {
@@ -16685,7 +16917,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                         _buildColorCard(),
                         if (!_isSmart) ...[
                           const SizedBox(height: 18),
-                          _buildIconCard(),
+                          _buildIconCardFromCheckpoint(),
                         ],
                       ],
                     ),

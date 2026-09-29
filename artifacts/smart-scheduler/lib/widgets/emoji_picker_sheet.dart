@@ -1355,6 +1355,114 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     });
   }
 
+  _EmojiGridLayout _resolveEmojiGridLayoutFromCheckpoint(
+    int emojiCount,
+    double maxWidth,
+    TextScaler textScaler,
+  ) {
+    final gridInset = textScaler.scale(6.0);
+    final minimumSpacing = textScaler.scale(2.0);
+    final emojiFontSize = textScaler.scale(26.0);
+    const authoredColumns = 7;
+    final screenSize = MediaQuery.sizeOf(context);
+    final isWideLayout = screenSize.width > screenSize.height;
+    final portraitMaxWidth = isWideLayout
+        ? math.max(
+            1.0,
+            math.min(
+              maxWidth,
+              screenSize.shortestSide - 2 * _emojiSheetHorizontalInset,
+            ),
+          )
+        : maxWidth;
+    final horizontalInset = isWideLayout
+        ? math.max(_emojiSheetHorizontalInset, gridInset)
+        : gridInset;
+    final contentWidth = math.max(
+      1.0,
+      portraitMaxWidth - 2 * gridInset,
+    );
+    final availableContentWidth = math.max(
+      1.0,
+      maxWidth - 2 * horizontalInset,
+    );
+    final defaultCellSize =
+        (contentWidth - minimumSpacing * (authoredColumns - 1)) /
+        authoredColumns;
+    final targetCellSize =
+        math.max(1.0, defaultCellSize * (emojiFontSize / 26.0));
+    final portraitColumns = math.max(
+      1,
+      ((contentWidth + minimumSpacing + 0.001) /
+              (targetCellSize + minimumSpacing))
+          .floor(),
+    );
+    final portraitCellSize = targetCellSize;
+    final portraitGap =
+        portraitColumns > 1
+            ? (contentWidth - portraitColumns * portraitCellSize) /
+                (portraitColumns - 1)
+            : 0.0;
+    final automaticColumns =
+        isWideLayout
+            ? math.max(
+              1,
+              ((availableContentWidth + portraitGap + 0.001) /
+                      (portraitCellSize + portraitGap))
+                  .floor(),
+            )
+            : portraitColumns;
+    if (!_emojiColumnsWasPinched ||
+        automaticColumns != _automaticEmojiColumns) {
+      _automaticEmojiColumns = automaticColumns;
+      _emojiColumns = automaticColumns;
+      _emojiColumnsWasPinched = false;
+    }
+    final columns =
+        _emojiColumnsWasPinched ? _emojiColumns : automaticColumns;
+    final cellSize = isWideLayout
+        ? portraitCellSize
+        : math.max(
+            1.0,
+            _emojiColumnsWasPinched
+                ? (availableContentWidth -
+                          minimumSpacing * (columns - 1)) /
+                      columns
+                : targetCellSize,
+          );
+    final cellFontSize =
+        math.max(1.0, emojiFontSize * (cellSize / targetCellSize));
+    final crossAxisSpacing =
+        isWideLayout
+            ? (columns > 1
+                ? math.max(
+                    portraitGap,
+                    (availableContentWidth - columns * cellSize) /
+                        (columns - 1),
+                  )
+                : 0.0)
+            : columns > 1
+            ? (availableContentWidth - columns * cellSize) /
+                (columns - 1)
+            : 0.0;
+    final rowCount = (emojiCount / columns).ceil();
+    final gridHeight =
+        2 * gridInset +
+        rowCount * cellSize +
+        math.max(0, rowCount - 1) * minimumSpacing;
+
+    return _EmojiGridLayout(
+      gridInset: gridInset,
+      horizontalInset: horizontalInset,
+      minimumSpacing: minimumSpacing,
+      cellSize: cellSize,
+      cellFontSize: cellFontSize,
+      crossAxisSpacing: crossAxisSpacing,
+      gridHeight: gridHeight,
+      columns: columns,
+    );
+  }
+
   _EmojiGridLayout _resolveEmojiGridLayout(
     int emojiCount,
     double maxWidth,
@@ -1449,6 +1557,77 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
       crossAxisSpacing: crossAxisSpacing,
       gridHeight: gridHeight,
       columns: columns,
+    );
+  }
+
+  Widget _buildGridFromCheckpoint(int idx, {bool active = false}) {
+    final emojis = kEmojiCategories[idx].emojis;
+    final textScaler = MediaQuery.textScalerOf(context);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final layout = _resolveEmojiGridLayoutFromCheckpoint(
+          emojis.length,
+          constraints.maxWidth,
+          textScaler,
+        );
+
+        return SingleChildScrollView(
+          controller: active ? _scrollCtrl : null,
+          physics: active
+              ? const BouncingScrollPhysics(
+                  decelerationRate: ScrollDecelerationRate.fast,
+                  parent: AlwaysScrollableScrollPhysics(),
+                )
+              : const NeverScrollableScrollPhysics(),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeInOut,
+            width: constraints.maxWidth,
+            height: layout.gridHeight,
+            child: Stack(
+              children: List.generate(emojis.length, (i) {
+                final emoji = Text(
+                  emojis[i],
+                  style: TextStyle(
+                    fontSize: layout.cellFontSize,
+                    height: 1.0,
+                  ),
+                  textScaler: TextScaler.noScaling,
+                );
+                final child =
+                    active
+                        ? CupertinoButton(
+                          padding: EdgeInsets.zero,
+                          onPressed: () {
+                            _close();
+                            widget.onEmojiSelected(emojis[i]);
+                          },
+                          child: emoji,
+                        )
+                        : Center(child: emoji);
+
+                return AnimatedPositioned(
+                  key: ValueKey(i),
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeInOut,
+                  left:
+                      layout.horizontalInset +
+                      (i % layout.columns) *
+                          (layout.cellSize + layout.crossAxisSpacing),
+                  top:
+                      layout.gridInset +
+                      (i ~/ layout.columns) *
+                          (layout.cellSize + layout.minimumSpacing),
+                  width: layout.cellSize,
+                  height: layout.cellSize,
+                  child: child,
+                );
+              }),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1603,52 +1782,35 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     final emojiFontSize = textScaler.scale(26.0);
     const authoredColumns = 7;
     final screenSize = MediaQuery.sizeOf(context);
+    final isWideLayout = screenSize.width > screenSize.height;
+    final portraitCardWidth = isWideLayout
+        ? math.max(
+            1.0,
+            math.min(
+              cardWidth,
+              screenSize.shortestSide - 2 * _emojiSheetHorizontalInset,
+            ),
+          )
+        : cardWidth;
+    final horizontalInset = isWideLayout
+        ? math.max(_emojiSheetHorizontalInset, gridInset)
+        : gridInset;
+    final contentWidth = math.max(
+      1.0,
+      portraitCardWidth - 2 * gridInset,
+    );
+    final defaultCellSize =
+        (contentWidth - minimumSpacing * (authoredColumns - 1)) /
+        authoredColumns;
+    final targetCellSize =
+        math.max(1.0, defaultCellSize * (emojiFontSize / 26.0));
     final categorySlotWidth =
         math.max(28.0, textScaler.scale(28.0));
 
-    final rotation = InheritedRotationGeometry.maybeOf(context);
-    final geometry = rotation ??
-        RotationGeometryData(
-          windowSize: screenSize,
-          portraitSize: screenSize.height >= screenSize.width
-              ? screenSize
-              : Size(screenSize.height, screenSize.width),
-          landscapeSize: screenSize.width >= screenSize.height
-              ? screenSize
-              : Size(screenSize.height, screenSize.width),
-          progress: screenSize.width > screenSize.height ? 1.0 : 0.0,
-          isTransitioning: false,
-        );
-    final outerInset = screenSize.width - cardWidth;
-    double endpointInset(Size endpoint, bool isWide) {
-      final endpointCardWidth = math.max(
-        1.0,
-        endpoint.width - outerInset,
-      );
-      final endpointContentWidth = math.max(
-        1.0,
-        endpointCardWidth - 2 * gridInset,
-      );
-      final endpointDefaultCellSize =
-          (endpointContentWidth -
-                  minimumSpacing * (authoredColumns - 1)) /
-              authoredColumns;
-      final endpointTargetCellSize =
-          math.max(1.0, endpointDefaultCellSize * (emojiFontSize / 26.0));
-      final horizontalInset = isWide
-          ? math.max(_emojiSheetHorizontalInset, gridInset)
-          : gridInset;
-      return math.max(
-        0.0,
-        horizontalInset +
-            endpointTargetCellSize / 2 -
-            categorySlotWidth / 2,
-      );
-    }
-
-    final portraitInset = endpointInset(geometry.portraitSize, false);
-    final landscapeInset = endpointInset(geometry.landscapeSize, true);
-    return portraitInset + (landscapeInset - portraitInset) * geometry.progress;
+    return math.max(
+      0.0,
+      horizontalInset + targetCellSize / 2 - categorySlotWidth / 2,
+    );
   }
 
   Widget _positionEmojiPage({
@@ -1657,17 +1819,6 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     required double width,
     required Widget child,
   }) {
-    final rotation = InheritedRotationGeometry.maybeOf(context);
-    if (rotation?.isTransitioning == true) {
-      return Positioned(
-        key: key,
-        left: left,
-        top: 0,
-        bottom: 0,
-        width: width,
-        child: child,
-      );
-    }
     return AnimatedPositioned(
       key: key,
       duration:
@@ -1810,79 +1961,16 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
                                   final w = constraints.maxWidth;
-                                  final screenSize = MediaQuery.sizeOf(context);
-                                  final rotation =
-                                      InheritedRotationGeometry.maybeOf(
-                                        context,
-                                      );
-                                  final geometry = rotation ??
-                                      RotationGeometryData(
-                                        windowSize: screenSize,
-                                        portraitSize:
-                                            screenSize.height >=
-                                                    screenSize.width
-                                                ? screenSize
-                                                : Size(
-                                                  screenSize.height,
-                                                  screenSize.width,
-                                                ),
-                                        landscapeSize:
-                                            screenSize.width >=
-                                                    screenSize.height
-                                                ? screenSize
-                                                : Size(
-                                                  screenSize.height,
-                                                  screenSize.width,
-                                                ),
-                                        progress:
-                                            screenSize.width >
-                                                    screenSize.height
-                                                ? 1.0
-                                                : 0.0,
-                                        isTransitioning: false,
-                                      );
-                                  final outerInset = screenSize.width - w;
-                                  final portraitCardWidth = math.max(
-                                    1.0,
-                                    geometry.portraitSize.width - outerInset,
-                                  );
-                                  final landscapeCardWidth = math.max(
-                                    1.0,
-                                    geometry.landscapeSize.width - outerInset,
-                                  );
-                                  final forcedColumns =
-                                      _emojiColumnsWasPinched
-                                          ? _emojiColumns
-                                          : null;
-                                  final portraitLayout =
-                                      _resolveEmojiGridLayout(
+                                  final activeGridLayout =
+                                      _resolveEmojiGridLayoutFromCheckpoint(
                                         kEmojiCategories[_catIndex]
                                             .emojis
                                             .length,
-                                        portraitCardWidth,
+                                        w,
                                         textScaler,
-                                        isWideLayout: false,
-                                        portraitCardWidth: portraitCardWidth,
-                                        forcedColumns: forcedColumns,
                                       );
-                                  final landscapeLayout =
-                                      _resolveEmojiGridLayout(
-                                        kEmojiCategories[_catIndex]
-                                            .emojis
-                                            .length,
-                                        landscapeCardWidth,
-                                        textScaler,
-                                        isWideLayout: true,
-                                        portraitCardWidth: portraitCardWidth,
-                                        forcedColumns: forcedColumns,
-                                      );
-                                  final activeGridHeight =
-                                      portraitLayout.gridHeight +
-                                      (landscapeLayout.gridHeight -
-                                              portraitLayout.gridHeight) *
-                                          geometry.progress;
                                   final activeGridOverflows =
-                                      activeGridHeight >
+                                      activeGridLayout.gridHeight >
                                       constraints.maxHeight + 0.5;
                                   return Listener(
                                     behavior: HitTestBehavior.opaque,
@@ -1912,9 +2000,8 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                             activeGridOverflows,
                                         contentKey: Object.hash(
                                           _catIndex,
-                                          portraitLayout.columns,
-                                          landscapeLayout.columns,
-                                          activeGridHeight,
+                                          activeGridLayout.columns,
+                                          activeGridLayout.gridHeight,
                                           constraints.maxHeight,
                                         ),
                                         child: Stack(
@@ -1931,7 +2018,9 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                 ),
                                                 left: _dragOffset - w,
                                                 width: w,
-                                                child: _buildGrid(_catIndex - 1),
+                                                child: _buildGridFromCheckpoint(
+                                                  _catIndex - 1,
+                                                ),
                                               ),
                                             _positionEmojiPage(
                                               key: ValueKey(
@@ -1939,7 +2028,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                               ),
                                               left: _dragOffset,
                                               width: w,
-                                              child: _buildGrid(
+                                              child: _buildGridFromCheckpoint(
                                                 _catIndex,
                                                 active: true,
                                               ),
@@ -1952,7 +2041,9 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                 ),
                                                 left: _dragOffset + w,
                                                 width: w,
-                                                child: _buildGrid(_catIndex + 1),
+                                                child: _buildGridFromCheckpoint(
+                                                  _catIndex + 1,
+                                                ),
                                               ),
                                           ],
                                         ),
