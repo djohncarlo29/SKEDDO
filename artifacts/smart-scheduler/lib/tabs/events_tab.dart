@@ -16056,29 +16056,36 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                 swatchCountPerRow: swatchCountPerRow,
                 swatchGap: swatchGap,
                 baseSwatchSize: baseSwatchSize,
+                portraitSwatchSize: portrait.swatchSize,
               );
               final t = geometry.progress;
               final height = portrait.height +
                   (landscape.height - portrait.height) * t;
-              final swatchSize = portrait.swatchSize +
-                  (landscape.swatchSize - portrait.swatchSize) * t;
+              // The portrait swatch is the visual baseline. Landscape may
+              // add columns and horizontal breathing room, but it must not
+              // resize the swatches or reduce the established portrait gap.
+              final swatchSize = portrait.swatchSize;
 
               return SizedBox(
                 width: double.infinity,
                 height: height,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    for (var i = 0; i < _kColorOptions.length; i++)
-                      Positioned.fromRect(
-                        rect: Rect.lerp(
-                          portrait.rects[i],
-                          landscape.rects[i],
-                          t,
-                        )!,
-                        child: _colorSwatch(_kColorOptions[i], swatchSize),
-                      ),
-                  ],
+                // The color card's parent Padding is the authored landscape
+                // inset. Keep gel selection growth inside that boundary.
+                child: ClipRect(
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      for (var i = 0; i < _kColorOptions.length; i++)
+                        Positioned.fromRect(
+                          rect: Rect.lerp(
+                            portrait.rects[i],
+                            landscape.rects[i],
+                            t,
+                          )!,
+                          child: _colorSwatch(_kColorOptions[i], swatchSize),
+                        ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -16095,6 +16102,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     required int swatchCountPerRow,
     required double swatchGap,
     required double baseSwatchSize,
+    double? portraitSwatchSize,
   }) {
     final textScaledSize = textScaler.scale(baseSwatchSize);
     final defaultSixColumnSize = max(
@@ -16106,9 +16114,12 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     final defaultTextScale = textScaler.scale(16) / 16;
     final scaledFromDefault =
         defaultSwatchSize * (textScaledSize / baseSwatchSize);
-    final swatchSize = defaultTextScale <= 1.001
+    final calculatedSwatchSize = defaultTextScale <= 1.001
         ? min(defaultSwatchSize, scaledFromDefault)
         : scaledFromDefault;
+    final swatchSize = isWide
+        ? (portraitSwatchSize ?? calculatedSwatchSize)
+        : calculatedSwatchSize;
     final portraitColumns = max(
       1,
       min(
@@ -16375,12 +16386,17 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                       kPrimaryLabel,
                       context,
                     );
-                    return Stack(
-                      // The 16pt card inset remains part of the grid layout.
-                      // A selected/tapped circle may paint into that inset
-                      // while it blooms, so the grid itself must not clip it.
-                      clipBehavior: Clip.none,
-                      children: List.generate(_kIconOptions.length, (i) {
+                    return ClipRect(
+                      // The wide layout starts four points inside this
+                      // card's 12pt portrait padding, making the physical
+                      // edge exactly 16pt. Do not let a selected/blooming
+                      // icon cross that boundary.
+                      child: Stack(
+                        // Keep the stack itself unclipped so each item's
+                        // local bloom can be painted before ClipRect applies
+                        // the card-content boundary.
+                        clipBehavior: Clip.none,
+                        children: List.generate(_kIconOptions.length, (i) {
                         final icon = _kIconOptions[i];
                         // Row-1 Icon-1 is the emoji button, not a selectable icon.
                         final isEmojiTile = icon == _kEmojiLightSvg;
@@ -16465,23 +16481,24 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                             },
                           ),
                         );
-                        return geometry.isTransitioning
-                            ? Positioned.fromRect(
-                              key: ValueKey(i),
-                              rect: rect,
-                              child: child,
-                            )
-                            : AnimatedPositioned(
-                              key: ValueKey(i),
-                              duration: duration,
-                              curve: curve,
-                              left: rect.left,
-                              top: rect.top,
-                              width: rect.width,
-                              height: rect.height,
-                              child: child,
-                            );
-                      }),
+                          return geometry.isTransitioning
+                              ? Positioned.fromRect(
+                                key: ValueKey(i),
+                                rect: rect,
+                                child: child,
+                              )
+                              : AnimatedPositioned(
+                                key: ValueKey(i),
+                                duration: duration,
+                                curve: curve,
+                                left: rect.left,
+                                top: rect.top,
+                                width: rect.width,
+                                height: rect.height,
+                                child: child,
+                              );
+                        }),
+                      ),
                     );
                   },
                 ),
