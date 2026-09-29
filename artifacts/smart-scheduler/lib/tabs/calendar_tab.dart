@@ -119,7 +119,7 @@ const double _kDayLabelHeight = 28.0;
 const double _kWeekNumWidth = 28.0;
 const double _kYearOuterPad = 16.0;
 const double _kYearColGap = 12.0;
-const double _kYearRowGap = 27.0;
+const double _kYearRowGap = 24.0;
 const double _kHourHeight = 64.0;
 const double _kTimelinePad =
     8.0; // breathing room above 12 am and below midnight
