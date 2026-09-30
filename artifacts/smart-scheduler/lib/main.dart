@@ -3259,10 +3259,10 @@ class _CalendarNavChevron extends StatelessWidget {
 
     if (compact) {
       final compactIconScale = max(1.0, scale * 2.0);
-      final compactIconSize = 18.0 * compactIconScale;
-      // Keep the landscape pair compact around the title center while retaining
-      // the two full-height tap zones.
-      final compactIconOffset = 13.0 - compactIconSize * 0.36;
+      final compactIconSize = 12.0 * compactIconScale;
+      // Match the portrait chevron centers: each sits 60% of a half-title
+      // height from the shared center while retaining the landscape tap zones.
+      final compactIconOffset = 13.0 - safeTitleFontSize * 0.3;
 
       Widget compactHalf({
         required _ChevronDir direction,
