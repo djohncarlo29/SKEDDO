@@ -3094,7 +3094,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                     ? (isDCVVisual
                                           ? 1.0
                                           : isSubScreen
-                                          ? 0.0
+                                          ? 1.0
                                           : 0.8)
                                     : 0,
                               ),
