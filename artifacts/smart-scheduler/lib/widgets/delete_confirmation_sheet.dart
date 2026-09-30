@@ -298,9 +298,9 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
       ),
       shadows: resolveThemeShadows(kCardShadow, context),
     );
+    final viewportSize = MediaQuery.sizeOf(context);
     final sheetWidth = fromXmark
-        ? MediaQuery.sizeOf(context).width *
-            kDiscardConfirmationTopLeftWidthFraction
+        ? viewportSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction
         : double.infinity;
     final message = isNew
         ? 'Are you sure you want to discard this new $entityLabel?'
