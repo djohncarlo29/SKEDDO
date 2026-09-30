@@ -1434,8 +1434,15 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     required Key key,
     required double left,
     required double width,
+    required bool clipToPageBounds,
     required Widget child,
   }) {
+    final pageChild = clipToPageBounds
+        ? ClipRect(
+            clipBehavior: Clip.hardEdge,
+            child: SizedBox.expand(child: child),
+          )
+        : child;
     return AnimatedPositioned(
       key: key,
       duration:
@@ -1445,7 +1452,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
       top: 0,
       bottom: 0,
       width: width,
-      child: child,
+      child: pageChild,
     );
   }
 
@@ -1641,6 +1648,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                 ),
                                                 left: _dragOffset - w,
                                                 width: w,
+                                                clipToPageBounds: true,
                                                 child: _buildGrid(
                                                   _catIndex - 1,
                                                 ),
@@ -1651,6 +1659,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                               ),
                                               left: _dragOffset,
                                               width: w,
+                                              clipToPageBounds: false,
                                               child: _buildGrid(
                                                 _catIndex,
                                                 active: true,
@@ -1664,7 +1673,8 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                 ),
                                                 left: _dragOffset + w,
                                                 width: w,
-                                            child: _buildGrid(
+                                                clipToPageBounds: true,
+                                                child: _buildGrid(
                                                   _catIndex + 1,
                                                 ),
                                               ),
