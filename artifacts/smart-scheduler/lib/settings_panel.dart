@@ -16,6 +16,7 @@ import 'widgets/fixed_size_icon.dart';
 import 'widgets/floating_tab_pill.dart';
 import 'widgets/header_title_scroller.dart';
 import 'widgets/native_fluid_slider_row.dart';
+import 'widgets/app_window_content_boundary.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SettingsPanel — full-screen slide-in settings surface with sub-screen nav.
@@ -342,22 +343,26 @@ class _SettingsPanelState extends State<SettingsPanel>
                   // ── Main body — slides right (parallax) during sub-screen push ──
                   Positioned.fill(
                     top: headerHeight,
-                    child: SlideTransition(
-                      position: _mainParallax,
-                      child: _MainSettingsContent(
-                        bottomInset: bottomInset,
-                        onPush: _push,
-                        accentColor: accentColor,
-                        accentSwatch: swatch,
-                        themeLabel: themeLabel,
-                        textSizeLabel: textSizeLabel,
-                        startOfWeekLabel: startOfWeekLabel,
-                        defaultViewLabel: defaultViewLabel,
-                         fullMonthName: fullMonthName,
-                        eventDurationLabel: eventDurationLabel,
-                         defaultCategoryLabel: defaultCategoryLabel,
-                        dateFormatLabel: dateFormatLabel,
-                        liquidGlassOpacityLabel: liquidGlassOpacityLabel,
+                    child: AppWindowPhysicalWidth(
+                      child: SlideTransition(
+                        position: _mainParallax,
+                        child: AppWindowContentPadding(
+                          child: _MainSettingsContent(
+                            bottomInset: bottomInset,
+                            onPush: _push,
+                            accentColor: accentColor,
+                            accentSwatch: swatch,
+                            themeLabel: themeLabel,
+                            textSizeLabel: textSizeLabel,
+                            startOfWeekLabel: startOfWeekLabel,
+                            defaultViewLabel: defaultViewLabel,
+                            fullMonthName: fullMonthName,
+                            eventDurationLabel: eventDurationLabel,
+                            defaultCategoryLabel: defaultCategoryLabel,
+                            dateFormatLabel: dateFormatLabel,
+                            liquidGlassOpacityLabel: liquidGlassOpacityLabel,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -366,13 +371,15 @@ class _SettingsPanelState extends State<SettingsPanel>
                   if (_activeRoute != null)
                     Positioned.fill(
                       top: headerHeight,
-                      child: SlideTransition(
-                        position: _subSlide,
-                        child: _SubScreen(
-                          bottomInset: bottomInset,
-                          route: _activeRoute!,
-                          accentColor: accentColor,
-                          accentNotifier: appAccentNotifier,
+                      child: AppWindowPhysicalWidth(
+                        child: SlideTransition(
+                          position: _subSlide,
+                          child: _SubScreen(
+                            bottomInset: bottomInset,
+                            route: _activeRoute!,
+                            accentColor: accentColor,
+                            accentNotifier: appAccentNotifier,
+                          ),
                         ),
                       ),
                     ),
@@ -693,11 +700,12 @@ class _SubScreenState extends State<_SubScreen> {
   Widget build(BuildContext context) {
     return ColoredBox(
       color: resolveThemeColor(kBackgroundColor, context),
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
-        ),
-        slivers: [
+      child: AppWindowContentPadding(
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          slivers: [
           // Keep the settings rhythm on the 8 pt grid.
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
@@ -725,7 +733,8 @@ class _SubScreenState extends State<_SubScreen> {
               bottom: unifiedBottomPaddingForInset(widget.bottomInset),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -982,42 +991,44 @@ class _SettingsHeader extends StatelessWidget {
             bottom: 0,
             child: Container(height: 0.75, color: separatorColor),
           ),
-          Padding(
-            padding: EdgeInsets.only(top: topInset),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 44 pt icon-row slot — empty (X / back button lives in AppShell)
-                const SizedBox(height: 44),
-                // Large title — snaps between "Settings" and sub-screen name
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      left: 16,
-                      right: 16,
-                      bottom: kHeaderTitleBottomInset,
-                    ),
-                    child: Align(
-                      alignment: Alignment.bottomLeft,
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: HeaderTitleScroller(
-                          title: title,
-                          fadeColor: cardColor,
-                          style: TextStyle(
-                            fontFamily: kSFProText,
-                            fontSize: 34,
-                            fontWeight: FontWeight.bold,
-                            fontStyle: FontStyle.normal,
-                            color: primaryLabel,
-                            letterSpacing: -1.2,
+          AppWindowContentPadding(
+            child: Padding(
+              padding: EdgeInsets.only(top: topInset),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 44 pt icon-row slot — empty (X / back button lives in AppShell)
+                  const SizedBox(height: 44),
+                  // Large title — snaps between "Settings" and sub-screen name
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        left: 16,
+                        right: 16,
+                        bottom: kHeaderTitleBottomInset,
+                      ),
+                      child: Align(
+                        alignment: Alignment.bottomLeft,
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: HeaderTitleScroller(
+                            title: title,
+                            fadeColor: cardColor,
+                            style: TextStyle(
+                              fontFamily: kSFProText,
+                              fontSize: 34,
+                              fontWeight: FontWeight.bold,
+                              fontStyle: FontStyle.normal,
+                              color: primaryLabel,
+                              letterSpacing: -1.2,
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],

@@ -34,6 +34,7 @@ import '../ai/search/search_service.dart';
 import '../services/category_registry.dart';
 import '../widgets/smart_search_results.dart';
 import '../widgets/delete_confirmation_sheet.dart';
+import '../widgets/app_window_content_boundary.dart';
 
 /// Returns the hourly bucket used by Today/Tomorrow DCV section headers.
 ///
@@ -8010,14 +8011,18 @@ class EventsTabState extends State<EventsTab>
     // searchBarRow carries _searchBarKey.  When off-screen search activates
     // (_activatedFromOffScreen) the key lives in the Stack overlay so the
     // gridView scroll position is never disturbed.
-    final Widget gridView = CustomScrollView(
-      key: _scrollViewportKey,
-      controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(
-        parent: BouncingScrollPhysics(),
-      ),
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-      slivers: [
+    final physicalWidth = AppWindowContentScope.of(context).physicalWidth;
+    final Widget gridView = SizedBox(
+      width: physicalWidth,
+      child: AppWindowContentPadding(
+        child: CustomScrollView(
+          key: _scrollViewportKey,
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+          slivers: [
         // ── Search bar sliver ─────────────────────────────────────────────
         // Off-screen active : _searchBarKey lives in the Stack overlay;
         //   height placeholder keeps all content in position.
@@ -8166,7 +8171,9 @@ class EventsTabState extends State<EventsTab>
             ),
           ),
         ],
-      ],
+          ],
+        ),
+      ),
     );
     // Both SlideTransitions read from the SAME AnimationController as the
     // header AnimatedBuilder in AppShell.  Flutter rebuilds and paints all
@@ -8330,40 +8337,42 @@ class EventsTabState extends State<EventsTab>
                               )
                               .length,
                   };
-                  return _CategoryDetailView(
-                    key: ValueKey(widget.activeDCV ?? '_none'),
-                    label: widget.activeDCV ?? '',
-                    icon: cat?.iconOrSvg,
-                    categoryType: cat?.categoryType ?? 'Standard',
-                    showStandardCategoryName:
-                        isBuiltInSmartCategory ||
-                        cat?.categoryType == 'Smart Category',
-                    events: dcvEvents,
-                    sortBy:
-                        isArchivedUtility || isRecentlyDeletedUtility
-                            ? 'Creation Date'
-                            : (widget.dcvSortBy ?? 'Manual'),
-                    sortDir:
-                        isArchivedUtility || isRecentlyDeletedUtility
-                            ? (widget.dcvSortDir == 'Oldest First'
-                                ? 'Oldest First'
-                                : 'Newest First')
-                            : (widget.dcvSortDir ?? ''),
-                    showManualDateSections:
-                        widget.dcvShowManualDateSections &&
-                        cat?.categoryType != 'Smart Category',
-                    customSectionNames: List<String>.of(
-                      cat?.categoryType == 'Smart Category'
-                          ? const <String>[]
-                          : _dcvCustomSectionNames[dcvLabel] ??
-                              const <String>[],
-                    ),
-                    customSectionEventIds:
-                        cat?.categoryType == 'Smart Category'
-                            ? null
-                            : _dcvCustomSectionEventIds[dcvLabel]
-                                ?.map(List<String>.of)
-                                .toList(),
+                  return AppWindowPhysicalWidth(
+                    child: AppWindowContentPadding(
+                      child: _CategoryDetailView(
+                        key: ValueKey(widget.activeDCV ?? '_none'),
+                        label: widget.activeDCV ?? '',
+                        icon: cat?.iconOrSvg,
+                        categoryType: cat?.categoryType ?? 'Standard',
+                        showStandardCategoryName:
+                            isBuiltInSmartCategory ||
+                            cat?.categoryType == 'Smart Category',
+                        events: dcvEvents,
+                        sortBy:
+                            isArchivedUtility || isRecentlyDeletedUtility
+                                ? 'Creation Date'
+                                : (widget.dcvSortBy ?? 'Manual'),
+                        sortDir:
+                            isArchivedUtility || isRecentlyDeletedUtility
+                                ? (widget.dcvSortDir == 'Oldest First'
+                                    ? 'Oldest First'
+                                    : 'Newest First')
+                                : (widget.dcvSortDir ?? ''),
+                        showManualDateSections:
+                            widget.dcvShowManualDateSections &&
+                            cat?.categoryType != 'Smart Category',
+                        customSectionNames: List<String>.of(
+                          cat?.categoryType == 'Smart Category'
+                              ? const <String>[]
+                              : _dcvCustomSectionNames[dcvLabel] ??
+                                  const <String>[],
+                        ),
+                        customSectionEventIds:
+                            cat?.categoryType == 'Smart Category'
+                                ? null
+                                : _dcvCustomSectionEventIds[dcvLabel]
+                                    ?.map(List<String>.of)
+                                    .toList(),
                     onCustomSectionRenamed: (index, title) {
                       if (dcvLabel != null) {
                         _renameDcvSection(dcvLabel, index, title);
@@ -8388,9 +8397,9 @@ class EventsTabState extends State<EventsTab>
                         _reorderDcvSections(dcvLabel, sectionEventIds);
                       }
                     },
-                    onEditEvent: widget.onEditEvent,
-                    color: dcvColor,
-                    specialContentBuilder:
+                        onEditEvent: widget.onEditEvent,
+                        color: dcvColor,
+                        specialContentBuilder:
                         isArchivedUtility && hasArchivedUtilityItems
                             ? (_) => _DcvUtilityContent(
                               categoryColor: dcvColor,
@@ -8471,6 +8480,8 @@ class EventsTabState extends State<EventsTab>
                               onDeletedCategoryTap: _openDeletedCategory,
                             )
                             : null,
+                      ),
+                    ),
                   );
                 },
               ),
@@ -8480,7 +8491,10 @@ class EventsTabState extends State<EventsTab>
           // active on the main Events view (not inside DCV).  The gridView
           // scroll position is completely untouched throughout.
           if (widget.activeDCV == null && _greyActive)
-            _buildGridSearchOverlay(searchBarRow, showResults),
+            _buildGridSearchOverlay(
+              AppWindowContentPadding(child: searchBarRow),
+              showResults,
+            ),
           // DCV search overlay — floats above the DCV content when active.
           if (widget.activeDCV != null && _greyActive)
             _buildDcvSearchOverlay(showResults),
@@ -8574,30 +8588,32 @@ class EventsTabState extends State<EventsTab>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // ── Fixed search header (immune to rubber-band) ────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  16,
-                  kSearchBarHostTopPadding,
-                  16,
-                  0,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: AppSearchBar(
-                        controller: _searchController,
-                        onFocusChanged: _onSearchFocusChanged,
-                        placeholder: 'Search ${widget.activeDCV ?? ''}',
-                        selectionTint: _activeDcvColor(context),
+              AppWindowContentPadding(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    16,
+                    kSearchBarHostTopPadding,
+                    16,
+                    0,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: AppSearchBar(
+                          controller: _searchController,
+                          onFocusChanged: _onSearchFocusChanged,
+                          placeholder: 'Search ${widget.activeDCV ?? ''}',
+                          selectionTint: _activeDcvColor(context),
+                        ),
                       ),
-                    ),
-                    SearchCancelButton(
-                      key: _dcvSearchCancelKey,
-                      animation: widget.searchModeAnimation,
-                      searchFocused: _searchFocused,
-                      onTap: _cancelSearch,
-                    ),
-                  ],
+                      SearchCancelButton(
+                        key: _dcvSearchCancelKey,
+                        animation: widget.searchModeAnimation,
+                        searchFocused: _searchFocused,
+                        onTap: _cancelSearch,
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: kSearchBarHeaderSeparatorGap),

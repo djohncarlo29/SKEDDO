@@ -2072,12 +2072,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       index: _selectedIndex,
       children: [
         RepaintBoundary(
-          child: NotesTab(
-            key: _notesTabKey,
-            onSearchFocusChanged: _setSearchFocused,
-            searchModeAnimation: _searchModeAnim,
-            onEditEvent: (event) => _calendarTabKey.currentState
-                ?.showEditEventSheet(context, event),
+          child: AppWindowContentPadding(
+            child: NotesTab(
+              key: _notesTabKey,
+              onSearchFocusChanged: _setSearchFocused,
+              searchModeAnimation: _searchModeAnim,
+              onEditEvent: (event) => _calendarTabKey.currentState
+                  ?.showEditEventSheet(context, event),
+            ),
           ),
         ),
         RepaintBoundary(
@@ -2218,9 +2220,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               child: child,
                             );
                           },
-                          child: AppWindowContentPadding(
-                            child: _buildContent(),
-                          ),
+                           child: _buildContent(),
                         ),
 
                         // Header — last Stack child so it paints above the content.

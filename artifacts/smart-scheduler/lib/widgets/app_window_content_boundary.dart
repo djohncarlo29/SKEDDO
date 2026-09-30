@@ -43,6 +43,7 @@ class AppWindowContentBoundary extends StatelessWidget {
     if (horizontalInset <= 0.0) {
       return AppWindowContentScope(
         horizontalInset: 0.0,
+        physicalWidth: mediaQuery.size.width,
         child: child,
       );
     }
@@ -66,6 +67,7 @@ class AppWindowContentBoundary extends StatelessWidget {
 
     return AppWindowContentScope(
       horizontalInset: horizontalInset,
+      physicalWidth: mediaQuery.size.width,
       child: MediaQuery(data: contentMediaQuery, child: child),
     );
   }
@@ -94,10 +96,12 @@ class AppWindowContentScope extends InheritedWidget {
   const AppWindowContentScope({
     super.key,
     required this.horizontalInset,
+    required this.physicalWidth,
     required super.child,
   });
 
   final double horizontalInset;
+  final double physicalWidth;
 
   static AppWindowContentScope of(BuildContext context) {
     final scope =
@@ -108,5 +112,22 @@ class AppWindowContentScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(AppWindowContentScope oldWidget) =>
-      horizontalInset != oldWidget.horizontalInset;
+      horizontalInset != oldWidget.horizontalInset ||
+      physicalWidth != oldWidget.physicalWidth;
+}
+
+/// Gives a transition layer the full physical window width while its child
+/// applies [AppWindowContentPadding] to the actual UI elements.
+class AppWindowPhysicalWidth extends StatelessWidget {
+  const AppWindowPhysicalWidth({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: AppWindowContentScope.of(context).physicalWidth,
+      child: child,
+    );
+  }
 }

@@ -3,7 +3,7 @@ name: App-wide landscape content boundary
 description: Keep physical landscape system-area handling symmetric and centralized above the Navigator.
 ---
 
-The app-wide landscape model must keep each actual full-width surface edge-to-edge while reserving the larger physical horizontal system/cutout dimension only for UI positioning. The boundary publishes the inset and clears descendant horizontal safe-area fields; it must not paint a replacement background or constrain the Navigator. Actual surfaces stay outside shared content padding, while their child UI uses the published inset. Live rotation metrics remain above this boundary.
+The app-wide landscape model must keep each actual full-width surface edge-to-edge while reserving the larger physical horizontal system/cutout dimension only for UI positioning. The boundary publishes the inset and clears descendant horizontal safe-area fields; it must not paint a replacement background or constrain the Navigator. Actual surfaces stay outside shared content padding, while their child UI uses the published inset. Transition tracks that must leave the old interface completely must use the published physical width, with only their child UI padded. Live rotation metrics remain above this boundary.
 
 **Why:** The operating system can report the landscape system area on either physical side. Applying only the reported side moves SKEDDO's content when the device rotates; putting the actual header/content surfaces inside the inset boundary creates visible vertical seams at the safe-area edges.
 
