@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import '../app_theme.dart';
 import '../services/event_store.dart';
 import 'action_panel.dart';
+import 'app_window_content_boundary.dart';
 import 'rounded_cupertino_sheet.dart';
 
 VoidCallback? _activeDiscardChangesSheetDismiss;
@@ -46,9 +47,8 @@ Future<bool?> showConfirmationSheet(
   final isPresentedOverModalSheet =
       RoundedCupertinoSheetRoute.hasParentSheet(context);
   final horizontalInset =
-      isPresentedOverModalSheet
-          ? kModalConfirmationHorizontalInset
-          : 16.0;
+      AppWindowContentScope.of(context).horizontalInset +
+      (isPresentedOverModalSheet ? kModalConfirmationHorizontalInset : 16.0);
 
   void close(bool? result) {
     if (completer.isCompleted) return;
@@ -123,9 +123,8 @@ Future<bool?> showDiscardChangesConfirmationSheet(
   final isPresentedOverModalSheet =
       RoundedCupertinoSheetRoute.hasParentSheet(context);
   final horizontalInset =
-      isPresentedOverModalSheet
-          ? kModalConfirmationHorizontalInset
-          : 16.0;
+      AppWindowContentScope.of(context).horizontalInset +
+      (isPresentedOverModalSheet ? kModalConfirmationHorizontalInset : 16.0);
   VoidCallback? dismissActive;
 
   void close(bool? result) {
@@ -404,7 +403,9 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
               alignment: Alignment.topLeft,
               child: Padding(
                 padding: EdgeInsets.only(
-                  left: kDiscardConfirmationTopLeftEdgeGap,
+                  left:
+                      AppWindowContentScope.of(context).horizontalInset +
+                      kDiscardConfirmationTopLeftEdgeGap,
                   top:
                       MediaQuery.sizeOf(context).height *
                           kRoundedSheetTopGapRatio +

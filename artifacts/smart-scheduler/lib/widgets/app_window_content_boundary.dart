@@ -131,3 +131,25 @@ class AppWindowPhysicalWidth extends StatelessWidget {
     );
   }
 }
+
+/// Lets a child paint across the full physical window when its normal layout
+/// viewport is inside [AppWindowContentPadding].
+///
+/// Search headers use this so their background and separator remain edge to
+/// edge while their controls apply [AppWindowContentPadding] independently.
+class AppWindowFullBleedWidth extends StatelessWidget {
+  const AppWindowFullBleedWidth({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = AppWindowContentScope.of(context).physicalWidth;
+    return OverflowBox(
+      alignment: Alignment.center,
+      minWidth: width,
+      maxWidth: width,
+      child: SizedBox(width: width, child: child),
+    );
+  }
+}

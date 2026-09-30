@@ -23,6 +23,7 @@ import '../widgets/native_text_input.dart';
 import '../widgets/text_editing_helpers.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/search_bar_widget.dart';
+import '../widgets/app_window_content_boundary.dart';
 import '../widgets/selection_handle_haptics.dart';
 import '../widgets/vertical_edge_fade.dart';
 import '../widgets/horizontal_edge_fade.dart';
@@ -2083,6 +2084,7 @@ class CalendarTabState extends State<CalendarTab>
         child: ColoredBox(
           color: resolveThemeColor(kBackgroundColor, context),
           child: CustomScrollView(
+            clipBehavior: Clip.none,
             primary: false,
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
@@ -2098,31 +2100,38 @@ class CalendarTabState extends State<CalendarTab>
                 ),
               ),
               if (showResults)
-                SmartSearchResultsSliver(
-                  hits: _searchHits,
-                  suggestedQuery: _searchSuggestion,
-                  onSuggestionTap: _applySearchSuggestion,
-                  eventTopPadding: 18,
-                  eventTileWrapper: (hit, child, previewBuilder) =>
-                      wrapSearchEventTileWithActions(
-                        hit: hit,
-                        child: child,
-                        previewBuilder: previewBuilder,
-                        onEdit: widget.onEditEvent == null
-                            ? null
-                            : () {
-                                // Exit Calendar's overlay search session
-                                // before presenting the edit sheet.  The
-                                // search field is focus-locked while search
-                                // mode is active; leaving it mounted makes
-                                // it reclaim focus when a sheet text field is
-                                // tapped.
-                                cancelSearch();
-                                widget.onEditEvent!(hit.event);
-                              },
-                        onDelete: () => confirmDeleteEvent(context, hit.event),
-                      ),
-                  eventTilePressWrapper: wrapSearchEventTileWithPressScale,
+                SliverPadding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal:
+                        AppWindowContentScope.of(context).horizontalInset,
+                  ),
+                  sliver: SmartSearchResultsSliver(
+                    hits: _searchHits,
+                    suggestedQuery: _searchSuggestion,
+                    onSuggestionTap: _applySearchSuggestion,
+                    eventTopPadding: 18,
+                    eventTileWrapper: (hit, child, previewBuilder) =>
+                        wrapSearchEventTileWithActions(
+                          hit: hit,
+                          child: child,
+                          previewBuilder: previewBuilder,
+                          onEdit: widget.onEditEvent == null
+                              ? null
+                              : () {
+                                  // Exit Calendar's overlay search session
+                                  // before presenting the edit sheet.  The
+                                  // search field is focus-locked while search
+                                  // mode is active; leaving it mounted makes
+                                  // it reclaim focus when a sheet text field is
+                                  // tapped.
+                                  cancelSearch();
+                                  widget.onEditEvent!(hit.event);
+                                },
+                          onDelete: () =>
+                              confirmDeleteEvent(context, hit.event),
+                        ),
+                    eventTilePressWrapper: wrapSearchEventTileWithPressScale,
+                  ),
                 )
               else
                 const SliverFillRemaining(
@@ -2800,20 +2809,22 @@ class _CalSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext ctx, double shrinkOffset, bool overlapsContent) =>
-      ColoredBox(
-        color: resolveThemeColor(kBackgroundColor, ctx),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            searchBarRow,
-            if (showSeparator) ...[
-              const SizedBox(height: kSearchBarHeaderSeparatorGap),
-              Container(
-                height: kSearchBarSeparatorHeight,
-                color: resolveThemeColor(kSeparatorColor, ctx),
-              ),
+      AppWindowFullBleedWidth(
+        child: ColoredBox(
+          color: resolveThemeColor(kBackgroundColor, ctx),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppWindowContentPadding(child: searchBarRow),
+              if (showSeparator) ...[
+                const SizedBox(height: kSearchBarHeaderSeparatorGap),
+                Container(
+                  height: kSearchBarSeparatorHeight,
+                  color: resolveThemeColor(kSeparatorColor, ctx),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       );
 
@@ -12647,25 +12658,26 @@ class _NewEventSheetState extends State<_NewEventSheet>
       child: ColoredBox(
         color: resolveThemeColor(kImportOverlayScrim, context),
         child: Center(
-          child: Container(
-            width: 270,
-            decoration: ShapeDecoration(
-              color: cardBg,
-              shape: BoundedSquircleStadiumBorder(
-                radius: kConfirmationSheetCornerRadius,
-                side: isDark
-                    ? BorderSide(
-                        color: resolveThemeColor(kTertiaryLabel, context),
-                        width: 0.5,
-                      )
-                    : BorderSide.none,
+          child: AppWindowContentPadding(
+            child: Container(
+              width: 270,
+              decoration: ShapeDecoration(
+                color: cardBg,
+                shape: BoundedSquircleStadiumBorder(
+                  radius: kConfirmationSheetCornerRadius,
+                  side: isDark
+                      ? BorderSide(
+                          color: resolveThemeColor(kTertiaryLabel, context),
+                          width: 0.5,
+                        )
+                      : BorderSide.none,
+                ),
+                shadows: resolveThemeShadows(kCardShadow, context),
               ),
-              shadows: resolveThemeShadows(kCardShadow, context),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                 SizedBox(height: 22),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -12747,7 +12759,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     ),
                   ),
                 ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

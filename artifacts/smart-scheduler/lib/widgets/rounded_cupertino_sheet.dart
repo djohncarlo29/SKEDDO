@@ -11,6 +11,7 @@ import '../app_theme.dart'
         kRoundedSheetTopGapRatio,
         resolveThemeColor,
         systemSafeAreaBottomInset;
+import 'app_window_content_boundary.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // RoundedCupertinoSheet — a drop-in replacement for Flutter's built-in
@@ -123,6 +124,9 @@ class _SafePopupRouteSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final surfaceColor = resolveThemeColor(kBackgroundColor, context);
+    final popupChild = fullScreen
+        ? child
+        : AppWindowContentPadding(child: child);
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -135,9 +139,9 @@ class _SafePopupRouteSurface extends StatelessWidget {
             child: ColoredBox(color: surfaceColor),
           ),
         if (fullScreen)
-          Positioned.fill(child: child)
+          Positioned.fill(child: popupChild)
         else
-          Align(alignment: Alignment.bottomCenter, child: child),
+          Align(alignment: Alignment.bottomCenter, child: popupChild),
       ],
     );
   }
@@ -231,9 +235,11 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
                         // Build the page under the cleaned MediaQuery above.
                         // Calling builder(context) here would pass the route's
                         // original context and restore SafeArea padding.
-                        child: _RoundedSheetScope(
-                          child: Builder(builder: builder),
-                        ),
+                         child: _RoundedSheetScope(
+                           child: AppWindowContentPadding(
+                             child: Builder(builder: builder),
+                           ),
+                         ),
                       ),
                     ),
                   ),

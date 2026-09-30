@@ -22,6 +22,7 @@ import '../widgets/action_panel.dart';
 import '../widgets/native_text_input.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/search_bar_widget.dart';
+import '../widgets/app_window_content_boundary.dart';
 import '../widgets/vertical_edge_fade.dart';
 import '../widgets/edge_fade_metrics.dart';
 import '../ai/search/search_service.dart';
@@ -141,20 +142,22 @@ class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext ctx, double shrinkOffset, bool overlapsContent) =>
-      ColoredBox(
-        color: resolveThemeColor(kBackgroundColor, ctx),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            searchBarRow,
-            if (showSeparator) ...[
-              const SizedBox(height: kSearchBarHeaderSeparatorGap),
-              Container(
-                height: kSearchBarSeparatorHeight,
-                color: resolveThemeColor(kSeparatorColor, ctx),
-              ),
+      AppWindowFullBleedWidth(
+        child: ColoredBox(
+          color: resolveThemeColor(kBackgroundColor, ctx),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppWindowContentPadding(child: searchBarRow),
+              if (showSeparator) ...[
+                const SizedBox(height: kSearchBarHeaderSeparatorGap),
+                Container(
+                  height: kSearchBarSeparatorHeight,
+                  color: resolveThemeColor(kSeparatorColor, ctx),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       );
 
@@ -534,12 +537,14 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
         // Never structurally modified when off-screen search is active.
         // The overlay Stack child covers it entirely, preserving scroll
         // position for the whole duration of the off-screen session.
-        CustomScrollView(
-          controller: _scrollController,
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics(),
-          ),
-          slivers: [
+        AppWindowContentPadding(
+          child: CustomScrollView(
+            clipBehavior: Clip.none,
+            controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            slivers: [
             // ── Search bar sliver ─────────────────────────────────────────
             // Off-screen active : _searchBarKey lives in the overlay Stack;
             //   a same-height SizedBox placeholder occupies this slot so
@@ -643,7 +648,8 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                 },
               ),
             ],
-          ],
+            ],
+          ),
         ),
 
         // ── Off-screen search overlay ─────────────────────────────────────
@@ -665,7 +671,9 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
               // PrimaryScrollController (which in a CupertinoTabScaffold is
               // the tab's own scroll controller) — that would reset the tab's
               // scroll offset to 0 the moment this overlay appears.
-              child: CustomScrollView(
+              child: AppWindowContentPadding(
+                child: CustomScrollView(
+                  clipBehavior: Clip.none,
                 primary: false,
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
@@ -715,6 +723,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                       ),
                     ),
                 ],
+                ),
               ),
             ),
           ),
@@ -1995,9 +2004,10 @@ class _ExtractionResultSheetState extends State<_ExtractionResultSheet> {
         shape: BoundedSquircleStadiumBorder(radius: 16, topOnly: true),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      child: AppWindowContentPadding(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
           // Drag handle
           Padding(
             padding: const EdgeInsets.only(top: 10, bottom: 4),
@@ -2095,7 +2105,8 @@ class _ExtractionResultSheetState extends State<_ExtractionResultSheet> {
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -1489,20 +1489,22 @@ class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
   // list; only the separator children after it are added/removed.
   @override
   Widget build(BuildContext ctx, double shrinkOffset, bool overlapsContent) =>
-      ColoredBox(
-        color: resolveThemeColor(kBackgroundColor, ctx),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            searchBarRow,
-            if (showSeparator) ...[
-              const SizedBox(height: kSearchBarHeaderSeparatorGap),
-              Container(
-                height: kSearchBarSeparatorHeight,
-                color: resolveThemeColor(kSeparatorColor, ctx),
-              ),
+      AppWindowFullBleedWidth(
+        child: ColoredBox(
+          color: resolveThemeColor(kBackgroundColor, ctx),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppWindowContentPadding(child: searchBarRow),
+              if (showSeparator) ...[
+                const SizedBox(height: kSearchBarHeaderSeparatorGap),
+                Container(
+                  height: kSearchBarSeparatorHeight,
+                  color: resolveThemeColor(kSeparatorColor, ctx),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       );
 
@@ -8016,6 +8018,7 @@ class EventsTabState extends State<EventsTab>
       width: physicalWidth,
       child: AppWindowContentPadding(
         child: CustomScrollView(
+          clipBehavior: Clip.none,
           key: _scrollViewportKey,
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(
@@ -8491,10 +8494,7 @@ class EventsTabState extends State<EventsTab>
           // active on the main Events view (not inside DCV).  The gridView
           // scroll position is completely untouched throughout.
           if (widget.activeDCV == null && _greyActive)
-            _buildGridSearchOverlay(
-              AppWindowContentPadding(child: searchBarRow),
-              showResults,
-            ),
+            _buildGridSearchOverlay(searchBarRow, showResults),
           // DCV search overlay — floats above the DCV content when active.
           if (widget.activeDCV != null && _greyActive)
             _buildDcvSearchOverlay(showResults),
@@ -8520,7 +8520,9 @@ class EventsTabState extends State<EventsTab>
           // PrimaryScrollController (which in a CupertinoTabScaffold is
           // the tab's own scroll controller) — that would reset the tab's
           // scroll offset to 0 the moment this overlay appears.
-          child: CustomScrollView(
+          child: AppWindowContentPadding(
+            child: CustomScrollView(
+              clipBehavior: Clip.none,
             primary: false,
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
@@ -8561,6 +8563,7 @@ class EventsTabState extends State<EventsTab>
                   ),
                 ),
             ],
+            ),
           ),
         ),
       ),
@@ -8626,17 +8629,19 @@ class EventsTabState extends State<EventsTab>
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.zero,
-                    child: SmartDcvSearchResults(
-                      primary: _searchPrimary,
-                      overflow: _searchOverflow,
-                      suggestedQuery: _searchSuggestion,
-                      onSuggestionTap: _applySearchSuggestion,
-                      hidePrimaryCategoryName:
-                          activeStandardDcvCategoryId != null,
-                      eventTopPadding: 16,
-                      eventTileWrapper: _wrapSearchEventTile,
-                      eventTilePressWrapper:
-                          (child) => _TilePressScale(child: child),
+                    child: AppWindowContentPadding(
+                      child: SmartDcvSearchResults(
+                        primary: _searchPrimary,
+                        overflow: _searchOverflow,
+                        suggestedQuery: _searchSuggestion,
+                        onSuggestionTap: _applySearchSuggestion,
+                        hidePrimaryCategoryName:
+                            activeStandardDcvCategoryId != null,
+                        eventTopPadding: 16,
+                        eventTileWrapper: _wrapSearchEventTile,
+                        eventTilePressWrapper:
+                            (child) => _TilePressScale(child: child),
+                      ),
                     ),
                   ),
                 ),
@@ -11230,6 +11235,8 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final primary = resolveThemeColor(kPrimaryLabel, context);
     final secondary = resolveThemeColor(kSecondaryLabel, context);
+    final horizontalInset =
+        AppWindowContentScope.of(context).horizontalInset + 16;
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
       shape: const BoundedSquircleStadiumBorder(
@@ -11291,7 +11298,10 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
           alignment: Alignment.center,
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.symmetric(
+                horizontal: horizontalInset,
+                vertical: 16,
+              ),
               child: GelBloomCard(
                 scaleOrigin: Alignment.center,
                 fillOpacity: 0.82,
@@ -11429,6 +11439,8 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final primary = resolveThemeColor(kPrimaryLabel, context);
     final secondary = resolveThemeColor(kSecondaryLabel, context);
+    final horizontalInset =
+        AppWindowContentScope.of(context).horizontalInset + 16;
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
       shape: const BoundedSquircleStadiumBorder(
@@ -11489,7 +11501,10 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
           alignment: Alignment.center,
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.symmetric(
+                horizontal: horizontalInset,
+                vertical: 16,
+              ),
               child: GelBloomCard(
                 scaleOrigin: Alignment.center,
                 fillOpacity: 0.82,
@@ -11633,6 +11648,8 @@ class _UtilityItemSheetOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final primary = resolveThemeColor(kPrimaryLabel, context);
     final secondary = resolveThemeColor(kSecondaryLabel, context);
+    final horizontalInset =
+        AppWindowContentScope.of(context).horizontalInset + 16;
     final buttonDecor = ShapeDecoration(
       color: resolveThemeColor(kModalButtonBackground, context),
       shape: const BoundedSquircleStadiumBorder(
@@ -11694,7 +11711,10 @@ class _UtilityItemSheetOverlay extends StatelessWidget {
           alignment: Alignment.center,
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.symmetric(
+                horizontal: horizontalInset,
+                vertical: 16,
+              ),
               child: GelBloomCard(
                 scaleOrigin: Alignment.center,
                 fillOpacity: 0.82,

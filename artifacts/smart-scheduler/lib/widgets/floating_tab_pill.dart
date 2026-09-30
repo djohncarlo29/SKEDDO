@@ -59,137 +59,134 @@ class FloatingTabPill extends StatelessWidget {
     final settledPillColor = selectedPillColor.withValues(alpha: 0.60);
     final transitionPillColor = selectedPillColor.withValues(alpha: 0.60);
     final unselectedColor = resolveThemeColor(kSecondaryLabel, context);
-    final screenWidth = MediaQuery.sizeOf(context).width;
     final bottomOffset = floatingTabBarBottomOffset(context);
     final barStyle = _floatingTabBarStyle(context);
 
     return Semantics(
       container: true,
       label: 'Main navigation',
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // This layer is deliberately outside the glass capture. It paints
-          // onto the page first, then the translucent bar composites above it.
-          // Nothing in the shadow can therefore darken or refract through the
-          // bar's material.
-          Positioned(
-            left: kFloatingTabBarHorizontalMargin,
-            right: kFloatingTabBarHorizontalMargin,
-            bottom: bottomOffset,
-            height: kFloatingTabBarHeight,
-            child: IgnorePointer(
-              child: LiquidGlassShadow(
-                // The bar itself stays at the earlier, softer level. Its
-                // shadow is separate from the glass, but never competes with
-                // the transient raised selection lens below.
-                blur: 16,
-                opacity: isDark ? 0 : 0.18,
-                offset: const Offset(0, 5),
-                cornerRadius: kSquircleStadiumRadius,
-                child: const SizedBox.expand(),
-              ),
-            ),
-          ),
-          // The package adds MediaQuery.padding.bottom internally on its
-          // Impeller path. Remove that implicit inset and pass the complete
-          // shared offset explicitly, otherwise the glass capsule is lifted
-          // away from the directly positioned rim/shadow on Android.
-          MediaQuery.removePadding(
-            context: context,
-            removeBottom: true,
-            child: MediaQuery.withClampedTextScaling(
-              minScaleFactor: kFloatingTabBarMinimumTextScale,
-              maxScaleFactor: kFloatingTabBarMaximumTextScale,
-              child: LiquidGlassTabBar.withImpeller(
-                items: [
-                  _tabItem(SFIcons.sf_text_document, 'Notes'),
-                  _tabItem(SFIcons.sf_calendar, 'Calendar'),
-                  _tabItem(SFIcons.sf_list_bullet, 'Events'),
-                ],
-                selectedIndex: selectedIndex,
-                onChanged: onTabSelected,
-                width: (screenWidth - (kFloatingTabBarHorizontalMargin * 2))
-                    .clamp(0.0, double.infinity),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final barWidth = (constraints.maxWidth -
+                  (kFloatingTabBarHorizontalMargin * 2))
+              .clamp(0.0, double.infinity);
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              // This layer is deliberately outside the glass capture. It paints
+              // onto the page first, then the translucent bar composites above it.
+              // Nothing in the shadow can therefore darken or refract through the
+              // bar's material.
+              Positioned(
+                left: kFloatingTabBarHorizontalMargin,
+                right: kFloatingTabBarHorizontalMargin,
+                bottom: bottomOffset,
                 height: kFloatingTabBarHeight,
-                margin: EdgeInsets.only(bottom: bottomOffset),
-                itemPadding: 4,
-                itemStyle: LiquidGlassTabItemStyle(
-                  selectedColor: selectedColor,
-                  unselectedColor: unselectedColor,
-                  iconSize: 22,
-                  labelFontSize: 12,
-                  underGlassLabelFontSize: 12,
-                  iconLabelGap: 2,
-                  selectedFontWeight: FontWeight.w600,
-                  unselectedFontWeight: FontWeight.w500,
-                ),
-                style: barStyle,
-                // The environmental shadows above own elevation. Keep the glass
-                // material itself shadow-free so its refraction remains clean.
-                pillStyle: LiquidGlassTabPillStyle(
-                  mode: LiquidGlassPillMode.impellerOnly,
-                  animated: true,
-                  // Keep the fully lifted glass lens clear. The transition-only
-                  // tint carries the visible handoff without tinting this
-                  // settled lifted endpoint; the package aberration remains
-                  // authored on the glass refraction itself.
-                  color: const Color(0x00000000),
-                  transitionColor: transitionPillColor,
-                  shape: LiquidGlassShape.squircle(
+                child: IgnorePointer(
+                  child: LiquidGlassShadow(
+                    // The bar itself stays at the earlier, softer level. Its
+                    // shadow is separate from the glass, but never competes with
+                    // the transient raised selection lens below.
+                    blur: 16,
+                    opacity: isDark ? 0 : 0.18,
+                    offset: const Offset(0, 5),
                     cornerRadius: kSquircleStadiumRadius,
+                    child: const SizedBox.expand(),
                   ),
-                  glassStyle: LiquidGlassStyle(
-                    shape: LiquidGlassShape.squircle(
-                      cornerRadius: kSquircleStadiumRadius,
-                    ),
-                    appearance: LiquidGlassAppearance(
-                      // The raised endpoint must remain a transparent,
-                      // refracting glass lens. The resolved Light/Dark color
-                      // is owned by the settled rest endpoint above, so the
-                      // handoff does not turn the raised pill into a flat fill.
-                      // This shadow belongs to the motion lens only. The package
-                      // fades it with the lift/morph handoff, so the settled
-                      // active pill remains clean and the moving pill gets depth.
-                      shadow: LiquidGlassShadow(
-                        blur: 6,
-                        opacity: isDark ? 0 : 0.22,
-                        offset: const Offset(0, 3),
-                        cornerRadius: kSquircleStadiumRadius,
-                        inset: 1,
+                ),
+              ),
+              // Constrain the glass widget to the same explicit side margins
+              // as its shadow. StackFit.expand alone used to give it the whole
+              // host width, so its physical hit/render bounds could reach the
+              // landscape system area even though the authored width was smaller.
+              Positioned(
+                left: kFloatingTabBarHorizontalMargin,
+                right: kFloatingTabBarHorizontalMargin,
+                top: 0,
+                bottom: 0,
+                child: MediaQuery.removePadding(
+                  context: context,
+                  removeBottom: true,
+                  child: MediaQuery.withClampedTextScaling(
+                    minScaleFactor: kFloatingTabBarMinimumTextScale,
+                    maxScaleFactor: kFloatingTabBarMaximumTextScale,
+                    child: LiquidGlassTabBar.withImpeller(
+                      items: [
+                        _tabItem(SFIcons.sf_text_document, 'Notes'),
+                        _tabItem(SFIcons.sf_calendar, 'Calendar'),
+                        _tabItem(SFIcons.sf_list_bullet, 'Events'),
+                      ],
+                      selectedIndex: selectedIndex,
+                      onChanged: onTabSelected,
+                      width: barWidth,
+                      height: kFloatingTabBarHeight,
+                      margin: EdgeInsets.only(bottom: bottomOffset),
+                      itemPadding: 4,
+                      itemStyle: LiquidGlassTabItemStyle(
+                        selectedColor: selectedColor,
+                        unselectedColor: unselectedColor,
+                        iconSize: 22,
+                        labelFontSize: 12,
+                        underGlassLabelFontSize: 12,
+                        iconLabelGap: 2,
+                        selectedFontWeight: FontWeight.w600,
+                        unselectedFontWeight: FontWeight.w500,
+                      ),
+                      style: barStyle,
+                      // The environmental shadows above own elevation. Keep the
+                      // glass material itself shadow-free so its refraction remains clean.
+                      pillStyle: LiquidGlassTabPillStyle(
+                        mode: LiquidGlassPillMode.impellerOnly,
+                        animated: true,
+                        color: const Color(0x00000000),
+                        transitionColor: transitionPillColor,
+                        shape: LiquidGlassShape.squircle(
+                          cornerRadius: kSquircleStadiumRadius,
+                        ),
+                        glassStyle: LiquidGlassStyle(
+                          shape: LiquidGlassShape.squircle(
+                            cornerRadius: kSquircleStadiumRadius,
+                          ),
+                          appearance: LiquidGlassAppearance(
+                            shadow: LiquidGlassShadow(
+                              blur: 6,
+                              opacity: isDark ? 0 : 0.22,
+                              offset: const Offset(0, 3),
+                              cornerRadius: kSquircleStadiumRadius,
+                              inset: 1,
+                            ),
+                          ),
+                          refraction: LiquidGlassRefraction(
+                            distortion: 0.04,
+                            distortionWidth: 12,
+                            magnification: 1,
+                            chromaticAberration:
+                                kFloatingTabBarChromaticAberration,
+                          ),
+                        ),
+                        rest: LiquidGlassStyle(
+                          shape: LiquidGlassShape.squircle(
+                            cornerRadius: kSquircleStadiumRadius,
+                          ),
+                          appearance: LiquidGlassAppearance(
+                            color: settledPillColor,
+                          ),
+                          refraction: const LiquidGlassRefraction(
+                            distortion: 0,
+                            distortionWidth: 0,
+                            magnification: 1,
+                            chromaticAberration:
+                                kFloatingTabBarChromaticAberration,
+                          ),
+                        ),
                       ),
                     ),
-                    refraction: LiquidGlassRefraction(
-                      distortion: 0.04,
-                      distortionWidth: 12,
-                      magnification: 1,
-                      chromaticAberration: kFloatingTabBarChromaticAberration,
-                    ),
-                  ),
-                  // Keep the selected Light/Dark surface color as a gentle
-                  // tint at rest. The package rest endpoint retains its
-                  // authored chromatic aberration for a continuous handoff,
-                  // while its zero distortion keeps the settled pill stable.
-                  rest: LiquidGlassStyle(
-                    shape: LiquidGlassShape.squircle(
-                      cornerRadius: kSquircleStadiumRadius,
-                    ),
-                    appearance: LiquidGlassAppearance(color: settledPillColor),
-                    // Keep the package aberration authored at the settled
-                    // endpoint too. Distortion remains inert so the static
-                    // rest pill is still stable and does not bend the bar.
-                    refraction: const LiquidGlassRefraction(
-                      distortion: 0,
-                      distortionWidth: 0,
-                      magnification: 1,
-                      chromaticAberration: kFloatingTabBarChromaticAberration,
-                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../app_theme.dart';
 import '../widgets/action_panel.dart';
+import '../widgets/app_window_content_boundary.dart';
 
 // Offline-only speech-to-text service. Recognition is performed by the
 // platform's native speech engine; no network or language-model API is used.
@@ -200,9 +201,10 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
         Align(
           alignment: Alignment.bottomCenter,
           child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: GelBloomCard(
+              child: AppWindowContentPadding(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: GelBloomCard(
                 scaleOrigin: Alignment.bottomCenter,
                 fillOpacity: 0.82,
                 shadowOpacity: 0.26,
@@ -315,6 +317,7 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
                       const SizedBox(height: 4),
                       ],
                     ),
+                  ),
                   ),
                 ),
               ),
