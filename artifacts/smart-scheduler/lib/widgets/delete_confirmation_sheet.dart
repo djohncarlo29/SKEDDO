@@ -6,6 +6,7 @@ import '../app_theme.dart';
 import '../services/event_store.dart';
 import 'action_panel.dart';
 import 'app_window_content_boundary.dart';
+import 'device_screen_size.dart' as device_screen_size;
 import 'rounded_cupertino_sheet.dart';
 
 VoidCallback? _activeDiscardChangesSheetDismiss;
@@ -299,8 +300,13 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
       shadows: resolveThemeShadows(kCardShadow, context),
     );
     final viewportSize = MediaQuery.sizeOf(context);
+    // The browser's usable viewport can lose different amounts of height to
+    // browser chrome between orientations. Use the full display dimensions
+    // when available so the Xmark card keeps its portrait width after rotation.
+    final screenSize =
+        device_screen_size.getDeviceScreenSize(context) ?? viewportSize;
     final sheetWidth = fromXmark
-        ? viewportSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction
+        ? screenSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction
         : double.infinity;
     final message = isNew
         ? 'Are you sure you want to discard this new $entityLabel?'
