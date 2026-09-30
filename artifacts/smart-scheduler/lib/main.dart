@@ -3264,16 +3264,22 @@ class _CalendarNavChevron extends StatelessWidget {
       // height from the shared center while retaining the landscape tap zones.
       final compactIconOffset = 13.0 - safeTitleFontSize * 0.3;
 
+      const compactControlHeight = 52.0;
+
       Widget compactHalf({
         required _ChevronDir direction,
         required Color color,
         required VoidCallback? onTap,
       }) {
         return Expanded(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
+          child: Semantics(
+            button: true,
+            enabled: onTap != null,
+            label: direction == _ChevronDir.up
+                ? 'Go to more detail'
+                : 'Return to calendar overview',
             onTap: onTap,
-            child: SizedBox.expand(
+            child: IgnorePointer(
               child: Center(
                 child: Transform.translate(
                   offset: Offset(
@@ -3297,20 +3303,29 @@ class _CalendarNavChevron extends StatelessWidget {
 
       return SizedBox(
         width: 24,
-        height: 52,
-        child: Column(
-          children: [
-            compactHalf(
-              direction: _ChevronDir.up,
-              color: canUp ? resolveAccentColor(context) : disabledColor,
-              onTap: onUp,
-            ),
-            compactHalf(
-              direction: _ChevronDir.down,
-              color: canDown ? resolveAccentColor(context) : disabledColor,
-              onTap: onDown,
-            ),
-          ],
+        height: compactControlHeight,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          excludeFromSemantics: true,
+          onTapUp: (details) {
+            final tappedUpperHalf =
+                details.localPosition.dy < compactControlHeight / 2;
+            (tappedUpperHalf ? onUp : onDown)?.call();
+          },
+          child: Column(
+            children: [
+              compactHalf(
+                direction: _ChevronDir.up,
+                color: canUp ? resolveAccentColor(context) : disabledColor,
+                onTap: onUp,
+              ),
+              compactHalf(
+                direction: _ChevronDir.down,
+                color: canDown ? resolveAccentColor(context) : disabledColor,
+                onTap: onDown,
+              ),
+            ],
+          ),
         ),
       );
     }
