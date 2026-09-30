@@ -3303,6 +3303,8 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
   @override
   Widget build(BuildContext context) {
     final safeTop = MediaQuery.paddingOf(context).top;
+    final horizontalInset =
+        AppWindowContentScope.of(context).horizontalInset;
 
     return AnimatedBuilder(
       animation: _ctrl,
@@ -3328,122 +3330,122 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
             // ── Squircle attachment card (shadow + content) ─────────────────
             // Padding: top 60 px (sits below the header buttons with room),
             //          left / right / bottom 50 px.
-            SafeArea(
-              child: Opacity(
-                opacity: t,
-                child: Transform.scale(
-                  scale: 0.90 + 0.10 * ts,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(30, 60, 30, 75),
-                    child: LayoutBuilder(
-                      builder: (_, bc) {
-                        // Reserve 60 px (16 gap + 44 button) for the PDF nav
-                        // row when it's visible so the card never overflows.
-                        const navH = 16.0 + 44.0;
-                        final cardMaxH =
-                            (bc.maxHeight - (_pdfTotal > 1 ? navH : 0.0)).clamp(
-                              0.0,
-                              double.infinity,
-                            );
+            AppWindowContentPadding(
+              child: SafeArea(
+                child: Opacity(
+                  opacity: t,
+                  child: Transform.scale(
+                    scale: 0.90 + 0.10 * ts,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(30, 60, 30, 75),
+                      child: LayoutBuilder(
+                        builder: (_, bc) {
+                          // Reserve 60 px (16 gap + 44 button) for the PDF nav
+                          // row when it's visible so the card never overflows.
+                          const navH = 16.0 + 44.0;
+                          final cardMaxH =
+                              (bc.maxHeight - (_pdfTotal > 1 ? navH : 0.0))
+                                  .clamp(0.0, double.infinity);
 
-                        return Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Squircle card — height-capped, shadow + border
-                              ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  maxWidth: bc.maxWidth,
-                                  maxHeight: cardMaxH,
-                                ),
-                                child: DecoratedBox(
-                                  decoration: ShapeDecoration(
-                                    color: kCardColor,
-                                    shape: const BoundedSquircleStadiumBorder(
-                                      side: const BorderSide(
-                                        color: kAttachmentBorder,
-                                        width: 0.5,
-                                      ),
-                                    ),
-                                    shadows: resolveThemeShadows(const [
-                                      BoxShadow(
-                                        color: kAttachmentShadow,
-                                        blurRadius: 20,
-                                        offset: Offset(0, 4),
-                                      ),
-                                    ], context),
+                          return Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Squircle card — height-capped, shadow + border
+                                ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth: bc.maxWidth,
+                                    maxHeight: cardMaxH,
                                   ),
-                                  child: child!,
-                                ),
-                              ),
-                              // PDF nav row — 16 px below squircle, outside the
-                              // shadow card so it doesn't distort the shadow.
-                              if (_pdfTotal > 1) ...[
-                                const SizedBox(height: 16),
-                                // Fixed-width Stack so the chevrons never shift
-                                // as the page-indicator text grows (e.g. "99 / 100").
-                                // Buttons are pinned to the left/right edges;
-                                // text floats in the centre with 50 px padding on
-                                // each side — plenty even for triple-digit counts.
-                                SizedBox(
-                                  width: 224,
-                                  height: 40,
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 50,
+                                  child: DecoratedBox(
+                                    decoration: ShapeDecoration(
+                                      color: kCardColor,
+                                      shape: const BoundedSquircleStadiumBorder(
+                                        side: const BorderSide(
+                                          color: kAttachmentBorder,
+                                          width: 0.5,
                                         ),
-                                        child: Text(
-                                          '$_pdfPage / $_pdfTotal',
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            inherit: false,
-                                            color: kPrimaryLabel,
-                                            fontSize: 15,
-                                            fontFamily: 'SFProText',
-                                            fontWeight: FontWeight.w500,
-                                            fontStyle: FontStyle.normal,
-                                            letterSpacing: kTracking16,
+                                      ),
+                                      shadows: resolveThemeShadows(const [
+                                        BoxShadow(
+                                          color: kAttachmentShadow,
+                                          blurRadius: 20,
+                                          offset: Offset(0, 4),
+                                        ),
+                                      ], context),
+                                    ),
+                                    child: child!,
+                                  ),
+                                ),
+                                // PDF nav row — 16 px below squircle, outside the
+                                // shadow card so it doesn't distort the shadow.
+                                if (_pdfTotal > 1) ...[
+                                  const SizedBox(height: 16),
+                                  // Fixed-width Stack so the chevrons never shift
+                                  // as the page-indicator text grows (e.g. "99 / 100").
+                                  // Buttons are pinned to the left/right edges;
+                                  // text floats in the centre with 50 px padding on
+                                  // each side — plenty even for triple-digit counts.
+                                  SizedBox(
+                                    width: 224,
+                                    height: 40,
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 50,
+                                          ),
+                                          child: Text(
+                                            '$_pdfPage / $_pdfTotal',
+                                            textAlign: TextAlign.center,
+                                            style: const TextStyle(
+                                              inherit: false,
+                                              color: kPrimaryLabel,
+                                              fontSize: 15,
+                                              fontFamily: 'SFProText',
+                                              fontWeight: FontWeight.w500,
+                                              fontStyle: FontStyle.normal,
+                                              letterSpacing: kTracking16,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      Positioned(
-                                        left: 0,
-                                        top: 0,
-                                        child: _PreviewCircleButton(
-                                          icon: SFIcons.sf_chevron_right,
-                                          flipHorizontal: true,
-                                          verticalIconOffset: -2,
-                                          iconColor: _pdfPage > 1
-                                              ? kPrimaryLabel
-                                              : kTertiaryLabel,
-                                          onTap: () => _pdfKey.currentState
-                                              ?.navigate(-1),
+                                        Positioned(
+                                          left: 0,
+                                          top: 0,
+                                          child: _PreviewCircleButton(
+                                            icon: SFIcons.sf_chevron_right,
+                                            flipHorizontal: true,
+                                            verticalIconOffset: -2,
+                                            iconColor: _pdfPage > 1
+                                                ? kPrimaryLabel
+                                                : kTertiaryLabel,
+                                            onTap: () => _pdfKey.currentState
+                                                ?.navigate(-1),
+                                          ),
                                         ),
-                                      ),
-                                      Positioned(
-                                        right: 0,
-                                        top: 0,
-                                        child: _PreviewCircleButton(
-                                          icon: SFIcons.sf_chevron_right,
-                                          verticalIconOffset: -2,
-                                          iconColor: _pdfPage < _pdfTotal
-                                              ? kPrimaryLabel
-                                              : kTertiaryLabel,
-                                          onTap: () =>
-                                              _pdfKey.currentState?.navigate(1),
+                                        Positioned(
+                                          right: 0,
+                                          top: 0,
+                                          child: _PreviewCircleButton(
+                                            icon: SFIcons.sf_chevron_right,
+                                            verticalIconOffset: -2,
+                                            iconColor: _pdfPage < _pdfTotal
+                                                ? kPrimaryLabel
+                                                : kTertiaryLabel,
+                                            onTap: () => _pdfKey.currentState
+                                                ?.navigate(1),
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
+                                ],
                               ],
-                            ],
-                          ),
-                        );
-                      },
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
@@ -3453,7 +3455,7 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
             // ── × button — same coords as app hamburger ─────────────────────
             Positioned(
               top: safeTop + _kBtnTop,
-              left: _kBtnEdge,
+              left: horizontalInset + _kBtnEdge,
               child: Opacity(
                 opacity: t,
                 child: _PreviewCircleButton(
@@ -3468,7 +3470,7 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
             // ── ✓ button — same coords as app + icon ────────────────────────
             Positioned(
               top: safeTop + _kBtnTop,
-              right: _kBtnEdge,
+              right: horizontalInset + _kBtnEdge,
               child: Opacity(
                 opacity: t,
                 child: _PreviewCircleButton(

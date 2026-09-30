@@ -170,6 +170,8 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = resolveAccentColor(context);
+    final hasLandscapeInset =
+        AppWindowContentScope.of(context).horizontalInset > 0.0;
     final primary = resolveThemeColor(kPrimaryLabel, context);
     final secondary = resolveThemeColor(kSecondaryLabel, context);
     final micCircle = resolveThemeColor(kMicPermissionCircle, context);
@@ -201,6 +203,8 @@ class _MicPermissionSheetOverlay extends StatelessWidget {
         Align(
           alignment: Alignment.bottomCenter,
           child: SafeArea(
+              left: !hasLandscapeInset,
+              right: !hasLandscapeInset,
               child: AppWindowContentPadding(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),

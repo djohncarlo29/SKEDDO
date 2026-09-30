@@ -55,4 +55,79 @@ void main() {
       AppWindowContentBoundary.landscapeSystemInsetFor(base),
     );
   });
+
+  testWidgets('content padding clears one-sided insets for nested safe areas', (
+    tester,
+  ) async {
+    EdgeInsets? nestedPadding;
+    EdgeInsets? nestedViewPadding;
+    EdgeInsets? nestedGestureInsets;
+    double? reservedInset;
+
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(
+          size: Size(844, 390),
+          padding: EdgeInsets.only(left: 52),
+          viewPadding: EdgeInsets.only(left: 52),
+          systemGestureInsets: EdgeInsets.only(left: 52),
+        ),
+        child: AppWindowContentBoundary(
+          child: AppWindowContentPadding(
+            child: Builder(
+              builder: (context) {
+                reservedInset =
+                    AppWindowContentScope.of(context).horizontalInset;
+                nestedPadding = MediaQuery.paddingOf(context);
+                nestedViewPadding = MediaQuery.viewPaddingOf(context);
+                nestedGestureInsets = MediaQuery.systemGestureInsetsOf(context);
+                return const SizedBox.expand();
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(reservedInset, 52);
+    expect(nestedPadding!.left, 0);
+    expect(nestedPadding!.right, 0);
+    expect(nestedViewPadding!.left, 0);
+    expect(nestedViewPadding!.right, 0);
+    expect(nestedGestureInsets!.left, 0);
+    expect(nestedGestureInsets!.right, 0);
+  });
+
+  testWidgets('content padding preserves portrait safe areas', (tester) async {
+    EdgeInsets? nestedPadding;
+    EdgeInsets? nestedViewPadding;
+    double? reservedInset;
+
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(
+          size: Size(390, 844),
+          padding: EdgeInsets.only(left: 18),
+          viewPadding: EdgeInsets.only(left: 18),
+        ),
+        child: AppWindowContentBoundary(
+          child: AppWindowContentPadding(
+            child: Builder(
+              builder: (context) {
+                reservedInset =
+                    AppWindowContentScope.of(context).horizontalInset;
+                nestedPadding = MediaQuery.paddingOf(context);
+                nestedViewPadding = MediaQuery.viewPaddingOf(context);
+                return const SizedBox.expand();
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(reservedInset, 0);
+    expect(nestedPadding!.left, 18);
+    expect(nestedViewPadding!.left, 18);
+  });
 }

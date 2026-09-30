@@ -11233,6 +11233,8 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasLandscapeInset =
+        AppWindowContentScope.of(context).horizontalInset > 0.0;
     final primary = resolveThemeColor(kPrimaryLabel, context);
     final secondary = resolveThemeColor(kSecondaryLabel, context);
     final horizontalInset =
@@ -11297,6 +11299,8 @@ class _DeleteGroupSheetOverlay extends StatelessWidget {
         Align(
           alignment: Alignment.center,
           child: SafeArea(
+            left: !hasLandscapeInset,
+            right: !hasLandscapeInset,
             child: Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: horizontalInset,
@@ -11437,6 +11441,8 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasLandscapeInset =
+        AppWindowContentScope.of(context).horizontalInset > 0.0;
     final primary = resolveThemeColor(kPrimaryLabel, context);
     final secondary = resolveThemeColor(kSecondaryLabel, context);
     final horizontalInset =
@@ -11500,6 +11506,8 @@ class _ArchiveCategorySheetOverlay extends StatelessWidget {
         Align(
           alignment: Alignment.center,
           child: SafeArea(
+            left: !hasLandscapeInset,
+            right: !hasLandscapeInset,
             child: Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: horizontalInset,
@@ -11646,6 +11654,8 @@ class _UtilityItemSheetOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasLandscapeInset =
+        AppWindowContentScope.of(context).horizontalInset > 0.0;
     final primary = resolveThemeColor(kPrimaryLabel, context);
     final secondary = resolveThemeColor(kSecondaryLabel, context);
     final horizontalInset =
@@ -11710,6 +11720,8 @@ class _UtilityItemSheetOverlay extends StatelessWidget {
         Align(
           alignment: Alignment.center,
           child: SafeArea(
+            left: !hasLandscapeInset,
+            right: !hasLandscapeInset,
             child: Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: horizontalInset,

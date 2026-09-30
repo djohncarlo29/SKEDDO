@@ -85,9 +85,22 @@ class AppWindowContentPadding extends StatelessWidget {
     final inset = AppWindowContentScope.of(context).horizontalInset;
     if (inset <= 0.0) return child;
 
+    final mediaQuery = MediaQuery.of(context);
+    final contentMediaQuery = mediaQuery.copyWith(
+      // This child is already positioned inside the app-wide symmetric
+      // landscape boundary. Do not let a nested SafeArea re-apply the
+      // platform's original one-sided horizontal inset.
+      padding: mediaQuery.padding.copyWith(left: 0.0, right: 0.0),
+      viewPadding: mediaQuery.viewPadding.copyWith(left: 0.0, right: 0.0),
+      systemGestureInsets: mediaQuery.systemGestureInsets.copyWith(
+        left: 0.0,
+        right: 0.0,
+      ),
+    );
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: inset),
-      child: child,
+      child: MediaQuery(data: contentMediaQuery, child: child),
     );
   }
 }

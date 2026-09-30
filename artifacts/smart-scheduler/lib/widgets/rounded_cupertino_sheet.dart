@@ -198,11 +198,26 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
     // this MediaQuery and sets gestureSettings directly on its recognizer.
     // Sheet scrolling is also unaffected: 18 dp is Flutter's standard default.
     final MediaQueryData original = MediaQuery.of(context);
+    final hasLandscapeInset =
+        AppWindowContentScope.of(context).horizontalInset > 0.0;
     final MediaQueryData mqData = original.copyWith(
       // The route owns the persistent bottom inset below. Keep it out of the
       // sheet's descendant MediaQuery so nested SafeAreas cannot add it a
       // second time and make the inset dependent on page content.
-      padding: original.padding.copyWith(top: 0.0, bottom: 0.0),
+      padding: hasLandscapeInset
+          ? original.padding.copyWith(
+              left: 0.0,
+              top: 0.0,
+              right: 0.0,
+              bottom: 0.0,
+            )
+          : original.padding.copyWith(top: 0.0, bottom: 0.0),
+      viewPadding: hasLandscapeInset
+          ? original.viewPadding.copyWith(left: 0.0, right: 0.0)
+          : original.viewPadding,
+      systemGestureInsets: hasLandscapeInset
+          ? original.systemGestureInsets.copyWith(left: 0.0, right: 0.0)
+          : original.systemGestureInsets,
       gestureSettings: const DeviceGestureSettings(touchSlop: kTouchSlop),
     );
 

@@ -281,6 +281,8 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasLandscapeInset =
+        AppWindowContentScope.of(context).horizontalInset > 0.0;
     final primary = resolveThemeColor(kPrimaryLabel, context);
     final sheetBorder =
         CupertinoTheme.brightnessOf(context) == Brightness.dark
@@ -418,6 +420,8 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
             Align(
               alignment: Alignment.center,
               child: SafeArea(
+                left: !hasLandscapeInset,
+                right: !hasLandscapeInset,
                 child: Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: horizontalInset,
@@ -456,6 +460,8 @@ class _DeleteConfirmationSheetOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasLandscapeInset =
+        AppWindowContentScope.of(context).horizontalInset > 0.0;
     final primary = resolveThemeColor(kPrimaryLabel, context);
     final secondary = resolveThemeColor(kSecondaryLabel, context);
     final buttonDecor = ShapeDecoration(
@@ -518,6 +524,8 @@ class _DeleteConfirmationSheetOverlay extends StatelessWidget {
         Align(
           alignment: Alignment.center,
           child: SafeArea(
+            left: !hasLandscapeInset,
+            right: !hasLandscapeInset,
             child: Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: horizontalInset,
