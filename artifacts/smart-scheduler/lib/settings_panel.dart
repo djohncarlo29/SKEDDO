@@ -1016,7 +1016,7 @@ class _SettingsHeader extends StatelessWidget {
                           style: TextStyle(
                             fontFamily: kSFProText,
                             fontSize: 17,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                             fontStyle: FontStyle.normal,
                             color: primaryLabel,
                             letterSpacing: -0.6,

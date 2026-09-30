@@ -1885,7 +1885,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       final titleStyle = TextStyle(
         fontFamily: kSFProText,
         fontSize: compact ? 17 : 34,
-        fontWeight: FontWeight.bold,
+        fontWeight: compact ? FontWeight.w600 : FontWeight.bold,
         fontStyle: FontStyle.normal,
         color: isToday ? resolveAccentColor(context) : primaryLabel,
         letterSpacing: compact ? -0.6 : -1.2,
@@ -2073,7 +2073,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       style: TextStyle(
         fontFamily: kSFProText,
         fontSize: 17,
-        fontWeight: FontWeight.bold,
+        fontWeight: FontWeight.w600,
         fontStyle: FontStyle.normal,
         color: primaryLabel,
         letterSpacing: -0.6,
@@ -2431,15 +2431,21 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                       children: [
                                                         Padding(
                                                           padding:
-                                                              const EdgeInsets.only(
+                                                              EdgeInsets.only(
                                                                 left: 6,
                                                                 right: 16,
-                                                                bottom: 6,
+                                                                bottom:
+                                                                    isLandscape
+                                                                    ? 0
+                                                                    : 6,
                                                               ),
                                                           child: Row(
                                                             crossAxisAlignment:
-                                                                CrossAxisAlignment
-                                                                    .end,
+                                                                isLandscape
+                                                                ? CrossAxisAlignment
+                                                                      .center
+                                                                : CrossAxisAlignment
+                                                                      .end,
                                                             children: [
                                                           // Hamburger / X is lifted to the root Stack so it
                                                           // always paints above the scrim and settings panel.
@@ -2454,15 +2460,16 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                            // this slot preserves the header's layout for the other actions.
                                                           SizedBox(
                                                             width: 36,
-                                                            height: 38,
+                                                            height: isLandscape
+                                                                ? 52
+                                                                : 38,
                                                             child: Stack(
                                                               clipBehavior:
                                                                   Clip.none,
                                                               children: [
                                                                 // ── Ellipsis (DCV) ─────────────────────────────────
-                                                                // Align.bottomLeft anchors the icon to the slot
-                                                                // bottom, matching the hamburger's Positioned(bottom:0)
-                                                                // so all four header icons share the same centre-Y.
+                                                                // Landscape uses a full-height centered slot; portrait
+                                                                // retains the previous bottom-aligned placement.
                                                                 Opacity(
                                                                   opacity:
                                                                       isDCVVisual
@@ -2484,29 +2491,29 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                           .easeInOut,
                                                                       child: Align(
                                                                         alignment:
-                                                                            Alignment.bottomLeft,
+                                                                            isLandscape
+                                                                            ? Alignment.centerLeft
+                                                                            : Alignment.bottomLeft,
                                                                         child: SizedBox(
                                                                           key:
                                                                               _ellipsisKey,
                                                                           child: AnimatedTapIcon(
                                                                             scaleEnabled:
                                                                                 false,
-                                                                            // Keep layout padding unchanged so the icon is
-                                                                            // never clipped by the 36 px slot SizedBox.
-                                                                            // Visual alignment (centre-X +12, centre-Y +3)
-                                                                            // is applied via Transform, which is paint-only.
-                                                                            padding: const EdgeInsets.fromLTRB(
+                                                                            // Center the full tap target in the landscape
+                                                                            // header; keep portrait placement unchanged.
+                                                                            padding: EdgeInsets.fromLTRB(
                                                                               0,
                                                                               10,
                                                                               4,
-                                                                              0,
+                                                                              isLandscape ? 10 : 0,
                                                                             ),
                                                                             onTap:
                                                                                 _showDcvMenu,
                                                                             child: Transform.translate(
-                                                                              offset: const Offset(
+                                                                              offset: Offset(
                                                                                 11.5,
-                                                                                -3,
+                                                                                isLandscape ? 0 : -3,
                                                                               ),
                                                                               child: SearchWeightedIcon(
                                                                                 CupertinoIcons.ellipsis_circle,
@@ -2541,16 +2548,18 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                              _calendarShowsYearTitle),
                                                                      child: Align(
                                                                        alignment:
-                                                                           Alignment.bottomLeft,
+                                                                            isLandscape
+                                                                            ? Alignment.centerLeft
+                                                                            : Alignment.bottomLeft,
                                                                        child: AnimatedTapIcon(
                                                                          scaleEnabled:
                                                                              false,
-                                                                         padding: const EdgeInsets.fromLTRB(
-                                                                           8,
-                                                                           10,
-                                                                           4,
-                                                                           0,
-                                                                         ),
+                                                                          padding: EdgeInsets.fromLTRB(
+                                                                            8,
+                                                                            10,
+                                                                            4,
+                                                                            isLandscape ? 10 : 0,
+                                                                          ),
                                                                          onTap: _enterTodayCalendarDay,
                                                                          child:
                                                                              _buildYearViewHeaderIcon(),
@@ -2562,8 +2571,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                 // Visibility driven by _calendarShowsMonthTitle so
                                                                 // it syncs to the shared midpoint title handoff
                                                                 // during year↔month zoom, not the animation endpoint.
-                                                                // Align.bottomLeft matches the hamburger's bottom-0
-                                                                // positioning so their midpoints are level.
+                                                                 // Landscape centers the icon in the header; portrait
+                                                                 // keeps its established bottom alignment.
                                                                 // Left padding 12 shifts 2 px right of the ellipsis.
                                                                 Opacity(
                                                                   opacity:
@@ -2592,18 +2601,20 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                           .easeInOut,
                                                                       child: Align(
                                                                         alignment:
-                                                                            Alignment.bottomLeft,
+                                                                            isLandscape
+                                                                            ? Alignment.centerLeft
+                                                                            : Alignment.bottomLeft,
                                                                         child: SizedBox(
                                                                           key:
                                                                               _viewModeKey,
                                                                           child: AnimatedTapIcon(
                                                                             scaleEnabled:
                                                                                 false,
-                                                                            padding: const EdgeInsets.fromLTRB(
+                                                                            padding: EdgeInsets.fromLTRB(
                                                                               8,
                                                                               10,
                                                                               4,
-                                                                              0,
+                                                                              isLandscape ? 10 : 0,
                                                                             ),
                                                                             onTap:
                                                                                 _showViewModeMenu,
@@ -2647,18 +2658,20 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                           .easeInOut,
                                                                       child: Align(
                                                                         alignment:
-                                                                            Alignment.bottomLeft,
+                                                                            isLandscape
+                                                                            ? Alignment.centerLeft
+                                                                            : Alignment.bottomLeft,
                                                                         child: SizedBox(
                                                                           key:
                                                                               _dayViewModeKey,
                                                                           child: AnimatedTapIcon(
                                                                             scaleEnabled:
                                                                                 false,
-                                                                            padding: const EdgeInsets.fromLTRB(
+                                                                            padding: EdgeInsets.fromLTRB(
                                                                               8,
                                                                               10,
                                                                               4,
-                                                                              0,
+                                                                              isLandscape ? 10 : 0,
                                                                             ),
                                                                             onTap:
                                                                                 _showDayViewModeMenu,
@@ -2675,13 +2688,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                           ),
                                                           const Spacer(),
                                                           AnimatedTapIcon(
-                                                            padding:
-                                                                const EdgeInsets.fromLTRB(
-                                                                  18,
-                                                                  10,
-                                                                  4,
-                                                                  0,
-                                                                ),
+                                                            padding: EdgeInsets.fromLTRB(
+                                                              18,
+                                                              10,
+                                                              4,
+                                                              isLandscape ? 10 : 0,
+                                                            ),
                                                             onTap:
                                                                 _activateTabSearch,
                                                             child: Transform.translate(
@@ -2704,13 +2716,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                             ),
                                                           ),
                                                           AnimatedTapIcon(
-                                                            padding:
-                                                                const EdgeInsets.fromLTRB(
-                                                                  10,
-                                                                  10,
-                                                                  0,
-                                                                  0,
-                                                                ),
+                                                            padding: EdgeInsets.fromLTRB(
+                                                              10,
+                                                              10,
+                                                              0,
+                                                              isLandscape ? 10 : 0,
+                                                            ),
                                                             onTap: () => _calendarTabKey
                                                                 .currentState
                                                                 ?.showNewEventSheet(
