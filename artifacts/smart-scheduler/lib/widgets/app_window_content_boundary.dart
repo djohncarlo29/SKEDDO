@@ -4,20 +4,15 @@ import 'package:flutter/cupertino.dart';
 
 import '../services/window_geometry_diagnostics.dart';
 
-/// Establishes the app-wide content rectangle inside the physical window.
+/// Publishes the app-wide content rectangle inside the physical window.
 ///
-/// The window background remains outside this boundary so system/cutout areas
-/// never reveal the engine's default clear color. In landscape, the larger
-/// horizontal system inset is reserved on both sides, regardless of which
-/// physical side currently reports the cutout or system area.
+/// This widget intentionally does not add visual surfaces or constrain the
+/// Navigator itself. Full-width app surfaces must be allowed to paint through
+/// the system area; widgets that contain actual UI elements use
+/// [AppWindowContentPadding] below to apply the positioning constraint.
 class AppWindowContentBoundary extends StatelessWidget {
-  const AppWindowContentBoundary({
-    super.key,
-    required this.background,
-    required this.child,
-  });
+  const AppWindowContentBoundary({super.key, required this.child});
 
-  final Widget background;
   final Widget child;
 
   /// Returns the symmetric landscape reservation from the persistent platform
@@ -45,40 +40,73 @@ class AppWindowContentBoundary extends StatelessWidget {
       mediaQuery.copyWith(viewPadding: viewPadding),
     );
 
-    Widget content = child;
-    if (horizontalInset > 0.0) {
-      final contentWidth = math.max(
-        0.0,
-        mediaQuery.size.width - horizontalInset * 2.0,
-      );
-      final contentMediaQuery = mediaQuery.copyWith(
-        size: Size(contentWidth, mediaQuery.size.height),
-        // The shared boundary owns the horizontal system space. Clearing these
-        // fields prevents SafeArea or a nested route from adding the same inset
-        // a second time inside the already-reserved content rectangle.
-        padding: mediaQuery.padding.copyWith(left: 0.0, right: 0.0),
-        viewPadding: mediaQuery.viewPadding.copyWith(left: 0.0, right: 0.0),
-        systemGestureInsets: mediaQuery.systemGestureInsets.copyWith(
-          left: 0.0,
-          right: 0.0,
-        ),
-      );
-      content = Padding(
-        padding: EdgeInsets.symmetric(horizontal: horizontalInset),
-        child: MediaQuery(data: contentMediaQuery, child: child),
+    if (horizontalInset <= 0.0) {
+      return AppWindowContentScope(
+        horizontalInset: 0.0,
+        child: child,
       );
     }
 
-    // Backgrounds belong to the physical window, not to the inset content
-    // rectangle. This keeps header/content surfaces continuous through the
-    // reserved system area while the actual Navigator/UI subtree remains
-    // constrained by the symmetric landscape boundary.
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Positioned.fill(child: background),
-        Positioned.fill(child: content),
-      ],
+    final contentWidth = math.max(
+      0.0,
+      mediaQuery.size.width - horizontalInset * 2.0,
+    );
+    final contentMediaQuery = mediaQuery.copyWith(
+      size: Size(contentWidth, mediaQuery.size.height),
+      // The shared boundary owns the horizontal system space. Clearing these
+      // fields prevents SafeArea or a nested route from adding the same inset
+      // a second time inside the already-reserved content rectangle.
+      padding: mediaQuery.padding.copyWith(left: 0.0, right: 0.0),
+      viewPadding: mediaQuery.viewPadding.copyWith(left: 0.0, right: 0.0),
+      systemGestureInsets: mediaQuery.systemGestureInsets.copyWith(
+        left: 0.0,
+        right: 0.0,
+      ),
+    );
+
+    return AppWindowContentScope(
+      horizontalInset: horizontalInset,
+      child: MediaQuery(data: contentMediaQuery, child: child),
     );
   }
+}
+
+/// Applies the centralized horizontal content positioning constraint without
+/// constraining a full-width surface that sits above or below it.
+class AppWindowContentPadding extends StatelessWidget {
+  const AppWindowContentPadding({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final inset = AppWindowContentScope.of(context).horizontalInset;
+    if (inset <= 0.0) return child;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: inset),
+      child: child,
+    );
+  }
+}
+
+class AppWindowContentScope extends InheritedWidget {
+  const AppWindowContentScope({
+    super.key,
+    required this.horizontalInset,
+    required super.child,
+  });
+
+  final double horizontalInset;
+
+  static AppWindowContentScope of(BuildContext context) {
+    final scope =
+        context.dependOnInheritedWidgetOfExactType<AppWindowContentScope>();
+    assert(scope != null, 'AppWindowContentScope is missing above this widget');
+    return scope!;
+  }
+
+  @override
+  bool updateShouldNotify(AppWindowContentScope oldWidget) =>
+      horizontalInset != oldWidget.horizontalInset;
 }

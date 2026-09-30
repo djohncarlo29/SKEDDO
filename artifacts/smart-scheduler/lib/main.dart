@@ -30,13 +30,6 @@ import 'widgets/view_mode_icons.dart';
 import 'app_settings.dart';
 import 'settings_panel.dart';
 
-// Mirrors the AppShell search transition for the edge-to-edge background
-// layer. The header surface must extend through the landscape reservation even
-// while its height and colour animate into the search state.
-final ValueNotifier<double> appHeaderCollapseProgressNotifier = ValueNotifier(
-  0.0,
-);
-
 // ══════════════════════════════════════════════════════════════════════════════
 // _DcvMenuContent — stateful overlay widget for the DCV ellipsis menu.
 //
@@ -757,49 +750,9 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
                   child: result,
                 );
               }
-              // Establish the app-wide content rectangle once, above the
-              // Navigator/Overlay subtree. Background surfaces are painted by
-              // the boundary at physical-window width; only the Navigator/UI
-              // subtree receives the symmetric landscape reservation.
-              final contentBackground = resolveThemeColor(
-                kBackgroundColor,
-                context,
-              );
-              final headerSurface = resolveThemeColor(kCardColor, context);
-              result = AppWindowContentBoundary(
-                background: ValueListenableBuilder<double>(
-                  valueListenable: appHeaderCollapseProgressNotifier,
-                  builder: (context, collapseProgress, _) {
-                    final progress = collapseProgress.clamp(0.0, 1.0);
-                    final topInset = MediaQuery.viewPaddingOf(context).top;
-                    final headerHeight =
-                        topInset + 101.0 * (1.0 - progress);
-                    return Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Positioned.fill(
-                          child: ColoredBox(color: contentBackground),
-                        ),
-                        if (headerHeight > 0.0)
-                          Positioned(
-                            top: 0.0,
-                            left: 0.0,
-                            right: 0.0,
-                            height: headerHeight,
-                            child: ColoredBox(
-                              color: Color.lerp(
-                                headerSurface,
-                                contentBackground,
-                                progress,
-                              )!,
-                            ),
-                          ),
-                      ],
-                    );
-                  },
-                ),
-                child: result,
-              );
+              // Publish the symmetric landscape positioning constraint above
+              // the Navigator without constraining its full-width surfaces.
+              result = AppWindowContentBoundary(child: result);
               // Keep one live, metrics-derived rotation state above every
               // screen and sheet. Adaptive widgets use this only for geometry
               // interpolation; it is not a whole-app orientation animation.
@@ -1592,8 +1545,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       parent: _searchModeController,
       curve: _kSearchModeCurve,
     );
-    _searchModeAnim.addListener(_publishHeaderCollapseProgress);
-    _publishHeaderCollapseProgress();
     _searchModeContentOpacity = Tween<double>(
       begin: 1.0,
       end: 0.0,
@@ -1635,19 +1586,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   void dispose() {
     _nativeTabBarChannel.setMethodCallHandler(null);
     _midnightTimer?.cancel();
-    _searchModeAnim.removeListener(_publishHeaderCollapseProgress);
-    appHeaderCollapseProgressNotifier.value = 0.0;
     _dcvSlideController.dispose();
     _searchModeController.dispose();
     _settingsController.dispose();
     _calendarStripSlide.dispose();
     super.dispose();
-  }
-
-  void _publishHeaderCollapseProgress() {
-    if (appHeaderCollapseProgressNotifier.value != _searchModeAnim.value) {
-      appHeaderCollapseProgressNotifier.value = _searchModeAnim.value;
-    }
   }
 
   // ── OS back gesture / back button handler ────────────────────────────────
@@ -2275,7 +2218,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               child: child,
                             );
                           },
-                          child: _buildContent(),
+                          child: AppWindowContentPadding(
+                            child: _buildContent(),
+                          ),
                         ),
 
                         // Header — last Stack child so it paints above the content.
@@ -2358,7 +2303,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                           ),
                                         ),
                                       ),
-                                    ClipRect(
+                                    AppWindowContentPadding(
+                                      child: ClipRect(
                                       child: OverflowBox(
                                         alignment: Alignment.topLeft,
                                         minHeight: 0,
@@ -2770,6 +2716,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                         ),
                                       ),
                                     ),
+                                    ),
                                   ],
                                 ),
                               );
@@ -2801,7 +2748,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                       : 0.0;
                   if (opacity <= 0.0) return const SizedBox.shrink();
                   return Positioned(
-                    left: 42,
+                    left:
+                        AppWindowContentScope.of(context).horizontalInset + 42,
                     top: topInset,
                     child: IgnorePointer(
                       ignoring: opacity < 0.01,
@@ -2855,13 +2803,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                       ? (_dcvColor ?? resolveAccentColor(context))
                       : resolveAccentColor(context);
                   return Positioned.fill(
-                    child: _usesNativeTabBar
-                        ? const SizedBox.shrink()
-                        : FloatingTabPill(
-                            selectedIndex: _selectedIndex,
-                            eventsAccent: eventsAccent,
-                            onTabSelected: _switchTab,
-                          ),
+                    child: AppWindowContentPadding(
+                      child: _usesNativeTabBar
+                          ? const SizedBox.shrink()
+                          : FloatingTabPill(
+                              selectedIndex: _selectedIndex,
+                              eventsAccent: eventsAccent,
+                              onTabSelected: _switchTab,
+                            ),
+                    ),
                   );
                 },
               ),
@@ -2951,6 +2901,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   );
                   return Positioned(
                     left:
+                        AppWindowContentScope.of(context).horizontalInset +
                         16.0, // 6 (Row left padding) + 10 (inner Positioned left)
                     top:
                         topInset +
