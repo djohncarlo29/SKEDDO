@@ -753,6 +753,16 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
               // Publish the symmetric landscape positioning constraint above
               // the Navigator without constraining its full-width surfaces.
               result = AppWindowContentBoundary(child: result);
+              // Keep the dedicated sheet-stack surface outside the content
+              // boundary so it paints across the full physical window. This
+              // is the color revealed behind receding modal sheets.
+              result = ColoredBox(
+                color: resolveThemeColor(
+                  kAddCategorySheetBackground,
+                  context,
+                ),
+                child: result,
+              );
               // Keep one live, metrics-derived rotation state above every
               // screen and sheet. Adaptive widgets use this only for geometry
               // interpolation; it is not a whole-app orientation animation.
