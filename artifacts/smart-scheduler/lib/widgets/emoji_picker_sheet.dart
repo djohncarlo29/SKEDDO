@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import '../app_theme.dart';
 import 'horizontal_edge_fade.dart';
+import 'header_title_scroller.dart';
 import 'picker_grid_geometry.dart';
 import 'rounded_cupertino_sheet.dart';
 import 'vertical_edge_fade.dart';
@@ -1519,21 +1520,24 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                 child: Row(
                   children: [
                     xBtn,
+                    const SizedBox(width: kHorizontalFadeEdgeGap),
                     Expanded(
-                      child: Center(
-                        child: Text(
-                          'Choose Emoji',
-                          style: TextStyle(
-                            inherit: false,
-                            color: labelColor,
-                            fontFamily: kSFProText,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w600,
-                            height: 1.0,
-                          ),
+                      child: HeaderTitleScroller(
+                        title: 'Choose Emoji',
+                        style: TextStyle(
+                          inherit: false,
+                          color: labelColor,
+                          fontFamily: kSFProText,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          height: 1.0,
                         ),
+                        fadeColor: resolveThemeColor(kModalBackground, context),
+                        centerWhenContentFits: true,
+                        contentAlignment: Alignment.centerLeft,
                       ),
                     ),
+                    const SizedBox(width: kHorizontalFadeEdgeGap),
                     const SizedBox(
                       width: 40,
                     ), // mirrors xBtn width for symmetry

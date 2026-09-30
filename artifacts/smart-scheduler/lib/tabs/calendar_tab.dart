@@ -22,6 +22,7 @@ import '../widgets/fixed_size_icon.dart';
 import '../widgets/native_text_input.dart';
 import '../widgets/text_editing_helpers.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
+import '../widgets/modal_sheet_title_scroller.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/app_window_content_boundary.dart';
 import '../widgets/selection_handle_haptics.dart';
@@ -13446,17 +13447,23 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        Text(
-                          widget.isEditing ? 'Edit Event' : 'New Event',
-                          style: TextStyle(
-                            inherit: false,
-                            color: resolveThemeColor(kPrimaryLabel, context),
-                            fontSize: 17,
-                            fontFamily: kSFProText,
-                            fontWeight: FontWeight.w600,
-                            fontStyle: FontStyle.normal,
-                            letterSpacing: kTracking17,
-                            height: kLineHeight,
+                        Positioned.fill(
+                          child: ModalSheetTitleScroller(
+                            title: widget.isEditing ? 'Edit Event' : 'New Event',
+                            style: TextStyle(
+                              inherit: false,
+                              color: resolveThemeColor(kPrimaryLabel, context),
+                              fontSize: 17,
+                              fontFamily: kSFProText,
+                              fontWeight: FontWeight.w600,
+                              fontStyle: FontStyle.normal,
+                              letterSpacing: kTracking17,
+                              height: kLineHeight,
+                            ),
+                            fadeColor: resolveThemeColor(
+                              kModalBackground,
+                              context,
+                            ),
                           ),
                         ),
                         Positioned(
@@ -15137,17 +15144,20 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    Text(
-                      'Custom',
-                      style: TextStyle(
-                        inherit: false,
-                        color: resolveThemeColor(kPrimaryLabel, context),
-                        fontSize: 17,
-                        fontFamily: kSFProText,
-                        fontWeight: FontWeight.w600,
-                        fontStyle: FontStyle.normal,
-                        letterSpacing: kTracking17,
-                        height: kLineHeight,
+                    Positioned.fill(
+                      child: ModalSheetTitleScroller(
+                        title: 'Custom',
+                        style: TextStyle(
+                          inherit: false,
+                          color: resolveThemeColor(kPrimaryLabel, context),
+                          fontSize: 17,
+                          fontFamily: kSFProText,
+                          fontWeight: FontWeight.w600,
+                          fontStyle: FontStyle.normal,
+                          letterSpacing: kTracking17,
+                          height: kLineHeight,
+                        ),
+                        fadeColor: resolveThemeColor(kModalBackground, context),
                       ),
                     ),
                     Positioned(

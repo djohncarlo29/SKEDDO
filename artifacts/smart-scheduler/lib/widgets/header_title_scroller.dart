@@ -92,6 +92,8 @@ class HeaderTitleScroller extends StatefulWidget {
   final Widget Function(double titleFontSize)? trailingBuilder;
   final double trailingGap;
   final bool showTrailingFade;
+  final bool centerWhenContentFits;
+  final Alignment contentAlignment;
   final VoidCallback? onTap;
 
   const HeaderTitleScroller({
@@ -104,6 +106,8 @@ class HeaderTitleScroller extends StatefulWidget {
     this.trailingBuilder,
     this.trailingGap = 4,
     this.showTrailingFade = true,
+    this.centerWhenContentFits = false,
+    this.contentAlignment = Alignment.bottomLeft,
     this.onTap,
   });
 
@@ -268,20 +272,33 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                     // Scroll metrics arrive after layout. Preflight the text
                     // width so an overflowing title has its initial trailing
                     // fade in the very first painted frame.
+                    final textWidth = _measureTextWidth(effectiveStyle);
                     final overflowBeforeLayout =
-                        _textOverflowsViewport(effectiveStyle, constraints.maxWidth);
+                        constraints.maxWidth.isFinite &&
+                        constraints.maxWidth > 0 &&
+                        textWidth > constraints.maxWidth + 1.0;
                     final initialTrailingFade =
                         !_canScroll &&
                         overflowBeforeLayout &&
                         widget.showTrailingFade &&
                         (!_scrollController.hasClients ||
                             _scrollController.position.pixels <= 1.0);
+                    final centeredInset =
+                        widget.centerWhenContentFits &&
+                            trailing == null &&
+                            constraints.maxWidth.isFinite &&
+                            constraints.maxWidth > 0 &&
+                            !overflowBeforeLayout
+                        ? ((constraints.maxWidth - textWidth) / 2)
+                              .clamp(0.0, double.infinity)
+                              .toDouble()
+                        : 0.0;
 
                     return Stack(
                       fit: StackFit.expand,
                       children: [
                         Align(
-                          alignment: Alignment.bottomLeft,
+                          alignment: widget.contentAlignment,
                           child: SizedBox(
                             width: double.infinity,
                          child: GestureDetector(
@@ -303,6 +320,8 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                                mainAxisSize: MainAxisSize.min,
                                crossAxisAlignment: CrossAxisAlignment.center,
                                children: [
+                                  if (centeredInset > 0)
+                                    SizedBox(width: centeredInset),
                                  Text(
                                    widget.title,
                                    maxLines: 1,
@@ -318,6 +337,8 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                                    SizedBox(width: widget.trailingGap),
                                     trailing,
                                  ],
+                                  if (centeredInset > 0)
+                                    SizedBox(width: centeredInset),
                                ],
                              ),
                               ),
@@ -355,14 +376,13 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
     );
   }
 
-  bool _textOverflowsViewport(TextStyle style, double viewportWidth) {
-    if (!viewportWidth.isFinite || viewportWidth <= 0) return false;
+  double _measureTextWidth(TextStyle style) {
     final painter = TextPainter(
       text: TextSpan(text: widget.title, style: style),
       textDirection: TextDirection.ltr,
       maxLines: 1,
       textScaler: TextScaler.noScaling,
     )..layout();
-    return painter.width > viewportWidth + 1.0;
+    return painter.width;
   }
 }

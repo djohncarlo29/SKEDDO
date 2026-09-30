@@ -24,6 +24,7 @@ import '../widgets/native_text_input.dart';
 import '../widgets/text_editing_helpers.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
+import '../widgets/modal_sheet_title_scroller.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/selection_handle_haptics.dart';
 import '../widgets/horizontal_edge_fade.dart';
@@ -12531,7 +12532,6 @@ class _ArchivedCategoriesSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primary = resolveThemeColor(kPrimaryLabel, context);
-    final textScaler = MediaQuery.textScalerOf(context);
     return Column(
       children: [
         RoundedCupertinoSheetHeader(
@@ -12540,16 +12540,19 @@ class _ArchivedCategoriesSheet extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                Text(
-                  _kArchivedUtilityLabel,
-                  style: TextStyle(
-                    inherit: false,
-                    color: primary,
-                    fontSize: textScaler.scale(17),
-                    fontFamily: kSFProText,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: kTracking17,
-                    height: kLineHeight,
+                Positioned.fill(
+                  child: ModalSheetTitleScroller(
+                    title: _kArchivedUtilityLabel,
+                    style: TextStyle(
+                      inherit: false,
+                      color: primary,
+                      fontSize: 17,
+                      fontFamily: kSFProText,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: kTracking17,
+                      height: kLineHeight,
+                    ),
+                    fadeColor: resolveThemeColor(kModalBackground, context),
                   ),
                 ),
                 Positioned(
@@ -12660,7 +12663,6 @@ class _RecentlyDeletedSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primary = resolveThemeColor(kPrimaryLabel, context);
-    final textScaler = MediaQuery.textScalerOf(context);
     return Column(
       children: [
         RoundedCupertinoSheetHeader(
@@ -12669,16 +12671,19 @@ class _RecentlyDeletedSheet extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                Text(
-                  'Recently Deleted',
-                  style: TextStyle(
-                    inherit: false,
-                    color: primary,
-                    fontSize: textScaler.scale(17),
-                    fontFamily: kSFProText,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: kTracking17,
-                    height: kLineHeight,
+                Positioned.fill(
+                  child: ModalSheetTitleScroller(
+                    title: 'Recently Deleted',
+                    style: TextStyle(
+                      inherit: false,
+                      color: primary,
+                      fontSize: 17,
+                      fontFamily: kSFProText,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: kTracking17,
+                      height: kLineHeight,
+                    ),
+                    fadeColor: resolveThemeColor(kModalBackground, context),
                   ),
                 ),
                 Positioned(
@@ -12981,17 +12986,25 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      Text(
-                        widget.initial != null ? 'Edit Group' : 'New Group',
-                        style: TextStyle(
-                          inherit: false,
-                          color: resolveThemeColor(kPrimaryLabel, context),
-                          fontSize: 17,
-                          fontFamily: kSFProText,
-                          fontWeight: FontWeight.w600,
-                          fontStyle: FontStyle.normal,
-                          letterSpacing: kTracking17,
-                          height: kLineHeight,
+                      Positioned.fill(
+                        child: ModalSheetTitleScroller(
+                          title: widget.initial != null
+                              ? 'Edit Group'
+                              : 'New Group',
+                          style: TextStyle(
+                            inherit: false,
+                            color: resolveThemeColor(kPrimaryLabel, context),
+                            fontSize: 17,
+                            fontFamily: kSFProText,
+                            fontWeight: FontWeight.w600,
+                            fontStyle: FontStyle.normal,
+                            letterSpacing: kTracking17,
+                            height: kLineHeight,
+                          ),
+                          fadeColor: resolveThemeColor(
+                            kModalBackground,
+                            context,
+                          ),
                         ),
                       ),
                       Positioned(
@@ -16275,19 +16288,25 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      Text(
-                        (widget.initial != null || _isSmart)
-                            ? 'Edit Category'
-                            : 'New Category',
-                        style: TextStyle(
-                          inherit: false,
-                          color: resolveThemeColor(kPrimaryLabel, context),
-                          fontSize: 17,
-                          fontFamily: kSFProText,
-                          fontWeight: FontWeight.w600,
-                          fontStyle: FontStyle.normal,
-                          letterSpacing: kTracking17,
-                          height: kLineHeight,
+                      Positioned.fill(
+                        child: ModalSheetTitleScroller(
+                          title: (widget.initial != null || _isSmart)
+                              ? 'Edit Category'
+                              : 'New Category',
+                          style: TextStyle(
+                            inherit: false,
+                            color: resolveThemeColor(kPrimaryLabel, context),
+                            fontSize: 17,
+                            fontFamily: kSFProText,
+                            fontWeight: FontWeight.w600,
+                            fontStyle: FontStyle.normal,
+                            letterSpacing: kTracking17,
+                            height: kLineHeight,
+                          ),
+                          fadeColor: resolveThemeColor(
+                            kModalBackground,
+                            context,
+                          ),
                         ),
                       ),
                       Positioned(
@@ -17921,16 +17940,19 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    Text(
-                      'Edit Sections',
-                      style: TextStyle(
-                        inherit: false,
-                        color: primaryLabel,
-                        fontSize: 17,
-                        fontFamily: kSFProText,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: kTracking17,
-                        height: kLineHeight,
+                    Positioned.fill(
+                      child: ModalSheetTitleScroller(
+                        title: 'Edit Sections',
+                        style: TextStyle(
+                          inherit: false,
+                          color: primaryLabel,
+                          fontSize: 17,
+                          fontFamily: kSFProText,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: kTracking17,
+                          height: kLineHeight,
+                        ),
+                        fadeColor: resolveThemeColor(kModalBackground, context),
                       ),
                     ),
                     Positioned(
@@ -22488,17 +22510,20 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    Text(
-                      'Custom',
-                      style: TextStyle(
-                        inherit: false,
-                        color: resolveThemeColor(kPrimaryLabel, context),
-                        fontSize: 17,
-                        fontFamily: kSFProText,
-                        fontWeight: FontWeight.w600,
-                        fontStyle: FontStyle.normal,
-                        letterSpacing: kTracking17,
-                        height: kLineHeight,
+                    Positioned.fill(
+                      child: ModalSheetTitleScroller(
+                        title: 'Custom',
+                        style: TextStyle(
+                          inherit: false,
+                          color: resolveThemeColor(kPrimaryLabel, context),
+                          fontSize: 17,
+                          fontFamily: kSFProText,
+                          fontWeight: FontWeight.w600,
+                          fontStyle: FontStyle.normal,
+                          letterSpacing: kTracking17,
+                          height: kLineHeight,
+                        ),
+                        fadeColor: resolveThemeColor(kModalBackground, context),
                       ),
                     ),
                     Positioned(
