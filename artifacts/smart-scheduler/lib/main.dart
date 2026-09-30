@@ -2523,7 +2523,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                             child: Transform.translate(
                                                                               offset: Offset(
                                                                                 11.5,
-                                                                                 isLandscape ? -1.5 : -3,
+                                                                                 isLandscape ? -0.5 : -3,
                                                                               ),
                                                                               child: SearchWeightedIcon(
                                                                                 CupertinoIcons.ellipsis_circle,
@@ -3092,10 +3092,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                 0,
                                 isLandscape
                                     ? (isDCVVisual
-                                          ? 2.0
+                                          ? 1.0
                                           : isSubScreen
                                           ? 0.0
-                                          : 1.0)
+                                          : 0.8)
                                     : 0,
                               ),
                               child: _MorphingMenuIcon(
