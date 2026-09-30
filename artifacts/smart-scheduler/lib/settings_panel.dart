@@ -333,7 +333,7 @@ class _SettingsPanelState extends State<SettingsPanel>
 
         final isLandscape =
             MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
-        final headerHeight = topInset + (isLandscape ? 44.0 : 101.0);
+        final headerHeight = topInset + (isLandscape ? 52.0 : 101.0);
 
         return ClipRect(
           child: ColoredBox(
@@ -977,7 +977,7 @@ class _SettingsHeader extends StatelessWidget {
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final isLandscape =
         MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
-    final headerContentHeight = isLandscape ? 44.0 : 101.0;
+    final headerContentHeight = isLandscape ? 52.0 : 101.0;
     return Container(
       width: double.infinity,
       height: topInset + headerContentHeight,
@@ -989,13 +989,6 @@ class _SettingsHeader extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Hairline separator at bottom
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(height: 0.75, color: separatorColor),
-          ),
           AppWindowContentPadding(
             child: Padding(
               padding: EdgeInsets.only(top: topInset),
@@ -1010,11 +1003,11 @@ class _SettingsHeader extends StatelessWidget {
                           contentAlignment: Alignment.centerLeft,
                           style: TextStyle(
                             fontFamily: kSFProText,
-                            fontSize: 34,
+                            fontSize: 17,
                             fontWeight: FontWeight.bold,
                             fontStyle: FontStyle.normal,
                             color: primaryLabel,
-                            letterSpacing: -1.2,
+                            letterSpacing: -0.6,
                           ),
                         ),
                       ),
@@ -1052,6 +1045,16 @@ class _SettingsHeader extends StatelessWidget {
                             ),
                           ),
                         ),
+          // Paint the separator above the title's edge fades and rubberband
+          // overscroll so its hairline remains visually continuous.
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: IgnorePointer(
+              child: Container(height: 0.75, color: separatorColor),
+            ),
+          ),
                       ],
                     ),
             ),

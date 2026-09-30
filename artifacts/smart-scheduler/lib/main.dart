@@ -1872,9 +1872,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }
 
   // ── Calendar-tab header row (title + ↕ + < >) ────────────────────────────
-  // ALL three elements — title, ↕ chevron, and < > arrows — are placed inside
-  // the three-panel sliding Stack so everything slides together on swipes.
-  // Each panel is a full-width Row: [title + ↕] [< >]
+  // The title, ↕ chevron, and < > arrows stay inside the three-panel sliding
+  // Stack so the whole Calendar header group moves together on swipes.
   Widget _buildCalendarTitleRow({bool compact = false}) {
     final canUp = _calendarView != CalendarView.day;
     final canDown = _calendarView != CalendarView.year;
@@ -1885,11 +1884,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       final isToday = _isTodayTitle(displayTitle, _calendarDisplayYear);
       final titleStyle = TextStyle(
         fontFamily: kSFProText,
-        fontSize: 34,
+        fontSize: compact ? 17 : 34,
         fontWeight: FontWeight.bold,
         fontStyle: FontStyle.normal,
         color: isToday ? resolveAccentColor(context) : primaryLabel,
-        letterSpacing: -1.2,
+        letterSpacing: compact ? -0.6 : -1.2,
       );
       final titleScroller = HeaderTitleScroller(
         title: displayTitle,
@@ -1902,6 +1901,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           titleFontSize: titleFontSize,
           canUp: canUp,
           canDown: canDown,
+          compact: compact,
           onUp: isActive && canUp
               ? () => _calendarTabKey.currentState?.navigateUp()
               : null,
@@ -1962,7 +1962,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               0.0,
               availableWidth - compactArrowWidth * 2,
             );
-            final naturalTitleWidth = titlePainter.width + 90.0;
+            // The landscape up/down control sits immediately beside the text,
+            // instead of reserving the portrait chevron's wide hit-test slot.
+            final naturalTitleWidth = titlePainter.width + 28.0;
             final titleWidth = min(maxTitleWidth, naturalTitleWidth);
             Widget compactArrow({
               required _ChevronDir direction,
@@ -1970,15 +1972,21 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             }) {
               return SizedBox(
                 width: compactArrowWidth,
-                height: 44,
-                child: AnimatedTapIcon(
-                  padding: const EdgeInsets.all(11),
-                  onTap: onTap,
-                  child: _ChevronIcon(
-                    direction: direction,
-                    color: resolveAccentColor(context),
-                    size: 18,
-                    strokeWidth: 1.6,
+                height: 52,
+                child: Center(
+                  child: SizedBox(
+                    width: compactArrowWidth,
+                    height: 40,
+                    child: AnimatedTapIcon(
+                      padding: const EdgeInsets.all(15.5),
+                      onTap: onTap,
+                      child: _ChevronIcon(
+                        direction: direction,
+                        color: resolveAccentColor(context),
+                        size: 9,
+                        strokeWidth: 0.8,
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -2064,11 +2072,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       contentAlignment: Alignment.centerLeft,
       style: TextStyle(
         fontFamily: kSFProText,
-        fontSize: 34,
+        fontSize: 17,
         fontWeight: FontWeight.bold,
         fontStyle: FontStyle.normal,
         color: primaryLabel,
-        letterSpacing: -1.2,
+        letterSpacing: -0.6,
       ),
     );
   }
@@ -2258,7 +2266,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final windowSize = MediaQuery.sizeOf(context);
     final isLandscape = windowSize.width > windowSize.height;
     final topInset = MediaQuery.of(context).padding.top;
-    final headerContentHeight = isLandscape ? 44.0 : 101.0;
+    final headerContentHeight = isLandscape ? 52.0 : 101.0;
     final keyboardBottomInset = MediaQuery.of(context).viewInsets.bottom;
     final bottomInset = systemSafeAreaBottomInset(context);
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
@@ -2395,19 +2403,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                 ),
                                 child: Stack(
                                   children: [
-                                    if (borderAlpha > 0.001)
-                                      Positioned(
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                        child: Opacity(
-                                          opacity: borderAlpha,
-                                          child: Container(
-                                            height: 0.75,
-                                            color: separatorColor,
-                                          ),
-                                        ),
-                                      ),
                                     AppWindowContentPadding(
                                       child: ClipRect(
                                       child: OverflowBox(
@@ -2428,7 +2423,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                     CrossAxisAlignment.start,
                                                 children: [
                                                   SizedBox(
-                                                    height: 44,
+                                                    height: isLandscape
+                                                        ? 52
+                                                        : 44,
                                                     child: Stack(
                                                       fit: StackFit.expand,
                                                       children: [
@@ -2850,6 +2847,21 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                       ),
                                     ),
                                     ),
+                                    if (borderAlpha > 0.001)
+                                      Positioned(
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        child: IgnorePointer(
+                                          child: Opacity(
+                                            opacity: borderAlpha,
+                                            child: Container(
+                                              height: 0.75,
+                                              color: separatorColor,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                   ],
                                 ),
                               );
@@ -3170,12 +3182,14 @@ class _CalendarNavChevron extends StatelessWidget {
     required this.titleFontSize,
     required this.canUp,
     required this.canDown,
+    this.compact = false,
     this.onUp,
     this.onDown,
   });
 
   final double titleFontSize;
   final bool canUp, canDown;
+  final bool compact;
   final VoidCallback? onUp;
   final VoidCallback? onDown;
 
@@ -3210,6 +3224,50 @@ class _CalendarNavChevron extends StatelessWidget {
     final secondBottom = firstTop;
     final disabledColor = resolveThemeColor(kSecondaryLabel, context);
 
+    if (compact) {
+      Widget compactHalf({
+        required _ChevronDir direction,
+        required Color color,
+        required VoidCallback? onTap,
+      }) {
+        return Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: SizedBox.expand(
+              child: Center(
+                child: _ChevronIcon(
+                  direction: direction,
+                  color: color,
+                  size: iconSize,
+                  strokeWidth: 1.6 * scale,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      return SizedBox(
+        width: 24,
+        height: 52,
+        child: Column(
+          children: [
+            compactHalf(
+              direction: _ChevronDir.up,
+              color: canUp ? resolveAccentColor(context) : disabledColor,
+              onTap: onUp,
+            ),
+            compactHalf(
+              direction: _ChevronDir.down,
+              color: canDown ? resolveAccentColor(context) : disabledColor,
+              onTap: onDown,
+            ),
+          ],
+        ),
+      );
+    }
+
     Widget half({
       required _ChevronDir direction,
       required Color color,
@@ -3231,7 +3289,7 @@ class _CalendarNavChevron extends StatelessWidget {
                 direction: direction,
                 color: color,
                 size: iconSize,
-                strokeWidth: 1.6,
+                strokeWidth: 1.6 * scale,
               ),
             ),
           ),
