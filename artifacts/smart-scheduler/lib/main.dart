@@ -1988,13 +1988,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                     width: compactArrowWidth,
                     height: 40,
                     child: AnimatedTapIcon(
-                      padding: const EdgeInsets.all(15.5),
+                      padding: const EdgeInsets.all(11),
                       onTap: onTap,
                       child: _ChevronIcon(
                         direction: direction,
                         color: resolveAccentColor(context),
-                        size: 9,
-                        strokeWidth: 0.8,
+                        size: 18,
+                        strokeWidth: 1.6,
                       ),
                     ),
                   ),
@@ -3258,6 +3258,12 @@ class _CalendarNavChevron extends StatelessWidget {
     final disabledColor = resolveThemeColor(kSecondaryLabel, context);
 
     if (compact) {
+      final compactIconScale = max(1.0, scale * 2.0);
+      final compactIconSize = 18.0 * compactIconScale;
+      // Keep the landscape pair compact around the title center while retaining
+      // the two full-height tap zones.
+      final compactIconOffset = 13.0 - compactIconSize * 0.36;
+
       Widget compactHalf({
         required _ChevronDir direction,
         required Color color,
@@ -3269,11 +3275,19 @@ class _CalendarNavChevron extends StatelessWidget {
             onTap: onTap,
             child: SizedBox.expand(
               child: Center(
-                child: _ChevronIcon(
-                  direction: direction,
-                  color: color,
-                  size: iconSize,
-                  strokeWidth: 1.6 * scale,
+                child: Transform.translate(
+                  offset: Offset(
+                    0,
+                    direction == _ChevronDir.up
+                        ? compactIconOffset
+                        : -compactIconOffset,
+                  ),
+                  child: _ChevronIcon(
+                    direction: direction,
+                    color: color,
+                    size: compactIconSize,
+                    strokeWidth: 1.6 * compactIconScale,
+                  ),
                 ),
               ),
             ),
