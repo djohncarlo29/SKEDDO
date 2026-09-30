@@ -331,7 +331,9 @@ class _SettingsPanelState extends State<SettingsPanel>
         final liquidGlassOpacityLabel =
             '${((appLiquidGlassOpacityNotifier.value - kLiquidGlassMinimumOpacity) / liquidGlassRange * 100).round()}%';
 
-        final headerHeight = topInset + 101;
+        final isLandscape =
+            MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
+        final headerHeight = topInset + (isLandscape ? 44.0 : 101.0);
 
         return ClipRect(
           child: ColoredBox(
@@ -973,9 +975,12 @@ class _SettingsHeader extends StatelessWidget {
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
     final shadowColor = resolveThemeColor(kTabBarShadowColor, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
+    final isLandscape =
+        MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
+    final headerContentHeight = isLandscape ? 44.0 : 101.0;
     return Container(
       width: double.infinity,
-      height: topInset + 101,
+      height: topInset + headerContentHeight,
       decoration: BoxDecoration(
         color: cardColor,
         boxShadow: resolveThemeShadows([
@@ -994,41 +999,61 @@ class _SettingsHeader extends StatelessWidget {
           AppWindowContentPadding(
             child: Padding(
               padding: EdgeInsets.only(top: topInset),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 44 pt icon-row slot — empty (X / back button lives in AppShell)
-                  const SizedBox(height: 44),
-                  // Large title — snaps between "Settings" and sub-screen name
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(
-                        left: 16,
-                        right: 16,
-                        bottom: kHeaderTitleBottomInset,
-                      ),
-                      child: Align(
-                        alignment: Alignment.bottomLeft,
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: HeaderTitleScroller(
-                            title: title,
-                            fadeColor: cardColor,
-                            style: TextStyle(
-                              fontFamily: kSFProText,
-                              fontSize: 34,
-                              fontWeight: FontWeight.bold,
-                              fontStyle: FontStyle.normal,
-                              color: primaryLabel,
-                              letterSpacing: -1.2,
-                            ),
+              child: isLandscape
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 84),
+                        child: HeaderTitleScroller(
+                          title: title,
+                          fadeColor: cardColor,
+                          centerWhenContentFits: true,
+                          contentAlignment: Alignment.centerLeft,
+                          style: TextStyle(
+                            fontFamily: kSFProText,
+                            fontSize: 34,
+                            fontWeight: FontWeight.bold,
+                            fontStyle: FontStyle.normal,
+                            color: primaryLabel,
+                            letterSpacing: -1.2,
                           ),
                         ),
                       ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 44 pt icon-row slot — empty (X / back button lives in AppShell)
+                        const SizedBox(height: 44),
+                        // Large title — snaps between "Settings" and sub-screen name
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(
+                              left: 16,
+                              right: 16,
+                              bottom: kHeaderTitleBottomInset,
+                            ),
+                            child: Align(
+                              alignment: Alignment.bottomLeft,
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: HeaderTitleScroller(
+                                  title: title,
+                                  fadeColor: cardColor,
+                                  style: TextStyle(
+                                    fontFamily: kSFProText,
+                                    fontSize: 34,
+                                    fontWeight: FontWeight.bold,
+                                    fontStyle: FontStyle.normal,
+                                    color: primaryLabel,
+                                    letterSpacing: -1.2,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
             ),
           ),
         ],

@@ -1875,7 +1875,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // ALL three elements — title, ↕ chevron, and < > arrows — are placed inside
   // the three-panel sliding Stack so everything slides together on swipes.
   // Each panel is a full-width Row: [title + ↕] [< >]
-  Widget _buildCalendarTitleRow() {
+  Widget _buildCalendarTitleRow({bool compact = false}) {
     final canUp = _calendarView != CalendarView.day;
     final canDown = _calendarView != CalendarView.year;
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
@@ -1883,68 +1883,140 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     Widget buildPanel(String title, {required bool isActive}) {
       final displayTitle = _formattedCalendarMonthTitle(title);
       final isToday = _isTodayTitle(displayTitle, _calendarDisplayYear);
+      final titleStyle = TextStyle(
+        fontFamily: kSFProText,
+        fontSize: 34,
+        fontWeight: FontWeight.bold,
+        fontStyle: FontStyle.normal,
+        color: isToday ? resolveAccentColor(context) : primaryLabel,
+        letterSpacing: -1.2,
+      );
+      final titleScroller = HeaderTitleScroller(
+        title: displayTitle,
+        fadeColor: resolveThemeColor(kCardColor, context),
+        onTap: isActive && isToday ? _advanceCurrentCalendarHeader : null,
+        // The title area ends immediately before the calendar arrows, so its
+        // trailing boundary must fade instead of hard-clipping.
+        showTrailingFade: true,
+        trailingBuilder: (titleFontSize) => _CalendarNavChevron(
+          titleFontSize: titleFontSize,
+          canUp: canUp,
+          canDown: canDown,
+          onUp: isActive && canUp
+              ? () => _calendarTabKey.currentState?.navigateUp()
+              : null,
+          onDown: isActive && canDown
+              ? () => _calendarTabKey.currentState?.navigateDown()
+              : null,
+        ),
+        style: titleStyle,
+      );
+
+      final previousArrow = AnimatedTapIcon(
+        padding: const EdgeInsets.fromLTRB(18, 12, 4, 8),
+        onTap: isActive
+            ? () => _calendarTabKey.currentState?.navigatePrev()
+            : null,
+        child: _ChevronIcon(
+          direction: _ChevronDir.left,
+          color: resolveAccentColor(context),
+          size: 18,
+          strokeWidth: 1.6,
+        ),
+      );
+      final nextArrow = AnimatedTapIcon(
+        padding: const EdgeInsets.fromLTRB(10, 12, 0, 8),
+        onTap: isActive
+            ? () => _calendarTabKey.currentState?.navigateNext()
+            : null,
+        child: _ChevronIcon(
+          direction: _ChevronDir.right,
+          color: resolveAccentColor(context),
+          size: 18,
+          strokeWidth: 1.6,
+        ),
+      );
+
+      if (compact) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final availableWidth = constraints.maxWidth.isFinite
+                ? constraints.maxWidth
+                : MediaQuery.sizeOf(context).width;
+            final titlePainter = TextPainter(
+              text: TextSpan(
+                text: displayTitle,
+                style: titleStyle.copyWith(
+                  fontSize: headerTitleFontSize(
+                    context,
+                    baseFontSize: titleStyle.fontSize ?? 34,
+                  ),
+                ),
+              ),
+              textDirection: Directionality.of(context),
+              textScaler: TextScaler.noScaling,
+              maxLines: 1,
+            )..layout();
+            const compactArrowWidth = 40.0;
+            final maxTitleWidth = max(
+              0.0,
+              availableWidth - compactArrowWidth * 2,
+            );
+            final naturalTitleWidth = titlePainter.width + 90.0;
+            final titleWidth = min(maxTitleWidth, naturalTitleWidth);
+            Widget compactArrow({
+              required _ChevronDir direction,
+              required VoidCallback? onTap,
+            }) {
+              return SizedBox(
+                width: compactArrowWidth,
+                height: 44,
+                child: AnimatedTapIcon(
+                  padding: const EdgeInsets.all(11),
+                  onTap: onTap,
+                  child: _ChevronIcon(
+                    direction: direction,
+                    color: resolveAccentColor(context),
+                    size: 18,
+                    strokeWidth: 1.6,
+                  ),
+                ),
+              );
+            }
+
+            return Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  compactArrow(
+                    direction: _ChevronDir.left,
+                    onTap: isActive
+                        ? () => _calendarTabKey.currentState?.navigatePrev()
+                        : null,
+                  ),
+                  SizedBox(width: titleWidth, child: titleScroller),
+                  compactArrow(
+                    direction: _ChevronDir.right,
+                    onTap: isActive
+                        ? () => _calendarTabKey.currentState?.navigateNext()
+                        : null,
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      }
+
       return Row(
         // Keep the title's text baseline on the same bottom edge as the
         // standard Notes/Events header title.
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Title
-          Expanded(
-            child: HeaderTitleScroller(
-              title: displayTitle,
-              fadeColor: resolveThemeColor(kCardColor, context),
-              onTap: isActive && isToday
-                  ? _advanceCurrentCalendarHeader
-                  : null,
-              // The title area ends immediately before the calendar arrows,
-              // so its trailing boundary must fade instead of hard-clipping.
-              showTrailingFade: true,
-              trailingBuilder: (titleFontSize) => _CalendarNavChevron(
-                titleFontSize: titleFontSize,
-                canUp: canUp,
-                canDown: canDown,
-                onUp: isActive && canUp
-                    ? () => _calendarTabKey.currentState?.navigateUp()
-                    : null,
-                onDown: isActive && canDown
-                    ? () => _calendarTabKey.currentState?.navigateDown()
-                    : null,
-              ),
-              style: TextStyle(
-                fontFamily: kSFProText,
-                fontSize: 34,
-                fontWeight: FontWeight.bold,
-                fontStyle: FontStyle.normal,
-                color: isToday ? resolveAccentColor(context) : primaryLabel,
-                letterSpacing: -1.2,
-              ),
-            ),
-          ),
-          // < > nav arrows — right edge of the panel
-          AnimatedTapIcon(
-            padding: const EdgeInsets.fromLTRB(18, 12, 4, 8),
-            onTap: isActive
-                ? () => _calendarTabKey.currentState?.navigatePrev()
-                : null,
-            child: _ChevronIcon(
-              direction: _ChevronDir.left,
-              color: resolveAccentColor(context),
-              size: 18,
-              strokeWidth: 1.6,
-            ),
-          ),
-          AnimatedTapIcon(
-            padding: const EdgeInsets.fromLTRB(10, 12, 0, 8),
-            onTap: isActive
-                ? () => _calendarTabKey.currentState?.navigateNext()
-                : null,
-            child: _ChevronIcon(
-              direction: _ChevronDir.right,
-              color: resolveAccentColor(context),
-              size: 18,
-              strokeWidth: 1.6,
-            ),
-          ),
+          Expanded(child: titleScroller),
+          previousArrow,
+          nextArrow,
         ],
       );
     }
@@ -1977,6 +2049,27 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildCompactHeaderTitle({
+    required bool isDCVVisual,
+    required Color headerColor,
+    required Color primaryLabel,
+  }) {
+    return HeaderTitleScroller(
+      title: isDCVVisual ? (_dcvCategory ?? '') : _nonDCVHeaderTitle,
+      fadeColor: headerColor,
+      centerWhenContentFits: true,
+      contentAlignment: Alignment.centerLeft,
+      style: TextStyle(
+        fontFamily: kSFProText,
+        fontSize: 34,
+        fontWeight: FontWeight.bold,
+        fontStyle: FontStyle.normal,
+        color: primaryLabel,
+        letterSpacing: -1.2,
+      ),
     );
   }
 
@@ -2162,7 +2255,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final windowSize = MediaQuery.sizeOf(context);
+    final isLandscape = windowSize.width > windowSize.height;
     final topInset = MediaQuery.of(context).padding.top;
+    final headerContentHeight = isLandscape ? 44.0 : 101.0;
     final keyboardBottomInset = MediaQuery.of(context).viewInsets.bottom;
     final bottomInset = systemSafeAreaBottomInset(context);
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
@@ -2222,7 +2318,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                             final t = _searchModeAnim.value.clamp(0.0, 1.0);
                             return Padding(
                               padding: EdgeInsets.only(
-                                top: topInset + 101.0 * (1 - t),
+                                top: topInset + headerContentHeight * (1 - t),
                                 bottom: dcvKeyboardBottomInset,
                               ),
                               child: child,
@@ -2271,7 +2367,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               final accent = (isDCVVisual && _dcvColor != null)
                                   ? _dcvColor!
                                   : resolveAccentColor(context);
-                              final innerHeight = 101.0 * (1 - t);
+                               final innerHeight =
+                                   headerContentHeight * (1 - t);
                               final headerColor = Color.lerp(
                                 cardColor,
                                 backgroundColor,
@@ -2316,9 +2413,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                       child: OverflowBox(
                                         alignment: Alignment.topLeft,
                                         minHeight: 0,
-                                        maxHeight: topInset + 101,
+                                maxHeight: topInset + headerContentHeight,
                                         child: SizedBox(
-                                          height: topInset + 101,
+                                          height: topInset + headerContentHeight,
                                           child: Padding(
                                             padding: EdgeInsets.only(
                                               top: topInset,
@@ -2332,18 +2429,21 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                 children: [
                                                   SizedBox(
                                                     height: 44,
-                                                    child: Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                            left: 6,
-                                                            right: 16,
-                                                            bottom: 6,
-                                                          ),
-                                                      child: Row(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .end,
-                                                        children: [
+                                                    child: Stack(
+                                                      fit: StackFit.expand,
+                                                      children: [
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets.only(
+                                                                left: 6,
+                                                                right: 16,
+                                                                bottom: 6,
+                                                              ),
+                                                          child: Row(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .end,
+                                                            children: [
                                                           // Hamburger / X is lifted to the root Stack so it
                                                           // always paints above the scrim and settings panel.
                                                           // This SizedBox preserves the Row's layout exactly.
@@ -2642,9 +2742,34 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                         ],
                                                       ),
                                                     ),
-                                                  ),
-                                                  Expanded(
-                                                    child: Padding(
+                                                   if (isLandscape)
+                                                     Positioned.fill(
+                                                       left: 84,
+                                                       right: 84,
+                                                       child: Center(
+                                                         child:
+                                                             !isDCVVisual &&
+                                                                     _selectedIndex ==
+                                                                         1
+                                                                 ? _buildCalendarTitleRow(
+                                                                     compact: true,
+                                                                   )
+                                                                 : _buildCompactHeaderTitle(
+                                                                     isDCVVisual:
+                                                                         isDCVVisual,
+                                                                     headerColor:
+                                                                         headerColor,
+                                                                     primaryLabel:
+                                                                         primaryLabel,
+                                                                   ),
+                                                       ),
+                                                     ),
+                                                 ],
+                                               ),
+                                             ),
+                                     if (!isLandscape)
+                                       Expanded(
+                                         child: Padding(
                                                       padding:
                                                           const EdgeInsets.only(
                                                             left: 16,
