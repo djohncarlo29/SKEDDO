@@ -1210,34 +1210,40 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   Widget _buildViewModeHeaderIcon() {
     final c = resolveAccentColor(context);
+    final landscapeDy = MediaQuery.sizeOf(context).width >
+            MediaQuery.sizeOf(context).height
+        ? 1.0
+        : 0.0;
     switch (_activeViewMode) {
       case CalendarViewMode.compact:
         return Transform.translate(
-          offset: const Offset(1.9, -1),
+          offset: Offset(1.9, -1 + landscapeDy),
           child: CompactViewIcon(color: c, size: 24),
         );
       case CalendarViewMode.stacked:
         return Transform.translate(
-          offset: const Offset(1.9, -1),
+          offset: Offset(1.9, -1 + landscapeDy),
           child: StackedViewIcon(color: c, size: 24),
         );
       case CalendarViewMode.details:
         return Transform.translate(
-          offset: const Offset(2.4, 0),
+          offset: Offset(2.4, landscapeDy),
           child: DetailsViewIcon(color: c, size: 24),
         );
       case CalendarViewMode.list:
         return Transform.translate(
-          offset: const Offset(2.4, 0),
+          offset: Offset(2.4, landscapeDy),
           child: ListViewIcon(color: c, size: 24),
         );
     }
   }
 
   Widget _buildYearViewHeaderIcon() {
+    final isLandscape =
+        MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
     return Transform.translate(
       // Match the Month View icon slot's optical centre.
-      offset: const Offset(2.2, -0.5),
+      offset: Offset(2.2, isLandscape ? 0 : -0.5),
       child: SizedBox(
         // Preserve the same 24×24 alignment box as the Month View icon while
         // rendering the calendar glyph slightly smaller inside it.
@@ -1343,11 +1349,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final c = resolveAccentColor(context);
     const sz = 26.0;
     final cf = ColorFilter.mode(c, BlendMode.srcIn);
+    final landscapeDy = MediaQuery.sizeOf(context).width >
+            MediaQuery.sizeOf(context).height
+        ? 0.5
+        : 0.0;
     // All icons shifted for optical alignment with the header title.
     switch (_activeDaySubMode) {
       case DayViewSubMode.singleDay:
         return Transform.translate(
-          offset: const Offset(2, -0.5),
+          offset: Offset(2, -0.5 + landscapeDy),
           child: SvgPicture.asset(
             'assets/icons/day_view_single_day.svg',
             width: sz,
@@ -1359,7 +1369,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         );
       case DayViewSubMode.multiDay:
         return Transform.translate(
-          offset: const Offset(2, -0.5),
+          offset: Offset(2, -0.5 + landscapeDy),
           child: SvgPicture.asset(
             'assets/icons/day_view_multi_day.svg',
             width: sz,
@@ -1369,7 +1379,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         );
       case DayViewSubMode.list:
         return Transform.translate(
-          offset: const Offset(2, -0.3),
+          offset: Offset(2, -0.3 + landscapeDy),
           child: SvgPicture.asset(
             'assets/icons/day_view_list.svg',
             width: sz,
@@ -2513,7 +2523,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                             child: Transform.translate(
                                                                               offset: Offset(
                                                                                 11.5,
-                                                                                isLandscape ? 0 : -3,
+                                                                                 isLandscape ? -1.5 : -3,
                                                                               ),
                                                                               child: SearchWeightedIcon(
                                                                                 CupertinoIcons.ellipsis_circle,
@@ -3077,13 +3087,25 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               : _openSettings,
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(0, 10, 10, 0),
-                            child: _MorphingMenuIcon(
-                              // Show hamburger/X only when settings is open
-                              // but NOT in a sub-screen (sub-screen uses the
-                              // same back-chevron as DCV).
-                              open: _settingsOpen && !isSubScreen,
-                              isDCV: isDCVVisual || isSubScreen,
-                              color: accent,
+                            child: Transform.translate(
+                              offset: Offset(
+                                0,
+                                isLandscape
+                                    ? (isDCVVisual
+                                          ? 2.0
+                                          : isSubScreen
+                                          ? 0.0
+                                          : 1.0)
+                                    : 0,
+                              ),
+                              child: _MorphingMenuIcon(
+                                // Show hamburger/X only when settings is open
+                                // but NOT in a sub-screen (sub-screen uses the
+                                // same back-chevron as DCV).
+                                open: _settingsOpen && !isSubScreen,
+                                isDCV: isDCVVisual || isSubScreen,
+                                color: accent,
+                              ),
                             ),
                           ),
                         ),

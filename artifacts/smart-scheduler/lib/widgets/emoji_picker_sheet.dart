@@ -1580,10 +1580,9 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                           shape: const BoundedSquircleStadiumBorder(),
                           shadows: resolveThemeShadows(kCardShadow, context),
                         ),
-                        // Preserve the card's layout inset, but let picker
-                        // blooms paint beyond it instead of being clipped at
-                        // the card edge.
-                        clipBehavior: Clip.none,
+                        // Keep swipe and overscroll content inside the card's
+                        // squircle boundary.
+                        clipBehavior: Clip.antiAlias,
                         child: Column(
                           children: [
                             // Row 1 — swipeable emoji grid
@@ -1635,10 +1634,9 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                           constraints.maxHeight,
                                         ),
                                         child: Stack(
-                                          // Preserve the grid's layout inset,
-                                          // but let picker gel blooms paint
-                                          // into that inset instead of being
-                                          // clipped at the grid boundary.
+                                          // Keep the grid inset available for
+                                          // gel blooms; the outer card clip
+                                          // still contains them.
                                           clipBehavior: Clip.none,
                                           children: [
                                             if (_catIndex > 0)
