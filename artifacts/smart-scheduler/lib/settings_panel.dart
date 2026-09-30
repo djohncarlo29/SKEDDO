@@ -333,7 +333,8 @@ class _SettingsPanelState extends State<SettingsPanel>
 
         final isLandscape =
             MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
-        final headerHeight = topInset + (isLandscape ? 52.0 : 101.0);
+        final headerContentHeight = isLandscape ? 52.0 : 101.0;
+        final headerHeight = topInset + headerContentHeight;
 
         return ClipRect(
           child: ColoredBox(
@@ -402,6 +403,8 @@ class _SettingsPanelState extends State<SettingsPanel>
                             _activeRoute != null && _navCtrl.value >= 0.5;
                         return _SettingsHeader(
                           topInset: topInset,
+                          contentHeight: headerContentHeight,
+                          isLandscape: isLandscape,
                           title: isSubScreen ? _activeRoute!.title : 'Settings',
                         );
                       },
@@ -462,6 +465,10 @@ class _MainSettingsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomScrollView(
+      // Settings is a Stack overlay inside CupertinoTabScaffold. Give it an
+      // independent controller instead of inheriting the active tab's primary
+      // scroll position.
+      primary: false,
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
       ),
@@ -704,6 +711,7 @@ class _SubScreenState extends State<_SubScreen> {
       color: resolveThemeColor(kBackgroundColor, context),
       child: AppWindowContentPadding(
         child: CustomScrollView(
+          primary: false,
           physics: const AlwaysScrollableScrollPhysics(
             parent: BouncingScrollPhysics(),
           ),
@@ -965,9 +973,16 @@ class _DefaultCategoryRowState extends State<_DefaultCategoryRow> {
 // nav animation — no slide, just an instant snap matching the DCV timing.
 class _SettingsHeader extends StatelessWidget {
   final double topInset;
+  final double contentHeight;
+  final bool isLandscape;
   final String title;
 
-  const _SettingsHeader({required this.topInset, required this.title});
+  const _SettingsHeader({
+    required this.topInset,
+    required this.contentHeight,
+    required this.isLandscape,
+    required this.title,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -975,12 +990,9 @@ class _SettingsHeader extends StatelessWidget {
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
     final shadowColor = resolveThemeColor(kTabBarShadowColor, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
-    final isLandscape =
-        MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
-    final headerContentHeight = isLandscape ? 52.0 : 101.0;
     return Container(
       width: double.infinity,
-      height: topInset + headerContentHeight,
+      height: topInset + contentHeight,
       decoration: BoxDecoration(
         color: cardColor,
         boxShadow: resolveThemeShadows([
@@ -1045,18 +1057,18 @@ class _SettingsHeader extends StatelessWidget {
                             ),
                           ),
                         ),
-          // Paint the separator above the title's edge fades and rubberband
-          // overscroll so its hairline remains visually continuous.
+                      ],
+                    ),
+            ),
+          ),
+          // Shared by portrait and landscape. Keep the hairline above title
+          // fades and rubberband overscroll so it remains visually continuous.
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
             child: IgnorePointer(
               child: Container(height: 0.75, color: separatorColor),
-            ),
-          ),
-                      ],
-                    ),
             ),
           ),
         ],
