@@ -215,21 +215,17 @@ class _CupertinoDatePickerWithFullWidthSelectionState
     required int columnIndex,
     required bool isValid,
   }) {
-    final bool isRtl = Directionality.of(context) == TextDirection.rtl;
-    if (columnIndex == 1) {
-      return Center(
-        child: Text(label, style: _pickerTextStyle(isValid: isValid)),
-      );
-    }
-
-    final bool isPhysicalLeft = isRtl ? columnIndex == 2 : columnIndex == 0;
+    // Match the stock portrait picker: the first logical date column is
+    // leading-aligned, and the remaining columns are trailing-aligned.
+    final isFirstColumn = columnIndex == 0;
     return Align(
-      alignment: isPhysicalLeft ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isFirstColumn
+          ? AlignmentDirectional.centerStart
+          : AlignmentDirectional.centerEnd,
       child: Padding(
-        padding: EdgeInsets.only(
-          left: isPhysicalLeft ? 0 : 12,
-          right: isPhysicalLeft ? 12 : 0,
-        ),
+        padding: isFirstColumn
+            ? const EdgeInsetsDirectional.only(start: 12)
+            : const EdgeInsetsDirectional.only(end: 12),
         child: Text(label, style: _pickerTextStyle(isValid: isValid)),
       ),
     );

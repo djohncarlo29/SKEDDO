@@ -47,6 +47,51 @@ void main() {
     expect(year.center.dx - day.center.dx, closeTo(300, 1));
   });
 
+  testWidgets('landscape date wheel labels match portrait alignment', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: Center(
+          child: SizedBox(
+            width: 900,
+            height: 216,
+            child: CupertinoDatePickerWithFullWidthSelection(
+              itemExtent: 32,
+              initialDateTime: DateTime(2026, 10, 1),
+              onDateTimeChanged: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final monthColumn = tester.getRect(
+      find.byKey(const ValueKey('wide-date-month-column')),
+    );
+    final dayColumn = tester.getRect(
+      find.byKey(const ValueKey('wide-date-day-column')),
+    );
+    final yearColumn = tester.getRect(
+      find.byKey(const ValueKey('wide-date-year-column')),
+    );
+    final monthLabel = tester.getRect(find.text('October'));
+    final dayLabel = tester.getRect(find.text('1'));
+    final yearLabel = tester.getRect(find.text('2026'));
+
+    expect(monthLabel.left, closeTo(monthColumn.left + 12, 1));
+    expect(dayLabel.right, closeTo(dayColumn.right - 12, 1));
+    expect(yearLabel.right, closeTo(yearColumn.right - 12, 1));
+  });
+
   testWidgets('landscape date wheels keep the selected date valid', (
     tester,
   ) async {
