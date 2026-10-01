@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
 
+import 'native_text_input.dart';
+
 /// The shared, live geometry state used by widgets that need to morph between
 /// portrait and landscape layouts while the native window is rotating.
 ///
@@ -49,6 +51,8 @@ class _LiveRotationGeometryState extends State<LiveRotationGeometry>
   Size? _toSize;
   bool _isTransitioning = false;
   int _finalizeGeneration = 0;
+  FocusNode? _focusBeforeRotation;
+  TextEditingController? _nativeInputBeforeRotation;
 
   Size? _windowSize() {
     final view = WidgetsBinding.instance.platformDispatcher.implicitView;
@@ -66,10 +70,40 @@ class _LiveRotationGeometryState extends State<LiveRotationGeometry>
   Size _swapped(Size size) => Size(size.height, size.width);
 
   void _startTransition(Size from) {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    _focusBeforeRotation =
+        primaryFocus is FocusScopeNode ||
+            primaryFocus?.context == null
+        ? null
+        : primaryFocus;
+    _nativeInputBeforeRotation = NativeTextInput.focusedController;
     _fromSize = from;
     _toSize = _swapped(from);
     _isTransitioning = true;
     _finalizeGeneration++;
+  }
+
+  void _restoreRotationFocus() {
+    final savedFocus = _focusBeforeRotation;
+    final savedNativeController = _nativeInputBeforeRotation;
+    _focusBeforeRotation = null;
+    _nativeInputBeforeRotation = null;
+
+    final currentFocus = FocusManager.instance.primaryFocus;
+    final hasDifferentLiveFocus =
+        currentFocus != null &&
+        currentFocus is! FocusScopeNode &&
+        currentFocus.context != null &&
+        currentFocus != savedFocus;
+    if (hasDifferentLiveFocus) return;
+
+    if (savedFocus?.context != null && !savedFocus!.hasFocus) {
+      savedFocus.requestFocus();
+    }
+    if (savedNativeController != null &&
+        !NativeTextInput.isFocused(savedNativeController)) {
+      NativeTextInput.focus(savedNativeController);
+    }
   }
 
   void _scheduleFinalize(Size target) {
@@ -83,6 +117,9 @@ class _LiveRotationGeometryState extends State<LiveRotationGeometry>
         _fromSize = null;
         _toSize = null;
         _isTransitioning = false;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _restoreRotationFocus();
       });
     });
   }
@@ -137,6 +174,8 @@ class _LiveRotationGeometryState extends State<LiveRotationGeometry>
   @override
   void dispose() {
     _finalizeGeneration++;
+    _focusBeforeRotation = null;
+    _nativeInputBeforeRotation = null;
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -215,14 +254,16 @@ class InheritedRotationGeometry extends InheritedWidget {
   static RotationGeometryData of(BuildContext context) {
     final inherited = context
         .dependOnInheritedWidgetOfExactType<InheritedRotationGeometry>();
-    assert(inherited != null, 'LiveRotationGeometry is missing above this tree');
+    assert(
+      inherited != null,
+      'LiveRotationGeometry is missing above this tree',
+    );
     return inherited!.data;
   }
 
-  static RotationGeometryData? maybeOf(BuildContext context) =>
-      context
-          .dependOnInheritedWidgetOfExactType<InheritedRotationGeometry>()
-          ?.data;
+  static RotationGeometryData? maybeOf(BuildContext context) => context
+      .dependOnInheritedWidgetOfExactType<InheritedRotationGeometry>()
+      ?.data;
 
   @override
   bool updateShouldNotify(InheritedRotationGeometry oldWidget) =>

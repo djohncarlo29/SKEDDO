@@ -84,6 +84,27 @@ class NativeTextInput extends StatefulWidget {
     }
   }
 
+  /// The controller for the most recently registered input that currently has
+  /// focus, if any. Rotation handling uses this to recover HTML/native input
+  /// focus without guessing from tab-level search state.
+  static TextEditingController? get focusedController {
+    for (int i = _instances.length - 1; i >= 0; i--) {
+      final state = _instances[i];
+      if (state._focusNode.hasFocus) return state.widget.controller;
+    }
+    return null;
+  }
+
+  static bool isFocused(TextEditingController controller) {
+    for (int i = _instances.length - 1; i >= 0; i--) {
+      final state = _instances[i];
+      if (state.widget.controller == controller && state._focusNode.hasFocus) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /// Tells the field to refuse implicit focus loss (tap-outside,
   /// scroll-triggered blur, etc.) while the keyboard must stay up. Only an
   /// explicit [unfocusAll] / [_blur] call (via "blur") is allowed to resign
@@ -210,9 +231,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
       minLines: widget.multiline ? widget.minLines : null,
       scrollPhysics:
           widget.scrollPhysics ??
-          const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
-          ),
+          const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
       keyboardType: widget.multiline
           ? TextInputType.multiline
           : TextInputType.text,
@@ -223,8 +242,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
       padding: widget.padding,
       cursorColor: widget.cursorColor,
       selectionControls:
-          widget.selectionControls ??
-          hapticQuietCupertinoTextSelectionControls,
+          widget.selectionControls ?? hapticQuietCupertinoTextSelectionControls,
       cursorOpacityAnimates: true,
       enableInteractiveSelection: true,
       onTap: widget.caretToEndOnFirstTap
@@ -274,10 +292,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
             ),
           ),
         widget.caretToEndOnFirstTap
-            ? trackTextFieldPointerDown(
-                focusNode: _focusNode,
-                child: textField,
-              )
+            ? trackTextFieldPointerDown(focusNode: _focusNode, child: textField)
             : textField,
       ],
     );

@@ -73,6 +73,30 @@ class NativeTextInput extends StatefulWidget {
     }
   }
 
+  /// Returns the controller for the currently focused DOM input, if any.
+  /// Browser rotation can blur an HtmlElementView independently of Flutter's
+  /// FocusManager, so the app-level rotation guard needs this platform signal.
+  static TextEditingController? get focusedController {
+    for (int i = _instances.length - 1; i >= 0; i--) {
+      final state = _instances[i];
+      if (state._element == html.document.activeElement) {
+        return state.widget.controller;
+      }
+    }
+    return null;
+  }
+
+  static bool isFocused(TextEditingController controller) {
+    for (int i = _instances.length - 1; i >= 0; i--) {
+      final state = _instances[i];
+      if (state.widget.controller == controller &&
+          state._element == html.document.activeElement) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   // No-op stubs — focus locking is a mobile-only concept (iOS UITextField
   // delegate / Android InputMethodManager).  The web build calls the same
   // call sites so no platform guard is needed at the call site.
@@ -110,8 +134,7 @@ class _NativeTextInputState extends State<NativeTextInput> {
     _scrollSub = _element.onScroll.listen((_) => _publishScrollMetrics());
     if (widget.caretToEndOnFirstTap) {
       _pointerDownSub = _element.onMouseDown.listen((_) {
-        _wasFocusedAtPointerDown =
-            html.document.activeElement == _element;
+        _wasFocusedAtPointerDown = html.document.activeElement == _element;
       });
       _pointerUpSub = _element.onMouseUp.listen((_) {
         if (_wasFocusedAtPointerDown) return;
