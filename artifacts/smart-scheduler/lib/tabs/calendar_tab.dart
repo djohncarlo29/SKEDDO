@@ -130,7 +130,7 @@ const double _kCurrentTimeIndicatorCenterOffset = 9.0;
 const double _kDayBannerHeight = 36.0;
 const double _kDayBannerVerticalInset = 4.0;
 
-void _scheduleLandscapeCurrentTimeCentering({
+void _scheduleDayTimelinePosition({
   required BuildContext context,
   required ScrollController scroll,
   required ValueListenable<DateTime> nowNotifier,
@@ -143,18 +143,28 @@ void _scheduleLandscapeCurrentTimeCentering({
         !position.viewportDimension.isFinite) {
       return;
     }
-    final availableHeight = math.max(
-      0.0,
-      position.viewportDimension -
-          floatingTabBarContentBottomClearance(context),
-    );
     final now = nowNotifier.value;
-    final currentSeconds = now.hour * 3600 + now.minute * 60;
-    final indicatorCenterY =
-        _kTimelinePad +
-        (currentSeconds / 3600.0) * _kHourHeight +
-        _kCurrentTimeIndicatorCenterOffset;
-    final targetOffset = (indicatorCenterY - availableHeight / 2)
+    final windowSize = MediaQuery.sizeOf(context);
+    final double desiredOffset;
+    if (windowSize.width > windowSize.height) {
+      final availableHeight = math.max(
+        0.0,
+        position.viewportDimension -
+            floatingTabBarContentBottomClearance(context),
+      );
+      final currentSeconds = now.hour * 3600 + now.minute * 60;
+      final indicatorCenterY =
+          _kTimelinePad +
+          (currentSeconds / 3600.0) * _kHourHeight +
+          _kCurrentTimeIndicatorCenterOffset;
+      desiredOffset = indicatorCenterY - availableHeight / 2;
+    } else {
+      // Portrait keeps the existing initial framing: roughly two hours before
+      // now, with early-morning times clamped to the start of the timeline.
+      desiredOffset =
+          _kTimelinePad + math.max(0, now.hour - 2) * _kHourHeight;
+    }
+    final targetOffset = desiredOffset
         .clamp(0.0, position.maxScrollExtent)
         .toDouble();
     if ((scroll.offset - targetOffset).abs() > 0.5) {
@@ -524,6 +534,11 @@ class CalendarTabState extends State<CalendarTab>
   // The cache key includes the inputs that affect the timeline's own layout;
   // a new date or Day sub-mode gets a fresh stateful timeline.
   final Map<String, Widget> _singleDayTimelineWidgetCache = {};
+  // All adjacent Single Day panels share one live vertical offset. Scrolling
+  // any visible panel keeps its neighbors aligned; a successful day swipe
+  // requests a fresh current-time position for every mounted panel.
+  late final ValueNotifier<double> _sharedDayTimelineOffset;
+  final ValueNotifier<int> _dayTimelinePositionReset = ValueNotifier<int>(0);
   double _collapseScrollOffset = 0.0;
   double _savedMonthScrollOffset = 0.0;
 
@@ -1087,12 +1102,20 @@ class CalendarTabState extends State<CalendarTab>
   void _swipeNavigate(int dir) {
     if (_snapCtrl.isAnimating) return;
     final isNext = dir < 0;
+    _requestDayTimelinePositionReset();
     _animateSlide(
       from: 0.0,
       to: dir * _screenW,
       then: isNext ? _applyNext : _applyPrev,
       onBloom: _computeBloom(isNext: isNext),
     );
+  }
+
+  void _requestDayTimelinePositionReset() {
+    if (_view == CalendarView.day &&
+        widget.daySubMode != DayViewSubMode.list) {
+      _dayTimelinePositionReset.value++;
+    }
   }
 
   void _applyPrev() {
@@ -1394,6 +1417,7 @@ class CalendarTabState extends State<CalendarTab>
     final applyN = _weekStripDrag ? _applyNextWeek : _applyNext;
     if (_slideX > _screenW * frac || vel > 500) {
       _navLocked = true;
+      _requestDayTimelinePositionReset();
       _animateSlide(
         from: _slideX,
         to: _screenW,
@@ -1407,6 +1431,7 @@ class CalendarTabState extends State<CalendarTab>
       );
     } else if (_slideX < -_screenW * frac || vel < -500) {
       _navLocked = true;
+      _requestDayTimelinePositionReset();
       _animateSlide(
         from: _slideX,
         to: -_screenW,
@@ -1714,8 +1739,13 @@ class CalendarTabState extends State<CalendarTab>
   @override
   void initState() {
     super.initState();
-    _today = DateTime.now();
-    _selected = DateTime.now();
+    final now = DateTime.now();
+    _today = now;
+    _selected = now;
+    final startHour = math.max(0, now.hour - 2).toDouble();
+    _sharedDayTimelineOffset = ValueNotifier<double>(
+      _kTimelinePad + startHour * _kHourHeight,
+    );
     _monthViewScrollCtrl.addListener(_syncPreviewScrollToCurrent);
     _yearScrollCtrl.addListener(_syncYearPreviewScrollToCurrent);
     CategoryRegistry.revision.addListener(_onCategoryRegistryChanged);
@@ -1995,6 +2025,8 @@ class CalendarTabState extends State<CalendarTab>
     _prevPreviewScrollCtrl?.dispose();
     _nextPreviewScrollCtrl?.dispose();
     _searchCtrl.dispose();
+    _sharedDayTimelineOffset.dispose();
+    _dayTimelinePositionReset.dispose();
     super.dispose();
   }
 
@@ -2076,13 +2108,11 @@ class CalendarTabState extends State<CalendarTab>
   Widget _singleDayTimelineFor(DateTime date) {
     final dateKey = '${date.year}-${date.month}-${date.day}';
     final todayKey = '${_today.year}-${_today.month}-${_today.day}';
-    final isTodaySelected = _sameDay(date, _today) && _sameDay(_selected, _today);
     final cacheKey = [
       dateKey,
       todayKey,
       widget.daySubMode.index,
       _nowNotifier.hashCode,
-      isTodaySelected,
     ].join('|');
     final cached = _singleDayTimelineWidgetCache[cacheKey];
     if (cached != null) return cached;
@@ -2090,9 +2120,10 @@ class CalendarTabState extends State<CalendarTab>
     final timeline = _DayTimeline(
       key: ValueKey('day-${date.year}${date.month}${date.day}'),
       selectedDate: date,
-      isTodaySelected: isTodaySelected,
       today: _today,
       nowNotifier: _nowNotifier,
+      sharedScrollOffset: _sharedDayTimelineOffset,
+      positionResetNotifier: _dayTimelinePositionReset,
       daySubMode: widget.daySubMode,
     );
     _singleDayTimelineWidgetCache[cacheKey] = timeline;
@@ -2494,6 +2525,10 @@ class CalendarTabState extends State<CalendarTab>
                                   selectedDate: _selected,
                                   today: _today,
                                   nowNotifier: _nowNotifier,
+                                  sharedScrollOffset:
+                                      _sharedDayTimelineOffset,
+                                  positionResetNotifier:
+                                      _dayTimelinePositionReset,
                                   slideX: timelineSlideX,
                                   screenW: sw,
                                   animateEntrance:
@@ -7248,18 +7283,19 @@ class _DayTimeline extends StatefulWidget {
   const _DayTimeline({
     super.key,
     required this.selectedDate,
-    required this.isTodaySelected,
     required this.today,
     required this.nowNotifier,
+    required this.sharedScrollOffset,
+    required this.positionResetNotifier,
     this.daySubMode = DayViewSubMode.singleDay,
   });
 
   final DateTime selectedDate;
-  // True only for today's timeline while today occupies the center panel.
-  final bool isTodaySelected;
   final DateTime today;
   // Notifier updated at every real-world minute boundary by CalendarTabState.
   final ValueNotifier<DateTime> nowNotifier;
+  final ValueNotifier<double> sharedScrollOffset;
+  final ValueNotifier<int> positionResetNotifier;
   // When multiDay, the timeline shows selectedDate and selectedDate+1 side
   // by side with hairline vertical separators.
   final DayViewSubMode daySubMode;
@@ -7279,11 +7315,11 @@ class _DayTimelineState extends State<_DayTimeline>
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    final startHour = math.max(0, now.hour - 2).toDouble();
     _scroll = ScrollController(
-      initialScrollOffset: _kTimelinePad + startHour * _kHourHeight,
-    );
+      initialScrollOffset: widget.sharedScrollOffset.value,
+    )..addListener(_publishSharedScrollOffset);
+    widget.sharedScrollOffset.addListener(_applySharedScrollOffset);
+    widget.positionResetNotifier.addListener(_resetToCurrentTimePosition);
     _sepCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 320),
@@ -7315,7 +7351,7 @@ class _DayTimelineState extends State<_DayTimeline>
     _lastWindowSize = windowSize;
     _lastLandscapeClearance = bottomClearance;
     if (windowSize.width <= windowSize.height) return;
-    _scheduleLandscapeCurrentTimeCentering(
+    _scheduleDayTimelinePosition(
       context: context,
       scroll: _scroll,
       nowNotifier: widget.nowNotifier,
@@ -7330,21 +7366,42 @@ class _DayTimelineState extends State<_DayTimeline>
           ? _sepCtrl.forward()
           : _sepCtrl.reverse();
     }
-    final returnedToToday =
-        !old.isTodaySelected && widget.isTodaySelected;
-    final windowSize = MediaQuery.sizeOf(context);
-    if (returnedToToday && windowSize.width > windowSize.height) {
-      _scheduleLandscapeCurrentTimeCentering(
-        context: context,
-        scroll: _scroll,
-        nowNotifier: widget.nowNotifier,
-        animate: true,
-      );
+  }
+
+  void _publishSharedScrollOffset() {
+    if (!_scroll.hasClients) return;
+    final offset = _scroll.position.pixels;
+    if ((widget.sharedScrollOffset.value - offset).abs() > 0.5) {
+      widget.sharedScrollOffset.value = offset;
     }
+  }
+
+  void _applySharedScrollOffset() {
+    if (!_scroll.hasClients) return;
+    final position = _scroll.position;
+    if (!position.hasContentDimensions) return;
+    final target = widget.sharedScrollOffset.value
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    if ((position.pixels - target).abs() > 0.5) {
+      _scroll.jumpTo(target);
+    }
+  }
+
+  void _resetToCurrentTimePosition() {
+    _scheduleDayTimelinePosition(
+      context: context,
+      scroll: _scroll,
+      nowNotifier: widget.nowNotifier,
+      animate: true,
+    );
   }
 
   @override
   void dispose() {
+    widget.sharedScrollOffset.removeListener(_applySharedScrollOffset);
+    widget.positionResetNotifier.removeListener(_resetToCurrentTimePosition);
+    _scroll.removeListener(_publishSharedScrollOffset);
     _sepCtrl.dispose();
     _scroll.dispose();
     super.dispose();
@@ -8083,6 +8140,8 @@ class _DayTimelineMulti extends StatefulWidget {
     required this.selectedDate,
     required this.today,
     required this.nowNotifier,
+    required this.sharedScrollOffset,
+    required this.positionResetNotifier,
     required this.slideX,
     required this.screenW,
     this.animateEntrance = false,
@@ -8091,6 +8150,8 @@ class _DayTimelineMulti extends StatefulWidget {
   final DateTime selectedDate;
   final DateTime today;
   final ValueNotifier<DateTime> nowNotifier;
+  final ValueNotifier<double> sharedScrollOffset;
+  final ValueNotifier<int> positionResetNotifier;
 
   /// Live swipe offset from the parent, range [−screenW, +screenW].
   final double slideX;
@@ -8114,11 +8175,11 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    final startHour = math.max(0, now.hour - 2).toDouble();
     _scroll = ScrollController(
-      initialScrollOffset: _kTimelinePad + startHour * _kHourHeight,
-    );
+      initialScrollOffset: widget.sharedScrollOffset.value,
+    )..addListener(_publishSharedScrollOffset);
+    widget.sharedScrollOffset.addListener(_applySharedScrollOffset);
+    widget.positionResetNotifier.addListener(_resetToCurrentTimePosition);
     // Separator entrance animation — plays once when Multi Day mode is first
     // entered.  Because the parent uses const Key('multi-timeline'), this
     // state persists across date navigation so the animation does NOT replay
@@ -8144,48 +8205,47 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
     _lastWindowSize = windowSize;
     _lastLandscapeClearance = bottomClearance;
     if (windowSize.width <= windowSize.height) return;
-    _scheduleLandscapeCurrentTimeCentering(
+    _scheduleDayTimelinePosition(
       context: context,
       scroll: _scroll,
       nowNotifier: widget.nowNotifier,
     );
   }
 
-  @override
-  void didUpdateWidget(_DayTimelineMulti old) {
-    super.didUpdateWidget(old);
-    final selectedDateChanged = !_sameDay(
-      old.selectedDate,
-      widget.selectedDate,
-    );
-    final todayWasInDisplayedPair =
-        _sameDay(old.selectedDate, old.today) ||
-        _sameDay(
-          old.selectedDate.add(const Duration(days: 1)),
-          old.today,
-        );
-    final nowIsInDisplayedPair =
-        _sameDay(widget.selectedDate, widget.today) ||
-        _sameDay(
-          widget.selectedDate.add(const Duration(days: 1)),
-          widget.today,
-        );
-    final windowSize = MediaQuery.sizeOf(context);
-    if (selectedDateChanged &&
-        !todayWasInDisplayedPair &&
-        nowIsInDisplayedPair &&
-        windowSize.width > windowSize.height) {
-      _scheduleLandscapeCurrentTimeCentering(
-        context: context,
-        scroll: _scroll,
-        nowNotifier: widget.nowNotifier,
-        animate: true,
-      );
+  void _publishSharedScrollOffset() {
+    if (!_scroll.hasClients) return;
+    final offset = _scroll.position.pixels;
+    if ((widget.sharedScrollOffset.value - offset).abs() > 0.5) {
+      widget.sharedScrollOffset.value = offset;
     }
+  }
+
+  void _applySharedScrollOffset() {
+    if (!_scroll.hasClients) return;
+    final position = _scroll.position;
+    if (!position.hasContentDimensions) return;
+    final target = widget.sharedScrollOffset.value
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    if ((position.pixels - target).abs() > 0.5) {
+      _scroll.jumpTo(target);
+    }
+  }
+
+  void _resetToCurrentTimePosition() {
+    _scheduleDayTimelinePosition(
+      context: context,
+      scroll: _scroll,
+      nowNotifier: widget.nowNotifier,
+      animate: true,
+    );
   }
 
   @override
   void dispose() {
+    widget.sharedScrollOffset.removeListener(_applySharedScrollOffset);
+    widget.positionResetNotifier.removeListener(_resetToCurrentTimePosition);
+    _scroll.removeListener(_publishSharedScrollOffset);
     _sepCtrl.dispose();
     _scroll.dispose();
     super.dispose();
