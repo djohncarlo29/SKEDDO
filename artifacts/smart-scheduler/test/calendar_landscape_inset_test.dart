@@ -2,6 +2,35 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/tabs/calendar_tab.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
+import 'package:smart_scheduler/widgets/view_mode_icons.dart';
+
+Widget _landscapeCalendarHarness({
+  required Size screenSize,
+  required double horizontalSafeInset,
+  DayViewSubMode daySubMode = DayViewSubMode.singleDay,
+}) {
+  return CupertinoApp(
+    builder: (context, child) {
+      final mediaQuery = MediaQuery.of(context).copyWith(
+        size: screenSize,
+        padding: EdgeInsets.only(left: horizontalSafeInset),
+        viewPadding: EdgeInsets.only(left: horizontalSafeInset),
+      );
+      return MediaQuery(
+        data: mediaQuery,
+        child: AppWindowContentBoundary(
+          child: child ?? const SizedBox.shrink(),
+        ),
+      );
+    },
+    home: CupertinoPageScaffold(
+      child: CalendarTab(
+        daySubMode: daySubMode,
+        onViewChanged: (view, _, _, _, _) {},
+      ),
+    ),
+  );
+}
 
 void main() {
   testWidgets(
@@ -63,9 +92,7 @@ void main() {
         expect(rect.left, greaterThanOrEqualTo(horizontalSafeInset + 15.5));
         expect(
           rect.right,
-          lessThanOrEqualTo(
-            screenSize.width - horizontalSafeInset - 15.5,
-          ),
+          lessThanOrEqualTo(screenSize.width - horizontalSafeInset - 15.5),
         );
       }
 
@@ -80,6 +107,148 @@ void main() {
         }
       }
       expect(foundFullWidthYearViewport, isTrue);
+    },
+  );
+
+  testWidgets(
+    'landscape Day View keeps full-width panels and lines through Month transition',
+    (tester) async {
+      const screenSize = Size(844, 390);
+      const horizontalSafeInset = 28.0;
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = screenSize;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _landscapeCalendarHarness(
+          screenSize: screenSize,
+          horizontalSafeInset: horizontalSafeInset,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      tester.state<CalendarTabState>(find.byType(CalendarTab)).navigateUp();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final timelines = find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == '_DayTimeline',
+      );
+      expect(timelines, findsNWidgets(3));
+      final centerTimeline = timelines.at(1);
+      final timelineRect = tester.getRect(centerTimeline);
+      expect(timelineRect.left, closeTo(0, 0.5));
+      expect(timelineRect.width, closeTo(screenSize.width, 0.5));
+
+      final hourRows = find.descendant(
+        of: centerTimeline,
+        matching: find.byWidgetPredicate(
+          (widget) => widget.runtimeType.toString() == '_HourSlot',
+        ),
+      );
+      expect(hourRows, findsNWidgets(24));
+      final hourRowRect = tester.getRect(hourRows.first);
+      expect(hourRowRect.left, closeTo(horizontalSafeInset, 0.5));
+      expect(hourRowRect.right, closeTo(screenSize.width, 0.5));
+
+      final midnightLine = find.descendant(
+        of: centerTimeline,
+        matching: find.byKey(const Key('calendar-midnight-separator')),
+      );
+      expect(midnightLine, findsOneWidget);
+      final midnightLineRect = tester.getRect(midnightLine);
+      expect(midnightLineRect.left, closeTo(0, 0.5));
+      expect(midnightLineRect.right, closeTo(screenSize.width, 0.5));
+
+      final currentTimeLine = find.descendant(
+        of: centerTimeline,
+        matching: find.byKey(const Key('calendar-current-time-indicator')),
+      );
+      expect(currentTimeLine, findsOneWidget);
+      final currentTimeLineRect = tester.getRect(currentTimeLine);
+      expect(currentTimeLineRect.left, closeTo(horizontalSafeInset, 0.5));
+      expect(currentTimeLineRect.right, closeTo(screenSize.width, 0.5));
+
+      final dowMask = find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == '_DayViewDowMask',
+      );
+      expect(dowMask, findsOneWidget);
+      final dayLetters = find.descendant(
+        of: dowMask,
+        matching: find.byType(Text),
+      );
+      expect(dayLetters, findsNWidgets(7));
+      final firstDayLetterX = tester.getCenter(dayLetters.first).dx;
+      expect(firstDayLetterX, greaterThan(horizontalSafeInset));
+      expect(
+        tester.getCenter(dayLetters.last).dx,
+        lessThan(screenSize.width - horizontalSafeInset),
+      );
+
+      await tester.pumpAndSettle();
+      expect(
+        tester.getCenter(dayLetters.first).dx,
+        closeTo(firstDayLetterX, 0.5),
+      );
+    },
+  );
+
+  testWidgets(
+    'landscape Multi-Day timeline keeps inset columns and full-width rules',
+    (tester) async {
+      const screenSize = Size(844, 390);
+      const horizontalSafeInset = 28.0;
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = screenSize;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _landscapeCalendarHarness(
+          screenSize: screenSize,
+          horizontalSafeInset: horizontalSafeInset,
+          daySubMode: DayViewSubMode.multiDay,
+        ),
+      );
+      await tester.pumpAndSettle();
+      tester.state<CalendarTabState>(find.byType(CalendarTab)).jumpToTodayDay();
+      await tester.pumpAndSettle();
+
+      final timeline = find.byKey(const Key('multi-timeline'));
+      expect(timeline, findsOneWidget);
+      final timelineRect = tester.getRect(timeline);
+      expect(timelineRect.left, closeTo(0, 0.5));
+      expect(timelineRect.width, closeTo(screenSize.width, 0.5));
+
+      final hourRows = find.descendant(
+        of: timeline,
+        matching: find.byWidgetPredicate(
+          (widget) => widget.runtimeType.toString() == '_HourSlot',
+        ),
+      );
+      expect(hourRows, findsNWidgets(24));
+      final hourRowRect = tester.getRect(hourRows.first);
+      expect(hourRowRect.left, closeTo(horizontalSafeInset, 0.5));
+      expect(hourRowRect.right, closeTo(screenSize.width, 0.5));
+
+      final midnightLine = find.descendant(
+        of: timeline,
+        matching: find.byKey(const Key('calendar-midnight-separator')),
+      );
+      expect(midnightLine, findsOneWidget);
+      final midnightLineRect = tester.getRect(midnightLine);
+      expect(midnightLineRect.left, closeTo(0, 0.5));
+      expect(midnightLineRect.right, closeTo(screenSize.width, 0.5));
+
+      final currentTimeLine = find.descendant(
+        of: timeline,
+        matching: find.byKey(const Key('calendar-current-time-indicator')),
+      );
+      expect(currentTimeLine, findsOneWidget);
+      final currentTimeLineRect = tester.getRect(currentTimeLine);
+      expect(currentTimeLineRect.left, closeTo(horizontalSafeInset, 0.5));
+      expect(currentTimeLineRect.right, closeTo(screenSize.width, 0.5));
     },
   );
 }

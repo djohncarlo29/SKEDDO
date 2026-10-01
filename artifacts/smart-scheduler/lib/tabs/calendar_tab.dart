@@ -4428,10 +4428,10 @@ class _MonthView extends StatelessWidget {
     final horizontalInset = AppWindowContentScope.of(
       context,
     ).horizontalInset;
-    // Inset calendar content inside each full-width swipe panel. The panels
-    // themselves and the week-row separators stay edge-to-edge.
-    final monthContentInset =
-        horizontalInset * (1.0 - collapseProgress.clamp(0.0, 1.0).toDouble());
+    // Keep the selected week strip inset through the Month↔Day transition so
+    // it meets the Day View's settled content geometry. The panel, row
+    // backgrounds, and week-row separators remain full-width.
+    final monthContentInset = horizontalInset;
     return ValueListenableBuilder<List<ScheduledEvent>>(
       valueListenable: EventStore.instance.events,
       builder: (context, eventsSnapshot, __) {
@@ -6264,6 +6264,7 @@ class _DayViewDowMask extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
+    final horizontalInset = AppWindowContentScope.of(context).horizontalInset;
     return ColoredBox(
       color: resolveThemeColor(kBackgroundColor, context),
       child: Column(
@@ -6271,28 +6272,31 @@ class _DayViewDowMask extends StatelessWidget {
           const SizedBox(height: _kCalendarHeaderToDowGap),
           SizedBox(
             height: _kDayLabelHeight,
-            child: Row(
-              children: [
-                const Expanded(child: SizedBox.shrink()),
-                ...List.generate(
-                  7,
-                  (i) => Expanded(
-                    child: Center(
-                      child: Text(
-                        _kDayLetters[i],
-                        style: TextStyle(
-                          fontFamily: kSFProText,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: secondaryLabel,
-                          letterSpacing: -0.1,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: horizontalInset),
+              child: Row(
+                children: [
+                  const Expanded(child: SizedBox.shrink()),
+                  ...List.generate(
+                    7,
+                    (i) => Expanded(
+                      child: Center(
+                        child: Text(
+                          _kDayLetters[i],
+                          style: TextStyle(
+                            fontFamily: kSFProText,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: secondaryLabel,
+                            letterSpacing: -0.1,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 7),
-              ],
+                  const SizedBox(width: 7),
+                ],
+              ),
             ),
           ),
         ],
@@ -6622,11 +6626,17 @@ class _DayBannerState extends State<_DayBanner>
     required DayViewSubMode daySubMode,
   }) {
     final style = resolveThemeTextStyle(_kLabelStyleBase, context);
+    final horizontalInset = AppWindowContentScope.of(context).horizontalInset;
+    final contentWidth = math.max(0.0, width - horizontalInset * 2);
     final datePart =
         '${_kMonths[date.month - 1]} ${date.day.toString().padLeft(2, '0')}';
     final labelWidth = daySubMode == DayViewSubMode.multiDay
-        ? (width - _hourLabelColW(MediaQuery.textScalerOf(context))) / 2
-        : width;
+        ? math.max(
+            0.0,
+            (contentWidth - _hourLabelColW(MediaQuery.textScalerOf(context))) /
+                2,
+          )
+        : contentWidth;
     final currentText = daySubMode == DayViewSubMode.multiDay
         ? '${_kWeekdaysShort[date.weekday - 1]}, $datePart'
         : '${_kWeekdays[date.weekday - 1]} \u2013 $datePart, ${date.year}';
@@ -6760,6 +6770,7 @@ class _DayBannerState extends State<_DayBanner>
   Widget build(BuildContext context) {
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
+    final horizontalInset = AppWindowContentScope.of(context).horizontalInset;
     return AnimatedBuilder(
       animation: _anim,
       builder: (context, _) {
@@ -6774,15 +6785,20 @@ class _DayBannerState extends State<_DayBanner>
           child: LayoutBuilder(
             builder: (ctx, cons) {
               final totalW = cons.maxWidth;
+              final inset = horizontalInset;
               final labelColW = _hourLabelColW(MediaQuery.textScalerOf(ctx));
-              final contentW = totalW - labelColW;
-              final midX = labelColW + contentW / 2;
+              final contentW = math.max(
+                0.0,
+                totalW - inset * 2 - labelColW,
+              );
+              final contentLeft = inset + labelColW;
+              final midX = contentLeft + contentW / 2;
 
               // Left separator slides in from BEYOND the LEFT viewport edge.
               // At t=0 it sits at -0.5 (hidden); at t=1 it lands on the
               // shifted Multi-Day label divider.
               final sep1Target =
-                  labelColW + _kMultiDayIndicatorDividerShift - 0.25;
+                  contentLeft + _kMultiDayIndicatorDividerShift - 0.25;
               final sep1X = -0.5 + (sep1Target + 0.5) * t;
               // Centre separator slides in from BEYOND the RIGHT viewport edge.
               // At t=0 it sits at totalW (hidden); at t=1 it lands at midX-0.25.
@@ -6822,7 +6838,7 @@ class _DayBannerState extends State<_DayBanner>
                 final DateTime Aplus2 = A.add(const Duration(days: 2));
                 final DateTime Aminus1 = A.subtract(const Duration(days: 1));
 
-                // Content-area positions (add labelColW for screen x).
+                // Content-area positions (add inset + labelColW for screen x).
                 final double posA = goingLeft
                     ? slideX * contentW / sw
                     : slideX * colW / sw;
@@ -6837,7 +6853,7 @@ class _DayBannerState extends State<_DayBanner>
                 // starting at [contentPos] from the content-area origin.
                 // Returns null when the slot is entirely off-screen.
                 Positioned? labelAt(DateTime date, double contentPos) {
-                  final absLeft = labelColW + contentPos;
+                  final absLeft = contentLeft + contentPos;
                   if (absLeft >= totalW || absLeft + colW <= 0) return null;
                   return Positioned(
                     left: absLeft,
@@ -6866,7 +6882,7 @@ class _DayBannerState extends State<_DayBanner>
                     // Fixed vertical separators at their fully-open positions.
                     Positioned(
                       left:
-                          labelColW +
+                          contentLeft +
                           _kMultiDayIndicatorDividerShift -
                           0.25,
                       top: 0,
@@ -6882,7 +6898,7 @@ class _DayBannerState extends State<_DayBanner>
                       child: ColoredBox(color: separatorColor),
                     ),
                     Positioned(
-                      right: 0,
+                      right: inset,
                       top: 0,
                       bottom: 0,
                       width: 0.5,
@@ -6910,7 +6926,7 @@ class _DayBannerState extends State<_DayBanner>
                   clipBehavior: Clip.hardEdge,
                   children: [
                     Positioned(
-                      left: labelColW,
+                      left: contentLeft,
                       width: colW,
                       top: 0,
                       bottom: 0,
@@ -6949,7 +6965,7 @@ class _DayBannerState extends State<_DayBanner>
                     ),
                     Positioned(
                       left:
-                          labelColW +
+                          contentLeft +
                           _kMultiDayIndicatorDividerShift -
                           0.25,
                       top: 0,
@@ -6965,7 +6981,7 @@ class _DayBannerState extends State<_DayBanner>
                       child: ColoredBox(color: separatorColor),
                     ),
                     Positioned(
-                      right: 0,
+                      right: inset,
                       top: 0,
                       bottom: 0,
                       width: 0.5,
@@ -6986,16 +7002,16 @@ class _DayBannerState extends State<_DayBanner>
                         '${_kWeekdays[widget.date.weekday - 1]} \u2013 '
                         '$monthDay$yearStr',
                     style: _styleFor(widget.date, ctx),
-                    width: totalW,
+                    width: math.max(0.0, totalW - inset * 2),
                   )) {
                 return Center(
                   child: SizedBox(
-                    width: totalW,
+                    width: math.max(0.0, totalW - inset * 2),
                     child: Center(
                       child: _responsiveLabel(
                         ctx,
                         widget.date,
-                        width: totalW,
+                        width: math.max(0.0, totalW - inset * 2),
                         short: false,
                       ),
                     ),
@@ -7021,8 +7037,8 @@ class _DayBannerState extends State<_DayBanner>
                   //   • monthDay  — static ("Jul 06") — shared by both states
                   //   • yearStr   — clips out rightward as t→1 (", 2026")
                   Positioned(
-                    left: labelColW * t,
-                    right: (totalW - midX) * t,
+                    left: inset + labelColW * t,
+                    right: inset + (totalW - inset - midX) * t,
                     top: 0,
                     bottom: 0,
                     child: ClipRect(
@@ -7096,7 +7112,7 @@ class _DayBannerState extends State<_DayBanner>
                   // ── Second-day label: slides in from beyond right, no fade ─
                   Positioned(
                     left: midX,
-                    right: 0,
+                    right: inset,
                     top: 0,
                     bottom: 0,
                     child: ClipRect(
@@ -7131,7 +7147,7 @@ class _DayBannerState extends State<_DayBanner>
                   // Right-edge separator: mirrors the timeline's rightmost line
                   // so the Day Banner and timeline columns stay visually aligned.
                   Positioned(
-                    right: 0,
+                    right: inset,
                     top: 0,
                     bottom: 0,
                     width: 0.5,
@@ -7248,6 +7264,7 @@ class _DayTimelineState extends State<_DayTimeline>
 
     final isMultiDay = widget.daySubMode == DayViewSubMode.multiDay;
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
+    final horizontalInset = AppWindowContentScope.of(context).horizontalInset;
 
     return ColoredBox(
       color: resolveThemeColor(kBackgroundColor, context),
@@ -7290,7 +7307,11 @@ class _DayTimelineState extends State<_DayTimeline>
                       MediaQuery.textScalerOf(ctx),
                     );
                     final totalW = cons.maxWidth;
-                    final contentW = totalW - labelColW;
+                    final contentW = math.max(
+                      0.0,
+                      totalW - horizontalInset * 2 - labelColW,
+                    );
+                    final contentLeft = horizontalInset + labelColW;
                     return AnimatedBuilder(
                       animation: _sepAnim,
                       child: Stack(
@@ -7300,12 +7321,14 @@ class _DayTimelineState extends State<_DayTimeline>
                             ctx,
                             labelColumnWidth: labelColW,
                             lineStartInset: _kMultiDayHourLineInset,
+                            leftInset: horizontalInset,
                           ),
                           Positioned(
                             left: 0,
                             right: 0,
                             top: _kTimelinePad + 24 * _kHourHeight + 8,
                             child: Container(
+                              key: const Key('calendar-midnight-separator'),
                               height: 0.5,
                               color: separatorColor,
                             ),
@@ -7319,7 +7342,7 @@ class _DayTimelineState extends State<_DayTimeline>
                         // divider plus the same visual offset used by the
                         // Multi-Day current-time indicator.
                         final sep1Target =
-                            labelColW +
+                            contentLeft +
                             _kMultiDayIndicatorDividerShift -
                             0.25;
                         final sep1X = -0.5 + (sep1Target + 0.5) * t;
@@ -7327,7 +7350,7 @@ class _DayTimelineState extends State<_DayTimeline>
                         // At t=0: totalW (hidden right). At t=1: midpoint.
                         final sep2X =
                             totalW +
-                            (labelColW + contentW / 2 - 0.25 - totalW) * t;
+                            (contentLeft + contentW / 2 - 0.25 - totalW) * t;
                         return Stack(
                           clipBehavior: Clip.none,
                           children: [
@@ -7357,7 +7380,7 @@ class _DayTimelineState extends State<_DayTimeline>
                               ),
                             // Right-edge separator
                             Positioned(
-                              right: 0,
+                              right: horizontalInset,
                               top: -9999,
                               bottom: -9999,
                               width: 0.5,
@@ -7381,7 +7404,11 @@ class _DayTimelineState extends State<_DayTimeline>
                       MediaQuery.textScalerOf(ctx),
                     );
                     final totalW = cons.maxWidth;
-                    final contentW = totalW - labelColW;
+                    final contentW = math.max(
+                      0.0,
+                      totalW - horizontalInset * 2 - labelColW,
+                    );
+                    final contentLeft = horizontalInset + labelColW;
                     return Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -7389,6 +7416,7 @@ class _DayTimelineState extends State<_DayTimeline>
                           ctx,
                           labelColumnWidth: labelColW,
                           lineStartInset: _kMultiDayHourLineInset,
+                          leftInset: horizontalInset,
                         ),
 
                         // End-of-day hairline — same +8 offset as the animated
@@ -7400,7 +7428,11 @@ class _DayTimelineState extends State<_DayTimeline>
                           left: 0,
                           right: 0,
                           top: _kTimelinePad + 24 * _kHourHeight + 8,
-                          child: Container(height: 0.5, color: separatorColor),
+                          child: Container(
+                            key: const Key('calendar-midnight-separator'),
+                            height: 0.5,
+                            color: separatorColor,
+                          ),
                         ),
 
                         // ── Multi Day vertical separators — extended far beyond
@@ -7409,7 +7441,7 @@ class _DayTimelineState extends State<_DayTimeline>
                         // breathing offset used by the current-time indicator.
                         Positioned(
                           left:
-                              labelColW +
+                              contentLeft +
                               _kMultiDayIndicatorDividerShift -
                               0.25,
                           top: -9999,
@@ -7419,7 +7451,7 @@ class _DayTimelineState extends State<_DayTimeline>
                         ),
                         // Centre separator: divides the content area in half.
                         Positioned(
-                          left: labelColW + contentW / 2 - 0.25,
+                          left: contentLeft + contentW / 2 - 0.25,
                           top: -9999,
                           bottom: -9999,
                           width: 0.5,
@@ -7427,7 +7459,7 @@ class _DayTimelineState extends State<_DayTimeline>
                         ),
                         // Right-edge separator.
                         Positioned(
-                          right: 0,
+                          right: horizontalInset,
                           top: -9999,
                           bottom: -9999,
                           width: 0.5,
@@ -7448,6 +7480,7 @@ class _DayTimelineState extends State<_DayTimeline>
                   ..._hourSlotRows(
                     context,
                     lineStartInset: _kMultiDayHourLineInset,
+                    leftInset: horizontalInset,
                   ),
 
                   // End-of-day hairline — +8 px so it sits at the same visual
@@ -7459,6 +7492,7 @@ class _DayTimelineState extends State<_DayTimeline>
                     right: 0,
                     top: _kTimelinePad + 24 * _kHourHeight + 8,
                     child: ColoredBox(
+                      key: const Key('calendar-midnight-separator'),
                       color: resolveThemeColor(kSeparatorColor, context),
                       child: const SizedBox(height: 0.5),
                     ),
@@ -7468,10 +7502,11 @@ class _DayTimelineState extends State<_DayTimeline>
                   // exactly at the fractional-second offset within the hour grid.
                   if (isToday)
                     Positioned(
-                      left: 0,
+                      left: horizontalInset,
                       right: 0,
                       top: indicatorTop,
                       child: _CurrentTimeIndicator(
+                        key: const Key('calendar-current-time-indicator'),
                         hour: now.hour,
                         minute: now.minute,
                       ),
@@ -7598,6 +7633,7 @@ List<Widget> _hourSlotRows(
   BuildContext context, {
   required double lineStartInset,
   double? labelColumnWidth,
+  double leftInset = 0.0,
 }) {
   final metrics = _hourLabelMetrics(MediaQuery.textScalerOf(context));
   final columnWidth = labelColumnWidth ?? metrics.columnWidth;
@@ -7609,7 +7645,7 @@ List<Widget> _hourSlotRows(
   return [
     for (var hour = 0; hour < 24; hour++)
       Positioned(
-        left: 0,
+        left: leftInset,
         right: 0,
         top: _kTimelinePad + hour * _kHourHeight,
         child: _HourSlot(
@@ -7686,6 +7722,7 @@ class _HourSlot extends StatelessWidget {
 
 class _CurrentTimeIndicator extends StatelessWidget {
   const _CurrentTimeIndicator({
+    super.key,
     required this.hour,
     required this.minute,
     this.multiDay = false,
@@ -7995,6 +8032,7 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
 
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
+    final horizontalInset = AppWindowContentScope.of(context).horizontalInset;
 
     return ColoredBox(
       color: backgroundColor,
@@ -8023,15 +8061,20 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                   final labelColW = _hourLabelColW(
                     MediaQuery.textScalerOf(ctx),
                   );
-                  final contentW = totalW - labelColW;
+                  final contentW = math.max(
+                    0.0,
+                    totalW - horizontalInset * 2 - labelColW,
+                  );
                   final colW = contentW / 2;
+                  final contentLeft = horizontalInset + labelColW;
+                  final contentRight = totalW - horizontalInset;
                   final sw = widget.screenW > 0 ? widget.screenW : totalW;
                   final slideX = widget.slideX;
                   final bool goingLeft = slideX <= 0;
 
                   // ── Column position formula ─────────────────────────────
                   // Positions are left-edge offsets within the content area
-                  // (add labelColW to get absolute screen x).
+                  // (add the inset and label column for absolute screen x).
                   final double posA = goingLeft
                       ? slideX * contentW / sw
                       : slideX * colW / sw;
@@ -8050,9 +8093,9 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                    // even though today is not on screen.
                    bool isVisibleColumn(DateTime date, double contentPos) {
                      if (!_sameDay(date, widget.today)) return false;
-                     final left = labelColW + contentPos;
+                     final left = contentLeft + contentPos;
                      final right = left + colW;
-                     return right > labelColW && left < totalW;
+                     return right > contentLeft && left < contentRight;
                    }
 
                    // Keep the whole indicator mounted for the complete
@@ -8131,7 +8174,7 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                   // drawing (hour lines, indicator, separators) lives in the
                   // layers above/below this function's output.
                   Widget contentColumn(DateTime date, double contentPos) {
-                    final absLeft = labelColW + contentPos;
+                    final absLeft = contentLeft + contentPos;
                     if (absLeft >= totalW || absLeft + colW <= 0) {
                       return const SizedBox.shrink();
                     }
@@ -8154,12 +8197,14 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                             ctx,
                             labelColumnWidth: labelColW,
                             lineStartInset: _kMultiDayHourLineInset,
+                            leftInset: horizontalInset,
                           ),
                           Positioned(
                             left: 0,
                             right: 0,
                             top: _kTimelinePad + 24 * _kHourHeight + 8,
                             child: Container(
+                              key: const Key('calendar-midnight-separator'),
                               height: 0.5,
                               color: separatorColor,
                             ),
@@ -8177,14 +8222,15 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                       // At t=0: -0.5 (hidden). At t=1: the shifted label
                       // divider used by the current-time indicator.
                       final sep1Target =
-                          labelColW +
+                          contentLeft +
                           _kMultiDayIndicatorDividerShift -
                           0.25;
                       final sep1X = -0.5 + (sep1Target + 0.5) * t;
                       // Centre separator slides in from beyond the right edge.
                       // At t=0: totalW (hidden). At t=1: midpoint.
                       final sep2X =
-                          totalW + (labelColW + colW - 0.25 - totalW) * t;
+                          totalW +
+                          (contentLeft + colW - 0.25 - totalW) * t;
 
                       return Stack(
                         // The vertical separators intentionally extend beyond
@@ -8216,7 +8262,7 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                             ),
                           // Right-edge sep fades in with the transition.
                           Positioned(
-                            right: 0,
+                            right: horizontalInset,
                             top: -9999,
                             bottom: -9999,
                             width: 0.5,
@@ -8235,10 +8281,11 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                             // on top of the vertical divider.
                            if (showIndicator)
                              Positioned(
-                               left: 0,
+                               left: horizontalInset,
                                right: 0,
                                top: indicatorTop,
                                child: _CurrentTimeIndicator(
+                                 key: const Key('calendar-current-time-indicator'),
                                  hour: now.hour,
                                  minute: now.minute,
                                  multiDay: true,
