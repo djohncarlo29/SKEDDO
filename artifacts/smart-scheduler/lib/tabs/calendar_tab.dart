@@ -2064,15 +2064,19 @@ class CalendarTabState extends State<CalendarTab>
 
   Widget _singleDayTimelineFor(DateTime date) {
     final dateKey = '${date.year}-${date.month}-${date.day}';
+    final centerDateKey =
+        '${_selected.year}-${_selected.month}-${_selected.day}';
     final todayKey = '${_today.year}-${_today.month}-${_today.day}';
     final cacheKey =
-        '$dateKey|$todayKey|${widget.daySubMode.index}|${_nowNotifier.hashCode}';
+        '$dateKey|$centerDateKey|$todayKey|'
+        '${widget.daySubMode.index}|${_nowNotifier.hashCode}';
     final cached = _singleDayTimelineWidgetCache[cacheKey];
     if (cached != null) return cached;
 
     final timeline = _DayTimeline(
       key: ValueKey('day-${date.year}${date.month}${date.day}'),
       selectedDate: date,
+      centerDate: _selected,
       today: _today,
       nowNotifier: _nowNotifier,
       daySubMode: widget.daySubMode,
@@ -7216,12 +7220,16 @@ class _DayTimeline extends StatefulWidget {
   const _DayTimeline({
     super.key,
     required this.selectedDate,
+    required this.centerDate,
     required this.today,
     required this.nowNotifier,
     this.daySubMode = DayViewSubMode.singleDay,
   });
 
   final DateTime selectedDate;
+  // The date occupying the center panel. This lets a retained adjacent
+  // timeline recenter when the user returns to today.
+  final DateTime centerDate;
   final DateTime today;
   // Notifier updated at every real-world minute boundary by CalendarTabState.
   final ValueNotifier<DateTime> nowNotifier;
@@ -7294,6 +7302,17 @@ class _DayTimelineState extends State<_DayTimeline>
       widget.daySubMode == DayViewSubMode.multiDay
           ? _sepCtrl.forward()
           : _sepCtrl.reverse();
+    }
+    final returnedToToday =
+        !_sameDay(old.centerDate, widget.today) &&
+        _sameDay(widget.centerDate, widget.today);
+    final windowSize = MediaQuery.sizeOf(context);
+    if (returnedToToday && windowSize.width > windowSize.height) {
+      _scheduleLandscapeCurrentTimeCentering(
+        context: context,
+        scroll: _scroll,
+        nowNotifier: widget.nowNotifier,
+      );
     }
   }
 
@@ -8103,6 +8122,31 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
       scroll: _scroll,
       nowNotifier: widget.nowNotifier,
     );
+  }
+
+  @override
+  void didUpdateWidget(_DayTimelineMulti old) {
+    super.didUpdateWidget(old);
+    final selectedDateChanged = !_sameDay(
+      old.selectedDate,
+      widget.selectedDate,
+    );
+    final nowIsInDisplayedPair =
+        _sameDay(widget.selectedDate, widget.today) ||
+        _sameDay(
+          widget.selectedDate.add(const Duration(days: 1)),
+          widget.today,
+        );
+    final windowSize = MediaQuery.sizeOf(context);
+    if (selectedDateChanged &&
+        nowIsInDisplayedPair &&
+        windowSize.width > windowSize.height) {
+      _scheduleLandscapeCurrentTimeCentering(
+        context: context,
+        scroll: _scroll,
+        nowNotifier: widget.nowNotifier,
+      );
+    }
   }
 
   @override

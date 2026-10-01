@@ -251,7 +251,7 @@ void main() {
   );
 
   testWidgets(
-    'landscape Single-Day current-time indicator stays centered above tab bar',
+    'landscape Single-Day current-time indicator recenters when returning to today',
     (tester) async {
       const screenSize = Size(1024, 450);
       tester.view.devicePixelRatio = 1.0;
@@ -278,7 +278,25 @@ void main() {
         (widget) => widget.runtimeType.toString() == '_DayTimeline',
       );
       expect(timelines, findsNWidgets(3));
-      _expectCurrentTimeCenteredAboveFloatingBar(tester, timelines.at(1));
+      final currentTimeline = timelines.at(1);
+      _expectCurrentTimeCenteredAboveFloatingBar(tester, currentTimeline);
+
+      final indicator = find.descendant(
+        of: currentTimeline,
+        matching: find.byKey(const Key('calendar-current-time-indicator')),
+      );
+      await tester.drag(currentTimeline, const Offset(0, -600));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getCenter(indicator).dy,
+        lessThan(tester.getTopLeft(currentTimeline).dy),
+      );
+
+      calendar.navigateNext();
+      await tester.pumpAndSettle();
+      calendar.navigatePrev();
+      await tester.pumpAndSettle();
+      _expectCurrentTimeCenteredAboveFloatingBar(tester, currentTimeline);
     },
   );
 
@@ -356,6 +374,50 @@ void main() {
         currentTimeLineSegmentRect.right,
         closeTo(tester.getRect(centerSeparator).center.dx, 0.5),
       );
+    },
+  );
+
+  testWidgets(
+    'landscape Multi-Day current-time indicator recenters when returning to today',
+    (tester) async {
+      const screenSize = Size(1024, 450);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = screenSize;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _landscapeCalendarHarness(
+          screenSize: screenSize,
+          horizontalSafeInset: 0,
+          daySubMode: DayViewSubMode.multiDay,
+        ),
+      );
+      await tester.pumpAndSettle();
+      final calendar = tester.state<CalendarTabState>(
+        find.byType(CalendarTab),
+      );
+      calendar.jumpToTodayDay();
+      await tester.pumpAndSettle();
+
+      final timeline = find.byKey(const Key('multi-timeline'));
+      _expectCurrentTimeCenteredAboveFloatingBar(tester, timeline);
+      final indicator = find.descendant(
+        of: timeline,
+        matching: find.byKey(const Key('calendar-current-time-indicator')),
+      );
+      await tester.drag(timeline, const Offset(0, -600));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getCenter(indicator).dy,
+        lessThan(tester.getTopLeft(timeline).dy),
+      );
+
+      calendar.navigateNext();
+      await tester.pumpAndSettle();
+      calendar.navigatePrev();
+      await tester.pumpAndSettle();
+      _expectCurrentTimeCenteredAboveFloatingBar(tester, timeline);
     },
   );
 
