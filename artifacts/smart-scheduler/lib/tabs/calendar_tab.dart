@@ -1101,6 +1101,9 @@ class CalendarTabState extends State<CalendarTab>
   // dir = -1: content slides LEFT  → next appears from the right
   void _swipeNavigate(int dir) {
     if (_snapCtrl.isAnimating) return;
+    // Chevron/programmatic navigation is always one day. A completed week-strip
+    // drag must not leave its seven-day panel mapping active for this slide.
+    _weekStripDrag = false;
     final isNext = dir < 0;
     _requestDayTimelinePositionReset();
     _animateSlide(
@@ -1284,6 +1287,9 @@ class CalendarTabState extends State<CalendarTab>
       _bloomTimer?.cancel();
       if (!mounted || _snapGeneration != myGen) return;
       _snapThenFired = true;
+      // Keep the week mapping for the whole week-strip animation, then clear it
+      // before the committed date rebuilds the adjacent panels.
+      _weekStripDrag = false;
       _slideX = 0.0;
       widget.onStripSlide?.call(0.0);
       then();
