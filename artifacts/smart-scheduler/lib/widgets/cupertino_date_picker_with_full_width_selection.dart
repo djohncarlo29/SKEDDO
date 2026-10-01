@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 
 /// Retains Flutter's compact date picker in portrait and expands its wheels in
@@ -27,6 +29,7 @@ class _CupertinoDatePickerWithFullWidthSelectionState
     extends State<CupertinoDatePickerWithFullWidthSelection> {
   static const double _magnification = 2.35 / 2.1;
   static const double _squeeze = 1.25;
+  static const double _wheelItemHorizontalInset = 12.0;
   static const int _minimumYear = 1;
   static const int _maximumYear = 9999;
   static const int _daysPerMonthPicker = 31;
@@ -36,6 +39,7 @@ class _CupertinoDatePickerWithFullWidthSelectionState
   late FixedExtentScrollController _monthController;
   late FixedExtentScrollController _dayController;
   late FixedExtentScrollController _yearController;
+  List<double>? _landscapeColumnWidths;
   bool? _isLandscape;
 
   @override
@@ -48,6 +52,7 @@ class _CupertinoDatePickerWithFullWidthSelectionState
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _landscapeColumnWidths = null;
     final size = MediaQuery.sizeOf(context);
     final isLandscape = size.width > size.height;
     if (_isLandscape != isLandscape) {
@@ -224,8 +229,8 @@ class _CupertinoDatePickerWithFullWidthSelectionState
           : AlignmentDirectional.centerEnd,
       child: Padding(
         padding: isFirstColumn
-            ? const EdgeInsetsDirectional.only(start: 12)
-            : const EdgeInsetsDirectional.only(end: 12),
+            ? const EdgeInsetsDirectional.only(start: _wheelItemHorizontalInset)
+            : const EdgeInsetsDirectional.only(end: _wheelItemHorizontalInset),
         child: Text(label, style: _pickerTextStyle(isValid: isValid)),
       ),
     );
@@ -277,6 +282,41 @@ class _CupertinoDatePickerWithFullWidthSelectionState
     return _isDateWithinBounds(
       DateTime(_selectedDate.year, _selectedDate.month, day),
     );
+  }
+
+  double _columnWidth(
+    _DateWheelColumn column,
+    CupertinoLocalizations localizations,
+  ) {
+    final labels = switch (column) {
+      _DateWheelColumn.month => List<String>.generate(
+        _monthsPerYear,
+        (index) => localizations.datePickerMonth(index + 1),
+      ),
+      _DateWheelColumn.day => List<String>.generate(
+        _daysPerMonthPicker,
+        (index) => localizations.datePickerDayOfMonth(index + 1),
+      ),
+      _DateWheelColumn.year => [
+        localizations.datePickerYear(_minimumYear),
+        localizations.datePickerYear(_maximumYear),
+      ],
+    };
+    final style = _pickerTextStyle(isValid: true);
+    final textScaler = MediaQuery.textScalerOf(context);
+    final textDirection = Directionality.of(context);
+    var widestLabel = 0.0;
+    for (final label in labels) {
+      final painter = TextPainter(
+        text: TextSpan(text: label, style: style),
+        textDirection: textDirection,
+        textScaler: textScaler,
+        maxLines: 1,
+      )..layout();
+      widestLabel = math.max(widestLabel, painter.width);
+      painter.dispose();
+    }
+    return widestLabel + _wheelItemHorizontalInset * 2;
   }
 
   Widget _buildMonthPicker(
@@ -400,16 +440,46 @@ class _CupertinoDatePickerWithFullWidthSelectionState
       ],
     };
 
-    return Row(
-      textDirection: Directionality.of(context),
-      children: List<Widget>.generate(columns.length, (index) {
-        final wheel = switch (columns[index]) {
-          _DateWheelColumn.month => _buildMonthPicker(index, localizations),
-          _DateWheelColumn.day => _buildDayPicker(index, localizations),
-          _DateWheelColumn.year => _buildYearPicker(index, localizations),
-        };
-        return Expanded(child: wheel);
-      }),
+    final columnWidths = _landscapeColumnWidths ??= columns
+        .map((column) => _columnWidth(column, localizations))
+        .toList();
+    final intrinsicGroupWidth = columnWidths.fold<double>(
+      0,
+      (total, width) => total + width,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final groupWidth = math.min(intrinsicGroupWidth, constraints.maxWidth);
+        final hasRoomForNaturalWidths =
+            intrinsicGroupWidth <= constraints.maxWidth;
+        return Align(
+          alignment: Alignment.center,
+          child: SizedBox(
+            key: const ValueKey('wide-date-picker-column-group'),
+            width: groupWidth,
+            child: Row(
+              textDirection: Directionality.of(context),
+              children: List<Widget>.generate(columns.length, (index) {
+                final wheel = switch (columns[index]) {
+                  _DateWheelColumn.month => _buildMonthPicker(
+                    index,
+                    localizations,
+                  ),
+                  _DateWheelColumn.day => _buildDayPicker(index, localizations),
+                  _DateWheelColumn.year => _buildYearPicker(
+                    index,
+                    localizations,
+                  ),
+                };
+                return hasRoomForNaturalWidths
+                    ? SizedBox(width: columnWidths[index], child: wheel)
+                    : Expanded(child: wheel);
+              }),
+            ),
+          ),
+        );
+      },
     );
   }
 
