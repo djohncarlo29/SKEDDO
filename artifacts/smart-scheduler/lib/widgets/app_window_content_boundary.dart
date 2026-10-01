@@ -40,31 +40,27 @@ class AppWindowContentBoundary extends StatelessWidget {
       mediaQuery.copyWith(viewPadding: viewPadding),
     );
 
-    if (horizontalInset <= 0.0) {
-      return AppWindowContentScope(
-        horizontalInset: 0.0,
-        physicalWidth: mediaQuery.size.width,
-        child: child,
-      );
-    }
+    final contentMediaQuery = horizontalInset <= 0.0
+        ? mediaQuery
+        : mediaQuery.copyWith(
+            size: Size(
+              math.max(0.0, mediaQuery.size.width - horizontalInset * 2.0),
+              mediaQuery.size.height,
+            ),
+            // The shared boundary owns the horizontal system space. Clearing
+            // these fields prevents SafeArea or a nested route from adding the
+            // same inset a second time inside the reserved content rectangle.
+            padding: mediaQuery.padding.copyWith(left: 0.0, right: 0.0),
+            viewPadding: mediaQuery.viewPadding.copyWith(left: 0.0, right: 0.0),
+            systemGestureInsets: mediaQuery.systemGestureInsets.copyWith(
+              left: 0.0,
+              right: 0.0,
+            ),
+          );
 
-    final contentWidth = math.max(
-      0.0,
-      mediaQuery.size.width - horizontalInset * 2.0,
-    );
-    final contentMediaQuery = mediaQuery.copyWith(
-      size: Size(contentWidth, mediaQuery.size.height),
-      // The shared boundary owns the horizontal system space. Clearing these
-      // fields prevents SafeArea or a nested route from adding the same inset
-      // a second time inside the already-reserved content rectangle.
-      padding: mediaQuery.padding.copyWith(left: 0.0, right: 0.0),
-      viewPadding: mediaQuery.viewPadding.copyWith(left: 0.0, right: 0.0),
-      systemGestureInsets: mediaQuery.systemGestureInsets.copyWith(
-        left: 0.0,
-        right: 0.0,
-      ),
-    );
-
+    // Keep the Navigator subtree at the same element-tree depth in portrait
+    // and landscape. Conditionally adding/removing MediaQuery here reparents
+    // the whole app and disposes active routes, including unsaved sheet forms.
     return AppWindowContentScope(
       horizontalInset: horizontalInset,
       physicalWidth: mediaQuery.size.width,
@@ -83,21 +79,24 @@ class AppWindowContentPadding extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final inset = AppWindowContentScope.of(context).horizontalInset;
-    if (inset <= 0.0) return child;
-
     final mediaQuery = MediaQuery.of(context);
-    final contentMediaQuery = mediaQuery.copyWith(
-      // This child is already positioned inside the app-wide symmetric
-      // landscape boundary. Do not let a nested SafeArea re-apply the
-      // platform's original one-sided horizontal inset.
-      padding: mediaQuery.padding.copyWith(left: 0.0, right: 0.0),
-      viewPadding: mediaQuery.viewPadding.copyWith(left: 0.0, right: 0.0),
-      systemGestureInsets: mediaQuery.systemGestureInsets.copyWith(
-        left: 0.0,
-        right: 0.0,
-      ),
-    );
+    final contentMediaQuery = inset <= 0.0
+        ? mediaQuery
+        : mediaQuery.copyWith(
+            // This child is already positioned inside the app-wide symmetric
+            // landscape boundary. Do not let a nested SafeArea re-apply the
+            // platform's original one-sided horizontal inset.
+            padding: mediaQuery.padding.copyWith(left: 0.0, right: 0.0),
+            viewPadding: mediaQuery.viewPadding.copyWith(left: 0.0, right: 0.0),
+            systemGestureInsets: mediaQuery.systemGestureInsets.copyWith(
+              left: 0.0,
+              right: 0.0,
+            ),
+          );
 
+    // Keep the child in the same position in the element tree as the inset
+    // changes. In particular, modal form state must survive portrait/landscape
+    // transitions even when the platform reports a landscape safe-area inset.
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: inset),
       child: MediaQuery(data: contentMediaQuery, child: child),

@@ -262,7 +262,10 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     // One post-frame is enough: the rebuild switches to SliverPersistentHeader
     // (pinned), so the bar is in the viewport by the time the frame paints.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) NativeTextInput.focus(_searchController);
+      if (mounted) {
+        NativeTextInput.focus(_searchController);
+        NativeTextInput.lockFocus(_searchController);
+      }
     });
   }
 
@@ -308,6 +311,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
           if (!mounted) return;
           if (!_searchFocused) _onSearchFocusChanged(true);
           NativeTextInput.focus(_searchController);
+          NativeTextInput.lockFocus(_searchController);
         });
       }
     }
@@ -358,6 +362,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
       selection: TextSelection.collapsed(offset: suggestion.length),
     );
     NativeTextInput.focus(_searchController);
+    NativeTextInput.lockFocus(_searchController);
   }
 
   void _onSearchFocusChanged(bool focused) {
@@ -369,7 +374,10 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
       // which remounts AppSearchBar and its NativeTextInput platform view. A
       // post-frame refocus restores the cursor after the rebuild settles.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _searchFocused) NativeTextInput.focus(_searchController);
+        if (mounted && _searchFocused) {
+          NativeTextInput.focus(_searchController);
+          NativeTextInput.lockFocus(_searchController);
+        }
       });
       sbSearchModeActive = true;
       widget.onSearchFocusChanged?.call(true);
@@ -395,26 +403,6 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     });
   }
 
-  @override
-  void deactivate() {
-    if (_searchFocused || _searchText.isNotEmpty || _greyActive) {
-      // Hard reset — skip animations when the widget is leaving the tree.
-      _searchFocused = false;
-      _activatedFromOffScreen = false;
-      _greyActive = false;
-      _greyFadeIn = false;
-      _searchText = '';
-      _searchSuggestion = null;
-      sbSearchModeActive = false;
-      _searchController.clear();
-      NativeTextInput.unfocusAll();
-      FocusManager.instance.primaryFocus?.unfocus();
-      widget.onSearchFocusChanged?.call(false);
-    }
-
-    super.deactivate();
-  }
-
   /// True while the attach action panel or the attachment preview overlay is open.
   bool get hasOpenPanel {
     final cardState = _noteInputKey.currentState;
@@ -437,6 +425,30 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
   /// Public hook for AppShell to cancel search via OS back gesture.
   void cancelSearch() => _cancelSearch();
 
+  /// Explicitly clears search when the user switches away from this tab.
+  ///
+  /// Do not put this cleanup in [State.deactivate]: Flutter may temporarily
+  /// deactivate and reinsert a subtree during layout changes, and that must
+  /// not erase the user's query or focus.
+  void resetSearchForTabSwitch() {
+    final wasFocused = _searchFocused;
+    _searchBarKey.currentState?.cancelMic();
+    _searchDebounce?.cancel();
+    NativeTextInput.unlockFocus(_searchController);
+    _searchController.clear();
+    sbSearchModeActive = false;
+    setState(() {
+      _searchFocused = false;
+      _activatedFromOffScreen = false;
+      _greyActive = false;
+      _greyFadeIn = false;
+      _searchText = '';
+      _searchSuggestion = null;
+      _searchHits = [];
+    });
+    if (wasFocused) widget.onSearchFocusChanged?.call(false);
+  }
+
   void _cancelSearch() {
     // Stop any active mic session before clearing the search bar.
     _searchBarKey.currentState?.cancelMic();
@@ -444,6 +456,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     final wasOffScreen = _activatedFromOffScreen;
     sbSearchModeActive = false;
     _searchController.clear();
+    NativeTextInput.unlockFocus(_searchController);
     NativeTextInput.unfocusAll();
     FocusManager.instance.primaryFocus?.unfocus();
     if (wasOffScreen) {

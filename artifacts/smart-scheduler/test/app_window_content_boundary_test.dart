@@ -3,6 +3,60 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 
 void main() {
+  testWidgets(
+    'keeps modal draft state when landscape safe-area insets appear or disappear',
+    (tester) async {
+      Widget buildApp(Size size, EdgeInsets viewPadding) {
+        final data = MediaQueryData(
+          size: size,
+          padding: viewPadding,
+          viewPadding: viewPadding,
+        );
+        return CupertinoApp(
+          home: const _DraftForm(),
+          builder: (context, child) => MediaQuery(
+            data: data,
+            child: AppWindowContentBoundary(
+              child: AppWindowContentPadding(
+                child: child ?? const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(
+        buildApp(const Size(390, 844), const EdgeInsets.only(bottom: 34)),
+      );
+      await tester.enterText(find.byType(CupertinoTextField), 'unsaved draft');
+      await tester.pump();
+
+      await tester.pumpWidget(
+        buildApp(const Size(844, 390), const EdgeInsets.only(left: 28)),
+      );
+      await tester.pump();
+      expect(
+        tester
+            .widget<CupertinoTextField>(find.byType(CupertinoTextField))
+            .controller!
+            .text,
+        'unsaved draft',
+      );
+
+      await tester.pumpWidget(
+        buildApp(const Size(390, 844), const EdgeInsets.only(bottom: 34)),
+      );
+      await tester.pump();
+      expect(
+        tester
+            .widget<CupertinoTextField>(find.byType(CupertinoTextField))
+            .controller!
+            .text,
+        'unsaved draft',
+      );
+    },
+  );
+
   test('reserves the same landscape inset regardless of physical side', () {
     final landscape = MediaQueryData(size: const Size(844, 390));
     final leftCutout = landscape.copyWith(
@@ -76,8 +130,8 @@ void main() {
           child: AppWindowContentPadding(
             child: Builder(
               builder: (context) {
-                reservedInset =
-                    AppWindowContentScope.of(context).horizontalInset;
+                  reservedInset =
+                      AppWindowContentScope.of(context).horizontalInset;
                 nestedPadding = MediaQuery.paddingOf(context);
                 nestedViewPadding = MediaQuery.viewPaddingOf(context);
                 nestedGestureInsets = MediaQuery.systemGestureInsetsOf(context);
@@ -114,8 +168,8 @@ void main() {
           child: AppWindowContentPadding(
             child: Builder(
               builder: (context) {
-                reservedInset =
-                    AppWindowContentScope.of(context).horizontalInset;
+                  reservedInset =
+                      AppWindowContentScope.of(context).horizontalInset;
                 nestedPadding = MediaQuery.paddingOf(context);
                 nestedViewPadding = MediaQuery.viewPaddingOf(context);
                 return const SizedBox.expand();
@@ -130,4 +184,33 @@ void main() {
     expect(nestedPadding!.left, 18);
     expect(nestedViewPadding!.left, 18);
   });
+}
+
+class _DraftForm extends StatefulWidget {
+  const _DraftForm();
+
+  @override
+  State<_DraftForm> createState() => _DraftFormState();
+}
+
+class _DraftFormState extends State<_DraftForm> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoPageScaffold(
+      child: Center(
+        child: SizedBox(
+          width: 260,
+          child: CupertinoTextField(controller: _controller),
+        ),
+      ),
+    );
+  }
 }

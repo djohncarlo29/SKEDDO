@@ -1762,18 +1762,22 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   // When the user switches tabs we:
   //   1. If leaving the Notes tab while search mode is active, call
-  //      deactivate() on the Notes tab state to cleanly clear the search
-  //      query and reset all search-mode UI (cancel button, collapsed header).
-  //      Returning to Notes always shows a clean, non-search Notes view.
+  //      its explicit tab-switch reset to clear the query and search-mode UI.
+  //      Framework deactivate() is not an app-level cancellation hook: a
+  //      temporary subtree reparent during layout must preserve the draft.
   //   2. Dismiss the keyboard and any active text-input focus.
   void _switchTab(int index) {
     if (_selectedIndex == index) return;
 
     // Cleanly cancel search on whichever tab we're leaving.
     if (_searchFocused) {
-      if (_selectedIndex == 0) _notesTabKey.currentState?.deactivate();
+      if (_selectedIndex == 0) {
+        _notesTabKey.currentState?.resetSearchForTabSwitch();
+      }
       if (_selectedIndex == 1) _calendarTabKey.currentState?.cancelSearch();
-      if (_selectedIndex == 2) _eventsTabKey.currentState?.deactivate();
+      if (_selectedIndex == 2) {
+        _eventsTabKey.currentState?.resetSearchForTabSwitch();
+      }
     }
 
     NativeTextInput.unfocusAll();

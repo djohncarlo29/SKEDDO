@@ -7666,6 +7666,7 @@ class EventsTabState extends State<EventsTab>
       selection: TextSelection.collapsed(offset: suggestion.length),
     );
     NativeTextInput.focus(_searchController);
+    NativeTextInput.lockFocus(_searchController);
   }
 
   Widget _wrapSearchEventTile(
@@ -7733,20 +7734,6 @@ class EventsTabState extends State<EventsTab>
     // before the focused editor gets a chance to submit.
     _saveCategories();
     super.deactivate();
-    if (_searchFocused || _searchText.isNotEmpty || _greyActive) {
-      _searchFocused = false;
-      _activatedFromOffScreen = false;
-      _greyActive = false;
-      _greyFadeIn = false;
-      _searchText = '';
-      sbSearchModeActive = false;
-      _searchController.clear();
-      // Unlock before blur so the iOS UITextField can resign cleanly.
-      NativeTextInput.unlockFocus(_searchController);
-      NativeTextInput.unfocusAll();
-      FocusManager.instance.primaryFocus?.unfocus();
-      widget.onSearchFocusChanged?.call(false);
-    }
   }
 
   /// True while a category long-press context menu is open.
@@ -7757,6 +7744,32 @@ class EventsTabState extends State<EventsTab>
 
   /// Public hook for AppShell to cancel search via OS back gesture.
   void cancelSearch() => _cancelSearch();
+
+  /// Explicitly clears search when the user switches away from this tab.
+  ///
+  /// Framework deactivation can be temporary during subtree reparenting, so
+  /// it must not clear an in-progress search or steal the user's focus.
+  void resetSearchForTabSwitch() {
+    final wasFocused = _searchFocused;
+    _searchBarKey.currentState?.cancelMic();
+    _searchDebounce?.cancel();
+    _saveCategories();
+    sbSearchModeActive = false;
+    _searchController.clear();
+    NativeTextInput.unlockFocus(_searchController);
+    setState(() {
+      _searchFocused = false;
+      _activatedFromOffScreen = false;
+      _greyActive = false;
+      _greyFadeIn = false;
+      _searchText = '';
+      _searchSuggestion = null;
+      _searchPrimary = [];
+      _searchOverflow = [];
+      _searchAll = [];
+    });
+    if (wasFocused) widget.onSearchFocusChanged?.call(false);
+  }
 
   void _cancelSearch() {
     // Stop any active mic session before clearing the search bar.
