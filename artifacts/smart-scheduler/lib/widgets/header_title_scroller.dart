@@ -91,6 +91,9 @@ class HeaderTitleScroller extends StatefulWidget {
   final Widget? trailing;
   final Widget Function(double titleFontSize)? trailingBuilder;
   final double trailingGap;
+  /// Natural width of the trailing content, used with
+  /// [centerWhenContentFits] to center the complete title-and-controls group.
+  final double? trailingContentWidth;
   final bool showTrailingFade;
   final bool centerWhenContentFits;
   final Alignment contentAlignment;
@@ -105,6 +108,7 @@ class HeaderTitleScroller extends StatefulWidget {
     this.trailing,
     this.trailingBuilder,
     this.trailingGap = 4,
+    this.trailingContentWidth,
     this.showTrailingFade = true,
     this.centerWhenContentFits = false,
     this.contentAlignment = Alignment.bottomLeft,
@@ -269,14 +273,24 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                 onNotification: _handleMetricsNotification,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    // Scroll metrics arrive after layout. Preflight the text
-                    // width so an overflowing title has its initial trailing
-                    // fade in the very first painted frame.
+                    // Scroll metrics arrive after layout. Preflight the full
+                    // title-and-controls width so an overflowing group has its
+                    // initial trailing fade in the very first painted frame.
                     final textWidth = _measureTextWidth(effectiveStyle);
+                    final naturalContentWidth = trailing == null
+                        ? textWidth
+                        : widget.trailingContentWidth == null
+                        ? double.infinity
+                        : textWidth +
+                              widget.trailingGap +
+                              widget.trailingContentWidth!;
                     final overflowBeforeLayout =
                         constraints.maxWidth.isFinite &&
                         constraints.maxWidth > 0 &&
-                        textWidth > constraints.maxWidth + 1.0;
+                        (naturalContentWidth.isFinite
+                                ? naturalContentWidth
+                                : textWidth) >
+                            constraints.maxWidth + 1.0;
                     final initialTrailingFade =
                         !_canScroll &&
                         overflowBeforeLayout &&
@@ -285,11 +299,11 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                             _scrollController.position.pixels <= 1.0);
                     final centeredInset =
                         widget.centerWhenContentFits &&
-                            trailing == null &&
                             constraints.maxWidth.isFinite &&
                             constraints.maxWidth > 0 &&
-                            !overflowBeforeLayout
-                        ? ((constraints.maxWidth - textWidth) / 2)
+                            !overflowBeforeLayout &&
+                            naturalContentWidth <= constraints.maxWidth
+                        ? ((constraints.maxWidth - naturalContentWidth) / 2)
                               .clamp(0.0, double.infinity)
                               .toDouble()
                         : 0.0;

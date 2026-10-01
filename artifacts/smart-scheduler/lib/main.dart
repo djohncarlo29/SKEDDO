@@ -1893,12 +1893,18 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }
 
   // ── Calendar-tab header row (title + ↕ + < >) ────────────────────────────
-  // The title, ↕ chevron, and < > arrows stay inside the three-panel sliding
-  // Stack so the whole Calendar header group moves together on swipes.
-  Widget _buildCalendarTitleRow({bool compact = false}) {
+  // Portrait keeps the three-panel title transition. Compact landscape keeps
+  // the complete, rubberbandable control group stationary and switches its
+  // period at the horizontal content slide's midpoint.
+  Widget _buildCalendarTitleRow({
+    bool compact = false,
+    Color? compactFadeColor,
+  }) {
     final canUp = _calendarView != CalendarView.day;
     final canDown = _calendarView != CalendarView.year;
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
+    const compactArrowWidth = 40.0;
+    const compactControlsWidth = compactArrowWidth * 2 + 24.0;
 
     Widget buildPanel(String title, {required bool isActive}) {
       final displayTitle = _formattedCalendarMonthTitle(title);
@@ -1911,25 +1917,78 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         color: isToday ? resolveAccentColor(context) : primaryLabel,
         letterSpacing: compact ? -0.6 : -1.2,
       );
+
+      Widget compactArrow({
+        required _ChevronDir direction,
+        required VoidCallback? onTap,
+      }) {
+        return SizedBox(
+          width: compactArrowWidth,
+          height: 52,
+          child: Center(
+            child: SizedBox(
+              width: compactArrowWidth,
+              height: 40,
+              child: AnimatedTapIcon(
+                padding: const EdgeInsets.all(11),
+                onTap: onTap,
+                child: _ChevronIcon(
+                  direction: direction,
+                  color: resolveAccentColor(context),
+                  size: 18,
+                  strokeWidth: 1.6,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
       final titleScroller = HeaderTitleScroller(
         title: displayTitle,
-        fadeColor: resolveThemeColor(kCardColor, context),
+        fadeColor:
+            compactFadeColor ?? resolveThemeColor(kCardColor, context),
         onTap: isActive && isToday ? _advanceCurrentCalendarHeader : null,
-        // The title area ends immediately before the calendar arrows, so its
-        // trailing boundary must fade instead of hard-clipping.
         showTrailingFade: true,
-        trailingBuilder: (titleFontSize) => _CalendarNavChevron(
-          titleFontSize: titleFontSize,
-          canUp: canUp,
-          canDown: canDown,
-          compact: compact,
-          onUp: isActive && canUp
-              ? () => _calendarTabKey.currentState?.navigateUp()
-              : null,
-          onDown: isActive && canDown
-              ? () => _calendarTabKey.currentState?.navigateDown()
-              : null,
-        ),
+        trailingContentWidth: compact ? compactControlsWidth : null,
+        centerWhenContentFits: compact,
+        contentAlignment: compact
+            ? Alignment.centerLeft
+            : Alignment.bottomLeft,
+        trailingBuilder: (titleFontSize) {
+          final verticalNavigation = _CalendarNavChevron(
+            titleFontSize: titleFontSize,
+            canUp: canUp,
+            canDown: canDown,
+            compact: compact,
+            onUp: isActive && canUp
+                ? () => _calendarTabKey.currentState?.navigateUp()
+                : null,
+            onDown: isActive && canDown
+                ? () => _calendarTabKey.currentState?.navigateDown()
+                : null,
+          );
+          if (!compact) return verticalNavigation;
+
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              compactArrow(
+                direction: _ChevronDir.left,
+                onTap: isActive
+                    ? () => _calendarTabKey.currentState?.navigatePrev()
+                    : null,
+              ),
+              verticalNavigation,
+              compactArrow(
+                direction: _ChevronDir.right,
+                onTap: isActive
+                    ? () => _calendarTabKey.currentState?.navigateNext()
+                    : null,
+              ),
+            ],
+          );
+        },
         style: titleStyle,
       );
 
@@ -1959,83 +2018,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       );
 
       if (compact) {
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final availableWidth = constraints.maxWidth.isFinite
-                ? constraints.maxWidth
-                : MediaQuery.sizeOf(context).width;
-            final titlePainter = TextPainter(
-              text: TextSpan(
-                text: displayTitle,
-                style: titleStyle.copyWith(
-                  fontSize: headerTitleFontSize(
-                    context,
-                    baseFontSize: titleStyle.fontSize ?? 34,
-                  ),
-                ),
-              ),
-              textDirection: Directionality.of(context),
-              textScaler: TextScaler.noScaling,
-              maxLines: 1,
-            )..layout();
-            const compactArrowWidth = 40.0;
-            final maxTitleWidth = max(
-              0.0,
-              availableWidth - compactArrowWidth * 2,
-            );
-            // The landscape up/down control sits immediately beside the text,
-            // instead of reserving the portrait chevron's wide hit-test slot.
-            final naturalTitleWidth = titlePainter.width + 28.0;
-            final titleWidth = min(maxTitleWidth, naturalTitleWidth);
-            Widget compactArrow({
-              required _ChevronDir direction,
-              required VoidCallback? onTap,
-            }) {
-              return SizedBox(
-                width: compactArrowWidth,
-                height: 52,
-                child: Center(
-                  child: SizedBox(
-                    width: compactArrowWidth,
-                    height: 40,
-                    child: AnimatedTapIcon(
-                      padding: const EdgeInsets.all(11),
-                      onTap: onTap,
-                      child: _ChevronIcon(
-                        direction: direction,
-                        color: resolveAccentColor(context),
-                        size: 18,
-                        strokeWidth: 1.6,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }
-
-            return Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  compactArrow(
-                    direction: _ChevronDir.left,
-                    onTap: isActive
-                        ? () => _calendarTabKey.currentState?.navigatePrev()
-                        : null,
-                  ),
-                  SizedBox(width: titleWidth, child: titleScroller),
-                  compactArrow(
-                    direction: _ChevronDir.right,
-                    onTap: isActive
-                        ? () => _calendarTabKey.currentState?.navigateNext()
-                        : null,
-                  ),
-                ],
-              ),
-            );
-          },
-        );
+        return SizedBox.expand(child: titleScroller);
       }
 
       return Row(
@@ -2053,6 +2036,19 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     return ValueListenableBuilder<double>(
       valueListenable: _calendarStripSlide,
       builder: (context, slideX, _) {
+        if (compact) {
+          final physicalWidth = AppWindowContentScope.of(
+            context,
+          ).physicalWidth;
+          final title = physicalWidth > 0 &&
+                  slideX.abs() >= physicalWidth * 0.5
+              ? (slideX > 0 ? _calendarPrevTitle : _calendarNextTitle)
+              : _calendarTitle;
+          // Keep the complete title-and-chevron group stationary during the
+          // content slide. It snaps to the incoming period at exactly halfway.
+          return buildPanel(title, isActive: true);
+        }
+
         final sw = MediaQuery.of(context).size.width;
         return Stack(
           clipBehavior: Clip.hardEdge,
@@ -2782,6 +2778,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                          1
                                                                  ? _buildCalendarTitleRow(
                                                                      compact: true,
+                                                                      compactFadeColor:
+                                                                          headerColor,
                                                                    )
                                                                  : _buildCompactHeaderTitle(
                                                                      isDCVVisual:

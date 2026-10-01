@@ -17,12 +17,25 @@ void main() {
         CupertinoApp(
           navigatorKey: navigatorKey,
           builder: (context, child) {
-            final mediaQuery = MediaQuery.of(context);
-            return LiveRotationGeometry(
-              child: AppWindowContentScope(
-                horizontalInset: 0,
-                physicalWidth: mediaQuery.size.width,
-                child: child ?? const SizedBox.shrink(),
+            final original = MediaQuery.of(context);
+            final landscape = original.size.width > original.size.height;
+            return MediaQuery(
+              data: original.copyWith(
+                viewPadding: original.viewPadding.copyWith(
+                  left: landscape ? 28 : 0,
+                  right: 0,
+                  bottom: landscape ? 0 : 34,
+                ),
+                padding: original.padding.copyWith(
+                  left: landscape ? 28 : 0,
+                  right: 0,
+                  bottom: landscape ? 0 : 34,
+                ),
+              ),
+              child: LiveRotationGeometry(
+                child: AppWindowContentBoundary(
+                  child: child ?? const SizedBox.shrink(),
+                ),
               ),
             );
           },

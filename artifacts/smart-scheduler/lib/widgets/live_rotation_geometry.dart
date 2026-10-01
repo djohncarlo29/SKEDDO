@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 
 import 'native_text_input.dart';
@@ -53,6 +55,7 @@ class _LiveRotationGeometryState extends State<LiveRotationGeometry>
   int _finalizeGeneration = 0;
   FocusNode? _focusBeforeRotation;
   TextEditingController? _nativeInputBeforeRotation;
+  Timer? _focusRestoreTimer;
 
   Size? _windowSize() {
     final view = WidgetsBinding.instance.platformDispatcher.implicitView;
@@ -69,25 +72,42 @@ class _LiveRotationGeometryState extends State<LiveRotationGeometry>
 
   Size _swapped(Size size) => Size(size.height, size.width);
 
+  void _beginTransition(Size from, Size current) {
+    setState(() => _startTransition(from));
+    final target = _toSize;
+    if (target != null && _near(current, target)) {
+      _scheduleFinalize(target);
+    }
+  }
+
   void _startTransition(Size from) {
+    _focusRestoreTimer?.cancel();
+    _focusRestoreTimer = null;
     final primaryFocus = FocusManager.instance.primaryFocus;
-    _focusBeforeRotation =
-        primaryFocus is FocusScopeNode ||
-            primaryFocus?.context == null
+    final currentFocus =
+        primaryFocus is FocusScopeNode || primaryFocus?.context == null
         ? null
         : primaryFocus;
-    _nativeInputBeforeRotation = NativeTextInput.focusedController;
+    // A second rotation can arrive before the platform's delayed blur has
+    // settled. Carry the original focus target forward when no replacement
+    // field currently owns focus.
+    if (currentFocus != null || _focusBeforeRotation?.context == null) {
+      _focusBeforeRotation = currentFocus;
+    }
+    final currentNativeInput = NativeTextInput.focusedController;
+    if (currentNativeInput != null || _nativeInputBeforeRotation == null) {
+      _nativeInputBeforeRotation = currentNativeInput;
+    }
     _fromSize = from;
     _toSize = _swapped(from);
     _isTransitioning = true;
     _finalizeGeneration++;
   }
 
-  void _restoreRotationFocus() {
+  void _restoreRotationFocus({bool finalAttempt = false}) {
     final savedFocus = _focusBeforeRotation;
     final savedNativeController = _nativeInputBeforeRotation;
-    _focusBeforeRotation = null;
-    _nativeInputBeforeRotation = null;
+    if (savedFocus == null && savedNativeController == null) return;
 
     final currentFocus = FocusManager.instance.primaryFocus;
     final hasDifferentLiveFocus =
@@ -95,7 +115,10 @@ class _LiveRotationGeometryState extends State<LiveRotationGeometry>
         currentFocus is! FocusScopeNode &&
         currentFocus.context != null &&
         currentFocus != savedFocus;
-    if (hasDifferentLiveFocus) return;
+    if (hasDifferentLiveFocus) {
+      _clearSavedFocus();
+      return;
+    }
 
     if (savedFocus?.context != null && !savedFocus!.hasFocus) {
       savedFocus.requestFocus();
@@ -104,6 +127,27 @@ class _LiveRotationGeometryState extends State<LiveRotationGeometry>
         !NativeTextInput.isFocused(savedNativeController)) {
       NativeTextInput.focus(savedNativeController);
     }
+
+    // Some platforms report the text-input blur after the final window-size
+    // metric. Keep the original focus target briefly and retry after the IME
+    // has processed the rotation, rather than consuming the snapshot during
+    // the first post-layout frame.
+    if (!finalAttempt) {
+      _focusRestoreTimer?.cancel();
+      _focusRestoreTimer = Timer(const Duration(milliseconds: 250), () {
+        _focusRestoreTimer = null;
+        if (mounted) _restoreRotationFocus(finalAttempt: true);
+      });
+    } else {
+      _clearSavedFocus();
+    }
+  }
+
+  void _clearSavedFocus() {
+    _focusRestoreTimer?.cancel();
+    _focusRestoreTimer = null;
+    _focusBeforeRotation = null;
+    _nativeInputBeforeRotation = null;
   }
 
   void _scheduleFinalize(Size target) {
@@ -143,7 +187,7 @@ class _LiveRotationGeometryState extends State<LiveRotationGeometry>
 
     if (!_isTransitioning) {
       if (_isPortrait(next) != _isPortrait(settled)) {
-        setState(() => _startTransition(settled));
+        _beginTransition(settled, next);
       }
       return;
     }
@@ -164,7 +208,7 @@ class _LiveRotationGeometryState extends State<LiveRotationGeometry>
     // Reverse from the actual endpoint instead of from a stale intermediate
     // window size.
     if (_isPortrait(next) != _isPortrait(target)) {
-      setState(() => _startTransition(target));
+      _beginTransition(target, next);
       return;
     }
 
@@ -174,8 +218,7 @@ class _LiveRotationGeometryState extends State<LiveRotationGeometry>
   @override
   void dispose() {
     _finalizeGeneration++;
-    _focusBeforeRotation = null;
-    _nativeInputBeforeRotation = null;
+    _clearSavedFocus();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

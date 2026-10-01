@@ -2861,10 +2861,16 @@ class _YearView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final horizontalInset = AppWindowContentScope.of(
+      context,
+    ).horizontalInset;
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalW = constraints.maxWidth;
-        final grid = _yearGridGeometry(context, totalW);
+        final grid = _yearGridGeometry(
+          context,
+          math.max(0.0, totalW - horizontalInset * 2.0),
+        );
 
         return SingleChildScrollView(
           controller: controller,
@@ -2873,9 +2879,9 @@ class _YearView extends StatelessWidget {
           ),
           clipBehavior: Clip.hardEdge,
           padding: EdgeInsets.fromLTRB(
-            _kYearOuterPad,
+            _kYearOuterPad + horizontalInset,
             17.5,
-            _kYearOuterPad,
+            _kYearOuterPad + horizontalInset,
             14.5 + floatingTabBarContentBottomClearance(context),
           ),
           child: Column(
@@ -3158,7 +3164,13 @@ class _MorphOverlay extends StatelessWidget {
     final secC = CupertinoDynamicColor.resolve(kSecondaryLabel, context);
     final terC = CupertinoDynamicColor.resolve(kTertiaryLabel, context);
     final sepC = CupertinoDynamicColor.resolve(kSeparatorColor, context);
-    final grid = _yearGridGeometry(context, screenW);
+    final yearHorizontalInset = AppWindowContentScope.of(
+      context,
+    ).horizontalInset;
+    final grid = _yearGridGeometry(
+      context,
+      math.max(0.0, screenW - yearHorizontalInset * 2.0),
+    );
     final miniW = grid.monthWidth;
     final yearFontSize = miniW / 7 * 0.62 + 1.0;
     final yearDayScale =
@@ -3219,7 +3231,9 @@ class _MorphOverlay extends StatelessWidget {
           final zCol = zoomMonthIdx % grid.columnCount;
           final zRow = zoomMonthIdx ~/ grid.columnCount;
           final focalX =
-              _kYearOuterPad + zCol * (miniW + grid.columnGap);
+              yearHorizontalInset +
+              _kYearOuterPad +
+              zCol * (miniW + grid.columnGap);
           final List<double> rowTop;
           if (measuredRowTops != null &&
               measuredRowTops!.length == grid.rowCount) {
@@ -3267,6 +3281,7 @@ class _MorphOverlay extends StatelessWidget {
                   scrollOffset: scrollOffset,
                   monthScrollOffset: monthScrollOffset,
                   screenW: screenW,
+                  yearHorizontalInset: yearHorizontalInset,
                   yearGrid: grid,
                   measuredRowTops: measuredRowTops,
                   viewModeRowHeight: viewModeRowHeight,
@@ -3674,6 +3689,7 @@ class _MorphPainter extends CustomPainter {
     required this.scrollOffset,
     required this.monthScrollOffset,
     required this.screenW,
+    required this.yearHorizontalInset,
     required this.yearGrid,
     required this.bgColor,
     required this.primaryColor,
@@ -3697,6 +3713,7 @@ class _MorphPainter extends CustomPainter {
   final double scrollOffset;
   final double monthScrollOffset;
   final double screenW;
+  final double yearHorizontalInset;
   final _YearGridGeometry yearGrid;
   final Color bgColor;
   final Color primaryColor;
@@ -3726,6 +3743,7 @@ class _MorphPainter extends CustomPainter {
       o.scrollOffset != scrollOffset ||
       o.monthScrollOffset != monthScrollOffset ||
       o.screenW != screenW ||
+      o.yearHorizontalInset != yearHorizontalInset ||
       o.yearGrid.monthWidth != yearGrid.monthWidth ||
       o.yearGrid.columnGap != yearGrid.columnGap ||
       o.yearGrid.columnCount != yearGrid.columnCount ||
@@ -3823,6 +3841,7 @@ class _MorphPainter extends CustomPainter {
     final yearLayout = _morphLayoutForYear(year, grid.columnCount);
     final miniW = grid.monthWidth;
     final cellSz = grid.cellSize;
+    final yearGridLeft = yearHorizontalInset + _kYearOuterPad;
     final sFinal = sw / miniW;
     final s = 1.0 + (sFinal - 1.0) * t;
 
@@ -3851,7 +3870,7 @@ class _MorphPainter extends CustomPainter {
     }
 
     // Focal point: selected month's DOW-row top-left in year-view screen coords
-    final focalX = _kYearOuterPad + zCol * (miniW + grid.columnGap);
+    final focalX = yearGridLeft + zCol * (miniW + grid.columnGap);
     final focalY = rowTop[zRow] + cellSz * 1.35 + 5.0 - scrollOffset;
 
     // Zoom-transform helpers
@@ -3892,7 +3911,7 @@ class _MorphPainter extends CustomPainter {
       final mCol = mi % grid.columnCount;
       final mRow = mi ~/ grid.columnCount;
       final mMon = mi + 1;
-      final mnX = _kYearOuterPad + mCol * (miniW + grid.columnGap);
+      final mnX = yearGridLeft + mCol * (miniW + grid.columnGap);
       final mnY = rowTop[mRow] - scrollOffset;
       final otherFocalY = rowTop[mRow] + cellSz * 1.35 + 5.0 - scrollOffset;
 

@@ -42,7 +42,13 @@ void main() {
     // Simulate a platform text-input blur delivered during the rotation.
     focusNode.unfocus();
     await tester.pump();
+    // Rotate back before the IME's late blur/recovery window has elapsed.
+    tester.view.physicalSize = const Size(402, 874);
+    await tester.pump();
     await tester.pumpAndSettle();
+    // The platform may deliver its final IME blur after the last orientation
+    // metric. Exercise the delayed retry that keeps the original focus target.
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(focusNode.hasFocus, isTrue);
   });
