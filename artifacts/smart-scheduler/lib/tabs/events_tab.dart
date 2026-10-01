@@ -21472,9 +21472,9 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
   ];
   static const List<String> _kPositionDays = [
     ..._kDays,
-    'Day',
-    'Weekday',
-    'Weekend day',
+    'day',
+    'weekday',
+    'weekend day',
   ];
   final Set<String> _selectedDays = {};
 
@@ -21850,7 +21850,11 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     );
   }
 
-  Widget _pickerText(String text, Alignment alignment) {
+  Widget _pickerText(
+    String text,
+    Alignment alignment, {
+    TextAlign? textAlign,
+  }) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableWidth =
@@ -21860,6 +21864,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
         return Text(
           text,
           style: _pickerTextStyleThatFits(text, availableWidth),
+          textAlign: textAlign,
           maxLines: 1,
           softWrap: false,
         );
@@ -22175,10 +22180,16 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                       _kPositions
                           .map(
                             (p) => Align(
-                              alignment: Alignment.centerRight,
+                              alignment: Alignment.center,
                               child: Padding(
-                                padding: const EdgeInsets.only(right: 20),
-                                child: _pickerText(p, Alignment.centerRight),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                ),
+                                child: _pickerText(
+                                  p,
+                                  Alignment.center,
+                                  textAlign: TextAlign.center,
+                                ),
                               ),
                             ),
                           )
@@ -22209,10 +22220,16 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                       _kPositionDays
                           .map(
                             (d) => Align(
-                              alignment: Alignment.centerLeft,
+                              alignment: Alignment.center,
                               child: Padding(
-                                padding: const EdgeInsets.only(left: 20),
-                                child: _pickerText(d, Alignment.centerLeft),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                ),
+                                child: _pickerText(
+                                  d,
+                                  Alignment.center,
+                                  textAlign: TextAlign.center,
+                                ),
                               ),
                             ),
                           )
@@ -22440,14 +22457,16 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                                 _kPositions
                                     .map(
                                       (p) => Align(
-                                        alignment: Alignment.centerRight,
+                                        alignment: Alignment.center,
                                         child: Padding(
                                           padding: const EdgeInsets.only(
+                                            left: 20,
                                             right: 20,
                                           ),
                                           child: _pickerText(
                                             p,
-                                            Alignment.centerRight,
+                                            Alignment.center,
+                                            textAlign: TextAlign.center,
                                           ),
                                         ),
                                       ),
@@ -22479,14 +22498,16 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                                 _kPositionDays
                                     .map(
                                       (d) => Align(
-                                        alignment: Alignment.centerLeft,
+                                        alignment: Alignment.center,
                                         child: Padding(
                                           padding: const EdgeInsets.only(
                                             left: 20,
+                                            right: 20,
                                           ),
                                           child: _pickerText(
                                             d,
-                                            Alignment.centerLeft,
+                                            Alignment.center,
+                                            textAlign: TextAlign.center,
                                           ),
                                         ),
                                       ),
