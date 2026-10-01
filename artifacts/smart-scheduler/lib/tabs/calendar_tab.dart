@@ -10,7 +10,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, TargetPlatform;
+    show defaultTargetPlatform, TargetPlatform, ValueListenable;
 import 'package:flutter/services.dart' show HapticFeedback, MethodChannel;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:super_drag_and_drop/super_drag_and_drop.dart';
@@ -126,8 +126,42 @@ const double _kYearRowGap = 24.0;
 const double _kHourHeight = 64.0;
 const double _kTimelinePad =
     8.0; // breathing room above 12 am and below midnight
+const double _kCurrentTimeIndicatorCenterOffset = 9.0;
 const double _kDayBannerHeight = 36.0;
 const double _kDayBannerVerticalInset = 4.0;
+
+void _scheduleLandscapeCurrentTimeCentering({
+  required BuildContext context,
+  required ScrollController scroll,
+  required ValueListenable<DateTime> nowNotifier,
+}) {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!context.mounted || !scroll.hasClients) return;
+    final position = scroll.position;
+    if (!position.hasContentDimensions ||
+        !position.viewportDimension.isFinite) {
+      return;
+    }
+    final availableHeight = math.max(
+      0.0,
+      position.viewportDimension -
+          floatingTabBarContentBottomClearance(context),
+    );
+    final now = nowNotifier.value;
+    final currentSeconds = now.hour * 3600 + now.minute * 60;
+    final indicatorCenterY =
+        _kTimelinePad +
+        (currentSeconds / 3600.0) * _kHourHeight +
+        _kCurrentTimeIndicatorCenterOffset;
+    final targetOffset = (indicatorCenterY - availableHeight / 2)
+        .clamp(0.0, position.maxScrollExtent)
+        .toDouble();
+    if ((scroll.offset - targetOffset).abs() > 0.5) {
+      scroll.jumpTo(targetOffset);
+    }
+  });
+}
+
 // Fixed 8 pt breathing room between the large app header and the Month/Day
 // DOW row. Keep this independent from text scaling and the shared 16 pt
 // vertical padding token.
@@ -7204,6 +7238,8 @@ class _DayTimelineState extends State<_DayTimeline>
   late final ScrollController _scroll;
   late final AnimationController _sepCtrl;
   late final Animation<double> _sepAnim;
+  Size? _lastWindowSize;
+  double? _lastLandscapeClearance;
 
   @override
   void initState() {
@@ -7230,6 +7266,25 @@ class _DayTimelineState extends State<_DayTimeline>
         setState(() {});
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final windowSize = MediaQuery.sizeOf(context);
+    final bottomClearance = floatingTabBarContentBottomClearance(context);
+    if (windowSize == _lastWindowSize &&
+        bottomClearance == _lastLandscapeClearance) {
+      return;
+    }
+    _lastWindowSize = windowSize;
+    _lastLandscapeClearance = bottomClearance;
+    if (windowSize.width <= windowSize.height) return;
+    _scheduleLandscapeCurrentTimeCentering(
+      context: context,
+      scroll: _scroll,
+      nowNotifier: widget.nowNotifier,
+    );
   }
 
   @override
@@ -8007,6 +8062,8 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
   late final ScrollController _scroll;
   late final AnimationController _sepCtrl;
   late final CurvedAnimation _sepAnim;
+  Size? _lastWindowSize;
+  double? _lastLandscapeClearance;
 
   @override
   void initState() {
@@ -8027,6 +8084,25 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
     );
     _sepAnim = CurvedAnimation(parent: _sepCtrl, curve: Curves.easeInOut);
     if (widget.animateEntrance) _sepCtrl.forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final windowSize = MediaQuery.sizeOf(context);
+    final bottomClearance = floatingTabBarContentBottomClearance(context);
+    if (windowSize == _lastWindowSize &&
+        bottomClearance == _lastLandscapeClearance) {
+      return;
+    }
+    _lastWindowSize = windowSize;
+    _lastLandscapeClearance = bottomClearance;
+    if (windowSize.width <= windowSize.height) return;
+    _scheduleLandscapeCurrentTimeCentering(
+      context: context,
+      scroll: _scroll,
+      nowNotifier: widget.nowNotifier,
+    );
   }
 
   @override

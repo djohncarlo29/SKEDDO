@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/tabs/calendar_tab.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/view_mode_icons.dart';
@@ -29,6 +30,26 @@ Widget _landscapeCalendarHarness({
         onViewChanged: (view, _, _, _, _) {},
       ),
     ),
+  );
+}
+
+void _expectCurrentTimeCenteredAboveFloatingBar(
+  WidgetTester tester,
+  Finder timeline,
+) {
+  final timelineRect = tester.getRect(timeline);
+  final bottomClearance = floatingTabBarContentBottomClearance(
+    tester.element(timeline),
+  );
+  final visibleHeight = timelineRect.height - bottomClearance;
+  final indicator = find.descendant(
+    of: timeline,
+    matching: find.byKey(const Key('calendar-current-time-indicator')),
+  );
+  expect(indicator, findsOneWidget);
+  expect(
+    tester.getCenter(indicator).dy,
+    closeTo(timelineRect.top + visibleHeight / 2, 4),
   );
 }
 
@@ -230,6 +251,38 @@ void main() {
   );
 
   testWidgets(
+    'landscape Single-Day current-time indicator stays centered above tab bar',
+    (tester) async {
+      const screenSize = Size(1024, 450);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = screenSize;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _landscapeCalendarHarness(
+          screenSize: screenSize,
+          horizontalSafeInset: 0,
+        ),
+      );
+      await tester.pumpAndSettle();
+      final calendar = tester.state<CalendarTabState>(
+        find.byType(CalendarTab),
+      );
+      calendar.navigateUp();
+      await tester.pumpAndSettle();
+      calendar.jumpToTodayDay();
+      await tester.pumpAndSettle();
+
+      final timelines = find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == '_DayTimeline',
+      );
+      expect(timelines, findsNWidgets(3));
+      _expectCurrentTimeCenteredAboveFloatingBar(tester, timelines.at(1));
+    },
+  );
+
+  testWidgets(
     'landscape Multi-Day timeline keeps inset columns and full-width rules',
     (tester) async {
       const screenSize = Size(844, 390);
@@ -281,6 +334,7 @@ void main() {
         matching: find.byKey(const Key('calendar-current-time-indicator')),
       );
       expect(currentTimeLine, findsOneWidget);
+      _expectCurrentTimeCenteredAboveFloatingBar(tester, timeline);
       final currentTimeLineRect = tester.getRect(currentTimeLine);
       expect(currentTimeLineRect.left, closeTo(horizontalSafeInset, 0.5));
       expect(currentTimeLineRect.right, closeTo(screenSize.width, 0.5));

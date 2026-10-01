@@ -146,3 +146,4 @@
 - [Picker geometry consolidation](picker-geometry-consolidation.md) — icon, emoji, and color pickers share one geometry model; landscape preserves item size and turns extra width into gaps.
 - [Live slider persistence](live-slider-persistence.md) — persist on gesture completion even when live preview state already equals the snapped value.
 - [Calendar landscape safe-area insets](calendar-landscape-header-inset.md) — inset Year, Month, and Day content inside full-width panels; preserve bleed lines through Month↔Day transitions.
+- [Landscape current-time positioning](calendar-landscape-time-indicator-position.md) — center the Day timeline within usable height above the tab bar; preserve the portrait starting offset.
