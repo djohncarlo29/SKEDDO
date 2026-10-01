@@ -4406,6 +4406,11 @@ class _MonthView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final horizontalInset = AppWindowContentScope.of(
+      context,
+    ).horizontalInset;
+    final monthContentInset =
+        horizontalInset * (1.0 - collapseProgress.clamp(0.0, 1.0).toDouble());
     return ValueListenableBuilder<List<ScheduledEvent>>(
       valueListenable: EventStore.instance.events,
       builder: (context, eventsSnapshot, __) {
@@ -4579,6 +4584,7 @@ class _MonthView extends StatelessWidget {
                             collapseWeekRow: collapseWeekRow,
                             viewModeRowHeight: rowHeight,
                             screenHeight: constraints.maxHeight,
+                    contentInset: monthContentInset,
                             scrollOffset: collapseScrollOffset,
                             eventsByDay: orderedEventsByDay,
                             viewMode: viewMode,
@@ -4606,62 +4612,78 @@ class _MonthView extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _monthSelectedEventsWidgetFor(
-                            data: monthListData!,
-                            selectedDayIndex: selectedListChildIndex,
-                            height: monthListUsesNaturalHeight
-                                ? null
-                                : listContentH,
-                            emptyStateHeight: selectedListIsEmpty
-                                ? listContentH
-                                : availableListEmptyStateH,
-                            onEditEvent: onEditEvent,
-                            scrollController: scrollController,
-                            scrollViewportKey: scrollViewportKey,
-                            onOrderChanged: onMonthListOrderChanged,
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: monthContentInset,
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _monthSelectedEventsWidgetFor(
+                                  data: monthListData!,
+                                  selectedDayIndex: selectedListChildIndex,
+                                  height: monthListUsesNaturalHeight
+                                      ? null
+                                      : listContentH,
+                                  emptyStateHeight: selectedListIsEmpty
+                                      ? listContentH
+                                      : availableListEmptyStateH,
+                                  onEditEvent: onEditEvent,
+                                  scrollController: scrollController,
+                                  scrollViewportKey: scrollViewportKey,
+                                  onOrderChanged: onMonthListOrderChanged,
+                                ),
+                                if (monthListUsesNaturalHeight)
+                                  SizedBox(height: eventContentClearance),
+                              ],
+                            ),
                           ),
-                          if (monthListUsesNaturalHeight)
-                            SizedBox(height: eventContentClearance),
                         ],
                       ),
                     )
                   else if (emptyH > 0)
                     Transform.translate(
                       offset: Offset(0, monthListStripOffsetY),
-                      child: SizedBox(
-                        height: emptyH,
-                        child: Column(
-                          children: [
-                            SizedBox(
-                              height: emptyStateH,
-                            child: Opacity(
-                              opacity:
-                                  collapseProgress <
-                                      _kMonthDayTransitionThreshold
-                                  ? (1.0 - collapseProgress * 4.0).clamp(
-                                      0.0,
-                                      1.0,
-                                    )
-                                  : 0.0,
-                              child: Center(
-                                child: Text(
-                                  'No Events',
-                                  style: TextStyle(
-                                    inherit: false,
-                                    fontFamily: kSFProText,
-                                    fontWeight: FontWeight.w400,
-                                    fontStyle: FontStyle.normal,
-                                    letterSpacing: kTracking16,
-                                    height: kLineHeight,
-                                    fontSize: kEmptyStateLabelFontSize,
-                                    color: secondaryC,
-                                  ),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: monthContentInset,
+                        ),
+                        child: SizedBox(
+                          height: emptyH,
+                          child: Column(
+                            children: [
+                              SizedBox(
+                                height: emptyStateH,
+                                child: Opacity(
+                                  opacity:
+                                      collapseProgress <
+                                          _kMonthDayTransitionThreshold
+                                      ? (1.0 - collapseProgress * 4.0).clamp(
+                                          0.0,
+                                          1.0,
+                                        )
+                                      : 0.0,
+                                  child: Center(
+                                    child: Text(
+                                      'No Events',
+                                      style: TextStyle(
+                                        inherit: false,
+                                        fontFamily: kSFProText,
+                                        fontWeight: FontWeight.w400,
+                                        fontStyle: FontStyle.normal,
+                                        letterSpacing: kTracking16,
+                                        height: kLineHeight,
+                                        fontSize: kEmptyStateLabelFontSize,
+                                        color: secondaryC,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            SizedBox(height: emptyH - emptyStateH),
-                          ],
+                              SizedBox(height: emptyH - emptyStateH),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -4692,30 +4714,35 @@ class _MonthView extends StatelessWidget {
                     0,
                     collapseScrollOffset * collapseProgress,
                   ),
-                  child: ColoredBox(
-                    color: resolveThemeColor(kBackgroundColor, context),
-                    child: Row(
-                      children: [
-                        const Expanded(child: SizedBox.shrink()),
-                        ...List.generate(
-                          7,
-                          (i) => Expanded(
-                            child: Center(
-                              child: Text(
-                                _kDayLetters[i],
-                                style: TextStyle(
-                                  fontFamily: kSFProText,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: secondaryC,
-                                  letterSpacing: -0.1,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: monthContentInset,
+                    ),
+                    child: ColoredBox(
+                      color: resolveThemeColor(kBackgroundColor, context),
+                      child: Row(
+                        children: [
+                          const Expanded(child: SizedBox.shrink()),
+                          ...List.generate(
+                            7,
+                            (i) => Expanded(
+                              child: Center(
+                                child: Text(
+                                  _kDayLetters[i],
+                                  style: TextStyle(
+                                    fontFamily: kSFProText,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: secondaryC,
+                                    letterSpacing: -0.1,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 7),
-                      ],
+                          const SizedBox(width: 7),
+                        ],
+                      ),
                     ),
                   ),
                 ),
