@@ -145,4 +145,4 @@
 - [Rotation endpoint focus settlement](rotation-focus-settlement.md) — finalize even when a single metrics event lands at the new endpoint; retain focus through late IME blur.
 - [Picker geometry consolidation](picker-geometry-consolidation.md) — icon, emoji, and color pickers share one geometry model; landscape preserves item size and turns extra width into gaps.
 - [Live slider persistence](live-slider-persistence.md) — persist on gesture completion even when live preview state already equals the snapped value.
-- [Calendar landscape header and Year inset](calendar-landscape-header-inset.md) — inset Year grids inside full-width panels; keep landscape header controls fixed and switch titles at the content-slide midpoint.
+- [Calendar landscape safe-area insets](calendar-landscape-header-inset.md) — inset Year and Month content inside full-width panels; keep week separators edge-to-edge and header controls fixed.

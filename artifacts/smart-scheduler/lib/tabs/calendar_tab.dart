@@ -4409,6 +4409,8 @@ class _MonthView extends StatelessWidget {
     final horizontalInset = AppWindowContentScope.of(
       context,
     ).horizontalInset;
+    // Inset calendar content inside each full-width swipe panel. The panels
+    // themselves and the week-row separators stay edge-to-edge.
     final monthContentInset =
         horizontalInset * (1.0 - collapseProgress.clamp(0.0, 1.0).toDouble());
     return ValueListenableBuilder<List<ScheduledEvent>>(
@@ -4714,12 +4716,12 @@ class _MonthView extends StatelessWidget {
                     0,
                     collapseScrollOffset * collapseProgress,
                   ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: monthContentInset,
-                    ),
-                    child: ColoredBox(
-                      color: resolveThemeColor(kBackgroundColor, context),
+                  child: ColoredBox(
+                    color: resolveThemeColor(kBackgroundColor, context),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: monthContentInset,
+                      ),
                       child: Row(
                         children: [
                           const Expanded(child: SizedBox.shrink()),
@@ -4797,6 +4799,7 @@ class _AnimatedWeekRow extends StatelessWidget {
     this.pendingBloomDate,
     this.suppressScaleAnimation = false,
     this.daySubMode = DayViewSubMode.singleDay,
+    this.contentInset = 0.0,
     this.scrollOffset = 0.0,
     this.eventsByDay = const {},
     required this.viewMode,
@@ -4818,6 +4821,7 @@ class _AnimatedWeekRow extends StatelessWidget {
   final DateTime? pendingBloomDate;
   final bool suppressScaleAnimation;
   final DayViewSubMode daySubMode;
+  final double contentInset;
   final Map<String, List<ScheduledEvent>> eventsByDay;
   final CalendarViewMode viewMode;
 
@@ -4896,6 +4900,7 @@ class _AnimatedWeekRow extends StatelessWidget {
         suppressScaleAnimation: suppressScaleAnimation,
         daySubMode: daySubMode,
         collapseProgress: collapseProgress,
+        contentInset: contentInset,
       ),
     );
   }
@@ -5331,6 +5336,7 @@ class _WeekRow extends StatefulWidget {
     this.suppressScaleAnimation = false,
     this.daySubMode = DayViewSubMode.singleDay,
     this.collapseProgress = 1.0,
+    this.contentInset = 0.0,
     this.eventsByDay = const {},
     required this.viewMode,
   });
@@ -5353,6 +5359,7 @@ class _WeekRow extends StatefulWidget {
   final DateTime? pendingBloomDate;
   final bool suppressScaleAnimation;
   final DayViewSubMode daySubMode;
+  final double contentInset;
   // 0 = month view, 1 = day view — used to fade the multi-day pill so it
   // doesn't persist while transitioning back to Month View.
   final double collapseProgress;
@@ -5389,7 +5396,11 @@ class _WeekRowState extends State<_WeekRow> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final totalW = constraints.maxWidth;
+        final fullWidth = constraints.maxWidth;
+        final contentInset = widget.contentInset
+            .clamp(0.0, fullWidth / 2)
+            .toDouble();
+        final totalW = math.max(0.0, fullWidth - contentInset * 2);
         // One source of truth for the visible indicator geometry. During Day
         // View and its transition, keep the marker in the original bounded
         // slot even when the row grows to provide bottom padding. Without
@@ -5415,7 +5426,7 @@ class _WeekRowState extends State<_WeekRow> {
         // A 7px right margin keeps the last day column from being too tight.
         final cellW = (totalW - 7) / 8;
         final circleTranslateX = isSliding
-            ? -widget.circleSlideX * cellW / totalW
+            ? -widget.circleSlideX * cellW / fullWidth
             : 0.0;
         final curCX = (widget.selectedDate.weekday + 0.5) * cellW;
         bool selectedDateInRow = false;
@@ -5471,6 +5482,8 @@ class _WeekRowState extends State<_WeekRow> {
                 ),
               )
             : null;
+        // The row surface and bottom separator stay full-width; only the
+        // week number, day cells, and their overlays use the inset content box.
         final rowContent = Container(
           height: widget.rowHeight,
           decoration: BoxDecoration(
@@ -5479,12 +5492,14 @@ class _WeekRowState extends State<_WeekRow> {
               bottom: BorderSide(color: separatorColor, width: 0.5),
             ),
           ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              if (multiDayPill != null) multiDayPill,
-              Row(
-                children: [
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: contentInset),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                if (multiDayPill != null) multiDayPill,
+                Row(
+                  children: [
               // Week number — equal-width column (same as day columns)
               // Top-aligned to match day-circle vertical centre (kDayCircleOffset).
               Expanded(
@@ -5730,9 +5745,10 @@ class _WeekRowState extends State<_WeekRow> {
               }),
               // 7px right margin — last day column ends 7px from the edge.
               const SizedBox(width: 7),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         );
 
@@ -5755,7 +5771,11 @@ class _WeekRowState extends State<_WeekRow> {
         // day cell and be painted underneath that cell's today marker.
         final selectedCircleOverlay = selectedDateInRow
             ? Positioned(
-                left: curCX + circleTranslateX - restingIndicatorDiameter / 2,
+                left:
+                    contentInset +
+                    curCX +
+                    circleTranslateX -
+                    restingIndicatorDiameter / 2,
                 top: kFixedTopPadding,
                 width: restingIndicatorDiameter,
                 height: restingIndicatorDiameter,
@@ -5772,10 +5792,12 @@ class _WeekRowState extends State<_WeekRow> {
         // blue circle slides beneath them. IgnorePointer passes all taps
         // through to rowContent's GestureDetectors below.
         final numbersOverlay = IgnorePointer(
-          child: SizedBox(
-            height: widget.rowHeight,
-            child: Row(
-              children: [
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: contentInset),
+            child: SizedBox(
+              height: widget.rowHeight,
+              child: Row(
+                children: [
                 const Expanded(child: SizedBox.shrink()), // week-num spacer
                 ...List.generate(7, (col) {
                   final idx2 = firstIdx + col;
@@ -5835,8 +5857,9 @@ class _WeekRowState extends State<_WeekRow> {
                     ),
                   );
                 }),
-                const SizedBox(width: 7),
-              ],
+                  const SizedBox(width: 7),
+                ],
+              ),
             ),
           ),
         );
