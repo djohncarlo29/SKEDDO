@@ -134,6 +134,7 @@ void _scheduleLandscapeCurrentTimeCentering({
   required BuildContext context,
   required ScrollController scroll,
   required ValueListenable<DateTime> nowNotifier,
+  bool animate = false,
 }) {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     if (!context.mounted || !scroll.hasClients) return;
@@ -157,7 +158,17 @@ void _scheduleLandscapeCurrentTimeCentering({
         .clamp(0.0, position.maxScrollExtent)
         .toDouble();
     if ((scroll.offset - targetOffset).abs() > 0.5) {
-      scroll.jumpTo(targetOffset);
+      if (animate) {
+        unawaited(
+          scroll.animateTo(
+            targetOffset,
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+          ),
+        );
+      } else {
+        scroll.jumpTo(targetOffset);
+      }
     }
   });
 }
@@ -2489,8 +2500,16 @@ class CalendarTabState extends State<CalendarTab>
                                       _animateMultiDayTransition,
                                 )
                               : Stack(
+                                  // Key the positioned panels by date so a day
+                                  // keeps its own ScrollController as it moves
+                                  // between the left, center, and right slots.
+                                  // Slot-based reconciliation remounted these
+                                  // scroll views after every committed swipe.
                                   children: [
                                     Positioned(
+                                      key: ValueKey(
+                                        'day-panel-${prevDay.year}-${prevDay.month}-${prevDay.day}',
+                                      ),
                                       left: timelineSlideX - sw,
                                       top: 0,
                                       bottom: 0,
@@ -2498,6 +2517,9 @@ class CalendarTabState extends State<CalendarTab>
                                       child: _singleDayTimelineFor(prevDay),
                                     ),
                                     Positioned(
+                                      key: ValueKey(
+                                        'day-panel-${_selected.year}-${_selected.month}-${_selected.day}',
+                                      ),
                                       left: timelineSlideX,
                                       top: 0,
                                       bottom: 0,
@@ -2505,6 +2527,9 @@ class CalendarTabState extends State<CalendarTab>
                                       child: _singleDayTimelineFor(_selected),
                                     ),
                                     Positioned(
+                                      key: ValueKey(
+                                        'day-panel-${nextDay.year}-${nextDay.month}-${nextDay.day}',
+                                      ),
                                       left: timelineSlideX + sw,
                                       top: 0,
                                       bottom: 0,
@@ -7313,6 +7338,7 @@ class _DayTimelineState extends State<_DayTimeline>
         context: context,
         scroll: _scroll,
         nowNotifier: widget.nowNotifier,
+        animate: true,
       );
     }
   }
@@ -8153,6 +8179,7 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
         context: context,
         scroll: _scroll,
         nowNotifier: widget.nowNotifier,
+        animate: true,
       );
     }
   }
