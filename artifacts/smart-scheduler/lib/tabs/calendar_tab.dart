@@ -8142,6 +8142,7 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                     double markerShiftX = 0.0;
                     double wholeIndicatorShiftX = 0.0;
                      double todayColumnPos = 0.0;
+                     bool todayIsRightColumn = false;
                   if (showIndicator) {
                      if (goingLeft) {
                        if (_sameDay(A, widget.today)) {
@@ -8152,6 +8153,7 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                           wholeIndicatorShiftX = slideX;
                        } else if (_sameDay(Aplus1, widget.today)) {
                           todayColumnPos = posAplus1;
+                          todayIsRightColumn = true;
                          // Shared right-side today moves toward the left
                          // divider. Interpolate between the shifted left
                          // divider and the exact center divider.
@@ -8160,6 +8162,7 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                              (colW - _kMultiDayIndicatorDividerShift);
                        } else if (_sameDay(Aplus2, widget.today)) {
                           todayColumnPos = posAplus2;
+                          todayIsRightColumn = true;
                          // Entering right-side today must arrive centered on
                          // the center divider, not 5.5 px beyond it.
                          markerShiftX =
@@ -8182,26 +8185,13 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                              (colW - _kMultiDayIndicatorDividerShift);
                        } else if (_sameDay(Aplus1, widget.today)) {
                           todayColumnPos = posAplus1;
+                          todayIsRightColumn = true;
                          // Right-side today exits from the exact center line.
                          markerShiftX =
                              posAplus1 - _kMultiDayIndicatorDividerShift;
                        }
                      }
                    }
-                   final markerOriginShiftX = wholeIndicatorActive
-                       ? wholeIndicatorShiftX
-                       : markerShiftX;
-                   // The marker row begins at today's column's divider. Stop
-                   // the horizontal line at that column's moving right edge,
-                   // rather than letting it continue through the other day.
-                   // The row has a 2 px gap and a 7 px dot before the line.
-                   final multiDayLineWidth = math.max(
-                     0.0,
-                     todayColumnPos +
-                         colW -
-                         markerOriginShiftX -
-                         (_kMultiDayIndicatorDividerShift - 3.5 + 7),
-                   );
 
                   // Returns a Positioned for a sliding day column.
                   // Columns carry no visible content of their own — all
@@ -8265,6 +8255,42 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                       final sep2X =
                           totalW +
                           (contentLeft + colW - 0.25 - totalW) * t;
+                      final animateIndicatorWithSeparators =
+                          widget.animateEntrance && _sepCtrl.isAnimating;
+                      final animatedCenterX = sep2X + 0.25;
+                      final indicatorMarkerShiftX =
+                          animateIndicatorWithSeparators &&
+                              todayIsRightColumn &&
+                              !wholeIndicatorActive
+                          ? animatedCenterX -
+                                contentLeft -
+                                _kMultiDayIndicatorDividerShift
+                          : markerShiftX;
+                      final markerOriginShiftX = wholeIndicatorActive
+                          ? wholeIndicatorShiftX
+                          : indicatorMarkerShiftX;
+                      final indicatorLineEndX =
+                          animateIndicatorWithSeparators &&
+                              !todayIsRightColumn
+                          ? animatedCenterX
+                          : contentLeft + todayColumnPos + colW;
+                      // The marker row has a 2 px gap and a 7 px dot before
+                      // the line. Its endpoint now tracks the animated center
+                      // divider, just like the vertical separator.
+                      final multiDayLineWidth = math.max(
+                        0.0,
+                        math.min(
+                          totalW -
+                              contentLeft -
+                              (_kMultiDayIndicatorDividerShift - 3.5 + 7),
+                          indicatorLineEndX -
+                              (contentLeft +
+                                  markerOriginShiftX +
+                                  _kMultiDayIndicatorDividerShift -
+                                  3.5 +
+                                  7),
+                        ),
+                      );
 
                       return Stack(
                         // The vertical separators intentionally extend beyond
@@ -8328,7 +8354,7 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                                  hour: now.hour,
                                  minute: now.minute,
                                  multiDay: true,
-                                 multiDayMarkerShiftX: markerShiftX,
+                                  multiDayMarkerShiftX: indicatorMarkerShiftX,
                                   multiDayLineWidth: multiDayLineWidth,
                                   multiDayWholeShiftX: wholeIndicatorShiftX,
                                ),

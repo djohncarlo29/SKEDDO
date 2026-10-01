@@ -32,6 +32,41 @@ Widget _landscapeCalendarHarness({
   );
 }
 
+Future<void> _beginMultiDayEntrance(
+  WidgetTester tester, {
+  required Size screenSize,
+  required bool todayOnRight,
+}) async {
+  const horizontalSafeInset = 28.0;
+  tester.view.devicePixelRatio = 1.0;
+  tester.view.physicalSize = screenSize;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+
+  await tester.pumpWidget(
+    _landscapeCalendarHarness(
+      screenSize: screenSize,
+      horizontalSafeInset: horizontalSafeInset,
+    ),
+  );
+  await tester.pumpAndSettle();
+  final calendar = tester.state<CalendarTabState>(find.byType(CalendarTab));
+  calendar.navigateUp();
+  await tester.pumpAndSettle();
+  if (todayOnRight) {
+    calendar.navigatePrev();
+    await tester.pumpAndSettle();
+  }
+
+  await tester.pumpWidget(
+    _landscapeCalendarHarness(
+      screenSize: screenSize,
+      horizontalSafeInset: horizontalSafeInset,
+      daySubMode: DayViewSubMode.multiDay,
+    ),
+  );
+}
+
 void main() {
   testWidgets(
     'landscape Year View keeps full-width panels and insets month grids',
@@ -306,6 +341,87 @@ void main() {
       expect(
         tester.getRect(currentTimeLineSegment).right,
         closeTo(tester.getRect(centerSeparator).center.dx, 0.5),
+      );
+    },
+  );
+
+  testWidgets(
+    'Multi-Day entrance animates left-day line with the center divider',
+    (tester) async {
+      const screenSize = Size(844, 390);
+      await _beginMultiDayEntrance(
+        tester,
+        screenSize: screenSize,
+        todayOnRight: false,
+      );
+
+      final timeline = find.byKey(const Key('multi-timeline'));
+      final line = find.descendant(
+        of: timeline,
+        matching: find.byKey(const Key('calendar-current-time-line')),
+      );
+      final centerSeparator = find.descendant(
+        of: timeline,
+        matching: find.byKey(
+          const Key('calendar-multiday-center-separator'),
+        ),
+      );
+      expect(line, findsOneWidget);
+      expect(tester.getRect(line).right, closeTo(screenSize.width, 0.5));
+
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(centerSeparator, findsOneWidget);
+      expect(
+        tester.getRect(line).right,
+        closeTo(tester.getRect(centerSeparator).center.dx, 0.5),
+      );
+    },
+  );
+
+  testWidgets(
+    'Multi-Day entrance moves right-day indicator with the center divider',
+    (tester) async {
+      const screenSize = Size(844, 390);
+      const horizontalSafeInset = 28.0;
+      await _beginMultiDayEntrance(
+        tester,
+        screenSize: screenSize,
+        todayOnRight: true,
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final timeline = find.byKey(const Key('multi-timeline'));
+      final indicator = find.descendant(
+        of: timeline,
+        matching: find.byKey(const Key('calendar-current-time-indicator')),
+      );
+      final line = find.descendant(
+        of: timeline,
+        matching: find.byKey(const Key('calendar-current-time-line')),
+      );
+      final dot = find.descendant(
+        of: indicator,
+        matching: find.byWidgetPredicate(
+          (widget) => widget.runtimeType.toString() == '_CurrentTimeDot',
+        ),
+      );
+      final centerSeparator = find.descendant(
+        of: timeline,
+        matching: find.byKey(
+          const Key('calendar-multiday-center-separator'),
+        ),
+      );
+      expect(indicator, findsOneWidget);
+      expect(line, findsOneWidget);
+      expect(dot, findsOneWidget);
+      expect(centerSeparator, findsOneWidget);
+      expect(
+        tester.getCenter(dot).dx,
+        closeTo(tester.getRect(centerSeparator).center.dx, 0.5),
+      );
+      expect(
+        tester.getRect(line).right,
+        closeTo(screenSize.width - horizontalSafeInset, 0.5),
       );
     },
   );
