@@ -3227,7 +3227,10 @@ class _MorphOverlay extends StatelessWidget {
                 monthScrollOffset,
           );
           final cellSz = grid.cellSize;
-          final sFinal = screenW / miniW;
+          final monthContentWidth = math.max(
+            0.0,
+            screenW - yearHorizontalInset * 2.0,
+          );
           final zCol = zoomMonthIdx % grid.columnCount;
           final zRow = zoomMonthIdx ~/ grid.columnCount;
           final focalX =
@@ -3265,8 +3268,12 @@ class _MorphOverlay extends StatelessWidget {
             listContentTop,
             t,
           )!;
-          final contentLeft = lerpDouble(focalX, 0.0, t)!;
-          final contentScale = lerpDouble(1.0 / sFinal, 1.0, t)!;
+          final contentLeft = lerpDouble(focalX, yearHorizontalInset, t)!;
+          final contentScale = lerpDouble(
+            miniW / screenW,
+            monthContentWidth / screenW,
+            t,
+          )!;
           return Stack(
             fit: StackFit.expand,
             children: [
@@ -3842,7 +3849,11 @@ class _MorphPainter extends CustomPainter {
     final miniW = grid.monthWidth;
     final cellSz = grid.cellSize;
     final yearGridLeft = yearHorizontalInset + _kYearOuterPad;
-    final sFinal = sw / miniW;
+    final monthContentWidth = math.max(
+      0.0,
+      sw - yearHorizontalInset * 2.0,
+    );
+    final sFinal = monthContentWidth / miniW;
     final s = 1.0 + (sFinal - 1.0) * t;
 
     final zCol = zoomMonthIdx % grid.columnCount;
@@ -3874,10 +3885,11 @@ class _MorphPainter extends CustomPainter {
     final focalY = rowTop[zRow] + cellSz * 1.35 + 5.0 - scrollOffset;
 
     // Zoom-transform helpers
-    double xZ(double px) => s * px - sFinal * focalX * t;
+    double xZ(double px) =>
+        s * px - sFinal * focalX * t + yearHorizontalInset * t;
     double yZ(double py) => s * py - sFinal * focalY * t;
 
-    final mCellW = (sw - 7) / 8;
+    final mCellW = (monthContentWidth - 7) / 8;
     final totalRows = zoomMonthLayout.totalRows;
     final nameColor = (today.year == year && today.month == zMonth)
         ? accentColor
@@ -3982,8 +3994,11 @@ class _MorphPainter extends CustomPainter {
           final yearCY =
               otherFocalY + (weekRow + 1) * cellSz + cellSz / 2 + 2.0;
 
-          // Destination at t=1: zoom-transform equivalent (sFinal*(pos−focal))
-          final cx = lerpDouble(yearCX, sFinal * (yearCX - focalX), t)!;
+          // Destination at t=1: zoom-transform equivalent, offset into the
+          // inset Month content box rather than the physical panel edge.
+          final monthCX =
+              yearHorizontalInset + sFinal * (yearCX - focalX);
+          final cx = lerpDouble(yearCX, monthCX, t)!;
           final cy = lerpDouble(yearCY, sFinal * (yearCY - focalY), t)!;
           final r = lerpDouble(
             cellSz * 0.575 * yearDayScale,
@@ -4085,7 +4100,7 @@ class _MorphPainter extends CustomPainter {
       // the centre is the scaled circle offset — NOT rowHeight/2.
       // monthScrollOffset shifts the end position up so the morph's t=1 frame
       // matches the _MonthView that is scrolled to _savedMonthScrollOffset.
-      final monthCX = mCellW * (dow + 1.5);
+      final monthCX = yearHorizontalInset + mCellW * (dow + 1.5);
       final monthCY =
           _kCalendarHeaderToDowGap +
           _kDayLabelHeight +
@@ -4173,7 +4188,11 @@ class _MorphPainter extends CustomPainter {
     for (var wr = 0; wr < totalRows; wr++) {
       final wkNum = zoomMonthLayout.weekNumbers[wr];
 
-      final wkCX = lerpDouble(focalX, mCellW / 2, t)!;
+      final wkCX = lerpDouble(
+        focalX,
+        yearHorizontalInset + mCellW / 2,
+        t,
+      )!;
       final wkCY = lerpDouble(
         focalY + (wr + 1) * cellSz + cellSz / 2,
         _kCalendarHeaderToDowGap +
@@ -4240,7 +4259,7 @@ class _MorphPainter extends CustomPainter {
       for (int i = 0; i < 7; i++) {
         final cx = lerpDouble(
           focalX + (i + 0.5) * cellSz,
-          mCellW * (i + 1.5),
+          yearHorizontalInset + mCellW * (i + 1.5),
           t,
         )!;
         // Month-side cy is shifted up by monthScrollOffset so the labels land
