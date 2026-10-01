@@ -576,6 +576,12 @@ class SKEDDOApp extends StatefulWidget {
 
 class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
   Timer? _textScalePollTimer;
+  // Keep the root route stack attached to the same Navigator across window
+  // metric changes and app-shell rebuilds. In particular, an open modal route
+  // owns unsaved form controllers and focus nodes that must not be recreated
+  // just because the available layout changed from portrait to landscape.
+  final GlobalKey<NavigatorState> _rootNavigatorKey =
+      GlobalKey<NavigatorState>();
 
   @override
   void initState() {
@@ -682,6 +688,7 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
           value: dynamicOverlayStyle,
           child: CupertinoApp(
             debugShowCheckedModeBanner: false,
+            navigatorKey: _rootNavigatorKey,
             theme: CupertinoThemeData(
               // null → follow platform brightness (System mode).
               // Brightness.light / .dark → override.
