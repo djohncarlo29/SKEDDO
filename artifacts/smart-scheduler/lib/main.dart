@@ -1904,7 +1904,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final canDown = _calendarView != CalendarView.year;
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     const compactArrowWidth = 40.0;
-    const compactControlsWidth = compactArrowWidth * 2 + 24.0;
+    const compactTrailingControlsWidth = compactArrowWidth + 24.0;
 
     Widget buildPanel(String title, {required bool isActive}) {
       final displayTitle = _formattedCalendarMonthTitle(title);
@@ -1950,11 +1950,21 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             compactFadeColor ?? resolveThemeColor(kCardColor, context),
         onTap: isActive && isToday ? _advanceCurrentCalendarHeader : null,
         showTrailingFade: true,
-        trailingContentWidth: compact ? compactControlsWidth : null,
+        leadingContentWidth: compact ? compactArrowWidth : null,
+        leadingGap: 0,
+        trailingContentWidth: compact ? compactTrailingControlsWidth : null,
         centerWhenContentFits: compact,
         contentAlignment: compact
             ? Alignment.centerLeft
             : Alignment.bottomLeft,
+        leadingBuilder: compact
+            ? (_) => compactArrow(
+                direction: _ChevronDir.left,
+                onTap: isActive
+                    ? () => _calendarTabKey.currentState?.navigatePrev()
+                    : null,
+              )
+            : null,
         trailingBuilder: (titleFontSize) {
           final verticalNavigation = _CalendarNavChevron(
             titleFontSize: titleFontSize,
@@ -1973,12 +1983,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           return Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              compactArrow(
-                direction: _ChevronDir.left,
-                onTap: isActive
-                    ? () => _calendarTabKey.currentState?.navigatePrev()
-                    : null,
-              ),
               verticalNavigation,
               compactArrow(
                 direction: _ChevronDir.right,

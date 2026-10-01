@@ -88,6 +88,11 @@ class HeaderTitleScroller extends StatefulWidget {
   final TextStyle style;
   final Color fadeColor;
   final double fadeWidth;
+  final Widget? leading;
+  final Widget Function(double titleFontSize)? leadingBuilder;
+  final double leadingGap;
+  /// Natural width of leading content, used with [centerWhenContentFits].
+  final double? leadingContentWidth;
   final Widget? trailing;
   final Widget Function(double titleFontSize)? trailingBuilder;
   final double trailingGap;
@@ -105,6 +110,10 @@ class HeaderTitleScroller extends StatefulWidget {
     required this.style,
     required this.fadeColor,
     this.fadeWidth = 36,
+    this.leading,
+    this.leadingBuilder,
+    this.leadingGap = 4,
+    this.leadingContentWidth,
     this.trailing,
     this.trailingBuilder,
     this.trailingGap = 4,
@@ -264,6 +273,11 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
               effectiveStyle.fontSize ?? kHeaderTitleBaseFontSize,
             ) ??
             widget.trailing;
+        final leading =
+            widget.leadingBuilder?.call(
+              effectiveStyle.fontSize ?? kHeaderTitleBaseFontSize,
+            ) ??
+            widget.leading;
         return Semantics(
           label: widget.title,
           child: NotificationListener<ScrollNotification>(
@@ -277,13 +291,22 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                     // title-and-controls width so an overflowing group has its
                     // initial trailing fade in the very first painted frame.
                     final textWidth = _measureTextWidth(effectiveStyle);
-                    final naturalContentWidth = trailing == null
-                        ? textWidth
-                        : widget.trailingContentWidth == null
+                    final hasUnknownControlWidth =
+                        (leading != null &&
+                            widget.leadingContentWidth == null) ||
+                        (trailing != null &&
+                            widget.trailingContentWidth == null);
+                    final naturalContentWidth = hasUnknownControlWidth
                         ? double.infinity
-                        : textWidth +
-                              widget.trailingGap +
-                              widget.trailingContentWidth!;
+                        : (leading == null
+                              ? 0.0
+                              : widget.leadingGap +
+                                    widget.leadingContentWidth!) +
+                              textWidth +
+                              (trailing == null
+                                  ? 0.0
+                                  : widget.trailingGap +
+                                        widget.trailingContentWidth!);
                     final overflowBeforeLayout =
                         constraints.maxWidth.isFinite &&
                         constraints.maxWidth > 0 &&
@@ -336,6 +359,11 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                                children: [
                                   if (centeredInset > 0)
                                     SizedBox(width: centeredInset),
+                                  if (leading != null) ...[
+                                    leading,
+                                    if (widget.leadingGap > 0)
+                                      SizedBox(width: widget.leadingGap),
+                                  ],
                                  Text(
                                    widget.title,
                                    maxLines: 1,
