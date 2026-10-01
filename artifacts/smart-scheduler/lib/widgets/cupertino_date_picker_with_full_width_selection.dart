@@ -252,16 +252,20 @@ class _CupertinoDatePickerWithFullWidthSelectionState
 
   bool _isMonthValid(int month) {
     final minimumDate = widget.minimumDate;
-    if (minimumDate != null &&
-        _selectedDate.year == minimumDate.year &&
-        month < minimumDate.month) {
-      return false;
+    if (minimumDate != null) {
+      if (_selectedDate.year < minimumDate.year ||
+          (_selectedDate.year == minimumDate.year &&
+              month < minimumDate.month)) {
+        return false;
+      }
     }
     final maximumDate = widget.maximumDate;
-    if (maximumDate != null &&
-        _selectedDate.year == maximumDate.year &&
-        month > maximumDate.month) {
-      return false;
+    if (maximumDate != null) {
+      if (_selectedDate.year > maximumDate.year ||
+          (_selectedDate.year == maximumDate.year &&
+              month > maximumDate.month)) {
+        return false;
+      }
     }
     return true;
   }

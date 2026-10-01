@@ -13387,6 +13387,15 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   // ── Month-grid cell builder ────────────────────────────────────────────────
 
+  DateTime _minimumSelectablePickerDate(DateTime today) {
+    var minimumDate = DateTime(today.year, today.month, today.day);
+    if (_activePicker == 'ends') {
+      final startsDate = DateTime(_starts.year, _starts.month, _starts.day);
+      if (startsDate.isAfter(minimumDate)) minimumDate = startsDate;
+    }
+    return minimumDate;
+  }
+
   Widget _buildPickerMonthGrid({
     required int year,
     required int month,
@@ -13397,6 +13406,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     final selected = _pickerDate;
     final isSelectedMonth = selected.year == year && selected.month == month;
     final isCurrentMonth = today.year == year && today.month == month;
+    final minimumSelectableDate = _minimumSelectablePickerDate(today);
     final gridScale = textScaleRatioFor(context, 15.0);
     final gridCircleSize = 30.0 * gridScale;
     final gridRowHeight = 38.0 * gridScale;
@@ -13416,17 +13426,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
               final isSel = isSelectedMonth && selected.day == day;
               final isToday = isCurrentMonth && today.day == day;
               final dateOnly = DateTime(year, month, day);
-              final todayOnly = DateTime(today.year, today.month, today.day);
-              final startsOnly = DateTime(
-                _starts.year,
-                _starts.month,
-                _starts.day,
-              );
-              // A day is unselectable if it's in the past, OR if the Ends
-              // picker is open and the day falls before the Starts date.
-              final isPast =
-                  dateOnly.isBefore(todayOnly) ||
-                  (_activePicker == 'ends' && dateOnly.isBefore(startsOnly));
+              final isPast = dateOnly.isBefore(minimumSelectableDate);
 
               final Widget circle;
               if (isSel) {
@@ -13696,6 +13696,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
     // ── Date picker (month grid + barrel) ──────────────────────────────────
     final today = DateTime.now();
+    final minimumDate = _minimumSelectablePickerDate(today);
     final prevMonth = DateTime(_pickerCalMonth.year, _pickerCalMonth.month - 1);
     final nextMonth = DateTime(_pickerCalMonth.year, _pickerCalMonth.month + 1);
 
@@ -13733,6 +13734,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                         key: ValueKey('barrel_$_activePicker'),
                         itemExtent: cupertinoDatePickerItemExtent(context),
                         initialDateTime: _pickerDate,
+                        minimumDate: minimumDate,
                         onDateTimeChanged: (dt) {
                           _setPickerDate(dt);
                           setState(
