@@ -76,6 +76,16 @@ String _eventDisplayName(String title) =>
 String _sectionDisplayName(String title) =>
     title.trim().isEmpty ? 'New Section' : title.trim();
 
+int _repeatPositionIndexFromMap(Map<String, dynamic> config, String key) {
+  final rawIndex = (config[key] as int?) ?? 0;
+  final version = (config['positionOptionsVersion'] as int?) ?? 1;
+  // Before "next to last" was inserted, index 5 meant "last".
+  final index = version < 2 && rawIndex >= 5 ? rawIndex + 1 : rawIndex;
+  if (index < 0) return 0;
+  if (index > 6) return 6;
+  return index;
+}
+
 void _dismissModalSheetFocus() {
   NativeTextInput.unfocusAll();
   FocusManager.instance.primaryFocus?.unfocus();
@@ -13617,13 +13627,19 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
           selectedDates: Set<int>.from(
             (crc['selectedDates'] as List?)?.cast<int>() ?? [],
           ),
-          onThePositionIndex: (crc['onThePositionIndex'] as int?) ?? 0,
+          onThePositionIndex: _repeatPositionIndexFromMap(
+            crc,
+            'onThePositionIndex',
+          ),
           onTheDayIndex: (crc['onTheDayIndex'] as int?) ?? 0,
           selectedMonths: Set<int>.from(
             (crc['selectedMonths'] as List?)?.cast<int>() ?? [],
           ),
           yearlyDaysEnabled: (crc['yearlyDaysEnabled'] as bool?) ?? false,
-          yearlyPositionIndex: (crc['yearlyPositionIndex'] as int?) ?? 0,
+          yearlyPositionIndex: _repeatPositionIndexFromMap(
+            crc,
+            'yearlyPositionIndex',
+          ),
           yearlyDayIndex: (crc['yearlyDayIndex'] as int?) ?? 0,
         );
       }
@@ -14131,6 +14147,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     if (_savedCustomConfig != null) {
       final c = _savedCustomConfig!;
       presetCustomRepeatCfg = {
+        'positionOptionsVersion': 2,
         'frequency': c.frequency,
         'everyCount': c.everyCount,
         'selectedDays': c.selectedDays.toList(),
@@ -21453,6 +21470,12 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     'Saturday',
     'Sunday',
   ];
+  static const List<String> _kPositionDays = [
+    ..._kDays,
+    'Day',
+    'Weekday',
+    'Weekend day',
+  ];
   final Set<String> _selectedDays = {};
 
   // ── Monthly mode state ────────────────────────────────────────────────────
@@ -21462,6 +21485,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     'third',
     'fourth',
     'fifth',
+    'next to last',
     'last',
   ];
   String _monthlyMode = 'Each'; // 'Each' | 'OnThe'
@@ -21533,6 +21557,11 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     return '${days.take(days.length - 1).join(', ')}, and ${days.last}';
   }
 
+  String _positionDayLabel(int index) {
+    final label = _kPositionDays[index];
+    return index >= _kDays.length ? label.toLowerCase() : label;
+  }
+
   // Static context footer — always visible below Card 1, reflects live state.
   String get _footerText {
     const prefix = 'Events inside this category will occur';
@@ -21550,22 +21579,24 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
       }
       if (_monthlyMode == 'OnThe') {
         final pos = _kPositions[_onThePositionIndex];
-        final day = _kDays[_onTheDayIndex];
+        final day = _positionDayLabel(_onTheDayIndex);
         return '$prefix $every on the $pos $day.';
       }
     }
     if (_frequency == 'Yearly') {
       final sortedMonths = _selectedMonths.toList()..sort();
       final monthNames = sortedMonths.map((i) => _kMonthsFull[i - 1]).toList();
+      if (_yearlyDaysEnabled) {
+        final pos = _kPositions[_yearlyPositionIndex];
+        final day = _positionDayLabel(_yearlyDayIndex);
+        final monthPhrase =
+            monthNames.isEmpty ? '' : ' of ${_joinDays(monthNames)}';
+        return '$prefix $every on the $pos $day$monthPhrase.';
+      }
       final String base =
           monthNames.isEmpty
               ? '$prefix $every'
               : '$prefix $every in ${_joinDays(monthNames)}';
-      if (_yearlyDaysEnabled) {
-        final pos = _kPositions[_yearlyPositionIndex];
-        final day = _kDays[_yearlyDayIndex];
-        return '$base on the $pos $day.';
-      }
       return '$base.';
     }
     return '$prefix $every.';
@@ -22175,7 +22206,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                   onSelectedItemChanged:
                       (i) => setState(() => _onTheDayIndex = i),
                   children:
-                      _kDays
+                      _kPositionDays
                           .map(
                             (d) => Align(
                               alignment: Alignment.centerLeft,
@@ -22445,7 +22476,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                             onSelectedItemChanged:
                                 (i) => setState(() => _yearlyDayIndex = i),
                             children:
-                                _kDays
+                                _kPositionDays
                                     .map(
                                       (d) => Align(
                                         alignment: Alignment.centerLeft,

@@ -61,15 +61,24 @@ class RecurrenceExpander {
     'Sunday',
   ];
 
-  // "On the" positions: index → label in _kPositions in the UI.
-  // Index 5 ("last") is handled specially.
+  // "On the" positions: index → label in the custom-repeat UI.
+  // The versioned config index keeps older saved "last" selections intact.
   static const List<String> _kPositions = [
     'first',
     'second',
     'third',
     'fourth',
     'fifth',
+    'next to last',
     'last',
+  ];
+
+  // Individual weekdays followed by the supported calendar-day groups.
+  static const List<String> _kPositionDays = [
+    ..._kWeekdays,
+    'Day',
+    'Weekday',
+    'Weekend day',
   ];
 
   // ── Public API ──────────────────────────────────────────────────────────────
@@ -154,13 +163,19 @@ class RecurrenceExpander {
     final selectedDates = Set<int>.from(
       (cfg['selectedDates'] as List?)?.cast<int>() ?? [],
     );
-    final onThePositionIndex = (cfg['onThePositionIndex'] as int?) ?? 0;
+    final onThePositionIndex = _positionIndexFromConfig(
+      cfg,
+      'onThePositionIndex',
+    );
     final onTheDayIndex = (cfg['onTheDayIndex'] as int?) ?? 0;
     final selectedMonths = Set<int>.from(
       (cfg['selectedMonths'] as List?)?.cast<int>() ?? [],
     );
     final yearlyDaysEnabled = (cfg['yearlyDaysEnabled'] as bool?) ?? false;
-    final yearlyPositionIndex = (cfg['yearlyPositionIndex'] as int?) ?? 0;
+    final yearlyPositionIndex = _positionIndexFromConfig(
+      cfg,
+      'yearlyPositionIndex',
+    );
     final yearlyDayIndex = (cfg['yearlyDayIndex'] as int?) ?? 0;
 
     switch (frequency) {
@@ -205,6 +220,16 @@ class RecurrenceExpander {
           out,
         );
     }
+  }
+
+  static int _positionIndexFromConfig(Map<String, dynamic> config, String key) {
+    final rawIndex = (config[key] as int?) ?? 0;
+    final version = (config['positionOptionsVersion'] as int?) ?? 1;
+    // Before "next to last" was inserted, index 5 meant "last".
+    final index = version < 2 && rawIndex >= 5 ? rawIndex + 1 : rawIndex;
+    if (index < 0) return 0;
+    if (index >= _kPositions.length) return _kPositions.length - 1;
+    return index;
   }
 
   // ── Expansion primitives ────────────────────────────────────────────────────
@@ -327,7 +352,7 @@ class RecurrenceExpander {
   }
 
   /// Monthly "On the" — every [monthCount] months on the [positionIndex]-th
-  /// occurrence of weekday [weekdayIndex] in the month.
+  /// occurrence of selector [dayIndex] in the month.
   static void _monthlyOnThe(
     ScheduledEvent base,
     DateTime baseDate,
@@ -417,36 +442,39 @@ class RecurrenceExpander {
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
-  /// Returns the [positionIndex]-th occurrence of weekday [weekdayIndex]
-  /// (0=Monday…6=Sunday) in the given month/year.
-  /// positionIndex 5 = "last".  Returns null if the position doesn't exist.
+  /// Returns the requested ordinal position of a weekday or date group in the
+  /// given month/year. A missing fifth occurrence returns null.
   static DateTime? _nthWeekdayOfMonth(
     int year,
     int month,
     int positionIndex,
-    int weekdayIndex,
+    int dayIndex,
   ) {
-    // DateTime.weekday: 1=Monday … 7=Sunday  →  weekdayIndex+1
-    final target = weekdayIndex + 1;
-
-    if (positionIndex == 5) {
-      // "last"
-      var d = DateTime(year, month + 1, 0); // last day of month
-      while (d.weekday != target) {
-        d = d.subtract(const Duration(days: 1));
-      }
-      return d;
+    final dates = <DateTime>[];
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final selector = dayIndex >= 0 && dayIndex < _kPositionDays.length
+        ? _kPositionDays[dayIndex]
+        : null;
+    for (var day = 1; day <= daysInMonth; day++) {
+      final date = DateTime(year, month, day);
+      final matches = switch (selector) {
+        'Day' => true,
+        'Weekday' =>
+          date.weekday >= DateTime.monday && date.weekday <= DateTime.friday,
+        'Weekend day' =>
+          date.weekday == DateTime.saturday || date.weekday == DateTime.sunday,
+        _ => _kWeekdays.indexOf(selector ?? '') == date.weekday - 1,
+      };
+      if (matches) dates.add(date);
     }
 
-    // Find first occurrence of target weekday.
-    var d = DateTime(year, month, 1);
-    while (d.weekday != target) {
-      d = d.add(const Duration(days: 1));
-    }
-    // Advance by positionIndex weeks.
-    d = d.add(Duration(days: positionIndex * 7));
-    // Verify it's still in the same month.
-    return d.month == month ? d : null;
+    final matchIndex = switch (positionIndex) {
+      5 => dates.length - 2, // second-to-last matching date
+      6 => dates.length - 1, // final matching date
+      _ => positionIndex,
+    };
+    if (matchIndex < 0 || matchIndex >= dates.length) return null;
+    return dates[matchIndex];
   }
 
   /// Build an expanded occurrence for [date].
