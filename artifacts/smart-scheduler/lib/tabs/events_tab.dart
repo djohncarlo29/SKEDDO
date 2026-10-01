@@ -15707,6 +15707,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                     // ── CupertinoDatePicker barrel ────────────────────────────
                     ? SizedBox(
                       height: cupertinoDatePickerHeight(context),
+                      width: double.infinity,
                       child: CupertinoTheme(
                         data: CupertinoTheme.of(context).copyWith(
                           primaryColor: _resolvedSelectedColor,

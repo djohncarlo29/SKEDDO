@@ -11631,6 +11631,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             child: _calendarBarrelMode
                 ? SizedBox(
                     height: cupertinoDatePickerHeight(context),
+                    width: double.infinity,
                     child: CupertinoTheme(
                       data: CupertinoTheme.of(context).copyWith(
                         primaryColor: _resolvedCategoryColor,
@@ -13288,6 +13289,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             child: _pickerBarrelMode
                 ? SizedBox(
                     height: cupertinoDatePickerHeight(context),
+                    width: double.infinity,
                     child: CupertinoTheme(
                       data: CupertinoTheme.of(context).copyWith(
                         primaryColor: _resolvedCategoryColor,
