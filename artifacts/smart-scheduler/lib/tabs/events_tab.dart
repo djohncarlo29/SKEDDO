@@ -20,6 +20,7 @@ import '../ai/ai_services.dart';
 import '../services/event_store.dart';
 import '../services/alert_sequence.dart';
 import '../widgets/action_panel.dart';
+import '../widgets/cupertino_date_picker_with_full_width_selection.dart';
 import '../widgets/native_text_input.dart';
 import '../widgets/text_editing_helpers.dart';
 import '../widgets/emoji_picker_sheet.dart';
@@ -15723,20 +15724,31 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                             ),
                           ),
                         ),
-                        child: CupertinoDatePicker(
+                        child: CupertinoDatePickerWithFullWidthSelection(
                           itemExtent: cupertinoDatePickerItemExtent(context),
-                          mode: CupertinoDatePickerMode.date,
-                          initialDateTime: _endDate,
-                          minimumDate: DateTime(
-                            DateTime.now().year,
-                            DateTime.now().month,
-                            DateTime.now().day,
-                          ),
-                          onDateTimeChanged:
-                              (dt) => setState(() {
-                                _endDate = dt;
-                                _calendarMonth = DateTime(dt.year, dt.month);
-                              }),
+                          pickerBuilder: (selectionOverlayBuilder) =>
+                              CupertinoDatePicker(
+                                itemExtent: cupertinoDatePickerItemExtent(
+                                  context,
+                                ),
+                                selectionOverlayBuilder:
+                                    selectionOverlayBuilder,
+                                mode: CupertinoDatePickerMode.date,
+                                initialDateTime: _endDate,
+                                minimumDate: DateTime(
+                                  DateTime.now().year,
+                                  DateTime.now().month,
+                                  DateTime.now().day,
+                                ),
+                                onDateTimeChanged:
+                                    (dt) => setState(() {
+                                      _endDate = dt;
+                                      _calendarMonth = DateTime(
+                                        dt.year,
+                                        dt.month,
+                                      );
+                                    }),
+                              ),
                         ),
                       ),
                     )

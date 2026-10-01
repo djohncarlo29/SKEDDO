@@ -19,6 +19,7 @@ import '../app_theme.dart';
 import '../app_settings.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import '../widgets/fixed_size_icon.dart';
+import '../widgets/cupertino_date_picker_with_full_width_selection.dart';
 import '../widgets/native_text_input.dart';
 import '../widgets/text_editing_helpers.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
@@ -11649,19 +11650,24 @@ class _NewEventSheetState extends State<_NewEventSheet>
                               ),
                             ),
                       ),
-                      child: CupertinoDatePicker(
+                      child: CupertinoDatePickerWithFullWidthSelection(
                         itemExtent: cupertinoDatePickerItemExtent(context),
-                        mode: CupertinoDatePickerMode.date,
-                        initialDateTime: _endDate,
-                        minimumDate: DateTime(
-                          today.year,
-                          today.month,
-                          today.day,
-                        ),
-                        onDateTimeChanged: (dt) => setState(() {
-                          _endDate = dt;
-                          _calendarMonth = DateTime(dt.year, dt.month);
-                        }),
+                        pickerBuilder: (selectionOverlayBuilder) =>
+                            CupertinoDatePicker(
+                              itemExtent: cupertinoDatePickerItemExtent(context),
+                              selectionOverlayBuilder: selectionOverlayBuilder,
+                              mode: CupertinoDatePickerMode.date,
+                              initialDateTime: _endDate,
+                              minimumDate: DateTime(
+                                today.year,
+                                today.month,
+                                today.day,
+                              ),
+                              onDateTimeChanged: (dt) => setState(() {
+                                _endDate = dt;
+                                _calendarMonth = DateTime(dt.year, dt.month);
+                              }),
+                            ),
                       ),
                     ),
                   )
@@ -13307,17 +13313,25 @@ class _NewEventSheetState extends State<_NewEventSheet>
                               ),
                             ),
                       ),
-                      child: CupertinoDatePicker(
+                      child: CupertinoDatePickerWithFullWidthSelection(
                         itemExtent: cupertinoDatePickerItemExtent(context),
-                        key: ValueKey('barrel_$_activePicker'),
-                        mode: CupertinoDatePickerMode.date,
-                        initialDateTime: _pickerDate,
-                        onDateTimeChanged: (dt) {
-                          _setPickerDate(dt);
-                          setState(
-                            () => _pickerCalMonth = DateTime(dt.year, dt.month),
-                          );
-                        },
+                        pickerBuilder: (selectionOverlayBuilder) =>
+                            CupertinoDatePicker(
+                              itemExtent: cupertinoDatePickerItemExtent(context),
+                              selectionOverlayBuilder: selectionOverlayBuilder,
+                              key: ValueKey('barrel_$_activePicker'),
+                              mode: CupertinoDatePickerMode.date,
+                              initialDateTime: _pickerDate,
+                              onDateTimeChanged: (dt) {
+                                _setPickerDate(dt);
+                                setState(
+                                  () => _pickerCalMonth = DateTime(
+                                    dt.year,
+                                    dt.month,
+                                  ),
+                                );
+                              },
+                            ),
                       ),
                     ),
                   )
