@@ -7728,10 +7728,12 @@ class _CurrentTimeIndicator extends StatelessWidget {
     this.multiDay = false,
     this.multiDayMarkerShiftX = 0.0,
     this.multiDayWholeShiftX = 0.0,
+    this.multiDayLineWidth,
   });
   final int hour, minute;
   final bool multiDay;
   final double multiDayMarkerShiftX;
+  final double? multiDayLineWidth;
   // Used when the left-hand day is today and exits the viewport. In that
   // case the pill must travel with the dot and line instead of remaining
   // anchored in the hour-label column.
@@ -7842,14 +7844,25 @@ class _CurrentTimeIndicator extends StatelessWidget {
             height: 7,
             child: _CurrentTimeDot(),
           ),
-          // Keep this full-width. The marker's translation and the viewport
-          // clipping make the right-side state end at the screen edge.
-          Expanded(
-            child: Container(
-              height: 1.5,
-              color: resolveAccentColor(context),
+          // Keep the marker row full-width for its live translation; the
+          // visible line segment below is capped at today's column boundary.
+          if (multiDayLineWidth == null)
+            Expanded(
+              child: Container(
+                key: const Key('calendar-current-time-line'),
+                height: 1.5,
+                color: resolveAccentColor(context),
+              ),
+            )
+          else
+            SizedBox(
+              width: math.max(0.0, multiDayLineWidth!),
+              child: Container(
+                key: const Key('calendar-current-time-line'),
+                height: 1.5,
+                color: resolveAccentColor(context),
+              ),
             ),
-          ),
         ],
       );
 
@@ -8114,7 +8127,7 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                        (!goingLeft && isVisibleColumn(Aminus1, posAminus1)) ||
                        (goingLeft && isVisibleColumn(Aplus2, posAplus2));
 
-                   // Indicator slide rules:
+                    // Indicator slide rules:
                    //   • The indicator belongs to today's day column, so its
                    //     dot/line anchor follows that column's left edge.
                    //   • A shared day moves at half speed with its column.
@@ -8128,14 +8141,17 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                   //   A+1 exits right, A stays, A-1 enters left.
                     double markerShiftX = 0.0;
                     double wholeIndicatorShiftX = 0.0;
+                     double todayColumnPos = 0.0;
                   if (showIndicator) {
                      if (goingLeft) {
                        if (_sameDay(A, widget.today)) {
+                           todayColumnPos = posA;
                           // Match the Single-Day panel transform exactly:
                           // the current panel leaves from its resting x=0
                           // origin at the full screen-width slide offset.
                           wholeIndicatorShiftX = slideX;
                        } else if (_sameDay(Aplus1, widget.today)) {
+                          todayColumnPos = posAplus1;
                          // Shared right-side today moves toward the left
                          // divider. Interpolate between the shifted left
                          // divider and the exact center divider.
@@ -8143,6 +8159,7 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                              (posAplus1 / colW) *
                              (colW - _kMultiDayIndicatorDividerShift);
                        } else if (_sameDay(Aplus2, widget.today)) {
+                          todayColumnPos = posAplus2;
                          // Entering right-side today must arrive centered on
                          // the center divider, not 5.5 px beyond it.
                          markerShiftX =
@@ -8150,24 +8167,41 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                        }
                      } else {
                        if (_sameDay(Aminus1, widget.today)) {
+                           todayColumnPos = posAminus1;
                           // Match the Single-Day previous-panel transform
                           // exactly.  The indicator starts one full screen
                           // width off the left edge and arrives at x=0
                           // together with that panel.
                           wholeIndicatorShiftX = slideX - sw;
                        } else if (_sameDay(A, widget.today)) {
+                          todayColumnPos = posA;
                          // Shared today moves from the left divider to the
                          // exact center divider.
                          markerShiftX =
                              (posA / colW) *
                              (colW - _kMultiDayIndicatorDividerShift);
                        } else if (_sameDay(Aplus1, widget.today)) {
+                          todayColumnPos = posAplus1;
                          // Right-side today exits from the exact center line.
                          markerShiftX =
                              posAplus1 - _kMultiDayIndicatorDividerShift;
                        }
                      }
-                  }
+                   }
+                   final markerOriginShiftX = wholeIndicatorActive
+                       ? wholeIndicatorShiftX
+                       : markerShiftX;
+                   // The marker row begins at today's column's divider. Stop
+                   // the horizontal line at that column's moving right edge,
+                   // rather than letting it continue through the other day.
+                   // The row has a 2 px gap and a 7 px dot before the line.
+                   final multiDayLineWidth = math.max(
+                     0.0,
+                     todayColumnPos +
+                         colW -
+                         markerOriginShiftX -
+                         (_kMultiDayIndicatorDividerShift - 3.5 + 7),
+                   );
 
                   // Returns a Positioned for a sliding day column.
                   // Columns carry no visible content of their own — all
@@ -8258,7 +8292,12 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                               top: -9999,
                               bottom: -9999,
                               width: 0.5,
-                              child: ColoredBox(color: separatorColor),
+                              child: ColoredBox(
+                                key: const Key(
+                                  'calendar-multiday-center-separator',
+                                ),
+                                color: separatorColor,
+                              ),
                             ),
                           // Right-edge sep fades in with the transition.
                           Positioned(
@@ -8290,6 +8329,7 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                                  minute: now.minute,
                                  multiDay: true,
                                  multiDayMarkerShiftX: markerShiftX,
+                                  multiDayLineWidth: multiDayLineWidth,
                                   multiDayWholeShiftX: wholeIndicatorShiftX,
                                ),
                              ),

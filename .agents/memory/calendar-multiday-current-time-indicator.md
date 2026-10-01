@@ -3,10 +3,10 @@ name: Multi-Day current-time indicator
 description: Product geometry and swipe behavior for the current-time indicator in Calendar Multi-Day view.
 ---
 
-In Multi-Day view, the time pill stays in the left label-column placement for shared or entering days. When today is the left-side day and that column exits left, the pill, circle, and line translate together as one clipped element using the full panel offset. When today is the right-side day, only the circle and line follow that day’s column from the center divider toward the right edge.
+In Multi-Day view, the time pill stays in the left label-column placement for shared or entering days. The circle and line follow today's live day-column position, and the line ends at that column's moving right edge: the center divider when today is on the left, and the right edge when today is on the right.
 
-The circle/line marker’s horizontal anchor must follow the live day-column position: the shared day moves at half speed, while entering and exiting days move at full speed and leave the viewport. For the exceptional whole-indicator left-edge cases, match Single-Day’s panel-space offsets exactly: exiting uses `slideX`, and left-side re-entry uses `slideX - screenW`. The dot is painted after the vertical separators so it visibly sits on top of the divider.
+The shared day moves at half speed, while entering and exiting days move at full speed. For left-edge entering/exiting cases, the pill, circle, and line may still translate together with the full panel offset. The line width must compensate for that indicator offset so its endpoint remains aligned to the actual day's right edge. Paint the dot after the vertical separators so it visibly sits on top of the divider.
 
-**Why:** The pill normally belongs to the global hour-label column, while the circle/line marker represents the day containing today. The left-side exit is the exception: keeping the pill fixed there detaches it from the marker as the day leaves the viewport.
+**Why:** A full-width line crosses into the adjacent day when today is in the left column. The pill belongs to the global hour-label column, while the marker and line represent only the day containing today.
 
-**How to apply:** Derive marker-only translations from the live column-position formulas used by `_DayTimelineMulti`. Use a whole-indicator translation only for left-edge entering/exiting today, with the same full-width panel transform as Single-Day; otherwise keep the pill anchored and translate only the marker. Keep the line full-width and let the viewport clip the indicator as it leaves.
+**How to apply:** In `_DayTimelineMulti`, identify today's current column position and compute the line segment length from its right edge and the marker's live origin shift, subtracting the gap and dot width before the line begins. Preserve the existing marker and whole-indicator swipe rules; do not use viewport clipping as a substitute for the per-column endpoint.

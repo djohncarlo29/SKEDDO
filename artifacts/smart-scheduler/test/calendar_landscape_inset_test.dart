@@ -249,6 +249,64 @@ void main() {
       final currentTimeLineRect = tester.getRect(currentTimeLine);
       expect(currentTimeLineRect.left, closeTo(horizontalSafeInset, 0.5));
       expect(currentTimeLineRect.right, closeTo(screenSize.width, 0.5));
+
+      final currentTimeLineSegment = find.descendant(
+        of: timeline,
+        matching: find.byKey(const Key('calendar-current-time-line')),
+      );
+      expect(currentTimeLineSegment, findsOneWidget);
+      final currentTimeLineSegmentRect = tester.getRect(currentTimeLineSegment);
+      final centerSeparator = find.descendant(
+        of: timeline,
+        matching: find.byKey(
+          const Key('calendar-multiday-center-separator'),
+        ),
+      );
+      expect(centerSeparator, findsOneWidget);
+      expect(
+        currentTimeLineSegmentRect.right,
+        closeTo(tester.getRect(centerSeparator).center.dx, 0.5),
+      );
+    },
+  );
+
+  testWidgets(
+    'portrait Multi-Day current-time line stops at today column boundary',
+    (tester) async {
+      const screenSize = Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = screenSize;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _landscapeCalendarHarness(
+          screenSize: screenSize,
+          horizontalSafeInset: 0,
+          daySubMode: DayViewSubMode.multiDay,
+        ),
+      );
+      await tester.pumpAndSettle();
+      tester.state<CalendarTabState>(find.byType(CalendarTab)).jumpToTodayDay();
+      await tester.pumpAndSettle();
+
+      final timeline = find.byKey(const Key('multi-timeline'));
+      final currentTimeLineSegment = find.descendant(
+        of: timeline,
+        matching: find.byKey(const Key('calendar-current-time-line')),
+      );
+      final centerSeparator = find.descendant(
+        of: timeline,
+        matching: find.byKey(
+          const Key('calendar-multiday-center-separator'),
+        ),
+      );
+      expect(currentTimeLineSegment, findsOneWidget);
+      expect(centerSeparator, findsOneWidget);
+      expect(
+        tester.getRect(currentTimeLineSegment).right,
+        closeTo(tester.getRect(centerSeparator).center.dx, 0.5),
+      );
     },
   );
 }
