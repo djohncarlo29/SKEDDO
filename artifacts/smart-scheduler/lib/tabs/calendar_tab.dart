@@ -2064,19 +2064,22 @@ class CalendarTabState extends State<CalendarTab>
 
   Widget _singleDayTimelineFor(DateTime date) {
     final dateKey = '${date.year}-${date.month}-${date.day}';
-    final centerDateKey =
-        '${_selected.year}-${_selected.month}-${_selected.day}';
     final todayKey = '${_today.year}-${_today.month}-${_today.day}';
-    final cacheKey =
-        '$dateKey|$centerDateKey|$todayKey|'
-        '${widget.daySubMode.index}|${_nowNotifier.hashCode}';
+    final isTodaySelected = _sameDay(date, _today) && _sameDay(_selected, _today);
+    final cacheKey = [
+      dateKey,
+      todayKey,
+      widget.daySubMode.index,
+      _nowNotifier.hashCode,
+      isTodaySelected,
+    ].join('|');
     final cached = _singleDayTimelineWidgetCache[cacheKey];
     if (cached != null) return cached;
 
     final timeline = _DayTimeline(
       key: ValueKey('day-${date.year}${date.month}${date.day}'),
       selectedDate: date,
-      centerDate: _selected,
+      isTodaySelected: isTodaySelected,
       today: _today,
       nowNotifier: _nowNotifier,
       daySubMode: widget.daySubMode,
@@ -7220,16 +7223,15 @@ class _DayTimeline extends StatefulWidget {
   const _DayTimeline({
     super.key,
     required this.selectedDate,
-    required this.centerDate,
+    required this.isTodaySelected,
     required this.today,
     required this.nowNotifier,
     this.daySubMode = DayViewSubMode.singleDay,
   });
 
   final DateTime selectedDate;
-  // The date occupying the center panel. This lets a retained adjacent
-  // timeline recenter when the user returns to today.
-  final DateTime centerDate;
+  // True only for today's timeline while today occupies the center panel.
+  final bool isTodaySelected;
   final DateTime today;
   // Notifier updated at every real-world minute boundary by CalendarTabState.
   final ValueNotifier<DateTime> nowNotifier;
@@ -7304,8 +7306,7 @@ class _DayTimelineState extends State<_DayTimeline>
           : _sepCtrl.reverse();
     }
     final returnedToToday =
-        !_sameDay(old.centerDate, widget.today) &&
-        _sameDay(widget.centerDate, widget.today);
+        !old.isTodaySelected && widget.isTodaySelected;
     final windowSize = MediaQuery.sizeOf(context);
     if (returnedToToday && windowSize.width > windowSize.height) {
       _scheduleLandscapeCurrentTimeCentering(
@@ -8131,6 +8132,12 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
       old.selectedDate,
       widget.selectedDate,
     );
+    final todayWasInDisplayedPair =
+        _sameDay(old.selectedDate, old.today) ||
+        _sameDay(
+          old.selectedDate.add(const Duration(days: 1)),
+          old.today,
+        );
     final nowIsInDisplayedPair =
         _sameDay(widget.selectedDate, widget.today) ||
         _sameDay(
@@ -8139,6 +8146,7 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
         );
     final windowSize = MediaQuery.sizeOf(context);
     if (selectedDateChanged &&
+        !todayWasInDisplayedPair &&
         nowIsInDisplayedPair &&
         windowSize.width > windowSize.height) {
       _scheduleLandscapeCurrentTimeCentering(
