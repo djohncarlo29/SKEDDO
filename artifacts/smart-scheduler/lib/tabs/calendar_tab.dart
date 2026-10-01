@@ -11652,22 +11652,16 @@ class _NewEventSheetState extends State<_NewEventSheet>
                       ),
                       child: CupertinoDatePickerWithFullWidthSelection(
                         itemExtent: cupertinoDatePickerItemExtent(context),
-                        pickerBuilder: (selectionOverlayBuilder) =>
-                            CupertinoDatePicker(
-                              itemExtent: cupertinoDatePickerItemExtent(context),
-                              selectionOverlayBuilder: selectionOverlayBuilder,
-                              mode: CupertinoDatePickerMode.date,
-                              initialDateTime: _endDate,
-                              minimumDate: DateTime(
-                                today.year,
-                                today.month,
-                                today.day,
-                              ),
-                              onDateTimeChanged: (dt) => setState(() {
-                                _endDate = dt;
-                                _calendarMonth = DateTime(dt.year, dt.month);
-                              }),
-                            ),
+                        initialDateTime: _endDate,
+                        minimumDate: DateTime(
+                          today.year,
+                          today.month,
+                          today.day,
+                        ),
+                        onDateTimeChanged: (dt) => setState(() {
+                          _endDate = dt;
+                          _calendarMonth = DateTime(dt.year, dt.month);
+                        }),
                       ),
                     ),
                   )
@@ -13314,24 +13308,15 @@ class _NewEventSheetState extends State<_NewEventSheet>
                             ),
                       ),
                       child: CupertinoDatePickerWithFullWidthSelection(
+                        key: ValueKey('barrel_$_activePicker'),
                         itemExtent: cupertinoDatePickerItemExtent(context),
-                        pickerBuilder: (selectionOverlayBuilder) =>
-                            CupertinoDatePicker(
-                              itemExtent: cupertinoDatePickerItemExtent(context),
-                              selectionOverlayBuilder: selectionOverlayBuilder,
-                              key: ValueKey('barrel_$_activePicker'),
-                              mode: CupertinoDatePickerMode.date,
-                              initialDateTime: _pickerDate,
-                              onDateTimeChanged: (dt) {
-                                _setPickerDate(dt);
-                                setState(
-                                  () => _pickerCalMonth = DateTime(
-                                    dt.year,
-                                    dt.month,
-                                  ),
-                                );
-                              },
-                            ),
+                        initialDateTime: _pickerDate,
+                        onDateTimeChanged: (dt) {
+                          _setPickerDate(dt);
+                          setState(
+                            () => _pickerCalMonth = DateTime(dt.year, dt.month),
+                          );
+                        },
                       ),
                     ),
                   )

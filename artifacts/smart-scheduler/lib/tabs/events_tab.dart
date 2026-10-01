@@ -15726,29 +15726,16 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                         ),
                         child: CupertinoDatePickerWithFullWidthSelection(
                           itemExtent: cupertinoDatePickerItemExtent(context),
-                          pickerBuilder: (selectionOverlayBuilder) =>
-                              CupertinoDatePicker(
-                                itemExtent: cupertinoDatePickerItemExtent(
-                                  context,
-                                ),
-                                selectionOverlayBuilder:
-                                    selectionOverlayBuilder,
-                                mode: CupertinoDatePickerMode.date,
-                                initialDateTime: _endDate,
-                                minimumDate: DateTime(
-                                  DateTime.now().year,
-                                  DateTime.now().month,
-                                  DateTime.now().day,
-                                ),
-                                onDateTimeChanged:
-                                    (dt) => setState(() {
-                                      _endDate = dt;
-                                      _calendarMonth = DateTime(
-                                        dt.year,
-                                        dt.month,
-                                      );
-                                    }),
-                              ),
+                          initialDateTime: _endDate,
+                          minimumDate: DateTime(
+                            DateTime.now().year,
+                            DateTime.now().month,
+                            DateTime.now().day,
+                          ),
+                          onDateTimeChanged: (dt) => setState(() {
+                            _endDate = dt;
+                            _calendarMonth = DateTime(dt.year, dt.month);
+                          }),
                         ),
                       ),
                     )
