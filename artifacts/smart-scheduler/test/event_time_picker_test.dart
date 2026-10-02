@@ -10,25 +10,25 @@ Future<void> _mountPicker(
   WidgetTester tester, {
   required DateTime initialTime,
   ValueChanged<DateTime>? onChanged,
+  Widget Function(Widget child)? wrapPicker,
 }) async {
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
   addTearDown(() {
     tester.view.resetPhysicalSize();
     tester.view.resetDevicePixelRatio();
+    tester.view.resetViewInsets();
   });
+
+  Widget picker = EventTimePicker(
+    initialTime: initialTime,
+    onChanged: onChanged ?? (_) {},
+  );
+  if (wrapPicker != null) picker = wrapPicker(picker);
 
   await tester.pumpWidget(
     CupertinoApp(
-      home: Center(
-        child: SizedBox(
-          width: 360,
-          child: EventTimePicker(
-            initialTime: initialTime,
-            onChanged: onChanged ?? (_) {},
-          ),
-        ),
-      ),
+      home: Center(child: SizedBox(width: 360, child: picker)),
     ),
   );
   await tester.pumpAndSettle();
@@ -225,11 +225,106 @@ void main() {
     final input = tester.widget<CupertinoTextField>(find.byKey(_inputKey));
     expect(input.controller!.text, isEmpty);
     expect(input.focusNode!.hasFocus, isTrue);
+    expect(tester.testTextInput.isVisible, isTrue);
 
     // The next digit starts fresh instead of combining with the stale 1.
     await _type(tester, '3');
     expect(_selectedHour(tester), 3);
   });
+
+  testWidgets(
+    'wheel dragging keeps the keypad open and blocks ancestor drag dismissal',
+    (tester) async {
+      var ancestorDragStarts = 0;
+      var ancestorDragUpdates = 0;
+      await _mountPicker(
+        tester,
+        initialTime: DateTime(2026, 10, 2, 1, 20),
+        wrapPicker: (child) => NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollStartNotification &&
+                notification.dragDetails != null) {
+              ancestorDragStarts++;
+              // Simulate iOS implicitly resigning the text input as scrolling
+              // begins. The picker should retain focus through the gesture.
+              FocusManager.instance.primaryFocus?.unfocus();
+            } else if (notification is ScrollUpdateNotification &&
+                notification.dragDetails != null) {
+              ancestorDragUpdates++;
+              FocusManager.instance.primaryFocus?.unfocus();
+            }
+            return false;
+          },
+          child: child,
+        ),
+      );
+      await _openKeyboard(tester);
+      await _type(tester, '1');
+
+      await tester.drag(find.byKey(_hourWheelKey), const Offset(0, -80));
+      await tester.pumpAndSettle();
+
+      final input = tester.widget<CupertinoTextField>(find.byKey(_inputKey));
+      expect(ancestorDragStarts, 1);
+      expect(ancestorDragUpdates, 0);
+      expect(_selectedHour(tester), isNot(1));
+      expect(input.controller!.text, isEmpty);
+      expect(input.focusNode!.hasFocus, isTrue);
+      expect(tester.testTextInput.isVisible, isTrue);
+    },
+  );
+
+  testWidgets(
+    'dismissing and reopening numeric entry works after committed or partial input',
+    (tester) async {
+      await _mountPicker(tester, initialTime: DateTime(2026, 10, 2, 10, 43));
+
+      Future<void> makeKeyboardVisible() async {
+        tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+        await tester.pump();
+      }
+
+      Future<void> dismissKeyboard() async {
+        tester.testTextInput.hide();
+        tester.view.viewInsets = FakeViewPadding.zero;
+        await tester.pump();
+        await tester.pumpAndSettle();
+      }
+
+      await _openKeyboard(tester);
+      await makeKeyboardVisible();
+      await _type(tester, '1234');
+      expect(_selectedHour(tester), 12);
+      expect(_selectedMinute(tester), 34);
+
+      // Dismissal after a completed edit retains the wheel values and leaves
+      // the selection band available for another entry session.
+      await dismissKeyboard();
+      expect(find.byKey(_inputKey), findsNothing);
+      await _openKeyboard(tester);
+      expect(find.byKey(_inputKey), findsOneWidget);
+      expect(_selectedHour(tester), 12);
+      expect(_selectedMinute(tester), 34);
+      expect(
+        tester
+            .widget<CupertinoTextField>(find.byKey(_inputKey))
+            .controller!
+            .text,
+        isEmpty,
+      );
+
+      // A partial entry can also be dismissed; the next session starts fresh.
+      await makeKeyboardVisible();
+      await _type(tester, '1');
+      await dismissKeyboard();
+      expect(find.byKey(_inputKey), findsNothing);
+      await _openKeyboard(tester);
+      await _type(tester, '3');
+      expect(_selectedHour(tester), 3);
+      expect(_selectedMinute(tester), 34);
+      expect(tester.testTextInput.isVisible, isTrue);
+    },
+  );
 
   testWidgets('dragging the wheel before numeric entry still spins it', (
     tester,

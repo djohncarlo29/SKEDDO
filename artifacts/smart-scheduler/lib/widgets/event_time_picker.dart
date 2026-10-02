@@ -54,9 +54,12 @@ class _EventTimePickerState extends State<EventTimePicker> {
   String _minuteEntryDigits = '';
   bool _isTimeEntryMode = false;
   bool _wasKeyboardVisible = false;
+  bool _isWheelInteractionActive = false;
+  bool _isFinishingTimeEntry = false;
   bool _suppressHourWheelCallbacks = false;
   bool _suppressMinuteWheelCallbacks = false;
   bool _suppressPeriodWheelCallbacks = false;
+  int _wheelInteractionGeneration = 0;
   int _hourAnimationGeneration = 0;
   int _minuteAnimationGeneration = 0;
   int _periodAnimationGeneration = 0;
@@ -73,6 +76,7 @@ class _EventTimePickerState extends State<EventTimePicker> {
     _periodCtrl = FixedExtentScrollController(initialItem: _period);
     _entryController = TextEditingController();
     _entryFocusNode = FocusNode();
+    _entryFocusNode.addListener(_handleEntryFocusChange);
   }
 
   @override
@@ -80,8 +84,15 @@ class _EventTimePickerState extends State<EventTimePicker> {
     super.didChangeDependencies();
     final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     if (_isTimeEntryMode && _wasKeyboardVisible && !keyboardVisible) {
+      final wheelGeneration = _wheelInteractionGeneration;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _isTimeEntryMode) _finishTimeEntry();
+        if (!mounted || !_isTimeEntryMode) return;
+        if (_isWheelInteractionActive ||
+            wheelGeneration != _wheelInteractionGeneration) {
+          _requestEntryFocus();
+          return;
+        }
+        _finishTimeEntry();
       });
     }
     _wasKeyboardVisible = keyboardVisible;
@@ -93,8 +104,20 @@ class _EventTimePickerState extends State<EventTimePicker> {
     _minuteCtrl.dispose();
     _periodCtrl.dispose();
     _entryController.dispose();
+    _entryFocusNode.removeListener(_handleEntryFocusChange);
     _entryFocusNode.dispose();
     super.dispose();
+  }
+
+  void _handleEntryFocusChange() {
+    if (!_entryFocusNode.hasFocus &&
+        _isTimeEntryMode &&
+        _isWheelInteractionActive &&
+        !_isFinishingTimeEntry) {
+      // Keep the native keypad attached while the wheel is being dragged.
+      // iOS can implicitly resign a text field when a scroll gesture starts.
+      _entryFocusNode.requestFocus();
+    }
   }
 
   double get _itemExtent => cupertinoDatePickerItemExtent(context);
@@ -142,12 +165,16 @@ class _EventTimePickerState extends State<EventTimePicker> {
 
   void _finishTimeEntry() {
     if (!_isTimeEntryMode) return;
+    _isFinishingTimeEntry = true;
+    _isWheelInteractionActive = false;
+    _wheelInteractionGeneration++;
     _entryFocusNode.unfocus();
     _entryController.clear();
     _hourEntryDigits = '';
     _minuteEntryDigits = '';
     _entryComponent = _TimeEntryComponent.hour;
     setState(() => _isTimeEntryMode = false);
+    _isFinishingTimeEntry = false;
   }
 
   void _notify() {
@@ -388,13 +415,18 @@ class _EventTimePickerState extends State<EventTimePicker> {
     );
   }
 
-  void _onManualWheelScrollStart(_TimeEntryComponent component) {
+  void _onManualWheelScrollStart(_TimeEntryComponent? component) {
+    _isWheelInteractionActive = true;
+    _wheelInteractionGeneration++;
     if (component == _TimeEntryComponent.hour) {
       _hourAnimationGeneration++;
       _suppressHourWheelCallbacks = false;
-    } else {
+    } else if (component == _TimeEntryComponent.minute) {
       _minuteAnimationGeneration++;
       _suppressMinuteWheelCallbacks = false;
+    } else {
+      _periodAnimationGeneration++;
+      _suppressPeriodWheelCallbacks = false;
     }
     if (!_isTimeEntryMode) return;
 
@@ -402,8 +434,15 @@ class _EventTimePickerState extends State<EventTimePicker> {
     // overwrite the wheel the user just changed.
     _hourEntryDigits = '';
     _minuteEntryDigits = '';
-    _entryComponent = component;
+    _entryComponent = component ?? _TimeEntryComponent.hour;
     _syncEntryController();
+  }
+
+  void _onManualWheelScrollEnd() {
+    if (!_isWheelInteractionActive) return;
+    _isWheelInteractionActive = false;
+    _wheelInteractionGeneration++;
+    if (_isTimeEntryMode) _requestEntryFocus();
   }
 
   Widget _loopingBarrel({
@@ -431,12 +470,19 @@ class _EventTimePickerState extends State<EventTimePicker> {
             },
       child: Stack(
         children: [
-          NotificationListener<ScrollStartNotification>(
+          NotificationListener<ScrollNotification>(
             onNotification: (notification) {
-              if (notification.dragDetails != null && entryComponent != null) {
+              if (notification.depth != 0) return false;
+              if (notification is ScrollStartNotification &&
+                  notification.dragDetails != null) {
                 _onManualWheelScrollStart(entryComponent);
               }
-              return false;
+              if (notification is ScrollEndNotification) {
+                _onManualWheelScrollEnd();
+              }
+              // Keep the wheel's drag updates from reaching an enclosing
+              // ScrollView's on-drag keyboard dismissal handler.
+              return notification is ScrollUpdateNotification;
             },
             child: ListWheelScrollView.useDelegate(
               key: wheelKey,
