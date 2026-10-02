@@ -134,6 +134,8 @@ void main() {
     (tester) async {
       await _mountPicker(tester, initialTime: DateTime(2026, 10, 2, 10, 43));
       await _openKeyboard(tester);
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      await tester.pump();
 
       await tester.tapAt(tester.getRect(find.byKey(_minuteWheelKey)).center);
       await tester.pumpAndSettle();
@@ -166,6 +168,60 @@ void main() {
       await _type(tester, '12');
       expect(_selectedHour(tester), 12);
       expect(_selectedMinute(tester), 35);
+      expect(tester.testTextInput.isVisible, isTrue);
+    },
+  );
+
+  testWidgets(
+    'selection-band tap reopens the keypad if entry mode outlives it',
+    (tester) async {
+      await _mountPicker(tester, initialTime: DateTime(2026, 10, 2, 10, 43));
+      await _openKeyboard(tester);
+      expect(tester.testTextInput.isVisible, isTrue);
+
+      // Simulate the OS hiding the keypad while the entry overlay remains
+      // mounted and focused.
+      tester.testTextInput.hide();
+      await tester.pumpAndSettle();
+      expect(find.byKey(_inputKey), findsOneWidget);
+      expect(tester.testTextInput.isVisible, isFalse);
+
+      await tester.tapAt(tester.getRect(find.byKey(_minuteWheelKey)).center);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(_inputKey), findsOneWidget);
+      expect(
+        tester
+            .widget<CupertinoTextField>(find.byKey(_inputKey))
+            .focusNode!
+            .hasFocus,
+        isTrue,
+      );
+      expect(tester.testTextInput.isVisible, isTrue);
+
+      // Focus loss is another path to an inactive keyboard. The mounted
+      // selection bar must still restore the numeric input.
+      tester.testTextInput.hide();
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      expect(find.byKey(_inputKey), findsOneWidget);
+      expect(
+        tester
+            .widget<CupertinoTextField>(find.byKey(_inputKey))
+            .focusNode!
+            .hasFocus,
+        isFalse,
+      );
+
+      await tester.tapAt(tester.getRect(find.byKey(_hourWheelKey)).center);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<CupertinoTextField>(find.byKey(_inputKey))
+            .focusNode!
+            .hasFocus,
+        isTrue,
+      );
       expect(tester.testTextInput.isVisible, isTrue);
     },
   );
@@ -360,12 +416,63 @@ void main() {
       await dismissKeyboard();
       expect(find.byKey(_inputKey), findsNothing);
       await _openKeyboard(tester);
+      expect(
+        tester
+            .widget<CupertinoTextField>(find.byKey(_inputKey))
+            .controller!
+            .text,
+        isEmpty,
+      );
       await _type(tester, '3');
+      expect(_selectedHour(tester), 3);
+      expect(_selectedMinute(tester), 34);
+      expect(tester.testTextInput.isVisible, isTrue);
+
+      // Reopen again after another dismiss to guard against one-shot tap
+      // handlers or stale focus/controller state.
+      await makeKeyboardVisible();
+      await dismissKeyboard();
+      expect(find.byKey(_inputKey), findsNothing);
+      await _openKeyboard(tester);
+      expect(find.byKey(_inputKey), findsOneWidget);
       expect(_selectedHour(tester), 3);
       expect(_selectedMinute(tester), 34);
       expect(tester.testTextInput.isVisible, isTrue);
     },
   );
+
+  testWidgets('selection bar reopens after manual wheel interaction', (
+    tester,
+  ) async {
+    await _mountPicker(tester, initialTime: DateTime(2026, 10, 2, 10, 43));
+    await _openKeyboard(tester);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pump();
+
+    tester.testTextInput.hide();
+    tester.view.viewInsets = FakeViewPadding.zero;
+    await tester.pumpAndSettle();
+    expect(find.byKey(_inputKey), findsNothing);
+
+    await tester.drag(find.byKey(_hourWheelKey), const Offset(0, -80));
+    await tester.pumpAndSettle();
+    final hourAfterWheelDrag = _selectedHour(tester);
+    expect(hourAfterWheelDrag, isNot(10));
+
+    await tester.tapAt(tester.getRect(find.byKey(_minuteWheelKey)).center);
+    await tester.pumpAndSettle();
+    expect(find.byKey(_inputKey), findsOneWidget);
+    expect(
+      tester
+          .widget<CupertinoTextField>(find.byKey(_inputKey))
+          .focusNode!
+          .hasFocus,
+      isTrue,
+    );
+    expect(tester.testTextInput.isVisible, isTrue);
+    expect(_selectedHour(tester), hourAfterWheelDrag);
+    expect(_selectedMinute(tester), 43);
+  });
 
   testWidgets('dragging the wheel before numeric entry still spins it', (
     tester,

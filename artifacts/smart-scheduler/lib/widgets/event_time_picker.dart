@@ -54,7 +54,6 @@ class _EventTimePickerState extends State<EventTimePicker> {
   String _minuteEntryDigits = '';
   bool _isTimeEntryMode = false;
   bool _wasKeyboardVisible = false;
-  bool _keyboardDismissedDuringEntry = false;
   bool _isWheelInteractionActive = false;
   bool _isRestoringEntryKeyboard = false;
   bool _isFinishingTimeEntry = false;
@@ -86,11 +85,9 @@ class _EventTimePickerState extends State<EventTimePicker> {
     super.didChangeDependencies();
     final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     if (keyboardVisible) {
-      _keyboardDismissedDuringEntry = false;
       _isRestoringEntryKeyboard = false;
     }
     if (_isTimeEntryMode && _wasKeyboardVisible && !keyboardVisible) {
-      _keyboardDismissedDuringEntry = true;
       if (!_isRestoringEntryKeyboard) {
         final interactionGeneration = _entryInteractionGeneration;
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -159,25 +156,38 @@ class _EventTimePickerState extends State<EventTimePicker> {
     _hourEntryDigits = '';
     _minuteEntryDigits = '';
     _entryComponent = _TimeEntryComponent.hour;
-    _keyboardDismissedDuringEntry = false;
     _isRestoringEntryKeyboard = false;
     _entryController.clear();
     if (!_isTimeEntryMode) {
       setState(() => _isTimeEntryMode = true);
     }
-    _requestEntryFocus();
+    _ensureEntryKeyboardActive();
   }
 
   void _requestEntryFocus() {
+    if (!mounted || !_isTimeEntryMode) return;
+    if (_entryFocusNode.context != null) {
+      _entryFocusNode.requestFocus();
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _isTimeEntryMode) _entryFocusNode.requestFocus();
     });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  void _ensureEntryKeyboardActive() {
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+    if (!keyboardVisible && _entryFocusNode.hasFocus) {
+      _reopenEntryKeyboard();
+    } else {
+      _requestEntryFocus();
+    }
   }
 
   void _reopenEntryKeyboard() {
     if (!_isTimeEntryMode) return;
     _entryInteractionGeneration++;
-    _keyboardDismissedDuringEntry = false;
     _isRestoringEntryKeyboard = true;
     if (_entryFocusNode.hasFocus) {
       _entryFocusNode.unfocus();
@@ -205,14 +215,10 @@ class _EventTimePickerState extends State<EventTimePicker> {
       _syncEntryController();
     }
 
-    final keyboardIsHidden =
-        _keyboardDismissedDuringEntry ||
-        (_wasKeyboardVisible && MediaQuery.viewInsetsOf(context).bottom == 0);
-    if (keyboardIsHidden) {
-      _reopenEntryKeyboard();
-    } else {
-      _requestEntryFocus();
-    }
+    // Entry mode can outlive the native keyboard (for example, when the OS
+    // dismisses the keypad without changing focus). Ensure every tap makes
+    // the input active instead of assuming the field's focus implies it.
+    _ensureEntryKeyboardActive();
   }
 
   void _finishTimeEntry() {
@@ -220,7 +226,6 @@ class _EventTimePickerState extends State<EventTimePicker> {
     _isFinishingTimeEntry = true;
     _isWheelInteractionActive = false;
     _entryInteractionGeneration++;
-    _keyboardDismissedDuringEntry = false;
     _isRestoringEntryKeyboard = false;
     _entryFocusNode.unfocus();
     _entryController.clear();
