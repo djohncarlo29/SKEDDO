@@ -142,7 +142,7 @@
 - [Calendar week-strip veil architecture](calendar-morph-week-strip-surfaces.md) — keep Day content underneath fixed DOW chrome; each full week row is an opaque moving veil.
 - [Picker wide-layout geometry](picker-wide-layout-geometry.md) — reuse portrait-derived item/cell sizes and spacing at the current text scale, then fit extra left-aligned columns inside the sheet.
 - [Landscape date picker columns](cupertino-date-picker-landscape-width.md) — retain the compact label-sized group; fix clipping inside each wheel without changing spacing.
-- [Barrel option text fitting](barrel-option-text-fitting.md) — all custom wheel labels use an exact 8dp inset and shrink to fit without stacked padding or clipping.
+- [Barrel option text fitting](barrel-option-text-fitting.md) — wheel text uses one ambient scaling pass and the fixed 8dp inset; picker geometry scales separately.
 - [Smart Category count cache invalidation](smart-category-count-cache-invalidation.md) — matcher embeddings can change results asynchronously without changing the event list, so derived counts need matcher revisions.
 - [Live rotation layout](live-rotation-layout.md) — never freeze the root MediaQuery during native rotation; every intermediate window metric must reach adaptive layouts.
 - [Live rotation geometry](live-rotation-geometry.md) — picker morphs use live window metrics projected between settled portrait/landscape endpoints, never a timer-based orientation animation.

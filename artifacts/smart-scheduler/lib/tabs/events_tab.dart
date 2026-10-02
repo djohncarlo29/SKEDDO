@@ -15751,7 +15751,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                             dateTimePickerTextStyle: TextStyle(
                               inherit: false,
                               fontFamily: kSFProText,
-                              fontSize: cupertinoDatePickerFontSize(context),
+                              fontSize: kCupertinoDatePickerFontSize,
                               color: resolveThemeColor(kPrimaryLabel, context),
                               letterSpacing: kTracking17,
                             ),

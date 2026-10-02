@@ -778,9 +778,9 @@ const kTracking16 = -0.32;
 const kTracking17 = -0.43;
 
 // CupertinoDatePicker's default 32 px item extent and 216 px barrel height
-// are authored for the default text size. Keep both dimensions proportional
-// to the active OS text scaler so larger date labels do not crowd or clip
-// inside a fixed-height modal sheet.
+// are authored for the default text size. Keep these dimensions proportional
+// to the active text scaler. The font itself stays at this unscaled base size
+// and inherits the ambient scaler, just like the app-authored barrel wheels.
 const double kCupertinoDatePickerItemExtent = 32.0;
 const double kCupertinoDatePickerHeight = 216.0;
 const double kCupertinoDatePickerFontSize = 16.0;
@@ -791,10 +791,6 @@ double cupertinoDatePickerItemExtent(BuildContext context) {
 
 double cupertinoDatePickerHeight(BuildContext context) {
   return MediaQuery.textScalerOf(context).scale(kCupertinoDatePickerHeight);
-}
-
-double cupertinoDatePickerFontSize(BuildContext context) {
-  return MediaQuery.textScalerOf(context).scale(kCupertinoDatePickerFontSize);
 }
 
 // Shared label-to-value separation for picker rows in modal sheets and
