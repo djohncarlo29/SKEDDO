@@ -21872,35 +21872,8 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     );
   }
 
-  double _positionDayWheelColumnWidth() {
-    var widestLabel = 0.0;
-    for (final label in [..._kPositions, ..._kPositionDays]) {
-      final painter = TextPainter(
-        text: TextSpan(text: label, style: _kPickerItemStyle),
-        textDirection: Directionality.of(context),
-        textScaler: MediaQuery.textScalerOf(context),
-        maxLines: 1,
-      )..layout();
-      widestLabel = max(widestLabel, painter.width);
-    }
-    return widestLabel * _kPickerMagnification +
-        _kPickerSelectionPillMargin +
-        _kPickerSelectionPillTextInset +
-        8.0;
-  }
-
-  Widget _centeredPositionDayPickerRow(Widget row) {
-    final preferredWidth = _positionDayWheelColumnWidth() * 2;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width =
-            constraints.hasBoundedWidth
-                ? min(preferredWidth, constraints.maxWidth)
-                : preferredWidth;
-        return Center(child: SizedBox(width: width, child: row));
-      },
-    );
-  }
+  Widget _fullWidthPositionDayPickerRow(Widget row) =>
+      SizedBox(width: double.infinity, child: row);
 
   Widget _clipPicker(
     Widget picker, {
@@ -22187,7 +22160,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     ] else ...[
       SizedBox(
         height: max(216.0, _pickerItemExtent * 5.5),
-        child: _centeredPositionDayPickerRow(
+        child: _fullWidthPositionDayPickerRow(
           Row(
           children: [
             Expanded(
@@ -22211,9 +22184,9 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                       _kPositions
                           .map(
                             (p) => Align(
-                              alignment: Alignment.center,
+                              alignment: Alignment.centerRight,
                               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                padding: const EdgeInsets.only(right: 8),
                                 child: _pickerText(
                                   p,
                                   Alignment.center,
@@ -22249,9 +22222,9 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                       _kPositionDays
                           .map(
                             (d) => Align(
-                              alignment: Alignment.center,
+                              alignment: Alignment.centerLeft,
                               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                padding: const EdgeInsets.only(left: 8),
                                 child: _pickerText(
                                   d,
                                   Alignment.center,
@@ -22462,7 +22435,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                 _sep(),
                 SizedBox(
                   height: max(216.0, _pickerItemExtent * 5.5),
-                  child: _centeredPositionDayPickerRow(
+        child: _fullWidthPositionDayPickerRow(
                     Row(
                     children: [
                       Expanded(
@@ -22486,11 +22459,10 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                                 _kPositions
                                     .map(
                                       (p) => Align(
-                                        alignment: Alignment.center,
+                                        alignment: Alignment.centerRight,
                                         child: Padding(
                                           padding: const EdgeInsets.only(
-                                            left: 4,
-                                            right: 4,
+                                            right: 8,
                                           ),
                                           child: _pickerText(
                                             p,
@@ -22527,11 +22499,10 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                                 _kPositionDays
                                     .map(
                                       (d) => Align(
-                                        alignment: Alignment.center,
+                                        alignment: Alignment.centerLeft,
                                         child: Padding(
                                           padding: const EdgeInsets.only(
-                                            left: 4,
-                                            right: 4,
+                                            left: 8,
                                           ),
                                           child: _pickerText(
                                             d,
