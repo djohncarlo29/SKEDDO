@@ -34,6 +34,7 @@ import '../widgets/app_switch.dart';
 import '../widgets/fixed_size_icon.dart';
 import '../widgets/picker_grid_geometry.dart';
 import '../widgets/wheel_option_text.dart';
+import '../widgets/stadium_cupertino_picker_selection_overlay.dart';
 import '../ai/search/search_service.dart';
 import '../services/category_registry.dart';
 import '../widgets/smart_search_results.dart';
@@ -21901,7 +21902,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                   child: SizedBox(
                     width: availableWidth,
                     height: _pickerItemExtent,
-                    child: const CupertinoPickerDefaultSelectionOverlay(
+                    child: const StadiumCupertinoPickerSelectionOverlay(
                       capStartEdge: true,
                       capEndEdge: true,
                     ),
@@ -22067,7 +22068,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                     squeeze: 1.25,
                     offAxisFraction: -0.45,
                     selectionOverlay:
-                        const CupertinoPickerDefaultSelectionOverlay(
+                        const StadiumCupertinoPickerSelectionOverlay(
                           capStartEdge: true,
                           capEndEdge: false,
                         ),
@@ -22102,7 +22103,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                     squeeze: 1.25,
                     offAxisFraction: 0.45,
                     selectionOverlay:
-                        const CupertinoPickerDefaultSelectionOverlay(
+                        const StadiumCupertinoPickerSelectionOverlay(
                           capStartEdge: false,
                           capEndEdge: true,
                         ),

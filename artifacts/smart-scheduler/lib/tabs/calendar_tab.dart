@@ -33,6 +33,7 @@ import '../widgets/action_panel.dart';
 import '../widgets/view_mode_icons.dart';
 import '../widgets/app_switch.dart';
 import '../widgets/wheel_option_text.dart';
+import '../widgets/stadium_cupertino_picker_selection_overlay.dart';
 import '../services/event_store.dart';
 import '../services/category_registry.dart';
 import '../services/alert_sequence.dart';
@@ -14344,7 +14345,7 @@ class _EventTimePickerState extends State<_EventTimePicker> {
             child: SizedBox(
               height: _itemExtent,
               width: double.infinity,
-              child: CupertinoPickerDefaultSelectionOverlay(
+              child: StadiumCupertinoPickerSelectionOverlay(
                 capStartEdge: capStart,
                 capEndEdge: capEnd,
                 // Default grey — matches the "first/second… Monday/Tuesday…"
@@ -15004,7 +15005,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                     width: availableWidth,
                     height: _pickerItemExtent,
                     child:
-                        const CupertinoPickerDefaultSelectionOverlay(
+                        const StadiumCupertinoPickerSelectionOverlay(
                           capStartEdge: true,
                           capEndEdge: true,
                         ),
@@ -15161,7 +15162,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                     squeeze: 1.25,
                     offAxisFraction: -0.45,
                     selectionOverlay:
-                        const CupertinoPickerDefaultSelectionOverlay(
+                        const StadiumCupertinoPickerSelectionOverlay(
                           capStartEdge: true,
                           capEndEdge: false,
                         ),
@@ -15194,7 +15195,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                     squeeze: 1.25,
                     offAxisFraction: 0.45,
                     selectionOverlay:
-                        const CupertinoPickerDefaultSelectionOverlay(
+                        const StadiumCupertinoPickerSelectionOverlay(
                           capStartEdge: false,
                           capEndEdge: true,
                         ),

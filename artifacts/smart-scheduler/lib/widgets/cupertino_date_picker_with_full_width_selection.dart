@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
+import 'stadium_cupertino_picker_selection_overlay.dart';
 import 'wheel_option_text.dart';
 
 /// Retains Flutter's compact date picker in portrait and expands its wheels in
@@ -682,7 +683,7 @@ class _CupertinoDatePickerWithFullWidthSelectionState
               child: SizedBox(
                 width: double.infinity,
                 height: widget.itemExtent,
-                child: const CupertinoPickerDefaultSelectionOverlay(),
+                child: const StadiumCupertinoPickerSelectionOverlay(),
               ),
             ),
           ),
