@@ -1,0 +1,623 @@
+I want to define a new interaction for the existing iOS-like time picker wheel.
+
+The picker currently has the normal hour wheel, minute wheel, and AM/PM wheel. I want to add numeric keyboard input when the user taps the time selection bar.
+
+The important part is that this is not intended to become a conventional visible text field. The keyboard is only an input mechanism. The wheels remain the visual representation of the selected time.
+
+1. Tapping the selection bar
+
+When the user taps anywhere on the time selection bar:
+
+Immediately open the phone's numeric keyboard.
+
+The input/caret starts on the hour.
+
+The user should be able to type digits immediately without another tap.
+
+The typed digits themselves should not appear as ordinary text over the picker.
+
+Do not create a duplicate visible number beside/on top of the wheel.
+
+The wheel itself shows the result of the numeric input.
+
+The keyboard stays open until the user explicitly dismisses it.
+
+After moving from hour to minute, the keyboard should remain open and focus should remain on the numeric input mechanism.
+
+
+Think of the keyboard as sending selection commands to the wheels, rather than typing text into a visible text field:
+
+keyboard digit
+      ↓
+interpret according to current input state
+      ↓
+validate
+      ↓
+update the appropriate wheel if valid
+      ↓
+either wait for another digit or advance to the next wheel
+
+The input state and the wheel's current value should therefore be treated as related but separate states.
+
+
+---
+
+2. Hour input — current 12-hour mode
+
+The current picker is 12-hour format, so valid hours are 1–12.
+
+There are special rules because some hours can have two digits.
+
+First digit: 1
+
+If the user types:
+
+1
+
+the hour wheel should immediately move to 1.
+
+However, the input should remain on the hour, because the next digit could make:
+
+10
+
+11
+
+12
+
+
+So 1 is a valid current selection but also a pending prefix.
+
+Examples:
+
+1 → wheel shows 1, keep hour input active
+1 + 0 → 10 → commit and move to minute
+1 + 1 → 11 → commit and move to minute
+1 + 2 → 12 → commit and move to minute
+
+If the second digit after 1 is invalid, such as:
+
+1 + 5
+
+then:
+
+Do not accept 5 as part of the hour.
+
+Keep the hour at 1.
+
+Discard the invalid 5.
+
+Move the caret/input focus to the minute.
+
+Minute input starts fresh; the rejected 5 does not become a minute digit.
+
+
+So 15 does not mean hour 1 + minute 5.
+
+
+---
+
+First digit: 2
+
+In 12-hour mode, 2 should immediately commit hour 2 and move to the minute.
+
+There is no valid two-digit 12-hour value beginning with 2.
+
+So:
+
+2 → hour 2 → immediately move to minute
+
+However, please design the input logic with future 24-hour mode in mind.
+
+When 24-hour mode is eventually implemented:
+
+2
+
+must be allowed to remain pending because:
+
+20
+21
+22
+23
+
+are valid hours.
+
+So the hour parser should be mode-aware, rather than hard-coding the current 12-hour behavior.
+
+
+---
+
+First digit: 3–9
+
+In 12-hour mode, these are all complete one-digit hours.
+
+Therefore:
+
+3 → hour 3 → immediately move to minute
+4 → hour 4 → immediately move to minute
+...
+9 → hour 9 → immediately move to minute
+
+There is no reason to wait for another hour digit.
+
+For future 24-hour mode, the architecture should also allow the appropriate mode-specific rules to be applied.
+
+
+---
+
+First digit: 0
+
+0 by itself is not a valid hour selection.
+
+It is useful as a prefix for one-digit hours written with a leading zero:
+
+01
+02
+03
+...
+09
+
+Therefore:
+
+0
+
+by itself should not move the hour wheel.
+
+It should simply remain as pending input and wait for the next valid digit.
+
+For example:
+
+0 → nothing changes on the wheel
+0 + 7 → hour becomes 07 / hour 7
+
+The same applies to 01, 02, etc.
+
+
+---
+
+3. Moving automatically from hour to minute
+
+When a valid hour has been completed and the input advances to the minute:
+
+Do not rebuild, reset, refresh, or otherwise reconstruct the minute wheel.
+
+Whatever minute is currently displayed should remain displayed.
+
+For example, suppose the picker currently shows:
+
+10:43
+
+The user taps the selection bar and types:
+
+2
+
+The hour becomes 2, and input moves to minute.
+
+The minute wheel should still show 43.
+
+It should not suddenly reset to 00, rebuild itself, or animate to some default value.
+
+Only when the user actually enters a minute digit should the minute wheel move.
+
+
+---
+
+4. Minute input
+
+Minutes are 00–59.
+
+The minute input behaves differently from the hour because the first digit is treated as a prefix.
+
+First minute digit
+
+Any first digit 0–9 should immediately make the wheel represent that digit as a two-digit minute:
+
+0 → 00
+1 → 01
+2 → 02
+3 → 03
+4 → 04
+5 → 05
+6 → 06
+7 → 07
+8 → 08
+9 → 09
+
+But the input stays on minute and waits for a second digit.
+
+For example:
+
+5
+
+means:
+
+wheel → 05
+input remains on minute
+
+Then:
+
+5 + 8 → 58
+
+The wheel moves to 58.
+
+
+---
+
+Invalid second minute digit
+
+The second digit must be validated against 00–59.
+
+For example:
+
+6 + 5 = 65
+
+is invalid.
+
+Therefore:
+
+Reject 5.
+
+Keep the minute at 06.
+
+Do not let 65 through.
+
+Do not automatically move to another wheel.
+
+Keep the input on minute so the user can enter another second digit.
+
+
+Likewise:
+
+9 + 9 = 99
+
+is invalid.
+
+The wheel remains at 09, and minute input remains active.
+
+This is different from the invalid second hour digit. An invalid second hour digit after 1 causes the input to advance to minute, whereas an invalid second minute digit simply invalidates that attempted digit and keeps the user in minute input.
+
+
+---
+
+5. Completed minute does NOT automatically move anywhere
+
+Once the user enters two valid minute digits:
+
+58
+
+the minute is complete.
+
+The input should remain on minute.
+
+Do not automatically return to hour.
+
+The keyboard also remains open.
+
+The user can dismiss the keyboard whenever they want.
+
+
+---
+
+6. Typing another digit after a completed minute
+
+Once a minute is already complete, another digit should not automatically replace/restart it.
+
+For example:
+
+58
+
+is complete.
+
+If the user now types:
+
+3
+
+that 3 is invalid in the current completed-minute state.
+
+The picker should continue showing:
+
+58
+
+The user must use backspace/delete if they want to edit the completed value.
+
+This is important: do not silently interpret the new 3 as a new 03.
+
+
+---
+
+7. Backspace / delete behavior
+
+Backspace should behave like normal editing of the input state, but the wheel should only change when the remaining input represents a meaningful value.
+
+Examples:
+
+One digit → empty
+
+If the user types:
+
+1
+
+then backspaces:
+
+1 → empty
+
+The wheel should remain at 1.
+
+The input is now empty and ready for a new number.
+
+Similarly:
+
+5 → backspace → empty
+
+The minute wheel remains at 05.
+
+Do not rebuild the wheel or reset it.
+
+
+---
+
+Two digits → one digit
+
+If the user has:
+
+12
+
+and presses backspace:
+
+12 → 1
+
+the remaining 1 is meaningful.
+
+Therefore the hour wheel should move to:
+
+1
+
+Likewise:
+
+58 → backspace → 5
+
+The remaining 5 represents 05, so the minute wheel should move to:
+
+05
+
+This means the rule is:
+
+> If backspace leaves a valid meaningful numeric prefix/value, update the corresponding wheel to reflect it. If backspace leaves no digits, leave the wheel at its current selection.
+
+
+
+
+---
+
+Special case: 0
+
+If the user has entered:
+
+0
+
+as an hour prefix and then backspaces it:
+
+0 → empty
+
+the wheel should remain wherever it currently is, because 0 by itself never represented a valid hour selection.
+
+
+---
+
+8. Manual wheel interaction while numeric input is active
+
+The user can still physically drag/spin the wheels normally.
+
+If the user actively interacts with a wheel while there is pending numeric input, the manual interaction should take precedence.
+
+For example:
+
+user types 1
+
+Hour wheel is at 1, with 1 pending because 10–12 are possible.
+
+Then the user manually drags the hour wheel to 7.
+
+At that point, the old pending numeric 1 should be cleared/invalidated.
+
+The user's direct wheel interaction becomes the current validated selection.
+
+In general:
+
+> Whatever the user actively interacts with should become the authoritative state.
+
+
+
+Do not allow stale pending keyboard digits to unexpectedly affect the wheel after the user manually changed it.
+
+This should work consistently for both hour and minute wheels.
+
+
+---
+
+9. No duplicate visible text
+
+This is especially important.
+
+The keyboard input should not behave like a normal visible text field placed over the picker.
+
+For example, when the user types:
+
+5
+
+for minutes, I do not want something like:
+
+5        ← typed text
+   05        ← wheel
+
+Instead, there should only be the normal wheel representation:
+
+05
+
+The typed 5 is an internal input command/state.
+
+The same applies to hours.
+
+The caret can exist conceptually as the current input position, but the user's typed characters should not be rendered as duplicate text over the wheel.
+
+
+---
+
+10. Keyboard/focus behavior
+
+The numeric keyboard should:
+
+Open immediately when the selection bar is tapped.
+
+Start with hour input active.
+
+Automatically move to minute input after the hour is committed.
+
+Remain focused on minute after minute completion.
+
+Remain open until the user dismisses it.
+
+Not require a Done button.
+
+Not close simply because a value was committed.
+
+Not require the user to tap the minute area manually after hour completion.
+
+
+The AM/PM wheel remains a normal wheel and is not part of this numeric digit-entry state machine.
+
+
+---
+
+11. Wheel animation
+
+When numeric input causes a value change, the corresponding wheel should naturally spin/animate to that value.
+
+For example:
+
+5
+
+in minute input should cause the minute wheel to move to 05.
+
+Then:
+
+8
+
+should cause it to move from 05 to 58.
+
+However, changing the input caret/focus must not itself rebuild or animate unrelated wheels.
+
+For example:
+
+hour commits → focus moves to minute
+
+must not cause the minute wheel to move unless the user actually entered a minute digit.
+
+
+---
+
+12. Suggested state-machine model
+
+Please implement this as an explicit input/state model rather than trying to make a normal text field's visible text represent the time.
+
+Conceptually:
+
+TimePicker
+├── hour wheel value
+├── minute wheel value
+├── AM/PM wheel value
+└── numeric input state
+     ├── active component: hour / minute
+     ├── pending digits
+     └── format mode: 12-hour / future 24-hour
+
+Then each keyboard action is interpreted according to the active component and pending digits.
+
+Something conceptually like:
+
+digit
+  ↓
+current component
+  ↓
+pending input
+  ↓
+format-specific validation
+  ↓
+valid?
+ ├── yes → update wheel
+ │          ↓
+ │       complete?
+ │       ├── yes → advance if appropriate
+ │       └── no → continue waiting
+ │
+ └── no → apply the component-specific invalid-input rule
+
+Please avoid using arbitrary timers or delayed text-field behavior to determine whether a digit belongs to the current value. The rules above should be deterministic.
+
+
+---
+
+13. Future 24-hour support
+
+Although the current picker is 12-hour, please structure the implementation so that the hour parser can later support 24-hour mode.
+
+For example:
+
+12-hour
+
+1 → wait
+10 → commit
+11 → commit
+12 → commit
+
+2 → commit immediately
+3–9 → commit immediately
+0 → wait for next digit
+
+Future 24-hour
+
+The rules need to allow valid two-digit hours such as:
+
+20
+21
+22
+23
+
+so:
+
+2 → wait
+20 → commit
+21 → commit
+22 → commit
+23 → commit
+
+The point is not to implement 24-hour mode now; just don't design the current state machine in a way that makes this impossible or requires rewriting the numeric-input architecture later.
+
+
+---
+
+14. Existing wheel behavior must remain
+
+This new interaction should not remove or alter the existing wheel interaction.
+
+The user must still be able to:
+
+Drag/spin the hour wheel.
+
+Drag/spin the minute wheel.
+
+Drag/spin AM/PM.
+
+Tap the selection bar to invoke numeric input.
+
+
+Numeric input and wheel interaction should coexist cleanly.
+
+The important distinction is:
+
+Wheel = visual/current time selection.
+
+Keyboard = command mechanism for changing that selection.
+
+Input state = temporary information used to interpret the user's digits.
+
+Please audit the existing implementation around the time picker before changing it, and keep the existing visual design and wheel behavior intact unless something specifically needs to change to support this state model.

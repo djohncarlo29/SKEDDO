@@ -4,6 +4,10 @@ import 'package:flutter/services.dart';
 import '../app_theme.dart';
 import 'stadium_cupertino_picker_selection_overlay.dart';
 
+enum _TimeEntryComponent { hour, minute }
+
+enum _HourEntryFormat { twelveHour, twentyFourHour }
+
 /// Three-column event-time picker with inline numeric entry for hour/minute.
 ///
 /// Tapping the selected band opens the platform numeric keyboard. Valid hour
@@ -25,6 +29,7 @@ class EventTimePicker extends StatefulWidget {
 class _EventTimePickerState extends State<EventTimePicker> {
   static const double _kMagnification = 2.35 / 2.1;
   static const Duration _entryScrollDuration = Duration(milliseconds: 260);
+  static const _hourEntryFormat = _HourEntryFormat.twelveHour;
 
   static final _kStyleBase = TextStyle(
     inherit: false,
@@ -38,17 +43,23 @@ class _EventTimePickerState extends State<EventTimePicker> {
   late FixedExtentScrollController _hourCtrl;
   late FixedExtentScrollController _minuteCtrl;
   late FixedExtentScrollController _periodCtrl;
-  late TextEditingController _hourEntryController;
-  late TextEditingController _minuteEntryController;
-  late FocusNode _hourEntryFocusNode;
-  late FocusNode _minuteEntryFocusNode;
+  late TextEditingController _entryController;
+  late FocusNode _entryFocusNode;
 
   late int _hour12;
   late int _minute;
   late int _period;
+  _TimeEntryComponent _entryComponent = _TimeEntryComponent.hour;
+  String _hourEntryDigits = '';
+  String _minuteEntryDigits = '';
   bool _isTimeEntryMode = false;
   bool _wasKeyboardVisible = false;
-  final Object _entryTapRegionGroup = Object();
+  bool _suppressHourWheelCallbacks = false;
+  bool _suppressMinuteWheelCallbacks = false;
+  bool _suppressPeriodWheelCallbacks = false;
+  int _hourAnimationGeneration = 0;
+  int _minuteAnimationGeneration = 0;
+  int _periodAnimationGeneration = 0;
 
   @override
   void initState() {
@@ -60,10 +71,8 @@ class _EventTimePickerState extends State<EventTimePicker> {
     _hourCtrl = FixedExtentScrollController(initialItem: _hour12 - 1);
     _minuteCtrl = FixedExtentScrollController(initialItem: _minute);
     _periodCtrl = FixedExtentScrollController(initialItem: _period);
-    _hourEntryController = TextEditingController();
-    _minuteEntryController = TextEditingController();
-    _hourEntryFocusNode = FocusNode();
-    _minuteEntryFocusNode = FocusNode();
+    _entryController = TextEditingController();
+    _entryFocusNode = FocusNode();
   }
 
   @override
@@ -83,10 +92,8 @@ class _EventTimePickerState extends State<EventTimePicker> {
     _hourCtrl.dispose();
     _minuteCtrl.dispose();
     _periodCtrl.dispose();
-    _hourEntryController.dispose();
-    _minuteEntryController.dispose();
-    _hourEntryFocusNode.dispose();
-    _minuteEntryFocusNode.dispose();
+    _entryController.dispose();
+    _entryFocusNode.dispose();
     super.dispose();
   }
 
@@ -114,51 +121,32 @@ class _EventTimePickerState extends State<EventTimePicker> {
         (forward.abs() <= backward.abs() ? forward : backward);
   }
 
+  String get _acceptedEntryDigits => '$_hourEntryDigits$_minuteEntryDigits';
+
   void _beginTimeEntry() {
-    _hourEntryController.clear();
-    _minuteEntryController.clear();
+    _hourEntryDigits = '';
+    _minuteEntryDigits = '';
+    _entryComponent = _TimeEntryComponent.hour;
+    _entryController.clear();
     if (!_isTimeEntryMode) {
       setState(() => _isTimeEntryMode = true);
     }
-    _requestEntryFocus(_hourEntryFocusNode);
+    _requestEntryFocus();
   }
 
-  void _requestEntryFocus(FocusNode node) {
+  void _requestEntryFocus() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _isTimeEntryMode) node.requestFocus();
+      if (mounted && _isTimeEntryMode) _entryFocusNode.requestFocus();
     });
-  }
-
-  void _moveCaretToMinute({int? firstMinuteDigit}) {
-    _hourEntryController.clear();
-    _minuteEntryController.text = firstMinuteDigit?.toString() ?? '';
-    _requestEntryFocus(_minuteEntryFocusNode);
-    if (firstMinuteDigit != null) {
-      _setMinuteFromEntry(firstMinuteDigit);
-    }
-  }
-
-  void _onHourFieldTap() {
-    if (!_isTimeEntryMode) return;
-    _hourEntryController.clear();
-    _minuteEntryController.clear();
-    _requestEntryFocus(_hourEntryFocusNode);
-  }
-
-  void _onMinuteFieldTap() {
-    if (!_isTimeEntryMode) return;
-    // A lone leading 1 already selects hour 1. Tapping minutes commits it.
-    _hourEntryController.clear();
-    _minuteEntryController.clear();
-    _requestEntryFocus(_minuteEntryFocusNode);
   }
 
   void _finishTimeEntry() {
     if (!_isTimeEntryMode) return;
-    _hourEntryFocusNode.unfocus();
-    _minuteEntryFocusNode.unfocus();
-    _hourEntryController.clear();
-    _minuteEntryController.clear();
+    _entryFocusNode.unfocus();
+    _entryController.clear();
+    _hourEntryDigits = '';
+    _minuteEntryDigits = '';
+    _entryComponent = _TimeEntryComponent.hour;
     setState(() => _isTimeEntryMode = false);
   }
 
@@ -177,24 +165,57 @@ class _EventTimePickerState extends State<EventTimePicker> {
     );
   }
 
-  void _animateHourTo(int hour12) {
+  Future<void> _animateHourTo(int hour12) async {
     final target = _nearestLoopIndex(_hourCtrl, hour12 - 1, 12);
     if (!_hourCtrl.hasClients || _hourCtrl.selectedItem == target) return;
-    _hourCtrl.animateToItem(
-      target,
-      duration: _entryScrollDuration,
-      curve: Curves.easeOutCubic,
-    );
+    final generation = ++_hourAnimationGeneration;
+    _suppressHourWheelCallbacks = true;
+    try {
+      await _hourCtrl.animateToItem(
+        target,
+        duration: _entryScrollDuration,
+        curve: Curves.easeOutCubic,
+      );
+    } finally {
+      if (generation == _hourAnimationGeneration) {
+        _suppressHourWheelCallbacks = false;
+      }
+    }
   }
 
-  void _animateMinuteTo(int minute) {
+  Future<void> _animateMinuteTo(int minute) async {
     final target = _nearestLoopIndex(_minuteCtrl, minute, 60);
     if (!_minuteCtrl.hasClients || _minuteCtrl.selectedItem == target) return;
-    _minuteCtrl.animateToItem(
-      target,
-      duration: _entryScrollDuration,
-      curve: Curves.easeOutCubic,
-    );
+    final generation = ++_minuteAnimationGeneration;
+    _suppressMinuteWheelCallbacks = true;
+    try {
+      await _minuteCtrl.animateToItem(
+        target,
+        duration: _entryScrollDuration,
+        curve: Curves.easeOutCubic,
+      );
+    } finally {
+      if (generation == _minuteAnimationGeneration) {
+        _suppressMinuteWheelCallbacks = false;
+      }
+    }
+  }
+
+  Future<void> _animatePeriodTo(int period) async {
+    if (!_periodCtrl.hasClients || _periodCtrl.selectedItem == period) return;
+    final generation = ++_periodAnimationGeneration;
+    _suppressPeriodWheelCallbacks = true;
+    try {
+      await _periodCtrl.animateToItem(
+        period,
+        duration: _entryScrollDuration,
+        curve: Curves.easeOutCubic,
+      );
+    } finally {
+      if (generation == _periodAnimationGeneration) {
+        _suppressPeriodWheelCallbacks = false;
+      }
+    }
   }
 
   void _setHourFromEntry(int hour12) {
@@ -204,6 +225,24 @@ class _EventTimePickerState extends State<EventTimePicker> {
     _animateHourTo(hour12);
   }
 
+  void _setHourFromEntryValue(int hourValue) {
+    if (_hourEntryFormat == _HourEntryFormat.twelveHour) {
+      _setHourFromEntry(hourValue);
+      return;
+    }
+
+    final hour12 = hourValue % 12 == 0 ? 12 : hourValue % 12;
+    final period = hourValue >= 12 ? 1 : 0;
+    final hourChanged = hour12 != _hour12;
+    final periodChanged = period != _period;
+    if (!hourChanged && !periodChanged) return;
+    _hour12 = hour12;
+    _period = period;
+    _notify();
+    if (hourChanged) _animateHourTo(hour12);
+    if (periodChanged) _animatePeriodTo(period);
+  }
+
   void _setMinuteFromEntry(int minute) {
     if (minute < 0 || minute > 59 || minute == _minute) return;
     _minute = minute;
@@ -211,61 +250,160 @@ class _EventTimePickerState extends State<EventTimePicker> {
     _animateMinuteTo(minute);
   }
 
-  void _handleHourEntry(String value) {
-    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.isEmpty) return;
-
-    final first = int.parse(digits[0]);
-    if (digits.length == 1) {
-      if (first == 0) return; // A leading zero can form 01–09.
-      _setHourFromEntry(first);
-      if (first == 1) return; // Could still become 10, 11, or 12.
-      _moveCaretToMinute();
-      return;
-    }
-
-    final second = int.parse(digits[1]);
-    if (first == 0) {
-      if (second > 0) _setHourFromEntry(second);
-      _moveCaretToMinute();
-      return;
-    }
-    if (first == 1) {
-      // 10–12 are the only valid two-digit 12-hour values beginning with 1.
-      // Any other second digit is rejected; hour 1 remains selected.
-      _setHourFromEntry(second <= 2 ? 10 + second : 1);
-      _moveCaretToMinute();
-      return;
-    }
-
-    // Normally a first digit from 2–9 has already advanced to minutes. If
-    // several digits arrive in one text update, treat the next digit as the
-    // first minute digit rather than losing it.
-    _setHourFromEntry(first);
-    _moveCaretToMinute(firstMinuteDigit: second);
+  bool _hourCanBeTwoDigitPrefix(int firstDigit) {
+    return switch (_hourEntryFormat) {
+      _HourEntryFormat.twelveHour => firstDigit == 0 || firstDigit == 1,
+      _HourEntryFormat.twentyFourHour =>
+        firstDigit == 0 || firstDigit == 1 || firstDigit == 2,
+    };
   }
 
-  void _handleMinuteEntry(String value) {
-    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.isEmpty) return;
+  bool _isValidTwoDigitHour(int candidate) {
+    return switch (_hourEntryFormat) {
+      _HourEntryFormat.twelveHour => candidate >= 10 && candidate <= 12,
+      _HourEntryFormat.twentyFourHour => candidate >= 0 && candidate <= 23,
+    };
+  }
 
-    final first = int.parse(digits[0]);
-    if (digits.length == 1) {
-      // The wheel always renders a leading zero, so 5 immediately appears 05.
-      _setMinuteFromEntry(first);
+  int? _meaningfulHourValue(String digits) {
+    if (digits.isEmpty) return null;
+    final candidate = int.tryParse(digits);
+    if (candidate == null) return null;
+    return switch (_hourEntryFormat) {
+      _HourEntryFormat.twelveHour when candidate >= 1 && candidate <= 12 =>
+        candidate,
+      _HourEntryFormat.twentyFourHour when candidate <= 23 => candidate,
+      _ => null,
+    };
+  }
+
+  void _acceptDigit(int digit) {
+    if (_entryComponent == _TimeEntryComponent.hour) {
+      _acceptHourDigit(digit);
+    } else {
+      _acceptMinuteDigit(digit);
+    }
+  }
+
+  void _acceptHourDigit(int digit) {
+    if (_hourEntryDigits.isEmpty) {
+      _hourEntryDigits = '$digit';
+      if (digit == 0) return; // A leading zero is only a pending prefix.
+      _setHourFromEntryValue(digit);
+      if (!_hourCanBeTwoDigitPrefix(digit)) {
+        _entryComponent = _TimeEntryComponent.minute;
+      }
       return;
     }
 
-    final second = int.parse(digits[1]);
-    final candidate = first * 10 + second;
-    if (candidate <= 59) {
-      _setMinuteFromEntry(candidate);
-    } else {
-      // Keep the valid single-digit value (e.g. 9 → 09) and discard the
-      // invalid second digit rather than allowing a value above 59.
-      _setMinuteFromEntry(first);
+    final firstDigit = int.parse(_hourEntryDigits);
+    if (firstDigit == 0 && _hourEntryFormat == _HourEntryFormat.twelveHour) {
+      if (digit == 0) return;
+      _hourEntryDigits = '0$digit';
+      _setHourFromEntryValue(digit);
+      _entryComponent = _TimeEntryComponent.minute;
+      return;
     }
-    _minuteEntryController.clear();
+
+    final candidate = firstDigit * 10 + digit;
+    if (_isValidTwoDigitHour(candidate)) {
+      _hourEntryDigits = '$_hourEntryDigits$digit';
+      _setHourFromEntryValue(candidate);
+      _entryComponent = _TimeEntryComponent.minute;
+      return;
+    }
+
+    if (firstDigit == 0) return;
+
+    // The attempted second hour digit is discarded. A pending 1 remains the
+    // selected hour, and the next newly typed digit belongs to minutes.
+    _entryComponent = _TimeEntryComponent.minute;
+  }
+
+  void _acceptMinuteDigit(int digit) {
+    if (_minuteEntryDigits.isEmpty) {
+      _minuteEntryDigits = '$digit';
+      _setMinuteFromEntry(digit);
+      return;
+    }
+
+    if (_minuteEntryDigits.length >= 2) return;
+    final candidate = int.parse('$_minuteEntryDigits$digit');
+    if (candidate > 59) return;
+    _minuteEntryDigits = '$_minuteEntryDigits$digit';
+    _setMinuteFromEntry(candidate);
+  }
+
+  void _backspaceEntry() {
+    if (_entryComponent == _TimeEntryComponent.minute &&
+        _minuteEntryDigits.isNotEmpty) {
+      _minuteEntryDigits = _minuteEntryDigits.substring(
+        0,
+        _minuteEntryDigits.length - 1,
+      );
+      if (_minuteEntryDigits.isNotEmpty) {
+        _setMinuteFromEntry(int.parse(_minuteEntryDigits));
+      }
+      return;
+    }
+
+    if (_entryComponent == _TimeEntryComponent.minute) {
+      _entryComponent = _TimeEntryComponent.hour;
+    }
+    if (_hourEntryDigits.isEmpty) return;
+
+    _hourEntryDigits = _hourEntryDigits.substring(
+      0,
+      _hourEntryDigits.length - 1,
+    );
+    final remainingHour = _meaningfulHourValue(_hourEntryDigits);
+    if (remainingHour != null) _setHourFromEntryValue(remainingHour);
+  }
+
+  void _handleEntryTextChanged(String value) {
+    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    final accepted = _acceptedEntryDigits;
+    var commonPrefixLength = 0;
+    while (commonPrefixLength < accepted.length &&
+        commonPrefixLength < digits.length &&
+        accepted[commonPrefixLength] == digits[commonPrefixLength]) {
+      commonPrefixLength++;
+    }
+
+    while (_acceptedEntryDigits.length > commonPrefixLength) {
+      _backspaceEntry();
+    }
+    for (var i = commonPrefixLength; i < digits.length; i++) {
+      _acceptDigit(int.parse(digits[i]));
+    }
+    _syncEntryController();
+  }
+
+  void _syncEntryController() {
+    final accepted = _acceptedEntryDigits;
+    if (_entryController.text == accepted) return;
+    _entryController.value = TextEditingValue(
+      text: accepted,
+      selection: TextSelection.collapsed(offset: accepted.length),
+    );
+  }
+
+  void _onManualWheelScrollStart(_TimeEntryComponent component) {
+    if (component == _TimeEntryComponent.hour) {
+      _hourAnimationGeneration++;
+      _suppressHourWheelCallbacks = false;
+    } else {
+      _minuteAnimationGeneration++;
+      _suppressMinuteWheelCallbacks = false;
+    }
+    if (!_isTimeEntryMode) return;
+
+    // Direct manipulation is authoritative; no pending digit may later
+    // overwrite the wheel the user just changed.
+    _hourEntryDigits = '';
+    _minuteEntryDigits = '';
+    _entryComponent = component;
+    _syncEntryController();
   }
 
   Widget _loopingBarrel({
@@ -273,6 +411,7 @@ class _EventTimePickerState extends State<EventTimePicker> {
     required FixedExtentScrollController controller,
     required List<Widget> children,
     required void Function(int) onChanged,
+    _TimeEntryComponent? entryComponent,
     double offAxisFraction = 0.0,
     bool capStart = true,
     bool capEnd = true,
@@ -292,24 +431,32 @@ class _EventTimePickerState extends State<EventTimePicker> {
             },
       child: Stack(
         children: [
-          ListWheelScrollView.useDelegate(
-            key: wheelKey,
-            controller: controller,
-            itemExtent: _itemExtent,
-            physics: const FixedExtentScrollPhysics(),
-            diameterRatio: 1.07,
-            perspective: 0.003,
-            squeeze: 1.25,
-            magnification: _kMagnification,
-            useMagnifier: true,
-            overAndUnderCenterOpacity: 0.447,
-            offAxisFraction: offAxisFraction,
-            childDelegate: loop
-                ? ListWheelChildLoopingListDelegate(children: children)
-                : ListWheelChildListDelegate(children: children),
-            onSelectedItemChanged: loop
-                ? (index) => onChanged(_positiveModulo(index, count))
-                : onChanged,
+          NotificationListener<ScrollStartNotification>(
+            onNotification: (notification) {
+              if (notification.dragDetails != null && entryComponent != null) {
+                _onManualWheelScrollStart(entryComponent);
+              }
+              return false;
+            },
+            child: ListWheelScrollView.useDelegate(
+              key: wheelKey,
+              controller: controller,
+              itemExtent: _itemExtent,
+              physics: const FixedExtentScrollPhysics(),
+              diameterRatio: 1.07,
+              perspective: 0.003,
+              squeeze: 1.25,
+              magnification: _kMagnification,
+              useMagnifier: true,
+              overAndUnderCenterOpacity: 0.447,
+              offAxisFraction: offAxisFraction,
+              childDelegate: loop
+                  ? ListWheelChildLoopingListDelegate(children: children)
+                  : ListWheelChildListDelegate(children: children),
+              onSelectedItemChanged: loop
+                  ? (index) => onChanged(_positiveModulo(index, count))
+                  : onChanged,
+            ),
           ),
           IgnorePointer(
             child: Center(
@@ -328,39 +475,31 @@ class _EventTimePickerState extends State<EventTimePicker> {
     );
   }
 
-  Widget _buildEntryField({
-    required Key key,
-    required TextEditingController controller,
-    required FocusNode focusNode,
-    required TextAlign textAlign,
-    required EdgeInsetsGeometry padding,
-    required VoidCallback onTap,
-    required ValueChanged<String> onChanged,
-  }) {
+  Widget _buildEntryField() {
     return CupertinoTextField(
-      key: key,
-      controller: controller,
-      focusNode: focusNode,
+      key: const ValueKey('event-time-numeric-input'),
+      controller: _entryController,
+      focusNode: _entryFocusNode,
       keyboardType: TextInputType.number,
       inputFormatters: [
         FilteringTextInputFormatter.digitsOnly,
-        LengthLimitingTextInputFormatter(2),
+        LengthLimitingTextInputFormatter(4),
       ],
-      textAlign: textAlign,
+      textAlign: TextAlign.center,
       textAlignVertical: TextAlignVertical.center,
       style: _kStyle.copyWith(color: CupertinoColors.transparent),
-      cursorColor: resolveThemeColor(kPrimaryLabel, context),
+      cursorColor: CupertinoColors.transparent,
+      cursorWidth: 0,
+      showCursor: false,
       enableInteractiveSelection: false,
       decoration: const BoxDecoration(
         color: CupertinoColors.transparent,
         border: Border.fromBorderSide(BorderSide.none),
       ),
-      padding: padding,
+      padding: EdgeInsets.zero,
       autocorrect: false,
       enableSuggestions: false,
-      onTap: onTap,
-      onChanged: onChanged,
-      onTapOutside: (_) => _finishTimeEntry(),
+      onChanged: _handleEntryTextChanged,
     );
   }
 
@@ -370,37 +509,14 @@ class _EventTimePickerState extends State<EventTimePicker> {
         child: SizedBox(
           width: double.infinity,
           height: _itemExtent,
-          child: TextFieldTapRegion(
-            groupId: _entryTapRegionGroup,
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildEntryField(
-                    key: const ValueKey('event-time-hour-entry'),
-                    controller: _hourEntryController,
-                    focusNode: _hourEntryFocusNode,
-                    textAlign: TextAlign.right,
-                    padding: const EdgeInsets.only(right: 12),
-                    onTap: _onHourFieldTap,
-                    onChanged: _handleHourEntry,
-                  ),
-                ),
-                Expanded(
-                  child: _buildEntryField(
-                    key: const ValueKey('event-time-minute-entry'),
-                    controller: _minuteEntryController,
-                    focusNode: _minuteEntryFocusNode,
-                    textAlign: TextAlign.center,
-                    padding: EdgeInsets.zero,
-                    onTap: _onMinuteFieldTap,
-                    onChanged: _handleMinuteEntry,
-                  ),
-                ),
-                Expanded(
-                  child: IgnorePointer(child: SizedBox.expand()),
-                ),
-              ],
-            ),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: IgnorePointer(child: _buildEntryField()),
+              ),
+              Expanded(child: IgnorePointer(child: SizedBox.expand())),
+            ],
           ),
         ),
       ),
@@ -415,7 +531,9 @@ class _EventTimePickerState extends State<EventTimePicker> {
       offAxisFraction: -0.60,
       capStart: true,
       capEnd: false,
+      entryComponent: _TimeEntryComponent.hour,
       onChanged: (index) {
+        if (_suppressHourWheelCallbacks) return;
         _hour12 = index + 1;
         _notify();
       },
@@ -436,7 +554,9 @@ class _EventTimePickerState extends State<EventTimePicker> {
       offAxisFraction: 0,
       capStart: false,
       capEnd: false,
+      entryComponent: _TimeEntryComponent.minute,
       onChanged: (index) {
+        if (_suppressMinuteWheelCallbacks) return;
         _minute = index;
         _notify();
       },
@@ -455,6 +575,7 @@ class _EventTimePickerState extends State<EventTimePicker> {
       capEnd: true,
       loop: false,
       onChanged: (index) {
+        if (_suppressPeriodWheelCallbacks) return;
         _period = index;
         _notify();
       },
