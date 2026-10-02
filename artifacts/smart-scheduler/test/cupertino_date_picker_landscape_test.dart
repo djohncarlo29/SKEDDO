@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/widgets/cupertino_date_picker_with_full_width_selection.dart';
 
 void main() {
-  testWidgets('landscape date wheels use the full selection-bar width', (
+  testWidgets('landscape date wheels stay grouped and centered', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1200, 600);
@@ -44,16 +44,17 @@ void main() {
     );
 
     expect(group.center.dx, closeTo(600, 1));
-    expect(group.width, closeTo(900, 1));
-    expect(month.width, closeTo(300, 1));
-    expect(day.width, closeTo(300, 1));
-    expect(year.width, closeTo(300, 1));
-    expect(day.left, closeTo(month.right, 1));
-    expect(year.left, closeTo(day.right, 1));
+    expect(group.width, greaterThan(0));
+    expect(group.width, lessThan(600));
+    expect(day.center.dx - month.center.dx, lessThan(180));
+    expect(year.center.dx - day.center.dx, lessThan(180));
+    expect(month.width, lessThan(260));
+    expect(day.width, lessThan(260));
+    expect(year.width, lessThan(260));
   });
 
   testWidgets(
-    'landscape date wheel columns retain full width at larger OS text sizes',
+    'landscape wheel group scales with OS text size without filling the screen',
     (tester) async {
       tester.view.physicalSize = const Size(1200, 600);
       tester.view.devicePixelRatio = 1;
@@ -62,7 +63,7 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
 
-      Future<List<Rect>> columnRectsAtScale(double scale) async {
+      Future<double> groupWidthAtScale(double scale) async {
         await tester.pumpWidget(
           CupertinoApp(
             home: MediaQuery(
@@ -91,21 +92,15 @@ void main() {
           find.byKey(const ValueKey('wide-date-picker-column-group')),
         );
         expect(group.center.dx, closeTo(600, 1));
-        expect(group.width, closeTo(900, 1));
-        return [
-          tester.getRect(find.byKey(const ValueKey('wide-date-month-column'))),
-          tester.getRect(find.byKey(const ValueKey('wide-date-day-column'))),
-          tester.getRect(find.byKey(const ValueKey('wide-date-year-column'))),
-        ];
+        expect(group.width, lessThan(900));
+        return group.width;
       }
 
-      final defaultRects = await columnRectsAtScale(1);
-      final largerTextRects = await columnRectsAtScale(1.8);
+      final defaultWidth = await groupWidthAtScale(1);
+      final largerTextWidth = await groupWidthAtScale(1.8);
 
-      for (var index = 0; index < 3; index++) {
-        expect(defaultRects[index].width, closeTo(300, 1));
-        expect(largerTextRects[index].width, closeTo(300, 1));
-      }
+      expect(largerTextWidth, greaterThan(defaultWidth));
+      expect(largerTextWidth, lessThan(700));
     },
   );
 

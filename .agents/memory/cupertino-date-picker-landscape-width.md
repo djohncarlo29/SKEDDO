@@ -1,12 +1,12 @@
 ---
 name: Landscape date picker width
-description: Keep landscape date wheels full-width and behaviorally consistent with portrait, including disabled dates and OS text scaling.
+description: Keep landscape date wheels compact and behaviorally consistent with portrait, including disabled dates and OS text scaling.
 ---
 
-Landscape date-picker wheels must span the full selection-bar width, with three equal-width columns. Each localized label uses the shared 8dp inset and shrinks to fit its own column after magnification; do not compact the group to intrinsic label widths. Portrait stays on the native Cupertino picker.
+Landscape date-picker wheels stay as a centered, narrow group sized to their localized labels. Preserve the existing spacing between month, day, and year columns; do not spread them across the full selection-bar width. Portrait stays on the native Cupertino picker.
 
 Landscape must also preserve the native picker’s disabled-date behavior: disabled entries can pass through the selection bar while scrolling, do not update the date, and move back to a valid date after scrolling stops.
 
-**Why:** The compact intrinsic-width landscape group left too little room for off-axis barrel projection and clipped the month label even though the selection overlay was full-width. The user explicitly requires the wheels to use the full selection-bar area with only 8dp side insets and shrink-to-fit labels. The portrait layout is already correct.
+**Why:** The user explicitly clarified that only clipping should change: the landscape columns must keep the same compact, label-sized spacing as the reference, even though the selection overlay spans the sheet. Clipping comes from the option text not keeping its 8dp safe inset after picker magnification; widening the group is not an acceptable fix.
 
-**How to apply:** Split the available landscape selection-bar width evenly across the localized date-order columns and pass each actual wheel width to `WheelOptionText` as its fallback. Preserve the active OS text scaler, 8dp fixed insets, and shrink-to-fit behavior. Keep each wheel’s temporary selection state current during scrolling, then validate and correct the combined date when all wheels stop.
+**How to apply:** Size each landscape column from its widest localized label at the active text scale plus the magnification-adjusted 8dp insets, then center the compact group. Keep labels inside each column using the shared `WheelOptionText` fit region; do not change group spacing to solve clipping. Keep each wheel’s temporary selection state current during scrolling, then validate and correct the combined date when all wheels stop.
