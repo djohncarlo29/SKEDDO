@@ -14355,89 +14355,150 @@ class _EventTimePickerState extends State<_EventTimePicker> {
 
   TextStyle get _kStyle => resolveThemeTextStyle(_kStyleBase, context);
 
+  TextStyle? _cachedTimeColumnStyle;
+  TextScaler? _cachedTimeColumnScaler;
+  TextDirection? _cachedTimeColumnDirection;
+  List<double>? _cachedTimeColumnWidths;
+
+  List<double> _timeColumnWidths() {
+    final style = _kStyle;
+    final scaler = MediaQuery.textScalerOf(context);
+    final direction = Directionality.of(context);
+    if (_cachedTimeColumnWidths != null &&
+        _cachedTimeColumnStyle == style &&
+        _cachedTimeColumnScaler == scaler &&
+        _cachedTimeColumnDirection == direction) {
+      return _cachedTimeColumnWidths!;
+    }
+
+    double widestLabelWidth(Iterable<String> labels) {
+      var widest = 0.0;
+      for (final label in labels) {
+        final painter = TextPainter(
+          text: TextSpan(text: label, style: style),
+          textDirection: direction,
+          textScaler: scaler,
+          maxLines: 1,
+        )..layout();
+        widest = math.max(widest, painter.width);
+      }
+      return widest;
+    }
+
+    final widths = [
+      widestLabelWidth(List.generate(12, (i) => '${i + 1}')),
+      widestLabelWidth(
+        List.generate(60, (i) => i.toString().padLeft(2, '0')),
+      ),
+      widestLabelWidth(const ['AM', 'PM']),
+    ];
+    _cachedTimeColumnStyle = style;
+    _cachedTimeColumnScaler = scaler;
+    _cachedTimeColumnDirection = direction;
+    _cachedTimeColumnWidths = List.unmodifiable(
+      widths.map((width) => width * _kMagnification + 24.0),
+    );
+    return _cachedTimeColumnWidths!;
+  }
+
   @override
-  Widget build(BuildContext context) => SizedBox(
-    height: _height,
-    child: Row(
+  Widget build(BuildContext context) {
+    final hourPicker = _loopingBarrel(
+      ctrl: _hourCtrl,
+      offAxisFraction: -0.45,
+      capStart: true,
+      capEnd: false,
+      onChanged: (i) {
+        _hour12 = i + 1;
+        _notify();
+      },
+      children: List.generate(
+        12,
+        (i) => Align(
+          alignment: Alignment.centerRight,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Text('${i + 1}', style: _kStyle),
+          ),
+        ),
+      ),
+    );
+    final minutePicker = _loopingBarrel(
+      ctrl: _minuteCtrl,
+      offAxisFraction: 0,
+      capStart: false,
+      capEnd: false,
+      onChanged: (i) {
+        _minute = i;
+        _notify();
+      },
+      children: List.generate(
+        60,
+        (i) => Center(
+          child: Text(i.toString().padLeft(2, '0'), style: _kStyle),
+        ),
+      ),
+    );
+    final periodPicker = _loopingBarrel(
+      ctrl: _periodCtrl,
+      offAxisFraction: 0.45,
+      capStart: false,
+      capEnd: true,
+      loop: false,
+      onChanged: (i) {
+        _period = i;
+        _notify();
+      },
       children: [
-        // ── Hours 1–12 — loops, leans right toward minutes ───────────────
-        Expanded(
-          child: _loopingBarrel(
-            ctrl: _hourCtrl,
-            offAxisFraction: -0.45,
-            capStart: true,
-            capEnd: false,
-            onChanged: (i) {
-              _hour12 = i + 1;
-              _notify();
-            },
-            children: List.generate(
-              12,
-              (i) => Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: Text('${i + 1}', style: _kStyle),
-                ),
-              ),
-            ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: Text('AM', style: _kStyle),
           ),
         ),
-
-        // ── Minutes 00–59 — loops, centred ───────────────────────────────
-        Expanded(
-          child: _loopingBarrel(
-            ctrl: _minuteCtrl,
-            offAxisFraction: 0,
-            capStart: false,
-            capEnd: false,
-            onChanged: (i) {
-              _minute = i;
-              _notify();
-            },
-            children: List.generate(
-              60,
-              (i) => Center(
-                child: Text(i.toString().padLeft(2, '0'), style: _kStyle),
-              ),
-            ),
-          ),
-        ),
-
-        // ── AM / PM — same _loopingBarrel widget for a uniform pill;
-        // loop:false so the barrel stops at the two real items and never wraps.
-        Expanded(
-          child: _loopingBarrel(
-            ctrl: _periodCtrl,
-            offAxisFraction: 0.45,
-            capStart: false,
-            capEnd: true,
-            loop: false,
-            onChanged: (i) {
-              _period = i;
-              _notify();
-            },
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: Text('AM', style: _kStyle),
-                ),
-              ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: Text('PM', style: _kStyle),
-                ),
-              ),
-            ],
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: Text('PM', style: _kStyle),
           ),
         ),
       ],
-    ),
-  );
+    );
+
+    final widths = _timeColumnWidths();
+    final groupWidth = widths.reduce((a, b) => a + b);
+    return SizedBox(
+      height: _height,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.hasBoundedWidth &&
+              groupWidth > constraints.maxWidth) {
+            return Row(
+              children: [
+                Expanded(child: hourPicker),
+                Expanded(child: minutePicker),
+                Expanded(child: periodPicker),
+              ],
+            );
+          }
+          return Center(
+            child: SizedBox(
+              width: groupWidth,
+              child: Row(
+                children: [
+                  SizedBox(width: widths[0], child: hourPicker),
+                  SizedBox(width: widths[1], child: minutePicker),
+                  SizedBox(width: widths[2], child: periodPicker),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -14974,6 +15035,35 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     );
   }
 
+  double _positionDayWheelColumnWidth() {
+    var widestLabel = 0.0;
+    for (final label in [..._kPositions, ..._kPositionDays]) {
+      final painter = TextPainter(
+        text: TextSpan(text: label, style: _kPickerItemStyle),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        maxLines: 1,
+      )..layout();
+      widestLabel = math.max(widestLabel, painter.width);
+    }
+    return widestLabel * _kPickerMagnification +
+        _kPickerSelectionPillMargin +
+        _kPickerSelectionPillTextInset +
+        8.0;
+  }
+
+  Widget _centeredPositionDayPickerRow(Widget row) {
+    final preferredWidth = _positionDayWheelColumnWidth() * 2;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.hasBoundedWidth
+            ? math.min(preferredWidth, constraints.maxWidth)
+            : preferredWidth;
+        return Center(child: SizedBox(width: width, child: row));
+      },
+    );
+  }
+
   Widget _clipPicker(
     Widget picker, {
     required bool capStartEdge,
@@ -15245,7 +15335,8 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     ] else ...[
       SizedBox(
         height: math.max(216.0, _pickerItemExtent * 5.5),
-        child: Row(
+        child: _centeredPositionDayPickerRow(
+          Row(
           children: [
             Expanded(
               child: _clipPicker(
@@ -15270,7 +15361,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                             alignment: Alignment.center,
                           child: Padding(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
+                                horizontal: 4,
                               ),
                               child: _pickerText(
                                 p,
@@ -15309,7 +15400,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                             alignment: Alignment.center,
                           child: Padding(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
+                                horizontal: 4,
                               ),
                               child: _pickerText(
                                 d,
@@ -15326,6 +15417,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
               ),
             ),
           ],
+          ),
         ),
       ),
     ],
@@ -15499,7 +15591,8 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
             _sep(),
             SizedBox(
               height: math.max(216.0, _pickerItemExtent * 5.5),
-              child: Row(
+              child: _centeredPositionDayPickerRow(
+                Row(
                 children: [
                   Expanded(
                     child: _clipPicker(
@@ -15524,7 +15617,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                                 alignment: Alignment.center,
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
+                                    horizontal: 4,
                                   ),
                                   child: _pickerText(
                                     p,
@@ -15563,7 +15656,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                                 alignment: Alignment.center,
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
+                                    horizontal: 4,
                                   ),
                                   child: _pickerText(
                                     d,
@@ -15580,6 +15673,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                     ),
                   ),
                 ],
+                ),
               ),
             ),
           ],
