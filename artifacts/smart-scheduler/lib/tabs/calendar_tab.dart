@@ -14309,51 +14309,59 @@ class _EventTimePickerState extends State<_EventTimePicker> {
   //              rendered identically across all three columns.
   Widget _loopingBarrel({
     required FixedExtentScrollController ctrl,
-    required List<Widget> children,
+    required List<Widget> Function(double wheelWidth) buildChildren,
     required void Function(int) onChanged,
     double offAxisFraction = 0.0,
     bool capStart = true,
     bool capEnd = true,
     bool loop = true,
   }) {
-    final count = children.length;
-    return Stack(
-      children: [
-        ListWheelScrollView.useDelegate(
-          controller: ctrl,
-          itemExtent: _itemExtent,
-          physics: const FixedExtentScrollPhysics(),
-          diameterRatio: 1.07,
-          perspective: 0.003,
-          squeeze: 1.25,
-          magnification: _kMagnification,
-          useMagnifier: true,
-          overAndUnderCenterOpacity: 0.447,
-          offAxisFraction: offAxisFraction,
-          childDelegate: loop
-              ? ListWheelChildLoopingListDelegate(children: children)
-              : ListWheelChildListDelegate(children: children),
-          onSelectedItemChanged: loop
-              ? (i) => onChanged(((i % count) + count) % count)
-              : (i) => onChanged(i),
-        ),
-        // Mirror how CupertinoPicker positions its selectionOverlay: a
-        // SizedBox(height: itemExtent) centred over the wheel.
-        IgnorePointer(
-          child: Center(
-            child: SizedBox(
-              height: _itemExtent,
-              width: double.infinity,
-              child: CupertinoPickerDefaultSelectionOverlay(
-                capStartEdge: capStart,
-                capEndEdge: capEnd,
-                // Default grey — matches the "first/second… Monday/Tuesday…"
-                // reference pickers which use no custom background.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wheelWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width / 3;
+        final children = buildChildren(wheelWidth);
+        final count = children.length;
+        return Stack(
+          children: [
+            ListWheelScrollView.useDelegate(
+              controller: ctrl,
+              itemExtent: _itemExtent,
+              physics: const FixedExtentScrollPhysics(),
+              diameterRatio: 1.07,
+              perspective: 0.003,
+              squeeze: 1.25,
+              magnification: _kMagnification,
+              useMagnifier: true,
+              overAndUnderCenterOpacity: 0.447,
+              offAxisFraction: offAxisFraction,
+              childDelegate: loop
+                  ? ListWheelChildLoopingListDelegate(children: children)
+                  : ListWheelChildListDelegate(children: children),
+              onSelectedItemChanged: loop
+                  ? (i) => onChanged(((i % count) + count) % count)
+                  : (i) => onChanged(i),
+            ),
+            // Mirror how CupertinoPicker positions its selectionOverlay: a
+            // SizedBox(height: itemExtent) centred over the wheel.
+            IgnorePointer(
+              child: Center(
+                child: SizedBox(
+                  height: _itemExtent,
+                  width: double.infinity,
+                  child: CupertinoPickerDefaultSelectionOverlay(
+                    capStartEdge: capStart,
+                    capEndEdge: capEnd,
+                    // Default grey — matches the "first/second… Monday/Tuesday…"
+                    // reference pickers which use no custom background.
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -14370,7 +14378,7 @@ class _EventTimePickerState extends State<_EventTimePicker> {
         _hour12 = i + 1;
         _notify();
       },
-      children: List.generate(
+      buildChildren: (wheelWidth) => List.generate(
         12,
         (i) => Align(
           alignment: Alignment.centerRight,
@@ -14382,6 +14390,7 @@ class _EventTimePickerState extends State<_EventTimePicker> {
               alignment: Alignment.centerRight,
               textAlign: TextAlign.right,
               magnification: _kMagnification,
+              fallbackWidth: math.max(0.0, wheelWidth - 12.0),
               selectionInsets: const EdgeInsetsDirectional.only(
                 start: _kPickerSelectionPillMargin +
                     _kPickerSelectionPillTextInset,
@@ -14400,13 +14409,14 @@ class _EventTimePickerState extends State<_EventTimePicker> {
         _minute = i;
         _notify();
       },
-      children: List.generate(
+      buildChildren: (wheelWidth) => List.generate(
         60,
         (i) => Center(
           child: WheelOptionText(
             text: i.toString().padLeft(2, '0'),
             style: _kStyle,
             magnification: _kMagnification,
+            fallbackWidth: wheelWidth,
           ),
         ),
       ),
@@ -14421,7 +14431,7 @@ class _EventTimePickerState extends State<_EventTimePicker> {
         _period = i;
         _notify();
       },
-      children: [
+      buildChildren: (wheelWidth) => [
         Align(
           alignment: Alignment.centerLeft,
           child: Padding(
@@ -14430,6 +14440,7 @@ class _EventTimePickerState extends State<_EventTimePicker> {
               text: 'AM',
               style: _kStyle,
               magnification: _kMagnification,
+              fallbackWidth: math.max(0.0, wheelWidth - 12.0),
               selectionInsets: const EdgeInsetsDirectional.only(
                 end: _kPickerSelectionPillMargin +
                     _kPickerSelectionPillTextInset,
@@ -14445,6 +14456,7 @@ class _EventTimePickerState extends State<_EventTimePicker> {
               text: 'PM',
               style: _kStyle,
               magnification: _kMagnification,
+              fallbackWidth: math.max(0.0, wheelWidth - 12.0),
               selectionInsets: const EdgeInsetsDirectional.only(
                 end: _kPickerSelectionPillMargin +
                     _kPickerSelectionPillTextInset,
@@ -15219,8 +15231,14 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
         _sep(),
         SizedBox(
           height: math.max(216.0, _pickerItemExtent * 5.5),
-          child: Row(
-            children: [
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final pickerColumnWidth = constraints.hasBoundedWidth
+                  ? constraints.maxWidth / 2
+                  : (MediaQuery.sizeOf(context).width - 32) / 2;
+              final optionWidth = math.max(0.0, pickerColumnWidth - 20.0);
+              return Row(
+                children: [
               Expanded(
                 child: _clipPicker(
                   CupertinoPicker(
@@ -15244,7 +15262,11 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                         alignment: Alignment.centerRight,
                         child: Padding(
                           padding: const EdgeInsets.only(right: 20),
-                          child: _pickerText('${i + 1}', Alignment.centerRight),
+                          child: _pickerText(
+                            '${i + 1}',
+                            Alignment.centerRight,
+                            fallbackWidth: optionWidth,
+                          ),
                         ),
                       ),
                     ),
@@ -15273,7 +15295,11 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                         alignment: Alignment.centerLeft,
                         child: Padding(
                           padding: const EdgeInsets.only(left: 20),
-                          child: _pickerText(_everyUnit, Alignment.centerLeft),
+                          child: _pickerText(
+                            _everyUnit,
+                            Alignment.centerLeft,
+                            fallbackWidth: optionWidth,
+                          ),
                         ),
                       ),
                     ],
@@ -15282,7 +15308,9 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                   capEndEdge: true,
                 ),
               ),
-            ],
+                ],
+              );
+            },
           ),
         ),
       ],

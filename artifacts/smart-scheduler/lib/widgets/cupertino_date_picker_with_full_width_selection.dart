@@ -359,6 +359,7 @@ class _CupertinoDatePickerWithFullWidthSelectionState
     String label, {
     required int columnIndex,
     required bool isValid,
+    required double fallbackWidth,
   }) {
     // Match the stock portrait picker: the first logical date column is
     // leading-aligned, and the remaining columns are trailing-aligned.
@@ -375,6 +376,7 @@ class _CupertinoDatePickerWithFullWidthSelectionState
         style: _pickerTextStyle(isValid: isValid),
         magnification: _magnification,
         alignment: alignment,
+        fallbackWidth: fallbackWidth,
       ),
     );
   }
@@ -471,6 +473,7 @@ class _CupertinoDatePickerWithFullWidthSelectionState
   Widget _buildMonthPicker(
     int columnIndex,
     CupertinoLocalizations localizations,
+    double optionWidth,
   ) {
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) =>
@@ -496,6 +499,7 @@ class _CupertinoDatePickerWithFullWidthSelectionState
             localizations.datePickerMonth(month),
             columnIndex: columnIndex,
             isValid: _isMonthValid(month),
+            fallbackWidth: optionWidth,
           );
         }),
       ),
@@ -505,6 +509,7 @@ class _CupertinoDatePickerWithFullWidthSelectionState
   Widget _buildDayPicker(
     int columnIndex,
     CupertinoLocalizations localizations,
+    double optionWidth,
   ) {
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) =>
@@ -530,6 +535,7 @@ class _CupertinoDatePickerWithFullWidthSelectionState
             localizations.datePickerDayOfMonth(day),
             columnIndex: columnIndex,
             isValid: _isDayValid(day),
+            fallbackWidth: optionWidth,
           );
         }),
       ),
@@ -539,6 +545,7 @@ class _CupertinoDatePickerWithFullWidthSelectionState
   Widget _buildYearPicker(
     int columnIndex,
     CupertinoLocalizations localizations,
+    double optionWidth,
   ) {
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) =>
@@ -569,6 +576,7 @@ class _CupertinoDatePickerWithFullWidthSelectionState
             localizations.datePickerYear(year),
             columnIndex: columnIndex,
             isValid: isValid,
+            fallbackWidth: optionWidth,
           );
         },
       ),
@@ -622,15 +630,28 @@ class _CupertinoDatePickerWithFullWidthSelectionState
             child: Row(
               textDirection: Directionality.of(context),
               children: List<Widget>.generate(columns.length, (index) {
+                final wheelColumnWidth = hasRoomForNaturalWidths
+                    ? columnWidths[index]
+                    : groupWidth / columns.length;
+                final optionWidth = math.max(
+                  0.0,
+                  wheelColumnWidth - _wheelItemHorizontalInset,
+                );
                 final wheel = switch (columns[index]) {
                   _DateWheelColumn.month => _buildMonthPicker(
                     index,
                     localizations,
+                    optionWidth,
                   ),
-                  _DateWheelColumn.day => _buildDayPicker(index, localizations),
+                  _DateWheelColumn.day => _buildDayPicker(
+                    index,
+                    localizations,
+                    optionWidth,
+                  ),
                   _DateWheelColumn.year => _buildYearPicker(
                     index,
                     localizations,
+                    optionWidth,
                   ),
                 };
                 return hasRoomForNaturalWidths

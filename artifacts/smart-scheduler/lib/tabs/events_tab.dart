@@ -22092,8 +22092,14 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
           // Expanded columns keep the shared selection pill full-width.
           // Items are edge-aligned toward the column boundary so the number and
           // unit word appear close together in the centre of the picker.
-          child: Row(
-            children: [
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final pickerColumnWidth = constraints.hasBoundedWidth
+                  ? constraints.maxWidth / 2
+                  : (MediaQuery.sizeOf(context).width - 32) / 2;
+              final optionWidth = max(0.0, pickerColumnWidth - 20.0);
+              return Row(
+                children: [
               // Left barrel: numbers 1–999 — right-aligned toward the dividing line.
               // capEndEdge:false so the selection pill merges with the right barrel.
               Expanded(
@@ -22119,7 +22125,11 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                         alignment: Alignment.centerRight,
                         child: Padding(
                           padding: const EdgeInsets.only(right: 20),
-                          child: _pickerText('${i + 1}', Alignment.centerRight),
+                          child: _pickerText(
+                            '${i + 1}',
+                            Alignment.centerRight,
+                            fallbackWidth: optionWidth,
+                          ),
                         ),
                       ),
                     ),
@@ -22150,7 +22160,11 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                         alignment: Alignment.centerLeft,
                         child: Padding(
                           padding: const EdgeInsets.only(left: 20),
-                          child: _pickerText(_everyUnit, Alignment.centerLeft),
+                          child: _pickerText(
+                            _everyUnit,
+                            Alignment.centerLeft,
+                            fallbackWidth: optionWidth,
+                          ),
                         ),
                       ),
                     ],
@@ -22159,7 +22173,9 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                   capEndEdge: true,
                 ),
               ),
-            ],
+                ],
+              );
+            },
           ),
         ),
       ],
