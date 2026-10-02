@@ -173,6 +173,55 @@ void main() {
   );
 
   testWidgets(
+    'hour and minute wheel interactions preserve the active numeric session',
+    (tester) async {
+      await _mountPicker(tester, initialTime: DateTime(2026, 10, 2, 10, 43));
+      await _openKeyboard(tester);
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      await tester.pump();
+
+      final inputBefore = tester.widget<CupertinoTextField>(
+        find.byKey(_inputKey),
+      );
+      final inputElementBefore = tester.element(find.byKey(_inputKey));
+      final controllerBefore = inputBefore.controller;
+      final focusNodeBefore = inputBefore.focusNode;
+      var focusChanges = 0;
+      void countFocusChange() => focusChanges++;
+      focusNodeBefore!.addListener(countFocusChange);
+      addTearDown(() => focusNodeBefore.removeListener(countFocusChange));
+
+      final hourBounds = tester.getRect(find.byKey(_hourWheelKey));
+      await tester.tapAt(
+        Offset(hourBounds.left + hourBounds.width * 0.88, hourBounds.center.dy),
+      );
+      await tester.pumpAndSettle();
+
+      final minuteBounds = tester.getRect(find.byKey(_minuteWheelKey));
+      await tester.tapAt(minuteBounds.center);
+      await tester.pumpAndSettle();
+      await tester.tapAt(
+        Offset(hourBounds.left + hourBounds.width * 0.88, hourBounds.center.dy),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.drag(find.byKey(_minuteWheelKey), const Offset(0, -80));
+      await tester.pumpAndSettle();
+
+      final inputAfter = tester.widget<CupertinoTextField>(
+        find.byKey(_inputKey),
+      );
+      expect(tester.element(find.byKey(_inputKey)), same(inputElementBefore));
+      expect(inputAfter.controller, same(controllerBefore));
+      expect(inputAfter.focusNode, same(focusNodeBefore));
+      expect(inputAfter.focusNode!.hasFocus, isTrue);
+      expect(focusChanges, 0);
+      expect(find.byKey(_inputKey), findsOneWidget);
+      expect(tester.testTextInput.isVisible, isTrue);
+    },
+  );
+
+  testWidgets(
     'selection-band tap reopens the keypad if entry mode outlives it',
     (tester) async {
       await _mountPicker(tester, initialTime: DateTime(2026, 10, 2, 10, 43));

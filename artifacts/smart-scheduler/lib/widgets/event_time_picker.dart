@@ -57,6 +57,8 @@ class _EventTimePickerState extends State<EventTimePicker> {
   bool _isWheelInteractionActive = false;
   bool _isRestoringEntryKeyboard = false;
   bool _isFinishingTimeEntry = false;
+  final Set<int> _pickerPointerIds = <int>{};
+  bool _pickerInteractionStartedWithKeyboardVisible = false;
   bool _suppressHourWheelCallbacks = false;
   bool _suppressMinuteWheelCallbacks = false;
   bool _suppressPeriodWheelCallbacks = false;
@@ -64,6 +66,9 @@ class _EventTimePickerState extends State<EventTimePicker> {
   int _hourAnimationGeneration = 0;
   int _minuteAnimationGeneration = 0;
   int _periodAnimationGeneration = 0;
+
+  bool get _isPickerInteractionActive =>
+      _isWheelInteractionActive || _pickerPointerIds.isNotEmpty;
 
   @override
   void initState() {
@@ -92,9 +97,12 @@ class _EventTimePickerState extends State<EventTimePicker> {
         final interactionGeneration = _entryInteractionGeneration;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted || !_isTimeEntryMode) return;
-          if (_isWheelInteractionActive ||
+          if (_isPickerInteractionActive ||
               interactionGeneration != _entryInteractionGeneration) {
-            _reopenEntryKeyboard();
+            // A picker gesture is not a request to end the numeric session.
+            // Keep its existing input focused without forcing an
+            // unfocus/refocus cycle.
+            if (!_entryFocusNode.hasFocus) _requestEntryFocus();
             return;
           }
           _finishTimeEntry();
@@ -118,10 +126,11 @@ class _EventTimePickerState extends State<EventTimePicker> {
   void _handleEntryFocusChange() {
     if (!_entryFocusNode.hasFocus &&
         _isTimeEntryMode &&
-        _isWheelInteractionActive &&
+        _isPickerInteractionActive &&
         !_isFinishingTimeEntry) {
-      // Keep the native keypad attached while the wheel is being dragged.
-      // iOS can implicitly resign a text field when a scroll gesture starts.
+      // Keep the native keypad attached while any part of the picker is being
+      // used. iOS can implicitly resign a text field when a wheel gesture
+      // starts.
       _entryFocusNode.requestFocus();
     }
   }
@@ -213,6 +222,15 @@ class _EventTimePickerState extends State<EventTimePicker> {
       _minuteEntryDigits = '';
       _entryComponent = component;
       _syncEntryController();
+    }
+
+    if (_pickerPointerIds.isNotEmpty &&
+        _pickerInteractionStartedWithKeyboardVisible) {
+      // Changing the input target inside an active keyboard session is only a
+      // state update. In particular, do not use a stale/transitional inset
+      // value to unfocus and reopen the same numeric field.
+      if (!_entryFocusNode.hasFocus) _requestEntryFocus();
+      return;
     }
 
     // Entry mode can outlive the native keyboard (for example, when the OS
@@ -501,7 +519,31 @@ class _EventTimePickerState extends State<EventTimePicker> {
     if (!_isWheelInteractionActive) return;
     _isWheelInteractionActive = false;
     _entryInteractionGeneration++;
-    if (_isTimeEntryMode) _requestEntryFocus();
+    if (_isTimeEntryMode && !_entryFocusNode.hasFocus) _requestEntryFocus();
+  }
+
+  void _onPickerPointerDown(PointerDownEvent event) {
+    if (!_isTimeEntryMode) return;
+    if (_pickerPointerIds.isEmpty) {
+      _pickerInteractionStartedWithKeyboardVisible =
+          MediaQuery.viewInsetsOf(context).bottom > 0;
+    }
+    _pickerPointerIds.add(event.pointer);
+    _entryInteractionGeneration++;
+  }
+
+  void _onPickerPointerEnd(PointerEvent event) {
+    if (!_pickerPointerIds.contains(event.pointer)) return;
+    // Keep the interaction active through the tap recognizer's onTapUp and
+    // the frame in which any resulting focus/inset notifications are handled.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _pickerPointerIds.remove(event.pointer);
+      if (_pickerPointerIds.isEmpty) {
+        _pickerInteractionStartedWithKeyboardVisible = false;
+        _entryInteractionGeneration++;
+      }
+    });
   }
 
   Widget _loopingBarrel({
@@ -516,63 +558,69 @@ class _EventTimePickerState extends State<EventTimePicker> {
     bool loop = true,
   }) {
     final count = children.length;
-    return GestureDetector(
+    return Listener(
       behavior: HitTestBehavior.translucent,
-      onTapUp: (details) {
-        final centerY = _height / 2;
-        if ((details.localPosition.dy - centerY).abs() <= _itemExtent / 2) {
-          _onSelectionBandTap(entryComponent);
-        }
-      },
-      child: Stack(
-        children: [
-          NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification.depth != 0) return false;
-              if (notification is ScrollStartNotification &&
-                  notification.dragDetails != null) {
-                _onManualWheelScrollStart(entryComponent);
-              }
-              if (notification is ScrollEndNotification) {
-                _onManualWheelScrollEnd();
-              }
-              // Keep the wheel's drag updates from reaching an enclosing
-              // ScrollView's on-drag keyboard dismissal handler.
-              return notification is ScrollUpdateNotification;
-            },
-            child: ListWheelScrollView.useDelegate(
-              key: wheelKey,
-              controller: controller,
-              itemExtent: _itemExtent,
-              physics: const FixedExtentScrollPhysics(),
-              diameterRatio: 1.07,
-              perspective: 0.003,
-              squeeze: 1.25,
-              magnification: _kMagnification,
-              useMagnifier: true,
-              overAndUnderCenterOpacity: 0.447,
-              offAxisFraction: offAxisFraction,
-              childDelegate: loop
-                  ? ListWheelChildLoopingListDelegate(children: children)
-                  : ListWheelChildListDelegate(children: children),
-              onSelectedItemChanged: loop
-                  ? (index) => onChanged(_positiveModulo(index, count))
-                  : onChanged,
+      onPointerDown: _onPickerPointerDown,
+      onPointerUp: _onPickerPointerEnd,
+      onPointerCancel: _onPickerPointerEnd,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTapUp: (details) {
+          final centerY = _height / 2;
+          if ((details.localPosition.dy - centerY).abs() <= _itemExtent / 2) {
+            _onSelectionBandTap(entryComponent);
+          }
+        },
+        child: Stack(
+          children: [
+            NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification.depth != 0) return false;
+                if (notification is ScrollStartNotification &&
+                    notification.dragDetails != null) {
+                  _onManualWheelScrollStart(entryComponent);
+                }
+                if (notification is ScrollEndNotification) {
+                  _onManualWheelScrollEnd();
+                }
+                // Keep the wheel's drag updates from reaching an enclosing
+                // ScrollView's on-drag keyboard dismissal handler.
+                return notification is ScrollUpdateNotification;
+              },
+              child: ListWheelScrollView.useDelegate(
+                key: wheelKey,
+                controller: controller,
+                itemExtent: _itemExtent,
+                physics: const FixedExtentScrollPhysics(),
+                diameterRatio: 1.07,
+                perspective: 0.003,
+                squeeze: 1.25,
+                magnification: _kMagnification,
+                useMagnifier: true,
+                overAndUnderCenterOpacity: 0.447,
+                offAxisFraction: offAxisFraction,
+                childDelegate: loop
+                    ? ListWheelChildLoopingListDelegate(children: children)
+                    : ListWheelChildListDelegate(children: children),
+                onSelectedItemChanged: loop
+                    ? (index) => onChanged(_positiveModulo(index, count))
+                    : onChanged,
+              ),
             ),
-          ),
-          IgnorePointer(
-            child: Center(
-              child: SizedBox(
-                height: _itemExtent,
-                width: double.infinity,
-                child: StadiumCupertinoPickerSelectionOverlay(
-                  capStartEdge: capStart,
-                  capEndEdge: capEnd,
+            IgnorePointer(
+              child: Center(
+                child: SizedBox(
+                  height: _itemExtent,
+                  width: double.infinity,
+                  child: StadiumCupertinoPickerSelectionOverlay(
+                    capStartEdge: capStart,
+                    capEndEdge: capEnd,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

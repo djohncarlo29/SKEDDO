@@ -14,3 +14,7 @@ The keypad must reopen whenever it is inactive and the selection bar is tapped, 
 **Why:** A post-frame focus callback alone may never run after a tap that schedules no frame, leaving an already-mounted but unfocused input unreachable.
 
 **How to apply:** This rule applies to every shared event time picker instance, including start, end, and reminder times. Keep the three Expanded columns and the `-0.60 / 0 / +0.45` off-axis values for hour, minutes, and period respectively. A request to change barrel curvature does not authorize changing the column layout or replacing the plain time-label widgets with edge-inset wheel text. Selection-band taps must inspect actual keyboard visibility, refresh focus when the keypad is absent, and request focus immediately when the input is already mounted.
+
+**Why:** Hour/minute selection is an internal target change, not a new numeric-entry session. A picker gesture must not cause a focused field to be unfocused and reopened, or unmount and recreate the invisible input.
+
+**How to apply:** While the numeric keypad is visible, track picker pointer gestures before focus can change. Keep the existing field, controller, and focus node mounted while taps or wheel drags update the target; only a real keypad dismissal outside an active picker interaction may end the session.
