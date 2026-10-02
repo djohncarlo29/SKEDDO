@@ -21859,16 +21859,36 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     );
   }
 
+  double _positionDayWheelColumnWidth() {
+    var widestLabel = 0.0;
+    for (final label in [..._kPositions, ..._kPositionDays]) {
+      final painter = TextPainter(
+        text: TextSpan(text: label, style: _kPickerItemStyle),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        maxLines: 1,
+      )..layout();
+      widestLabel = max(widestLabel, painter.width);
+      painter.dispose();
+    }
+    return widestLabel * _kPickerMagnification +
+        WheelOptionText.edgeInset * 2;
+  }
+
   Widget _positionDayPickerWithFullWidthSelectionBar(
     Widget Function(double optionWidth) buildRow,
   ) {
+    final preferredWidth = _positionDayWheelColumnWidth() * 2;
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableWidth =
             constraints.hasBoundedWidth
                 ? constraints.maxWidth
-                : MediaQuery.sizeOf(context).width;
-        final wheelGroupWidth = availableWidth;
+                : preferredWidth;
+        final wheelGroupWidth = min(
+          availableWidth * 0.72,
+          preferredWidth,
+        );
         final optionWidth = wheelGroupWidth / 2;
         return SizedBox(
           width: availableWidth,
@@ -22024,15 +22044,14 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
         _sep(),
         SizedBox(
           height: max(216.0, _pickerItemExtent * 5.5),
-          // Expanded columns keep the shared selection pill full-width.
-          // Items are edge-aligned toward the column boundary so the number and
-          // unit word appear close together in the centre of the picker.
+          // The selection pill stays full-width; inner label padding preserves
+          // the former gap between the count and unit.
           child: LayoutBuilder(
             builder: (context, constraints) {
               final pickerColumnWidth = constraints.hasBoundedWidth
                   ? constraints.maxWidth / 2
                   : (MediaQuery.sizeOf(context).width - 32) / 2;
-              final optionWidth = pickerColumnWidth;
+              final optionWidth = max(0.0, pickerColumnWidth - 20.0);
               return Row(
                 children: [
               // Left barrel: numbers 1–999 — right-aligned toward the dividing line.
@@ -22058,10 +22077,13 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                       999,
                       (i) => Align(
                         alignment: Alignment.centerRight,
-                        child: _pickerText(
-                          '${i + 1}',
-                          Alignment.centerRight,
-                          fallbackWidth: optionWidth,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 20),
+                          child: _pickerText(
+                            '${i + 1}',
+                            Alignment.centerRight,
+                            fallbackWidth: optionWidth,
+                          ),
                         ),
                       ),
                     ),
@@ -22088,10 +22110,13 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                     children: [
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: _pickerText(
-                          _everyUnit,
-                          Alignment.centerLeft,
-                          fallbackWidth: optionWidth,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 20),
+                          child: _pickerText(
+                            _everyUnit,
+                            Alignment.centerLeft,
+                            fallbackWidth: optionWidth,
+                          ),
                         ),
                       ),
                     ],

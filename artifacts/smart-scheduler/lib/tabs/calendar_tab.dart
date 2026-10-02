@@ -14382,13 +14382,16 @@ class _EventTimePickerState extends State<_EventTimePicker> {
         12,
         (i) => Align(
           alignment: Alignment.centerRight,
-          child: WheelOptionText(
-            text: '${i + 1}',
-            style: _kStyle,
-            alignment: Alignment.centerRight,
-            textAlign: TextAlign.right,
-            magnification: _kMagnification,
-            fallbackWidth: wheelWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: WheelOptionText(
+              text: '${i + 1}',
+              style: _kStyle,
+              alignment: Alignment.centerRight,
+              textAlign: TextAlign.right,
+              magnification: _kMagnification,
+              fallbackWidth: math.max(0.0, wheelWidth - 12.0),
+            ),
           ),
         ),
       ),
@@ -14427,20 +14430,26 @@ class _EventTimePickerState extends State<_EventTimePicker> {
       buildChildren: (wheelWidth) => [
         Align(
           alignment: Alignment.centerLeft,
-          child: WheelOptionText(
-            text: 'AM',
-            style: _kStyle,
-            magnification: _kMagnification,
-            fallbackWidth: wheelWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: WheelOptionText(
+              text: 'AM',
+              style: _kStyle,
+              magnification: _kMagnification,
+              fallbackWidth: math.max(0.0, wheelWidth - 12.0),
+            ),
           ),
         ),
         Align(
           alignment: Alignment.centerLeft,
-          child: WheelOptionText(
-            text: 'PM',
-            style: _kStyle,
-            magnification: _kMagnification,
-            fallbackWidth: wheelWidth,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: WheelOptionText(
+              text: 'PM',
+              style: _kStyle,
+              magnification: _kMagnification,
+              fallbackWidth: math.max(0.0, wheelWidth - 12.0),
+            ),
           ),
         ),
       ],
@@ -14983,15 +14992,35 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     );
   }
 
+  double _positionDayWheelColumnWidth() {
+    var widestLabel = 0.0;
+    for (final label in [..._kPositions, ..._kPositionDays]) {
+      final painter = TextPainter(
+        text: TextSpan(text: label, style: _kPickerItemStyle),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        maxLines: 1,
+      )..layout();
+      widestLabel = math.max(widestLabel, painter.width);
+      painter.dispose();
+    }
+    return widestLabel * _kPickerMagnification +
+        WheelOptionText.edgeInset * 2;
+  }
+
   Widget _positionDayPickerWithFullWidthSelectionBar(
     Widget Function(double optionWidth) buildRow,
   ) {
+    final preferredWidth = _positionDayWheelColumnWidth() * 2;
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableWidth = constraints.hasBoundedWidth
             ? constraints.maxWidth
-            : MediaQuery.sizeOf(context).width;
-        final wheelGroupWidth = availableWidth;
+            : preferredWidth;
+        final wheelGroupWidth = math.min(
+          availableWidth * 0.72,
+          preferredWidth,
+        );
         final optionWidth = wheelGroupWidth / 2;
         return SizedBox(
           width: availableWidth,
@@ -15148,7 +15177,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
               final pickerColumnWidth = constraints.hasBoundedWidth
                   ? constraints.maxWidth / 2
                   : (MediaQuery.sizeOf(context).width - 32) / 2;
-              final optionWidth = pickerColumnWidth;
+              final optionWidth = math.max(0.0, pickerColumnWidth - 20.0);
               return Row(
                 children: [
               Expanded(
@@ -15172,10 +15201,13 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                       999,
                       (i) => Align(
                         alignment: Alignment.centerRight,
-                        child: _pickerText(
-                          '${i + 1}',
-                          Alignment.centerRight,
-                          fallbackWidth: optionWidth,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 20),
+                          child: _pickerText(
+                            '${i + 1}',
+                            Alignment.centerRight,
+                            fallbackWidth: optionWidth,
+                          ),
                         ),
                       ),
                     ),
@@ -15200,10 +15232,13 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                     children: [
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: _pickerText(
-                          _everyUnit,
-                          Alignment.centerLeft,
-                          fallbackWidth: optionWidth,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 20),
+                          child: _pickerText(
+                            _everyUnit,
+                            Alignment.centerLeft,
+                            fallbackWidth: optionWidth,
+                          ),
                         ),
                       ),
                     ],
