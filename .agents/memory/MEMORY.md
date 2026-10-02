@@ -61,7 +61,7 @@
 - [flutter_onnxruntime Android crash](onnxruntime-android-crash.md) — ONNX session.run() causes an unrecoverable JNI SIGSEGV on Android; also covers the earlier UnsatisfiedLinkError fix and plugin registration patch.
 - [TFLite Android embedding](tflite-android-embedding.md) — all-MiniLM-L6-v2 TFLite model tensor layout, source URL, and KGP 2.1 Gradle fix (kotlin.jvm.target.validation.mode=WARNING).
 - [Event creation save architecture](event-creation-save-architecture.md) — all ScheduledEvent fields, picker constraints, recurrence storage rule, alert timing logic, and normalisation decisions.
-- [Recurrence ordinal wheel styling](recurrence-ordinal-wheel-styling.md) — center each Monthly/Yearly option in its own barrel wheel; keep grouped selectors lowercase.
+- [Recurrence ordinal wheel styling](recurrence-ordinal-wheel-styling.md) — center both options, keep them slightly closer, and preserve full-width selection, curvature, and behavior.
 - [Full-width time picker selection](full-width-time-picker.md) — evenly space hour/minute/period wheels across the available width and preserve the outer barrel curvature.
 - [Deleted category recovery](deleted-category-recovery.md) — recovering a category restores its structure only; events remain in Uncategorized by product decision.
 - [Category archive choices](category-archive-choices.md) — contentful categories ask whether to archive intact or move events out and archive only the category.

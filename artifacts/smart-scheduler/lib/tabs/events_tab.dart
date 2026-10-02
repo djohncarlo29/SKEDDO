@@ -21923,7 +21923,8 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
       builder: (context, constraints) {
         final availableWidth =
             constraints.hasBoundedWidth ? constraints.maxWidth : preferredWidth;
-        final optionWidth = max(0.0, availableWidth / 2 - 8.0);
+        final wheelGroupWidth = min(availableWidth, preferredWidth);
+        final optionWidth = max(0.0, wheelGroupWidth / 2 - 8.0);
         return SizedBox(
           width: availableWidth,
           child: Stack(
@@ -21944,7 +21945,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
               ),
               Center(
                 child: SizedBox(
-                  width: availableWidth,
+                  width: wheelGroupWidth,
                   child: buildRow(optionWidth),
                 ),
               ),
@@ -22283,14 +22284,14 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                                 ),
                                 child: _pickerText(
                                   p,
-                                  Alignment.centerRight,
+                                   Alignment.center,
                                   fallbackWidth: optionWidth,
-                                  selectionInsets:
-                                      const EdgeInsetsDirectional.only(
-                                        start: _kPickerSelectionPillMargin,
-                                        end: _kPickerSelectionPillInnerGap,
-                                      ),
-                                  textAlign: TextAlign.right,
+                                   selectionInsets:
+                                       const EdgeInsetsDirectional.symmetric(
+                                         horizontal:
+                                             _kPickerSelectionPillMargin,
+                                       ),
+                                   textAlign: TextAlign.center,
                                 ),
                               ),
                             ),
@@ -22325,14 +22326,14 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                                 ),
                                 child: _pickerText(
                                   d,
-                                  Alignment.centerLeft,
+                                   Alignment.center,
                                   fallbackWidth: optionWidth,
-                                  selectionInsets:
-                                      const EdgeInsetsDirectional.only(
-                                        start: _kPickerSelectionPillInnerGap,
-                                        end: _kPickerSelectionPillMargin,
-                                      ),
-                                  textAlign: TextAlign.left,
+                                   selectionInsets:
+                                       const EdgeInsetsDirectional.symmetric(
+                                         horizontal:
+                                             _kPickerSelectionPillMargin,
+                                       ),
+                                   textAlign: TextAlign.center,
                                 ),
                               ),
                             ),
@@ -22560,16 +22561,14 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                                           ),
                                           child: _pickerText(
                                             _kPositions[positionIndex],
-                                            Alignment.centerRight,
+                                            Alignment.center,
                                             fallbackWidth: optionWidth,
                                             selectionInsets:
-                                                const EdgeInsetsDirectional.only(
-                                                  start:
+                                                const EdgeInsetsDirectional.symmetric(
+                                                  horizontal:
                                                       _kPickerSelectionPillMargin,
-                                                  end:
-                                                      _kPickerSelectionPillInnerGap,
                                                 ),
-                                            textAlign: TextAlign.right,
+                                            textAlign: TextAlign.center,
                                           ),
                                         ),
                                       ),
@@ -22603,16 +22602,14 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                                           ),
                                           child: _pickerText(
                                             d,
-                                            Alignment.centerLeft,
+                                            Alignment.center,
                                             fallbackWidth: optionWidth,
                                             selectionInsets:
-                                                const EdgeInsetsDirectional.only(
-                                                  start:
-                                                      _kPickerSelectionPillInnerGap,
-                                                  end:
+                                                const EdgeInsetsDirectional.symmetric(
+                                                  horizontal:
                                                       _kPickerSelectionPillMargin,
                                                 ),
-                                            textAlign: TextAlign.left,
+                                            textAlign: TextAlign.center,
                                           ),
                                         ),
                                       ),
