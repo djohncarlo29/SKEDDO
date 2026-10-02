@@ -21533,6 +21533,79 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
   late final FixedExtentScrollController _yearlyDayCtrl;
   late final AnimationController _yearlyDaysCtrl;
 
+  int get _yearlyReferenceYear => DateTime.now().year;
+
+  List<int> get _availableYearlyPositionIndices =>
+      RecurrenceExpander.availableYearlyPositionIndices(
+        year: _yearlyReferenceYear,
+        selectedMonths: _selectedMonths,
+        dayIndex: _yearlyDayIndex,
+      );
+
+  List<int> get _availableYearlyMonthIndices =>
+      RecurrenceExpander.availableYearlyMonthIndices(
+        year: _yearlyReferenceYear,
+        selectedMonths: _selectedMonths,
+        positionIndex: _yearlyPositionIndex,
+        dayIndex: _yearlyDayIndex,
+      );
+
+  void _normalizeYearlyPositionSelection() {
+    final available = _availableYearlyPositionIndices;
+    if (available.contains(_yearlyPositionIndex)) return;
+    _yearlyPositionIndex = available.reduce(
+      (nearest, candidate) =>
+          (candidate - _yearlyPositionIndex).abs() <
+                  (nearest - _yearlyPositionIndex).abs()
+              ? candidate
+              : nearest,
+    );
+  }
+
+  int get _yearlyPositionWheelIndex =>
+      _availableYearlyPositionIndices.indexOf(_yearlyPositionIndex);
+
+  void _syncYearlyPositionController() {
+    final wheelIndex = _yearlyPositionWheelIndex;
+    if (_yearlyPositionCtrl.hasClients &&
+        wheelIndex >= 0 &&
+        _yearlyPositionCtrl.selectedItem != wheelIndex) {
+      _yearlyPositionCtrl.jumpToItem(wheelIndex);
+    }
+  }
+
+  void _scheduleYearlyPositionControllerSync() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncYearlyPositionController();
+    });
+  }
+
+  void _selectYearlyDay(int dayIndex) {
+    setState(() {
+      _yearlyDayIndex = dayIndex;
+      _normalizeYearlyPositionSelection();
+    });
+    _scheduleYearlyPositionControllerSync();
+  }
+
+  void _toggleYearlyMonth(int monthIndex) {
+    setState(() {
+      if (_selectedMonths.contains(monthIndex)) {
+        _selectedMonths.remove(monthIndex);
+      } else {
+        _selectedMonths.add(monthIndex);
+      }
+      _normalizeYearlyPositionSelection();
+    });
+    _scheduleYearlyPositionControllerSync();
+  }
+
+  void _selectYearlyPositionWheelIndex(int wheelIndex) {
+    final positions = _availableYearlyPositionIndices;
+    if (wheelIndex < 0 || wheelIndex >= positions.length) return;
+    setState(() => _yearlyPositionIndex = positions[wheelIndex]);
+  }
+
   static String _ordinal(int n) {
     if (n >= 11 && n <= 13) return '${n}th';
     switch (n % 10) {
@@ -21586,14 +21659,19 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     }
     if (_frequency == 'Yearly') {
       final sortedMonths = _selectedMonths.toList()..sort();
-      final monthNames = sortedMonths.map((i) => _kMonthsFull[i - 1]).toList();
       if (_yearlyDaysEnabled) {
+        final supportedMonths = _availableYearlyMonthIndices.toSet();
+        final monthNames = sortedMonths
+            .where(supportedMonths.contains)
+            .map((i) => _kMonthsFull[i - 1])
+            .toList();
         final pos = _kPositions[_yearlyPositionIndex];
         final day = _positionDayLabel(_yearlyDayIndex);
         final monthPhrase =
             monthNames.isEmpty ? '' : ' of ${_joinDays(monthNames)}';
         return '$prefix $every on the $pos $day$monthPhrase.';
       }
+      final monthNames = sortedMonths.map((i) => _kMonthsFull[i - 1]).toList();
       final String base =
           monthNames.isEmpty
               ? '$prefix $every'
@@ -21632,13 +21710,14 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
       _yearlyPositionIndex = c.yearlyPositionIndex;
       _yearlyDayIndex = c.yearlyDayIndex;
     }
+    _normalizeYearlyPositionSelection();
     _everyCountCtrl = FixedExtentScrollController(initialItem: _everyCount - 1);
     _onThePositionCtrl = FixedExtentScrollController(
       initialItem: _onThePositionIndex,
     );
     _onTheDayCtrl = FixedExtentScrollController(initialItem: _onTheDayIndex);
     _yearlyPositionCtrl = FixedExtentScrollController(
-      initialItem: _yearlyPositionIndex,
+      initialItem: _yearlyPositionWheelIndex,
     );
     _yearlyDayCtrl = FixedExtentScrollController(initialItem: _yearlyDayIndex);
     _everyPickerCtrl = AnimationController(
@@ -22222,7 +22301,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                   useMagnifier: true,
                   magnification: 2.35 / 2.1,
                   squeeze: 1.25,
-                  offAxisFraction: -0.45,
+                  offAxisFraction: 0.0,
                   selectionOverlay: const SizedBox.shrink(),
                   onSelectedItemChanged:
                       (i) => setState(() => _onThePositionIndex = i),
@@ -22258,7 +22337,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                   useMagnifier: true,
                   magnification: 2.35 / 2.1,
                   squeeze: 1.25,
-                  offAxisFraction: 0.45,
+                  offAxisFraction: 0.0,
                   selectionOverlay: const SizedBox.shrink(),
                   onSelectedItemChanged:
                       (i) => setState(() => _onTheDayIndex = i),
@@ -22370,13 +22449,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
     final selected = _selectedMonths.contains(monthIndex);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap:
-          () => setState(() {
-            if (selected)
-              _selectedMonths.remove(monthIndex);
-            else
-              _selectedMonths.add(monthIndex);
-          }),
+      onTap: () => _toggleYearlyMonth(monthIndex),
       child: SizedBox(
         height: 44,
         child: ColoredBox(
@@ -22493,21 +22566,21 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                             useMagnifier: true,
                             magnification: 2.35 / 2.1,
                             squeeze: 1.25,
-                            offAxisFraction: -0.45,
+                            offAxisFraction: 0.0,
                             selectionOverlay: const SizedBox.shrink(),
                             onSelectedItemChanged:
-                                (i) => setState(() => _yearlyPositionIndex = i),
+                                _selectYearlyPositionWheelIndex,
                             children:
-                                _kPositions
+                                _availableYearlyPositionIndices
                                     .map(
-                                      (p) => Align(
+                                      (positionIndex) => Align(
                                         alignment: Alignment.center,
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 4,
                                           ),
                                           child: _pickerText(
-                                            p,
+                                            _kPositions[positionIndex],
                                             Alignment.center,
                                             textAlign: TextAlign.center,
                                           ),
@@ -22529,10 +22602,9 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                             useMagnifier: true,
                             magnification: 2.35 / 2.1,
                             squeeze: 1.25,
-                            offAxisFraction: 0.45,
+                            offAxisFraction: 0.0,
                             selectionOverlay: const SizedBox.shrink(),
-                            onSelectedItemChanged:
-                                (i) => setState(() => _yearlyDayIndex = i),
+                            onSelectedItemChanged: _selectYearlyDay,
                             children:
                                 _kPositionDays
                                     .map(

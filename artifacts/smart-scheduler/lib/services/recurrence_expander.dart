@@ -110,6 +110,26 @@ class RecurrenceExpander {
         : available;
   }
 
+  /// Returns the selected months in [year] that contain the requested
+  /// [positionIndex] for the chosen weekday or date group.
+  ///
+  /// An empty [selectedMonths] set means all months are considered.
+  static List<int> availableYearlyMonthIndices({
+    required int year,
+    required Set<int> selectedMonths,
+    required int positionIndex,
+    required int dayIndex,
+  }) {
+    final months = selectedMonths.isEmpty
+        ? List<int>.generate(12, (index) => index + 1)
+        : selectedMonths.where((month) => month >= 1 && month <= 12).toList();
+    return [
+      for (final month in months)
+        if (_nthWeekdayOfMonth(year, month, positionIndex, dayIndex) != null)
+          month,
+    ];
+  }
+
   /// Expand [base] into concrete occurrences within [[from], [to]].
   ///
   /// Returns [] if [base] is not recurring or has no absolute date.

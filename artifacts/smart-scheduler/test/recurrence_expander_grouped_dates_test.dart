@@ -95,6 +95,35 @@ void main() {
     );
   });
 
+  test('yearly ordinal options use the union of supported selected months', () {
+    // February 2026 has four Mondays; March has five.
+    expect(
+      RecurrenceExpander.availableYearlyPositionIndices(
+        year: 2026,
+        selectedMonths: {2},
+        dayIndex: 0,
+      ),
+      isNot(contains(4)),
+    );
+    expect(
+      RecurrenceExpander.availableYearlyPositionIndices(
+        year: 2026,
+        selectedMonths: {2, 3},
+        dayIndex: 0,
+      ),
+      contains(4),
+    );
+    expect(
+      RecurrenceExpander.availableYearlyMonthIndices(
+        year: 2026,
+        selectedMonths: {2, 3},
+        positionIndex: 4,
+        dayIndex: 0,
+      ),
+      [3],
+    );
+  });
+
   test('yearly grouped weekday rules use the selected month', () {
     expect(
       expand(
