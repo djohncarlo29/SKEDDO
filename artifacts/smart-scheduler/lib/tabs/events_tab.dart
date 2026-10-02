@@ -21923,7 +21923,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
       builder: (context, constraints) {
         final availableWidth =
             constraints.hasBoundedWidth ? constraints.maxWidth : preferredWidth;
-        final wheelGroupWidth = min(availableWidth, preferredWidth);
+        final wheelGroupWidth = min(availableWidth * 0.72, preferredWidth);
         final optionWidth = max(0.0, wheelGroupWidth / 2 - 8.0);
         return SizedBox(
           width: availableWidth,

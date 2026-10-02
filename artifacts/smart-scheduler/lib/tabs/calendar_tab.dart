@@ -15069,7 +15069,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
         final availableWidth = constraints.hasBoundedWidth
             ? constraints.maxWidth
             : preferredWidth;
-        final wheelGroupWidth = math.min(availableWidth, preferredWidth);
+        final wheelGroupWidth = math.min(availableWidth * 0.72, preferredWidth);
         final optionWidth = math.max(0.0, wheelGroupWidth / 2 - 8.0);
         return SizedBox(
           width: availableWidth,

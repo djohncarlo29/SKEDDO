@@ -2,10 +2,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
+const double _selectionBarEdgeInset = 8.0;
+
 /// Keeps a wheel option inside its selection-bar segment after magnification.
 ///
-/// The text keeps the active OS text scaler. FittedBox only applies an
-/// additional scale-down when the actual wheel width cannot contain it.
+/// Every option keeps at least an 8dp inset from both segment edges. The text
+/// keeps the active OS text scaler; FittedBox shrinks it further when needed.
 class WheelOptionText extends StatelessWidget {
   const WheelOptionText({
     super.key,
@@ -43,14 +45,24 @@ class WheelOptionText extends StatelessWidget {
         final resolvedInsets = selectionInsets.resolve(
           Directionality.of(context),
         );
+        final safeInsets = EdgeInsets.fromLTRB(
+          resolvedInsets.left < _selectionBarEdgeInset
+              ? _selectionBarEdgeInset
+              : resolvedInsets.left,
+          resolvedInsets.top,
+          resolvedInsets.right < _selectionBarEdgeInset
+              ? _selectionBarEdgeInset
+              : resolvedInsets.right,
+          resolvedInsets.bottom,
+        );
         final textWidth =
-            math.max(0.0, availableWidth - resolvedInsets.horizontal) /
+            math.max(0.0, availableWidth - safeInsets.horizontal) /
             magnification;
 
         return SizedBox(
           width: availableWidth,
           child: Padding(
-            padding: selectionInsets,
+            padding: safeInsets,
             child: Align(
               alignment: alignment,
               child: SizedBox(
