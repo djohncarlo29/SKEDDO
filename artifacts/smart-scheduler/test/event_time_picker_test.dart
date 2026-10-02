@@ -130,6 +130,47 @@ void main() {
   );
 
   testWidgets(
+    'tapping minute switches input there, then tapping hour switches back',
+    (tester) async {
+      await _mountPicker(tester, initialTime: DateTime(2026, 10, 2, 10, 43));
+      await _openKeyboard(tester);
+
+      await tester.tapAt(tester.getRect(find.byKey(_minuteWheelKey)).center);
+      await tester.pumpAndSettle();
+      expect(tester.testTextInput.isVisible, isTrue);
+      expect(
+        tester
+            .widget<CupertinoTextField>(find.byKey(_inputKey))
+            .focusNode!
+            .hasFocus,
+        isTrue,
+      );
+
+      // Selecting minutes first skips hour entry entirely.
+      await _type(tester, '35');
+      expect(_selectedHour(tester), 10);
+      expect(_selectedMinute(tester), 35);
+
+      // The keyboard remains open, and the hour column becomes the active
+      // input target so the committed minute can be left unchanged.
+      await tester.tapAt(tester.getRect(find.byKey(_hourWheelKey)).center);
+      await tester.pumpAndSettle();
+      expect(tester.testTextInput.isVisible, isTrue);
+      expect(
+        tester
+            .widget<CupertinoTextField>(find.byKey(_inputKey))
+            .controller!
+            .text,
+        isEmpty,
+      );
+      await _type(tester, '12');
+      expect(_selectedHour(tester), 12);
+      expect(_selectedMinute(tester), 35);
+      expect(tester.testTextInput.isVisible, isTrue);
+    },
+  );
+
+  testWidgets(
     'hour prefixes, invalid digits, and backspace update only meaningful values',
     (tester) async {
       await _mountPicker(tester, initialTime: DateTime(2026, 10, 2, 10, 43));

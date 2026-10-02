@@ -54,12 +54,14 @@ class _EventTimePickerState extends State<EventTimePicker> {
   String _minuteEntryDigits = '';
   bool _isTimeEntryMode = false;
   bool _wasKeyboardVisible = false;
+  bool _keyboardDismissedDuringEntry = false;
   bool _isWheelInteractionActive = false;
+  bool _isRestoringEntryKeyboard = false;
   bool _isFinishingTimeEntry = false;
   bool _suppressHourWheelCallbacks = false;
   bool _suppressMinuteWheelCallbacks = false;
   bool _suppressPeriodWheelCallbacks = false;
-  int _wheelInteractionGeneration = 0;
+  int _entryInteractionGeneration = 0;
   int _hourAnimationGeneration = 0;
   int _minuteAnimationGeneration = 0;
   int _periodAnimationGeneration = 0;
@@ -83,17 +85,24 @@ class _EventTimePickerState extends State<EventTimePicker> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+    if (keyboardVisible) {
+      _keyboardDismissedDuringEntry = false;
+      _isRestoringEntryKeyboard = false;
+    }
     if (_isTimeEntryMode && _wasKeyboardVisible && !keyboardVisible) {
-      final wheelGeneration = _wheelInteractionGeneration;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !_isTimeEntryMode) return;
-        if (_isWheelInteractionActive ||
-            wheelGeneration != _wheelInteractionGeneration) {
-          _requestEntryFocus();
-          return;
-        }
-        _finishTimeEntry();
-      });
+      _keyboardDismissedDuringEntry = true;
+      if (!_isRestoringEntryKeyboard) {
+        final interactionGeneration = _entryInteractionGeneration;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || !_isTimeEntryMode) return;
+          if (_isWheelInteractionActive ||
+              interactionGeneration != _entryInteractionGeneration) {
+            _reopenEntryKeyboard();
+            return;
+          }
+          _finishTimeEntry();
+        });
+      }
     }
     _wasKeyboardVisible = keyboardVisible;
   }
@@ -150,6 +159,8 @@ class _EventTimePickerState extends State<EventTimePicker> {
     _hourEntryDigits = '';
     _minuteEntryDigits = '';
     _entryComponent = _TimeEntryComponent.hour;
+    _keyboardDismissedDuringEntry = false;
+    _isRestoringEntryKeyboard = false;
     _entryController.clear();
     if (!_isTimeEntryMode) {
       setState(() => _isTimeEntryMode = true);
@@ -163,11 +174,54 @@ class _EventTimePickerState extends State<EventTimePicker> {
     });
   }
 
+  void _reopenEntryKeyboard() {
+    if (!_isTimeEntryMode) return;
+    _entryInteractionGeneration++;
+    _keyboardDismissedDuringEntry = false;
+    _isRestoringEntryKeyboard = true;
+    if (_entryFocusNode.hasFocus) {
+      _entryFocusNode.unfocus();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _isTimeEntryMode) _entryFocusNode.requestFocus();
+      });
+      return;
+    }
+    _requestEntryFocus();
+  }
+
+  void _onSelectionBandTap(_TimeEntryComponent? component) {
+    if (!_isTimeEntryMode) {
+      // Opening the picker always starts at the hour, even if the first tap
+      // landed on the minute or period column.
+      _beginTimeEntry();
+      return;
+    }
+
+    _entryInteractionGeneration++;
+    if (component != null) {
+      _hourEntryDigits = '';
+      _minuteEntryDigits = '';
+      _entryComponent = component;
+      _syncEntryController();
+    }
+
+    final keyboardIsHidden =
+        _keyboardDismissedDuringEntry ||
+        (_wasKeyboardVisible && MediaQuery.viewInsetsOf(context).bottom == 0);
+    if (keyboardIsHidden) {
+      _reopenEntryKeyboard();
+    } else {
+      _requestEntryFocus();
+    }
+  }
+
   void _finishTimeEntry() {
     if (!_isTimeEntryMode) return;
     _isFinishingTimeEntry = true;
     _isWheelInteractionActive = false;
-    _wheelInteractionGeneration++;
+    _entryInteractionGeneration++;
+    _keyboardDismissedDuringEntry = false;
+    _isRestoringEntryKeyboard = false;
     _entryFocusNode.unfocus();
     _entryController.clear();
     _hourEntryDigits = '';
@@ -417,7 +471,7 @@ class _EventTimePickerState extends State<EventTimePicker> {
 
   void _onManualWheelScrollStart(_TimeEntryComponent? component) {
     _isWheelInteractionActive = true;
-    _wheelInteractionGeneration++;
+    _entryInteractionGeneration++;
     if (component == _TimeEntryComponent.hour) {
       _hourAnimationGeneration++;
       _suppressHourWheelCallbacks = false;
@@ -441,7 +495,7 @@ class _EventTimePickerState extends State<EventTimePicker> {
   void _onManualWheelScrollEnd() {
     if (!_isWheelInteractionActive) return;
     _isWheelInteractionActive = false;
-    _wheelInteractionGeneration++;
+    _entryInteractionGeneration++;
     if (_isTimeEntryMode) _requestEntryFocus();
   }
 
@@ -459,15 +513,12 @@ class _EventTimePickerState extends State<EventTimePicker> {
     final count = children.length;
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
-      onTapUp: _isTimeEntryMode
-          ? null
-          : (details) {
-              final centerY = _height / 2;
-              if ((details.localPosition.dy - centerY).abs() <=
-                  _itemExtent / 2) {
-                _beginTimeEntry();
-              }
-            },
+      onTapUp: (details) {
+        final centerY = _height / 2;
+        if ((details.localPosition.dy - centerY).abs() <= _itemExtent / 2) {
+          _onSelectionBandTap(entryComponent);
+        }
+      },
       child: Stack(
         children: [
           NotificationListener<ScrollNotification>(
