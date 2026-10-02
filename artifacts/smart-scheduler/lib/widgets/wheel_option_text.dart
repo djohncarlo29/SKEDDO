@@ -49,8 +49,7 @@ class WheelOptionText extends StatelessWidget {
 
         return SizedBox(
           width: availableWidth,
-          child: Align(
-            alignment: alignment,
+          child: Center(
             child: SizedBox(
               width: textWidth,
               child: FittedBox(

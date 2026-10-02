@@ -141,7 +141,7 @@
 - [Year↔Month List morph boundary](year-month-list-morph-boundary.md) — position the List handoff in the overlay and keep its opacity layer intrinsic to the event content.
 - [Calendar week-strip veil architecture](calendar-morph-week-strip-surfaces.md) — keep Day content underneath fixed DOW chrome; each full week row is an opaque moving veil.
 - [Picker wide-layout geometry](picker-wide-layout-geometry.md) — reuse portrait-derived item/cell sizes and spacing at the current text scale, then fit extra left-aligned columns inside the sheet.
-- [Landscape date picker columns](cupertino-date-picker-landscape-width.md) — keep wheels compact and preserve portrait disabled-date pass-through and settle behavior.
+- [Landscape date picker columns](cupertino-date-picker-landscape-width.md) — fill the full selection bar with equal columns and preserve disabled-date pass-through and settle behavior.
 - [Barrel option text fitting](barrel-option-text-fitting.md) — all custom wheel labels use an exact 8dp inset and shrink to fit without stacked padding or clipping.
 - [Smart Category count cache invalidation](smart-category-count-cache-invalidation.md) — matcher embeddings can change results asynchronously without changing the event list, so derived counts need matcher revisions.
 - [Live rotation layout](live-rotation-layout.md) — never freeze the root MediaQuery during native rotation; every intermediate window metric must reach adaptive layouts.

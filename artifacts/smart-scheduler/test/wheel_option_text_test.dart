@@ -9,8 +9,6 @@ void main() {
     const width = 132.0;
     const magnification = 2.35 / 2.1;
     const label = 'weekend day';
-    const selectionInsets = EdgeInsetsDirectional.symmetric(horizontal: 6.5);
-
     await tester.pumpWidget(
       Directionality(
         textDirection: TextDirection.ltr,
@@ -26,7 +24,6 @@ void main() {
                 text: label,
                 style: TextStyle(fontSize: 16),
                 magnification: magnification,
-                selectionInsets: selectionInsets,
               ),
             ),
           ),
@@ -38,7 +35,7 @@ void main() {
     final textWidth = tester.getSize(find.text(label)).width;
     final text = tester.widget<Text>(find.text(label));
 
-    expect(fitBoxWidth * magnification, closeTo(width - 13, 0.01));
+    expect(fitBoxWidth * magnification, closeTo(width - 16, 0.01));
     expect(textWidth, greaterThan(fitBoxWidth));
     expect(text.maxLines, 1);
     expect(text.softWrap, isFalse);
@@ -63,9 +60,6 @@ void main() {
                 text: 'Wed',
                 style: TextStyle(fontSize: 16),
                 magnification: 2.35 / 2.1,
-                selectionInsets: EdgeInsetsDirectional.symmetric(
-                  horizontal: 6.5,
-                ),
               ),
             ),
           ),

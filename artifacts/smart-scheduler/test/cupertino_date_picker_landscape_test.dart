@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/widgets/cupertino_date_picker_with_full_width_selection.dart';
 
 void main() {
-  testWidgets('landscape date wheels stay grouped and centered', (
+  testWidgets('landscape date wheels use the full selection-bar width', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1200, 600);
@@ -44,17 +44,16 @@ void main() {
     );
 
     expect(group.center.dx, closeTo(600, 1));
-    expect(group.width, greaterThan(0));
-    expect(group.width, lessThan(600));
-    expect(day.center.dx - month.center.dx, lessThan(180));
-    expect(year.center.dx - day.center.dx, lessThan(180));
-    expect(month.width, lessThan(260));
-    expect(day.width, lessThan(260));
-    expect(year.width, lessThan(260));
+    expect(group.width, closeTo(900, 1));
+    expect(month.width, closeTo(300, 1));
+    expect(day.width, closeTo(300, 1));
+    expect(year.width, closeTo(300, 1));
+    expect(day.left, closeTo(month.right, 1));
+    expect(year.left, closeTo(day.right, 1));
   });
 
   testWidgets(
-    'landscape wheel group scales with OS text size without filling the screen',
+    'landscape date wheel columns retain full width at larger OS text sizes',
     (tester) async {
       tester.view.physicalSize = const Size(1200, 600);
       tester.view.devicePixelRatio = 1;
@@ -63,7 +62,7 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
 
-      Future<double> groupWidthAtScale(double scale) async {
+      Future<List<Rect>> columnRectsAtScale(double scale) async {
         await tester.pumpWidget(
           CupertinoApp(
             home: MediaQuery(
@@ -92,15 +91,21 @@ void main() {
           find.byKey(const ValueKey('wide-date-picker-column-group')),
         );
         expect(group.center.dx, closeTo(600, 1));
-        expect(group.width, lessThan(900));
-        return group.width;
+        expect(group.width, closeTo(900, 1));
+        return [
+          tester.getRect(find.byKey(const ValueKey('wide-date-month-column'))),
+          tester.getRect(find.byKey(const ValueKey('wide-date-day-column'))),
+          tester.getRect(find.byKey(const ValueKey('wide-date-year-column'))),
+        ];
       }
 
-      final defaultWidth = await groupWidthAtScale(1);
-      final largerTextWidth = await groupWidthAtScale(1.8);
+      final defaultRects = await columnRectsAtScale(1);
+      final largerTextRects = await columnRectsAtScale(1.8);
 
-      expect(largerTextWidth, greaterThan(defaultWidth));
-      expect(largerTextWidth, lessThan(700));
+      for (var index = 0; index < 3; index++) {
+        expect(defaultRects[index].width, closeTo(300, 1));
+        expect(largerTextRects[index].width, closeTo(300, 1));
+      }
     },
   );
 
@@ -138,7 +143,7 @@ void main() {
     );
   });
 
-  testWidgets('landscape date wheel labels match portrait alignment', (
+  testWidgets('landscape date wheel labels stay inside their columns', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1200, 600);
@@ -178,9 +183,56 @@ void main() {
     final dayLabel = tester.getRect(find.text('1'));
     final yearLabel = tester.getRect(find.text('2026'));
 
-    expect(monthLabel.left, closeTo(monthColumn.left + 12, 1));
-    expect(dayLabel.right, closeTo(dayColumn.right - 12, 1));
-    expect(yearLabel.right, closeTo(yearColumn.right - 12, 1));
+    expect(monthLabel.left, greaterThanOrEqualTo(monthColumn.left + 7));
+    expect(monthLabel.right, lessThanOrEqualTo(monthColumn.right - 7));
+    expect(dayLabel.left, greaterThanOrEqualTo(dayColumn.left + 7));
+    expect(dayLabel.right, lessThanOrEqualTo(dayColumn.right - 7));
+    expect(yearLabel.left, greaterThanOrEqualTo(yearColumn.left + 7));
+    expect(yearLabel.right, lessThanOrEqualTo(yearColumn.right - 7));
+  });
+
+  testWidgets('landscape date labels shrink to fit narrow columns', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(1200, 600),
+            devicePixelRatio: 1,
+            textScaler: TextScaler.linear(2),
+          ),
+          child: Center(
+            child: SizedBox(
+              width: 240,
+              height: 216,
+              child: CupertinoDatePickerWithFullWidthSelection(
+                itemExtent: 32,
+                initialDateTime: DateTime(2026, 10, 1),
+                onDateTimeChanged: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final monthColumn = tester.getRect(
+      find.byKey(const ValueKey('wide-date-month-column')),
+    );
+    final monthLabel = tester.getRect(find.text('October'));
+
+    expect(monthColumn.width, closeTo(80, 1));
+    expect(monthLabel.left, greaterThanOrEqualTo(monthColumn.left + 7));
+    expect(monthLabel.right, lessThanOrEqualTo(monthColumn.right - 7));
   });
 
   testWidgets('disabled values pass through, then return', (tester) async {
