@@ -36,16 +36,23 @@ class _CupertinoDatePickerWithFullWidthSelectionState
   static const int _monthsPerYear = 12;
 
   late DateTime _selectedDate;
+  late int _selectedYear;
+  late int _selectedMonth;
+  late int _selectedDay;
   late FixedExtentScrollController _monthController;
   late FixedExtentScrollController _dayController;
   late FixedExtentScrollController _yearController;
   List<double>? _landscapeColumnWidths;
   bool? _isLandscape;
+  bool _isMonthPickerScrolling = false;
+  bool _isDayPickerScrolling = false;
+  bool _isYearPickerScrolling = false;
 
   @override
   void initState() {
     super.initState();
     _selectedDate = _clampDate(widget.initialDateTime);
+    _setSelectedComponents(_selectedDate);
     _createControllers();
   }
 
@@ -57,6 +64,10 @@ class _CupertinoDatePickerWithFullWidthSelectionState
     final isLandscape = size.width > size.height;
     if (_isLandscape != isLandscape) {
       if (_isLandscape != null) {
+        _setSelectedComponents(_selectedDate);
+        _isMonthPickerScrolling = false;
+        _isDayPickerScrolling = false;
+        _isYearPickerScrolling = false;
         _disposeControllers();
         _createControllers();
       }
@@ -79,8 +90,13 @@ class _CupertinoDatePickerWithFullWidthSelectionState
     if (!dateChanged && !boundsChanged) return;
 
     final nextDate = _clampDate(widget.initialDateTime);
-    if (!_sameDate(nextDate, _selectedDate)) {
+    final componentsChanged =
+        _selectedYear != nextDate.year ||
+        _selectedMonth != nextDate.month ||
+        _selectedDay != nextDate.day;
+    if (!_sameDate(nextDate, _selectedDate) || componentsChanged) {
       _selectedDate = nextDate;
+      _setSelectedComponents(nextDate);
       _scheduleControllerSync();
     }
   }
@@ -93,13 +109,13 @@ class _CupertinoDatePickerWithFullWidthSelectionState
 
   void _createControllers() {
     _monthController = FixedExtentScrollController(
-      initialItem: _selectedDate.month - 1,
+      initialItem: _selectedMonth - 1,
     );
     _dayController = FixedExtentScrollController(
-      initialItem: _selectedDate.day - 1,
+      initialItem: _selectedDay - 1,
     );
     _yearController = FixedExtentScrollController(
-      initialItem: _selectedDate.year - _minimumYear,
+      initialItem: _selectedYear - _minimumYear,
     );
   }
 
@@ -123,6 +139,12 @@ class _CupertinoDatePickerWithFullWidthSelectionState
   static int _positiveModulo(int value, int divisor) =>
       ((value % divisor) + divisor) % divisor;
 
+  void _setSelectedComponents(DateTime date) {
+    _selectedYear = date.year;
+    _selectedMonth = date.month;
+    _selectedDay = date.day;
+  }
+
   DateTime _clampDate(DateTime value) {
     final year = value.year.clamp(_minimumYear, _maximumYear).toInt();
     final month = value.month.clamp(1, _monthsPerYear).toInt();
@@ -145,22 +167,32 @@ class _CupertinoDatePickerWithFullWidthSelectionState
     final nextDate = _clampDate(requestedDate);
     final wasClamped =
         forceControllerSync || !_sameDate(nextDate, requestedDate);
-    if (!_sameDate(nextDate, _selectedDate)) {
-      setState(() => _selectedDate = nextDate);
+    final dateChanged = !_sameDate(nextDate, _selectedDate);
+    final componentsChanged =
+        _selectedYear != nextDate.year ||
+        _selectedMonth != nextDate.month ||
+        _selectedDay != nextDate.day;
+    if (dateChanged || componentsChanged) {
+      setState(() {
+        _selectedDate = nextDate;
+        _setSelectedComponents(nextDate);
+      });
+    }
+    if (dateChanged) {
       widget.onDateTimeChanged(nextDate);
     }
     if (wasClamped) _scheduleControllerSync();
   }
 
   void _selectDateComponents(int year, int month, int day) {
-    final safeYear = year.clamp(_minimumYear, _maximumYear).toInt();
-    final safeMonth = month.clamp(1, _monthsPerYear).toInt();
-    final safeDay = day.clamp(1, _daysInMonth(safeYear, safeMonth)).toInt();
-    _selectDate(
-      DateTime(safeYear, safeMonth, safeDay),
-      forceControllerSync:
-          safeYear != year || safeMonth != month || safeDay != day,
-    );
+    final nextDate = _validDateForComponents(year, month, day);
+    setState(() {
+      _selectedYear = year;
+      _selectedMonth = month;
+      _selectedDay = day;
+      if (nextDate != null) _selectedDate = nextDate;
+    });
+    if (nextDate != null) widget.onDateTimeChanged(nextDate);
   }
 
   int _nearestLoopIndex(
@@ -182,15 +214,15 @@ class _CupertinoDatePickerWithFullWidthSelectionState
       if (!mounted || _isLandscape != true) return;
       final monthIndex = _nearestLoopIndex(
         _monthController,
-        _selectedDate.month - 1,
+        _selectedMonth - 1,
         _monthsPerYear,
       );
       final dayIndex = _nearestLoopIndex(
         _dayController,
-        _selectedDate.day - 1,
+        _selectedDay - 1,
         _daysPerMonthPicker,
       );
-      final yearIndex = _selectedDate.year - _minimumYear;
+      final yearIndex = _selectedYear - _minimumYear;
 
       if (_monthController.hasClients &&
           _monthController.selectedItem != monthIndex) {
@@ -205,6 +237,113 @@ class _CupertinoDatePickerWithFullWidthSelectionState
         _yearController.jumpToItem(yearIndex);
       }
     });
+  }
+
+  bool _handlePickerScrollNotification(
+    _DateWheelColumn column,
+    ScrollNotification notification,
+  ) {
+    if (notification is ScrollStartNotification) {
+      _setPickerScrolling(column, true);
+    } else if (notification is ScrollEndNotification) {
+      _setPickerScrolling(column, false);
+      _pickerDidStopScrolling();
+    }
+    return false;
+  }
+
+  void _setPickerScrolling(_DateWheelColumn column, bool isScrolling) {
+    switch (column) {
+      case _DateWheelColumn.month:
+        _isMonthPickerScrolling = isScrolling;
+      case _DateWheelColumn.day:
+        _isDayPickerScrolling = isScrolling;
+      case _DateWheelColumn.year:
+        _isYearPickerScrolling = isScrolling;
+    }
+  }
+
+  bool get _isAnyPickerScrolling =>
+      _isMonthPickerScrolling ||
+      _isDayPickerScrolling ||
+      _isYearPickerScrolling;
+
+  void _pickerDidStopScrolling() {
+    setState(() {});
+    if (_isAnyPickerScrolling) return;
+
+    final selectedDate = DateTime(_selectedYear, _selectedMonth, _selectedDay);
+    final dayAfterSelectedDate = DateTime(
+      _selectedYear,
+      _selectedMonth,
+      _selectedDay + 1,
+    );
+    final minimumDate =
+        widget.minimumDate == null ? null : _dateOnly(widget.minimumDate!);
+    final maximumDate =
+        widget.maximumDate == null ? null : _dateOnly(widget.maximumDate!);
+    final minimumCheck = minimumDate?.isBefore(dayAfterSelectedDate) ?? true;
+    final maximumCheck = maximumDate?.isBefore(selectedDate) ?? false;
+
+    if (!minimumCheck || maximumCheck) {
+      final targetDate = minimumCheck ? maximumDate! : minimumDate!;
+      _scrollToDate(targetDate);
+      return;
+    }
+
+    if (selectedDate.day != _selectedDay) {
+      _scrollToDate(
+        DateTime(
+          _selectedYear,
+          _selectedMonth,
+          _daysInMonth(_selectedYear, _selectedMonth),
+        ),
+      );
+    }
+  }
+
+  void _scrollToDate(DateTime targetDate) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_selectedYear != targetDate.year) {
+        _animateControllerToItem(
+          _yearController,
+          targetDate.year - _minimumYear,
+        );
+      }
+      if (_selectedMonth != targetDate.month) {
+        _animateControllerToItem(
+          _monthController,
+          _nearestLoopIndex(
+            _monthController,
+            targetDate.month - 1,
+            _monthsPerYear,
+          ),
+        );
+      }
+      if (_selectedDay != targetDate.day) {
+        _animateControllerToItem(
+          _dayController,
+          _nearestLoopIndex(
+            _dayController,
+            targetDate.day - 1,
+            _daysPerMonthPicker,
+          ),
+        );
+      }
+    });
+  }
+
+  void _animateControllerToItem(
+    FixedExtentScrollController controller,
+    int targetItem,
+  ) {
+    if (!controller.hasClients || controller.selectedItem == targetItem) return;
+    controller.animateToItem(
+      targetItem,
+      curve: Curves.easeInOut,
+      duration: const Duration(milliseconds: 200),
+    );
   }
 
   TextStyle _pickerTextStyle({required bool isValid}) {
@@ -258,16 +397,16 @@ class _CupertinoDatePickerWithFullWidthSelectionState
   bool _isMonthValid(int month) {
     final minimumDate = widget.minimumDate;
     if (minimumDate != null) {
-      if (_selectedDate.year < minimumDate.year ||
-          (_selectedDate.year == minimumDate.year &&
+      if (_selectedYear < minimumDate.year ||
+          (_selectedYear == minimumDate.year &&
               month < minimumDate.month)) {
         return false;
       }
     }
     final maximumDate = widget.maximumDate;
     if (maximumDate != null) {
-      if (_selectedDate.year > maximumDate.year ||
-          (_selectedDate.year == maximumDate.year &&
+      if (_selectedYear > maximumDate.year ||
+          (_selectedYear == maximumDate.year &&
               month > maximumDate.month)) {
         return false;
       }
@@ -276,12 +415,18 @@ class _CupertinoDatePickerWithFullWidthSelectionState
   }
 
   bool _isDayValid(int day) {
-    if (day > _daysInMonth(_selectedDate.year, _selectedDate.month)) {
+    if (day > _daysInMonth(_selectedYear, _selectedMonth)) {
       return false;
     }
     return _isDateWithinBounds(
-      DateTime(_selectedDate.year, _selectedDate.month, day),
+      DateTime(_selectedYear, _selectedMonth, day),
     );
+  }
+
+  DateTime? _validDateForComponents(int year, int month, int day) {
+    if (day > _daysInMonth(year, month)) return null;
+    final candidate = DateTime(year, month, day);
+    return _isDateWithinBounds(candidate) ? candidate : null;
   }
 
   double _columnWidth(
