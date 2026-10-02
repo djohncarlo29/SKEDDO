@@ -60,10 +60,8 @@ class _EventTimePickerState extends State<EventTimePicker> {
     _hourCtrl = FixedExtentScrollController(initialItem: _hour12 - 1);
     _minuteCtrl = FixedExtentScrollController(initialItem: _minute);
     _periodCtrl = FixedExtentScrollController(initialItem: _period);
-    _hourEntryController = TextEditingController(text: '$_hour12');
-    _minuteEntryController = TextEditingController(
-      text: _minute.toString().padLeft(2, '0'),
-    );
+    _hourEntryController = TextEditingController();
+    _minuteEntryController = TextEditingController();
     _hourEntryFocusNode = FocusNode();
     _minuteEntryFocusNode = FocusNode();
   }
@@ -116,41 +114,51 @@ class _EventTimePickerState extends State<EventTimePicker> {
         (forward.abs() <= backward.abs() ? forward : backward);
   }
 
-  void _beginTimeEntry(int columnIndex) {
-    _hourEntryController.text = '$_hour12';
-    _minuteEntryController.text = _minute.toString().padLeft(2, '0');
+  void _beginTimeEntry() {
+    _hourEntryController.clear();
+    _minuteEntryController.clear();
     if (!_isTimeEntryMode) {
       setState(() => _isTimeEntryMode = true);
     }
+    _requestEntryFocus(_hourEntryFocusNode);
+  }
 
-    // Tapping the minute column starts there; the hour and minute fields stay
-    // available together so either part of the time can be edited.
-    final focusNode = columnIndex == 1
-        ? _minuteEntryFocusNode
-        : _hourEntryFocusNode;
-    final controller = columnIndex == 1
-        ? _minuteEntryController
-        : _hourEntryController;
+  void _requestEntryFocus(FocusNode node) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_isTimeEntryMode) return;
-      _selectAll(controller);
-      focusNode.requestFocus();
+      if (mounted && _isTimeEntryMode) node.requestFocus();
     });
   }
 
-  void _selectAll(TextEditingController controller) {
-    controller.selection = TextSelection(
-      baseOffset: 0,
-      extentOffset: controller.text.length,
-    );
+  void _moveCaretToMinute({int? firstMinuteDigit}) {
+    _hourEntryController.clear();
+    _minuteEntryController.text = firstMinuteDigit?.toString() ?? '';
+    _requestEntryFocus(_minuteEntryFocusNode);
+    if (firstMinuteDigit != null) {
+      _setMinuteFromEntry(firstMinuteDigit);
+    }
+  }
+
+  void _onHourFieldTap() {
+    if (!_isTimeEntryMode) return;
+    _hourEntryController.clear();
+    _minuteEntryController.clear();
+    _requestEntryFocus(_hourEntryFocusNode);
+  }
+
+  void _onMinuteFieldTap() {
+    if (!_isTimeEntryMode) return;
+    // A lone leading 1 already selects hour 1. Tapping minutes commits it.
+    _hourEntryController.clear();
+    _minuteEntryController.clear();
+    _requestEntryFocus(_minuteEntryFocusNode);
   }
 
   void _finishTimeEntry() {
     if (!_isTimeEntryMode) return;
     _hourEntryFocusNode.unfocus();
     _minuteEntryFocusNode.unfocus();
-    _hourEntryController.text = '$_hour12';
-    _minuteEntryController.text = _minute.toString().padLeft(2, '0');
+    _hourEntryController.clear();
+    _minuteEntryController.clear();
     setState(() => _isTimeEntryMode = false);
   }
 
@@ -189,29 +197,79 @@ class _EventTimePickerState extends State<EventTimePicker> {
     );
   }
 
+  void _setHourFromEntry(int hour12) {
+    if (hour12 < 1 || hour12 > 12 || hour12 == _hour12) return;
+    _hour12 = hour12;
+    _notify();
+    _animateHourTo(hour12);
+  }
+
+  void _setMinuteFromEntry(int minute) {
+    if (minute < 0 || minute > 59 || minute == _minute) return;
+    _minute = minute;
+    _notify();
+    _animateMinuteTo(minute);
+  }
+
   void _handleHourEntry(String value) {
-    final parsed = int.tryParse(value);
-    if (parsed == null || parsed < 1 || parsed > 12 || parsed == _hour12) {
+    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return;
+
+    final first = int.parse(digits[0]);
+    if (digits.length == 1) {
+      if (first == 0) return; // A leading zero can form 01–09.
+      _setHourFromEntry(first);
+      if (first == 1) return; // Could still become 10, 11, or 12.
+      _moveCaretToMinute();
       return;
     }
-    _hour12 = parsed;
-    _notify();
-    _animateHourTo(parsed);
+
+    final second = int.parse(digits[1]);
+    if (first == 0) {
+      if (second > 0) _setHourFromEntry(second);
+      _moveCaretToMinute();
+      return;
+    }
+    if (first == 1) {
+      // 10–12 are the only valid two-digit 12-hour values beginning with 1.
+      // Any other second digit is rejected; hour 1 remains selected.
+      _setHourFromEntry(second <= 2 ? 10 + second : 1);
+      _moveCaretToMinute();
+      return;
+    }
+
+    // Normally a first digit from 2–9 has already advanced to minutes. If
+    // several digits arrive in one text update, treat the next digit as the
+    // first minute digit rather than losing it.
+    _setHourFromEntry(first);
+    _moveCaretToMinute(firstMinuteDigit: second);
   }
 
   void _handleMinuteEntry(String value) {
-    final parsed = int.tryParse(value);
-    if (parsed == null || parsed < 0 || parsed > 59 || parsed == _minute) {
+    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return;
+
+    final first = int.parse(digits[0]);
+    if (digits.length == 1) {
+      // The wheel always renders a leading zero, so 5 immediately appears 05.
+      _setMinuteFromEntry(first);
       return;
     }
-    _minute = parsed;
-    _notify();
-    _animateMinuteTo(parsed);
+
+    final second = int.parse(digits[1]);
+    final candidate = first * 10 + second;
+    if (candidate <= 59) {
+      _setMinuteFromEntry(candidate);
+    } else {
+      // Keep the valid single-digit value (e.g. 9 → 09) and discard the
+      // invalid second digit rather than allowing a value above 59.
+      _setMinuteFromEntry(first);
+    }
+    _minuteEntryController.clear();
   }
 
   Widget _loopingBarrel({
     required Key wheelKey,
-    required int entryColumnIndex,
     required FixedExtentScrollController controller,
     required List<Widget> children,
     required void Function(int) onChanged,
@@ -229,7 +287,7 @@ class _EventTimePickerState extends State<EventTimePicker> {
               final centerY = _height / 2;
               if ((details.localPosition.dy - centerY).abs() <=
                   _itemExtent / 2) {
-                _beginTimeEntry(entryColumnIndex);
+                _beginTimeEntry();
               }
             },
       child: Stack(
@@ -275,6 +333,8 @@ class _EventTimePickerState extends State<EventTimePicker> {
     required TextEditingController controller,
     required FocusNode focusNode,
     required TextAlign textAlign,
+    required EdgeInsetsGeometry padding,
+    required VoidCallback onTap,
     required ValueChanged<String> onChanged,
   }) {
     return CupertinoTextField(
@@ -288,16 +348,17 @@ class _EventTimePickerState extends State<EventTimePicker> {
       ],
       textAlign: textAlign,
       textAlignVertical: TextAlignVertical.center,
-      style: _kStyle,
+      style: _kStyle.copyWith(color: CupertinoColors.transparent),
       cursorColor: resolveThemeColor(kPrimaryLabel, context),
+      enableInteractiveSelection: false,
       decoration: const BoxDecoration(
         color: CupertinoColors.transparent,
         border: Border.fromBorderSide(BorderSide.none),
       ),
-      padding: EdgeInsets.zero,
+      padding: padding,
       autocorrect: false,
       enableSuggestions: false,
-      onTap: () => _selectAll(controller),
+      onTap: onTap,
       onChanged: onChanged,
       onTapOutside: (_) => _finishTimeEntry(),
     );
@@ -319,6 +380,8 @@ class _EventTimePickerState extends State<EventTimePicker> {
                     controller: _hourEntryController,
                     focusNode: _hourEntryFocusNode,
                     textAlign: TextAlign.right,
+                    padding: const EdgeInsets.only(right: 12),
+                    onTap: _onHourFieldTap,
                     onChanged: _handleHourEntry,
                   ),
                 ),
@@ -328,6 +391,8 @@ class _EventTimePickerState extends State<EventTimePicker> {
                     controller: _minuteEntryController,
                     focusNode: _minuteEntryFocusNode,
                     textAlign: TextAlign.center,
+                    padding: EdgeInsets.zero,
+                    onTap: _onMinuteFieldTap,
                     onChanged: _handleMinuteEntry,
                   ),
                 ),
@@ -346,7 +411,6 @@ class _EventTimePickerState extends State<EventTimePicker> {
   Widget build(BuildContext context) {
     final hourPicker = _loopingBarrel(
       wheelKey: const ValueKey('event-time-hour-wheel'),
-      entryColumnIndex: 0,
       controller: _hourCtrl,
       offAxisFraction: -0.60,
       capStart: true,
@@ -368,7 +432,6 @@ class _EventTimePickerState extends State<EventTimePicker> {
     );
     final minutePicker = _loopingBarrel(
       wheelKey: const ValueKey('event-time-minute-wheel'),
-      entryColumnIndex: 1,
       controller: _minuteCtrl,
       offAxisFraction: 0,
       capStart: false,
@@ -386,7 +449,6 @@ class _EventTimePickerState extends State<EventTimePicker> {
     );
     final periodPicker = _loopingBarrel(
       wheelKey: const ValueKey('event-time-period-wheel'),
-      entryColumnIndex: 2,
       controller: _periodCtrl,
       offAxisFraction: 0.45,
       capStart: false,
