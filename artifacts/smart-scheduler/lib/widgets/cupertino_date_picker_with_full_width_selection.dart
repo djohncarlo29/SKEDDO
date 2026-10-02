@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
+import 'wheel_option_text.dart';
 
 /// Retains Flutter's compact date picker in portrait and expands its wheels in
 /// landscape, where the stock picker caps its column group at 320 points.
@@ -362,15 +363,18 @@ class _CupertinoDatePickerWithFullWidthSelectionState
     // Match the stock portrait picker: the first logical date column is
     // leading-aligned, and the remaining columns are trailing-aligned.
     final isFirstColumn = columnIndex == 0;
-    return Align(
-      alignment: isFirstColumn
-          ? AlignmentDirectional.centerStart
-          : AlignmentDirectional.centerEnd,
-      child: Padding(
-        padding: isFirstColumn
-            ? const EdgeInsetsDirectional.only(start: _wheelItemHorizontalInset)
-            : const EdgeInsetsDirectional.only(end: _wheelItemHorizontalInset),
-        child: Text(label, style: _pickerTextStyle(isValid: isValid)),
+    final alignment = isFirstColumn
+        ? AlignmentDirectional.centerStart
+        : AlignmentDirectional.centerEnd;
+    return Padding(
+      padding: isFirstColumn
+          ? const EdgeInsetsDirectional.only(start: _wheelItemHorizontalInset)
+          : const EdgeInsetsDirectional.only(end: _wheelItemHorizontalInset),
+      child: WheelOptionText(
+        text: label,
+        style: _pickerTextStyle(isValid: isValid),
+        magnification: _magnification,
+        alignment: alignment,
       ),
     );
   }

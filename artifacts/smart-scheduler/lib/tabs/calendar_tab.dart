@@ -32,6 +32,7 @@ import '../widgets/horizontal_edge_fade.dart';
 import '../widgets/action_panel.dart';
 import '../widgets/view_mode_icons.dart';
 import '../widgets/app_switch.dart';
+import '../widgets/wheel_option_text.dart';
 import '../services/event_store.dart';
 import '../services/category_registry.dart';
 import '../services/alert_sequence.dart';
@@ -14375,7 +14376,17 @@ class _EventTimePickerState extends State<_EventTimePicker> {
           alignment: Alignment.centerRight,
           child: Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: Text('${i + 1}', style: _kStyle),
+            child: WheelOptionText(
+              text: '${i + 1}',
+              style: _kStyle,
+              alignment: Alignment.centerRight,
+              textAlign: TextAlign.right,
+              magnification: _kMagnification,
+              selectionInsets: const EdgeInsetsDirectional.only(
+                start: _kPickerSelectionPillMargin +
+                    _kPickerSelectionPillTextInset,
+              ),
+            ),
           ),
         ),
       ),
@@ -14392,7 +14403,11 @@ class _EventTimePickerState extends State<_EventTimePicker> {
       children: List.generate(
         60,
         (i) => Center(
-          child: Text(i.toString().padLeft(2, '0'), style: _kStyle),
+          child: WheelOptionText(
+            text: i.toString().padLeft(2, '0'),
+            style: _kStyle,
+            magnification: _kMagnification,
+          ),
         ),
       ),
     );
@@ -14411,14 +14426,30 @@ class _EventTimePickerState extends State<_EventTimePicker> {
           alignment: Alignment.centerLeft,
           child: Padding(
             padding: const EdgeInsets.only(left: 12),
-            child: Text('AM', style: _kStyle),
+            child: WheelOptionText(
+              text: 'AM',
+              style: _kStyle,
+              magnification: _kMagnification,
+              selectionInsets: const EdgeInsetsDirectional.only(
+                end: _kPickerSelectionPillMargin +
+                    _kPickerSelectionPillTextInset,
+              ),
+            ),
           ),
         ),
         Align(
           alignment: Alignment.centerLeft,
           child: Padding(
             padding: const EdgeInsets.only(left: 12),
-            child: Text('PM', style: _kStyle),
+            child: WheelOptionText(
+              text: 'PM',
+              style: _kStyle,
+              magnification: _kMagnification,
+              selectionInsets: const EdgeInsetsDirectional.only(
+                end: _kPickerSelectionPillMargin +
+                    _kPickerSelectionPillTextInset,
+              ),
+            ),
           ),
         ),
       ],
@@ -14973,82 +15004,23 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     return math.max(32.0, linePainter.height * _kPickerMagnification + 4.0);
   }
 
-  TextStyle _pickerTextStyleThatFits(String text, double availableWidth) {
-    final baseStyle = _kPickerItemStyle;
-    final baseFontSize = baseStyle.fontSize ?? 16.0;
-    // Keep the text inside the pill edge rather than letting a tight option
-    // touch it. The selected row is magnified by the wheel, so reserve that
-    // same amount of horizontal room before choosing the un-magnified size.
-    final targetWidth = math.max(
-      1.0,
-      (availableWidth -
-              _kPickerSelectionPillMargin -
-              _kPickerSelectionPillTextInset) /
-          _kPickerMagnification,
-    );
-    final scaler = MediaQuery.textScalerOf(context);
-
-    double measuredWidth(double fontSize) {
-      final scale = fontSize / baseFontSize;
-      final style = baseStyle.copyWith(
-        fontSize: fontSize,
-        letterSpacing: baseStyle.letterSpacing == null
-            ? null
-            : baseStyle.letterSpacing! * scale,
-      );
-      final painter = TextPainter(
-        text: TextSpan(text: text, style: style),
-        textDirection: Directionality.of(context),
-        textScaler: scaler,
-        maxLines: 1,
-      )..layout();
-      return painter.width;
-    }
-
-    if (!availableWidth.isFinite ||
-        measuredWidth(baseFontSize) <= targetWidth) {
-      return baseStyle;
-    }
-
-    // Binary search keeps the authored size whenever it fits and only reduces
-    // it as much as the actual pill width requires.
-    var low = 1.0;
-    var high = baseFontSize;
-    for (var i = 0; i < 20; i++) {
-      final candidate = (low + high) / 2;
-      if (measuredWidth(candidate) <= targetWidth) {
-        low = candidate;
-      } else {
-        high = candidate;
-      }
-    }
-    final scale = low / baseFontSize;
-    return baseStyle.copyWith(
-      fontSize: low,
-      letterSpacing: baseStyle.letterSpacing == null
-          ? null
-          : baseStyle.letterSpacing! * scale,
-    );
-  }
-
   Widget _pickerText(
     String text,
     Alignment alignment, {
     TextAlign? textAlign,
   }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableWidth = constraints.hasBoundedWidth
-            ? constraints.maxWidth
-            : (MediaQuery.sizeOf(context).width - 32) / 2 - 20;
-        return Text(
-          text,
-          style: _pickerTextStyleThatFits(text, availableWidth),
-          textAlign: textAlign,
-          maxLines: 1,
-          softWrap: false,
-        );
-      },
+    return WheelOptionText(
+      text: text,
+      style: _kPickerItemStyle,
+      alignment: alignment,
+      textAlign: textAlign,
+      magnification: _kPickerMagnification,
+      selectionInsets: const EdgeInsetsDirectional.symmetric(
+        horizontal:
+            (_kPickerSelectionPillMargin + _kPickerSelectionPillTextInset) /
+            2,
+      ),
+      fallbackWidth: (MediaQuery.sizeOf(context).width - 32) / 2 - 20,
     );
   }
 
