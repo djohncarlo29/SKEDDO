@@ -3,8 +3,8 @@ name: Barrel option text fitting
 description: Project-wide scope and sizing rule for custom barrel-wheel option labels.
 ---
 
-Apply shrink-to-fit behavior to every option in every app-authored barrel-wheel picker, not only the ordinal/day pickers. Keep at least 8 logical pixels of inset at both selection-bar edges (preserving any larger existing inset), use the actual wheel-column width, and preserve the active OS text scaler while shrinking labels to fit.
+Apply shrink-to-fit behavior to every option in every app-authored barrel-wheel picker. Use exactly an 8 logical-pixel safe inset on both sides, with no caller-supplied larger inset or stacked horizontal padding. Measure against the actual wheel-column width, preserve the active OS text scaler, and shrink oversized labels instead of clipping them.
 
-**Why:** The user explicitly requires this for all barrel-wheel options: labels must not approach or cross either selection-bar edge, and must stay inside a fixed 8dp safe inset.
+**Why:** The user explicitly corrected the earlier larger-inset behavior: labels should have only the fixed 8dp inset, and the previous accumulation of wheel-group narrowing, caller insets, and padding made labels too small and too far from the selection-bar edges.
 
-**How to apply:** Keep `WheelOptionText` as the shared rendering primitive and enforce the 8dp minimum inset there, taking the larger of 8dp and any caller-provided inset on each side. Pass each wheel's measured column width as its fallback wherever wheel-child constraints are unbounded; preserve magnification, column spacing, and native picker behavior.
+**How to apply:** Keep `WheelOptionText` as the shared rendering primitive and enforce the fixed 8dp inset there without an override parameter. Pass each wheel's measured column width as its fallback wherever wheel-child constraints are unbounded. Remove extra horizontal padding and pill-edge clips that can shrink or cut the fitted text; preserve magnification, off-axis behavior, and native picker interactions.

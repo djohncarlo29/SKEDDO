@@ -30,7 +30,6 @@ class _CupertinoDatePickerWithFullWidthSelectionState
     extends State<CupertinoDatePickerWithFullWidthSelection> {
   static const double _magnification = 2.35 / 2.1;
   static const double _squeeze = 1.25;
-  static const double _wheelItemHorizontalInset = 12.0;
   static const int _minimumYear = 1;
   static const int _maximumYear = 9999;
   static const int _daysPerMonthPicker = 31;
@@ -367,17 +366,12 @@ class _CupertinoDatePickerWithFullWidthSelectionState
     final alignment = isFirstColumn
         ? AlignmentDirectional.centerStart
         : AlignmentDirectional.centerEnd;
-    return Padding(
-      padding: isFirstColumn
-          ? const EdgeInsetsDirectional.only(start: _wheelItemHorizontalInset)
-          : const EdgeInsetsDirectional.only(end: _wheelItemHorizontalInset),
-      child: WheelOptionText(
-        text: label,
-        style: _pickerTextStyle(isValid: isValid),
-        magnification: _magnification,
-        alignment: alignment,
-        fallbackWidth: fallbackWidth,
-      ),
+    return WheelOptionText(
+      text: label,
+      style: _pickerTextStyle(isValid: isValid),
+      magnification: _magnification,
+      alignment: alignment,
+      fallbackWidth: fallbackWidth,
     );
   }
 
@@ -467,7 +461,7 @@ class _CupertinoDatePickerWithFullWidthSelectionState
       widestLabel = math.max(widestLabel, painter.width);
       painter.dispose();
     }
-    return widestLabel + _wheelItemHorizontalInset * 2;
+    return widestLabel * _magnification + WheelOptionText.edgeInset * 2;
   }
 
   Widget _buildMonthPicker(
@@ -633,10 +627,7 @@ class _CupertinoDatePickerWithFullWidthSelectionState
                 final wheelColumnWidth = hasRoomForNaturalWidths
                     ? columnWidths[index]
                     : groupWidth / columns.length;
-                final optionWidth = math.max(
-                  0.0,
-                  wheelColumnWidth - _wheelItemHorizontalInset,
-                );
+                final optionWidth = wheelColumnWidth;
                 final wheel = switch (columns[index]) {
                   _DateWheelColumn.month => _buildMonthPicker(
                     index,

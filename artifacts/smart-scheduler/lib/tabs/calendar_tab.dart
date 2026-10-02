@@ -14382,20 +14382,13 @@ class _EventTimePickerState extends State<_EventTimePicker> {
         12,
         (i) => Align(
           alignment: Alignment.centerRight,
-          child: Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: WheelOptionText(
-              text: '${i + 1}',
-              style: _kStyle,
-              alignment: Alignment.centerRight,
-              textAlign: TextAlign.right,
-              magnification: _kMagnification,
-              fallbackWidth: math.max(0.0, wheelWidth - 12.0),
-              selectionInsets: const EdgeInsetsDirectional.only(
-                start: _kPickerSelectionPillMargin +
-                    _kPickerSelectionPillTextInset,
-              ),
-            ),
+          child: WheelOptionText(
+            text: '${i + 1}',
+            style: _kStyle,
+            alignment: Alignment.centerRight,
+            textAlign: TextAlign.right,
+            magnification: _kMagnification,
+            fallbackWidth: wheelWidth,
           ),
         ),
       ),
@@ -14434,34 +14427,20 @@ class _EventTimePickerState extends State<_EventTimePicker> {
       buildChildren: (wheelWidth) => [
         Align(
           alignment: Alignment.centerLeft,
-          child: Padding(
-            padding: const EdgeInsets.only(left: 12),
-            child: WheelOptionText(
-              text: 'AM',
-              style: _kStyle,
-              magnification: _kMagnification,
-              fallbackWidth: math.max(0.0, wheelWidth - 12.0),
-              selectionInsets: const EdgeInsetsDirectional.only(
-                end: _kPickerSelectionPillMargin +
-                    _kPickerSelectionPillTextInset,
-              ),
-            ),
+          child: WheelOptionText(
+            text: 'AM',
+            style: _kStyle,
+            magnification: _kMagnification,
+            fallbackWidth: wheelWidth,
           ),
         ),
         Align(
           alignment: Alignment.centerLeft,
-          child: Padding(
-            padding: const EdgeInsets.only(left: 12),
-            child: WheelOptionText(
-              text: 'PM',
-              style: _kStyle,
-              magnification: _kMagnification,
-              fallbackWidth: math.max(0.0, wheelWidth - 12.0),
-              selectionInsets: const EdgeInsetsDirectional.only(
-                end: _kPickerSelectionPillMargin +
-                    _kPickerSelectionPillTextInset,
-              ),
-            ),
+          child: WheelOptionText(
+            text: 'PM',
+            style: _kStyle,
+            magnification: _kMagnification,
+            fallbackWidth: wheelWidth,
           ),
         ),
       ],
@@ -14516,36 +14495,6 @@ class _NewEventCustomRepeatResult {
   final String label;
   final _NewEventCustomRepeatConfig config;
   const _NewEventCustomRepeatResult(this.label, this.config);
-}
-
-const double _kPickerSelectionPillMargin = 9.0;
-const double _kPickerSelectionPillTextInset = 4.0;
-const double _kPickerSelectionPillInnerGap = 28.0;
-
-class _PickerSelectionPillClipper extends CustomClipper<Rect> {
-  const _PickerSelectionPillClipper({
-    required this.capStartEdge,
-    required this.capEndEdge,
-  });
-
-  final bool capStartEdge;
-  final bool capEndEdge;
-
-  @override
-  Rect getClip(Size size) {
-    return Rect.fromLTRB(
-      capStartEdge ? _kPickerSelectionPillMargin : 0,
-      0,
-      size.width - (capEndEdge ? _kPickerSelectionPillMargin : 0),
-      size.height,
-    );
-  }
-
-  @override
-  bool shouldReclip(_PickerSelectionPillClipper oldClipper) {
-    return capStartEdge != oldClipper.capStartEdge ||
-        capEndEdge != oldClipper.capEndEdge;
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -15022,7 +14971,6 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     Alignment alignment, {
     TextAlign? textAlign,
     double? fallbackWidth,
-    EdgeInsetsDirectional? selectionInsets,
   }) {
     return WheelOptionText(
       text: text,
@@ -15030,47 +14978,21 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
       alignment: alignment,
       textAlign: textAlign,
       magnification: _kPickerMagnification,
-      selectionInsets:
-          selectionInsets ??
-          const EdgeInsetsDirectional.symmetric(
-            horizontal:
-                (_kPickerSelectionPillMargin +
-                    _kPickerSelectionPillTextInset) /
-                2,
-          ),
       fallbackWidth:
-          fallbackWidth ?? (MediaQuery.sizeOf(context).width - 32) / 2 - 20,
+          fallbackWidth ?? (MediaQuery.sizeOf(context).width - 32) / 2,
     );
-  }
-
-  double _positionDayWheelColumnWidth() {
-    var widestLabel = 0.0;
-    for (final label in [..._kPositions, ..._kPositionDays]) {
-      final painter = TextPainter(
-        text: TextSpan(text: label, style: _kPickerItemStyle),
-        textDirection: Directionality.of(context),
-        textScaler: MediaQuery.textScalerOf(context),
-        maxLines: 1,
-      )..layout();
-      widestLabel = math.max(widestLabel, painter.width);
-    }
-    return widestLabel * _kPickerMagnification +
-        _kPickerSelectionPillMargin +
-        _kPickerSelectionPillInnerGap +
-        8.0;
   }
 
   Widget _positionDayPickerWithFullWidthSelectionBar(
     Widget Function(double optionWidth) buildRow,
   ) {
-    final preferredWidth = _positionDayWheelColumnWidth() * 2;
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableWidth = constraints.hasBoundedWidth
             ? constraints.maxWidth
-            : preferredWidth;
-        final wheelGroupWidth = math.min(availableWidth * 0.72, preferredWidth);
-        final optionWidth = math.max(0.0, wheelGroupWidth / 2 - 8.0);
+            : MediaQuery.sizeOf(context).width;
+        final wheelGroupWidth = availableWidth;
+        final optionWidth = wheelGroupWidth / 2;
         return SizedBox(
           width: availableWidth,
           child: Stack(
@@ -15103,19 +15025,8 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     );
   }
 
-  Widget _clipPicker(
-    Widget picker, {
-    required bool capStartEdge,
-    required bool capEndEdge,
-  }) {
-    return ClipRect(
-      clipper: _PickerSelectionPillClipper(
-        capStartEdge: capStartEdge,
-        capEndEdge: capEndEdge,
-      ),
-      child: picker,
-    );
-  }
+  /// Keep fitted wheel labels free of a second, pill-edge clip.
+  Widget _pickerWithoutHorizontalClip(Widget picker) => picker;
 
   Widget _card(List<Widget> rows) {
     final cardColor = resolveThemeColor(kModalCard, context);
@@ -15237,11 +15148,11 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
               final pickerColumnWidth = constraints.hasBoundedWidth
                   ? constraints.maxWidth / 2
                   : (MediaQuery.sizeOf(context).width - 32) / 2;
-              final optionWidth = math.max(0.0, pickerColumnWidth - 20.0);
+              final optionWidth = pickerColumnWidth;
               return Row(
                 children: [
               Expanded(
-                child: _clipPicker(
+                child: _pickerWithoutHorizontalClip(
                   CupertinoPicker(
                     scrollController: _everyCountCtrl,
                     itemExtent: _pickerItemExtent,
@@ -15261,23 +15172,18 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                       999,
                       (i) => Align(
                         alignment: Alignment.centerRight,
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 20),
-                          child: _pickerText(
-                            '${i + 1}',
-                            Alignment.centerRight,
-                            fallbackWidth: optionWidth,
-                          ),
+                        child: _pickerText(
+                          '${i + 1}',
+                          Alignment.centerRight,
+                          fallbackWidth: optionWidth,
                         ),
                       ),
                     ),
                   ),
-                  capStartEdge: true,
-                  capEndEdge: false,
                 ),
               ),
               Expanded(
-                child: _clipPicker(
+                child: _pickerWithoutHorizontalClip(
                   CupertinoPicker(
                     itemExtent: _pickerItemExtent,
                     backgroundColor: CupertinoColors.transparent,
@@ -15294,19 +15200,14 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                     children: [
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 20),
-                          child: _pickerText(
-                            _everyUnit,
-                            Alignment.centerLeft,
-                            fallbackWidth: optionWidth,
-                          ),
+                        child: _pickerText(
+                          _everyUnit,
+                          Alignment.centerLeft,
+                          fallbackWidth: optionWidth,
                         ),
                       ),
                     ],
                   ),
-                  capStartEdge: false,
-                  capEndEdge: true,
                 ),
               ),
                 ],
@@ -15394,7 +15295,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
           (optionWidth) => Row(
           children: [
             Expanded(
-              child: _clipPicker(
+              child: _pickerWithoutHorizontalClip(
                 CupertinoPicker(
                   scrollController: _onThePositionCtrl,
                   itemExtent: _pickerItemExtent,
@@ -15410,30 +15311,20 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                       .map(
                         (p) => Align(
                           alignment: Alignment.center,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: _pickerText(
-                                p,
-                                Alignment.center,
-                                fallbackWidth: optionWidth,
-                                selectionInsets:
-                                    const EdgeInsetsDirectional.symmetric(
-                                      horizontal:
-                                          _kPickerSelectionPillMargin,
-                                    ),
-                                textAlign: TextAlign.center,
-                              ),
+                          child: _pickerText(
+                            p,
+                            Alignment.center,
+                            fallbackWidth: optionWidth,
+                            textAlign: TextAlign.center,
                           ),
                         ),
                       )
                       .toList(),
                 ),
-                capStartEdge: true,
-                capEndEdge: false,
               ),
             ),
             Expanded(
-              child: _clipPicker(
+              child: _pickerWithoutHorizontalClip(
                 CupertinoPicker(
                   scrollController: _onTheDayCtrl,
                   itemExtent: _pickerItemExtent,
@@ -15449,26 +15340,16 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                       .map(
                         (d) => Align(
                           alignment: Alignment.center,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: _pickerText(
-                                d,
-                                Alignment.center,
-                                fallbackWidth: optionWidth,
-                                selectionInsets:
-                                    const EdgeInsetsDirectional.symmetric(
-                                      horizontal:
-                                          _kPickerSelectionPillMargin,
-                                    ),
-                                textAlign: TextAlign.center,
-                              ),
+                          child: _pickerText(
+                            d,
+                            Alignment.center,
+                            fallbackWidth: optionWidth,
+                            textAlign: TextAlign.center,
                           ),
                         ),
                       )
                       .toList(),
                 ),
-                capStartEdge: false,
-                capEndEdge: true,
               ),
             ),
           ],
@@ -15645,7 +15526,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                 (optionWidth) => Row(
                 children: [
                   Expanded(
-                    child: _clipPicker(
+                    child: _pickerWithoutHorizontalClip(
                       CupertinoPicker(
                         scrollController: _yearlyPositionCtrl,
                         itemExtent: _pickerItemExtent,
@@ -15661,32 +15542,20 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                             .map(
                               (positionIndex) => Align(
                                 alignment: Alignment.center,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                  ),
-                                  child: _pickerText(
-                                    _kPositions[positionIndex],
-                                    Alignment.center,
-                                    fallbackWidth: optionWidth,
-                                    selectionInsets:
-                                        const EdgeInsetsDirectional.symmetric(
-                                          horizontal:
-                                              _kPickerSelectionPillMargin,
-                                        ),
-                                    textAlign: TextAlign.center,
-                                  ),
+                                child: _pickerText(
+                                  _kPositions[positionIndex],
+                                  Alignment.center,
+                                  fallbackWidth: optionWidth,
+                                  textAlign: TextAlign.center,
                                 ),
                               ),
                             )
                             .toList(),
                       ),
-                      capStartEdge: true,
-                      capEndEdge: false,
                     ),
                   ),
                   Expanded(
-                    child: _clipPicker(
+                    child: _pickerWithoutHorizontalClip(
                       CupertinoPicker(
                         scrollController: _yearlyDayCtrl,
                         itemExtent: _pickerItemExtent,
@@ -15701,28 +15570,16 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                             .map(
                               (d) => Align(
                                 alignment: Alignment.center,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                  ),
-                                  child: _pickerText(
-                                    d,
-                                    Alignment.center,
-                                    fallbackWidth: optionWidth,
-                                    selectionInsets:
-                                        const EdgeInsetsDirectional.symmetric(
-                                          horizontal:
-                                              _kPickerSelectionPillMargin,
-                                        ),
-                                    textAlign: TextAlign.center,
-                                  ),
+                                child: _pickerText(
+                                  d,
+                                  Alignment.center,
+                                  fallbackWidth: optionWidth,
+                                  textAlign: TextAlign.center,
                                 ),
                               ),
                             )
                             .toList(),
                       ),
-                      capStartEdge: false,
-                      capEndEdge: true,
                     ),
                   ),
                 ],
