@@ -779,8 +779,9 @@ const kTracking17 = -0.43;
 
 // CupertinoDatePicker's default 32 px item extent and 216 px barrel height
 // are authored for the default text size. Keep these dimensions proportional
-// to the active text scaler. The font itself stays at this unscaled base size
-// and inherits the ambient scaler, just like the app-authored barrel wheels.
+// to the active text scaler. Custom wheels use this unscaled font base and
+// inherit the ambient scaler; the native portrait date picker is pre-scaled at
+// its boundary because Flutter disables ambient scaling inside its wheel.
 const double kCupertinoDatePickerItemExtent = 32.0;
 const double kCupertinoDatePickerHeight = 216.0;
 const double kCupertinoDatePickerFontSize = 16.0;

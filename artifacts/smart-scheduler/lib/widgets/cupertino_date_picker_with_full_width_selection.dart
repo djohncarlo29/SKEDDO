@@ -656,6 +656,39 @@ class _CupertinoDatePickerWithFullWidthSelectionState
     );
   }
 
+  Widget _buildPortraitNativePicker() {
+    final theme = CupertinoTheme.of(context);
+    final datePickerTextStyle = theme.textTheme.dateTimePickerTextStyle;
+    final fontSize = datePickerTextStyle.fontSize;
+
+    // Flutter's native CupertinoDatePicker disables ambient text scaling for
+    // its wheel subtree. Pre-scale its theme font here so portrait matches the
+    // custom landscape and time wheels, which inherit the scaler directly.
+    final scaledTextStyle = fontSize == null
+        ? datePickerTextStyle
+        : datePickerTextStyle.copyWith(
+            fontSize: MediaQuery.textScalerOf(context).scale(fontSize),
+          );
+    final scaledTheme = theme.copyWith(
+      textTheme: theme.textTheme.copyWith(
+        dateTimePickerTextStyle: scaledTextStyle,
+      ),
+    );
+
+    return CupertinoTheme(
+      data: scaledTheme,
+      child: CupertinoDatePicker(
+        mode: CupertinoDatePickerMode.date,
+        itemExtent: widget.itemExtent,
+        initialDateTime: _selectedDate,
+        minimumDate: widget.minimumDate,
+        maximumDate: widget.maximumDate,
+        selectionOverlayBuilder: _hideColumnSelection,
+        onDateTimeChanged: _selectDate,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
@@ -669,15 +702,7 @@ class _CupertinoDatePickerWithFullWidthSelectionState
           if (isLandscape)
             _buildLandscapePickers()
           else
-            CupertinoDatePicker(
-              mode: CupertinoDatePickerMode.date,
-              itemExtent: widget.itemExtent,
-              initialDateTime: _selectedDate,
-              minimumDate: widget.minimumDate,
-              maximumDate: widget.maximumDate,
-              selectionOverlayBuilder: _hideColumnSelection,
-              onDateTimeChanged: _selectDate,
-            ),
+            _buildPortraitNativePicker(),
           IgnorePointer(
             child: Center(
               child: SizedBox(

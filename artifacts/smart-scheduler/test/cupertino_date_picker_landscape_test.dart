@@ -138,6 +138,64 @@ void main() {
     );
   });
 
+  testWidgets('portrait native date labels apply text scaling exactly once', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(600, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    Future<double> monthFontSizeAtScale(double scale) async {
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: MediaQuery(
+            data: MediaQueryData(
+              size: const Size(600, 1200),
+              devicePixelRatio: 1,
+              textScaler: TextScaler.linear(scale),
+            ),
+            child: Builder(
+              builder: (context) {
+                final theme = CupertinoTheme.of(context);
+                return CupertinoTheme(
+                  data: theme.copyWith(
+                    textTheme: theme.textTheme.copyWith(
+                      dateTimePickerTextStyle: const TextStyle(
+                        inherit: false,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  child: Center(
+                    child: SizedBox(
+                      width: 390,
+                      height: 216 * scale,
+                      child: CupertinoDatePickerWithFullWidthSelection(
+                        itemExtent: 32 * scale,
+                        initialDateTime: DateTime(2026, 10, 1),
+                        onDateTimeChanged: (_) {},
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final month = tester.widget<Text>(find.text('October').first);
+      return month.style!.fontSize!;
+    }
+
+    expect(await monthFontSizeAtScale(1), closeTo(16, 0.01));
+    expect(await monthFontSizeAtScale(1.8), closeTo(16 * 1.8, 0.01));
+  });
+
   testWidgets('landscape date wheel labels stay inside their columns', (
     tester,
   ) async {
