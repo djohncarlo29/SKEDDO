@@ -22218,7 +22218,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                   useMagnifier: true,
                   magnification: 2.35 / 2.1,
                   squeeze: 1.25,
-                  offAxisFraction: -0.15,
+                  offAxisFraction: -0.30,
                   selectionOverlay: const SizedBox.shrink(),
                   onSelectedItemChanged:
                       (i) => setState(() => _onThePositionIndex = i),
@@ -22248,7 +22248,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                   useMagnifier: true,
                   magnification: 2.35 / 2.1,
                   squeeze: 1.25,
-                  offAxisFraction: 0.15,
+                  offAxisFraction: 0.30,
                   selectionOverlay: const SizedBox.shrink(),
                   onSelectedItemChanged:
                       (i) => setState(() => _onTheDayIndex = i),
@@ -22471,7 +22471,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                             useMagnifier: true,
                             magnification: 2.35 / 2.1,
                             squeeze: 1.25,
-                            offAxisFraction: -0.15,
+                            offAxisFraction: -0.30,
                             selectionOverlay: const SizedBox.shrink(),
                             onSelectedItemChanged:
                                 _selectYearlyPositionWheelIndex,
@@ -22501,7 +22501,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                             useMagnifier: true,
                             magnification: 2.35 / 2.1,
                             squeeze: 1.25,
-                            offAxisFraction: 0.15,
+                            offAxisFraction: 0.30,
                             selectionOverlay: const SizedBox.shrink(),
                             onSelectedItemChanged: _selectYearlyDay,
                             children:
