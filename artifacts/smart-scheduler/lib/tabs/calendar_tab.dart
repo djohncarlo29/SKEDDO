@@ -24,6 +24,7 @@ import '../widgets/event_time_picker.dart';
 import '../widgets/native_text_input.dart';
 import '../widgets/text_editing_helpers.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
+import '../widgets/modal_sheet_scroll_under.dart';
 import '../widgets/modal_sheet_title_scroller.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/app_window_content_boundary.dart';
@@ -13892,11 +13893,18 @@ class _NewEventSheetState extends State<_NewEventSheet>
           backgroundColor: kModalBackground,
           child: SafeArea(
             bottom: false,
-            child: Column(
-              children: [
-                // ── Header ────────────────────────────────────────────────────
-                SizedBox(height: _kHeaderEdge),
-                RoundedCupertinoSheetHeader(
+            child: ModalSheetScrollUnder(
+              headerTopInset: _kHeaderEdge,
+              headerHeight: _kHeaderBtnSize,
+              headerGap: 12,
+              baseScrollPadding: EdgeInsets.fromLTRB(
+                16,
+                8,
+                16,
+                modalSheetBottomPadding(context),
+              ),
+              surfaceColor: resolveThemeColor(kModalBackground, context),
+              header: RoundedCupertinoSheetHeader(
                   child: SizedBox(
                     height: _kHeaderBtnSize,
                     width: double.infinity,
@@ -13963,10 +13971,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                // ── Scrollable cards ──────────────────────────────────────────
-                Expanded(
-                  child: GestureDetector(
+              scrollBuilder: (context, scrollPadding) => GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: _dismissModalSheetFocus,
                     child: SingleChildScrollView(
@@ -13978,12 +13983,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                       physics: const AlwaysScrollableScrollPhysics(
                         parent: BouncingScrollPhysics(),
                       ),
-                      padding: EdgeInsets.fromLTRB(
-                        16,
-                        8,
-                        16,
-                        modalSheetBottomPadding(context),
-                      ),
+                      padding: scrollPadding,
                       child: Column(
                         children: [
                           // Card 1 — Title + Subtitle
@@ -14211,8 +14211,6 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     ),
                   ),
                 ),
-              ],
-            ),
           ),
         ),
       ],
@@ -15418,11 +15416,18 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
       backgroundColor: kModalBackground,
       child: SafeArea(
         top: false,
-        child: Column(
-          children: [
-            // ── Header ────────────────────────────────────────────────────
-            SizedBox(height: 12.5),
-            RoundedCupertinoSheetHeader(
+        child: ModalSheetScrollUnder(
+          headerTopInset: 12.5,
+          headerHeight: 40,
+          headerGap: 12,
+          baseScrollPadding: EdgeInsets.fromLTRB(
+            16,
+            8,
+            16,
+            modalSheetBottomPadding(context),
+          ),
+          surfaceColor: resolveThemeColor(kModalBackground, context),
+          header: RoundedCupertinoSheetHeader(
               child: SizedBox(
                 height: 40.0,
                 width: double.infinity,
@@ -15469,16 +15474,8 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-            // ── Scrollable content ─────────────────────────────────────
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  8,
-                  16,
-                  modalSheetBottomPadding(context),
-                ),
+          scrollBuilder: (context, scrollPadding) => ListView(
+                padding: scrollPadding,
                 children: [
                   Column(
                     mainAxisSize: MainAxisSize.min,
@@ -15550,8 +15547,6 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                 ],
               ),
             ),
-          ],
-        ),
       ),
     );
   }

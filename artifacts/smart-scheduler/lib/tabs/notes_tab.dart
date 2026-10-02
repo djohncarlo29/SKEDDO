@@ -21,6 +21,7 @@ import '../services/speech_service.dart';
 import '../widgets/action_panel.dart';
 import '../widgets/native_text_input.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
+import '../widgets/modal_sheet_scroll_under.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/app_window_content_boundary.dart';
 import '../widgets/vertical_edge_fade.dart';

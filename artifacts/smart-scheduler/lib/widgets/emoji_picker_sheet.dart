@@ -8,6 +8,7 @@ import 'horizontal_edge_fade.dart';
 import 'header_title_scroller.dart';
 import 'picker_grid_geometry.dart';
 import 'rounded_cupertino_sheet.dart';
+import 'modal_sheet_scroll_under.dart';
 import 'vertical_edge_fade.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1516,10 +1517,20 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
 
     return CupertinoPageScaffold(
       backgroundColor: kModalBackground,
-      child: Column(
-        children: [
-          // ── Navigation bar ───────────────────────────────────────────────
-          RoundedCupertinoSheetHeader(
+      child: ModalSheetScrollUnder(
+        headerHeight: _emojiSheetHeaderHeight,
+        headerGap: 0,
+        baseScrollPadding: EdgeInsets.fromLTRB(
+          headerInset,
+          12,
+          headerInset,
+          math.max(
+            headerInset,
+            systemSafeAreaBottomInset(context),
+          ),
+        ),
+        surfaceColor: resolveThemeColor(kModalBackground, context),
+        header: RoundedCupertinoSheetHeader(
             child: SizedBox(
               height: _emojiSheetHeaderHeight,
               child: Padding(
@@ -1554,8 +1565,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
             ),
           ),
       // ── Card: grid (row 1) + separator + category strip (row 2) ─────
-          Expanded(
-            child: CustomScrollView(
+        scrollBuilder: (context, scrollPadding) => CustomScrollView(
               physics: const BouncingScrollPhysics(
                 parent: AlwaysScrollableScrollPhysics(),
               ),
@@ -1565,15 +1575,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                   sliver: SliverFillRemaining(
                     hasScrollBody: false,
                     child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        headerInset,
-                        12.0,
-                        headerInset,
-                        math.max(
-                          headerInset,
-                          systemSafeAreaBottomInset(context),
-                        ),
-                      ),
+                      padding: scrollPadding,
                       child: Container(
                         decoration: ShapeDecoration(
                           color: kModalCard.resolveFrom(context),

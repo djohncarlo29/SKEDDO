@@ -26,6 +26,7 @@ import '../widgets/native_text_input.dart';
 import '../widgets/text_editing_helpers.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
+import '../widgets/modal_sheet_scroll_under.dart';
 import '../widgets/modal_sheet_title_scroller.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/selection_handle_haptics.dart';
@@ -1639,8 +1640,8 @@ class _StorageFullBannerState extends State<_StorageFullBanner>
                     ],
                   ),
                 ),
-              ],
-            ),
+            ],
+          ),
           ),
         ),
       ),
@@ -13002,11 +13003,18 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
         backgroundColor: kModalBackground,
         child: SafeArea(
           bottom: false,
-          child: Column(
-            children: [
-              // ── Header ───────────────────────────────────────────────────
-              SizedBox(height: _kHeaderEdge),
-              RoundedCupertinoSheetHeader(
+          child: ModalSheetScrollUnder(
+            headerTopInset: _kHeaderEdge,
+            headerHeight: _kHeaderBtnSize,
+            headerGap: 12,
+            baseScrollPadding: EdgeInsets.fromLTRB(
+              16,
+              8,
+              16,
+              modalSheetBottomPadding(context),
+            ),
+            surfaceColor: resolveThemeColor(kModalBackground, context),
+            header: RoundedCupertinoSheetHeader(
                 child: SizedBox(
                   height: _kHeaderBtnSize,
                   width: double.infinity,
@@ -13074,22 +13082,14 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-              // ── Card ─────────────────────────────────────────────────────
-              Expanded(
-                child: GestureDetector(
+            scrollBuilder: (context, scrollPadding) => GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: _dismissModalSheetFocus,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(
                       parent: BouncingScrollPhysics(),
                     ),
-                    padding: EdgeInsets.fromLTRB(
-                      16,
-                      8,
-                      16,
-                      modalSheetBottomPadding(context),
-                    ),
+                    padding: scrollPadding,
                     child: Container(
                       decoration: ShapeDecoration(
                         color: resolveThemeColor(kModalCard, context),
@@ -13322,8 +13322,6 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                   ),
                 ),
               ),
-            ],
-          ),
         ),
       ),
     );
@@ -16310,11 +16308,18 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         backgroundColor: kModalBackground,
         child: SafeArea(
           bottom: false,
-          child: Column(
-            children: [
-              // ── Header (layout unchanged from original) ───────────────────
-              SizedBox(height: _kHeaderEdge),
-              RoundedCupertinoSheetHeader(
+          child: ModalSheetScrollUnder(
+            headerTopInset: _kHeaderEdge,
+            headerHeight: _kHeaderBtnSize,
+            headerGap: 12,
+            baseScrollPadding: EdgeInsets.fromLTRB(
+              16,
+              8,
+              16,
+              modalSheetBottomPadding(context),
+            ),
+            surfaceColor: resolveThemeColor(kModalBackground, context),
+            header: RoundedCupertinoSheetHeader(
                 child: SizedBox(
                   height: _kHeaderBtnSize,
                   width: double.infinity,
@@ -16377,22 +16382,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   ),
                 ),
               ),
-              // Bottom breathing room for the sticky header: when content scrolls
-              // under the header this gap ensures the card edge never sits flush
-              // against the button row above it.
-              const SizedBox(height: 12),
-              // ── Scrollable cards ──────────────────────────────────────────
-              Expanded(
-                child: GestureDetector(
+            scrollBuilder: (context, scrollPadding) => GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: _dismissModalSheetFocus,
                   child: SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(
-                      16,
-                      8,
-                      16,
-                      modalSheetBottomPadding(context),
-                    ),
+                    padding: scrollPadding,
                     child: Column(
                       children: [
                         _buildIdentityCard(),
@@ -16465,8 +16459,6 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   ),
                 ),
               ),
-            ],
-          ),
         ),
       ),
     );
@@ -17963,10 +17955,18 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
       backgroundColor: kModalBackground,
       child: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            SizedBox(height: _kHeaderEdge),
-            RoundedCupertinoSheetHeader(
+        child: ModalSheetScrollUnder(
+          headerTopInset: _kHeaderEdge,
+          headerHeight: _kHeaderButtonSize,
+          headerGap: 12,
+          baseScrollPadding: EdgeInsets.fromLTRB(
+            16,
+            8,
+            16,
+            modalSheetBottomPadding(context),
+          ),
+          surfaceColor: resolveThemeColor(kModalBackground, context),
+          header: RoundedCupertinoSheetHeader(
               child: SizedBox(
                 height: _kHeaderButtonSize,
                 width: double.infinity,
@@ -18011,18 +18011,11 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView(
+          scrollBuilder: (context, scrollPadding) => ListView(
                 key: _scrollViewportKey,
                 controller: _scrollController,
                 primary: false,
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  8,
-                  16,
-                  modalSheetBottomPadding(context),
-                ),
+                padding: scrollPadding,
                 children: [
                   Container(
                     clipBehavior: Clip.antiAlias,
@@ -18162,9 +18155,6 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
       ),
       ),
     );
@@ -22569,11 +22559,18 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
       backgroundColor: kModalBackground,
       child: SafeArea(
         top: false,
-        child: Column(
-          children: [
-            // ── Header ──────────────────────────────────────────────────────
-            SizedBox(height: 12.5),
-            RoundedCupertinoSheetHeader(
+        child: ModalSheetScrollUnder(
+          headerTopInset: 12.5,
+          headerHeight: 40,
+          headerGap: 12,
+          baseScrollPadding: EdgeInsets.fromLTRB(
+            16,
+            8,
+            16,
+            modalSheetBottomPadding(context),
+          ),
+          surfaceColor: resolveThemeColor(kModalBackground, context),
+          header: RoundedCupertinoSheetHeader(
               child: SizedBox(
                 height: 40.0,
                 width: double.infinity,
@@ -22620,18 +22617,8 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                 ),
               ),
             ),
-            // Same 12px gap the parent sheet uses so content never sits flush
-            // against the header buttons as it scrolls underneath.
-            const SizedBox(height: 12),
-            // ── Scrollable content ───────────────────────────────────────
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  8,
-                  16,
-                  modalSheetBottomPadding(context),
-                ),
+          scrollBuilder: (context, scrollPadding) => ListView(
+                padding: scrollPadding,
                 children: [
                   // ── Card 1 ─────────────────────────────────────────────
                   Column(
@@ -22706,8 +22693,6 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                 ],
               ),
             ),
-          ],
-        ),
       ),
     );
   }
