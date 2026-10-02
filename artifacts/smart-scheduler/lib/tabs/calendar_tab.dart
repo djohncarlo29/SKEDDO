@@ -35,6 +35,7 @@ import '../widgets/app_switch.dart';
 import '../services/event_store.dart';
 import '../services/category_registry.dart';
 import '../services/alert_sequence.dart';
+import '../services/recurrence_expander.dart';
 import '../ai/search/search_service.dart';
 import 'events_tab.dart'
     show
@@ -14968,8 +14969,59 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     );
   }
 
-  Widget _fullWidthPositionDayPickerRow(Widget row) =>
-      SizedBox(width: double.infinity, child: row);
+  double _positionDayWheelColumnWidth() {
+    var widestLabel = 0.0;
+    for (final label in [..._kPositions, ..._kPositionDays]) {
+      final painter = TextPainter(
+        text: TextSpan(text: label, style: _kPickerItemStyle),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        maxLines: 1,
+      )..layout();
+      widestLabel = math.max(widestLabel, painter.width);
+    }
+    return widestLabel * _kPickerMagnification +
+        _kPickerSelectionPillMargin +
+        _kPickerSelectionPillTextInset +
+        8.0;
+  }
+
+  Widget _positionDayPickerWithFullWidthSelectionBar(Widget row) {
+    final preferredWidth = _positionDayWheelColumnWidth() * 2;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : preferredWidth;
+        final wheelGroupWidth = math.min(preferredWidth, availableWidth);
+        return SizedBox(
+          width: availableWidth,
+          child: Stack(
+            fit: StackFit.expand,
+            alignment: Alignment.center,
+            children: [
+              IgnorePointer(
+                child: Center(
+                  child: SizedBox(
+                    width: availableWidth,
+                    height: _pickerItemExtent,
+                    child:
+                        const CupertinoPickerDefaultSelectionOverlay(
+                          capStartEdge: true,
+                          capEndEdge: true,
+                        ),
+                  ),
+                ),
+              ),
+              Center(
+                child: SizedBox(width: wheelGroupWidth, child: row),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Widget _clipPicker(
     Widget picker, {
@@ -15242,7 +15294,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
     ] else ...[
       SizedBox(
         height: math.max(216.0, _pickerItemExtent * 5.5),
-        child: _fullWidthPositionDayPickerRow(
+        child: _positionDayPickerWithFullWidthSelectionBar(
           Row(
           children: [
             Expanded(
@@ -15255,19 +15307,15 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                   magnification: 2.35 / 2.1,
                   squeeze: 1.25,
                   offAxisFraction: -0.45,
-                  selectionOverlay:
-                      const CupertinoPickerDefaultSelectionOverlay(
-                        capStartEdge: true,
-                        capEndEdge: false,
-                      ),
+                  selectionOverlay: const SizedBox.shrink(),
                   onSelectedItemChanged: (i) =>
                       setState(() => _onThePositionIndex = i),
                   children: _kPositions
                       .map(
                         (p) => Align(
-                          alignment: Alignment.centerRight,
+                          alignment: Alignment.center,
                           child: Padding(
-                            padding: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
                               child: _pickerText(
                                 p,
                                 Alignment.center,
@@ -15292,19 +15340,15 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                   magnification: 2.35 / 2.1,
                   squeeze: 1.25,
                   offAxisFraction: 0.45,
-                  selectionOverlay:
-                      const CupertinoPickerDefaultSelectionOverlay(
-                        capStartEdge: false,
-                        capEndEdge: true,
-                      ),
+                  selectionOverlay: const SizedBox.shrink(),
                   onSelectedItemChanged: (i) =>
                       setState(() => _onTheDayIndex = i),
                   children: _kPositionDays
                       .map(
                         (d) => Align(
-                          alignment: Alignment.centerLeft,
+                          alignment: Alignment.center,
                           child: Padding(
-                            padding: const EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
                               child: _pickerText(
                                 d,
                                 Alignment.center,
@@ -15494,7 +15538,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
             _sep(),
             SizedBox(
               height: math.max(216.0, _pickerItemExtent * 5.5),
-              child: _fullWidthPositionDayPickerRow(
+              child: _positionDayPickerWithFullWidthSelectionBar(
                 Row(
                 children: [
                   Expanded(
@@ -15507,19 +15551,17 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                         magnification: 2.35 / 2.1,
                         squeeze: 1.25,
                         offAxisFraction: -0.45,
-                        selectionOverlay:
-                            const CupertinoPickerDefaultSelectionOverlay(
-                              capStartEdge: true,
-                              capEndEdge: false,
-                            ),
+                        selectionOverlay: const SizedBox.shrink(),
                         onSelectedItemChanged: (i) =>
                             setState(() => _yearlyPositionIndex = i),
                         children: _kPositions
                             .map(
                               (p) => Align(
-                                alignment: Alignment.centerRight,
+                                alignment: Alignment.center,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(right: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
                                   child: _pickerText(
                                     p,
                                     Alignment.center,
@@ -15544,19 +15586,17 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                         magnification: 2.35 / 2.1,
                         squeeze: 1.25,
                         offAxisFraction: 0.45,
-                        selectionOverlay:
-                            const CupertinoPickerDefaultSelectionOverlay(
-                              capStartEdge: false,
-                              capEndEdge: true,
-                            ),
+                        selectionOverlay: const SizedBox.shrink(),
                         onSelectedItemChanged: (i) =>
                             setState(() => _yearlyDayIndex = i),
                         children: _kPositionDays
                             .map(
                               (d) => Align(
-                                alignment: Alignment.centerLeft,
+                                alignment: Alignment.center,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(left: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
                                   child: _pickerText(
                                     d,
                                     Alignment.center,

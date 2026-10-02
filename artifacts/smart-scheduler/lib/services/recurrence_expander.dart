@@ -83,6 +83,33 @@ class RecurrenceExpander {
 
   // ── Public API ──────────────────────────────────────────────────────────────
 
+  /// Returns the ordinal positions available for at least one selected month
+  /// in [year] for the chosen weekday or day group.
+  ///
+  /// An empty [selectedMonths] set means no month filter has been chosen yet,
+  /// so all calendar months are considered. Actual recurrence expansion still
+  /// checks each occurrence year and skips individual months with no match.
+  static List<int> availableYearlyPositionIndices({
+    required int year,
+    required Set<int> selectedMonths,
+    required int dayIndex,
+  }) {
+    final months = selectedMonths.isEmpty
+        ? List<int>.generate(12, (index) => index + 1)
+        : selectedMonths.where((month) => month >= 1 && month <= 12).toList();
+    final available = <int>[
+      for (var position = 0; position < _kPositions.length; position++)
+        if (months.any(
+          (month) =>
+              _nthWeekdayOfMonth(year, month, position, dayIndex) != null,
+        ))
+          position,
+    ];
+    return available.isEmpty
+        ? List<int>.generate(_kPositions.length, (index) => index)
+        : available;
+  }
+
   /// Expand [base] into concrete occurrences within [[from], [to]].
   ///
   /// Returns [] if [base] is not recurring or has no absolute date.
