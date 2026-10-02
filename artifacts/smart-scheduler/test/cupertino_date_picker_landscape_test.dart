@@ -183,9 +183,7 @@ void main() {
     expect(yearLabel.right, closeTo(yearColumn.right - 12, 1));
   });
 
-  testWidgets('landscape date wheels dim and reject dates before the minimum', (
-    tester,
-  ) async {
+  testWidgets('disabled values pass through, then return', (tester) async {
     tester.view.physicalSize = const Size(1200, 600);
     tester.view.devicePixelRatio = 1;
     addTearDown(() {
@@ -241,27 +239,35 @@ void main() {
     );
     dayPicker.scrollController!.jumpToItem(13);
     await tester.pump();
+    expect(dayPicker.scrollController!.selectedItem, 13);
+    expect(changedDate, isNull);
     await tester.pumpAndSettle();
     expect(dayPicker.scrollController!.selectedItem, 14);
-    expect(changedDate, isNull);
+    expect(changedDate, DateTime(2026, 10, 15));
 
+    changedDate = null;
     final monthPicker = tester.widget<CupertinoPicker>(
       find.byKey(const ValueKey('wide-date-month-column')),
     );
     monthPicker.scrollController!.jumpToItem(8);
     await tester.pump();
+    expect(monthPicker.scrollController!.selectedItem, 8);
+    expect(changedDate, isNull);
     await tester.pumpAndSettle();
     expect(monthPicker.scrollController!.selectedItem, 9);
-    expect(changedDate, isNull);
+    expect(changedDate, DateTime(2026, 10, 15));
 
+    changedDate = null;
     final yearPicker = tester.widget<CupertinoPicker>(
       find.byKey(const ValueKey('wide-date-year-column')),
     );
     yearPicker.scrollController!.jumpToItem(2024);
     await tester.pump();
+    expect(yearPicker.scrollController!.selectedItem, 2024);
+    expect(changedDate, isNull);
     await tester.pumpAndSettle();
     expect(yearPicker.scrollController!.selectedItem, 2025);
-    expect(changedDate, isNull);
+    expect(changedDate, DateTime(2026, 10, 15));
   });
 
   testWidgets('landscape date wheels keep the selected date valid', (

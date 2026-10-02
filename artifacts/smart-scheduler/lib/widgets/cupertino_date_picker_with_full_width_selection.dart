@@ -468,29 +468,33 @@ class _CupertinoDatePickerWithFullWidthSelectionState
     int columnIndex,
     CupertinoLocalizations localizations,
   ) {
-    return CupertinoPicker(
-      key: const ValueKey('wide-date-month-column'),
-      scrollController: _monthController,
-      itemExtent: widget.itemExtent,
-      useMagnifier: true,
-      magnification: _magnification,
-      squeeze: _squeeze,
-      offAxisFraction: _offAxisFraction(columnIndex),
-      backgroundColor: CupertinoColors.transparent,
-      selectionOverlay: const SizedBox.shrink(),
-      looping: true,
-      onSelectedItemChanged: (index) {
-        final month = _positiveModulo(index, _monthsPerYear) + 1;
-        _selectDateComponents(_selectedDate.year, month, _selectedDate.day);
-      },
-      children: List<Widget>.generate(_monthsPerYear, (index) {
-        final month = index + 1;
-        return _wheelItem(
-          localizations.datePickerMonth(month),
-          columnIndex: columnIndex,
-          isValid: _isMonthValid(month),
-        );
-      }),
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) =>
+          _handlePickerScrollNotification(_DateWheelColumn.month, notification),
+      child: CupertinoPicker(
+        key: const ValueKey('wide-date-month-column'),
+        scrollController: _monthController,
+        itemExtent: widget.itemExtent,
+        useMagnifier: true,
+        magnification: _magnification,
+        squeeze: _squeeze,
+        offAxisFraction: _offAxisFraction(columnIndex),
+        backgroundColor: CupertinoColors.transparent,
+        selectionOverlay: const SizedBox.shrink(),
+        looping: true,
+        onSelectedItemChanged: (index) {
+          final month = _positiveModulo(index, _monthsPerYear) + 1;
+          _selectDateComponents(_selectedYear, month, _selectedDay);
+        },
+        children: List<Widget>.generate(_monthsPerYear, (index) {
+          final month = index + 1;
+          return _wheelItem(
+            localizations.datePickerMonth(month),
+            columnIndex: columnIndex,
+            isValid: _isMonthValid(month),
+          );
+        }),
+      ),
     );
   }
 
@@ -498,29 +502,33 @@ class _CupertinoDatePickerWithFullWidthSelectionState
     int columnIndex,
     CupertinoLocalizations localizations,
   ) {
-    return CupertinoPicker(
-      key: const ValueKey('wide-date-day-column'),
-      scrollController: _dayController,
-      itemExtent: widget.itemExtent,
-      useMagnifier: true,
-      magnification: _magnification,
-      squeeze: _squeeze,
-      offAxisFraction: _offAxisFraction(columnIndex),
-      backgroundColor: CupertinoColors.transparent,
-      selectionOverlay: const SizedBox.shrink(),
-      looping: true,
-      onSelectedItemChanged: (index) {
-        final day = _positiveModulo(index, _daysPerMonthPicker) + 1;
-        _selectDateComponents(_selectedDate.year, _selectedDate.month, day);
-      },
-      children: List<Widget>.generate(_daysPerMonthPicker, (index) {
-        final day = index + 1;
-        return _wheelItem(
-          localizations.datePickerDayOfMonth(day),
-          columnIndex: columnIndex,
-          isValid: _isDayValid(day),
-        );
-      }),
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) =>
+          _handlePickerScrollNotification(_DateWheelColumn.day, notification),
+      child: CupertinoPicker(
+        key: const ValueKey('wide-date-day-column'),
+        scrollController: _dayController,
+        itemExtent: widget.itemExtent,
+        useMagnifier: true,
+        magnification: _magnification,
+        squeeze: _squeeze,
+        offAxisFraction: _offAxisFraction(columnIndex),
+        backgroundColor: CupertinoColors.transparent,
+        selectionOverlay: const SizedBox.shrink(),
+        looping: true,
+        onSelectedItemChanged: (index) {
+          final day = _positiveModulo(index, _daysPerMonthPicker) + 1;
+          _selectDateComponents(_selectedYear, _selectedMonth, day);
+        },
+        children: List<Widget>.generate(_daysPerMonthPicker, (index) {
+          final day = index + 1;
+          return _wheelItem(
+            localizations.datePickerDayOfMonth(day),
+            columnIndex: columnIndex,
+            isValid: _isDayValid(day),
+          );
+        }),
+      ),
     );
   }
 
@@ -528,34 +536,38 @@ class _CupertinoDatePickerWithFullWidthSelectionState
     int columnIndex,
     CupertinoLocalizations localizations,
   ) {
-    return CupertinoPicker.builder(
-      key: const ValueKey('wide-date-year-column'),
-      scrollController: _yearController,
-      itemExtent: widget.itemExtent,
-      useMagnifier: true,
-      magnification: _magnification,
-      squeeze: _squeeze,
-      offAxisFraction: _offAxisFraction(columnIndex),
-      backgroundColor: CupertinoColors.transparent,
-      selectionOverlay: const SizedBox.shrink(),
-      childCount: _maximumYear - _minimumYear + 1,
-      onSelectedItemChanged: (index) {
-        final year = index + _minimumYear;
-        _selectDateComponents(year, _selectedDate.month, _selectedDate.day);
-      },
-      itemBuilder: (context, index) {
-        final year = index + _minimumYear;
-        final minimumDate = widget.minimumDate;
-        final maximumDate = widget.maximumDate;
-        final isValid =
-            (minimumDate == null || minimumDate.year <= year) &&
-            (maximumDate == null || maximumDate.year >= year);
-        return _wheelItem(
-          localizations.datePickerYear(year),
-          columnIndex: columnIndex,
-          isValid: isValid,
-        );
-      },
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) =>
+          _handlePickerScrollNotification(_DateWheelColumn.year, notification),
+      child: CupertinoPicker.builder(
+        key: const ValueKey('wide-date-year-column'),
+        scrollController: _yearController,
+        itemExtent: widget.itemExtent,
+        useMagnifier: true,
+        magnification: _magnification,
+        squeeze: _squeeze,
+        offAxisFraction: _offAxisFraction(columnIndex),
+        backgroundColor: CupertinoColors.transparent,
+        selectionOverlay: const SizedBox.shrink(),
+        childCount: _maximumYear - _minimumYear + 1,
+        onSelectedItemChanged: (index) {
+          final year = index + _minimumYear;
+          _selectDateComponents(year, _selectedMonth, _selectedDay);
+        },
+        itemBuilder: (context, index) {
+          final year = index + _minimumYear;
+          final minimumDate = widget.minimumDate;
+          final maximumDate = widget.maximumDate;
+          final isValid =
+              (minimumDate == null || minimumDate.year <= year) &&
+              (maximumDate == null || maximumDate.year >= year);
+          return _wheelItem(
+            localizations.datePickerYear(year),
+            columnIndex: columnIndex,
+            isValid: isValid,
+          );
+        },
+      ),
     );
   }
 
