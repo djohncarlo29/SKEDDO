@@ -114,6 +114,22 @@ class ModalSheetScrollUnder extends StatefulWidget {
 class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   // One continuously masked filter avoids horizontal seams between sigma bands.
   static const double _topBlurSigmaScale = 0.85;
+  static const LinearGradient _topBlurMaskGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0xFFFFFFFF),
+      Color(0xF4FFFFFF),
+      Color(0xD7FFFFFF),
+      Color(0xAEFFFFFF),
+      Color(0x80FFFFFF),
+      Color(0x51FFFFFF),
+      Color(0x28FFFFFF),
+      Color(0x0BFFFFFF),
+      Color(0x00FFFFFF),
+    ],
+    stops: [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1],
+  );
   static const String _shaderAsset =
       'assets/shaders/modal_sheet_scroll_edge.frag';
   static Future<FragmentProgram>? _sharedShaderProgram;
@@ -123,13 +139,11 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   FragmentShader? _topShader;
   FragmentShader? _bottomShader;
 
-  // Android devices use the built-in BackdropFilter path. The custom runtime
-  // image-filter shader is renderer-sensitive there and can silently produce
-  // no visible edge effect on otherwise-supported Impeller devices.
+  // Use the spatially progressive image-filter shader on every Impeller
+  // backend that supports it, including Android. Keep the masked BackdropFilter
+  // fallback for web and renderers without ImageFilter.shader support.
   bool get _useProgressiveShader =>
-      !kIsWeb &&
-      defaultTargetPlatform != TargetPlatform.android &&
-      ImageFilter.isShaderFilterSupported;
+      !kIsWeb && ImageFilter.isShaderFilterSupported;
 
   @override
   void initState() {
@@ -211,13 +225,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
 
     final distance = _activationDistance;
     final nextTop = (metrics.pixels / distance).clamp(0.0, 1.0).toDouble();
-    final nextBottom =
-        widget.footer == null
-            ? 0.0
-            : ((metrics.pixels - (metrics.maxScrollExtent - distance)) /
-                    distance)
-                .clamp(0.0, 1.0)
-                .toDouble();
+    final nextBottom = _bottomProgressForMetrics(metrics, distance);
     if ((nextTop - _topProgress).abs() < 0.01 &&
         (nextBottom - _bottomProgress).abs() < 0.01) {
       return;
@@ -226,6 +234,17 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       _topProgress = nextTop;
       _bottomProgress = nextBottom;
     });
+  }
+
+  double _bottomProgressForMetrics(ScrollMetrics metrics, double distance) {
+    if (widget.footer == null) return 0;
+
+    // When the available scroll range is shorter than the normal transition,
+    // use that entire range. This keeps the footer effect at zero at the top
+    // and still lets it reach full strength at the bottom.
+    final range = math.min(distance, metrics.maxScrollExtent);
+    final start = metrics.maxScrollExtent - range;
+    return ((metrics.pixels - start) / range).clamp(0.0, 1.0).toDouble();
   }
 
   void _syncFromScrollController() {
@@ -256,10 +275,10 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       ..setFloat(2, progress)
       ..setFloat(3, widget.maxBlurSigma * (atTop ? _topBlurSigmaScale : 1))
       ..setFloat(4, widget.maxSurfaceOpacity)
-      ..setFloat(5, color.red / 255)
-      ..setFloat(6, color.green / 255)
-      ..setFloat(7, color.blue / 255)
-      ..setFloat(8, color.alpha / 255)
+      ..setFloat(5, color.r)
+      ..setFloat(6, color.g)
+      ..setFloat(7, color.b)
+      ..setFloat(8, color.a)
       ..setFloat(9, MediaQuery.devicePixelRatioOf(context))
       ..setFloat(10, atTop ? _topFadeExtent : widget.edgeExtent)
       ..setFloat(11, atTop ? _topBlurExtent : widget.edgeExtent)
@@ -271,11 +290,9 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     required double progress,
     required double fieldHeight,
   }) {
-    // Preserve the original full-strength top fade; maxSurfaceOpacity controls
-    // the bottom veil only.
-    final maxOpacity = atTop ? 1.0 : widget.maxSurfaceOpacity;
+    final maxOpacity = widget.maxSurfaceOpacity;
     final opacity =
-        (maxOpacity * progress * widget.surfaceColor.alpha / 255)
+        (maxOpacity * progress * widget.surfaceColor.a)
             .clamp(0.0, 1.0)
             .toDouble();
     final strong = widget.surfaceColor.withValues(alpha: opacity);
@@ -334,14 +351,22 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       children: [
         if (atTop)
           Positioned.fill(
-            child: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(
-                  sigmaX: widget.maxBlurSigma * _topBlurSigmaScale * progress,
-                  sigmaY: widget.maxBlurSigma * _topBlurSigmaScale * progress,
-                  tileMode: TileMode.decal,
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback:
+                  (bounds) => _topBlurMaskGradient.createShader(bounds),
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: widget.maxBlurSigma * _topBlurSigmaScale * progress,
+                    sigmaY: widget.maxBlurSigma * _topBlurSigmaScale * progress,
+                    tileMode: TileMode.decal,
+                  ),
+                  // The mask must be applied to the filtered backdrop itself;
+                  // the unmasked sharp scroll content remains beneath it.
+                  blendMode: BlendMode.src,
+                  child: const SizedBox.expand(),
                 ),
-                child: const SizedBox.expand(),
               ),
             ),
           )

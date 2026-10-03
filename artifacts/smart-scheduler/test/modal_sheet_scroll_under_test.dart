@@ -1,11 +1,12 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart' show TargetPlatform;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/widgets/modal_sheet_scroll_under.dart';
 
 void main() {
   testWidgets(
-    'Android top edge keeps the original fade and paints an unmasked blur',
+    'Android top fallback masks the blur so sharp content returns at the edge',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(400, 700));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -60,26 +61,28 @@ void main() {
       await tester.pump();
 
       expect(find.byType(BackdropFilter), findsOneWidget);
-      expect(
-        tester.widget<BackdropFilter>(find.byType(BackdropFilter)).blendMode,
-        BlendMode.srcOver,
-      );
-      expect(find.byType(ShaderMask), findsNothing);
-      final topGradient =
-          tester
-              .widgetList<DecoratedBox>(
-                find.descendant(
-                  of: find.byType(ModalSheetScrollUnder),
-                  matching: find.byType(DecoratedBox),
-                ),
-              )
-              .map((box) => box.decoration)
-              .whereType<BoxDecoration>()
-              .map((decoration) => decoration.gradient)
-              .whereType<LinearGradient>()
-              .single;
-      expect(topGradient.colors.first.alpha, 255);
-      expect(topGradient.colors.last.alpha, 0);
+      if (!ImageFilter.isShaderFilterSupported) {
+        expect(
+          tester.widget<BackdropFilter>(find.byType(BackdropFilter)).blendMode,
+          BlendMode.src,
+        );
+        expect(find.byType(ShaderMask), findsOneWidget);
+        final topGradient =
+            tester
+                .widgetList<DecoratedBox>(
+                  find.descendant(
+                    of: find.byType(ModalSheetScrollUnder),
+                    matching: find.byType(DecoratedBox),
+                  ),
+                )
+                .map((box) => box.decoration)
+                .whereType<BoxDecoration>()
+                .map((decoration) => decoration.gradient)
+                .whereType<LinearGradient>()
+                .single;
+        expect(topGradient.colors.first.a, lessThan(1));
+        expect(topGradient.colors.last.a, 0);
+      }
       expect(tester.getTopLeft(find.byKey(headerKey)).dy, headerTop);
       expect(
         tester.getTopLeft(find.text('Row 0')).dy,
@@ -176,4 +179,53 @@ void main() {
 
     expect(find.byType(BackdropFilter), findsNothing);
   });
+
+  testWidgets(
+    'short scroll range keeps the footer effect off until scrolling',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(400, 700));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final controller = ScrollController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: SizedBox.expand(
+              child: ModalSheetScrollUnder(
+                scrollController: controller,
+                headerHeight: 40,
+                baseScrollPadding: EdgeInsets.zero,
+                surfaceColor: CupertinoColors.systemBackground,
+                header: const SizedBox(
+                  height: 40,
+                  child: Text('Pinned header'),
+                ),
+                footerHeight: 32,
+                footer: const SizedBox(height: 32),
+                scrollBuilder:
+                    (context, padding) => ListView(
+                      controller: controller,
+                      padding: padding,
+                      children: const [SizedBox(height: 660)],
+                    ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.position.maxScrollExtent, greaterThan(1));
+      expect(controller.position.maxScrollExtent, lessThan(48));
+      expect(find.byType(BackdropFilter), findsNothing);
+
+      controller.jumpTo(controller.position.maxScrollExtent);
+      await tester.pump();
+
+      expect(find.byType(BackdropFilter), findsNWidgets(2));
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
 }

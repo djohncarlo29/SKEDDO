@@ -53,7 +53,7 @@
 - [Dart 3.9 collection nesting](dart39-collection-nesting.md) — if→for→if collection elements crash Dart 3.9 parser; fold outer if into for-loop condition instead.
 - [Shorebird SDK constraint](shorebird-sdk-constraint.md) — app sdk must be >=3.8.0 <4.0.0; also patch cupertino_native cached pubspec which ships ^3.9.0.
 - [liquid_glass_widgets Android crash](liquid-glass-android-crash.md) — liquid_glass shaders are SkSL-incompatible; app crashes on Android when any GlassSwitch is rendered. Use _SlidingSwitch (pure Flutter) on non-iOS.
-- [Android performance visual fidelity](android-performance-visual-fidelity.md) — preserve the designed glass and motion treatment; optimize measured work and scheduling instead of replacing visible effects with platform fallbacks.
+- [Android performance visual fidelity](android-performance-visual-fidelity.md) — preserve designed glass effects; require physical-device confirmation before claiming renderer-dependent Android blur is verified.
 - [Static Liquid Glass controls](static-liquid-glass-action-buttons.md) — fixed-color action circles and simple cards use bounded static glass; dynamic controls keep live optics.
 - [Replit home partition quota](replit-home-quota.md) — /home/runner has a per-user quota well below its 32GB size; move caches to /home/runner/workspace/.cache and symlink back.
 - [Native iOS switch routing](cupertino-native-switch-package.md) — use CNSwitch only on native iOS; preserve LiquidGlassSwitch on web, Android, and other platforms.
