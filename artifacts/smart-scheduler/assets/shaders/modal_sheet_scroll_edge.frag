@@ -6,8 +6,8 @@ uniform float u_max_sigma;
 uniform float u_max_surface_opacity;
 uniform vec4 u_surface_color;
 uniform float u_pixel_ratio;
-uniform float u_header_height;
-uniform float u_edge_extent;
+uniform float u_fade_extent;
+uniform float u_blur_extent;
 uniform float u_is_bottom;
 uniform sampler2D u_texture_input;
 
@@ -26,18 +26,20 @@ void main() {
 #endif
 
   float y = uv.y * u_size.y;
-  float edgeExtent = max(u_edge_extent * u_pixel_ratio, 0.001);
-  float fieldStrength;
+  float fadeExtent = max(u_fade_extent * u_pixel_ratio, 0.001);
+  float blurExtent = max(u_blur_extent * u_pixel_ratio, 0.001);
+  float fadeStrength;
+  float blurStrength;
   if (u_is_bottom < 0.5) {
-    float headerHeight = u_header_height * u_pixel_ratio;
-    fieldStrength =
-        1.0 - smoothstep(headerHeight, headerHeight + edgeExtent, y);
+    fadeStrength = 1.0 - smoothstep(0.0, fadeExtent, y);
+    blurStrength = 1.0 - smoothstep(0.0, blurExtent, y);
   } else {
-    fieldStrength = smoothstep(0.0, edgeExtent, y);
+    fadeStrength = smoothstep(0.0, fadeExtent, y);
+    blurStrength = smoothstep(0.0, blurExtent, y);
   }
 
-  float strength = clamp(u_progress, 0.0, 1.0) * fieldStrength;
-  float sigmaPixels = u_max_sigma * u_pixel_ratio * strength;
+  float progress = clamp(u_progress, 0.0, 1.0);
+  float sigmaPixels = u_max_sigma * u_pixel_ratio * progress * blurStrength;
   vec4 filtered = texture(u_texture_input, uv);
 
   if (sigmaPixels > 0.01) {
@@ -59,13 +61,14 @@ void main() {
     filtered /= totalWeight;
   }
 
-  float tintStrength = clamp(
-    u_max_surface_opacity * strength * u_surface_color.a,
+  float fadeOpacity = clamp(
+    u_max_surface_opacity * progress * fadeStrength * u_surface_color.a,
     0.0,
     1.0
   );
-  float alpha = max(filtered.a, 0.0001);
-  vec3 unpremultiplied = filtered.rgb / alpha;
-  vec3 material = mix(unpremultiplied, u_surface_color.rgb, tintStrength);
-  frag_color = vec4(material * filtered.a, filtered.a);
+  vec4 surface = vec4(
+    u_surface_color.rgb * u_surface_color.a,
+    u_surface_color.a
+  );
+  frag_color = mix(filtered, surface, fadeOpacity);
 }

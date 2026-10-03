@@ -9,6 +9,9 @@ import 'package:flutter/widgets.dart';
 /// independently of the inset used to position its header.
 const double kModalSheetScrollEdgeTopOffset = 0;
 
+/// The top blur reaches zero sooner than the modal-surface fade.
+const double kModalSheetScrollEdgeBlurTailRatio = 0.65;
+
 /// Places a sheet's scrolling content behind its fixed header and, optionally,
 /// footer while keeping the original at-rest content positions.
 ///
@@ -97,7 +100,6 @@ class ModalSheetScrollUnder extends StatefulWidget {
 class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   static const String _shaderAsset =
       'assets/shaders/modal_sheet_scroll_edge.frag';
-  static const int _fallbackBlurBandCount = 16;
   static Future<FragmentProgram>? _sharedShaderProgram;
 
   double _topProgress = 0;
@@ -153,6 +155,14 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
         widget.baseScrollPadding.bottom,
   );
 
+  double get _topFadeExtent =>
+      widget.headerTopInset + widget.headerHeight + widget.edgeExtent;
+
+  double get _topBlurExtent =>
+      widget.headerTopInset +
+      widget.headerHeight +
+      widget.edgeExtent * kModalSheetScrollEdgeBlurTailRatio;
+
   void _syncScrollMetrics(ScrollMetrics metrics) {
     if (metrics.maxScrollExtent <= 1) {
       if (_topProgress != 0 || _bottomProgress != 0) {
@@ -200,55 +210,35 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     shader
       ..setFloat(2, progress)
       ..setFloat(3, widget.maxBlurSigma)
-      ..setFloat(4, widget.maxSurfaceOpacity)
+      ..setFloat(4, atTop ? 1 : widget.maxSurfaceOpacity)
       ..setFloat(5, color.red / 255)
       ..setFloat(6, color.green / 255)
       ..setFloat(7, color.blue / 255)
       ..setFloat(8, color.alpha / 255)
       ..setFloat(9, MediaQuery.devicePixelRatioOf(context))
-      ..setFloat(10, atTop ? widget.headerHeight : widget.footerHeight)
-      ..setFloat(11, widget.edgeExtent)
+      ..setFloat(10, atTop ? _topFadeExtent : widget.edgeExtent)
+      ..setFloat(11, atTop ? _topBlurExtent : widget.edgeExtent)
       ..setFloat(12, atTop ? 0 : 1);
-  }
-
-  double _smoothStep(double value) {
-    final t = value.clamp(0.0, 1.0).toDouble();
-    return t * t * (3 - 2 * t);
-  }
-
-  double _fieldStrengthAt(
-    double y, {
-    required bool atTop,
-    required double anchorExtent,
-  }) {
-    if (atTop) {
-      return 1 - _smoothStep((y - anchorExtent) / widget.edgeExtent);
-    }
-    return _smoothStep(y / widget.edgeExtent);
   }
 
   LinearGradient _fallbackMaterialGradient({
     required bool atTop,
     required double progress,
-    required double anchorExtent,
     required double fieldHeight,
   }) {
-    final opacity =
-        (widget.maxSurfaceOpacity * progress * widget.surfaceColor.alpha / 255)
-            .clamp(0.0, 1.0)
-            .toDouble();
+    final maxOpacity = atTop ? 1.0 : widget.maxSurfaceOpacity;
+    final opacity = (maxOpacity * progress * widget.surfaceColor.alpha / 255)
+        .clamp(0.0, 1.0)
+        .toDouble();
     final strong = widget.surfaceColor.withValues(alpha: opacity);
     final medium = widget.surfaceColor.withValues(alpha: opacity * 0.55);
     final clear = widget.surfaceColor.withValues(alpha: 0);
 
     if (atTop) {
-      final anchorStop = (anchorExtent / fieldHeight).clamp(0.0, 1.0);
-      final middleStop = (anchorStop + 1) / 2;
       return LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [strong, strong, medium, clear],
-        stops: [0, anchorStop, middleStop, 1],
+        colors: [strong, clear],
       );
     }
 
@@ -265,48 +255,61 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     required bool atTop,
     required double progress,
   }) {
-    final anchorExtent = atTop ? widget.headerHeight : widget.footerHeight;
-    final fieldHeight = anchorExtent + widget.edgeExtent;
-    final bandExtent = fieldHeight / _fallbackBlurBandCount;
-    final bands = List<Widget>.generate(_fallbackBlurBandCount, (index) {
-      final bandTop = bandExtent * index;
-      final bandCenter = bandTop + bandExtent / 2;
-      final fieldStrength = _fieldStrengthAt(
-        bandCenter,
-        atTop: atTop,
-        anchorExtent: anchorExtent,
-      );
-      final sigma = widget.maxBlurSigma * progress * fieldStrength;
-      if (sigma < 0.05) return const SizedBox.shrink();
-      return Positioned(
-        top: bandTop,
-        left: 0,
-        right: 0,
-        height: bandExtent,
-        child: ClipRect(
-          child: BackdropFilter.grouped(
-            filter: ImageFilter.blur(
-              sigmaX: sigma,
-              sigmaY: sigma,
-              tileMode: TileMode.decal,
-            ),
-            child: const SizedBox.expand(),
-          ),
-        ),
-      );
-    });
+    final fieldHeight = atTop
+        ? _topFadeExtent
+        : widget.footerHeight + widget.edgeExtent;
+    final blurHeight = atTop ? _topBlurExtent : fieldHeight;
+    final blurGradient = atTop
+        ? const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFFFFFFF), Color(0x00FFFFFF)],
+          )
+        : LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: const [
+              Color(0x00FFFFFF),
+              Color(0xFFFFFFFF),
+              Color(0xFFFFFFFF),
+            ],
+            stops: [
+              0,
+              (widget.edgeExtent / fieldHeight).clamp(0.0, 1.0),
+              1,
+            ],
+          );
     final gradient = _fallbackMaterialGradient(
       atTop: atTop,
       progress: progress,
-      anchorExtent: anchorExtent,
       fieldHeight: fieldHeight,
     );
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        BackdropGroup(
-          child: Stack(fit: StackFit.expand, children: bands),
+        Positioned(
+          top: atTop ? 0 : null,
+          bottom: atTop ? null : 0,
+          left: 0,
+          right: 0,
+          height: blurHeight,
+          child: BackdropGroup(
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) => blurGradient.createShader(bounds),
+              child: ClipRect(
+                child: BackdropFilter.grouped(
+                  filter: ImageFilter.blur(
+                    sigmaX: widget.maxBlurSigma * progress,
+                    sigmaY: widget.maxBlurSigma * progress,
+                    tileMode: TileMode.decal,
+                  ),
+                  child: const SizedBox.expand(),
+                ),
+              ),
+            ),
+          ),
         ),
         IgnorePointer(
           child: DecoratedBox(decoration: BoxDecoration(gradient: gradient)),
@@ -333,7 +336,6 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   @override
   Widget build(BuildContext context) {
     final scrollable = widget.scrollBuilder(context, _scrollPadding);
-    final topEffectHeight = widget.headerHeight + widget.edgeExtent;
     final hasFooter = widget.footer != null && widget.footerHeight > 0;
 
     return NotificationListener<ScrollMetricsNotification>(
@@ -353,7 +355,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
                 top: kModalSheetScrollEdgeTopOffset,
                 left: 0,
                 right: 0,
-                height: topEffectHeight,
+                height: _topFadeExtent,
                 child: _buildEdgeEffect(atTop: true, progress: _topProgress),
               ),
             if (hasFooter && _bottomProgress > 0.01)
