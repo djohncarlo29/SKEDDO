@@ -37,12 +37,6 @@ class LiquidGlassScrollEdge extends StatelessWidget {
   /// Peak backdrop blur sigma in logical pixels.
   final double blur;
 
-  /// Blend mode used to composite the blurred backdrop.
-  ///
-  /// Use [BlendMode.src] when this edge is inside a temporary compositing
-  /// layer, such as a covered modal sheet's transition.
-  final BlendMode blendMode;
-
   /// Shape of the tint fade.
   final Curve curve;
 
@@ -61,7 +55,6 @@ class LiquidGlassScrollEdge extends StatelessWidget {
     this.height,
     this.color = const Color(0x8A000000),
     this.blur = 5,
-    this.blendMode = BlendMode.srcOver,
     this.curve = Curves.easeInOut,
     this.blurCurve = defaultBlurCurve,
     this.style = LiquidGlassScrollEdgeStyle.soft,
@@ -99,7 +92,6 @@ class LiquidGlassScrollEdge extends StatelessWidget {
           ClipRect(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-              blendMode: blendMode,
               child: blurChild,
             ),
           ),

@@ -80,68 +80,6 @@ void main() {
     variant: TargetPlatformVariant.only(TargetPlatform.android),
   );
 
-  testWidgets(
-    'top edge uses source compositing under a covering-sheet color layer',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(400, 700));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-
-      final controller = ScrollController();
-      addTearDown(controller.dispose);
-
-      await tester.pumpWidget(
-        CupertinoApp(
-          home: CupertinoPageScaffold(
-            child: ColorFiltered(
-              colorFilter: const ColorFilter.mode(
-                Color(0x1A000000),
-                BlendMode.srcATop,
-              ),
-              child: SizedBox.expand(
-                child: ModalSheetScrollUnder(
-                  scrollController: controller,
-                  headerHeight: 40,
-                  headerGap: 6,
-                  baseScrollPadding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                  surfaceColor: CupertinoColors.systemBackground,
-                  header: const SizedBox(
-                    height: 40,
-                    child: Text('Pinned header'),
-                  ),
-                  scrollBuilder: (context, padding) => ListView(
-                    controller: controller,
-                    padding: padding,
-                    children: List.generate(
-                      20,
-                      (index) => SizedBox(
-                        height: 40,
-                        child: Text('Covered row $index'),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      controller.jumpTo(50);
-      await tester.pump();
-
-      expect(find.byType(LiquidGlassScrollEdge), findsOneWidget);
-      final filter = tester.widget<BackdropFilter>(
-        find.descendant(
-          of: find.byType(LiquidGlassScrollEdge),
-          matching: find.byType(BackdropFilter),
-        ),
-      );
-      expect(filter.blendMode, BlendMode.src);
-    },
-    variant: TargetPlatformVariant.only(TargetPlatform.android),
-  );
-
   testWidgets('tracks the sheet scroll controller through nested viewports', (
     tester,
   ) async {

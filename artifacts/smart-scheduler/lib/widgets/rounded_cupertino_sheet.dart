@@ -52,6 +52,32 @@ Animatable<double> _sheetOpacityTween(BuildContext context) => Tween<double>(
   end: CupertinoTheme.brightnessOf(context) == Brightness.dark ? 0.13 : 0.10,
 );
 
+Widget? _withSheetDimOverlay(
+  Widget? child,
+  Animation<double> opacityAnimation,
+) {
+  if (child == null) return null;
+  return AnimatedBuilder(
+    animation: opacityAnimation,
+    child: child,
+    builder: (context, child) => Stack(
+      fit: StackFit.expand,
+      children: [
+        child!,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: ColoredBox(
+              color: const Color(
+                0xFF000000,
+              ).withValues(alpha: opacityAnimation.value),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 const double _kMinFlingVelocity = 2.0;
 const Duration _kDroppedSheetDragAnimationDuration = Duration(
   milliseconds: 300,
@@ -453,29 +479,13 @@ class _RoundedSheetTransition extends StatefulWidget {
     );
     curvedAnimation.dispose();
 
-    // The receding app must always become darker when a sheet opens.  A light
-    // tint in Dark Mode makes black surfaces lighter and reverses the intended
-    // modal hierarchy.
-    const Color overlayColor = Color(0xFF000000);
-
-    // Use ColorFiltered+srcATop so the dim tint only affects pixels where the
-    // sheet content has non-zero alpha.  This prevents the dark overlay from
-    // bleeding into the transparent status-bar gap above the sheet.
-    final Widget? contrastedChild =
+    // Keep the dark tint as a sibling paint operation instead of wrapping the
+    // route in ColorFiltered. That avoids an intermediate buffer around
+    // BackdropFilters in the covered page. The scrim shares the page's
+    // transforms and clip, so it does not bleed into the transparent top gap.
+    final Widget? dimmedChild =
         child != null && !secondaryAnimation.isDismissed
-        ? AnimatedBuilder(
-            animation: opacityAnimation,
-            child: child,
-            builder: (BuildContext context, Widget? child) {
-              return ColorFiltered(
-                colorFilter: ColorFilter.mode(
-                  overlayColor.withValues(alpha: opacityAnimation.value),
-                  BlendMode.srcATop,
-                ),
-                child: child,
-              );
-            },
-          )
+        ? _withSheetDimOverlay(child, opacityAnimation)
         : child;
 
     return SlideTransition(
@@ -491,7 +501,7 @@ class _RoundedSheetTransition extends StatefulWidget {
               topOnly: true,
             ),
           ),
-          child: contrastedChild,
+          child: dimmedChild,
         ),
       ),
     );
@@ -521,28 +531,11 @@ class _RoundedSheetTransition extends StatefulWidget {
     );
     curvedAnimation.dispose();
 
-    // Mirror the dark-overlay that the main-app layer receives when a sheet
-    // is pushed over it — opacity is driven by secondaryAnimation so it
-    // tracks the user's finger during a drag-to-dismiss gesture.
-    // ColorFiltered+srcATop: tint only pixels where the child has alpha > 0,
-    // so the transparent gap above the sheet is never dimmed.
+    // Mirror the main-app dim overlay. Keep it in a sibling Stack layer so
+    // descendant backdrop effects are not isolated by ColorFiltered.
     final Widget? coveredChild =
         child != null && !secondaryAnimation.isDismissed
-        ? AnimatedBuilder(
-            animation: opacityAnimation,
-            child: child,
-            builder: (BuildContext context, Widget? child) {
-              return ColorFiltered(
-                colorFilter: ColorFilter.mode(
-                  const Color(
-                    0xFF000000,
-                  ).withValues(alpha: opacityAnimation.value),
-                  BlendMode.srcATop,
-                ),
-                child: child,
-              );
-            },
-          )
+        ? _withSheetDimOverlay(child, opacityAnimation)
         : child;
 
     return ClipRect(
@@ -670,27 +663,11 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
     Animation<double> secondaryAnimation,
     Widget? child,
   ) {
-    // Wrap child in an overlay that dims as a new sheet slides in above it,
-    // mirroring the dark-scrim the main app receives.  Driven by the same
-    // curve as scale/slide so it tracks the user's finger during drag.
-    // ColorFiltered+srcATop: tint only pixels where the child has alpha > 0,
-    // so the transparent gap above the sheet is never dimmed.
+    // Dim the finished sheet paint, including any scroll-edge blur, as a
+    // sibling overlay so the route does not create an offscreen ColorFiltered
+    // layer around the sheet's BackdropFilters.
     final Widget? dimmedChild = child != null && !secondaryAnimation.isDismissed
-        ? AnimatedBuilder(
-            animation: _secondaryOpacityAnimation,
-            child: child,
-            builder: (BuildContext context, Widget? child) {
-              return ColorFiltered(
-                colorFilter: ColorFilter.mode(
-                  const Color(
-                    0xFF000000,
-                  ).withValues(alpha: _secondaryOpacityAnimation.value),
-                  BlendMode.srcATop,
-                ),
-                child: child,
-              );
-            },
-          )
+        ? _withSheetDimOverlay(child, _secondaryOpacityAnimation)
         : child;
 
     return ClipRect(
