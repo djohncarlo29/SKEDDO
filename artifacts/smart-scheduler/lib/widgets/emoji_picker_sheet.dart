@@ -1827,8 +1827,6 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
               ],
             ),
           ),
-        ],
-      ),
     );
   }
 }

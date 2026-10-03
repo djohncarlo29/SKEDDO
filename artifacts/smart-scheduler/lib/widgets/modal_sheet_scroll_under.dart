@@ -148,8 +148,9 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   }
 
   Widget _buildEdgeEffect({required bool atTop, required double progress}) {
-    final edgeColor = Colors.white.withValues(alpha: progress);
-    final clearColor = Colors.white.withValues(alpha: 0);
+    const white = Color(0xFFFFFFFF);
+    final edgeColor = white.withValues(alpha: progress);
+    final clearColor = white.withValues(alpha: 0);
     final gradient = LinearGradient(
       begin: atTop ? Alignment.topCenter : Alignment.bottomCenter,
       end: atTop ? Alignment.bottomCenter : Alignment.topCenter,

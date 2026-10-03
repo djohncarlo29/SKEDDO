@@ -2011,6 +2011,17 @@ class _ExtractionResultSheetState extends State<_ExtractionResultSheet> {
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
+    final bottomInset = systemSafeAreaBottomInset(context);
+    final isEmpty = _remaining.isEmpty;
+    const titleStyle = TextStyle(
+      inherit: false,
+      color: kPrimaryLabel,
+      fontSize: 17,
+      fontFamily: 'SFProText',
+      fontWeight: FontWeight.w600,
+      fontStyle: FontStyle.normal,
+      letterSpacing: kTracking17,
+    );
     return Container(
       constraints: BoxConstraints(maxHeight: mq.size.height * 0.75),
       decoration: const ShapeDecoration(
@@ -2019,107 +2030,123 @@ class _ExtractionResultSheetState extends State<_ExtractionResultSheet> {
       ),
       clipBehavior: Clip.antiAlias,
       child: AppWindowContentPadding(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-          // Drag handle
-          Padding(
-            padding: const EdgeInsets.only(top: 10, bottom: 4),
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: const ShapeDecoration(
-                color: kModalHandleColor,
-                shape: BoundedSquircleStadiumBorder(radius: 2),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final availableWidth = constraints.maxWidth.isFinite
+                ? constraints.maxWidth
+                : mq.size.width;
+            final titlePainter = TextPainter(
+              text: TextSpan(text: _title, style: titleStyle),
+              textDirection: Directionality.of(context),
+              textScaler: mq.textScaler,
+            )..layout(maxWidth: math.max(0, availableWidth - 40));
+            // Handle area (18px), title vertical padding (16px), and the
+            // measured, OS-scaled title height keep the scroll-under offset
+            // aligned with the popup's actual fixed header.
+            final headerHeight = 34.0 + titlePainter.height;
+            final footerHeight = 74.0 + bottomInset;
+            return ModalSheetScrollUnder(
+              expandViewport: false,
+              headerHeight: headerHeight,
+              headerGap: 0,
+              baseScrollPadding: EdgeInsets.fromLTRB(
+                isEmpty ? 0 : 16,
+                isEmpty ? 0 : 8,
+                isEmpty ? 0 : 16,
+                isEmpty ? 0 : 4,
               ),
-            ),
-          ),
-          // Title
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                _title,
-                style: const TextStyle(
-                  inherit: false,
-                  color: kPrimaryLabel,
-                  fontSize: 17,
-                  fontFamily: 'SFProText',
-                  fontWeight: FontWeight.w600,
-                  fontStyle: FontStyle.normal,
-                  letterSpacing: kTracking17,
-                ),
-              ),
-            ),
-          ),
-          // Empty / all-dismissed state
-          if (_remaining.isEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
-              child: Text(
-                widget.events.isEmpty
-                    ? "We couldn't find any events in this image. "
-                          'Try a photo of a calendar, invite, or flyer.'
-                    : 'All events have been handled.',
-                style: const TextStyle(
-                  inherit: false,
-                  color: kSecondaryLabel,
-                  fontSize: 14,
-                  fontFamily: 'SFProText',
-                  fontWeight: FontWeight.w400,
-                  fontStyle: FontStyle.normal,
-                  letterSpacing: kTracking16,
-                  height: kLineHeight,
-                ),
-              ),
-            )
-          else
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                itemCount: _remaining.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (_, i) => _EventRow(
-                  event: _remaining[i],
-                  onAdd: () => _addAndRemove(i),
-                  onDismiss: () => _dismiss(i),
-                ),
-              ),
-            ),
-          // Dismiss all
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Container(
-                  height: 50,
-                  decoration: const ShapeDecoration(
-                    color: kModalButtonBackground,
-                    shape: BoundedSquircleStadiumBorder(radius: 12),
+              surfaceColor: resolveThemeColor(kModalBackground, context),
+              header: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10, bottom: 4),
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: const ShapeDecoration(
+                        color: kModalHandleColor,
+                        shape: BoundedSquircleStadiumBorder(radius: 2),
+                      ),
+                    ),
                   ),
-                  child: const Center(
-                    child: Text(
-                      'Dismiss All',
-                      style: TextStyle(
-                        inherit: false,
-                        color: kPrimaryLabel,
-                        fontSize: 16,
-                        fontFamily: 'SFProText',
-                        fontWeight: FontWeight.w500,
-                        fontStyle: FontStyle.normal,
-                        letterSpacing: kTracking16,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(_title, style: titleStyle),
+                    ),
+                  ),
+                ],
+              ),
+              footerHeight: footerHeight,
+              footer: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      height: 50,
+                      decoration: const ShapeDecoration(
+                        color: kModalButtonBackground,
+                        shape: BoundedSquircleStadiumBorder(radius: 12),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'Dismiss All',
+                          style: TextStyle(
+                            inherit: false,
+                            color: kPrimaryLabel,
+                            fontSize: 16,
+                            fontFamily: 'SFProText',
+                            fontWeight: FontWeight.w500,
+                            fontStyle: FontStyle.normal,
+                            letterSpacing: kTracking16,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-          ],
+              scrollBuilder: (context, scrollPadding) =>
+                  ListView.separated(
+                    shrinkWrap: true,
+                    padding: scrollPadding,
+                    itemCount: isEmpty ? 1 : _remaining.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (context, i) {
+                      if (isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
+                          child: Text(
+                            widget.events.isEmpty
+                                ? "We couldn't find any events in this image. "
+                                      'Try a photo of a calendar, invite, or flyer.'
+                                : 'All events have been handled.',
+                            style: const TextStyle(
+                              inherit: false,
+                              color: kSecondaryLabel,
+                              fontSize: 14,
+                              fontFamily: 'SFProText',
+                              fontWeight: FontWeight.w400,
+                              fontStyle: FontStyle.normal,
+                              letterSpacing: kTracking16,
+                              height: kLineHeight,
+                            ),
+                          ),
+                        );
+                      }
+                      return _EventRow(
+                        event: _remaining[i],
+                        onAdd: () => _addAndRemove(i),
+                        onDismiss: () => _dismiss(i),
+                      );
+                    },
+                  ),
+            );
+          },
         ),
       ),
     );
