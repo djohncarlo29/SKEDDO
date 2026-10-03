@@ -14,7 +14,7 @@ import 'rounded_cupertino_sheet.dart' show RoundedCupertinoSheetRoute;
 const double kModalSheetScrollEdgeTopOffset = 0;
 
 /// The top blur reaches zero sooner than the modal-surface fade.
-const double kModalSheetScrollEdgeBlurTailRatio = 0.65;
+const double kModalSheetScrollEdgeBlurTailRatio = 0.85;
 
 /// Places a sheet's scrolling content behind its fixed header and, optionally,
 /// footer while keeping the original at-rest content positions.
@@ -164,8 +164,19 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   /// Use that resting position as the top fade's transparent endpoint.
   double get _topFadeExtent => math.max(1, _scrollPadding.top);
 
+  /// Keep the effect at full strength beneath the fixed header, then fade it
+  /// through the visible header-to-card gap.
+  double get _topTransitionStart {
+    final lastVisible = math.max(0.0, _topFadeExtent - 1).toDouble();
+    return (widget.headerTopInset + widget.headerHeight)
+        .clamp(0.0, lastVisible)
+        .toDouble();
+  }
+
   double get _topBlurExtent =>
-      _topFadeExtent * kModalSheetScrollEdgeBlurTailRatio;
+      _topTransitionStart +
+      (_topFadeExtent - _topTransitionStart) *
+          kModalSheetScrollEdgeBlurTailRatio;
 
   void _syncScrollMetrics(ScrollMetrics metrics) {
     if (metrics.maxScrollExtent <= 1) {
@@ -223,7 +234,9 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       ..setFloat(9, MediaQuery.devicePixelRatioOf(context))
       ..setFloat(10, atTop ? _topFadeExtent : widget.edgeExtent)
       ..setFloat(11, atTop ? _topBlurExtent : widget.edgeExtent)
-      ..setFloat(12, atTop ? 0 : 1);
+      ..setFloat(12, atTop ? 0 : 1)
+      ..setFloat(13, atTop ? _topTransitionStart : 0)
+      ..setFloat(14, atTop ? _topTransitionStart : 0);
   }
 
   LinearGradient _fallbackMaterialGradient({
@@ -240,10 +253,14 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     final clear = widget.surfaceColor.withValues(alpha: 0);
 
     if (atTop) {
+      final transitionStart = (_topTransitionStart / fieldHeight)
+          .clamp(0.0, 1.0)
+          .toDouble();
       return LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [strong, clear],
+        colors: [strong, strong, clear],
+        stops: [0, transitionStart, 1],
       );
     }
 
@@ -265,10 +282,19 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
         : widget.footerHeight + widget.edgeExtent;
     final blurHeight = atTop ? _topBlurExtent : fieldHeight;
     final blurGradient = atTop
-        ? const LinearGradient(
+        ? LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFFFFFFF), Color(0x00FFFFFF)],
+            colors: const [
+              Color(0xFFFFFFFF),
+              Color(0xFFFFFFFF),
+              Color(0x00FFFFFF),
+            ],
+            stops: [
+              0,
+              (_topTransitionStart / blurHeight).clamp(0.0, 1.0).toDouble(),
+              1,
+            ],
           )
         : LinearGradient(
             begin: Alignment.topCenter,
