@@ -268,7 +268,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     shader
       ..setFloat(2, progress)
       ..setFloat(3, widget.maxBlurSigma * (atTop ? _topBlurSigmaScale : 1))
-      ..setFloat(4, atTop ? 1 : widget.maxSurfaceOpacity)
+      ..setFloat(4, widget.maxSurfaceOpacity)
       ..setFloat(5, color.red / 255)
       ..setFloat(6, color.green / 255)
       ..setFloat(7, color.blue / 255)
@@ -284,7 +284,8 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     required double progress,
     required double fieldHeight,
   }) {
-    final maxOpacity = atTop ? 1.0 : widget.maxSurfaceOpacity;
+    // Keep the tint translucent so it does not wash out the blur beneath it.
+    final maxOpacity = widget.maxSurfaceOpacity;
     final opacity = (maxOpacity * progress * widget.surfaceColor.alpha / 255)
         .clamp(0.0, 1.0)
         .toDouble();
@@ -355,6 +356,9 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
                     sigmaY: widget.maxBlurSigma * _topBlurSigmaScale * progress,
                     tileMode: TileMode.decal,
                   ),
+                  // ShaderMask introduces a temporary buffer; src preserves
+                  // the filtered backdrop instead of blending into that buffer.
+                  blendMode: BlendMode.src,
                   child: const SizedBox.expand(),
                 ),
               ),
@@ -376,6 +380,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
                     sigmaY: widget.maxBlurSigma * progress,
                     tileMode: TileMode.decal,
                   ),
+                  blendMode: BlendMode.src,
                   child: const SizedBox.expand(),
                 ),
               ),

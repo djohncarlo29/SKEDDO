@@ -59,6 +59,10 @@ void main() {
       await tester.pump();
 
       expect(find.byType(BackdropFilter), findsOneWidget);
+      expect(
+        tester.widget<BackdropFilter>(find.byType(BackdropFilter)).blendMode,
+        BlendMode.src,
+      );
       expect(find.byType(ShaderMask), findsOneWidget);
       expect(tester.getTopLeft(find.byKey(headerKey)).dy, headerTop);
       expect(
