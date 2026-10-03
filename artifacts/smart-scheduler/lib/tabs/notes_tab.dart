@@ -2047,6 +2047,10 @@ class _ExtractionResultSheetState extends State<_ExtractionResultSheet> {
             final footerHeight = 74.0 + bottomInset;
             return ModalSheetScrollUnder(
               expandViewport: false,
+              edgeClipShape: const BoundedSquircleStadiumBorder(
+                radius: 16,
+                topOnly: true,
+              ),
               headerHeight: headerHeight,
               headerGap: 0,
               baseScrollPadding: EdgeInsets.fromLTRB(

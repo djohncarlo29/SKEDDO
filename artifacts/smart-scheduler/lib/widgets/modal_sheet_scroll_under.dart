@@ -5,12 +5,12 @@ import 'dart:ui' show FragmentProgram, FragmentShader, ImageFilter;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+import '../app_theme.dart'
+    show BoundedSquircleStadiumBorder, kModalSheetCornerRadius;
+
 /// The top scroll-edge effect is anchored to the modal sheet's top edge,
 /// independently of the inset used to position its header.
 const double kModalSheetScrollEdgeTopOffset = 0;
-
-/// The top blur reaches zero sooner than the modal-surface fade.
-const double kModalSheetScrollEdgeBlurTailRatio = 0.65;
 
 /// Places a sheet's scrolling content behind its fixed header and, optionally,
 /// footer while keeping the original at-rest content positions.
@@ -28,6 +28,10 @@ class ModalSheetScrollUnder extends StatefulWidget {
     required this.baseScrollPadding,
     required this.surfaceColor,
     required this.scrollBuilder,
+    this.edgeClipShape = const BoundedSquircleStadiumBorder(
+      radius: kModalSheetCornerRadius,
+      topOnly: true,
+    ),
     this.headerTopInset = 0,
     this.headerGap = 0,
     this.footer,
@@ -63,6 +67,10 @@ class ModalSheetScrollUnder extends StatefulWidget {
   /// original horizontal/bottom padding plus the header and footer clearances.
   final Widget Function(BuildContext context, EdgeInsets scrollPadding)
   scrollBuilder;
+
+  /// Shape of the containing sheet, used to keep backdrop effects within its
+  /// visible outline. Override this for popup sheets with a different radius.
+  final ShapeBorder edgeClipShape;
 
   /// Space above the header, such as the existing header-edge spacer.
   final double headerTopInset;
@@ -155,13 +163,11 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
         widget.baseScrollPadding.bottom,
   );
 
-  double get _topFadeExtent =>
-      widget.headerTopInset + widget.headerHeight + widget.edgeExtent;
+  /// At rest, the first scroll-content item starts at this same distance from
+  /// the sheet top. Both the material fade and blur reach zero at that edge.
+  double get _topFadeExtent => _scrollPadding.top;
 
-  double get _topBlurExtent =>
-      widget.headerTopInset +
-      widget.headerHeight +
-      widget.edgeExtent * kModalSheetScrollEdgeBlurTailRatio;
+  double get _topBlurExtent => _topFadeExtent;
 
   void _syncScrollMetrics(ScrollMetrics metrics) {
     if (metrics.maxScrollExtent <= 1) {
@@ -338,52 +344,57 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     final scrollable = widget.scrollBuilder(context, _scrollPadding);
     final hasFooter = widget.footer != null && widget.footerHeight > 0;
 
-    return NotificationListener<ScrollMetricsNotification>(
-      onNotification: _onMetricsNotification,
-      child: NotificationListener<ScrollNotification>(
-        onNotification: _onScrollNotification,
-        child: Stack(
-          fit: widget.expandViewport ? StackFit.expand : StackFit.loose,
-          clipBehavior: Clip.hardEdge,
-          children: [
-            if (widget.expandViewport)
-              Positioned.fill(child: scrollable)
-            else
-              scrollable,
-            if (_topProgress > 0.01)
-              Positioned(
-                top: kModalSheetScrollEdgeTopOffset,
-                left: 0,
-                right: 0,
-                height: _topFadeExtent,
-                child: _buildEdgeEffect(atTop: true, progress: _topProgress),
-              ),
-            if (hasFooter && _bottomProgress > 0.01)
-              Positioned(
-                bottom: widget.footerBottomInset,
-                left: 0,
-                right: 0,
-                height: widget.footerHeight + widget.edgeExtent,
-                child: _buildEdgeEffect(
-                  atTop: false,
-                  progress: _bottomProgress,
+    return ClipPath(
+      // Keep BackdropFilter output inside the same top-only squircle as the
+      // sheet itself, including its transparent corner cutouts.
+      clipper: ShapeBorderClipper(shape: widget.edgeClipShape),
+      child: NotificationListener<ScrollMetricsNotification>(
+        onNotification: _onMetricsNotification,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: _onScrollNotification,
+          child: Stack(
+            fit: widget.expandViewport ? StackFit.expand : StackFit.loose,
+            clipBehavior: Clip.hardEdge,
+            children: [
+              if (widget.expandViewport)
+                Positioned.fill(child: scrollable)
+              else
+                scrollable,
+              if (_topProgress > 0.01)
+                Positioned(
+                  top: kModalSheetScrollEdgeTopOffset,
+                  left: 0,
+                  right: 0,
+                  height: _topFadeExtent,
+                  child: _buildEdgeEffect(atTop: true, progress: _topProgress),
                 ),
-              ),
-            Positioned(
-              top: widget.headerTopInset,
-              left: 0,
-              right: 0,
-              height: widget.headerHeight,
-              child: widget.header,
-            ),
-            if (hasFooter)
+              if (hasFooter && _bottomProgress > 0.01)
+                Positioned(
+                  bottom: widget.footerBottomInset,
+                  left: 0,
+                  right: 0,
+                  height: widget.footerHeight + widget.edgeExtent,
+                  child: _buildEdgeEffect(
+                    atTop: false,
+                    progress: _bottomProgress,
+                  ),
+                ),
               Positioned(
-                bottom: widget.footerBottomInset,
+                top: widget.headerTopInset,
                 left: 0,
                 right: 0,
-                child: widget.footer!,
+                height: widget.headerHeight,
+                child: widget.header,
               ),
-          ],
+              if (hasFooter)
+                Positioned(
+                  bottom: widget.footerBottomInset,
+                  left: 0,
+                  right: 0,
+                  child: widget.footer!,
+                ),
+            ],
+          ),
         ),
       ),
     );
