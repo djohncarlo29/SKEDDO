@@ -61,7 +61,7 @@ void main() {
 
     expect(find.byType(BackdropFilter), findsWidgets);
     if (!ImageFilter.isShaderFilterSupported) {
-      expect(find.byType(BackdropFilter), findsAtLeastNWidgets(8));
+      expect(find.byType(BackdropFilter), findsOneWidget);
     }
     expect(tester.getTopLeft(find.byKey(headerKey)).dy, headerTop);
     expect(
@@ -72,6 +72,59 @@ void main() {
     controller.jumpTo(0);
     await tester.pump();
     expect(find.byType(BackdropFilter), findsNothing);
+  });
+
+  testWidgets('tracks the sheet scroll controller through nested viewports', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: CupertinoPageScaffold(
+          child: SizedBox.expand(
+            child: ModalSheetScrollUnder(
+              scrollController: controller,
+              headerTopInset: 8,
+              headerHeight: 40,
+              headerGap: 6,
+              baseScrollPadding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              surfaceColor: CupertinoColors.systemBackground,
+              header: const SizedBox(height: 40, child: Text('Pinned header')),
+              scrollBuilder: (context, padding) => SingleChildScrollView(
+                padding: padding,
+                child: SizedBox(
+                  height: 500,
+                  child: ListView(
+                    controller: controller,
+                    primary: false,
+                    children: List.generate(
+                      20,
+                      (index) => SizedBox(
+                        height: 40,
+                        child: Text('Nested row $index'),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BackdropFilter), findsNothing);
+
+    controller.jumpTo(20);
+    await tester.pump();
+
+    expect(find.byType(BackdropFilter), findsWidgets);
   });
 
   testWidgets('short content does not add an edge blur', (tester) async {

@@ -28,6 +28,7 @@ class ModalSheetScrollUnder extends StatefulWidget {
     required this.baseScrollPadding,
     required this.surfaceColor,
     required this.scrollBuilder,
+    this.scrollController,
     this.edgeClipShape = const BoundedSquircleStadiumBorder(
       radius: kModalSheetCornerRadius,
       topOnly: true,
@@ -67,6 +68,11 @@ class ModalSheetScrollUnder extends StatefulWidget {
   /// original horizontal/bottom padding plus the header and footer clearances.
   final Widget Function(BuildContext context, EdgeInsets scrollPadding)
   scrollBuilder;
+
+  /// Optional controller for the primary scroller. Listening to its position
+  /// directly keeps the edge effect synced even when nested scrollables make
+  /// the primary scroll notification's depth vary.
+  final ScrollController? scrollController;
 
   /// Shape of the containing sheet, used to keep backdrop effects within its
   /// visible outline. Override this for popup sheets with a different radius.
@@ -115,11 +121,30 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   FragmentShader? _topShader;
   FragmentShader? _bottomShader;
 
+  // Android devices use the built-in BackdropFilter path. The custom runtime
+  // image-filter shader is renderer-sensitive there and can silently produce
+  // no visible edge effect on otherwise-supported Impeller devices.
+  bool get _useProgressiveShader =>
+      !kIsWeb &&
+      defaultTargetPlatform != TargetPlatform.android &&
+      ImageFilter.isShaderFilterSupported;
+
   @override
   void initState() {
     super.initState();
-    if (ImageFilter.isShaderFilterSupported) {
+    widget.scrollController?.addListener(_syncFromScrollController);
+    if (_useProgressiveShader) {
       unawaited(_loadProgressiveShader());
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ModalSheetScrollUnder oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.scrollController != widget.scrollController) {
+      oldWidget.scrollController?.removeListener(_syncFromScrollController);
+      widget.scrollController?.addListener(_syncFromScrollController);
+      _syncFromScrollController();
     }
   }
 
@@ -141,6 +166,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
 
   @override
   void dispose() {
+    widget.scrollController?.removeListener(_syncFromScrollController);
     _topShader?.dispose();
     _bottomShader?.dispose();
     super.dispose();
@@ -195,6 +221,14 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       _topProgress = nextTop;
       _bottomProgress = nextBottom;
     });
+  }
+
+  void _syncFromScrollController() {
+    final controller = widget.scrollController;
+    if (controller == null || controller.positions.length != 1) return;
+    final position = controller.position;
+    if (!position.hasContentDimensions) return;
+    _syncScrollMetrics(position);
   }
 
   bool _onScrollNotification(ScrollNotification notification) {
@@ -300,19 +334,17 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
           left: 0,
           right: 0,
           height: blurHeight,
-          child: BackdropGroup(
-            child: ShaderMask(
-              blendMode: BlendMode.dstIn,
-              shaderCallback: (bounds) => blurGradient.createShader(bounds),
-              child: ClipRect(
-                child: BackdropFilter.grouped(
-                  filter: ImageFilter.blur(
-                    sigmaX: widget.maxBlurSigma * progress,
-                    sigmaY: widget.maxBlurSigma * progress,
-                    tileMode: TileMode.decal,
-                  ),
-                  child: const SizedBox.expand(),
+          child: ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (bounds) => blurGradient.createShader(bounds),
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: widget.maxBlurSigma * progress,
+                  sigmaY: widget.maxBlurSigma * progress,
+                  tileMode: TileMode.decal,
                 ),
+                child: const SizedBox.expand(),
               ),
             ),
           ),
@@ -325,7 +357,9 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   }
 
   Widget _buildEdgeEffect({required bool atTop, required double progress}) {
-    final shader = atTop ? _topShader : _bottomShader;
+    final shader = _useProgressiveShader
+        ? (atTop ? _topShader : _bottomShader)
+        : null;
     if (shader == null) {
       return _buildFallbackEdgeEffect(atTop: atTop, progress: progress);
     }

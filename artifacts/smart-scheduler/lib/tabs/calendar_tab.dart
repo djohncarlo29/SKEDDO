@@ -8897,6 +8897,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
 
   final _titleCtrl = TextEditingController();
   final _subtitleCtrl = TextEditingController();
+  final _sheetScrollCtrl = ScrollController();
   final _titleScrollCtrl = ScrollController();
   final _subtitleScrollCtrl = ScrollController();
   final _titleFocus = FocusNode();
@@ -9377,6 +9378,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     _attachmentConsumeCtrl.dispose();
     _titleCtrl.dispose();
     _subtitleCtrl.dispose();
+    _sheetScrollCtrl.dispose();
     _titleScrollCtrl.dispose();
     _subtitleScrollCtrl.dispose();
     _locationTextCtrl.dispose();
@@ -13894,6 +13896,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
           child: SafeArea(
             bottom: false,
             child: ModalSheetScrollUnder(
+              scrollController: _sheetScrollCtrl,
               headerTopInset: _kHeaderEdge,
               headerHeight: _kHeaderBtnSize,
               headerGap: 12,
@@ -13975,6 +13978,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     behavior: HitTestBehavior.opaque,
                     onTap: _dismissModalSheetFocus,
                     child: SingleChildScrollView(
+                      controller: _sheetScrollCtrl,
                       // This sheet owns its scroll position. Without this,
                       // it can inherit the calendar's primary controller and
                       // open at the calendar's old offset, leaving only the
