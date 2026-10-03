@@ -220,6 +220,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       edge: atTop ? LiquidGlassEdge.top : LiquidGlassEdge.bottom,
       color: widget.surfaceColor.withValues(alpha: opacity),
       blur: widget.maxBlurSigma * (atTop ? _topBlurSigmaScale : 1) * progress,
+      blendMode: BlendMode.src,
     );
   }
 
