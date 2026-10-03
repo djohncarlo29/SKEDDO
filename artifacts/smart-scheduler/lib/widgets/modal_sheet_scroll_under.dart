@@ -114,22 +114,6 @@ class ModalSheetScrollUnder extends StatefulWidget {
 class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   // One continuously masked filter avoids horizontal seams between sigma bands.
   static const double _topBlurSigmaScale = 0.85;
-  static const LinearGradient _topBlurMaskGradient = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [
-      Color(0xFFFFFFFF),
-      Color(0xF4FFFFFF),
-      Color(0xD7FFFFFF),
-      Color(0xAEFFFFFF),
-      Color(0x80FFFFFF),
-      Color(0x51FFFFFF),
-      Color(0x28FFFFFF),
-      Color(0x0BFFFFFF),
-      Color(0x00FFFFFF),
-    ],
-    stops: [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1],
-  );
   static const String _shaderAsset =
       'assets/shaders/modal_sheet_scroll_edge.frag';
   static Future<FragmentProgram>? _sharedShaderProgram;
@@ -168,9 +152,10 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
 
   Future<void> _loadProgressiveShader() async {
     try {
-      final program = await (_sharedShaderProgram ??= FragmentProgram.fromAsset(
-        _shaderAsset,
-      ));
+      final program =
+          await (_sharedShaderProgram ??= FragmentProgram.fromAsset(
+            _shaderAsset,
+          ));
       if (!mounted) return;
       setState(() {
         _topShader = program.fragmentShader();
@@ -226,11 +211,13 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
 
     final distance = _activationDistance;
     final nextTop = (metrics.pixels / distance).clamp(0.0, 1.0).toDouble();
-    final nextBottom = widget.footer == null
-        ? 0.0
-        : ((metrics.pixels - (metrics.maxScrollExtent - distance)) / distance)
-              .clamp(0.0, 1.0)
-              .toDouble();
+    final nextBottom =
+        widget.footer == null
+            ? 0.0
+            : ((metrics.pixels - (metrics.maxScrollExtent - distance)) /
+                    distance)
+                .clamp(0.0, 1.0)
+                .toDouble();
     if ((nextTop - _topProgress).abs() < 0.01 &&
         (nextBottom - _bottomProgress).abs() < 0.01) {
       return;
@@ -284,11 +271,13 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     required double progress,
     required double fieldHeight,
   }) {
-    // Keep the tint translucent so it does not wash out the blur beneath it.
-    final maxOpacity = widget.maxSurfaceOpacity;
-    final opacity = (maxOpacity * progress * widget.surfaceColor.alpha / 255)
-        .clamp(0.0, 1.0)
-        .toDouble();
+    // Preserve the original full-strength top fade; maxSurfaceOpacity controls
+    // the bottom veil only.
+    final maxOpacity = atTop ? 1.0 : widget.maxSurfaceOpacity;
+    final opacity =
+        (maxOpacity * progress * widget.surfaceColor.alpha / 255)
+            .clamp(0.0, 1.0)
+            .toDouble();
     final strong = widget.surfaceColor.withValues(alpha: opacity);
     final medium = widget.surfaceColor.withValues(alpha: opacity * 0.55);
     final clear = widget.surfaceColor.withValues(alpha: 0);
@@ -314,26 +303,26 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     required bool atTop,
     required double progress,
   }) {
-    final fieldHeight = atTop
-        ? _topFadeExtent
-        : widget.footerHeight + widget.edgeExtent;
+    final fieldHeight =
+        atTop ? _topFadeExtent : widget.footerHeight + widget.edgeExtent;
     final blurHeight = atTop ? _topBlurExtent : fieldHeight;
-    final blurGradient = atTop
-        ? const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFFFFFFF), Color(0x00FFFFFF)],
-          )
-        : LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: const [
-              Color(0x00FFFFFF),
-              Color(0xFFFFFFFF),
-              Color(0xFFFFFFFF),
-            ],
-            stops: [0, (widget.edgeExtent / fieldHeight).clamp(0.0, 1.0), 1],
-          );
+    final blurGradient =
+        atTop
+            ? const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFFFFFFFF), Color(0x00FFFFFF)],
+            )
+            : LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: const [
+                Color(0x00FFFFFF),
+                Color(0xFFFFFFFF),
+                Color(0xFFFFFFFF),
+              ],
+              stops: [0, (widget.edgeExtent / fieldHeight).clamp(0.0, 1.0), 1],
+            );
     final gradient = _fallbackMaterialGradient(
       atTop: atTop,
       progress: progress,
@@ -345,22 +334,14 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       children: [
         if (atTop)
           Positioned.fill(
-            child: ShaderMask(
-              blendMode: BlendMode.dstIn,
-              shaderCallback: (bounds) =>
-                  _topBlurMaskGradient.createShader(bounds),
-              child: ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(
-                    sigmaX: widget.maxBlurSigma * _topBlurSigmaScale * progress,
-                    sigmaY: widget.maxBlurSigma * _topBlurSigmaScale * progress,
-                    tileMode: TileMode.decal,
-                  ),
-                  // ShaderMask introduces a temporary buffer; src preserves
-                  // the filtered backdrop instead of blending into that buffer.
-                  blendMode: BlendMode.src,
-                  child: const SizedBox.expand(),
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: widget.maxBlurSigma * _topBlurSigmaScale * progress,
+                  sigmaY: widget.maxBlurSigma * _topBlurSigmaScale * progress,
+                  tileMode: TileMode.decal,
                 ),
+                child: const SizedBox.expand(),
               ),
             ),
           )
@@ -380,7 +361,6 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
                     sigmaY: widget.maxBlurSigma * progress,
                     tileMode: TileMode.decal,
                   ),
-                  blendMode: BlendMode.src,
                   child: const SizedBox.expand(),
                 ),
               ),
@@ -394,9 +374,8 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   }
 
   Widget _buildEdgeEffect({required bool atTop, required double progress}) {
-    final shader = _useProgressiveShader
-        ? (atTop ? _topShader : _bottomShader)
-        : null;
+    final shader =
+        _useProgressiveShader ? (atTop ? _topShader : _bottomShader) : null;
     if (shader == null) {
       return _buildFallbackEdgeEffect(atTop: atTop, progress: progress);
     }

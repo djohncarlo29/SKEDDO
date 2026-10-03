@@ -5,7 +5,7 @@ import 'package:smart_scheduler/widgets/modal_sheet_scroll_under.dart';
 
 void main() {
   testWidgets(
-    'Android top edge blur uses one continuously masked filter',
+    'Android top edge keeps the original fade and paints an unmasked blur',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(400, 700));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -29,20 +29,21 @@ void main() {
                   height: 40,
                   child: const Text('Pinned header'),
                 ),
-                scrollBuilder: (context, padding) => ListView(
-                  controller: controller,
-                  padding: padding,
-                  children: List.generate(
-                    20,
-                    (index) => SizedBox(
-                      height: 40,
-                      child: Align(
-                        alignment: Alignment.topLeft,
-                        child: Text('Row $index'),
+                scrollBuilder:
+                    (context, padding) => ListView(
+                      controller: controller,
+                      padding: padding,
+                      children: List.generate(
+                        20,
+                        (index) => SizedBox(
+                          height: 40,
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: Text('Row $index'),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
               ),
             ),
           ),
@@ -55,19 +56,34 @@ void main() {
       final firstRowTop = tester.getTopLeft(find.text('Row 0')).dy;
       expect(firstRowTop, closeTo(headerTop + 40 + 6 + 4, 1));
 
-      controller.jumpTo(20);
+      controller.jumpTo(50);
       await tester.pump();
 
       expect(find.byType(BackdropFilter), findsOneWidget);
       expect(
         tester.widget<BackdropFilter>(find.byType(BackdropFilter)).blendMode,
-        BlendMode.src,
+        BlendMode.srcOver,
       );
-      expect(find.byType(ShaderMask), findsOneWidget);
+      expect(find.byType(ShaderMask), findsNothing);
+      final topGradient =
+          tester
+              .widgetList<DecoratedBox>(
+                find.descendant(
+                  of: find.byType(ModalSheetScrollUnder),
+                  matching: find.byType(DecoratedBox),
+                ),
+              )
+              .map((box) => box.decoration)
+              .whereType<BoxDecoration>()
+              .map((decoration) => decoration.gradient)
+              .whereType<LinearGradient>()
+              .single;
+      expect(topGradient.colors.first.alpha, 255);
+      expect(topGradient.colors.last.alpha, 0);
       expect(tester.getTopLeft(find.byKey(headerKey)).dy, headerTop);
       expect(
         tester.getTopLeft(find.text('Row 0')).dy,
-        closeTo(firstRowTop - 20, 1),
+        closeTo(firstRowTop - 50, 1),
       );
 
       controller.jumpTo(0);
@@ -98,23 +114,24 @@ void main() {
               baseScrollPadding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               surfaceColor: CupertinoColors.systemBackground,
               header: const SizedBox(height: 40, child: Text('Pinned header')),
-              scrollBuilder: (context, padding) => SingleChildScrollView(
-                padding: padding,
-                child: SizedBox(
-                  height: 500,
-                  child: ListView(
-                    controller: controller,
-                    primary: false,
-                    children: List.generate(
-                      20,
-                      (index) => SizedBox(
-                        height: 40,
-                        child: Text('Nested row $index'),
+              scrollBuilder:
+                  (context, padding) => SingleChildScrollView(
+                    padding: padding,
+                    child: SizedBox(
+                      height: 500,
+                      child: ListView(
+                        controller: controller,
+                        primary: false,
+                        children: List.generate(
+                          20,
+                          (index) => SizedBox(
+                            height: 40,
+                            child: Text('Nested row $index'),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
             ),
           ),
         ),
@@ -143,12 +160,13 @@ void main() {
               baseScrollPadding: EdgeInsets.fromLTRB(16, 4, 16, 8),
               surfaceColor: CupertinoColors.systemBackground,
               header: SizedBox(height: 40, child: Text('Pinned header')),
-              scrollBuilder: (context, padding) => ListView(
-                padding: padding,
-                children: const [
-                  SizedBox(height: 24, child: Text('Short content')),
-                ],
-              ),
+              scrollBuilder:
+                  (context, padding) => ListView(
+                    padding: padding,
+                    children: const [
+                      SizedBox(height: 24, child: Text('Short content')),
+                    ],
+                  ),
             ),
           ),
         ),
