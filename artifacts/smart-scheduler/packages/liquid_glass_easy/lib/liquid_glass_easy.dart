@@ -68,6 +68,8 @@ export 'package:liquid_glass_easy/src/widgets/utils/liquid_glass_flex.dart'
 // Generic glass UI atoms a developer composes into their app.
 // Each is a single LiquidGlass lens placed in a LiquidGlassView.
 export 'package:liquid_glass_easy/src/widgets/components/liquid_glass_button.dart';
+export 'package:liquid_glass_easy/src/widgets/components/liquid_glass_scroll_edge.dart'
+    show LiquidGlassEdge, LiquidGlassScrollEdge, LiquidGlassScrollEdgeStyle;
 // Drop-in glass form controls. Only the high-level widgets + their
 // layout descriptors are public; the low-level track/thumb builders stay
 // internal.

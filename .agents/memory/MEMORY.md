@@ -58,6 +58,7 @@
 - [Replit home partition quota](replit-home-quota.md) — /home/runner has a per-user quota well below its 32GB size; move caches to /home/runner/workspace/.cache and symlink back.
 - [Native iOS switch routing](cupertino-native-switch-package.md) — use CNSwitch only on native iOS; preserve LiquidGlassSwitch on web, Android, and other platforms.
 - [Liquid Glass Widgets compatibility](liquid-glass-widgets-compatibility.md) — current Flutter 3.35.7 toolchain supports liquid_glass_widgets 0.5.0; 0.29.x requires Flutter 3.41+.
+- [Liquid Glass Easy fork compatibility](liquid-glass-easy-fork-compatibility.md) — preserve the app-specific local fork when adding upstream components; blanket upgrades can remove APIs used by existing controls.
 - [flutter_onnxruntime Android crash](onnxruntime-android-crash.md) — ONNX session.run() causes an unrecoverable JNI SIGSEGV on Android; also covers the earlier UnsatisfiedLinkError fix and plugin registration patch.
 - [TFLite Android embedding](tflite-android-embedding.md) — all-MiniLM-L6-v2 TFLite model tensor layout, source URL, and KGP 2.1 Gradle fix (kotlin.jvm.target.validation.mode=WARNING).
 - [Event creation save architecture](event-creation-save-architecture.md) — all ScheduledEvent fields, picker constraints, recurrence storage rule, alert timing logic, and normalisation decisions.

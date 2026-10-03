@@ -1,9 +1,8 @@
-import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' show FragmentProgram, FragmentShader, ImageFilter;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:liquid_glass_easy/liquid_glass_easy.dart'
+    show LiquidGlassEdge, LiquidGlassScrollEdge;
 
 import '../app_theme.dart'
     show BoundedSquircleStadiumBorder, kModalSheetCornerRadius;
@@ -113,38 +112,14 @@ class ModalSheetScrollUnder extends StatefulWidget {
 
 class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   static const double _topBlurSigmaScale = 0.85;
-  static const String _shaderAsset =
-      'assets/shaders/modal_sheet_scroll_edge.frag';
-  static Future<FragmentProgram>? _sharedShaderProgram;
-  static bool _loggedRendererSelection = false;
 
   double _topProgress = 0;
   double _bottomProgress = 0;
-  FragmentShader? _topShader;
-  FragmentShader? _bottomShader;
-
-  // Android stays on BackdropFilter: the runtime shader can report generic
-  // support there yet still produce no visible edge on some Impeller devices.
-  bool get _useProgressiveShader =>
-      !kIsWeb &&
-      defaultTargetPlatform != TargetPlatform.android &&
-      ImageFilter.isShaderFilterSupported;
 
   @override
   void initState() {
     super.initState();
     widget.scrollController?.addListener(_syncFromScrollController);
-    if (!_loggedRendererSelection) {
-      _loggedRendererSelection = true;
-      debugPrint(
-        'ModalSheetScrollUnder: platform=$defaultTargetPlatform, '
-        'shaderFilterSupported=${ImageFilter.isShaderFilterSupported}, '
-        'selectedPath=${_useProgressiveShader ? 'runtime shader' : 'BackdropFilter fallback'}',
-      );
-    }
-    if (_useProgressiveShader) {
-      unawaited(_loadProgressiveShader());
-    }
   }
 
   @override
@@ -157,28 +132,9 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     }
   }
 
-  Future<void> _loadProgressiveShader() async {
-    try {
-      final program =
-          await (_sharedShaderProgram ??= FragmentProgram.fromAsset(
-            _shaderAsset,
-          ));
-      if (!mounted) return;
-      setState(() {
-        _topShader = program.fragmentShader();
-        _bottomShader = program.fragmentShader();
-      });
-    } catch (error, stackTrace) {
-      debugPrint('Modal sheet edge shader unavailable: $error');
-      debugPrintStack(stackTrace: stackTrace);
-    }
-  }
-
   @override
   void dispose() {
     widget.scrollController?.removeListener(_syncFromScrollController);
-    _topShader?.dispose();
-    _bottomShader?.dispose();
     super.dispose();
   }
 
@@ -202,8 +158,6 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   /// At rest, the first scroll-content item starts at this same distance from
   /// the sheet top. Both the material fade and blur reach zero at that edge.
   double get _topFadeExtent => _scrollPadding.top;
-
-  double get _topBlurExtent => _topFadeExtent;
 
   void _syncScrollMetrics(ScrollMetrics metrics) {
     if (metrics.maxScrollExtent <= 1) {
@@ -257,146 +211,15 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     return false;
   }
 
-  void _configureShader(
-    FragmentShader shader, {
-    required bool atTop,
-    required double progress,
-  }) {
-    final color = widget.surfaceColor;
-    shader
-      ..setFloat(2, progress)
-      ..setFloat(3, widget.maxBlurSigma * (atTop ? _topBlurSigmaScale : 1))
-      ..setFloat(4, widget.maxSurfaceOpacity)
-      ..setFloat(5, color.r)
-      ..setFloat(6, color.g)
-      ..setFloat(7, color.b)
-      ..setFloat(8, color.a)
-      ..setFloat(9, MediaQuery.devicePixelRatioOf(context))
-      ..setFloat(10, atTop ? _topFadeExtent : widget.edgeExtent)
-      ..setFloat(11, atTop ? _topBlurExtent : widget.edgeExtent)
-      ..setFloat(12, atTop ? 0 : 1);
-  }
-
-  LinearGradient _fallbackMaterialGradient({
-    required bool atTop,
-    required double progress,
-    required double fieldHeight,
-  }) {
-    final maxOpacity = widget.maxSurfaceOpacity;
+  Widget _buildEdgeEffect({required bool atTop, required double progress}) {
     final opacity =
-        (maxOpacity * progress * widget.surfaceColor.a)
+        (widget.maxSurfaceOpacity * progress * widget.surfaceColor.a)
             .clamp(0.0, 1.0)
             .toDouble();
-    final strong = widget.surfaceColor.withValues(alpha: opacity);
-    final medium = widget.surfaceColor.withValues(alpha: opacity * 0.55);
-    final clear = widget.surfaceColor.withValues(alpha: 0);
-
-    if (atTop) {
-      return LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [strong, clear],
-      );
-    }
-
-    final transitionStop = (widget.edgeExtent / fieldHeight).clamp(0.0, 1.0);
-    return LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [clear, medium, strong, strong],
-      stops: [0, transitionStop / 2, transitionStop, 1],
-    );
-  }
-
-  Widget _buildFallbackEdgeEffect({
-    required bool atTop,
-    required double progress,
-  }) {
-    final fieldHeight =
-        atTop ? _topFadeExtent : widget.footerHeight + widget.edgeExtent;
-    final blurHeight = atTop ? _topBlurExtent : fieldHeight;
-    final blurGradient =
-        atTop
-            ? const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFFFFFFFF), Color(0x00FFFFFF)],
-            )
-            : LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: const [
-                Color(0x00FFFFFF),
-                Color(0xFFFFFFFF),
-                Color(0xFFFFFFFF),
-              ],
-              stops: [0, (widget.edgeExtent / fieldHeight).clamp(0.0, 1.0), 1],
-            );
-    final gradient = _fallbackMaterialGradient(
-      atTop: atTop,
-      progress: progress,
-      fieldHeight: fieldHeight,
-    );
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (atTop)
-          Positioned.fill(
-            child: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(
-                  sigmaX: widget.maxBlurSigma * _topBlurSigmaScale * progress,
-                  sigmaY: widget.maxBlurSigma * _topBlurSigmaScale * progress,
-                  tileMode: TileMode.decal,
-                ),
-                // Keep BackdropFilter directly over the sharp scroll content.
-                // ShaderMask would isolate it in a temporary compositing layer.
-                child: const SizedBox.expand(),
-              ),
-            ),
-          )
-        else
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: blurHeight,
-            child: ShaderMask(
-              blendMode: BlendMode.dstIn,
-              shaderCallback: (bounds) => blurGradient.createShader(bounds),
-              child: ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(
-                    sigmaX: widget.maxBlurSigma * progress,
-                    sigmaY: widget.maxBlurSigma * progress,
-                    tileMode: TileMode.decal,
-                  ),
-                  child: const SizedBox.expand(),
-                ),
-              ),
-            ),
-          ),
-        IgnorePointer(
-          child: DecoratedBox(decoration: BoxDecoration(gradient: gradient)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEdgeEffect({required bool atTop, required double progress}) {
-    final shader =
-        _useProgressiveShader ? (atTop ? _topShader : _bottomShader) : null;
-    if (shader == null) {
-      return _buildFallbackEdgeEffect(atTop: atTop, progress: progress);
-    }
-
-    _configureShader(shader, atTop: atTop, progress: progress);
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.shader(shader),
-        child: const SizedBox.expand(),
-      ),
+    return LiquidGlassScrollEdge(
+      edge: atTop ? LiquidGlassEdge.top : LiquidGlassEdge.bottom,
+      color: widget.surfaceColor.withValues(alpha: opacity),
+      blur: widget.maxBlurSigma * (atTop ? _topBlurSigmaScale : 1) * progress,
     );
   }
 

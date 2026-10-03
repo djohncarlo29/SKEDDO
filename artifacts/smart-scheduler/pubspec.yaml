@@ -2,7 +2,7 @@ name: smart_scheduler
 description: "SKEDDO"
 publish_to: 'none'
 
-version: 1.0.0+45
+version: 1.0.0+46
 
 environment:
   # Support both the workspace Flutter toolchain and Shorebird's newer Dart
@@ -79,6 +79,3 @@ flutter:
           weight: 700
         - asset: assets/fonts/SF-Pro-Heavy.otf
           weight: 800
-
-  shaders:
-    - assets/shaders/modal_sheet_scroll_edge.frag

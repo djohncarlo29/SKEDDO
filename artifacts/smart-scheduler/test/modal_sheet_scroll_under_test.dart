@@ -1,10 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:liquid_glass_easy/liquid_glass_easy.dart'
+    show LiquidGlassEdge, LiquidGlassScrollEdge;
 import 'package:smart_scheduler/widgets/modal_sheet_scroll_under.dart';
 
 void main() {
   testWidgets(
-    'Android top fallback keeps the blur over sharp scroll content',
+    'top edge uses the package scroll treatment over the fixed header',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(400, 700));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -50,7 +52,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(BackdropFilter), findsNothing);
+      expect(find.byType(LiquidGlassScrollEdge), findsNothing);
       final headerTop = tester.getTopLeft(find.byKey(headerKey)).dy;
       final firstRowTop = tester.getTopLeft(find.text('Row 0')).dy;
       expect(firstRowTop, closeTo(headerTop + 40 + 6 + 4, 1));
@@ -58,12 +60,13 @@ void main() {
       controller.jumpTo(50);
       await tester.pump();
 
-      expect(find.byType(BackdropFilter), findsOneWidget);
-      expect(
-        tester.widget<BackdropFilter>(find.byType(BackdropFilter)).blendMode,
-        BlendMode.srcOver,
+      expect(find.byType(LiquidGlassScrollEdge), findsOneWidget);
+      final edge = tester.widget<LiquidGlassScrollEdge>(
+        find.byType(LiquidGlassScrollEdge),
       );
-      expect(find.byType(ShaderMask), findsNothing);
+      expect(edge.edge, LiquidGlassEdge.top);
+      expect(edge.color.a, closeTo(0.78, 0.001));
+      expect(edge.blur, closeTo(12 * 0.85, 0.001));
       expect(tester.getTopLeft(find.byKey(headerKey)).dy, headerTop);
       expect(
         tester.getTopLeft(find.text('Row 0')).dy,
@@ -72,7 +75,7 @@ void main() {
 
       controller.jumpTo(0);
       await tester.pump();
-      expect(find.byType(BackdropFilter), findsNothing);
+      expect(find.byType(LiquidGlassScrollEdge), findsNothing);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
   );
@@ -123,12 +126,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(BackdropFilter), findsNothing);
+    expect(find.byType(LiquidGlassScrollEdge), findsNothing);
 
     controller.jumpTo(20);
     await tester.pump();
 
-    expect(find.byType(BackdropFilter), findsWidgets);
+    expect(find.byType(LiquidGlassScrollEdge), findsOneWidget);
   });
 
   testWidgets('short content does not add an edge blur', (tester) async {
@@ -158,7 +161,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(BackdropFilter), findsNothing);
+    expect(find.byType(LiquidGlassScrollEdge), findsNothing);
   });
 
   testWidgets(
@@ -200,26 +203,23 @@ void main() {
 
       expect(controller.position.maxScrollExtent, greaterThan(1));
       expect(controller.position.maxScrollExtent, lessThan(48));
-      expect(find.byType(BackdropFilter), findsNothing);
+      expect(find.byType(LiquidGlassScrollEdge), findsNothing);
 
       controller.jumpTo(controller.position.maxScrollExtent);
       await tester.pump();
 
-      expect(find.byType(BackdropFilter), findsNWidgets(2));
-      final footerTint =
-          tester
-              .widgetList<DecoratedBox>(
-                find.descendant(
-                  of: find.byType(ModalSheetScrollUnder),
-                  matching: find.byType(DecoratedBox),
-                ),
-              )
-              .map((box) => box.decoration)
-              .whereType<BoxDecoration>()
-              .map((decoration) => decoration.gradient)
-              .whereType<LinearGradient>()
-              .singleWhere((gradient) => gradient.colors.length == 4);
-      expect(footerTint.colors[2].a, lessThan(0.78));
+      expect(find.byType(LiquidGlassScrollEdge), findsNWidgets(2));
+      final edges = tester
+          .widgetList<LiquidGlassScrollEdge>(
+            find.byType(LiquidGlassScrollEdge),
+          )
+          .toList();
+      final footerEdge = edges.singleWhere(
+        (edge) => edge.edge == LiquidGlassEdge.bottom,
+      );
+      expect(footerEdge.color.a, greaterThan(0));
+      expect(footerEdge.color.a, lessThan(0.78));
+      expect(footerEdge.blur, lessThan(12));
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
   );
