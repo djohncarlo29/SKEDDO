@@ -5,6 +5,10 @@ import 'dart:ui' show FragmentProgram, FragmentShader, ImageFilter;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
+/// The top scroll-edge effect is anchored to the modal sheet's top edge,
+/// independently of the inset used to position its header.
+const double kModalSheetScrollEdgeTopOffset = 0;
+
 /// Places a sheet's scrolling content behind its fixed header and, optionally,
 /// footer while keeping the original at-rest content positions.
 ///
@@ -346,7 +350,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
               scrollable,
             if (_topProgress > 0.01)
               Positioned(
-                top: widget.headerTopInset,
+                top: kModalSheetScrollEdgeTopOffset,
                 left: 0,
                 right: 0,
                 height: topEffectHeight,
