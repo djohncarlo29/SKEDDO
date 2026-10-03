@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/widgets/modal_sheet_scroll_under.dart';
@@ -57,7 +59,10 @@ void main() {
     controller.jumpTo(20);
     await tester.pump();
 
-    expect(find.byType(BackdropFilter), findsOneWidget);
+    expect(find.byType(BackdropFilter), findsWidgets);
+    if (!ImageFilter.isShaderFilterSupported) {
+      expect(find.byType(BackdropFilter), findsAtLeastNWidgets(8));
+    }
     expect(tester.getTopLeft(find.byKey(headerKey)).dy, headerTop);
     expect(
       tester.getTopLeft(find.text('Row 0')).dy,

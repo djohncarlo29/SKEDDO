@@ -79,3 +79,6 @@ flutter:
           weight: 700
         - asset: assets/fonts/SF-Pro-Heavy.otf
           weight: 800
+
+  shaders:
+    - assets/shaders/modal_sheet_scroll_edge.frag
