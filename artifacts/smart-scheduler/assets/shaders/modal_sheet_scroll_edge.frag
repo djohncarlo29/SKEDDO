@@ -9,8 +9,6 @@ uniform float u_pixel_ratio;
 uniform float u_fade_extent;
 uniform float u_blur_extent;
 uniform float u_is_bottom;
-uniform float u_fade_start;
-uniform float u_blur_start;
 uniform sampler2D u_texture_input;
 
 out vec4 frag_color;
@@ -30,15 +28,11 @@ void main() {
   float y = uv.y * u_size.y;
   float fadeExtent = max(u_fade_extent * u_pixel_ratio, 0.001);
   float blurExtent = max(u_blur_extent * u_pixel_ratio, 0.001);
-  float fadeStart = u_fade_start * u_pixel_ratio;
-  float blurStart = u_blur_start * u_pixel_ratio;
-  float fadeEnd = max(fadeExtent, fadeStart + 0.001);
-  float blurEnd = max(blurExtent, blurStart + 0.001);
   float fadeStrength;
   float blurStrength;
   if (u_is_bottom < 0.5) {
-    fadeStrength = 1.0 - smoothstep(fadeStart, fadeEnd, y);
-    blurStrength = 1.0 - smoothstep(blurStart, blurEnd, y);
+    fadeStrength = 1.0 - smoothstep(0.0, fadeExtent, y);
+    blurStrength = 1.0 - smoothstep(0.0, blurExtent, y);
   } else {
     fadeStrength = smoothstep(0.0, fadeExtent, y);
     blurStrength = smoothstep(0.0, blurExtent, y);

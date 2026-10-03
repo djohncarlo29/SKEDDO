@@ -5,16 +5,12 @@ import 'dart:ui' show FragmentProgram, FragmentShader, ImageFilter;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
-import '../app_theme.dart'
-    show BoundedSquircleStadiumBorder, kModalSheetCornerRadius;
-import 'rounded_cupertino_sheet.dart' show RoundedCupertinoSheetRoute;
-
 /// The top scroll-edge effect is anchored to the modal sheet's top edge,
 /// independently of the inset used to position its header.
 const double kModalSheetScrollEdgeTopOffset = 0;
 
 /// The top blur reaches zero sooner than the modal-surface fade.
-const double kModalSheetScrollEdgeBlurTailRatio = 0.85;
+const double kModalSheetScrollEdgeBlurTailRatio = 0.65;
 
 /// Places a sheet's scrolling content behind its fixed header and, optionally,
 /// footer while keeping the original at-rest content positions.
@@ -39,7 +35,7 @@ class ModalSheetScrollUnder extends StatefulWidget {
     this.footerBottomInset = 0,
     this.expandViewport = true,
     this.edgeExtent = 64,
-    this.maxBlurSigma = 18,
+    this.maxBlurSigma = 12,
     this.maxSurfaceOpacity = 0.78,
   }) : assert(headerHeight >= 0),
        assert(headerTopInset >= 0),
@@ -88,8 +84,7 @@ class ModalSheetScrollUnder extends StatefulWidget {
   /// this false so short content keeps its natural height.
   final bool expandViewport;
 
-  /// Length of the bottom gradient transition. The top fade ends at the
-  /// first scroll card's resting position.
+  /// Length of each gradient edge transition.
   final double edgeExtent;
 
   /// Maximum blur sigma at the fixed-control edge.
@@ -160,23 +155,13 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
         widget.baseScrollPadding.bottom,
   );
 
-  /// The first scroll card begins at this y-coordinate before scrolling.
-  /// Use that resting position as the top fade's transparent endpoint.
-  double get _topFadeExtent => math.max(1, _scrollPadding.top);
-
-  /// Keep the effect at full strength beneath the fixed header, then fade it
-  /// through the visible header-to-card gap.
-  double get _topTransitionStart {
-    final lastVisible = math.max(0.0, _topFadeExtent - 1).toDouble();
-    return (widget.headerTopInset + widget.headerHeight)
-        .clamp(0.0, lastVisible)
-        .toDouble();
-  }
+  double get _topFadeExtent =>
+      widget.headerTopInset + widget.headerHeight + widget.edgeExtent;
 
   double get _topBlurExtent =>
-      _topTransitionStart +
-      (_topFadeExtent - _topTransitionStart) *
-          kModalSheetScrollEdgeBlurTailRatio;
+      widget.headerTopInset +
+      widget.headerHeight +
+      widget.edgeExtent * kModalSheetScrollEdgeBlurTailRatio;
 
   void _syncScrollMetrics(ScrollMetrics metrics) {
     if (metrics.maxScrollExtent <= 1) {
@@ -190,8 +175,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     }
 
     final distance = _activationDistance;
-    final rawTop = (metrics.pixels / distance).clamp(0.0, 1.0).toDouble();
-    final nextTop = Curves.easeOutCubic.transform(rawTop);
+    final nextTop = (metrics.pixels / distance).clamp(0.0, 1.0).toDouble();
     final nextBottom = widget.footer == null
         ? 0.0
         : ((metrics.pixels - (metrics.maxScrollExtent - distance)) / distance)
@@ -234,9 +218,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       ..setFloat(9, MediaQuery.devicePixelRatioOf(context))
       ..setFloat(10, atTop ? _topFadeExtent : widget.edgeExtent)
       ..setFloat(11, atTop ? _topBlurExtent : widget.edgeExtent)
-      ..setFloat(12, atTop ? 0 : 1)
-      ..setFloat(13, atTop ? _topTransitionStart : 0)
-      ..setFloat(14, atTop ? _topTransitionStart : 0);
+      ..setFloat(12, atTop ? 0 : 1);
   }
 
   LinearGradient _fallbackMaterialGradient({
@@ -253,14 +235,10 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     final clear = widget.surfaceColor.withValues(alpha: 0);
 
     if (atTop) {
-      final transitionStart = (_topTransitionStart / fieldHeight)
-          .clamp(0.0, 1.0)
-          .toDouble();
       return LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [strong, strong, clear],
-        stops: [0, transitionStart, 1],
+        colors: [strong, clear],
       );
     }
 
@@ -282,19 +260,10 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
         : widget.footerHeight + widget.edgeExtent;
     final blurHeight = atTop ? _topBlurExtent : fieldHeight;
     final blurGradient = atTop
-        ? LinearGradient(
+        ? const LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: const [
-              Color(0xFFFFFFFF),
-              Color(0xFFFFFFFF),
-              Color(0x00FFFFFF),
-            ],
-            stops: [
-              0,
-              (_topTransitionStart / blurHeight).clamp(0.0, 1.0).toDouble(),
-              1,
-            ],
+            colors: [Color(0xFFFFFFFF), Color(0x00FFFFFF)],
           )
         : LinearGradient(
             begin: Alignment.topCenter,
@@ -369,66 +338,53 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     final scrollable = widget.scrollBuilder(context, _scrollPadding);
     final hasFooter = widget.footer != null && widget.footerHeight > 0;
 
-    final stack = Stack(
-      fit: widget.expandViewport ? StackFit.expand : StackFit.loose,
-      clipBehavior: Clip.hardEdge,
-      children: [
-        if (widget.expandViewport)
-          Positioned.fill(child: scrollable)
-        else
-          scrollable,
-        if (_topProgress > 0.01)
-          Positioned(
-            top: kModalSheetScrollEdgeTopOffset,
-            left: 0,
-            right: 0,
-            height: _topFadeExtent,
-            child: _buildEdgeEffect(atTop: true, progress: _topProgress),
-          ),
-        if (hasFooter && _bottomProgress > 0.01)
-          Positioned(
-            bottom: widget.footerBottomInset,
-            left: 0,
-            right: 0,
-            height: widget.footerHeight + widget.edgeExtent,
-            child: _buildEdgeEffect(
-              atTop: false,
-              progress: _bottomProgress,
-            ),
-          ),
-        Positioned(
-          top: widget.headerTopInset,
-          left: 0,
-          right: 0,
-          height: widget.headerHeight,
-          child: widget.header,
-        ),
-        if (hasFooter)
-          Positioned(
-            bottom: widget.footerBottomInset,
-            left: 0,
-            right: 0,
-            child: widget.footer!,
-          ),
-      ],
-    );
-    final sheetContent = RoundedCupertinoSheetRoute.hasParentSheet(context)
-        ? ClipPath(
-            clipper: ShapeBorderClipper(
-              shape: const BoundedSquircleStadiumBorder(
-                radius: kModalSheetCornerRadius,
-                topOnly: true,
-              ),
-            ),
-            child: stack,
-          )
-        : stack;
-
     return NotificationListener<ScrollMetricsNotification>(
       onNotification: _onMetricsNotification,
       child: NotificationListener<ScrollNotification>(
         onNotification: _onScrollNotification,
-        child: sheetContent,
+        child: Stack(
+          fit: widget.expandViewport ? StackFit.expand : StackFit.loose,
+          clipBehavior: Clip.hardEdge,
+          children: [
+            if (widget.expandViewport)
+              Positioned.fill(child: scrollable)
+            else
+              scrollable,
+            if (_topProgress > 0.01)
+              Positioned(
+                top: kModalSheetScrollEdgeTopOffset,
+                left: 0,
+                right: 0,
+                height: _topFadeExtent,
+                child: _buildEdgeEffect(atTop: true, progress: _topProgress),
+              ),
+            if (hasFooter && _bottomProgress > 0.01)
+              Positioned(
+                bottom: widget.footerBottomInset,
+                left: 0,
+                right: 0,
+                height: widget.footerHeight + widget.edgeExtent,
+                child: _buildEdgeEffect(
+                  atTop: false,
+                  progress: _bottomProgress,
+                ),
+              ),
+            Positioned(
+              top: widget.headerTopInset,
+              left: 0,
+              right: 0,
+              height: widget.headerHeight,
+              child: widget.header,
+            ),
+            if (hasFooter)
+              Positioned(
+                bottom: widget.footerBottomInset,
+                left: 0,
+                right: 0,
+                child: widget.footer!,
+              ),
+          ],
+        ),
       ),
     );
   }
