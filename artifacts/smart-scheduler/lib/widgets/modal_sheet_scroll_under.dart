@@ -343,58 +343,73 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   Widget build(BuildContext context) {
     final scrollable = widget.scrollBuilder(context, _scrollPadding);
     final hasFooter = widget.footer != null && widget.footerHeight > 0;
+    final hasTopEdge = _topProgress > 0.01;
+    final hasBottomEdge = hasFooter && _bottomProgress > 0.01;
 
-    return ClipPath(
-      // Keep BackdropFilter output inside the same top-only squircle as the
-      // sheet itself, including its transparent corner cutouts.
-      clipper: ShapeBorderClipper(shape: widget.edgeClipShape),
-      child: NotificationListener<ScrollMetricsNotification>(
-        onNotification: _onMetricsNotification,
-        child: NotificationListener<ScrollNotification>(
-          onNotification: _onScrollNotification,
-          child: Stack(
-            fit: widget.expandViewport ? StackFit.expand : StackFit.loose,
-            clipBehavior: Clip.hardEdge,
-            children: [
-              if (widget.expandViewport)
-                Positioned.fill(child: scrollable)
-              else
-                scrollable,
-              if (_topProgress > 0.01)
-                Positioned(
-                  top: kModalSheetScrollEdgeTopOffset,
-                  left: 0,
-                  right: 0,
-                  height: _topFadeExtent,
-                  child: _buildEdgeEffect(atTop: true, progress: _topProgress),
-                ),
-              if (hasFooter && _bottomProgress > 0.01)
-                Positioned(
-                  bottom: widget.footerBottomInset,
-                  left: 0,
-                  right: 0,
-                  height: widget.footerHeight + widget.edgeExtent,
-                  child: _buildEdgeEffect(
-                    atTop: false,
-                    progress: _bottomProgress,
+    return NotificationListener<ScrollMetricsNotification>(
+      onNotification: _onMetricsNotification,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _onScrollNotification,
+        child: Stack(
+          fit: widget.expandViewport ? StackFit.expand : StackFit.loose,
+          clipBehavior: Clip.hardEdge,
+          children: [
+            if (widget.expandViewport)
+              Positioned.fill(child: scrollable)
+            else
+              scrollable,
+            if (hasTopEdge || hasBottomEdge)
+              Positioned.fill(
+                // Clip only the effect layer. Keeping the scroller outside
+                // this clip preserves the backdrop content for Android's
+                // BackdropFilter while still masking the transparent corners.
+                child: ClipPath(
+                  clipper: ShapeBorderClipper(shape: widget.edgeClipShape),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    clipBehavior: Clip.none,
+                    children: [
+                      if (hasTopEdge)
+                        Positioned(
+                          top: kModalSheetScrollEdgeTopOffset,
+                          left: 0,
+                          right: 0,
+                          height: _topFadeExtent,
+                          child: _buildEdgeEffect(
+                            atTop: true,
+                            progress: _topProgress,
+                          ),
+                        ),
+                      if (hasBottomEdge)
+                        Positioned(
+                          bottom: widget.footerBottomInset,
+                          left: 0,
+                          right: 0,
+                          height: widget.footerHeight + widget.edgeExtent,
+                          child: _buildEdgeEffect(
+                            atTop: false,
+                            progress: _bottomProgress,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
+              ),
+            Positioned(
+              top: widget.headerTopInset,
+              left: 0,
+              right: 0,
+              height: widget.headerHeight,
+              child: widget.header,
+            ),
+            if (hasFooter)
               Positioned(
-                top: widget.headerTopInset,
+                bottom: widget.footerBottomInset,
                 left: 0,
                 right: 0,
-                height: widget.headerHeight,
-                child: widget.header,
+                child: widget.footer!,
               ),
-              if (hasFooter)
-                Positioned(
-                  bottom: widget.footerBottomInset,
-                  left: 0,
-                  right: 0,
-                  child: widget.footer!,
-                ),
-            ],
-          ),
+          ],
         ),
       ),
     );
