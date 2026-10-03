@@ -1,12 +1,10 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/widgets/modal_sheet_scroll_under.dart';
 
 void main() {
   testWidgets(
-    'Android top fallback masks the blur so sharp content returns at the edge',
+    'Android top fallback keeps the blur over sharp scroll content',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(400, 700));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -61,28 +59,11 @@ void main() {
       await tester.pump();
 
       expect(find.byType(BackdropFilter), findsOneWidget);
-      if (!ImageFilter.isShaderFilterSupported) {
-        expect(
-          tester.widget<BackdropFilter>(find.byType(BackdropFilter)).blendMode,
-          BlendMode.src,
-        );
-        expect(find.byType(ShaderMask), findsOneWidget);
-        final topGradient =
-            tester
-                .widgetList<DecoratedBox>(
-                  find.descendant(
-                    of: find.byType(ModalSheetScrollUnder),
-                    matching: find.byType(DecoratedBox),
-                  ),
-                )
-                .map((box) => box.decoration)
-                .whereType<BoxDecoration>()
-                .map((decoration) => decoration.gradient)
-                .whereType<LinearGradient>()
-                .single;
-        expect(topGradient.colors.first.a, lessThan(1));
-        expect(topGradient.colors.last.a, 0);
-      }
+      expect(
+        tester.widget<BackdropFilter>(find.byType(BackdropFilter)).blendMode,
+        BlendMode.srcOver,
+      );
+      expect(find.byType(ShaderMask), findsNothing);
       expect(tester.getTopLeft(find.byKey(headerKey)).dy, headerTop);
       expect(
         tester.getTopLeft(find.text('Row 0')).dy,
@@ -225,6 +206,20 @@ void main() {
       await tester.pump();
 
       expect(find.byType(BackdropFilter), findsNWidgets(2));
+      final footerTint =
+          tester
+              .widgetList<DecoratedBox>(
+                find.descendant(
+                  of: find.byType(ModalSheetScrollUnder),
+                  matching: find.byType(DecoratedBox),
+                ),
+              )
+              .map((box) => box.decoration)
+              .whereType<BoxDecoration>()
+              .map((decoration) => decoration.gradient)
+              .whereType<LinearGradient>()
+              .singleWhere((gradient) => gradient.colors.length == 4);
+      expect(footerTint.colors[2].a, lessThan(0.78));
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
   );

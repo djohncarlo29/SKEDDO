@@ -112,43 +112,36 @@ class ModalSheetScrollUnder extends StatefulWidget {
 }
 
 class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
-  // One continuously masked filter avoids horizontal seams between sigma bands.
   static const double _topBlurSigmaScale = 0.85;
-  static const LinearGradient _topBlurMaskGradient = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [
-      Color(0xFFFFFFFF),
-      Color(0xF4FFFFFF),
-      Color(0xD7FFFFFF),
-      Color(0xAEFFFFFF),
-      Color(0x80FFFFFF),
-      Color(0x51FFFFFF),
-      Color(0x28FFFFFF),
-      Color(0x0BFFFFFF),
-      Color(0x00FFFFFF),
-    ],
-    stops: [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1],
-  );
   static const String _shaderAsset =
       'assets/shaders/modal_sheet_scroll_edge.frag';
   static Future<FragmentProgram>? _sharedShaderProgram;
+  static bool _loggedRendererSelection = false;
 
   double _topProgress = 0;
   double _bottomProgress = 0;
   FragmentShader? _topShader;
   FragmentShader? _bottomShader;
 
-  // Use the spatially progressive image-filter shader on every Impeller
-  // backend that supports it, including Android. Keep the masked BackdropFilter
-  // fallback for web and renderers without ImageFilter.shader support.
+  // Android stays on BackdropFilter: the runtime shader can report generic
+  // support there yet still produce no visible edge on some Impeller devices.
   bool get _useProgressiveShader =>
-      !kIsWeb && ImageFilter.isShaderFilterSupported;
+      !kIsWeb &&
+      defaultTargetPlatform != TargetPlatform.android &&
+      ImageFilter.isShaderFilterSupported;
 
   @override
   void initState() {
     super.initState();
     widget.scrollController?.addListener(_syncFromScrollController);
+    if (!_loggedRendererSelection) {
+      _loggedRendererSelection = true;
+      debugPrint(
+        'ModalSheetScrollUnder: platform=$defaultTargetPlatform, '
+        'shaderFilterSupported=${ImageFilter.isShaderFilterSupported}, '
+        'selectedPath=${_useProgressiveShader ? 'runtime shader' : 'BackdropFilter fallback'}',
+      );
+    }
     if (_useProgressiveShader) {
       unawaited(_loadProgressiveShader());
     }
@@ -237,14 +230,13 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   }
 
   double _bottomProgressForMetrics(ScrollMetrics metrics, double distance) {
-    if (widget.footer == null) return 0;
+    if (widget.footer == null || metrics.maxScrollExtent <= 1) return 0;
 
-    // When the available scroll range is shorter than the normal transition,
-    // use that entire range. This keeps the footer effect at zero at the top
-    // and still lets it reach full strength at the bottom.
-    final range = math.min(distance, metrics.maxScrollExtent);
-    final start = metrics.maxScrollExtent - range;
-    return ((metrics.pixels - start) / range).clamp(0.0, 1.0).toDouble();
+    // Base effect strength on content's actual travel under the footer edge.
+    // Short ranges reveal the effect gradually rather than stretching the
+    // entire range to full opacity.
+    final start = math.max(0.0, metrics.maxScrollExtent - distance);
+    return ((metrics.pixels - start) / distance).clamp(0.0, 1.0).toDouble();
   }
 
   void _syncFromScrollController() {
@@ -351,22 +343,16 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       children: [
         if (atTop)
           Positioned.fill(
-            child: ShaderMask(
-              blendMode: BlendMode.dstIn,
-              shaderCallback:
-                  (bounds) => _topBlurMaskGradient.createShader(bounds),
-              child: ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(
-                    sigmaX: widget.maxBlurSigma * _topBlurSigmaScale * progress,
-                    sigmaY: widget.maxBlurSigma * _topBlurSigmaScale * progress,
-                    tileMode: TileMode.decal,
-                  ),
-                  // The mask must be applied to the filtered backdrop itself;
-                  // the unmasked sharp scroll content remains beneath it.
-                  blendMode: BlendMode.src,
-                  child: const SizedBox.expand(),
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: widget.maxBlurSigma * _topBlurSigmaScale * progress,
+                  sigmaY: widget.maxBlurSigma * _topBlurSigmaScale * progress,
+                  tileMode: TileMode.decal,
                 ),
+                // Keep BackdropFilter directly over the sharp scroll content.
+                // ShaderMask would isolate it in a temporary compositing layer.
+                child: const SizedBox.expand(),
               ),
             ),
           )
