@@ -112,7 +112,24 @@ class ModalSheetScrollUnder extends StatefulWidget {
 }
 
 class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
-  static const int _fallbackTopBlurBandCount = 64;
+  // One continuously masked filter avoids horizontal seams between sigma bands.
+  static const double _topBlurSigmaScale = 0.85;
+  static const LinearGradient _topBlurMaskGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0xFFFFFFFF),
+      Color(0xF4FFFFFF),
+      Color(0xD7FFFFFF),
+      Color(0xAEFFFFFF),
+      Color(0x80FFFFFF),
+      Color(0x51FFFFFF),
+      Color(0x28FFFFFF),
+      Color(0x0BFFFFFF),
+      Color(0x00FFFFFF),
+    ],
+    stops: [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1],
+  );
   static const String _shaderAsset =
       'assets/shaders/modal_sheet_scroll_edge.frag';
   static Future<FragmentProgram>? _sharedShaderProgram;
@@ -250,7 +267,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     final color = widget.surfaceColor;
     shader
       ..setFloat(2, progress)
-      ..setFloat(3, widget.maxBlurSigma)
+      ..setFloat(3, widget.maxBlurSigma * (atTop ? _topBlurSigmaScale : 1))
       ..setFloat(4, atTop ? 1 : widget.maxSurfaceOpacity)
       ..setFloat(5, color.red / 255)
       ..setFloat(6, color.green / 255)
@@ -326,7 +343,23 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       fit: StackFit.expand,
       children: [
         if (atTop)
-          ..._buildFallbackTopBlurBands(progress: progress, height: blurHeight)
+          Positioned.fill(
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) =>
+                  _topBlurMaskGradient.createShader(bounds),
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: widget.maxBlurSigma * _topBlurSigmaScale * progress,
+                    sigmaY: widget.maxBlurSigma * _topBlurSigmaScale * progress,
+                    tileMode: TileMode.decal,
+                  ),
+                  child: const SizedBox.expand(),
+                ),
+              ),
+            ),
+          )
         else
           Positioned(
             bottom: 0,
@@ -353,38 +386,6 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
         ),
       ],
     );
-  }
-
-  /// BackdropFilter has one sigma for its whole region. On platforms without
-  /// the runtime shader, approximate a spatial blur ramp with thin clipped
-  /// narrow bands: strongest at the sheet edge and progressively sharper
-  /// toward the exact end of the same extent used by the surface fade. Keep
-  /// enough bands that the individual strength steps are not visually distinct.
-  List<Widget> _buildFallbackTopBlurBands({
-    required double progress,
-    required double height,
-  }) {
-    final bandHeight = height / _fallbackTopBlurBandCount;
-    return List<Widget>.generate(_fallbackTopBlurBandCount, (index) {
-      final strength = 1 - (index + 0.5) / _fallbackTopBlurBandCount;
-      final sigma = widget.maxBlurSigma * progress * strength;
-      return Positioned(
-        top: bandHeight * index,
-        left: 0,
-        right: 0,
-        height: bandHeight,
-        child: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(
-              sigmaX: sigma,
-              sigmaY: sigma,
-              tileMode: TileMode.decal,
-            ),
-            child: const SizedBox.expand(),
-          ),
-        ),
-      );
-    }, growable: false);
   }
 
   Widget _buildEdgeEffect({required bool atTop, required double progress}) {

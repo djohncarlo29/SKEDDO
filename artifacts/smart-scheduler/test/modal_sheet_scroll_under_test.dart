@@ -5,7 +5,7 @@ import 'package:smart_scheduler/widgets/modal_sheet_scroll_under.dart';
 
 void main() {
   testWidgets(
-    'Android edge blur ramp',
+    'Android top edge blur uses one continuously masked filter',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(400, 700));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -58,7 +58,8 @@ void main() {
       controller.jumpTo(20);
       await tester.pump();
 
-      expect(find.byType(BackdropFilter), findsNWidgets(64));
+      expect(find.byType(BackdropFilter), findsOneWidget);
+      expect(find.byType(ShaderMask), findsOneWidget);
       expect(tester.getTopLeft(find.byKey(headerKey)).dy, headerTop);
       expect(
         tester.getTopLeft(find.text('Row 0')).dy,
