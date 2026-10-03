@@ -58,7 +58,7 @@ void main() {
       controller.jumpTo(20);
       await tester.pump();
 
-      expect(find.byType(BackdropFilter), findsNWidgets(16));
+      expect(find.byType(BackdropFilter), findsNWidgets(64));
       expect(tester.getTopLeft(find.byKey(headerKey)).dy, headerTop);
       expect(
         tester.getTopLeft(find.text('Row 0')).dy,

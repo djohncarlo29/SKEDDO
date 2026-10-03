@@ -112,7 +112,7 @@ class ModalSheetScrollUnder extends StatefulWidget {
 }
 
 class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
-  static const int _fallbackTopBlurBandCount = 16;
+  static const int _fallbackTopBlurBandCount = 64;
   static const String _shaderAsset =
       'assets/shaders/modal_sheet_scroll_edge.frag';
   static Future<FragmentProgram>? _sharedShaderProgram;
@@ -357,8 +357,9 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
 
   /// BackdropFilter has one sigma for its whole region. On platforms without
   /// the runtime shader, approximate a spatial blur ramp with thin clipped
-  /// bands: strongest at the sheet edge and progressively sharper toward the
-  /// exact end of the same extent used by the surface fade.
+  /// narrow bands: strongest at the sheet edge and progressively sharper
+  /// toward the exact end of the same extent used by the surface fade. Keep
+  /// enough bands that the individual strength steps are not visually distinct.
   List<Widget> _buildFallbackTopBlurBands({
     required double progress,
     required double height,
