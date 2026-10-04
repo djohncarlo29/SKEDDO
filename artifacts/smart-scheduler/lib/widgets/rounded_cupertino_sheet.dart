@@ -78,6 +78,24 @@ Widget? _withSheetDimOverlay(
   );
 }
 
+Widget? _withAlphaAwareSheetDimOverlay(
+  Widget? child,
+  Animation<double> opacityAnimation,
+) {
+  if (child == null) return null;
+  return AnimatedBuilder(
+    animation: opacityAnimation,
+    child: child,
+    builder: (context, child) => ColorFiltered(
+      colorFilter: ColorFilter.mode(
+        const Color(0xFF000000).withValues(alpha: opacityAnimation.value),
+        BlendMode.srcATop,
+      ),
+      child: child,
+    ),
+  );
+}
+
 const double _kMinFlingVelocity = 2.0;
 const Duration _kDroppedSheetDragAnimationDuration = Duration(
   milliseconds: 300,
@@ -479,13 +497,12 @@ class _RoundedSheetTransition extends StatefulWidget {
     );
     curvedAnimation.dispose();
 
-    // Keep the dark tint as a sibling paint operation instead of wrapping the
-    // route in ColorFiltered. That avoids an intermediate buffer around
-    // BackdropFilters in the covered page. The scrim shares the page's
-    // transforms and clip, so it does not bleed into the transparent top gap.
-    final Widget? dimmedChild =
+    // This transition dims the app behind the top-level sheet, not the modal
+    // sheet containing the scroll-edge blur. Keep its original alpha-aware
+    // tint so transparent status-bar areas are not darkened.
+    final Widget? dimmedApp =
         child != null && !secondaryAnimation.isDismissed
-        ? _withSheetDimOverlay(child, opacityAnimation)
+        ? _withAlphaAwareSheetDimOverlay(child, opacityAnimation)
         : child;
 
     return SlideTransition(
@@ -501,7 +518,7 @@ class _RoundedSheetTransition extends StatefulWidget {
               topOnly: true,
             ),
           ),
-          child: dimmedChild,
+          child: dimmedApp,
         ),
       ),
     );

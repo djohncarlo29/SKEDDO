@@ -94,6 +94,9 @@ void main() {
         ),
         findsNothing,
       );
+      // The app behind the top-level sheet keeps its alpha-aware dim path;
+      // only the covered modal uses the sibling overlay for its scroll edge.
+      expect(find.byType(ColorFiltered), findsOneWidget);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
   );
