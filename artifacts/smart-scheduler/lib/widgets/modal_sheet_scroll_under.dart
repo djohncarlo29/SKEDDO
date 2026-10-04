@@ -115,11 +115,30 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
 
   double _topProgress = 0;
   double _bottomProgress = 0;
+  int _edgeRepaintGeneration = 0;
+  Animation<double>? _parentRouteSecondaryAnimation;
 
   @override
   void initState() {
     super.initState();
     widget.scrollController?.addListener(_syncFromScrollController);
+    _scheduleScrollControllerSync();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final secondaryAnimation = ModalRoute.of(context)?.secondaryAnimation;
+    if (secondaryAnimation != _parentRouteSecondaryAnimation) {
+      _parentRouteSecondaryAnimation?.removeStatusListener(
+        _handleParentRouteAnimationStatus,
+      );
+      _parentRouteSecondaryAnimation = secondaryAnimation;
+      _parentRouteSecondaryAnimation?.addStatusListener(
+        _handleParentRouteAnimationStatus,
+      );
+      _scheduleScrollControllerSync();
+    }
   }
 
   @override
@@ -128,14 +147,30 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     if (oldWidget.scrollController != widget.scrollController) {
       oldWidget.scrollController?.removeListener(_syncFromScrollController);
       widget.scrollController?.addListener(_syncFromScrollController);
-      _syncFromScrollController();
     }
+    _scheduleScrollControllerSync();
   }
 
   @override
   void dispose() {
     widget.scrollController?.removeListener(_syncFromScrollController);
+    _parentRouteSecondaryAnimation?.removeStatusListener(
+      _handleParentRouteAnimationStatus,
+    );
     super.dispose();
+  }
+
+  void _scheduleScrollControllerSync() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncFromScrollController();
+    });
+  }
+
+  void _handleParentRouteAnimationStatus(AnimationStatus status) {
+    if (status != AnimationStatus.dismissed) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncFromScrollController(forceRepaint: true);
+    });
   }
 
   double get _activationDistance => math.max(
@@ -159,12 +194,18 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   /// the sheet top. Both the material fade and blur reach zero at that edge.
   double get _topFadeExtent => _scrollPadding.top;
 
-  void _syncScrollMetrics(ScrollMetrics metrics) {
+  void _syncScrollMetrics(
+    ScrollMetrics metrics, {
+    bool forceRepaint = false,
+  }) {
     if (metrics.maxScrollExtent <= 1) {
-      if (_topProgress != 0 || _bottomProgress != 0) {
+      if (_topProgress != 0 ||
+          _bottomProgress != 0 ||
+          forceRepaint) {
         setState(() {
           _topProgress = 0;
           _bottomProgress = 0;
+          if (forceRepaint) _edgeRepaintGeneration++;
         });
       }
       return;
@@ -174,12 +215,14 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     final nextTop = (metrics.pixels / distance).clamp(0.0, 1.0).toDouble();
     final nextBottom = _bottomProgressForMetrics(metrics, distance);
     if ((nextTop - _topProgress).abs() < 0.01 &&
-        (nextBottom - _bottomProgress).abs() < 0.01) {
+        (nextBottom - _bottomProgress).abs() < 0.01 &&
+        !forceRepaint) {
       return;
     }
     setState(() {
       _topProgress = nextTop;
       _bottomProgress = nextBottom;
+      if (forceRepaint) _edgeRepaintGeneration++;
     });
   }
 
@@ -193,12 +236,22 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     return ((metrics.pixels - start) / distance).clamp(0.0, 1.0).toDouble();
   }
 
-  void _syncFromScrollController() {
+  void _syncFromScrollController({bool forceRepaint = false}) {
     final controller = widget.scrollController;
-    if (controller == null || controller.positions.length != 1) return;
+    if (controller == null || controller.positions.length != 1) {
+      if (forceRepaint) {
+        setState(() => _edgeRepaintGeneration++);
+      }
+      return;
+    }
     final position = controller.position;
-    if (!position.hasContentDimensions) return;
-    _syncScrollMetrics(position);
+    if (!position.hasContentDimensions) {
+      if (forceRepaint) {
+        setState(() => _edgeRepaintGeneration++);
+      }
+      return;
+    }
+    _syncScrollMetrics(position, forceRepaint: forceRepaint);
   }
 
   bool _onScrollNotification(ScrollNotification notification) {
@@ -217,6 +270,9 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
             .clamp(0.0, 1.0)
             .toDouble();
     return LiquidGlassScrollEdge(
+      key: ValueKey<String>(
+        '${atTop ? 'top' : 'bottom'}-$_edgeRepaintGeneration',
+      ),
       edge: atTop ? LiquidGlassEdge.top : LiquidGlassEdge.bottom,
       color: widget.surfaceColor.withValues(alpha: opacity),
       blur: widget.maxBlurSigma * (atTop ? _topBlurSigmaScale : 1) * progress,

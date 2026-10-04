@@ -134,6 +134,68 @@ void main() {
     expect(find.byType(LiquidGlassScrollEdge), findsOneWidget);
   });
 
+  testWidgets(
+    'restores the top edge from an existing offset after the sheet state remounts',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(400, 700));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final controller = ScrollController();
+      addTearDown(controller.dispose);
+      final scrollableKey = GlobalKey();
+      final remountVersion = ValueNotifier<int>(0);
+      addTearDown(remountVersion.dispose);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: SizedBox.expand(
+              child: ValueListenableBuilder<int>(
+                valueListenable: remountVersion,
+                builder: (context, version, _) => ModalSheetScrollUnder(
+                  key: ValueKey(version),
+                  scrollController: controller,
+                  headerHeight: 40,
+                  headerGap: 6,
+                  baseScrollPadding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  surfaceColor: CupertinoColors.systemBackground,
+                  header: const SizedBox(
+                    height: 40,
+                    child: Text('Pinned header'),
+                  ),
+                  scrollBuilder: (context, padding) => ListView(
+                    key: scrollableKey,
+                    controller: controller,
+                    primary: false,
+                    padding: padding,
+                    children: List.generate(
+                      20,
+                      (index) => SizedBox(height: 40, child: Text('Row $index')),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      controller.jumpTo(50);
+      await tester.pump();
+      expect(find.byType(LiquidGlassScrollEdge), findsOneWidget);
+
+      // Recreate only the edge-effect owner while preserving the actual
+      // scrollable and its position, as happens when a covered route settles.
+      remountVersion.value++;
+      await tester.pumpAndSettle();
+
+      expect(controller.offset, closeTo(50, 0.01));
+      expect(find.byType(LiquidGlassScrollEdge), findsOneWidget);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+
   testWidgets('short content does not add an edge blur', (tester) async {
     await tester.binding.setSurfaceSize(const Size(400, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));

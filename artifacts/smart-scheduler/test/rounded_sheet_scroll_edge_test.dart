@@ -14,7 +14,6 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       final navigatorKey = GlobalKey<NavigatorState>();
-      final mainSheetKey = GlobalKey();
       final scrollController = ScrollController();
       addTearDown(scrollController.dispose);
 
@@ -23,7 +22,6 @@ void main() {
           backgroundColor: const Color(0xFFFFFFFF),
           child: SizedBox.expand(
             child: ModalSheetScrollUnder(
-              key: mainSheetKey,
               scrollController: scrollController,
               headerHeight: 40,
               headerGap: 6,
@@ -33,14 +31,20 @@ void main() {
                 height: 40,
                 child: Text('Main sheet'),
               ),
-              scrollBuilder: (context, padding) => ListView(
+              scrollBuilder: (context, padding) => SingleChildScrollView(
                 controller: scrollController,
+                primary: false,
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
                 padding: padding,
-                children: List.generate(
-                  20,
-                  (index) => SizedBox(
-                    height: 40,
-                    child: Text('Main row $index'),
+                child: Column(
+                  children: List.generate(
+                    20,
+                    (index) => SizedBox(
+                      height: 40,
+                      child: Text('Main row $index'),
+                    ),
                   ),
                 ),
               ),
@@ -67,6 +71,9 @@ void main() {
       scrollController.jumpTo(50);
       await tester.pump();
       expect(find.byType(LiquidGlassScrollEdge), findsOneWidget);
+      final parentSheetState = tester.state(
+        find.byType(ModalSheetScrollUnder),
+      );
 
       navigatorKey.currentState!.push<void>(
         RoundedCupertinoSheetRoute<void>(
@@ -86,7 +93,10 @@ void main() {
       expect(scrimFinder, findsOneWidget);
       expect(
         tester.getTopLeft(scrimFinder).dy,
-        closeTo(tester.getTopLeft(find.byKey(mainSheetKey)).dy, 1),
+        closeTo(
+          tester.getTopLeft(find.byType(ModalSheetScrollUnder)).dy,
+          1,
+        ),
       );
       final filterFinder = find.descendant(
         of: edgeFinder,
@@ -107,6 +117,24 @@ void main() {
       // The app behind the top-level sheet keeps its alpha-aware dim path;
       // only the covered modal uses the sibling overlay for its scroll edge.
       expect(find.byType(ColorFiltered), findsOneWidget);
+
+      final visibleBlur = tester.widget<LiquidGlassScrollEdge>(edgeFinder).blur;
+      await tester.pumpAndSettle();
+      navigatorKey.currentState!.pop();
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.state(find.byType(ModalSheetScrollUnder)),
+        same(parentSheetState),
+      );
+      expect(scrollController.offset, closeTo(50, 0.01));
+      expect(find.byType(LiquidGlassScrollEdge), findsOneWidget);
+      expect(
+        tester.widget<LiquidGlassScrollEdge>(
+          find.byType(LiquidGlassScrollEdge),
+        ).blur,
+        closeTo(visibleBlur, 0.001),
+      );
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
   );
