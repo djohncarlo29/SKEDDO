@@ -65,12 +65,23 @@ Widget? _withSheetDimOverlay(
       children: [
         child!,
         Positioned.fill(
-          child: IgnorePointer(
-            child: ColoredBox(
-              key: const ValueKey('rounded-sheet-dim-overlay'),
-              color: const Color(
-                0xFF000000,
-              ).withValues(alpha: opacityAnimation.value),
+          child: ClipPath(
+            // Mask the full-size scrim independently so its translucent layer
+            // cannot leave a square edge at the sheet's rounded top corners.
+            key: const ValueKey('rounded-sheet-dim-overlay-clip'),
+            clipper: ShapeBorderClipper(
+              shape: const BoundedSquircleStadiumBorder(
+                radius: kModalSheetCornerRadius,
+                topOnly: true,
+              ),
+            ),
+            child: IgnorePointer(
+              child: ColoredBox(
+                key: const ValueKey('rounded-sheet-dim-overlay'),
+                color: const Color(
+                  0xFF000000,
+                ).withValues(alpha: opacityAnimation.value),
+              ),
             ),
           ),
         ),

@@ -6,11 +6,111 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart'
     show LiquidGlassScrollEdge;
+import 'package:smart_scheduler/app_theme.dart'
+    show kRoundedSheetTopGapRatio;
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/modal_sheet_scroll_under.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
 void main() {
+  testWidgets(
+    'clips the parent-sheet dim scrim to its rounded top corners',
+    (tester) async {
+      const surfaceSize = Size(400, 700);
+      const rootColor = Color(0xFF00AA44);
+      await tester.binding.setSurfaceSize(surfaceSize);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final navigatorKey = GlobalKey<NavigatorState>();
+      final captureKey = GlobalKey();
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => RepaintBoundary(
+            key: captureKey,
+            child: AppWindowContentBoundary(
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
+          home: const ColoredBox(color: rootColor),
+        ),
+      );
+
+      navigatorKey.currentState!.push<void>(
+        RoundedCupertinoSheetRoute<void>(
+          builder: (_) => const CupertinoPageScaffold(
+            backgroundColor: Color(0xFFFFFFFF),
+            child: SizedBox.expand(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      Future<Uint8List> capturePixels() async {
+        final boundary = tester.renderObject<RenderRepaintBoundary>(
+          find.byKey(captureKey),
+        );
+        return (await tester.runAsync(() async {
+          final image = await boundary.toImage(pixelRatio: 1);
+          try {
+            return (await image.toByteData(
+              format: ui.ImageByteFormat.rawRgba,
+            ))!.buffer.asUint8List();
+          } finally {
+            image.dispose();
+          }
+        }))!;
+      }
+
+      List<int> pixelAt(Uint8List pixels, int x, int y) {
+        final index = (y * surfaceSize.width.toInt() + x) * 4;
+        return pixels.sublist(index, index + 4);
+      }
+
+      final beforeNestedSheet = await capturePixels();
+      final parentTop = (surfaceSize.height * kRoundedSheetTopGapRatio).round();
+      final outsideTopCorner = pixelAt(beforeNestedSheet, 2, parentTop + 2);
+      final parentTopCenter = pixelAt(beforeNestedSheet, 200, parentTop + 2);
+
+      final nestedSheetFuture = showRoundedCupertinoSheet<void>(
+        context: tester.element(find.byType(CupertinoPageScaffold)),
+        pageBuilder: (_) => const CupertinoPageScaffold(
+          backgroundColor: Color(0x00000000),
+          child: SizedBox.expand(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final afterNestedSheet = await capturePixels();
+      expect(
+        pixelAt(afterNestedSheet, 2, parentTop + 2),
+        outsideTopCorner,
+        reason:
+            'The parent scrim must not darken the area outside its rounded top corner.',
+      );
+      expect(
+        pixelAt(afterNestedSheet, 200, parentTop + 2),
+        isNot(parentTopCenter),
+        reason: 'The parent surface should still dim beneath the nested sheet.',
+      );
+      expect(
+        find.ancestor(
+          of: find.byKey(const ValueKey('rounded-sheet-dim-overlay')),
+          matching: find.byKey(
+            const ValueKey('rounded-sheet-dim-overlay-clip'),
+          ),
+        ),
+        findsAtLeastNWidgets(1),
+      );
+
+      navigatorKey.currentState!.pop();
+      await tester.pumpAndSettle();
+      await nestedSheetFuture;
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+
   testWidgets(
     'keeps the rendered scroll edge after a subsheet dismissal',
     (tester) async {
