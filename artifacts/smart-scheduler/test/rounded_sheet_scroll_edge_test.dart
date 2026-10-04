@@ -175,6 +175,23 @@ void main() {
           .widget<LiquidGlassScrollEdge>(edgeFinder)
           .key;
 
+      // A covered route can report transient empty scroll metrics while the
+      // subsheet is settling. They must not remove the parent's edge effect.
+      final mainSheetContext = tester.element(find.text('Main sheet'));
+      ScrollMetricsNotification(
+        metrics: FixedScrollMetrics(
+          minScrollExtent: 0,
+          maxScrollExtent: 0,
+          pixels: 0,
+          viewportDimension: 700,
+          axisDirection: AxisDirection.down,
+          devicePixelRatio: 1,
+        ),
+        context: mainSheetContext,
+      ).dispatch(mainSheetContext);
+      await tester.pump();
+      expect(edgeFinder, findsOneWidget);
+
       await tester.pumpAndSettle();
       navigatorKey.currentState!.pop();
       await tester.pumpAndSettle();

@@ -181,10 +181,13 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     }
     if (status != AnimationStatus.dismissed) return;
 
-    _parentRouteIsCovered = false;
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _parentRouteIsCovered) return;
+      if (!mounted ||
+          _parentRouteSecondaryAnimation?.status !=
+              AnimationStatus.dismissed) {
+        return;
+      }
+      _parentRouteIsCovered = false;
       final topProgress = _topProgressBeforeCover;
       final bottomProgress = _bottomProgressBeforeCover;
       if (topProgress != null && bottomProgress != null) {
@@ -193,11 +196,11 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
           _bottomProgress = bottomProgress;
           _edgeRepaintGeneration++;
         });
-        _topProgressBeforeCover = null;
-        _bottomProgressBeforeCover = null;
       } else {
         _syncFromScrollController(forceRepaint: true);
       }
+      _topProgressBeforeCover = null;
+      _bottomProgressBeforeCover = null;
     });
   }
 
@@ -240,6 +243,12 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     ScrollMetrics metrics, {
     bool forceRepaint = false,
   }) {
+    // A covered sheet can briefly report an empty scroll range while its
+    // route is being transformed. Those metrics do not describe the sheet's
+    // settled scroll position; clearing the edge here removes its backdrop
+    // layer until the user scrolls again.
+    if (_parentRouteIsCovered) return;
+
     if (metrics.maxScrollExtent <= 1) {
       if (_topProgress != 0 ||
           _bottomProgress != 0 ||
@@ -346,6 +355,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
                 // this clip preserves the backdrop content for Android's
                 // BackdropFilter while still masking the transparent corners.
                 child: ClipPath(
+                  key: ValueKey<int>(_edgeRepaintGeneration),
                   clipper: ShapeBorderClipper(shape: widget.edgeClipShape),
                   child: Stack(
                     fit: StackFit.expand,
