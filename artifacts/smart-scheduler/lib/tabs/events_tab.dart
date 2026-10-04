@@ -18015,6 +18015,10 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
                 key: _scrollViewportKey,
                 controller: _scrollController,
                 primary: false,
+                // Keep the short-list state rubberbandable too.
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
                 padding: scrollPadding,
                 children: [
                   Container(
