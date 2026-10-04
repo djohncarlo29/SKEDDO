@@ -117,6 +117,9 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   double _bottomProgress = 0;
   int _edgeRepaintGeneration = 0;
   Animation<double>? _parentRouteSecondaryAnimation;
+  bool _parentRouteIsCovered = false;
+  double? _topProgressBeforeCover;
+  double? _bottomProgressBeforeCover;
 
   @override
   void initState() {
@@ -137,6 +140,10 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       _parentRouteSecondaryAnimation?.addStatusListener(
         _handleParentRouteAnimationStatus,
       );
+      if (secondaryAnimation != null &&
+          secondaryAnimation.status != AnimationStatus.dismissed) {
+        _beginParentRouteCover();
+      }
       _scheduleScrollControllerSync();
     }
   }
@@ -167,10 +174,45 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   }
 
   void _handleParentRouteAnimationStatus(AnimationStatus status) {
+    if (status == AnimationStatus.forward ||
+        status == AnimationStatus.completed) {
+      _beginParentRouteCover();
+      return;
+    }
     if (status != AnimationStatus.dismissed) return;
+
+    _parentRouteIsCovered = false;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _syncFromScrollController(forceRepaint: true);
+      if (!mounted || _parentRouteIsCovered) return;
+      final topProgress = _topProgressBeforeCover;
+      final bottomProgress = _bottomProgressBeforeCover;
+      if (topProgress != null && bottomProgress != null) {
+        setState(() {
+          _topProgress = topProgress;
+          _bottomProgress = bottomProgress;
+          _edgeRepaintGeneration++;
+        });
+        _topProgressBeforeCover = null;
+        _bottomProgressBeforeCover = null;
+      } else {
+        _syncFromScrollController(forceRepaint: true);
+      }
     });
+  }
+
+  void _beginParentRouteCover() {
+    if (_parentRouteIsCovered) return;
+    _parentRouteIsCovered = true;
+    if (_topProgressBeforeCover == null ||
+        _bottomProgressBeforeCover == null) {
+      _rememberEdgeProgressBeforeCover();
+    }
+  }
+
+  void _rememberEdgeProgressBeforeCover() {
+    _topProgressBeforeCover = _topProgress;
+    _bottomProgressBeforeCover = _bottomProgress;
   }
 
   double get _activationDistance => math.max(

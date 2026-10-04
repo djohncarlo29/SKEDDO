@@ -22,7 +22,6 @@ void main() {
           backgroundColor: const Color(0xFFFFFFFF),
           child: SizedBox.expand(
             child: ModalSheetScrollUnder(
-              scrollController: scrollController,
               headerHeight: 40,
               headerGap: 6,
               baseScrollPadding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -122,6 +121,25 @@ void main() {
       final edgeKeyBeforeDismiss = tester
           .widget<LiquidGlassScrollEdge>(edgeFinder)
           .key;
+
+      // A transient layout/metrics update while covered can report an empty
+      // scroll range. The parent has no explicit controller here, so verify
+      // the pre-cover edge state is restored rather than trusting a repaint.
+      final headerContext = tester.element(find.text('Main sheet'));
+      ScrollMetricsNotification(
+        metrics: FixedScrollMetrics(
+          minScrollExtent: 0,
+          maxScrollExtent: 0,
+          pixels: 0,
+          viewportDimension: 700,
+          axisDirection: AxisDirection.down,
+          devicePixelRatio: 1,
+        ),
+        context: headerContext,
+      ).dispatch(headerContext);
+      await tester.pump();
+      expect(find.byType(LiquidGlassScrollEdge), findsNothing);
+
       await tester.pumpAndSettle();
       navigatorKey.currentState!.pop();
       await tester.pumpAndSettle();
