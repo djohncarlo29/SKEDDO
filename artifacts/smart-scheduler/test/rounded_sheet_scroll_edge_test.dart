@@ -130,6 +130,22 @@ void main() {
 
       final edgeFinder = find.byType(LiquidGlassScrollEdge);
       expect(edgeFinder, findsOneWidget);
+      final edgeScaleTransitions = <ScaleTransition>[];
+      tester.element(edgeFinder).visitAncestorElements((element) {
+        if (element.widget is ScaleTransition) {
+          edgeScaleTransitions.add(element.widget as ScaleTransition);
+        }
+        return true;
+      });
+      expect(edgeScaleTransitions, isNotEmpty);
+      expect(
+        edgeScaleTransitions.every(
+          (transition) => transition.filterQuality == null,
+        ),
+        isTrue,
+        reason:
+            'A covered sheet must keep its BackdropFilter outside filtered raster transforms.',
+      );
       final scrimFinder = find.byKey(
         const ValueKey('rounded-sheet-dim-overlay'),
       );

@@ -561,8 +561,9 @@ class _RoundedSheetTransition extends StatefulWidget {
         position: slideAnimation,
         transformHitTests: false,
         child: ScaleTransition(
+          // Keep the covered modal's BackdropFilter descendants live instead
+          // of raster-filtering the entire sheet subtree during route motion.
           scale: scaleAnimation,
-          filterQuality: FilterQuality.medium,
           alignment: Alignment.topCenter,
           child: ClipPath(
             clipper: ShapeBorderClipper(
@@ -703,8 +704,9 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
         position: _secondaryPositionAnimation,
         transformHitTests: false,
         child: ScaleTransition(
+          // This subtree contains the scroll-edge BackdropFilter and must not
+          // be flattened into a filtered transform texture.
           scale: _secondaryScaleAnimation,
-          filterQuality: FilterQuality.medium,
           alignment: Alignment.topCenter,
           child: ClipPath(
             clipper: ShapeBorderClipper(
