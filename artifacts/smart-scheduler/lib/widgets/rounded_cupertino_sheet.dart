@@ -67,6 +67,7 @@ Widget? _withSheetDimOverlay(
         Positioned.fill(
           child: IgnorePointer(
             child: ColoredBox(
+              key: const ValueKey('rounded-sheet-dim-overlay'),
               color: const Color(
                 0xFF000000,
               ).withValues(alpha: opacityAnimation.value),
@@ -653,8 +654,9 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
     BuildContext context,
     Animation<double> animation,
     bool linearTransition,
-    Widget? child,
-  ) {
+    Widget? child, {
+    Animation<double>? dimOpacityAnimation,
+  }) {
     final Animatable<Offset> offsetTween =
         RoundedCupertinoSheetRoute.hasParentSheet(context)
         ? _kBottomUpTweenWhenCoveringOtherSheet
@@ -673,20 +675,29 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
     );
     curvedAnimation.dispose();
 
-    return SlideTransition(position: positionAnimation, child: child);
+    // Keep the scrim inside the primary slide and sheet clip. A sibling
+    // overlay around the already-transitioned child starts at viewport y=0,
+    // not at the sheet's visible top, and tints the transparent top gap.
+    final Widget? sheetContent = child == null
+        ? null
+        : ClipPath(
+            clipper: ShapeBorderClipper(
+              shape: const BoundedSquircleStadiumBorder(
+                radius: kModalSheetCornerRadius,
+                topOnly: true,
+              ),
+            ),
+            child: dimOpacityAnimation == null
+                ? child
+                : _withSheetDimOverlay(child, dimOpacityAnimation),
+          );
+
+    return SlideTransition(position: positionAnimation, child: sheetContent);
   }
 
   Widget _coverSheetSecondaryTransition(
-    Animation<double> secondaryAnimation,
     Widget? child,
   ) {
-    // Dim the finished sheet paint, including any scroll-edge blur, as a
-    // sibling overlay so the route does not create an offscreen ColorFiltered
-    // layer around the sheet's BackdropFilters.
-    final Widget? dimmedChild = child != null && !secondaryAnimation.isDismissed
-        ? _withSheetDimOverlay(child, _secondaryOpacityAnimation)
-        : child;
-
     return ClipRect(
       child: SlideTransition(
         position: _secondaryPositionAnimation,
@@ -702,7 +713,7 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
                 topOnly: true,
               ),
             ),
-            child: dimmedChild,
+            child: child,
           ),
         ),
       ),
@@ -713,20 +724,14 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
   Widget build(BuildContext context) {
     return SizedBox.expand(
       child: _coverSheetSecondaryTransition(
-        widget.secondaryRouteAnimation,
         _coverSheetPrimaryTransition(
           context,
           widget.primaryRouteAnimation,
           widget.linearTransition,
-          ClipPath(
-            clipper: ShapeBorderClipper(
-              shape: const BoundedSquircleStadiumBorder(
-                radius: kModalSheetCornerRadius,
-                topOnly: true,
-              ),
-            ),
-            child: widget.child,
-          ),
+          widget.child,
+          dimOpacityAnimation: widget.secondaryRouteAnimation.isDismissed
+              ? null
+              : _secondaryOpacityAnimation,
         ),
       ),
     );
