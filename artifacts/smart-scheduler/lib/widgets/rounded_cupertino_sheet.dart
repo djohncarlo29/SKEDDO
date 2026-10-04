@@ -551,10 +551,11 @@ class _RoundedSheetTransition extends StatefulWidget {
 
     // Mirror the main-app dim overlay. Keep it in a sibling Stack layer so
     // descendant backdrop effects are not isolated by ColorFiltered.
-    final Widget? coveredChild =
-        child != null && !secondaryAnimation.isDismissed
-        ? _withSheetDimOverlay(child, opacityAnimation)
-        : child;
+    // Keep this sibling Stack mounted at zero opacity after dismissal. The
+    // child subtree contains backdrop filters; removing the wrapper at the
+    // dismissed status reparents those layers at the exact moment the parent
+    // sheet settles.
+    final Widget? coveredChild = _withSheetDimOverlay(child, opacityAnimation);
 
     return ClipRect(
       child: SlideTransition(
@@ -655,9 +656,8 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
     BuildContext context,
     Animation<double> animation,
     bool linearTransition,
-    Widget? child, {
-    Animation<double>? dimOpacityAnimation,
-  }) {
+    Widget? child,
+  ) {
     final Animatable<Offset> offsetTween =
         RoundedCupertinoSheetRoute.hasParentSheet(context)
         ? _kBottomUpTweenWhenCoveringOtherSheet
@@ -688,9 +688,10 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
                 topOnly: true,
               ),
             ),
-            child: dimOpacityAnimation == null
-                ? child
-                : _withSheetDimOverlay(child, dimOpacityAnimation),
+            // Keep the zero-opacity overlay wrapper stable when the secondary
+            // route animation settles. Removing it reparents the parent's
+            // BackdropFilter subtree at the dismissal boundary.
+            child: _withSheetDimOverlay(child, _secondaryOpacityAnimation),
           );
 
     return SlideTransition(position: positionAnimation, child: sheetContent);
@@ -731,9 +732,6 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
           widget.primaryRouteAnimation,
           widget.linearTransition,
           widget.child,
-          dimOpacityAnimation: widget.secondaryRouteAnimation.isDismissed
-              ? null
-              : _secondaryOpacityAnimation,
         ),
       ),
     );

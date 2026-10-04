@@ -120,11 +120,9 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
 
   double _topProgress = 0;
   double _bottomProgress = 0;
-  int _edgeRepaintGeneration = 0;
+  int _edgePaintRevision = 0;
   Animation<double>? _parentRouteSecondaryAnimation;
   bool _parentRouteIsCovered = false;
-  double? _topProgressBeforeCover;
-  double? _bottomProgressBeforeCover;
   Map<String, Object?>? _lastScrollMetrics;
   bool _dismissalMidpointLogged = false;
   bool _awaitingFirstScrollAfterSettle = false;
@@ -232,25 +230,22 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       if (!mounted ||
           _parentRouteSecondaryAnimation?.status !=
               AnimationStatus.dismissed) {
-        _trace('SETTLE_CALLBACK_SKIPPED_ROUTE_NO_LONGER_DISMISSED');
+        if (mounted) {
+          _trace('SETTLE_CALLBACK_SKIPPED_ROUTE_NO_LONGER_DISMISSED');
+        }
         return;
       }
-      _trace('C_SETTLE_CALLBACK_BEFORE_RESTORE');
+      _trace('C_SETTLE_CALLBACK_BEFORE_LIVE_SYNC');
       _parentRouteIsCovered = false;
-      final topProgress = _topProgressBeforeCover;
-      final bottomProgress = _bottomProgressBeforeCover;
-      if (topProgress != null && bottomProgress != null) {
-        setState(() {
-          _topProgress = topProgress;
-          _bottomProgress = bottomProgress;
-          _edgeRepaintGeneration++;
-        });
-      } else {
-        _syncFromScrollController(forceRepaint: true);
-      }
-      _topProgressBeforeCover = null;
-      _bottomProgressBeforeCover = null;
-      _trace('C_SETTLE_CALLBACK_AFTER_RESTORE');
+      // Recompute from the live ScrollPosition, not a snapshot taken before
+      // the subsheet opened. Keep the edge render object mounted and request
+      // paint on that existing subtree; replacing BackdropFilter's keyed layer
+      // here is not equivalent to painting the layer that was visible before.
+      _syncFromScrollController(
+        forceRepaint: true,
+        source: 'settledRouteSync',
+      );
+      _trace('C_SETTLE_CALLBACK_AFTER_LIVE_SYNC');
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _trace('C_POST_RESTORE_FRAME_PAINTED');
       });
@@ -275,16 +270,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   void _beginParentRouteCover() {
     if (_parentRouteIsCovered) return;
     _parentRouteIsCovered = true;
-    if (_topProgressBeforeCover == null ||
-        _bottomProgressBeforeCover == null) {
-      _rememberEdgeProgressBeforeCover();
-    }
-  }
-
-  void _rememberEdgeProgressBeforeCover() {
-    _topProgressBeforeCover = _topProgress;
-    _bottomProgressBeforeCover = _bottomProgress;
-    _trace('PARENT_PROGRESS_SAVED_BEFORE_COVER');
+    _trace('PARENT_ROUTE_COVERED');
   }
 
   String _routePhaseName() {
@@ -328,8 +314,6 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       'routeStatus': animation?.status.name,
       'routeValue': animation?.value,
       'covered': _parentRouteIsCovered,
-      'savedTopProgress': _topProgressBeforeCover,
-      'savedBottomProgress': _bottomProgressBeforeCover,
       'topProgress': _topProgress,
       'bottomProgress': _bottomProgress,
       'topEdgeWidget': _topProgress > 0.01,
@@ -342,7 +326,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
           widget.maxSurfaceOpacity * _topProgress * widget.surfaceColor.a,
       'topBandHeight': _topFadeExtent,
       'clipShape': widget.edgeClipShape.toString(),
-      'edgeRepaintGeneration': _edgeRepaintGeneration,
+      'edgePaintRevision': _edgePaintRevision,
       'lastScrollMetrics': _lastScrollMetrics,
       'controllerMetrics': _controllerMetricsSnapshot(),
       'awaitingFirstScrollAfterSettle': _awaitingFirstScrollAfterSettle,
@@ -352,7 +336,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   }
 
   String _renderTraceSignature() =>
-      '${_routePhaseName()}|$_edgeRepaintGeneration|'
+      '${_routePhaseName()}|$_edgePaintRevision|'
       '${_topProgress.toStringAsFixed(3)}|'
       '${_bottomProgress.toStringAsFixed(3)}';
 
@@ -440,7 +424,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
         setState(() {
           _topProgress = 0;
           _bottomProgress = 0;
-          if (forceRepaint) _edgeRepaintGeneration++;
+          if (forceRepaint) _edgePaintRevision++;
         });
         _trace('EDGE_PROGRESS_CLEARED_FROM_EMPTY_METRICS');
       }
@@ -468,7 +452,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     setState(() {
       _topProgress = nextTop;
       _bottomProgress = nextBottom;
-      if (forceRepaint) _edgeRepaintGeneration++;
+      if (forceRepaint) _edgePaintRevision++;
     });
     _trace('EDGE_PROGRESS_UPDATED_FROM_METRICS', extra: {'source': source});
   }
@@ -483,22 +467,29 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     return ((metrics.pixels - start) / distance).clamp(0.0, 1.0).toDouble();
   }
 
-  void _syncFromScrollController({bool forceRepaint = false}) {
+  void _syncFromScrollController({
+    bool forceRepaint = false,
+    String source = 'controllerSync',
+  }) {
     final controller = widget.scrollController;
     if (controller == null || controller.positions.length != 1) {
       if (forceRepaint) {
-        setState(() => _edgeRepaintGeneration++);
+        setState(() => _edgePaintRevision++);
       }
       return;
     }
     final position = controller.position;
     if (!position.hasContentDimensions) {
       if (forceRepaint) {
-        setState(() => _edgeRepaintGeneration++);
+        setState(() => _edgePaintRevision++);
       }
       return;
     }
-    _syncScrollMetrics(position, forceRepaint: forceRepaint);
+    _syncScrollMetrics(
+      position,
+      forceRepaint: forceRepaint,
+      source: source,
+    );
   }
 
   void _handleScrollControllerChanged() {
@@ -539,9 +530,6 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
             .clamp(0.0, 1.0)
             .toDouble();
     return LiquidGlassScrollEdge(
-      key: ValueKey<String>(
-        '${atTop ? 'top' : 'bottom'}-$_edgeRepaintGeneration',
-      ),
       edge: atTop ? LiquidGlassEdge.top : LiquidGlassEdge.bottom,
       color: widget.surfaceColor.withValues(alpha: opacity),
       blur: widget.maxBlurSigma * (atTop ? _topBlurSigmaScale : 1) * progress,
@@ -556,7 +544,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     final hasBottomEdge = hasFooter && _bottomProgress > 0.01;
     final buildTraceSignature =
         '${_routePhaseName()}|$_parentRouteIsCovered|'
-        '$_edgeRepaintGeneration|${_topProgress.toStringAsFixed(3)}|'
+        '$_edgePaintRevision|${_topProgress.toStringAsFixed(3)}|'
         '${_bottomProgress.toStringAsFixed(3)}|$hasTopEdge|$hasBottomEdge';
     if (buildTraceSignature != _lastBuildTraceSignature) {
       _lastBuildTraceSignature = buildTraceSignature;
@@ -591,8 +579,8 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
                 child: _ModalScrollEdgeRenderProbe(
                   onLifecycle: _traceRenderEvent,
                   signature: _renderTraceSignature,
+                  paintRevision: _edgePaintRevision,
                   child: ClipPath(
-                    key: ValueKey<int>(_edgeRepaintGeneration),
                     clipper: ShapeBorderClipper(shape: widget.edgeClipShape),
                     child: Stack(
                       fit: StackFit.expand,
@@ -650,16 +638,22 @@ class _ModalScrollEdgeRenderProbe extends SingleChildRenderObjectWidget {
   const _ModalScrollEdgeRenderProbe({
     required this.onLifecycle,
     required this.signature,
+    required this.paintRevision,
     required super.child,
   });
 
   final void Function(String event, int renderObjectId, Size? size, bool compositing)
   onLifecycle;
   final String Function() signature;
+  final int paintRevision;
 
   @override
   RenderObject createRenderObject(BuildContext context) =>
-      _ModalScrollEdgeProbeRenderBox(onLifecycle, signature);
+      _ModalScrollEdgeProbeRenderBox(
+        onLifecycle,
+        signature,
+        paintRevision,
+      );
 
   @override
   void updateRenderObject(
@@ -668,17 +662,29 @@ class _ModalScrollEdgeRenderProbe extends SingleChildRenderObjectWidget {
   ) {
     renderObject
       ..onLifecycle = onLifecycle
-      ..signature = signature;
+      ..signature = signature
+      ..paintRevision = paintRevision;
   }
 }
 
 class _ModalScrollEdgeProbeRenderBox extends RenderProxyBox {
-  _ModalScrollEdgeProbeRenderBox(this.onLifecycle, this.signature);
+  _ModalScrollEdgeProbeRenderBox(
+    this.onLifecycle,
+    this.signature,
+    this._paintRevision,
+  );
 
   void Function(String event, int renderObjectId, Size? size, bool compositing)
   onLifecycle;
   String Function() signature;
+  int _paintRevision;
   String? _lastPaintSignature;
+
+  set paintRevision(int value) {
+    if (_paintRevision == value) return;
+    _paintRevision = value;
+    markNeedsPaint();
+  }
 
   @override
   void attach(PipelineOwner owner) {

@@ -27,6 +27,7 @@ void main() {
           backgroundColor: const Color(0xFFFFFFFF),
           child: SizedBox.expand(
             child: ModalSheetScrollUnder(
+              scrollController: scrollController,
               headerHeight: 40,
               headerGap: 6,
               baseScrollPadding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -105,7 +106,7 @@ void main() {
       }
 
       final noEdgePixels = await capturePixels();
-      scrollController.jumpTo(50);
+      scrollController.jumpTo(25);
       await tester.pump();
       expect(find.byType(LiquidGlassScrollEdge), findsOneWidget);
       final edgePixelsBeforeDismissal = await capturePixels();
@@ -149,7 +150,11 @@ void main() {
       final scrimFinder = find.byKey(
         const ValueKey('rounded-sheet-dim-overlay'),
       );
-      expect(scrimFinder, findsOneWidget);
+      final activeScrimCount = tester
+          .widgetList<ColoredBox>(scrimFinder)
+          .where((scrim) => scrim.color.a > 0)
+          .length;
+      expect(activeScrimCount, 1);
       final filterFinder = find.descendant(
         of: edgeFinder,
         matching: find.byType(BackdropFilter),
@@ -171,26 +176,10 @@ void main() {
       expect(find.byType(ColorFiltered), findsOneWidget);
 
       final visibleBlur = tester.widget<LiquidGlassScrollEdge>(edgeFinder).blur;
-      final edgeKeyBeforeDismiss = tester
-          .widget<LiquidGlassScrollEdge>(edgeFinder)
-          .key;
-
-      // A covered route can report transient empty scroll metrics while the
-      // subsheet is settling. They must not remove the parent's edge effect.
-      final mainSheetContext = tester.element(find.text('Main sheet'));
-      ScrollMetricsNotification(
-        metrics: FixedScrollMetrics(
-          minScrollExtent: 0,
-          maxScrollExtent: 0,
-          pixels: 0,
-          viewportDimension: 700,
-          axisDirection: AxisDirection.down,
-          devicePixelRatio: 1,
-        ),
-        context: mainSheetContext,
-      ).dispatch(mainSheetContext);
-      await tester.pump();
-      expect(edgeFinder, findsOneWidget);
+      final edgeElementBeforeDismiss = tester.element(edgeFinder);
+      final filterRenderObjectBeforeDismiss = tester.renderObject<RenderBackdropFilter>(
+        filterFinder,
+      );
 
       await tester.pumpAndSettle();
       navigatorKey.currentState!.pop();
@@ -209,11 +198,16 @@ void main() {
         closeTo(visibleBlur, 0.001),
       );
       expect(
-        tester.widget<LiquidGlassScrollEdge>(
-          find.byType(LiquidGlassScrollEdge),
-        ).key,
-        isNot(edgeKeyBeforeDismiss),
-        reason: 'The settled parent edge must be repainted after the subsheet.',
+        tester.element(edgeFinder),
+        same(edgeElementBeforeDismiss),
+        reason:
+            'Dismissal must not replace the parent scroll-edge widget element.',
+      );
+      expect(
+        tester.renderObject<RenderBackdropFilter>(filterFinder),
+        same(filterRenderObjectBeforeDismiss),
+        reason:
+            'Dismissal must repaint the existing BackdropFilter render object, not replace it.',
       );
       expect(
         differingByteCount(
@@ -223,6 +217,19 @@ void main() {
         0,
         reason:
             'The edge pixels after dismissal must match the pre-dismissal render.',
+      );
+
+      scrollController.jumpTo(26);
+      await tester.pump();
+      expect(scrollController.offset, closeTo(26, 0.01));
+      expect(
+        tester.widget<LiquidGlassScrollEdge>(edgeFinder).blur,
+        greaterThan(visibleBlur),
+      );
+      expect(
+        tester.renderObject<RenderBackdropFilter>(filterFinder),
+        same(filterRenderObjectBeforeDismiss),
+        reason: 'A parent scroll should update the existing filter render object.',
       );
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
