@@ -119,6 +119,9 @@ void main() {
       expect(find.byType(ColorFiltered), findsOneWidget);
 
       final visibleBlur = tester.widget<LiquidGlassScrollEdge>(edgeFinder).blur;
+      final edgeKeyBeforeDismiss = tester
+          .widget<LiquidGlassScrollEdge>(edgeFinder)
+          .key;
       await tester.pumpAndSettle();
       navigatorKey.currentState!.pop();
       await tester.pumpAndSettle();
@@ -135,6 +138,86 @@ void main() {
         ).blur,
         closeTo(visibleBlur, 0.001),
       );
+      expect(
+        tester.widget<LiquidGlassScrollEdge>(
+          find.byType(LiquidGlassScrollEdge),
+        ).key,
+        isNot(edgeKeyBeforeDismiss),
+        reason: 'The settled parent edge must be repainted after the subsheet.',
+      );
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+
+  testWidgets(
+    'keeps the top edge absent after returning from a subsheet at scroll offset zero',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(400, 700));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final navigatorKey = GlobalKey<NavigatorState>();
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => AppWindowContentBoundary(
+            child: child ?? const SizedBox.shrink(),
+          ),
+          home: const SizedBox.shrink(),
+        ),
+      );
+
+      navigatorKey.currentState!.push<void>(
+        RoundedCupertinoSheetRoute<void>(
+          builder: (context) => CupertinoPageScaffold(
+            backgroundColor: const Color(0xFFFFFFFF),
+            child: SizedBox.expand(
+              child: ModalSheetScrollUnder(
+                headerHeight: 40,
+                headerGap: 6,
+                baseScrollPadding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                surfaceColor: const Color(0xFFFFFFFF),
+                header: const SizedBox(
+                  height: 40,
+                  child: Text('Main sheet'),
+                ),
+                scrollBuilder: (context, padding) => SingleChildScrollView(
+                  primary: false,
+                  padding: padding,
+                  child: Column(
+                    children: List.generate(
+                      20,
+                      (index) => SizedBox(
+                        height: 40,
+                        child: Text('Main row $index'),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LiquidGlassScrollEdge), findsNothing);
+
+      navigatorKey.currentState!.push<void>(
+        RoundedCupertinoSheetRoute<void>(
+          builder: (_) => const CupertinoPageScaffold(
+            child: Center(child: Text('Subsheet')),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LiquidGlassScrollEdge), findsNothing);
+
+      navigatorKey.currentState!.pop();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LiquidGlassScrollEdge), findsNothing);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
   );
