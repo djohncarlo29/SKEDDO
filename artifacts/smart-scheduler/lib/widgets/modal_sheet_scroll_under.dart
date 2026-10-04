@@ -1,10 +1,5 @@
-import 'dart:convert' show jsonEncode;
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart'
-    show debugPrint, defaultTargetPlatform, TargetPlatform;
-import 'package:flutter/rendering.dart'
-    show PaintingContext, PipelineOwner, RenderProxyBox;
 import 'package:flutter/widgets.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart'
     show LiquidGlassEdge, LiquidGlassScrollEdge;
@@ -120,19 +115,13 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
 
   double _topProgress = 0;
   double _bottomProgress = 0;
-  int _edgePaintRevision = 0;
   Animation<double>? _parentRouteSecondaryAnimation;
   bool _parentRouteIsCovered = false;
-  Map<String, Object?>? _lastScrollMetrics;
-  bool _dismissalMidpointLogged = false;
-  bool _awaitingFirstScrollAfterSettle = false;
-  String? _lastBuildTraceSignature;
 
   @override
   void initState() {
     super.initState();
     widget.scrollController?.addListener(_handleScrollControllerChanged);
-    _trace('STATE_INIT');
     _scheduleScrollControllerSync();
   }
 
@@ -144,29 +133,13 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       _parentRouteSecondaryAnimation?.removeStatusListener(
         _handleParentRouteAnimationStatus,
       );
-      _parentRouteSecondaryAnimation?.removeListener(
-        _handleParentRouteAnimationTick,
-      );
       _parentRouteSecondaryAnimation = secondaryAnimation;
       _parentRouteSecondaryAnimation?.addStatusListener(
         _handleParentRouteAnimationStatus,
       );
-      _parentRouteSecondaryAnimation?.addListener(
-        _handleParentRouteAnimationTick,
-      );
       if (secondaryAnimation != null &&
           secondaryAnimation.status != AnimationStatus.dismissed) {
-        _beginParentRouteCover();
-      }
-      _trace(
-        'ROUTE_ANIMATION_ATTACHED',
-        extra: {
-          'animationStatus': secondaryAnimation?.status.name,
-          'animationValue': secondaryAnimation?.value,
-        },
-      );
-      if (secondaryAnimation?.status == AnimationStatus.completed) {
-        _trace('A_PARENT_READY_BEFORE_SUBSHEET_DISMISSAL');
+        _parentRouteIsCovered = true;
       }
       _scheduleScrollControllerSync();
     }
@@ -181,19 +154,14 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       );
       widget.scrollController?.addListener(_handleScrollControllerChanged);
     }
-    _trace('WIDGET_UPDATED');
     _scheduleScrollControllerSync();
   }
 
   @override
   void dispose() {
-    _trace('STATE_DISPOSE');
     widget.scrollController?.removeListener(_handleScrollControllerChanged);
     _parentRouteSecondaryAnimation?.removeStatusListener(
       _handleParentRouteAnimationStatus,
-    );
-    _parentRouteSecondaryAnimation?.removeListener(
-      _handleParentRouteAnimationTick,
     );
     super.dispose();
   }
@@ -207,154 +175,22 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   void _handleParentRouteAnimationStatus(AnimationStatus status) {
     if (status == AnimationStatus.forward ||
         status == AnimationStatus.completed) {
-      _awaitingFirstScrollAfterSettle = false;
-      _beginParentRouteCover();
-      if (status == AnimationStatus.forward) {
-        _trace('SUBSHEET_PRESENTING');
-      } else {
-        _dismissalMidpointLogged = false;
-        _trace('A_PARENT_READY_BEFORE_SUBSHEET_DISMISSAL');
-      }
-      return;
-    }
-    if (status == AnimationStatus.reverse) {
-      _dismissalMidpointLogged = false;
-      _trace('B_SUBSHEET_DISMISSAL_STARTED');
+      _parentRouteIsCovered = true;
       return;
     }
     if (status != AnimationStatus.dismissed) return;
 
-    _awaitingFirstScrollAfterSettle = true;
-    _trace('C_ROUTE_ANIMATION_DISMISSED_BEFORE_RESTORE');
+    // Wait until the parent route's secondary transition has settled before
+    // syncing the edge to the parent's final, live scroll position.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted ||
           _parentRouteSecondaryAnimation?.status !=
               AnimationStatus.dismissed) {
-        if (mounted) {
-          _trace('SETTLE_CALLBACK_SKIPPED_ROUTE_NO_LONGER_DISMISSED');
-        }
         return;
       }
-      _trace('C_SETTLE_CALLBACK_BEFORE_LIVE_SYNC');
       _parentRouteIsCovered = false;
-      // Recompute from the live ScrollPosition, not a snapshot taken before
-      // the subsheet opened. Keep the edge render object mounted and request
-      // paint on that existing subtree; replacing BackdropFilter's keyed layer
-      // here is not equivalent to painting the layer that was visible before.
-      _syncFromScrollController(
-        forceRepaint: true,
-        source: 'settledRouteSync',
-      );
-      _trace('C_SETTLE_CALLBACK_AFTER_LIVE_SYNC');
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _trace('C_POST_RESTORE_FRAME_PAINTED');
-      });
+      _syncFromScrollController();
     });
-  }
-
-  void _handleParentRouteAnimationTick() {
-    final animation = _parentRouteSecondaryAnimation;
-    if (animation?.status != AnimationStatus.reverse ||
-        _dismissalMidpointLogged) {
-      return;
-    }
-    if (animation!.value <= 0.7 && animation.value > 0.05) {
-      _dismissalMidpointLogged = true;
-      _trace(
-        'B_SUBSHEET_DISMISSAL_MIDPOINT',
-        extra: {'animationValue': animation.value},
-      );
-    }
-  }
-
-  void _beginParentRouteCover() {
-    if (_parentRouteIsCovered) return;
-    _parentRouteIsCovered = true;
-    _trace('PARENT_ROUTE_COVERED');
-  }
-
-  String _routePhaseName() {
-    final status = _parentRouteSecondaryAnimation?.status;
-    if (status == AnimationStatus.forward) return 'SUBSHEET_PRESENTING';
-    if (status == AnimationStatus.completed) return 'A_PARENT_COVERED';
-    if (status == AnimationStatus.reverse) return 'B_SUBSHEET_DISMISSING';
-    if (_awaitingFirstScrollAfterSettle) return 'C_PARENT_SETTLED';
-    return status?.name ?? 'NO_ROUTE_ANIMATION';
-  }
-
-  Map<String, Object?>? _controllerMetricsSnapshot() {
-    final controller = widget.scrollController;
-    if (controller == null) return null;
-    if (controller.positions.length != 1) {
-      return {'attachedPositions': controller.positions.length};
-    }
-    final position = controller.position;
-    return {
-      'attachedPositions': 1,
-      'hasContentDimensions': position.hasContentDimensions,
-      if (position.hasContentDimensions) ...{
-        'pixels': position.pixels,
-        'minScrollExtent': position.minScrollExtent,
-        'maxScrollExtent': position.maxScrollExtent,
-        'viewportDimension': position.viewportDimension,
-      },
-    };
-  }
-
-  void _trace(
-    String event, {
-    Map<String, Object?> extra = const <String, Object?>{},
-  }) {
-    if (defaultTargetPlatform != TargetPlatform.android) return;
-    final animation = _parentRouteSecondaryAnimation;
-    final data = <String, Object?>{
-      'event': event,
-      'state': identityHashCode(this),
-      'phase': _routePhaseName(),
-      'routeStatus': animation?.status.name,
-      'routeValue': animation?.value,
-      'covered': _parentRouteIsCovered,
-      'topProgress': _topProgress,
-      'bottomProgress': _bottomProgress,
-      'topEdgeWidget': _topProgress > 0.01,
-      'bottomEdgeWidget':
-          widget.footer != null &&
-          widget.footerHeight > 0 &&
-          _bottomProgress > 0.01,
-      'topBlur': widget.maxBlurSigma * _topBlurSigmaScale * _topProgress,
-      'topTintAlpha':
-          widget.maxSurfaceOpacity * _topProgress * widget.surfaceColor.a,
-      'topBandHeight': _topFadeExtent,
-      'clipShape': widget.edgeClipShape.toString(),
-      'edgePaintRevision': _edgePaintRevision,
-      'lastScrollMetrics': _lastScrollMetrics,
-      'controllerMetrics': _controllerMetricsSnapshot(),
-      'awaitingFirstScrollAfterSettle': _awaitingFirstScrollAfterSettle,
-      ...extra,
-    };
-    debugPrint('[MODAL_SCROLL_EDGE_TRACE] ${jsonEncode(data)}');
-  }
-
-  String _renderTraceSignature() =>
-      '${_routePhaseName()}|$_edgePaintRevision|'
-      '${_topProgress.toStringAsFixed(3)}|'
-      '${_bottomProgress.toStringAsFixed(3)}';
-
-  void _traceRenderEvent(
-    String event,
-    int renderObjectId,
-    Size? size,
-    bool needsCompositing,
-  ) {
-    _trace(
-      'RENDER_$event',
-      extra: {
-        'renderObject': renderObjectId,
-        'renderSize': size == null ? null : '${size.width}x${size.height}',
-        'needsCompositing': needsCompositing,
-        'renderSignature': _renderTraceSignature(),
-      },
-    );
   }
 
   double get _activationDistance => math.max(
@@ -379,82 +215,33 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   double get _topFadeExtent => _scrollPadding.top;
 
   void _syncScrollMetrics(
-    ScrollMetrics metrics, {
-    bool forceRepaint = false,
-    String source = 'unknown',
-  }) {
-    _lastScrollMetrics = {
-      'source': source,
-      'pixels': metrics.pixels,
-      'minScrollExtent': metrics.minScrollExtent,
-      'maxScrollExtent': metrics.maxScrollExtent,
-      'viewportDimension': metrics.viewportDimension,
-    };
-    _trace(
-      'SCROLL_METRICS_RECEIVED',
-      extra: {
-        'source': source,
-        'incomingPixels': metrics.pixels,
-        'incomingMaxScrollExtent': metrics.maxScrollExtent,
-        'incomingViewportDimension': metrics.viewportDimension,
-      },
-    );
-
-    // A covered sheet can briefly report an empty scroll range while its
-    // route is being transformed. Those metrics do not describe the sheet's
-    // settled scroll position; clearing the edge here removes its backdrop
-    // layer until the user scrolls again.
-    if (_parentRouteIsCovered) {
-      _trace('SCROLL_METRICS_IGNORED_WHILE_COVERED', extra: {'source': source});
-      return;
-    }
+    ScrollMetrics metrics,
+  ) {
+    // Ignore route-transition scroll notifications while covered. At settle,
+    // _handleParentRouteAnimationStatus resyncs from the live ScrollPosition;
+    // transient route metrics must not replace that settled value.
+    if (_parentRouteIsCovered) return;
 
     if (metrics.maxScrollExtent <= 1) {
-      _trace(
-        'SCROLL_METRICS_ZERO_EDGE_DECISION',
-        extra: {
-          'source': source,
-          'incomingPixels': metrics.pixels,
-          'incomingMaxScrollExtent': metrics.maxScrollExtent,
-        },
-      );
-      if (_topProgress != 0 ||
-          _bottomProgress != 0 ||
-          forceRepaint) {
-        setState(() {
-          _topProgress = 0;
-          _bottomProgress = 0;
-          if (forceRepaint) _edgePaintRevision++;
-        });
-        _trace('EDGE_PROGRESS_CLEARED_FROM_EMPTY_METRICS');
-      }
+      if (_topProgress == 0 && _bottomProgress == 0) return;
+      setState(() {
+        _topProgress = 0;
+        _bottomProgress = 0;
+      });
       return;
     }
 
     final distance = _activationDistance;
     final nextTop = (metrics.pixels / distance).clamp(0.0, 1.0).toDouble();
     final nextBottom = _bottomProgressForMetrics(metrics, distance);
-    _trace(
-      'SCROLL_METRICS_PROGRESS_CALCULATED',
-      extra: {
-        'source': source,
-        'activationDistance': distance,
-        'incomingTopProgress': nextTop,
-        'incomingBottomProgress': nextBottom,
-      },
-    );
     if ((nextTop - _topProgress).abs() < 0.01 &&
-        (nextBottom - _bottomProgress).abs() < 0.01 &&
-        !forceRepaint) {
-      _trace('SCROLL_METRICS_NO_STATE_CHANGE', extra: {'source': source});
+        (nextBottom - _bottomProgress).abs() < 0.01) {
       return;
     }
     setState(() {
       _topProgress = nextTop;
       _bottomProgress = nextBottom;
-      if (forceRepaint) _edgePaintRevision++;
     });
-    _trace('EDGE_PROGRESS_UPDATED_FROM_METRICS', extra: {'source': source});
   }
 
   double _bottomProgressForMetrics(ScrollMetrics metrics, double distance) {
@@ -467,60 +254,25 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     return ((metrics.pixels - start) / distance).clamp(0.0, 1.0).toDouble();
   }
 
-  void _syncFromScrollController({
-    bool forceRepaint = false,
-    String source = 'controllerSync',
-  }) {
+  void _syncFromScrollController() {
     final controller = widget.scrollController;
-    if (controller == null || controller.positions.length != 1) {
-      if (forceRepaint) {
-        setState(() => _edgePaintRevision++);
-      }
-      return;
-    }
+    if (controller == null || controller.positions.length != 1) return;
     final position = controller.position;
-    if (!position.hasContentDimensions) {
-      if (forceRepaint) {
-        setState(() => _edgePaintRevision++);
-      }
-      return;
-    }
-    _syncScrollMetrics(
-      position,
-      forceRepaint: forceRepaint,
-      source: source,
-    );
+    if (!position.hasContentDimensions) return;
+    _syncScrollMetrics(position);
   }
 
   void _handleScrollControllerChanged() {
-    if (_awaitingFirstScrollAfterSettle) {
-      _trace('D_FIRST_CONTROLLER_CHANGE_AFTER_SETTLE');
-      _awaitingFirstScrollAfterSettle = false;
-    }
     _syncFromScrollController();
   }
 
   bool _onScrollNotification(ScrollNotification notification) {
-    if (notification.depth == 0) {
-      if (_awaitingFirstScrollAfterSettle) {
-        _trace(
-          'D_FIRST_SCROLL_NOTIFICATION_AFTER_SETTLE',
-          extra: {
-            'incomingPixels': notification.metrics.pixels,
-            'incomingMaxScrollExtent': notification.metrics.maxScrollExtent,
-          },
-        );
-        _awaitingFirstScrollAfterSettle = false;
-      }
-      _syncScrollMetrics(notification.metrics, source: 'scrollNotification');
-    }
+    if (notification.depth == 0) _syncScrollMetrics(notification.metrics);
     return false;
   }
 
   bool _onMetricsNotification(ScrollMetricsNotification notification) {
-    if (notification.depth == 0) {
-      _syncScrollMetrics(notification.metrics, source: 'metricsNotification');
-    }
+    if (notification.depth == 0) _syncScrollMetrics(notification.metrics);
     return false;
   }
 
@@ -542,22 +294,6 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     final hasFooter = widget.footer != null && widget.footerHeight > 0;
     final hasTopEdge = _topProgress > 0.01;
     final hasBottomEdge = hasFooter && _bottomProgress > 0.01;
-    final buildTraceSignature =
-        '${_routePhaseName()}|$_parentRouteIsCovered|'
-        '$_edgePaintRevision|${_topProgress.toStringAsFixed(3)}|'
-        '${_bottomProgress.toStringAsFixed(3)}|$hasTopEdge|$hasBottomEdge';
-    if (buildTraceSignature != _lastBuildTraceSignature) {
-      _lastBuildTraceSignature = buildTraceSignature;
-      _trace(
-        'BUILD_EDGE_RENDER_DECISION',
-        extra: {
-          'paintTopEdge': hasTopEdge,
-          'paintBottomEdge': hasBottomEdge,
-          'scrollPadding': _scrollPadding.toString(),
-          'edgeLayerIncluded': hasTopEdge || hasBottomEdge,
-        },
-      );
-    }
 
     return NotificationListener<ScrollMetricsNotification>(
       onNotification: _onMetricsNotification,
@@ -576,40 +312,35 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
                 // Clip only the effect layer. Keeping the scroller outside
                 // this clip preserves the backdrop content for Android's
                 // BackdropFilter while still masking the transparent corners.
-                child: _ModalScrollEdgeRenderProbe(
-                  onLifecycle: _traceRenderEvent,
-                  signature: _renderTraceSignature,
-                  paintRevision: _edgePaintRevision,
-                  child: ClipPath(
-                    clipper: ShapeBorderClipper(shape: widget.edgeClipShape),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      clipBehavior: Clip.none,
-                      children: [
-                        if (hasTopEdge)
-                          Positioned(
-                            top: kModalSheetScrollEdgeTopOffset,
-                            left: 0,
-                            right: 0,
-                            height: _topFadeExtent,
-                            child: _buildEdgeEffect(
-                              atTop: true,
-                              progress: _topProgress,
-                            ),
+                child: ClipPath(
+                  clipper: ShapeBorderClipper(shape: widget.edgeClipShape),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    clipBehavior: Clip.none,
+                    children: [
+                      if (hasTopEdge)
+                        Positioned(
+                          top: kModalSheetScrollEdgeTopOffset,
+                          left: 0,
+                          right: 0,
+                          height: _topFadeExtent,
+                          child: _buildEdgeEffect(
+                            atTop: true,
+                            progress: _topProgress,
                           ),
-                        if (hasBottomEdge)
-                          Positioned(
-                            bottom: widget.footerBottomInset,
-                            left: 0,
-                            right: 0,
-                            height: widget.footerHeight + widget.edgeExtent,
-                            child: _buildEdgeEffect(
-                              atTop: false,
-                              progress: _bottomProgress,
-                            ),
+                        ),
+                      if (hasBottomEdge)
+                        Positioned(
+                          bottom: widget.footerBottomInset,
+                          left: 0,
+                          right: 0,
+                          height: widget.footerHeight + widget.edgeExtent,
+                          child: _buildEdgeEffect(
+                            atTop: false,
+                            progress: _bottomProgress,
                           ),
-                      ],
-                    ),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -631,85 +362,5 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
         ),
       ),
     );
-  }
-}
-
-class _ModalScrollEdgeRenderProbe extends SingleChildRenderObjectWidget {
-  const _ModalScrollEdgeRenderProbe({
-    required this.onLifecycle,
-    required this.signature,
-    required this.paintRevision,
-    required super.child,
-  });
-
-  final void Function(String event, int renderObjectId, Size? size, bool compositing)
-  onLifecycle;
-  final String Function() signature;
-  final int paintRevision;
-
-  @override
-  RenderObject createRenderObject(BuildContext context) =>
-      _ModalScrollEdgeProbeRenderBox(
-        onLifecycle,
-        signature,
-        paintRevision,
-      );
-
-  @override
-  void updateRenderObject(
-    BuildContext context,
-    covariant _ModalScrollEdgeProbeRenderBox renderObject,
-  ) {
-    renderObject
-      ..onLifecycle = onLifecycle
-      ..signature = signature
-      ..paintRevision = paintRevision;
-  }
-}
-
-class _ModalScrollEdgeProbeRenderBox extends RenderProxyBox {
-  _ModalScrollEdgeProbeRenderBox(
-    this.onLifecycle,
-    this.signature,
-    this._paintRevision,
-  );
-
-  void Function(String event, int renderObjectId, Size? size, bool compositing)
-  onLifecycle;
-  String Function() signature;
-  int _paintRevision;
-  String? _lastPaintSignature;
-
-  set paintRevision(int value) {
-    if (_paintRevision == value) return;
-    _paintRevision = value;
-    markNeedsPaint();
-  }
-
-  @override
-  void attach(PipelineOwner owner) {
-    super.attach(owner);
-    onLifecycle('ATTACH', identityHashCode(this), hasSize ? size : null, needsCompositing);
-  }
-
-  @override
-  void detach() {
-    onLifecycle('DETACH', identityHashCode(this), hasSize ? size : null, needsCompositing);
-    super.detach();
-  }
-
-  @override
-  void paint(PaintingContext context, Offset offset) {
-    final currentSignature = signature();
-    if (currentSignature != _lastPaintSignature) {
-      _lastPaintSignature = currentSignature;
-      onLifecycle(
-        'PAINT:$currentSignature',
-        identityHashCode(this),
-        hasSize ? size : null,
-        needsCompositing,
-      );
-    }
-    super.paint(context, offset);
   }
 }

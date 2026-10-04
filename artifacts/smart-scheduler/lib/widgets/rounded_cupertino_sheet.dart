@@ -116,7 +116,11 @@ Future<T?> showRoundedCupertinoSheet<T>({
   bool enableDrag = true,
 }) {
   return Navigator.of(context, rootNavigator: true).push<T>(
-    RoundedCupertinoSheetRoute<T>(builder: pageBuilder, enableDrag: enableDrag),
+    RoundedCupertinoSheetRoute<T>(
+      builder: pageBuilder,
+      enableDrag: enableDrag,
+      isNestedSheet: RoundedCupertinoSheetRoute.hasParentSheet(context),
+    ),
   );
 }
 
@@ -201,12 +205,26 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
     super.settings,
     required this.builder,
     this.enableDrag = true,
+    this.isNestedSheet = false,
   });
 
   final WidgetBuilder builder;
 
   @override
   final bool enableDrag;
+
+  /// Nested sheets use the underlying sheet's own secondary transition.
+  ///
+  /// Flutter removes a delegated transition as soon as that animation is
+  /// dismissed. Keeping nested sheets off that path prevents the parent
+  /// scroll-edge BackdropFilter from changing clip/transform ancestry at
+  /// dismissal.
+  final bool isNestedSheet;
+
+  @override
+  DelegatedTransitionBuilder? get delegatedTransition => isNestedSheet
+      ? null
+      : _RoundedSheetTransition.delegateTransition;
 
   @override
   Widget buildContent(BuildContext context) {
@@ -375,10 +393,6 @@ mixin _RoundedSheetRouteTransitionMixin<T> on PageRoute<T> {
   @override
   Duration get transitionDuration => const Duration(milliseconds: 500);
 
-  @override
-  DelegatedTransitionBuilder? get delegatedTransition =>
-      _RoundedSheetTransition.delegateTransition;
-
   bool get enableDrag;
 
   @override
@@ -470,13 +484,6 @@ class _RoundedSheetTransition extends StatefulWidget {
     bool allowSnapshotting,
     Widget? child,
   ) {
-    if (RoundedCupertinoSheetRoute.hasParentSheet(context)) {
-      return _delegatedCoverSheetSecondaryTransition(
-        context,
-        secondaryAnimation,
-        child,
-      );
-    }
     final bool linear = Navigator.of(context).userGestureInProgress;
 
     final Curve curve = linear ? Curves.linear : Curves.linearToEaseOut;
@@ -520,61 +527,6 @@ class _RoundedSheetTransition extends StatefulWidget {
             ),
           ),
           child: dimmedApp,
-        ),
-      ),
-    );
-  }
-
-  static Widget _delegatedCoverSheetSecondaryTransition(
-    BuildContext context,
-    Animation<double> secondaryAnimation,
-    Widget? child,
-  ) {
-    const Curve curve = Curves.linearToEaseOut;
-    const Curve reverseCurve = Curves.easeInToLinear;
-    final CurvedAnimation curvedAnimation = CurvedAnimation(
-      curve: curve,
-      reverseCurve: reverseCurve,
-      parent: secondaryAnimation,
-    );
-
-    final Animation<Offset> slideAnimation = curvedAnimation.drive(
-      _kMidUpTween,
-    );
-    final Animation<double> scaleAnimation = curvedAnimation.drive(
-      _kScaleTween,
-    );
-    final Animation<double> opacityAnimation = curvedAnimation.drive(
-      _sheetOpacityTween(context),
-    );
-    curvedAnimation.dispose();
-
-    // Mirror the main-app dim overlay. Keep it in a sibling Stack layer so
-    // descendant backdrop effects are not isolated by ColorFiltered.
-    // Keep this sibling Stack mounted at zero opacity after dismissal. The
-    // child subtree contains backdrop filters; removing the wrapper at the
-    // dismissed status reparents those layers at the exact moment the parent
-    // sheet settles.
-    final Widget? coveredChild = _withSheetDimOverlay(child, opacityAnimation);
-
-    return ClipRect(
-      child: SlideTransition(
-        position: slideAnimation,
-        transformHitTests: false,
-        child: ScaleTransition(
-          // Keep the covered modal's BackdropFilter descendants live instead
-          // of raster-filtering the entire sheet subtree during route motion.
-          scale: scaleAnimation,
-          alignment: Alignment.topCenter,
-          child: ClipPath(
-            clipper: ShapeBorderClipper(
-              shape: const BoundedSquircleStadiumBorder(
-                radius: kModalSheetCornerRadius,
-                topOnly: true,
-              ),
-            ),
-            child: coveredChild,
-          ),
         ),
       ),
     );

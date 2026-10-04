@@ -119,11 +119,10 @@ void main() {
         find.byType(ModalSheetScrollUnder),
       );
 
-      navigatorKey.currentState!.push<void>(
-        RoundedCupertinoSheetRoute<void>(
-          builder: (_) => const CupertinoPageScaffold(
-            child: Center(child: Text('Subsheet')),
-          ),
+      final nestedSheetFuture = showRoundedCupertinoSheet<void>(
+        context: tester.element(find.byType(ModalSheetScrollUnder)),
+        pageBuilder: (_) => const CupertinoPageScaffold(
+          child: Center(child: Text('Subsheet')),
         ),
       );
       await tester.pump();
@@ -155,6 +154,15 @@ void main() {
           .where((scrim) => scrim.color.a > 0)
           .length;
       expect(activeScrimCount, 1);
+      final parentRoute = ModalRoute.of(
+        tester.element(find.byType(ModalSheetScrollUnder)),
+      )!;
+      expect(
+        parentRoute.receivedTransition,
+        isNull,
+        reason:
+            'A nested sheet must animate the parent through its own secondary transition.',
+      );
       final filterFinder = find.descendant(
         of: edgeFinder,
         matching: find.byType(BackdropFilter),
@@ -183,13 +191,46 @@ void main() {
 
       await tester.pumpAndSettle();
       navigatorKey.currentState!.pop();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(
+        parentRoute.secondaryAnimation?.status,
+        AnimationStatus.reverse,
+      );
+      expect(parentRoute.receivedTransition, isNull);
+      expect(find.byType(LiquidGlassScrollEdge), findsOneWidget);
+      expect(
+        tester.widget<LiquidGlassScrollEdge>(edgeFinder).blur,
+        closeTo(visibleBlur, 0.001),
+      );
+      expect(
+        tester.renderObject<RenderBackdropFilter>(filterFinder),
+        same(filterRenderObjectBeforeDismiss),
+        reason:
+            'The existing backdrop filter must remain attached during dismissal.',
+      );
+      final edgePixelsDuringDismissal = await capturePixels();
+
       await tester.pumpAndSettle();
+      await nestedSheetFuture;
+      final edgePixelsAfterSettling = await capturePixels();
+      expect(
+        differingByteCount(edgePixelsDuringDismissal, edgePixelsAfterSettling),
+        greaterThan(100),
+        reason:
+            'The parent should finish its own secondary transition after the mid-dismissal frame.',
+      );
 
       expect(
         tester.state(find.byType(ModalSheetScrollUnder)),
         same(parentSheetState),
       );
-      expect(scrollController.offset, closeTo(50, 0.01));
+      expect(
+        parentRoute.secondaryAnimation?.status,
+        AnimationStatus.dismissed,
+      );
+      expect(parentRoute.receivedTransition, isNull);
+      expect(scrollController.offset, closeTo(25, 0.01));
       expect(find.byType(LiquidGlassScrollEdge), findsOneWidget);
       expect(
         tester.widget<LiquidGlassScrollEdge>(
@@ -210,10 +251,7 @@ void main() {
             'Dismissal must repaint the existing BackdropFilter render object, not replace it.',
       );
       expect(
-        differingByteCount(
-          edgePixelsBeforeDismissal,
-          await capturePixels(),
-        ),
+        differingByteCount(edgePixelsBeforeDismissal, edgePixelsAfterSettling),
         0,
         reason:
             'The edge pixels after dismissal must match the pre-dismissal render.',
@@ -294,6 +332,7 @@ void main() {
           builder: (_) => const CupertinoPageScaffold(
             child: Center(child: Text('Subsheet')),
           ),
+          isNestedSheet: true,
         ),
       );
       await tester.pumpAndSettle();

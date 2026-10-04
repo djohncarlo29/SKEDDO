@@ -102,7 +102,7 @@
 - [Platform text scaling profile](platform-text-scaling-profile.md) — source text-size positions from the OS profile and preserve nonlinear curves through System↔Custom transitions.
 - [Flutter System scaler diagnostics](flutter-system-scaler-diagnostics.md) — native-profile tests do not measure Flutter's ambient nonlinear scaler; capture both paths with identical metrics on-device.
 - [Shared modal safe-area handling](shared-modal-safe-area.md) — persistent bottom system insets are applied once at shared sheet boundaries; Floating Tab Bar's design offset remains separate.
-- [Modal scroll-edge clipping and dimming](modal-scroll-edge-extent-clipping.md) — keep scroll-edge blur `srcOver`; use sibling dimming only for covered sheets, alpha-aware tint for the app page.
+- [Modal scroll-edge clipping and dimming](modal-scroll-edge-extent-clipping.md) — nested sheets must keep the parent's secondary transition stable through dismissal; verify actual filter pixels, not progress alone.
 - [Sheet scroll indicator anchoring](sheet-scroll-indicator-anchoring.md) — overlay-sheet scroll pills must anchor to the sheet surface, outside the padded content viewport.
 - [Rounded sheet content bounds](rounded-sheet-content-bounds.md) — keep shared sheet route content full-height; route translation and clipping define the visible 92%, not a child height constraint.
 - [Liquid Glass switch/tab timing](liquid-glass-switch-tab-timing.md) — switch lift/landing uses the active tab pill's spring family and settle gate.
