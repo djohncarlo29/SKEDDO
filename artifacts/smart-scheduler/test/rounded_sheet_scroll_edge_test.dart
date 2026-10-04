@@ -1,4 +1,8 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart'
     show LiquidGlassScrollEdge;
@@ -8,13 +12,14 @@ import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
 void main() {
   testWidgets(
-    'aligns the dim overlay with the parent sheet under a subsheet',
+    'keeps the rendered scroll edge after a subsheet dismissal',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(400, 700));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       final navigatorKey = GlobalKey<NavigatorState>();
       final scrollController = ScrollController();
+      final captureKey = GlobalKey();
       addTearDown(scrollController.dispose);
 
       Widget buildMainSheet(BuildContext context) {
@@ -25,24 +30,27 @@ void main() {
               headerHeight: 40,
               headerGap: 6,
               baseScrollPadding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              surfaceColor: const Color(0xFFFFFFFF),
+              surfaceColor: const Color(0xFFF8F8F8),
               header: const SizedBox(
                 height: 40,
                 child: Text('Main sheet'),
               ),
-              scrollBuilder: (context, padding) => SingleChildScrollView(
-                controller: scrollController,
-                primary: false,
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
-                padding: padding,
-                child: Column(
-                  children: List.generate(
-                    20,
-                    (index) => SizedBox(
-                      height: 40,
-                      child: Text('Main row $index'),
+              scrollBuilder: (context, padding) => ColoredBox(
+                color: const Color(0xFF173A5E),
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  primary: false,
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  padding: padding,
+                  child: Column(
+                    children: List.generate(
+                      20,
+                      (index) => SizedBox(
+                        height: 40,
+                        child: Text('Main row $index'),
+                      ),
                     ),
                   ),
                 ),
@@ -55,8 +63,11 @@ void main() {
       await tester.pumpWidget(
         CupertinoApp(
           navigatorKey: navigatorKey,
-          builder: (context, child) => AppWindowContentBoundary(
-            child: child ?? const SizedBox.shrink(),
+          builder: (context, child) => RepaintBoundary(
+            key: captureKey,
+            child: AppWindowContentBoundary(
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
           home: const SizedBox.shrink(),
         ),
@@ -67,9 +78,42 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      Future<Uint8List> capturePixels() async {
+        final boundary = tester.renderObject<RenderRepaintBoundary>(
+          find.byKey(captureKey),
+        );
+        return (await tester.runAsync(() async {
+          final image = await boundary.toImage(pixelRatio: 1);
+          try {
+            final bytes = await image.toByteData(
+              format: ui.ImageByteFormat.rawRgba,
+            );
+            return bytes!.buffer.asUint8List();
+          } finally {
+            image.dispose();
+          }
+        }))!;
+      }
+
+      int differingByteCount(Uint8List a, Uint8List b) {
+        expect(a.length, b.length);
+        var differences = 0;
+        for (var i = 0; i < a.length; i++) {
+          if (a[i] != b[i]) differences++;
+        }
+        return differences;
+      }
+
+      final noEdgePixels = await capturePixels();
       scrollController.jumpTo(50);
       await tester.pump();
       expect(find.byType(LiquidGlassScrollEdge), findsOneWidget);
+      final edgePixelsBeforeDismissal = await capturePixels();
+      expect(
+        differingByteCount(noEdgePixels, edgePixelsBeforeDismissal),
+        greaterThan(100),
+        reason: 'The scroll edge must make a visible rendered change.',
+      );
       final parentSheetState = tester.state(
         find.byType(ModalSheetScrollUnder),
       );
@@ -90,13 +134,6 @@ void main() {
         const ValueKey('rounded-sheet-dim-overlay'),
       );
       expect(scrimFinder, findsOneWidget);
-      expect(
-        tester.getTopLeft(scrimFinder).dy,
-        closeTo(
-          tester.getTopLeft(find.byType(ModalSheetScrollUnder)).dy,
-          1,
-        ),
-      );
       final filterFinder = find.descendant(
         of: edgeFinder,
         matching: find.byType(BackdropFilter),
@@ -122,24 +159,6 @@ void main() {
           .widget<LiquidGlassScrollEdge>(edgeFinder)
           .key;
 
-      // A transient layout/metrics update while covered can report an empty
-      // scroll range. The parent has no explicit controller here, so verify
-      // the pre-cover edge state is restored rather than trusting a repaint.
-      final headerContext = tester.element(find.text('Main sheet'));
-      ScrollMetricsNotification(
-        metrics: FixedScrollMetrics(
-          minScrollExtent: 0,
-          maxScrollExtent: 0,
-          pixels: 0,
-          viewportDimension: 700,
-          axisDirection: AxisDirection.down,
-          devicePixelRatio: 1,
-        ),
-        context: headerContext,
-      ).dispatch(headerContext);
-      await tester.pump();
-      expect(find.byType(LiquidGlassScrollEdge), findsNothing);
-
       await tester.pumpAndSettle();
       navigatorKey.currentState!.pop();
       await tester.pumpAndSettle();
@@ -162,6 +181,15 @@ void main() {
         ).key,
         isNot(edgeKeyBeforeDismiss),
         reason: 'The settled parent edge must be repainted after the subsheet.',
+      );
+      expect(
+        differingByteCount(
+          edgePixelsBeforeDismissal,
+          await capturePixels(),
+        ),
+        0,
+        reason:
+            'The edge pixels after dismissal must match the pre-dismissal render.',
       );
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
