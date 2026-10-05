@@ -13004,6 +13004,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
         child: SafeArea(
           bottom: false,
           child: ModalSheetScrollUnder(
+            showTopEdgeOnShortContentRubberband: true,
             headerTopInset: _kHeaderEdge,
             headerHeight: _kHeaderBtnSize,
             headerGap: 12,
@@ -17956,6 +17957,8 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
       child: SafeArea(
         bottom: false,
         child: ModalSheetScrollUnder(
+          scrollController: _scrollController,
+          showTopEdgeOnShortContentRubberband: true,
           headerTopInset: _kHeaderEdge,
           headerHeight: _kHeaderButtonSize,
           headerGap: 12,
@@ -22565,6 +22568,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
       child: SafeArea(
         top: false,
         child: ModalSheetScrollUnder(
+          showTopEdgeOnShortContentRubberband: true,
           headerTopInset: 12.5,
           headerHeight: 40,
           headerGap: 12,
@@ -22623,6 +22627,9 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
               ),
             ),
           scrollBuilder: (context, scrollPadding) => ListView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
                 padding: scrollPadding,
                 children: [
                   // ── Card 1 ─────────────────────────────────────────────

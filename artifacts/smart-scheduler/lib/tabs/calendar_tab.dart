@@ -15421,6 +15421,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
       child: SafeArea(
         top: false,
         child: ModalSheetScrollUnder(
+          showTopEdgeOnShortContentRubberband: true,
           headerTopInset: 12.5,
           headerHeight: 40,
           headerGap: 12,
@@ -15479,6 +15480,9 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
               ),
             ),
           scrollBuilder: (context, scrollPadding) => ListView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
                 padding: scrollPadding,
                 children: [
                   Column(

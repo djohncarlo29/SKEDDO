@@ -38,6 +38,7 @@ class ModalSheetScrollUnder extends StatefulWidget {
     this.footerHeight = 0,
     this.footerBottomInset = 0,
     this.expandViewport = true,
+    this.showTopEdgeOnShortContentRubberband = false,
     this.edgeExtent = 64,
     this.maxBlurSigma = 12,
     this.maxSurfaceOpacity = 0.78,
@@ -96,6 +97,10 @@ class ModalSheetScrollUnder extends StatefulWidget {
   /// Route pages fill their bounded viewport; intrinsic popup sheets can set
   /// this false so short content keeps its natural height.
   final bool expandViewport;
+
+  /// Shows the top scroll-under treatment while short content is pulled past
+  /// its resting top edge with bouncing physics.
+  final bool showTopEdgeOnShortContentRubberband;
 
   /// Length of each gradient edge transition.
   final double edgeExtent;
@@ -223,9 +228,20 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     if (_parentRouteIsCovered) return;
 
     if (metrics.maxScrollExtent <= 1) {
-      if (_topProgress == 0 && _bottomProgress == 0) return;
+      final distance = _activationDistance;
+      final shortContentTopPull =
+          widget.showTopEdgeOnShortContentRubberband
+              ? (metrics.minScrollExtent - metrics.pixels)
+                  .clamp(0.0, distance)
+                  .toDouble() /
+                  distance
+              : 0.0;
+      if ((shortContentTopPull - _topProgress).abs() < 0.01 &&
+          _bottomProgress == 0) {
+        return;
+      }
       setState(() {
-        _topProgress = 0;
+        _topProgress = shortContentTopPull;
         _bottomProgress = 0;
       });
       return;

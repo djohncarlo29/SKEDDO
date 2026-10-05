@@ -1518,6 +1518,8 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     return CupertinoPageScaffold(
       backgroundColor: kModalBackground,
       child: ModalSheetScrollUnder(
+        scrollController: _scrollCtrl,
+        showTopEdgeOnShortContentRubberband: true,
         headerHeight: _emojiSheetHeaderHeight,
         headerGap: 0,
         baseScrollPadding: EdgeInsets.fromLTRB(
@@ -1569,6 +1571,9 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
               physics: const BouncingScrollPhysics(
                 parent: AlwaysScrollableScrollPhysics(),
               ),
+              // This modal overlays CupertinoTabScaffold. Keep its content
+              // scroll position independent from the selected tab's controller.
+              primary: false,
               slivers: [
                 SliverPadding(
                   padding: EdgeInsets.zero,

@@ -227,6 +227,59 @@ void main() {
   });
 
   testWidgets(
+    'opt-in short content shows the top edge while rubberbanding',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(400, 700));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: SizedBox.expand(
+              child: ModalSheetScrollUnder(
+                showTopEdgeOnShortContentRubberband: true,
+                headerHeight: 40,
+                baseScrollPadding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                surfaceColor: CupertinoColors.systemBackground,
+                header: const SizedBox(
+                  height: 40,
+                  child: Text('Pinned header'),
+                ),
+                scrollBuilder:
+                    (context, padding) => ListView(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      ),
+                      padding: padding,
+                      children: const [
+                        SizedBox(height: 24, child: Text('Short content')),
+                      ],
+                    ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.drag(find.text('Short content'), const Offset(0, 80));
+      await tester.pump();
+
+      expect(find.byType(LiquidGlassScrollEdge), findsOneWidget);
+      final edge = tester.widget<LiquidGlassScrollEdge>(
+        find.byType(LiquidGlassScrollEdge),
+      );
+      expect(edge.edge, LiquidGlassEdge.top);
+      expect(edge.color.a, greaterThan(0));
+      expect(edge.blur, greaterThan(0));
+
+      await tester.pumpAndSettle();
+      expect(find.byType(LiquidGlassScrollEdge), findsNothing);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+
+  testWidgets(
     'short scroll range keeps the footer effect off until scrolling',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(400, 700));
