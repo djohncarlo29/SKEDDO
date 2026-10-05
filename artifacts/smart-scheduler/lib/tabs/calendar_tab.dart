@@ -13897,6 +13897,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
             bottom: false,
             child: ModalSheetScrollUnder(
               scrollController: _sheetScrollCtrl,
+              showTopEdgeOnShortContentRubberband: true,
               headerTopInset: _kHeaderEdge,
               headerHeight: _kHeaderBtnSize,
               headerGap: 12,
@@ -15483,6 +15484,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),
+                primary: false,
                 padding: scrollPadding,
                 children: [
                   Column(

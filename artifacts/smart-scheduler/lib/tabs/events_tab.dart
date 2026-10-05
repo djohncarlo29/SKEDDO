@@ -12804,6 +12804,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
     text: widget.initial?.name ?? '',
   );
   final FocusNode _nameFocus = FocusNode();
+  final ScrollController _sheetScrollCtrl = ScrollController();
   final ScrollController _nameScrollCtrl = ScrollController();
   late final Set<String> _selectedIds = Set<String>.from(
     widget.initialMemberIds,
@@ -12865,6 +12866,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
   void dispose() {
     _nameCtrl.dispose();
     _nameFocus.dispose();
+    _sheetScrollCtrl.dispose();
     _nameScrollCtrl.dispose();
     _dismissPicker(animate: false);
     _pickerIsClosing.dispose();
@@ -13004,6 +13006,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
         child: SafeArea(
           bottom: false,
           child: ModalSheetScrollUnder(
+            scrollController: _sheetScrollCtrl,
             showTopEdgeOnShortContentRubberband: true,
             headerTopInset: _kHeaderEdge,
             headerHeight: _kHeaderBtnSize,
@@ -13087,6 +13090,8 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                   behavior: HitTestBehavior.opaque,
                   onTap: _dismissModalSheetFocus,
                   child: SingleChildScrollView(
+                    controller: _sheetScrollCtrl,
+                    primary: false,
                     physics: const AlwaysScrollableScrollPhysics(
                       parent: BouncingScrollPhysics(),
                     ),
@@ -13389,6 +13394,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   final _descScrollCtrl = ScrollController();
   final _startLocScrollCtrl = ScrollController();
   final _destScrollCtrl = ScrollController();
+  final _sheetScrollCtrl = ScrollController();
 
   // ── Title / description focus nodes ──────────────────────────────────────
   final _titleFocus = FocusNode();
@@ -13796,6 +13802,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     _titleScrollCtrl.dispose();
     _startLocScrollCtrl.dispose();
     _destScrollCtrl.dispose();
+    _sheetScrollCtrl.dispose();
     _titleFocus.dispose();
     _descFocus.dispose();
     _startLocFocus.dispose();
@@ -16310,6 +16317,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         child: SafeArea(
           bottom: false,
           child: ModalSheetScrollUnder(
+            scrollController: _sheetScrollCtrl,
+            showTopEdgeOnShortContentRubberband: true,
             headerTopInset: _kHeaderEdge,
             headerHeight: _kHeaderBtnSize,
             headerGap: 12,
@@ -16387,6 +16396,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   behavior: HitTestBehavior.opaque,
                   onTap: _dismissModalSheetFocus,
                   child: SingleChildScrollView(
+                    controller: _sheetScrollCtrl,
+                    primary: false,
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
                     padding: scrollPadding,
                     child: Column(
                       children: [
@@ -22630,6 +22644,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),
+                primary: false,
                 padding: scrollPadding,
                 children: [
                   // ── Card 1 ─────────────────────────────────────────────
