@@ -2114,41 +2114,44 @@ class _ExtractionResultSheetState extends State<_ExtractionResultSheet> {
                   ),
                 ),
               ),
-              scrollBuilder: (context, scrollPadding) =>
-                  ListView.separated(
-                    shrinkWrap: true,
-                    padding: scrollPadding,
-                    itemCount: isEmpty ? 1 : _remaining.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (context, i) {
-                      if (isEmpty) {
-                        return Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
-                          child: Text(
-                            widget.events.isEmpty
-                                ? "We couldn't find any events in this image. "
-                                      'Try a photo of a calendar, invite, or flyer.'
-                                : 'All events have been handled.',
-                            style: const TextStyle(
-                              inherit: false,
-                              color: kSecondaryLabel,
-                              fontSize: 14,
-                              fontFamily: 'SFProText',
-                              fontWeight: FontWeight.w400,
-                              fontStyle: FontStyle.normal,
-                              letterSpacing: kTracking16,
-                              height: kLineHeight,
-                            ),
-                          ),
-                        );
-                      }
-                      return _EventRow(
-                        event: _remaining[i],
-                        onAdd: () => _addAndRemove(i),
-                        onDismiss: () => _dismiss(i),
-                      );
-                    },
-                  ),
+              scrollBuilder: (context, scrollPadding) => ListView.separated(
+                shrinkWrap: true,
+                primary: false,
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                padding: scrollPadding,
+                itemCount: isEmpty ? 1 : _remaining.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, i) {
+                  if (isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
+                      child: Text(
+                        widget.events.isEmpty
+                            ? "We couldn't find any events in this image. "
+                                  'Try a photo of a calendar, invite, or flyer.'
+                            : 'All events have been handled.',
+                        style: const TextStyle(
+                          inherit: false,
+                          color: kSecondaryLabel,
+                          fontSize: 14,
+                          fontFamily: 'SFProText',
+                          fontWeight: FontWeight.w400,
+                          fontStyle: FontStyle.normal,
+                          letterSpacing: kTracking16,
+                          height: kLineHeight,
+                        ),
+                      ),
+                    );
+                  }
+                  return _EventRow(
+                    event: _remaining[i],
+                    onAdd: () => _addAndRemove(i),
+                    onDismiss: () => _dismiss(i),
+                  );
+                },
+              ),
             );
           },
         ),

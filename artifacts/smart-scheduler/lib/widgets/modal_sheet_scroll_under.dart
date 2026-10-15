@@ -38,7 +38,7 @@ class ModalSheetScrollUnder extends StatefulWidget {
     this.footerHeight = 0,
     this.footerBottomInset = 0,
     this.expandViewport = true,
-    this.showTopEdgeOnShortContentRubberband = false,
+    this.showTopEdgeOnShortContentRubberband = true,
     this.edgeExtent = 64,
     this.maxBlurSigma = 12,
     this.maxSurfaceOpacity = 0.78,
@@ -99,7 +99,7 @@ class ModalSheetScrollUnder extends StatefulWidget {
   final bool expandViewport;
 
   /// Shows the top scroll-under treatment while short content is pulled past
-  /// its resting top edge with bouncing physics.
+  /// either end of its zero-range scroll extent with bouncing physics.
   final bool showTopEdgeOnShortContentRubberband;
 
   /// Length of each gradient edge transition.
@@ -229,13 +229,9 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
 
     if (metrics.maxScrollExtent <= 1) {
       final distance = _activationDistance;
-      final shortContentTopPull =
-          widget.showTopEdgeOnShortContentRubberband
-              ? (metrics.minScrollExtent - metrics.pixels)
-                  .clamp(0.0, distance)
-                  .toDouble() /
-                  distance
-              : 0.0;
+      final shortContentTopPull = widget.showTopEdgeOnShortContentRubberband
+          ? _shortContentPull(metrics, distance)
+          : 0.0;
       if ((shortContentTopPull - _topProgress).abs() < 0.01 &&
           _bottomProgress == 0) {
         return;
@@ -258,6 +254,13 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       _topProgress = nextTop;
       _bottomProgress = nextBottom;
     });
+  }
+
+  double _shortContentPull(ScrollMetrics metrics, double distance) {
+    final pastStart = metrics.minScrollExtent - metrics.pixels;
+    final pastEnd = metrics.pixels - metrics.maxScrollExtent;
+    final pull = math.max(pastStart, pastEnd).clamp(0.0, distance).toDouble();
+    return pull / distance;
   }
 
   double _bottomProgressForMetrics(ScrollMetrics metrics, double distance) {

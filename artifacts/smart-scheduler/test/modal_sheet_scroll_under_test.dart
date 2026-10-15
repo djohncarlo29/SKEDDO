@@ -1,4 +1,9 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart'
     show LiquidGlassEdge, LiquidGlassScrollEdge;
@@ -337,6 +342,158 @@ void main() {
       expect(edge.blur, greaterThan(0));
 
       await tester.pumpAndSettle();
+      expect(find.byType(LiquidGlassScrollEdge), findsNothing);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+
+  testWidgets(
+    'Group-style upward touch pull blurs short content under the fixed header',
+    (tester) async {
+      const surfaceSize = Size(400, 700);
+      const sheetColor = Color(0xFFF4F4F4);
+      const backdropColor = Color(0xFF173A5E);
+      await tester.binding.setSurfaceSize(surfaceSize);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final controller = ScrollController();
+      final captureKey = GlobalKey();
+      final cardKey = GlobalKey();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          builder: (context, child) => RepaintBoundary(
+            key: captureKey,
+            child: child ?? const SizedBox.shrink(),
+          ),
+          home: CupertinoPageScaffold(
+            backgroundColor: backdropColor,
+            child: SizedBox.expand(
+              child: ModalSheetScrollUnder(
+                // These are the New Group sheet's existing header clearances.
+                headerTopInset: 24,
+                headerHeight: 40,
+                headerGap: 12,
+                baseScrollPadding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                surfaceColor: sheetColor,
+                header: const SizedBox(
+                  key: ValueKey('group-header'),
+                  height: 40,
+                  child: Center(child: Text('New Group')),
+                ),
+                scrollBuilder: (context, scrollPadding) => GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {},
+                  child: SingleChildScrollView(
+                    controller: controller,
+                    primary: false,
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    padding: scrollPadding,
+                    child: Container(
+                      key: cardKey,
+                      height: 120,
+                      alignment: Alignment.center,
+                      color: const Color(0xFFD84A45),
+                      child: const Text('Group content'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(controller.position.maxScrollExtent, 0);
+      expect(find.byType(LiquidGlassScrollEdge), findsNothing);
+      final headerFinder = find.byKey(const ValueKey('group-header'));
+      final headerTop = tester.getTopLeft(headerFinder).dy;
+      final headerBottom = headerTop + 40;
+      final cardTop = tester.getTopLeft(find.byKey(cardKey)).dy;
+      expect(cardTop, closeTo(headerTop + 40 + 12 + 8, 1));
+
+      Future<Uint8List> capturePixels() async {
+        final boundary = tester.renderObject<RenderRepaintBoundary>(
+          find.byKey(captureKey),
+        );
+        return (await tester.runAsync(() async {
+          final image = await boundary.toImage(pixelRatio: 1);
+          try {
+            return (await image.toByteData(
+              format: ui.ImageByteFormat.rawRgba,
+            ))!.buffer.asUint8List();
+          } finally {
+            image.dispose();
+          }
+        }))!;
+      }
+
+      int differingByteCount(Uint8List first, Uint8List second) {
+        var differences = 0;
+        for (var index = 0; index < first.length; index++) {
+          if (first[index] != second[index]) differences++;
+        }
+        return differences;
+      }
+
+      List<int> pixelAt(Uint8List pixels, int x, int y) {
+        final index = (y * surfaceSize.width.toInt() + x) * 4;
+        return pixels.sublist(index, index + 4);
+      }
+
+      final restingPixels = await capturePixels();
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byKey(cardKey)),
+        kind: PointerDeviceKind.touch,
+      );
+      for (var step = 1; step <= 8; step++) {
+        await gesture.moveBy(
+          const Offset(0, -25),
+          timeStamp: Duration(milliseconds: 16 * step),
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      expect(controller.position.maxScrollExtent, 0);
+      expect(
+        controller.position.pixels,
+        greaterThan(controller.position.maxScrollExtent),
+        reason:
+            'The upward pull produces positive pixels beyond the zero range.',
+      );
+      expect(
+        tester.getTopLeft(find.byKey(cardKey)).dy,
+        lessThan(headerBottom),
+        reason: 'The short card must move beneath the fixed header while held.',
+      );
+      expect(tester.getTopLeft(headerFinder).dy, headerTop);
+
+      final edgeFinder = find.byType(LiquidGlassScrollEdge);
+      expect(edgeFinder, findsOneWidget);
+      final edge = tester.widget<LiquidGlassScrollEdge>(edgeFinder);
+      expect(edge.edge, LiquidGlassEdge.top);
+      expect(edge.blur, greaterThan(0));
+      expect(edge.color.a, greaterThan(0));
+
+      final pulledPixels = await capturePixels();
+      expect(
+        differingByteCount(restingPixels, pulledPixels),
+        greaterThan(100),
+        reason: 'The held pull must visibly change rendered pixels.',
+      );
+      expect(
+        pixelAt(restingPixels, 200, 8),
+        isNot(pixelAt(pulledPixels, 200, 8)),
+        reason: 'The top scroll-edge band must visibly change during the pull.',
+      );
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(controller.position.pixels, closeTo(0, 0.01));
       expect(find.byType(LiquidGlassScrollEdge), findsNothing);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
