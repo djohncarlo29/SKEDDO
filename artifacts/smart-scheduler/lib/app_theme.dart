@@ -207,6 +207,7 @@ const kLiquidGlassButtonLightRim = Color(0xFFFFFFFF);
 // A single translucent white contour overlays the retained checkmark fill.
 const kLiquidGlassButtonLightCheckmarkContour = Color(0x80FFFFFF);
 const kLiquidGlassButtonLightContourColor = Color(0x263C3C43);
+const double kLiquidGlassPillContourOutset = 1.3;
 
 const kPreviewCardBackground = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFF9F9FB),
@@ -3122,7 +3123,7 @@ class _LiquidGlassButtonEdgePainter extends CustomPainter {
   final Color contourColor;
 
   static const double _whiteRimWidth = 1.15;
-  static const double _maximumContourWidth = 1.3;
+  static const double _maximumContourWidth = kLiquidGlassPillContourOutset;
   static const double _minimumContourWidth = 0.12;
   static const int _contourSegments = 256;
 
@@ -3200,6 +3201,198 @@ class _LiquidGlassButtonEdgePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _LiquidGlassButtonEdgePainter oldDelegate) =>
       oldDelegate.contourColor != contourColor;
+}
+
+/// Adds the Light Mode outer contour used by non-checkmark LiquidGlassButtons
+/// to pill-shaped Liquid Glass surfaces without changing their material fill.
+class LightModeLiquidGlassPillContour extends StatelessWidget {
+  const LightModeLiquidGlassPillContour({
+    super.key,
+    required this.child,
+  });
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (CupertinoTheme.brightnessOf(context) != Brightness.light) {
+      return child;
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        child,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: CustomPaint(
+              painter: const _LiquidGlassPillEdgePainter(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Rounded-rectangle counterpart to [_LiquidGlassButtonEdgePainter].
+///
+/// The inner white highlight follows the pill edge; a smooth, variable-width
+/// tertiary contour grows outwards at the left/right midpoints.
+class _LiquidGlassPillEdgePainter extends CustomPainter {
+  const _LiquidGlassPillEdgePainter();
+
+  static const double _whiteRimWidth = 1.15;
+  static const double _maximumContourWidth = 1.3;
+  static const double _minimumContourWidth = 0.12;
+  static const int _contourSegments = 256;
+
+  double _contourWidthAt(double angle) {
+    final sideStrength = math.pow(math.cos(angle).abs(), 2.2).toDouble();
+    return _minimumContourWidth +
+        (_maximumContourWidth - _minimumContourWidth) * sideStrength;
+  }
+
+  double _boundaryRadiusAt({
+    required double angle,
+    required double halfWidth,
+    required double halfHeight,
+    required double cornerRadius,
+  }) {
+    final absCos = math.cos(angle).abs();
+    final absSin = math.sin(angle).abs();
+    final cornerCenterX = halfWidth - cornerRadius;
+    final cornerCenterY = halfHeight - cornerRadius;
+
+    // Intersect the ray with either straight section when it reaches one
+    // before the rounded corner.
+    if (absSin > 1e-9) {
+      final distance = halfHeight / absSin;
+      if (distance * absCos <= cornerCenterX + 1e-9) return distance;
+    }
+    if (absCos > 1e-9) {
+      final distance = halfWidth / absCos;
+      if (distance * absSin <= cornerCenterY + 1e-9) return distance;
+    }
+
+    // The remaining ray intersects the quarter-circle corner.
+    final projection = absCos * cornerCenterX + absSin * cornerCenterY;
+    final constant = cornerCenterX * cornerCenterX +
+        cornerCenterY * cornerCenterY -
+        cornerRadius * cornerRadius;
+    final discriminant = math.max(0.0, projection * projection - constant);
+    return projection + math.sqrt(discriminant);
+  }
+
+  Path _outlinePath(Size size, double radialInset) {
+    final halfWidth = size.width / 2;
+    final halfHeight = size.height / 2;
+    final cornerRadius = math.min(
+      kSquircleStadiumRadius,
+      math.min(halfWidth, halfHeight),
+    );
+    final center = Offset(halfWidth, halfHeight);
+    final path = Path();
+
+    for (var i = 0; i < _contourSegments; i++) {
+      final angle = math.pi * 2 * i / _contourSegments;
+      final radius = _boundaryRadiusAt(
+            angle: angle,
+            halfWidth: halfWidth,
+            halfHeight: halfHeight,
+            cornerRadius: cornerRadius,
+          ) +
+          radialInset;
+      final point = Offset(
+        center.dx + math.cos(angle) * radius,
+        center.dy + math.sin(angle) * radius,
+      );
+      if (i == 0) {
+        path.moveTo(point.dx, point.dy);
+      } else {
+        path.lineTo(point.dx, point.dy);
+      }
+    }
+    return path..close();
+  }
+
+  Path _contourPath(Size size) {
+    final halfWidth = size.width / 2;
+    final halfHeight = size.height / 2;
+    final cornerRadius = math.min(
+      kSquircleStadiumRadius,
+      math.min(halfWidth, halfHeight),
+    );
+    final center = Offset(halfWidth, halfHeight);
+    final path = Path()..fillType = PathFillType.evenOdd;
+
+    for (var i = 0; i < _contourSegments; i++) {
+      final angle = math.pi * 2 * i / _contourSegments;
+      final radius = _boundaryRadiusAt(
+            angle: angle,
+            halfWidth: halfWidth,
+            halfHeight: halfHeight,
+            cornerRadius: cornerRadius,
+          ) +
+          _contourWidthAt(angle);
+      final point = Offset(
+        center.dx + math.cos(angle) * radius,
+        center.dy + math.sin(angle) * radius,
+      );
+      if (i == 0) {
+        path.moveTo(point.dx, point.dy);
+      } else {
+        path.lineTo(point.dx, point.dy);
+      }
+    }
+    path.close();
+
+    for (var i = _contourSegments - 1; i >= 0; i--) {
+      final angle = math.pi * 2 * i / _contourSegments;
+      final radius = _boundaryRadiusAt(
+            angle: angle,
+            halfWidth: halfWidth,
+            halfHeight: halfHeight,
+            cornerRadius: cornerRadius,
+          ) -
+          0.05;
+      final point = Offset(
+        center.dx + math.cos(angle) * radius,
+        center.dy + math.sin(angle) * radius,
+      );
+      if (i == _contourSegments - 1) {
+        path.moveTo(point.dx, point.dy);
+      } else {
+        path.lineTo(point.dx, point.dy);
+      }
+    }
+    return path..close();
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+
+    canvas.drawPath(
+      _outlinePath(size, -_whiteRimWidth / 2),
+      Paint()
+        ..color = kLiquidGlassButtonLightRim
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _whiteRimWidth
+        ..isAntiAlias = true,
+    );
+    canvas.drawPath(
+      _contourPath(size),
+      Paint()
+        ..color = kLiquidGlassButtonLightContourColor
+        ..style = PaintingStyle.fill
+        ..isAntiAlias = true,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _LiquidGlassPillEdgePainter oldDelegate) =>
+      false;
 }
 
 /// A single translucent, variable-width checkmark contour, kept inside the

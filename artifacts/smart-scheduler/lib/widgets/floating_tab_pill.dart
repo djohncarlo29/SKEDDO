@@ -184,6 +184,15 @@ class FloatingTabPill extends StatelessWidget {
                   ),
                 ),
               ),
+              Positioned(
+                left: kFloatingTabBarHorizontalMargin,
+                right: kFloatingTabBarHorizontalMargin,
+                bottom: bottomOffset,
+                height: kFloatingTabBarHeight,
+                child: LightModeLiquidGlassPillContour(
+                  child: const SizedBox.expand(),
+                ),
+              ),
             ],
           );
         },
@@ -268,11 +277,18 @@ class _FloatingTabBarGlassPreviewState
               : kLiquidGlassPreviewHeight,
         );
         final pillSize = Size(barWidth, pillHeight);
-        // The preview and pill use the same fixed-radius outline. Once those
-        // outlines match, the old rectangular extent clamp is the exact
-        // containment region and avoids path-search resistance while dragging.
-        final maxX = math.max(0.0, (previewSize.width - pillSize.width) / 2);
-        final maxY = math.max(0.0, (previewSize.height - pillSize.height) / 2);
+        // Reserve the contour's small outward extension inside the preview
+        // clip so its edge remains visible at every drag limit.
+        final maxX = math.max(
+          0.0,
+          (previewSize.width - pillSize.width) / 2 -
+              kLiquidGlassPillContourOutset,
+        );
+        final maxY = math.max(
+          0.0,
+          (previewSize.height - pillSize.height) / 2 -
+              kLiquidGlassPillContourOutset,
+        );
         final boundedOffset = Offset(
           _offset.dx.clamp(-maxX, maxX),
           _offset.dy.clamp(-maxY, maxY),
@@ -386,9 +402,9 @@ class _FloatingTabBarGlassPreviewState
                              context,
                              exactClip: true,
                            );
-                           return IgnorePointer(
-                             child: LiquidGlassTabBar(
-                               items: [
+                            return IgnorePointer(
+                              child: LiquidGlassTabBar(
+                                items: [
                                   _previewItem(
                                     SFIcons.sf_trash,
                                     size: 21,
@@ -404,41 +420,47 @@ class _FloatingTabBarGlassPreviewState
                                     size: 25.5,
                                     opticalScale: 0.825,
                                   ),
-                               ],
-                               selectedIndex: 0,
-                               onChanged: (_) {},
-                               width: barWidth,
+                                ],
+                                selectedIndex: 0,
+                                onChanged: (_) {},
+                                width: barWidth,
                                 height: pillHeight,
                                 itemPadding: _previewItemPadding,
-                               itemStyle: LiquidGlassTabItemStyle(
-                                 selectedColor: resolveThemeColor(
-                                   kSecondaryLabel,
-                                   context,
-                                 ),
-                                 unselectedColor: resolveThemeColor(
-                                   kSecondaryLabel,
-                                   context,
-                                 ),
-                                 iconSize: _previewIconReferenceSize,
-                                 selectedFontWeight: FontWeight.w500,
-                                 unselectedFontWeight: FontWeight.w500,
-                               ),
-                               style: style,
+                                itemStyle: LiquidGlassTabItemStyle(
+                                  selectedColor: resolveThemeColor(
+                                    kSecondaryLabel,
+                                    context,
+                                  ),
+                                  unselectedColor: resolveThemeColor(
+                                    kSecondaryLabel,
+                                    context,
+                                  ),
+                                  iconSize: _previewIconReferenceSize,
+                                  selectedFontWeight: FontWeight.w500,
+                                  unselectedFontWeight: FontWeight.w500,
+                                ),
+                                style: style,
                                 pillStyle: LiquidGlassTabPillStyle(
                                   mode: LiquidGlassPillMode.none,
                                   show: false,
                                   animated: false,
                                   shape: kLiquidGlassPreviewGlassShape,
-                                 glassStyle: LiquidGlassStyle(
+                                  glassStyle: LiquidGlassStyle(
                                     shape: kLiquidGlassPreviewGlassShape,
-                                 ),
+                                  ),
                                   rest: LiquidGlassStyle(
                                     shape: kLiquidGlassPreviewGlassShape,
-                                 ),
+                                  ),
                                 ),
                               ),
                             );
                           },
+                        ),
+                        LightModeLiquidGlassPillContour(
+                          child: SizedBox(
+                            width: barWidth,
+                            height: pillHeight,
+                          ),
                         ),
                      ],
                    ),
