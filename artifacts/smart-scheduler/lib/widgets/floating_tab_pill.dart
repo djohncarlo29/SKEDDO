@@ -133,6 +133,9 @@ class FloatingTabPill extends StatelessWidget {
                         unselectedFontWeight: FontWeight.w500,
                       ),
                       style: barStyle,
+                      barOverlay: LightModeLiquidGlassPillContour(
+                        child: const SizedBox.expand(),
+                      ),
                       // The environmental shadows above own elevation. Keep the
                       // glass material itself shadow-free so its refraction remains clean.
                       pillStyle: LiquidGlassTabPillStyle(
@@ -182,15 +185,6 @@ class FloatingTabPill extends StatelessWidget {
                       ),
                     ),
                   ),
-                ),
-              ),
-              Positioned(
-                left: kFloatingTabBarHorizontalMargin,
-                right: kFloatingTabBarHorizontalMargin,
-                bottom: bottomOffset,
-                height: kFloatingTabBarHeight,
-                child: LightModeLiquidGlassPillContour(
-                  child: const SizedBox.expand(),
                 ),
               ),
             ],

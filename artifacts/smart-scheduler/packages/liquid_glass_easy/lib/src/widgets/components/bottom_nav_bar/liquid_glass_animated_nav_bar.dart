@@ -177,6 +177,10 @@ class LiquidGlassAnimatedNavBar extends StatefulWidget {
   /// Appearance (tint + blur) of the bar capsule.
   final LiquidGlassAppearance? barAppearance;
 
+  /// Decoration composited over the capsule and inside the outer view's
+  /// captured scene, so the moving glass pill can refract it.
+  final Widget? barOverlay;
+
   /// Contact shadow around the **bar capsule** — the soft dark band that
   /// hugs its rim and pools underneath, so the bar reads as sitting in
   /// the page rather than floating on it. `null` (the default) draws
@@ -303,6 +307,7 @@ class LiquidGlassAnimatedNavBar extends StatefulWidget {
     this.barShape,
     this.barRefraction,
     this.barAppearance,
+    this.barOverlay,
     this.barShadow,
     this.pillShadow,
     this.pillBlur = const LiquidGlassBlur(),
@@ -1302,6 +1307,14 @@ class _LiquidGlassAnimatedNavBarState extends State<LiquidGlassAnimatedNavBar>
             ],
           ),
         ),
+        if (widget.barOverlay != null)
+          Positioned(
+            left: _barLeft,
+            bottom: _effBottomMargin,
+            width: layout.width,
+            height: layout.height,
+            child: IgnorePointer(child: widget.barOverlay!),
+          ),
         // Impeller-only magnifier pill: painted here its backdrop sample
         // is the page + capsule (+ shadow) alone — the icon shell above
         // stays out of it, so the bar recedes under the pill while the

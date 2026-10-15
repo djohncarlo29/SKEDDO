@@ -3244,7 +3244,7 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
 
   static const double _whiteRimWidth = 1.15;
   static const double _maximumContourWidth = 1.3;
-  static const double _minimumContourWidth = 0.12;
+  static const double _minimumContourWidth = 0.5;
   static const int _contourSegments = 256;
 
   double _contourWidthAt(double angle) {

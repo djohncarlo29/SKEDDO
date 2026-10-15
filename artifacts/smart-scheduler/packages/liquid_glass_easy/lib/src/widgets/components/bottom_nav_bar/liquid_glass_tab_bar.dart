@@ -51,6 +51,7 @@ class LiquidGlassTabBar extends StatelessWidget {
     this.itemStyle = const LiquidGlassTabItemStyle(),
     this.pillStyle = const LiquidGlassTabPillStyle(),
     this.style,
+    this.barOverlay,
     this.visibility = true,
     this.width = 300,
     this.height = 64,
@@ -95,6 +96,7 @@ class LiquidGlassTabBar extends StatelessWidget {
     this.itemStyle = const LiquidGlassTabItemStyle(),
     this.pillStyle = const LiquidGlassTabPillStyle(),
     this.style,
+    this.barOverlay,
     this.visibility = true,
     this.width = 300,
     this.height = 64,
@@ -135,6 +137,10 @@ class LiquidGlassTabBar extends StatelessWidget {
   /// `LiquidGlassTabBar.defaultStyle.copyWith(shape: …)`. Honored by
   /// both the plain and glass-pill bars.
   final LiquidGlassStyle? style;
+
+  /// Optional decoration painted over the capsule and included in the
+  /// captured scene behind the moving glass pill.
+  final Widget? barOverlay;
 
   /// Whether the bar is shown; toggling animates the glass in/out.
   final bool visibility;
@@ -263,6 +269,7 @@ class LiquidGlassTabBar extends StatelessWidget {
       // The bar capsule's contact shadow rides its style's appearance —
       // the same place every lens carries one.
       barShadow: barStyle.appearance.shadow,
+      barOverlay: barOverlay,
       pillBlur: glassStyle.appearance.blur,
       pillColor: glassStyle.appearance.color,
       pillTransitionColor: pillStyle.transitionColor,
@@ -406,14 +413,23 @@ class LiquidGlassTabBar extends StatelessWidget {
     return SizedBox(
       width: width,
       height: height,
-      child: LiquidGlassLens(
-        style: LiquidGlassStyle(
-          shape: effectiveShape,
-          appearance: barStyle.appearance,
-          refraction: barStyle.refraction,
-        ),
-        visibility: visibility,
-        child: content,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          LiquidGlassLens(
+            style: LiquidGlassStyle(
+              shape: effectiveShape,
+              appearance: barStyle.appearance,
+              refraction: barStyle.refraction,
+            ),
+            visibility: visibility,
+            child: content,
+          ),
+          if (barOverlay != null)
+            Positioned.fill(
+              child: IgnorePointer(child: barOverlay!),
+            ),
+        ],
       ),
     );
   }
