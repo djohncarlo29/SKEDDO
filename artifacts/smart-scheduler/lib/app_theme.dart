@@ -202,8 +202,9 @@ const double kGelBloomIconWeight = 0.4;
 const kLiquidGlassHairlineColor = Color(0x26FFFFFF);
 // Light-mode non-checkmark action buttons use their own soft fill and bright
 // inner rim; keep these separate from the package's existing glass hairline.
-const kLiquidGlassButtonLightSurface = Color(0xFFF5F5F5);
+const kLiquidGlassButtonLightSurface = Color(0xFFFAFAFA);
 const kLiquidGlassButtonLightRim = Color(0xFFFFFFFF);
+const kLiquidGlassButtonLightContourColor = Color(0x263C3C43);
 
 const kPreviewCardBackground = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFF9F9FB),
@@ -3292,7 +3293,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
           child: IgnorePointer(
             child: CustomPaint(
               painter: _LiquidGlassButtonEdgePainter(
-                contourColor: resolveThemeColor(kTertiaryLabel, context),
+                contourColor: kLiquidGlassButtonLightContourColor,
                 drawWhiteRim: !circle.isCheckmark,
               ),
             ),
