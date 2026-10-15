@@ -49,7 +49,17 @@ Title field + "Include" picker using `ActionMenuOverlay`. Min 2 categories check
 - `_ungroupGroup` — removes `grp-<id>` token; inserts member IDs back as solo slots in place.
 - `_updateGroup` — diffs old/new memberIds; removes newly-excluded solo slots; inserts newly-excluded IDs back as solo after the group token.
 - `_removeFromGroupById` — removes a cat from its group; if membership drops below 2, dissolves the group automatically.
-- `_toggleGroupExpanded` — adds to `_expandingGroupIds` immediately (so members show), then after animation delay removes from that set and adds to `_expandedGroupIds`.
+- `_toggleGroupExpanded` — a fresh expand mounts members at zero height and reveals them on the next frame; a reopen during collapse clears the collapsing state so stable keyed rows reverse from their current geometry. Per-group transition generations prevent stale cleanup callbacks from ending newer transitions.
+
+**Why:** A fixed reveal delay adds perceptible latency, and stale collapse timers can interrupt rapid toggles. Keeping rows mounted during reversal lets implicit position/height animations continue instead of remounting at their endpoints.
+
+**How to apply:** Keep expansion setup shared by tap and drag-to-join flows; use post-frame reveal for fresh rows and match collapse cleanup to `_CategoryCard._kAnimMs`.
+
+- `_CategoryCard` measures row heights once per build and derives slot heights, positions, and visible-row indexes from those cached values.
+
+**Why:** Repeating text-based row measurements inside each slot's prefix and visibility scans made expansion work quadratic as more groups opened.
+
+**How to apply:** If row layout geometry changes, update the single per-build cache rather than restoring per-slot scans.
 
 ## List.remove() gotcha
 

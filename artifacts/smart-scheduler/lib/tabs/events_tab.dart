@@ -1794,6 +1794,8 @@ class EventsTabState extends State<EventsTab>
   final Set<String> _expandingGroupIds = {};
   // Groups whose members are animating out of view (collapse in-flight).
   final Set<String> _collapsingGroupIds = {};
+  int _groupTransitionSequence = 0;
+  final Map<String, int> _groupTransitionGenerations = {};
 
   // ── Drag → group-creation state ───────────────────────────────────────────
   // _dragGroupTargetCat: confirmed group target (ghost snapped, glow visible).
@@ -2414,28 +2416,80 @@ class EventsTabState extends State<EventsTab>
     _saveCategories();
   }
 
+  int _nextGroupTransitionGeneration(String groupId) {
+    final generation = ++_groupTransitionSequence;
+    _groupTransitionGenerations[groupId] = generation;
+    return generation;
+  }
+
+  /// Adds a group's rows and marks fresh rows as zero-height for their first
+  /// layout. Reopening during a collapse leaves the existing row elements in
+  /// place so their in-flight height animations can reverse smoothly.
+  int? _beginGroupExpansion(String groupId) {
+    final reversingCollapse = _collapsingGroupIds.contains(groupId);
+    final generation = _nextGroupTransitionGeneration(groupId);
+    _collapsingGroupIds.remove(groupId);
+    _expandedGroupIds.add(groupId);
+
+    if (reversingCollapse) {
+      _expandingGroupIds.remove(groupId);
+      _groupTransitionGenerations.remove(groupId);
+      return null;
+    }
+
+    _expandingGroupIds.add(groupId);
+    return generation;
+  }
+
+  void _scheduleGroupExpansionReveal(String groupId, int generation) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _groupTransitionGenerations[groupId] != generation) {
+        return;
+      }
+      if (!_expandingGroupIds.contains(groupId)) {
+        _groupTransitionGenerations.remove(groupId);
+        return;
+      }
+      setState(() => _expandingGroupIds.remove(groupId));
+      _groupTransitionGenerations.remove(groupId);
+    });
+  }
+
+  void _scheduleGroupCollapseCleanup(String groupId, int generation) {
+    Future.delayed(
+      const Duration(milliseconds: _CategoryCard._kAnimMs),
+      () {
+        if (!mounted ||
+            _groupTransitionGenerations[groupId] != generation) {
+          return;
+        }
+        if (!_collapsingGroupIds.contains(groupId)) {
+          _groupTransitionGenerations.remove(groupId);
+          return;
+        }
+        setState(() => _collapsingGroupIds.remove(groupId));
+        _groupTransitionGenerations.remove(groupId);
+      },
+    );
+  }
+
   /// Toggles the expanded/collapsed state of a group with animation.
   void _toggleGroupExpanded(String groupId) {
     if (_expandedGroupIds.contains(groupId)) {
-      // Collapse: members play out, then we hide them.
-      // Also evict any stale _expandingGroupIds entry so showMembers goes false.
+      late final int generation;
       setState(() {
+        generation = _nextGroupTransitionGeneration(groupId);
         _expandedGroupIds.remove(groupId);
         _expandingGroupIds.remove(groupId);
         _collapsingGroupIds.add(groupId);
       });
-      Future.delayed(const Duration(milliseconds: 280), () {
-        if (mounted) setState(() => _collapsingGroupIds.remove(groupId));
-      });
+      _scheduleGroupCollapseCleanup(groupId, generation);
     } else {
-      // Expand: add members to the flat list (triggers AnimatedPositioned).
-      setState(() {
-        _expandingGroupIds.add(groupId);
-        _expandedGroupIds.add(groupId);
-      });
-      Future.delayed(const Duration(milliseconds: 60), () {
-        if (mounted) setState(() => _expandingGroupIds.remove(groupId));
-      });
+      late final int? generation;
+      setState(() => generation = _beginGroupExpansion(groupId));
+      if (generation != null) {
+        _scheduleGroupExpansionReveal(groupId, generation!);
+      }
     }
   }
 
@@ -3976,24 +4030,23 @@ class EventsTabState extends State<EventsTab>
         _openNewGroupSheet(key, groupTarget);
       } else if (confirmedJoinGroupId != null) {
         // User released after dwelling over a collapsed group → join it.
+        final groupId = confirmedJoinGroupId;
         final grpIdx = _categoryGroups.indexWhere(
-          (g) => g.id == confirmedJoinGroupId,
+          (g) => g.id == groupId,
         );
         if (grpIdx != -1) {
           final grp = _categoryGroups[grpIdx];
+          int? transitionGeneration;
           setState(() {
             _listTopOrder.remove(key.id);
             _categoryGroups[grpIdx] = grp.copyWith(
               memberIds: [...grp.memberIds, key.id],
             );
-            _expandedGroupIds.add(confirmedJoinGroupId);
-            _expandingGroupIds.add(confirmedJoinGroupId);
-            _collapsingGroupIds.remove(confirmedJoinGroupId);
+            transitionGeneration = _beginGroupExpansion(groupId);
           });
-          Future.delayed(const Duration(milliseconds: 60), () {
-            if (mounted)
-              setState(() => _expandingGroupIds.remove(confirmedJoinGroupId));
-          });
+          if (transitionGeneration != null) {
+            _scheduleGroupExpansionReveal(groupId, transitionGeneration!);
+          }
         }
         _saveCategories();
       } else {
@@ -4928,24 +4981,23 @@ class EventsTabState extends State<EventsTab>
     } else if (confirmedJoinGroupId != null) {
       // User released while hovering over a collapsed group after dwell →
       // join the group and expand it now that the drag is fully over.
+      final groupId = confirmedJoinGroupId;
       final grpIdx = _categoryGroups.indexWhere(
-        (g) => g.id == confirmedJoinGroupId,
+        (g) => g.id == groupId,
       );
       if (grpIdx != -1) {
         final grp = _categoryGroups[grpIdx];
+        int? transitionGeneration;
         setState(() {
           _listTopOrder.remove(cat.id);
           _categoryGroups[grpIdx] = grp.copyWith(
             memberIds: [...grp.memberIds, cat.id],
           );
-          _expandedGroupIds.add(confirmedJoinGroupId);
-          _expandingGroupIds.add(confirmedJoinGroupId);
-          _collapsingGroupIds.remove(confirmedJoinGroupId);
+          transitionGeneration = _beginGroupExpansion(groupId);
         });
-        Future.delayed(const Duration(milliseconds: 60), () {
-          if (mounted)
-            setState(() => _expandingGroupIds.remove(confirmedJoinGroupId));
-        });
+        if (transitionGeneration != null) {
+          _scheduleGroupExpansionReveal(groupId, transitionGeneration!);
+        }
       }
       _saveCategories();
     } else {
@@ -10624,82 +10676,100 @@ class _CategoryCard extends StatelessWidget {
       archivingCategories.contains(cat) ||
       deletingCategories.contains(cat);
 
-  // ── Slot-height helpers ────────────────────────────────────────────────────
-
-  /// Height the AnimatedPositioned slot will occupy.
-  ///
-  /// The outer AnimatedContainer target height is the sum of each row's own
-  /// measured height, *excluding* collapsing members (they are going to zero)
-  /// but *including* expanding members (they are going to full height). That makes the outer
-  /// card grow/shrink in sync with the inner row animations.
-  ///
-  /// Group headers are never affected by accordion lifecycle sets.
-  double _slotTargetH(_FlatItem item, BuildContext context) {
-    // Category lifecycle animation (remove / archive / delete / new pop-in).
-    final cat = item.category;
-    if (cat != null && _isCatCollapsed(cat)) return 0.0;
-
-    // Accordion collapse: member is shrinking to zero.
-    if (item.isGroupMember &&
-        item.groupId != null &&
-        collapsingGroupIds.contains(item.groupId)) {
-      return 0.0;
-    }
-
-    return _eventsCategoryListRowHeight(
-      context,
-      item: item,
-      liveEventCounts: liveEventCounts,
-    );
-  }
-
-  /// Height used by AnimatedPositioned for the current slot.
-  ///
-  /// Identical to [_slotTargetH] except that expanding members start at 0 and
-  /// grow to their own measured height when [expandingGroupIds] is cleared — the outer card
-  /// already has the full expanded height as its target so the clip reveals
-  /// the member rows as they animate upward.
-  double _slotCurrentH(_FlatItem item, BuildContext context) {
-    if (_slotTargetH(item, context) == 0.0) return 0.0;
-    // Expanding members: slot starts collapsed; outer card already at full
-    // target height, so the card stays still while the slots grow into it.
-    if (item.isGroupMember &&
-        item.groupId != null &&
-        expandingGroupIds.contains(item.groupId)) {
-      return 0.0;
-    }
-    return _eventsCategoryListRowHeight(
-      context,
-      item: item,
-      liveEventCounts: liveEventCounts,
-    );
-  }
-
-  /// Whether the isFirst/isLast corner flags should treat this slot as hidden
-  /// (accordion members mid-transition, or lifecycle-collapsed rows).
-  bool _isSlotHidden(_FlatItem item, BuildContext context) =>
-      _slotCurrentH(item, context) == 0.0;
-
-  // Top-Y of slot [idx], accounting for rows above it that are mid-collapse.
-  double _slotTopY(int idx, BuildContext context) {
-    var y = 0.0;
-    for (var i = 0; i < idx; i++) {
-      y += _slotCurrentH(items[i], context) + _kRowGap;
-    }
-    return y;
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Target height: every slot that will be at full height after the current
-    // animation finishes. Each slot contributes its own measured height.
-    // Lifecycle-collapsed and collapsing-accordion rows are excluded;
-    // expanding-accordion rows are included because they animate *into* the
-    // space the outer container is already opening.
-    final totalH = items.fold<double>(
-      0.0,
-      (h, item) => h + _slotTargetH(item, context),
+    // Measure each row once per build. Recomputing TextPainter-based row
+    // geometry inside every slot's prefix/visibility scan made opening a
+    // second group increasingly expensive and could consume the animation's
+    // first frames.
+    final rowHeights = List<double>.generate(
+      items.length,
+      (index) => _eventsCategoryListRowHeight(
+        context,
+        item: items[index],
+        liveEventCounts: liveEventCounts,
+      ),
+      growable: false,
     );
+    final targetHeights = List<double>.generate(items.length, (index) {
+      final item = items[index];
+      final category = item.category;
+      if (category != null && _isCatCollapsed(category)) return 0.0;
+      if (item.isGroupMember &&
+          item.groupId != null &&
+          collapsingGroupIds.contains(item.groupId)) {
+        return 0.0;
+      }
+      return rowHeights[index];
+    }, growable: false);
+    final slotHeights = List<double>.generate(items.length, (index) {
+      final item = items[index];
+      if (targetHeights[index] == 0.0) return 0.0;
+      if (item.isGroupMember &&
+          item.groupId != null &&
+          expandingGroupIds.contains(item.groupId)) {
+        return 0.0;
+      }
+      return targetHeights[index];
+    }, growable: false);
+    final slotTopYs = List<double>.filled(items.length, 0.0);
+    for (var index = 1; index < items.length; index++) {
+      slotTopYs[index] =
+          slotTopYs[index - 1] + slotHeights[index - 1] + _kRowGap;
+    }
+
+    final visibleIndices = <int>[];
+    final visiblePositionByIndex = List<int>.filled(items.length, -1);
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      final isDraggingPlaceholder =
+          item.isCategory && item.category == draggingCat;
+      if (slotHeights[index] > 0 || isDraggingPlaceholder) {
+        visiblePositionByIndex[index] = visibleIndices.length;
+        visibleIndices.add(index);
+      }
+    }
+    final totalH = targetHeights.fold<double>(
+      0.0,
+      (height, row) => height + row,
+    );
+
+    Widget buildSlot(int index) {
+      final item = items[index];
+      final visiblePosition = visiblePositionByIndex[index];
+      final previousVisibleItem = visiblePosition > 0
+          ? items[visibleIndices[visiblePosition - 1]]
+          : null;
+      final isDragging =
+          (item.isCategory && item.category == draggingCat) ||
+          (item.isGroupHeader &&
+              item.group != null &&
+              item.group!.id == draggingGroup?.id);
+      final hasGapAbove =
+          previousVisibleItem != null &&
+          ((previousVisibleItem.isCategory &&
+                  previousVisibleItem.category == draggingCat) ||
+              (previousVisibleItem.isGroupHeader &&
+                  previousVisibleItem.group?.id == draggingGroup?.id));
+
+      return _buildSlot(
+        item,
+        context,
+        topY: isDragging && dragLocalTopY != null
+            ? dragLocalTopY!
+            : slotTopYs[index],
+        itemHeight: rowHeights[index],
+        slotH: isDragging ? rowHeights[index] : slotHeights[index],
+        isSlotHidden: slotHeights[index] == 0.0,
+        stadium: visibleIndices.length == 1,
+        isFirst: visiblePosition == 0,
+        isLast:
+            visiblePosition >= 0 &&
+            visiblePosition == visibleIndices.length - 1,
+        hasGapAbove: hasGapAbove,
+      );
+    }
+
     final resolvedSurface = resolveThemeColor(kSbSurface, context);
     final resolvedShadows = resolveThemeShadows(kCardShadow, context);
     // The outer CATEGORIES surface uses a single stable bounded-squircle shape.
@@ -10725,23 +10795,34 @@ class _CategoryCard extends StatelessWidget {
             if (!(items[i].isCategory && items[i].category == draggingCat) &&
                 !(items[i].isGroupHeader &&
                     items[i].group?.id == draggingGroup?.id))
-              _buildSlot(items[i], i, context),
+              buildSlot(i),
           // ── Dragging slots — invisible placeholders rendered last ────────
           // Move the null-guard into the for-loop condition to avoid
           // 3-level if->for->if collection nesting (Dart 3.9 compat).
           for (int i = 0; draggingCat != null && i < items.length; i++)
             if (items[i].isCategory && items[i].category == draggingCat)
-              _buildSlot(items[i], i, context),
+              buildSlot(i),
           for (int i = 0; draggingGroup != null && i < items.length; i++)
             if (items[i].isGroupHeader &&
                 items[i].group?.id == draggingGroup!.id)
-              _buildSlot(items[i], i, context),
+              buildSlot(i),
         ],
       ),
     );
   }
 
-  Widget _buildSlot(_FlatItem item, int idx, BuildContext context) {
+  Widget _buildSlot(
+    _FlatItem item,
+    BuildContext context, {
+    required double topY,
+    required double itemHeight,
+    required double slotH,
+    required bool isSlotHidden,
+    required bool stadium,
+    required bool isFirst,
+    required bool isLast,
+    required bool hasGapAbove,
+  }) {
     final cat = item.category;
     final group = item.group;
     final isDragging =
@@ -10751,42 +10832,6 @@ class _CategoryCard extends StatelessWidget {
     final isArchiving = cat != null && archivingCategories.contains(cat);
     final isDeleting = cat != null && deletingCategories.contains(cat);
     final isGroupTarget = cat != null && cat == dragGroupTargetCat;
-
-    final topY =
-        isDragging && dragLocalTopY != null
-            ? dragLocalTopY!
-            : _slotTopY(idx, context);
-
-    final itemHeight = _eventsCategoryListRowHeight(
-      context,
-      item: item,
-      liveEventCounts: liveEventCounts,
-    );
-    // Dragging row always occupies its own full slot so the gap stays visible.
-    final slotH = isDragging ? itemHeight : _slotCurrentH(item, context);
-
-    // Determine position within the shared card for corner radii / divider.
-    // Accordion-transitioning members and lifecycle-collapsed rows are hidden;
-    // the dragging placeholder is always treated as visible so neighbours keep
-    // their correct isFirst/isLast assignment during the drag.
-    final visibleItems =
-        items
-            .where(
-              (it) =>
-                  !_isSlotHidden(it, context) ||
-                  (it.isCategory && it.category == draggingCat),
-            )
-            .toList();
-    final visIdx = visibleItems.indexOf(item);
-    final isFirst = visIdx == 0;
-    final isLast = visIdx == visibleItems.length - 1;
-    final stadium = visibleItems.length == 1;
-    final prevItem = visIdx > 0 ? visibleItems[visIdx - 1] : null;
-    final hasGapAbove =
-        prevItem != null &&
-        ((prevItem.isCategory && prevItem.category == draggingCat) ||
-            (prevItem.isGroupHeader &&
-                prevItem.group?.id == draggingGroup?.id));
 
     // Build the appropriate row widget for this slot.
     Widget row;
@@ -10865,7 +10910,7 @@ class _CategoryCard extends StatelessWidget {
     } else {
       Widget content = AnimatedOpacity(
         duration: const Duration(milliseconds: 200),
-        opacity: _isSlotHidden(item, context) ? 0.0 : 1.0,
+        opacity: isSlotHidden ? 0.0 : 1.0,
         child: AnimatedScale(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeInCubic,
