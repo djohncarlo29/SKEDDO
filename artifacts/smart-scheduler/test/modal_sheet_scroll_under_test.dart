@@ -593,6 +593,7 @@ void main() {
       await tester.pump();
 
       expect(scrollController.position.maxScrollExtent, 0);
+      final routePosition = scrollController.position;
       final headerFinder = find.text('New Group');
       final headerTopBefore = tester.getTopLeft(headerFinder).dy;
       final cardTopBefore = tester

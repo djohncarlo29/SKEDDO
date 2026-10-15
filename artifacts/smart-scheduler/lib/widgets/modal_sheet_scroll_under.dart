@@ -118,8 +118,10 @@ class ModalSheetScrollUnder extends StatefulWidget {
 class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   static const double _topBlurSigmaScale = 0.85;
 
-  double _topProgress = 0;
-  double _bottomProgress = 0;
+  static const double _inactiveBlurSigma = 0.001;
+
+  final ValueNotifier<({double top, double bottom})> _edgeProgress =
+      ValueNotifier((top: 0, bottom: 0));
   Animation<double>? _parentRouteSecondaryAnimation;
   bool _parentRouteIsCovered = false;
 
@@ -168,6 +170,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     _parentRouteSecondaryAnimation?.removeStatusListener(
       _handleParentRouteAnimationStatus,
     );
+    _edgeProgress.dispose();
     super.dispose();
   }
 
@@ -232,28 +235,24 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
       final shortContentTopPull = widget.showTopEdgeOnShortContentRubberband
           ? _shortContentPull(metrics, distance)
           : 0.0;
-      if ((shortContentTopPull - _topProgress).abs() < 0.01 &&
-          _bottomProgress == 0) {
+      final currentProgress = _edgeProgress.value;
+      if ((shortContentTopPull - currentProgress.top).abs() < 0.01 &&
+          currentProgress.bottom == 0) {
         return;
       }
-      setState(() {
-        _topProgress = shortContentTopPull;
-        _bottomProgress = 0;
-      });
+      _edgeProgress.value = (top: shortContentTopPull, bottom: 0);
       return;
     }
 
     final distance = _activationDistance;
     final nextTop = (metrics.pixels / distance).clamp(0.0, 1.0).toDouble();
     final nextBottom = _bottomProgressForMetrics(metrics, distance);
-    if ((nextTop - _topProgress).abs() < 0.01 &&
-        (nextBottom - _bottomProgress).abs() < 0.01) {
+    final currentProgress = _edgeProgress.value;
+    if ((nextTop - currentProgress.top).abs() < 0.01 &&
+        (nextBottom - currentProgress.bottom).abs() < 0.01) {
       return;
     }
-    setState(() {
-      _topProgress = nextTop;
-      _bottomProgress = nextBottom;
-    });
+    _edgeProgress.value = (top: nextTop, bottom: nextBottom);
   }
 
   double _shortContentPull(ScrollMetrics metrics, double distance) {
@@ -300,10 +299,15 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
         (widget.maxSurfaceOpacity * progress * widget.surfaceColor.a)
             .clamp(0.0, 1.0)
             .toDouble();
+    final requestedBlur =
+        widget.maxBlurSigma * (atTop ? _topBlurSigmaScale : 1) * progress;
     return LiquidGlassScrollEdge(
       edge: atTop ? LiquidGlassEdge.top : LiquidGlassEdge.bottom,
       color: widget.surfaceColor.withValues(alpha: opacity),
-      blur: widget.maxBlurSigma * (atTop ? _topBlurSigmaScale : 1) * progress,
+      // Keep LiquidGlassScrollEdge's render-tree shape stable at rest. The
+      // effect itself is hidden then, and this near-zero sigma prevents an
+      // inactive blur from changing scroll viewport layout during a pull.
+      blur: requestedBlur > 0 ? requestedBlur : _inactiveBlurSigma,
     );
   }
 
@@ -311,8 +315,6 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   Widget build(BuildContext context) {
     final scrollable = widget.scrollBuilder(context, _scrollPadding);
     final hasFooter = widget.footer != null && widget.footerHeight > 0;
-    final hasTopEdge = _topProgress > 0.01;
-    final hasBottomEdge = hasFooter && _bottomProgress > 0.01;
 
     return NotificationListener<ScrollMetricsNotification>(
       onNotification: _onMetricsNotification,
@@ -326,43 +328,56 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
               Positioned.fill(child: scrollable)
             else
               scrollable,
-            if (hasTopEdge || hasBottomEdge)
-              Positioned.fill(
-                // Clip only the effect layer. Keeping the scroller outside
-                // this clip preserves the backdrop content for Android's
-                // BackdropFilter while still masking the transparent corners.
-                child: ClipPath(
-                  clipper: ShapeBorderClipper(shape: widget.edgeClipShape),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    clipBehavior: Clip.none,
-                    children: [
-                      if (hasTopEdge)
+            Positioned.fill(
+              // Keep the overlay's position fixed so progress updates never
+              // relayout the ScrollView while it is being rubberbanded.
+              child: IgnorePointer(
+                child: ValueListenableBuilder<
+                  ({double top, double bottom})
+                >(
+                  valueListenable: _edgeProgress,
+                  builder: (context, progress, _) => ClipPath(
+                    // Clip only the effect layer. Keeping the scroller outside
+                    // this clip preserves the backdrop content for Android's
+                    // BackdropFilter while masking transparent corners.
+                    clipper: ShapeBorderClipper(shape: widget.edgeClipShape),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      clipBehavior: Clip.none,
+                      children: [
                         Positioned(
                           top: kModalSheetScrollEdgeTopOffset,
                           left: 0,
                           right: 0,
                           height: _topFadeExtent,
-                          child: _buildEdgeEffect(
-                            atTop: true,
-                            progress: _topProgress,
+                          child: Offstage(
+                            offstage: progress.top <= 0.01,
+                            child: _buildEdgeEffect(
+                              atTop: true,
+                              progress: progress.top,
+                            ),
                           ),
                         ),
-                      if (hasBottomEdge)
-                        Positioned(
-                          bottom: widget.footerBottomInset,
-                          left: 0,
-                          right: 0,
-                          height: widget.footerHeight + widget.edgeExtent,
-                          child: _buildEdgeEffect(
-                            atTop: false,
-                            progress: _bottomProgress,
+                        if (hasFooter)
+                          Positioned(
+                            bottom: widget.footerBottomInset,
+                            left: 0,
+                            right: 0,
+                            height: widget.footerHeight + widget.edgeExtent,
+                            child: Offstage(
+                              offstage: progress.bottom <= 0.01,
+                              child: _buildEdgeEffect(
+                                atTop: false,
+                                progress: progress.bottom,
+                              ),
+                            ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
+            ),
             Positioned(
               top: widget.headerTopInset,
               left: 0,
