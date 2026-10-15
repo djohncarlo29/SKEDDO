@@ -202,7 +202,7 @@ const double kGelBloomIconWeight = 0.4;
 const kLiquidGlassHairlineColor = Color(0x26FFFFFF);
 // Light-mode non-checkmark action buttons use their own soft fill and bright
 // inner rim; keep these separate from the package's existing glass hairline.
-const kLiquidGlassButtonLightSurface = Color(0xFFFAFAFA);
+const kLiquidGlassButtonLightSurface = Color(0xFFFDFDFD);
 const kLiquidGlassButtonLightRim = Color(0xFFFFFFFF);
 const kLiquidGlassButtonLightContourColor = Color(0x263C3C43);
 
@@ -3105,11 +3105,9 @@ class _StaticLiquidGlassOutlinePainter extends CustomPainter {
 class _LiquidGlassButtonEdgePainter extends CustomPainter {
   const _LiquidGlassButtonEdgePainter({
     required this.contourColor,
-    required this.drawWhiteRim,
   });
 
   final Color contourColor;
-  final bool drawWhiteRim;
 
   static const double _whiteRimWidth = 1.15;
   static const double _maximumContourWidth = 1.3;
@@ -3168,17 +3166,15 @@ class _LiquidGlassButtonEdgePainter extends CustomPainter {
     final radius = math.min(size.width, size.height) / 2;
     final center = Offset(size.width / 2, size.height / 2);
 
-    if (drawWhiteRim) {
-      canvas.drawCircle(
-        center,
-        radius - _whiteRimWidth / 2,
-        Paint()
-          ..color = kLiquidGlassButtonLightRim
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = _whiteRimWidth
-          ..isAntiAlias = true,
-      );
-    }
+    canvas.drawCircle(
+      center,
+      radius - _whiteRimWidth / 2,
+      Paint()
+        ..color = kLiquidGlassButtonLightRim
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _whiteRimWidth
+        ..isAntiAlias = true,
+    );
 
     canvas.drawPath(
       _contourPath(center, radius),
@@ -3191,8 +3187,7 @@ class _LiquidGlassButtonEdgePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _LiquidGlassButtonEdgePainter oldDelegate) =>
-      oldDelegate.contourColor != contourColor ||
-      oldDelegate.drawWhiteRim != drawWhiteRim;
+      oldDelegate.contourColor != contourColor;
 }
 
 class _GelBloomButtonState extends State<GelBloomButton>
@@ -3281,7 +3276,8 @@ class _GelBloomButtonState extends State<GelBloomButton>
     LiquidGlassGelCircle circle,
     Widget child,
   ) {
-    if (CupertinoTheme.brightnessOf(context) != Brightness.light) {
+    if (CupertinoTheme.brightnessOf(context) != Brightness.light ||
+        circle.isCheckmark) {
       return child;
     }
 
@@ -3294,7 +3290,6 @@ class _GelBloomButtonState extends State<GelBloomButton>
             child: CustomPaint(
               painter: _LiquidGlassButtonEdgePainter(
                 contourColor: kLiquidGlassButtonLightContourColor,
-                drawWhiteRim: !circle.isCheckmark,
               ),
             ),
           ),

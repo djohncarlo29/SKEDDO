@@ -7,7 +7,7 @@ The search cancel control must retain a stable GlobalKey when the search row mov
 
 **Why:** Moving the row can otherwise remount the LiquidGlassView at the exact moment an overlay or sheet is changing occlusion, causing the cached capture and optical rim to render incorrectly. A separate surface implementation also diverges from the user's requirement that search cancel match the shared LiquidGlassButton behavior in Light and Dark Modes.
 
-**How to apply:** Give each independent search surface its own stable key, build the cancel circle with `StaticLiquidGlassActionButton`, and use an overflow-safe scale reveal rather than constraining or rectangular-clipping the lens itself. Preserve the established delayed cancel callback and let the shared action button own its bloom and appearance-specific rim. Its Light Mode fill is `#FAFAFA`, with a dedicated 15%-opacity contour color; do not reuse `kTertiaryLabel`.
+**How to apply:** Give each independent search surface its own stable key, build the cancel circle with `StaticLiquidGlassActionButton`, and use an overflow-safe scale reveal rather than constraining or rectangular-clipping the lens itself. Preserve the established delayed cancel callback and let the shared action button own its bloom and appearance-specific rim. Its Light Mode fill is `#FDFDFD`, with a dedicated 15%-opacity contour color; do not reuse `kTertiaryLabel`. Keep the cancel X centered in the circle.
 
 Regular static surfaces should remain solid by default; controls that need the native lens must opt in explicitly and independently from `showOpticalBorder`.
 
