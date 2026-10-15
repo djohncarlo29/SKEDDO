@@ -3153,18 +3153,49 @@ class _GelBloomButtonState extends State<GelBloomButton>
         animation: _scale,
         builder: (context, child) =>
             Transform.scale(scale: _scale.value, child: child),
-        child: SizedBox.square(
-          dimension: circle.size,
-          child: DecoratedBox(
-            decoration: ShapeDecoration(
-              color: surfaceColor,
-              shape: const CircleBorder(),
-              shadows: cardShadows,
+        child: _withLightModeButtonEdges(
+          context,
+          circle,
+          SizedBox.square(
+            dimension: circle.size,
+            child: DecoratedBox(
+              decoration: ShapeDecoration(
+                color: surfaceColor,
+                shape: const CircleBorder(),
+                shadows: cardShadows,
+              ),
+              child: Center(child: circle.child),
             ),
-            child: Center(child: circle.child),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _withLightModeButtonEdges(
+    BuildContext context,
+    LiquidGlassGelCircle circle,
+    Widget child,
+  ) {
+    if (CupertinoTheme.brightnessOf(context) != Brightness.light) {
+      return child;
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        child,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: CustomPaint(
+              painter: _LiquidGlassButtonEdgePainter(
+                contourColor: resolveThemeColor(kTertiaryLabel, context),
+                drawWhiteRim: !circle.isCheckmark,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -3179,7 +3210,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
     // meaningful.
     final surfaceColor = circle.isCheckmark || !isLightMode
         ? circle.color
-        : const Color(0xFFFFFFFF);
+        : const Color(0xFFF5F5F5);
     if (!staticLiquidGlassSupported(override: circle.useLiquidGlass)) {
       return _buildSolidCircleFallback(context, circle, surfaceColor);
     }
@@ -3190,6 +3221,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
       glassColor: glassColor,
       cornerRadius: circle.size / 2,
     );
+    final keepExistingRim = circle.isCheckmark || !isLightMode;
 
     final glass = ClipOval(
           child: SizedBox.square(
@@ -3203,10 +3235,16 @@ class _GelBloomButtonState extends State<GelBloomButton>
               // rim light: it is a stable, white 15% hairline around the
               // complete button silhouette in both appearances.
               position: DecorationPosition.foreground,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.fromBorderSide(
-                  BorderSide(color: kLiquidGlassHairlineColor, width: 0.5),
+                border: keepExistingRim
+                    ? const Border.fromBorderSide(
+                        BorderSide(
+                          color: kLiquidGlassHairlineColor,
+                          width: 0.5,
+                        ),
+                      )
+                    : null,
                 ),
               ),
               child: LiquidGlassView(
@@ -3251,6 +3289,11 @@ class _GelBloomButtonState extends State<GelBloomButton>
             ),
           ),
         );
+    final glassWithEdges = _withLightModeButtonEdges(
+      context,
+      circle,
+      glass,
+    );
     final cardShadows = circle.showShadow
         ? resolveThemeShadows(kCardShadow, context)
         : const <BoxShadow>[];
@@ -3266,7 +3309,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
           shape: const CircleBorder(),
           shadows: cardShadows,
         ),
-        child: glass,
+        child: glassWithEdges,
       ),
     );
   }
