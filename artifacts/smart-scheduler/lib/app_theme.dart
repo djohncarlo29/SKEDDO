@@ -351,6 +351,16 @@ const List<BoxShadow> kCardShadow = [
   BoxShadow(color: kCardShadowColor, blurRadius: 10, offset: Offset(0, 2)),
 ];
 
+// Full-open GelBloomCard shadow used by circular LiquidGlass action buttons.
+// 0x42 is approximately 26% opacity, with the modal-card blur and offset.
+const List<BoxShadow> kLiquidGlassActionButtonShadow = [
+  BoxShadow(
+    color: Color(0x42000000),
+    blurRadius: 28,
+    offset: Offset(0, 8),
+  ),
+];
+
 // ── iOS Human Interface Guidelines label colours ───────────────────────────────
 const kSecondaryLabel = CupertinoDynamicColor.withBrightness(
   color: Color(0x993C3C43),
@@ -3302,14 +3312,20 @@ class _GelBloomButtonState extends State<GelBloomButton>
 
   void _bloom() => _ctrl.forward(from: 0.0);
 
+  List<BoxShadow> _buttonShadows(
+    BuildContext context,
+    bool showShadow,
+  ) {
+    if (!showShadow) return const <BoxShadow>[];
+    return resolveThemeShadows(kLiquidGlassActionButtonShadow, context);
+  }
+
   Widget _buildSolidCircleFallback(
     BuildContext context,
     LiquidGlassGelCircle circle,
     Color surfaceColor,
   ) {
-    final cardShadows = circle.showShadow
-        ? resolveThemeShadows(kCardShadow, context)
-        : const <BoxShadow>[];
+    final cardShadows = _buttonShadows(context, circle.showShadow);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
@@ -3471,9 +3487,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
       circle,
       glass,
     );
-    final cardShadows = circle.showShadow
-        ? resolveThemeShadows(kCardShadow, context)
-        : const <BoxShadow>[];
+    final cardShadows = _buttonShadows(context, circle.showShadow);
     return AnimatedBuilder(
       animation: _scale,
       builder: (context, child) =>
