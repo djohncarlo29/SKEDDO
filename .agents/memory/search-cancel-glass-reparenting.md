@@ -9,11 +9,11 @@ The search cancel control must retain a stable GlobalKey when the search row mov
 
 **How to apply:** Give each independent search surface its own stable key, build the cancel circle with `StaticLiquidGlassActionButton`, and use an overflow-safe scale reveal rather than constraining or rectangular-clipping the lens itself. Preserve the established delayed cancel callback and let the shared action button own its bloom and appearance-specific rim. Its Light Mode fill is `#FDFDFD`, with a dedicated 15%-opacity contour color; do not reuse `kTertiaryLabel`. Keep the cancel X horizontally centered and 0.5 px above the circle’s center.
 
-Light Mode checkmark buttons preserve their current active/inactive fill colors but share the same thin white rim and tapered 15%-opacity contour as other circular action buttons. Dark Mode remains unchanged.
+Light Mode checkmark buttons preserve their current LiquidGlassButton interior and active/inactive fill colors. Their 30%-opacity white rim is painted above that fill so its color shows through; the tapered 15%-opacity contour stays behind/outside the fill and cannot cover the rim. Dark Mode remains unchanged.
 
-**Why:** The requested Light Mode edge treatment is shared across all LiquidGlassButton variants, while the checkmark fill remains semantically tied to its active state.
+**Why:** The checkmark rim needs to blend optically with its active/inactive fill without flattening the liquid-glass interior or hiding the rim beneath the outer contour.
 
-**How to apply:** Apply the Light Mode edge painter to checkmarks too; retain their `circle.color` surface and glass treatment. Keep the existing Dark Mode outline and appearance path unchanged.
+**How to apply:** Keep checkmarks on the existing LiquidGlassLens path and retain their `circle.color` surface. Paint the contour behind the button, then the 30%-white rim above it. Keep the existing Dark Mode outline and appearance path unchanged.
 
 Regular static surfaces should remain solid by default; controls that need the native lens must opt in explicitly and independently from `showOpticalBorder`.
 
