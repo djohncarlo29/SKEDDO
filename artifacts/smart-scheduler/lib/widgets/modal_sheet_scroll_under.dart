@@ -322,7 +322,9 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
         onNotification: _onScrollNotification,
         child: Stack(
           fit: widget.expandViewport ? StackFit.expand : StackFit.loose,
-          clipBehavior: Clip.hardEdge,
+          // Let card decorations paint their shadows beyond the scroll
+          // viewport. The rounded sheet route remains the outer visual clip.
+          clipBehavior: Clip.none,
           children: [
             if (widget.expandViewport)
               Positioned.fill(child: scrollable)

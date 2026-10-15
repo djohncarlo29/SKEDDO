@@ -154,3 +154,4 @@
 - [Live slider persistence](live-slider-persistence.md) — persist on gesture completion even when live preview state already equals the snapped value.
 - [Calendar landscape safe-area insets](calendar-landscape-header-inset.md) — inset Year, Month, and Day content inside full-width panels; preserve bleed lines through Month↔Day transitions.
 - [Landscape current-time positioning](calendar-landscape-time-indicator-position.md) — center the Day timeline within usable height above the tab bar; preserve the portrait starting offset.
+- [Modal card shadow overflow](modal-card-shadow-overflow.md) — let modal card shadows overflow the scroll viewport and sheet wrapper; keep the rounded route clip as the outer sheet boundary.

@@ -2117,6 +2117,7 @@ class _ExtractionResultSheetState extends State<_ExtractionResultSheet> {
               scrollBuilder: (context, scrollPadding) => ListView.separated(
                 shrinkWrap: true,
                 primary: false,
+                clipBehavior: Clip.none,
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),

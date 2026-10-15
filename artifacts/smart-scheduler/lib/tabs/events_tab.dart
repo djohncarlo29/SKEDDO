@@ -13092,6 +13092,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                   child: SingleChildScrollView(
                     controller: _sheetScrollCtrl,
                     primary: false,
+                    clipBehavior: Clip.none,
                     physics: const BouncingScrollPhysics(
                       parent: AlwaysScrollableScrollPhysics(),
                     ),
@@ -16398,6 +16399,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                   child: SingleChildScrollView(
                     controller: _sheetScrollCtrl,
                     primary: false,
+                    clipBehavior: Clip.none,
                     physics: const AlwaysScrollableScrollPhysics(
                       parent: BouncingScrollPhysics(),
                     ),
@@ -18032,6 +18034,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
                 key: _scrollViewportKey,
                 controller: _scrollController,
                 primary: false,
+                clipBehavior: Clip.none,
                 // Keep the short-list state rubberbandable too.
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
@@ -22641,6 +22644,7 @@ class _CustomRepeatSheetState extends State<_CustomRepeatSheet>
               ),
             ),
           scrollBuilder: (context, scrollPadding) => ListView(
+                clipBehavior: Clip.none,
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),

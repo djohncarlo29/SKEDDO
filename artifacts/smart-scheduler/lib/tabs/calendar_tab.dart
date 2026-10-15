@@ -13980,6 +13980,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                     onTap: _dismissModalSheetFocus,
                     child: SingleChildScrollView(
                       controller: _sheetScrollCtrl,
+                      clipBehavior: Clip.none,
                       // This sheet owns its scroll position. Without this,
                       // it can inherit the calendar's primary controller and
                       // open at the calendar's old offset, leaving only the
@@ -15481,6 +15482,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
               ),
             ),
           scrollBuilder: (context, scrollPadding) => ListView(
+                clipBehavior: Clip.none,
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),

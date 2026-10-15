@@ -1568,6 +1568,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
           ),
       // ── Card: grid (row 1) + separator + category strip (row 2) ─────
         scrollBuilder: (context, scrollPadding) => CustomScrollView(
+              clipBehavior: Clip.none,
               physics: const BouncingScrollPhysics(
                 parent: AlwaysScrollableScrollPhysics(),
               ),
