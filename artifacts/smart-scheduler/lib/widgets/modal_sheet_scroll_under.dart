@@ -11,6 +11,12 @@ import '../app_theme.dart'
 /// independently of the inset used to position its header.
 const double kModalSheetScrollEdgeTopOffset = 0;
 
+typedef _ModalSheetEdgeProgress = ({
+  double top,
+  double bottom,
+  int renderRevision,
+});
+
 /// Places a sheet's scrolling content behind its fixed header and, optionally,
 /// footer while keeping the original at-rest content positions.
 ///
@@ -115,19 +121,25 @@ class ModalSheetScrollUnder extends StatefulWidget {
   State<ModalSheetScrollUnder> createState() => _ModalSheetScrollUnderState();
 }
 
-class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
+class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder>
+    with WidgetsBindingObserver {
   static const double _topBlurSigmaScale = 0.85;
 
   static const double _inactiveBlurSigma = 0.001;
 
-  final ValueNotifier<({double top, double bottom})> _edgeProgress =
-      ValueNotifier((top: 0, bottom: 0));
+  final ValueNotifier<_ModalSheetEdgeProgress> _edgeProgress = ValueNotifier((
+    top: 0,
+    bottom: 0,
+    renderRevision: 0,
+  ));
   Animation<double>? _parentRouteSecondaryAnimation;
   bool _parentRouteIsCovered = false;
+  bool _metricsRefreshScheduled = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.scrollController?.addListener(_handleScrollControllerChanged);
     _scheduleScrollControllerSync();
   }
@@ -166,6 +178,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     widget.scrollController?.removeListener(_handleScrollControllerChanged);
     _parentRouteSecondaryAnimation?.removeStatusListener(
       _handleParentRouteAnimationStatus,
@@ -175,8 +188,36 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
   }
 
   void _scheduleScrollControllerSync() {
+    if (widget.scrollController == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _syncFromScrollController();
+      if (!mounted || _syncFromScrollController()) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncFromScrollController();
+      });
+    });
+  }
+
+  @override
+  void didChangeMetrics() {
+    if (_metricsRefreshScheduled) return;
+    _metricsRefreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _metricsRefreshScheduled = false;
+      if (!mounted) return;
+
+      // Orientation changes can resize the scroll viewport without producing
+      // a useful scroll notification. Read its newly laid-out metrics and
+      // refresh the backdrop-filter layer even if progress itself is unchanged.
+      final synced = _syncFromScrollController();
+      final current = _edgeProgress.value;
+      _edgeProgress.value = (
+        top: current.top,
+        bottom: current.bottom,
+        renderRevision: current.renderRevision + 1,
+      );
+      if (!synced && widget.scrollController != null) {
+        _scheduleScrollControllerSync();
+      }
     });
   }
 
@@ -240,7 +281,11 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
           currentProgress.bottom == 0) {
         return;
       }
-      _edgeProgress.value = (top: shortContentTopPull, bottom: 0);
+      _edgeProgress.value = (
+        top: shortContentTopPull,
+        bottom: 0,
+        renderRevision: currentProgress.renderRevision,
+      );
       return;
     }
 
@@ -252,7 +297,11 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
         (nextBottom - currentProgress.bottom).abs() < 0.01) {
       return;
     }
-    _edgeProgress.value = (top: nextTop, bottom: nextBottom);
+    _edgeProgress.value = (
+      top: nextTop,
+      bottom: nextBottom,
+      renderRevision: currentProgress.renderRevision,
+    );
   }
 
   double _shortContentPull(ScrollMetrics metrics, double distance) {
@@ -272,12 +321,13 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     return ((metrics.pixels - start) / distance).clamp(0.0, 1.0).toDouble();
   }
 
-  void _syncFromScrollController() {
+  bool _syncFromScrollController() {
     final controller = widget.scrollController;
-    if (controller == null || controller.positions.length != 1) return;
+    if (controller == null || controller.positions.length != 1) return false;
     final position = controller.position;
-    if (!position.hasContentDimensions) return;
+    if (!position.hasContentDimensions) return false;
     _syncScrollMetrics(position);
+    return true;
   }
 
   void _handleScrollControllerChanged() {
@@ -302,6 +352,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     final requestedBlur =
         widget.maxBlurSigma * (atTop ? _topBlurSigmaScale : 1) * progress;
     return LiquidGlassScrollEdge(
+      key: ValueKey<Object>((atTop, _edgeProgress.value.renderRevision)),
       edge: atTop ? LiquidGlassEdge.top : LiquidGlassEdge.bottom,
       color: widget.surfaceColor.withValues(alpha: opacity),
       // Keep LiquidGlassScrollEdge's render-tree shape stable at rest. The
@@ -334,9 +385,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
               // Keep the overlay's position fixed so progress updates never
               // relayout the ScrollView while it is being rubberbanded.
               child: IgnorePointer(
-                child: ValueListenableBuilder<
-                  ({double top, double bottom})
-                >(
+                child: ValueListenableBuilder<_ModalSheetEdgeProgress>(
                   valueListenable: _edgeProgress,
                   builder: (context, progress, _) => ClipPath(
                     // Clip only the effect layer. Keeping the scroller outside
