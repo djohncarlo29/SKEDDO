@@ -200,6 +200,10 @@ const double kGelBloomIconWeight = 0.4;
 // Shared 0.5 px white hairline used by liquid-glass action controls.
 // 0x26 is 38/255, or approximately 15% opacity.
 const kLiquidGlassHairlineColor = Color(0x26FFFFFF);
+// Light-mode non-checkmark action buttons use their own soft fill and bright
+// inner rim; keep these separate from the package's existing glass hairline.
+const kLiquidGlassButtonLightSurface = Color(0xFFF5F5F5);
+const kLiquidGlassButtonLightRim = Color(0xFFFFFFFF);
 
 const kPreviewCardBackground = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFF9F9FB),
@@ -3091,6 +3095,105 @@ class _StaticLiquidGlassOutlinePainter extends CustomPainter {
       oldDelegate.shape != shape || oldDelegate.color != color;
 }
 
+/// Light-mode-only edge treatment shared by every circular glass action.
+///
+/// The white highlight sits just inside the glass silhouette. The tertiary
+/// contour grows smoothly outwards at the left/right midpoints, while remaining
+/// nearly a hairline at the top and bottom. The surrounding Stack is
+/// intentionally unclipped so the contour can sit outside the glass circle.
+class _LiquidGlassButtonEdgePainter extends CustomPainter {
+  const _LiquidGlassButtonEdgePainter({
+    required this.contourColor,
+    required this.drawWhiteRim,
+  });
+
+  final Color contourColor;
+  final bool drawWhiteRim;
+
+  static const double _whiteRimWidth = 1.15;
+  static const double _maximumContourWidth = 1.3;
+  static const double _minimumContourWidth = 0.12;
+  static const int _contourSegments = 256;
+
+  double _contourWidthAt(double angle) {
+    // The radial normal points directly left/right at 0 and π, and vertically
+    // at ±π/2. A smooth power curve keeps the top/bottom delicate and builds
+    // the contour gradually toward the side midpoints.
+    final sideStrength = math.pow(math.cos(angle).abs(), 2.2).toDouble();
+    return _minimumContourWidth +
+        (_maximumContourWidth - _minimumContourWidth) * sideStrength;
+  }
+
+  Path _contourPath(Offset center, double radius) {
+    final path = Path()..fillType = PathFillType.evenOdd;
+
+    for (var i = 0; i < _contourSegments; i++) {
+      final angle = math.pi * 2 * i / _contourSegments;
+      final outerRadius = radius + _contourWidthAt(angle);
+      final point = Offset(
+        center.dx + math.cos(angle) * outerRadius,
+        center.dy + math.sin(angle) * outerRadius,
+      );
+      if (i == 0) {
+        path.moveTo(point.dx, point.dy);
+      } else {
+        path.lineTo(point.dx, point.dy);
+      }
+    }
+    path.close();
+
+    // Extend the inner edge a fraction into the white highlight so the layers
+    // meet without a transparent seam, while leaving nearly all of that rim
+    // visible around the full circumference.
+    final innerRadius = radius - 0.05;
+    for (var i = _contourSegments - 1; i >= 0; i--) {
+      final angle = math.pi * 2 * i / _contourSegments;
+      final point = Offset(
+        center.dx + math.cos(angle) * innerRadius,
+        center.dy + math.sin(angle) * innerRadius,
+      );
+      if (i == _contourSegments - 1) {
+        path.moveTo(point.dx, point.dy);
+      } else {
+        path.lineTo(point.dx, point.dy);
+      }
+    }
+    path.close();
+    return path;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final radius = math.min(size.width, size.height) / 2;
+    final center = Offset(size.width / 2, size.height / 2);
+
+    if (drawWhiteRim) {
+      canvas.drawCircle(
+        center,
+        radius - _whiteRimWidth / 2,
+        Paint()
+          ..color = kLiquidGlassButtonLightRim
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = _whiteRimWidth
+          ..isAntiAlias = true,
+      );
+    }
+
+    canvas.drawPath(
+      _contourPath(center, radius),
+      Paint()
+        ..color = contourColor
+        ..style = PaintingStyle.fill
+        ..isAntiAlias = true,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _LiquidGlassButtonEdgePainter oldDelegate) =>
+      oldDelegate.contourColor != contourColor ||
+      oldDelegate.drawWhiteRim != drawWhiteRim;
+}
+
 class _GelBloomButtonState extends State<GelBloomButton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
@@ -3205,12 +3308,12 @@ class _GelBloomButtonState extends State<GelBloomButton>
   ) {
     final isLightMode =
         CupertinoTheme.brightnessOf(context) == Brightness.light;
-    // Close/back/search controls are white in Light Mode. Save buttons are
-    // deliberately excluded so accent and disabled checkmark surfaces remain
-    // meaningful.
+    // Non-checkmark controls use a soft grey Light Mode surface. Save buttons
+    // are deliberately excluded so active and disabled checkmark surfaces
+    // retain their existing colors and glass treatment.
     final surfaceColor = circle.isCheckmark || !isLightMode
         ? circle.color
-        : const Color(0xFFF5F5F5);
+        : kLiquidGlassButtonLightSurface;
     if (!staticLiquidGlassSupported(override: circle.useLiquidGlass)) {
       return _buildSolidCircleFallback(context, circle, surfaceColor);
     }
@@ -3223,72 +3326,59 @@ class _GelBloomButtonState extends State<GelBloomButton>
     );
     final keepExistingRim = circle.isCheckmark || !isLightMode;
 
+    final buttonContent = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        _bloom();
+        if (widget.tapDelay == Duration.zero) {
+          widget.onTap();
+        } else {
+          Future.delayed(widget.tapDelay, () {
+            if (mounted) widget.onTap();
+          });
+        }
+      },
+      child: Center(child: circle.child),
+    );
+    final glassLens = LiquidGlassLens(
+      style: style,
+      // The wrapper owns the same bloom as regular GelBloomButton. Avoid a
+      // second package flex animation changing the scale.
+      touch: const LiquidGlassTouch(),
+      child: buttonContent,
+    );
+    final glassView = LiquidGlassView(
+      // Recreate the one-shot backdrop when the surface color changes.
+      key: ValueKey<int>(surfaceColor.toARGB32()),
+      backgroundWidget: ClipOval(
+        child: ColoredBox(color: surfaceColor.withValues(alpha: 0.8)),
+      ),
+      realTimeCapture: false,
+      useSync: true,
+      useImpellerBackdrop: false,
+      child: glassLens,
+    );
     final glass = ClipOval(
-          child: SizedBox.square(
-            dimension: circle.size,
-            // Keep the package's real shader active when this control sits
-            // above an occluding route. The local view captures a stable
-            // backdrop once and the lens evaluates its optical rim against
-            // that cached image.
-            child: DecoratedBox(
-              // This is deliberately separate from the glass lens' optical
-              // rim light: it is a stable, white 15% hairline around the
-              // complete button silhouette in both appearances.
-              position: DecorationPosition.foreground,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: keepExistingRim
-                    ? const Border.fromBorderSide(
-                        BorderSide(
-                          color: kLiquidGlassHairlineColor,
-                          width: 0.5,
-                        ),
-                      )
-                    : null,
-                ),
-              ),
-              child: LiquidGlassView(
-                // This view keeps a one-shot backdrop capture for stable,
-                // inexpensive optical lighting. Recreate that capture when
-                // a category/checkmark surface changes color; otherwise the
-                // lens body updates while its rim still refracts the old
-                // color from the cached sheet backdrop.
-                key: ValueKey<int>(surfaceColor.toARGB32()),
-                // LiquidGlassView paints its capture surface as a rectangle.
-                // The backgroundWidget clip alone is not enough: the view/lens
-                // output can still expose that rectangular surface on Android.
-                // Clip the complete view so the gel remains circular.
-                backgroundWidget: ClipOval(
-                  child: ColoredBox(color: surfaceColor.withValues(alpha: 0.8)),
-                ),
-                realTimeCapture: false,
-                useSync: true,
-                useImpellerBackdrop: false,
-                child: LiquidGlassLens(
-                  style: style,
-                  // The wrapper owns the same bloom as regular GelBloomButton.
-                  // Avoid a second package flex animation changing the scale
-                  // and making this path look flatter or out of sync.
-                  touch: const LiquidGlassTouch(),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      _bloom();
-                      if (widget.tapDelay == Duration.zero) {
-                        widget.onTap();
-                      } else {
-                        Future.delayed(widget.tapDelay, () {
-                          if (mounted) widget.onTap();
-                        });
-                      }
-                    },
-                    child: Center(child: circle.child),
-                  ),
-                ),
-              ),
-            ),
+      child: SizedBox.square(
+        dimension: circle.size,
+        child: DecoratedBox(
+          // Keep the package hairline separate from its optical rim light.
+          position: DecorationPosition.foreground,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: keepExistingRim
+                ? const Border.fromBorderSide(
+                    BorderSide(
+                      color: kLiquidGlassHairlineColor,
+                      width: 0.5,
+                    ),
+                  )
+                : null,
           ),
-        );
+          child: glassView,
+        ),
+      ),
+    );
     final glassWithEdges = _withLightModeButtonEdges(
       context,
       circle,
