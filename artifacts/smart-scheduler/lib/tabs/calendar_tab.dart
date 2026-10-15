@@ -6974,7 +6974,6 @@ class _DayBannerState extends State<_DayBanner>
                 final double posAminus1 = -contentW + slideX * contentW / sw;
                 final double posAplus2 =
                     colW + contentW + slideX * contentW / sw;
-
                 // Returns a Positioned label for [date] in a half-width slot
                 // starting at [contentPos] from the content-area origin.
                 // Returns null when the slot is entirely off-screen.
@@ -8374,6 +8373,16 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                    final bool wholeIndicatorActive =
                        (goingLeft && _sameDay(A, widget.today)) ||
                        (!goingLeft && _sameDay(Aminus1, widget.today));
+                    final swipeProgress = (slideX.abs() / sw)
+                        .clamp(0.0, 1.0)
+                        .toDouble();
+                    // A shared day changes sides when the swipe commits.
+                    // Animate the line endpoint with the live drag so that
+                    // resetting to the newly selected date is continuous.
+                    final sharedTodayMovesToRight =
+                        !goingLeft && _sameDay(A, widget.today);
+                    final sharedTodayMovesToLeft =
+                        goingLeft && _sameDay(Aplus1, widget.today);
                    final bool showIndicator =
                        wholeIndicatorActive ||
                        isVisibleColumn(A, posA) ||
@@ -8523,13 +8532,26 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                       final markerOriginShiftX = wholeIndicatorActive
                           ? wholeIndicatorShiftX
                           : indicatorMarkerShiftX;
-                      final indicatorLineEndX =
-                          animateIndicatorWithSeparators &&
-                              !todayIsRightColumn
-                          ? animatedCenterX
-                          : isLandscape && todayIsRightColumn
-                          ? totalW
-                          : contentLeft + todayColumnPos + colW;
+                      final dayRightEdgeX =
+                          contentLeft + todayColumnPos + colW;
+                      final double indicatorLineEndX;
+                      if (animateIndicatorWithSeparators &&
+                          !todayIsRightColumn) {
+                        indicatorLineEndX = animatedCenterX;
+                      } else if (isLandscape &&
+                          sharedTodayMovesToRight) {
+                        indicatorLineEndX =
+                            dayRightEdgeX +
+                            (totalW - dayRightEdgeX) * swipeProgress;
+                      } else if (isLandscape && sharedTodayMovesToLeft) {
+                        indicatorLineEndX =
+                            totalW +
+                            (dayRightEdgeX - totalW) * swipeProgress;
+                      } else if (isLandscape && todayIsRightColumn) {
+                        indicatorLineEndX = totalW;
+                      } else {
+                        indicatorLineEndX = dayRightEdgeX;
+                      }
                       // The marker row has a 2 px gap and a 7 px dot before
                       // the line. Its endpoint now tracks the animated center
                       // divider, just like the vertical separator.
