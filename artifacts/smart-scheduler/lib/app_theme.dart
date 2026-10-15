@@ -3276,8 +3276,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
     LiquidGlassGelCircle circle,
     Widget child,
   ) {
-    if (CupertinoTheme.brightnessOf(context) != Brightness.light ||
-        circle.isCheckmark) {
+    if (CupertinoTheme.brightnessOf(context) != Brightness.light) {
       return child;
     }
 
@@ -3304,9 +3303,9 @@ class _GelBloomButtonState extends State<GelBloomButton>
   ) {
     final isLightMode =
         CupertinoTheme.brightnessOf(context) == Brightness.light;
-    // Non-checkmark controls use a soft grey Light Mode surface. Save buttons
-    // are deliberately excluded so active and disabled checkmark surfaces
-    // retain their existing colors and glass treatment.
+    // Non-checkmark controls use a soft grey Light Mode surface. Checkmarks
+    // retain their active/inactive colors while sharing the Light Mode rim and
+    // contour with the other action buttons.
     final surfaceColor = circle.isCheckmark || !isLightMode
         ? circle.color
         : kLiquidGlassButtonLightSurface;
@@ -3320,7 +3319,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
       glassColor: glassColor,
       cornerRadius: circle.size / 2,
     );
-    final keepExistingRim = circle.isCheckmark || !isLightMode;
+    final keepExistingRim = !isLightMode;
 
     final buttonContent = GestureDetector(
       behavior: HitTestBehavior.opaque,

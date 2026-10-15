@@ -748,14 +748,17 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
         onTap: widget.onTap,
         child: SizedBox.expand(
           child: Center(
-            child: SearchWeightedIcon(
-              CupertinoIcons.xmark,
-              // Keep the default 20:40 glyph-to-circle ratio as one
-              // united element. The full-size box and centered alignment
-              // center the X within the circular hit surface.
-              size: circleSize * (_kDefaultXmarkSize / _kDefaultCircleSize),
-              color: primaryLabel,
-              weight: kGelBloomIconWeight,
+            child: Transform.translate(
+              offset: const Offset(0, -0.5),
+              child: SearchWeightedIcon(
+                CupertinoIcons.xmark,
+                // Keep the default 20:40 glyph-to-circle ratio as one
+                // united element. It stays horizontally centered, with the
+                // subtle upward optical adjustment applied inside the circle.
+                size: circleSize * (_kDefaultXmarkSize / _kDefaultCircleSize),
+                color: primaryLabel,
+                weight: kGelBloomIconWeight,
+              ),
             ),
           ),
         ),
