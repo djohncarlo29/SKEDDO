@@ -351,13 +351,13 @@ const List<BoxShadow> kCardShadow = [
   BoxShadow(color: kCardShadowColor, blurRadius: 10, offset: Offset(0, 2)),
 ];
 
-// Full-open GelBloomCard shadow used by circular LiquidGlass action buttons.
-// 0x42 is approximately 26% opacity, with the modal-card blur and offset.
+// Tighter, more defined Light Mode shadow shared by circular LiquidGlass
+// action buttons while retaining a soft natural falloff.
 const List<BoxShadow> kLiquidGlassActionButtonShadow = [
   BoxShadow(
-    color: Color(0x42000000),
-    blurRadius: 28,
-    offset: Offset(0, 8),
+    color: Color(0x2E000000),
+    blurRadius: 12,
+    offset: Offset(0, 3),
   ),
 ];
 
