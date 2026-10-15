@@ -725,7 +725,9 @@ class _RoundedDownGestureDetectorState<T>
   @override
   void initState() {
     super.initState();
-    _recognizer = VerticalDragGestureRecognizer(debugOwner: this)
+    _recognizer = _RoundedDownwardVerticalDragGestureRecognizer(
+      debugOwner: this,
+    )
       // Deliberately use the framework's default recognizer settings. The
       // gesture arena, rather than a render-tree hit-test gate, decides
       // whether the sheet or an editable/scrollable child owns the pointer.
@@ -795,6 +797,49 @@ class _RoundedDownGestureDetectorState<T>
       behavior: HitTestBehavior.translucent,
       child: widget.child,
     );
+  }
+}
+
+/// Keeps upward drags available to scrollable sheet content. The route's
+/// recognizer is attached above the page's scrollables, so it must reject an
+/// upward vertical gesture before it can win the arena and swallow a
+/// zero-range rubberband pull.
+class _RoundedDownwardVerticalDragGestureRecognizer
+    extends VerticalDragGestureRecognizer {
+  _RoundedDownwardVerticalDragGestureRecognizer({super.debugOwner});
+
+  final Map<int, Offset> _pointerDownPositions = {};
+
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    debugPrint('rounded scroll test pointer down ${event.position}');
+    _pointerDownPositions[event.pointer] = event.position;
+    super.addAllowedPointer(event);
+  }
+
+  @override
+  void handleEvent(PointerEvent event) {
+    if (event is PointerMoveEvent) {
+      final downPosition = _pointerDownPositions[event.pointer];
+      if (downPosition != null) {
+        final movement = event.position - downPosition;
+        final touchSlop = computeHitSlop(event.kind, gestureSettings);
+        debugPrint(
+          'rounded scroll test move=$movement slop=$touchSlop '
+          'pointer=${event.pointer}',
+        );
+        if (movement.dy < -touchSlop &&
+            movement.dy.abs() > movement.dx.abs()) {
+          _pointerDownPositions.remove(event.pointer);
+          resolvePointer(event.pointer, GestureDisposition.rejected);
+          return;
+        }
+      }
+    } else if (event is PointerUpEvent || event is PointerCancelEvent) {
+      _pointerDownPositions.remove(event.pointer);
+    }
+
+    super.handleEvent(event);
   }
 }
 

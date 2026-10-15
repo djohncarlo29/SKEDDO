@@ -7,7 +7,9 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart'
     show LiquidGlassEdge, LiquidGlassScrollEdge;
+import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/modal_sheet_scroll_under.dart';
+import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
 void main() {
   testWidgets(
@@ -388,8 +390,8 @@ void main() {
                   child: SingleChildScrollView(
                     controller: controller,
                     primary: false,
-                    physics: const AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics(),
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
                     ),
                     padding: scrollPadding,
                     child: Container(
@@ -495,6 +497,150 @@ void main() {
       await tester.pumpAndSettle();
       expect(controller.position.pixels, closeTo(0, 0.01));
       expect(find.byType(LiquidGlassScrollEdge), findsNothing);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+
+  testWidgets(
+    'Group route lets upward touch drags reach short content while title is focused',
+    (tester) async {
+      const surfaceSize = Size(400, 700);
+      await tester.binding.setSurfaceSize(surfaceSize);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final navigatorKey = GlobalKey<NavigatorState>();
+      final scrollController = ScrollController();
+      final titleFocus = FocusNode();
+      addTearDown(scrollController.dispose);
+      addTearDown(titleFocus.dispose);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => AppWindowContentBoundary(
+            child: child ?? const SizedBox.shrink(),
+          ),
+          home: const CupertinoPageScaffold(
+            child: ColoredBox(color: Color(0xFF173A5E)),
+          ),
+        ),
+      );
+
+      navigatorKey.currentState!.push<void>(
+        RoundedCupertinoSheetRoute<void>(
+          builder: (_) => CupertinoPageScaffold(
+            child: SafeArea(
+              bottom: false,
+              child: ModalSheetScrollUnder(
+                scrollController: scrollController,
+                headerTopInset: 24,
+                headerHeight: 40,
+                headerGap: 12,
+                baseScrollPadding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                surfaceColor: const Color(0xFFF4F4F4),
+                header: const SizedBox(
+                  height: 40,
+                  child: Center(child: Text('New Group')),
+                ),
+                scrollBuilder: (context, scrollPadding) => GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    primary: false,
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
+                    padding: scrollPadding,
+                    child: Container(
+                      key: const ValueKey('group-route-card'),
+                      color: const Color(0xFFD84A45),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            child: CupertinoTextField(
+                              key: const ValueKey('group-route-title'),
+                              focusNode: titleFocus,
+                              placeholder: 'Title',
+                              scrollPhysics: const BouncingScrollPhysics(
+                                parent: AlwaysScrollableScrollPhysics(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 1),
+                          const SizedBox(
+                            key: ValueKey('group-route-include'),
+                            height: 52,
+                            child: Center(child: Text('Include')),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      titleFocus.requestFocus();
+      await tester.pump();
+
+      expect(scrollController.position.maxScrollExtent, 0);
+      final headerFinder = find.text('New Group');
+      final headerTopBefore = tester.getTopLeft(headerFinder).dy;
+      final cardTopBefore = tester
+          .getTopLeft(find.byKey(const ValueKey('group-route-card')))
+          .dy;
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byKey(const ValueKey('group-route-include'))),
+        kind: PointerDeviceKind.touch,
+      );
+      for (var step = 1; step <= 8; step++) {
+        await gesture.moveBy(
+          const Offset(0, -25),
+          timeStamp: Duration(milliseconds: 16 * step),
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      final headerTopAfter = tester.getTopLeft(headerFinder).dy;
+      final cardTopAfter = tester
+          .getTopLeft(find.byKey(const ValueKey('group-route-card')))
+          .dy;
+      expect(
+        scrollController.position.physics.shouldAcceptUserOffset(
+          scrollController.position,
+        ),
+        isTrue,
+      );
+      expect(
+        scrollController.position.pixels,
+        greaterThan(scrollController.position.maxScrollExtent),
+        reason:
+            'An Include-row drag must reach the Group scroller '
+            '(pixels=${scrollController.position.pixels}, '
+            'headerDelta=${headerTopAfter - headerTopBefore}, '
+            'cardDelta=${cardTopAfter - cardTopBefore}).',
+      );
+      expect(headerTopAfter, headerTopBefore);
+      expect(cardTopAfter, lessThan(cardTopBefore));
+      final topEdge = tester.widget<LiquidGlassScrollEdge>(
+        find.byType(LiquidGlassScrollEdge),
+      );
+      expect(topEdge.edge, LiquidGlassEdge.top);
+      expect(topEdge.blur, greaterThan(0));
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(scrollController.position.pixels, closeTo(0, 0.01));
+      expect(find.byType(LiquidGlassScrollEdge), findsNothing);
+      expect(tester.getTopLeft(headerFinder).dy, headerTopBefore);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
   );

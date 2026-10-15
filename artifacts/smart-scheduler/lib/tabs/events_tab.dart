@@ -13092,8 +13092,8 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                   child: SingleChildScrollView(
                     controller: _sheetScrollCtrl,
                     primary: false,
-                    physics: const AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics(),
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
                     ),
                     padding: scrollPadding,
                     child: Container(
