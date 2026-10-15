@@ -83,7 +83,7 @@
 - [Variable category row heights](variable-category-row-heights.md) — category slots and drag geometry must use each item’s measured height, not the tallest row globally.
 - [Flutter web preview rebuilds](flutter-web-preview-rebuild.md) — compiled Flutter web previews need a workflow restart for Dart changes to appear; file touches do not provide hot reload.
 - [Flutter web stale bundle](flutter-web-build-failure-serves-old-bundle.md) — a failed web compile can still start the server, which then serves the previous bundle.
-- [Search cancel glass reparenting](search-cancel-glass-reparenting.md) — preserve the stable inline↔overlay reveal while routing visuals and tap feedback through the shared button in both modes.
+- [Search cancel and checkmark glass edges](search-cancel-glass-reparenting.md) — preserve search reveal; checkmarks use a 50%-white inner contour over LiquidGlass, thinnest at upper-right/lower-left.
 - [Editable DCV section keyboard reveal](editable-dcv-section-keyboard.md) — focused section headers near the viewport bottom need post-inset ensureVisible, including after wrapped text grows.
 - [DCV section membership reconciliation](dcv-section-membership-reconciliation.md) — reconcile newly visible events into the first section before permuting headers, or stale parent membership moves them with the new first header.
 - [Flexible label-value wrapping](flexible-label-value-wrapping.md) — normal rows alternate value wrap, label wrap, value wrap, then label wrap while preserving the gap.

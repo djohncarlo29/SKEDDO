@@ -204,8 +204,8 @@ const kLiquidGlassHairlineColor = Color(0x26FFFFFF);
 // inner rim; keep these separate from the package's existing glass hairline.
 const kLiquidGlassButtonLightSurface = Color(0xFFFDFDFD);
 const kLiquidGlassButtonLightRim = Color(0xFFFFFFFF);
-// White checkmark rim blends with the retained active/inactive fill beneath it.
-const kLiquidGlassButtonLightCheckmarkRim = Color(0x4DFFFFFF);
+// A single translucent white contour overlays the retained checkmark fill.
+const kLiquidGlassButtonLightCheckmarkContour = Color(0x80FFFFFF);
 const kLiquidGlassButtonLightContourColor = Color(0x263C3C43);
 
 const kPreviewCardBackground = CupertinoDynamicColor.withBrightness(
@@ -3107,15 +3107,9 @@ class _StaticLiquidGlassOutlinePainter extends CustomPainter {
 class _LiquidGlassButtonEdgePainter extends CustomPainter {
   const _LiquidGlassButtonEdgePainter({
     required this.contourColor,
-    this.rimColor = kLiquidGlassButtonLightRim,
-    this.paintRim = true,
-    this.paintContour = true,
   });
 
   final Color contourColor;
-  final Color rimColor;
-  final bool paintRim;
-  final bool paintContour;
 
   static const double _whiteRimWidth = 1.15;
   static const double _maximumContourWidth = 1.3;
@@ -3174,35 +3168,100 @@ class _LiquidGlassButtonEdgePainter extends CustomPainter {
     final radius = math.min(size.width, size.height) / 2;
     final center = Offset(size.width / 2, size.height / 2);
 
-    if (paintRim) {
-      canvas.drawCircle(
-        center,
-        radius - _whiteRimWidth / 2,
-        Paint()
-          ..color = rimColor
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = _whiteRimWidth
-          ..isAntiAlias = true,
-      );
-    }
+    canvas.drawCircle(
+      center,
+      radius - _whiteRimWidth / 2,
+      Paint()
+        ..color = kLiquidGlassButtonLightRim
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _whiteRimWidth
+        ..isAntiAlias = true,
+    );
 
-    if (paintContour) {
-      canvas.drawPath(
-        _contourPath(center, radius),
-        Paint()
-          ..color = contourColor
-          ..style = PaintingStyle.fill
-          ..isAntiAlias = true,
-      );
-    }
+    canvas.drawPath(
+      _contourPath(center, radius),
+      Paint()
+        ..color = contourColor
+        ..style = PaintingStyle.fill
+        ..isAntiAlias = true,
+    );
   }
 
   @override
   bool shouldRepaint(covariant _LiquidGlassButtonEdgePainter oldDelegate) =>
-      oldDelegate.contourColor != contourColor ||
-      oldDelegate.rimColor != rimColor ||
-      oldDelegate.paintRim != paintRim ||
-      oldDelegate.paintContour != paintContour;
+      oldDelegate.contourColor != contourColor;
+}
+
+/// A single translucent, variable-width checkmark contour, kept inside the
+/// button circle. Its thinnest points sit on the upper-right and lower-left
+/// diagonal arcs shown in the Light Mode reference.
+class _LiquidGlassCheckmarkContourPainter extends CustomPainter {
+  const _LiquidGlassCheckmarkContourPainter();
+
+  static const double _minimumWidth = 0.16;
+  static const double _maximumWidth = 1.35;
+  static const double _outerInset = 0.08;
+  static const int _segments = 256;
+
+  double _widthAt(double angle) {
+    // Flutter angles increase clockwise. These opposite diagonal arcs are the
+    // thin points; the smooth cosine curve thickens toward the other diagonals.
+    final thinness =
+        (1 + math.cos(2 * (angle + math.pi / 4))) / 2;
+    return _maximumWidth - (_maximumWidth - _minimumWidth) * thinness;
+  }
+
+  Path _contourPath(Offset center, double radius) {
+    final outerRadius = radius - _outerInset;
+    final path = Path()..fillType = PathFillType.evenOdd;
+
+    for (var i = 0; i < _segments; i++) {
+      final angle = math.pi * 2 * i / _segments;
+      final point = Offset(
+        center.dx + math.cos(angle) * outerRadius,
+        center.dy + math.sin(angle) * outerRadius,
+      );
+      if (i == 0) {
+        path.moveTo(point.dx, point.dy);
+      } else {
+        path.lineTo(point.dx, point.dy);
+      }
+    }
+    path.close();
+
+    for (var i = _segments - 1; i >= 0; i--) {
+      final angle = math.pi * 2 * i / _segments;
+      final innerRadius = outerRadius - _widthAt(angle);
+      final point = Offset(
+        center.dx + math.cos(angle) * innerRadius,
+        center.dy + math.sin(angle) * innerRadius,
+      );
+      if (i == _segments - 1) {
+        path.moveTo(point.dx, point.dy);
+      } else {
+        path.lineTo(point.dx, point.dy);
+      }
+    }
+    path.close();
+    return path;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final radius = math.min(size.width, size.height) / 2;
+    final center = Offset(size.width / 2, size.height / 2);
+    canvas.drawPath(
+      _contourPath(center, radius),
+      Paint()
+        ..color = kLiquidGlassButtonLightCheckmarkContour
+        ..style = PaintingStyle.fill
+        ..isAntiAlias = true,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _LiquidGlassCheckmarkContourPainter oldDelegate) =>
+      false;
 }
 
 class _GelBloomButtonState extends State<GelBloomButton>
@@ -3297,30 +3356,15 @@ class _GelBloomButtonState extends State<GelBloomButton>
 
     if (circle.isCheckmark) {
       return Stack(
-        clipBehavior: Clip.none,
         children: [
-          // Keep the variable-width contour outside the fill shape.
-          Positioned.fill(
-            child: IgnorePointer(
-              child: CustomPaint(
-                painter: _LiquidGlassButtonEdgePainter(
-                  contourColor: kLiquidGlassButtonLightContourColor,
-                  paintRim: false,
-                ),
-              ),
-            ),
-          ),
+          // Preserve the LiquidGlassButton fill and place one translucent
+          // white contour over it. The contour is fully inset; no dark outline
+          // or other edge is painted outside the checkmark circle.
           child,
-          // This translucent pure-white rim is composited over the existing
-          // checkmark fill, allowing the active/inactive color to show through.
           Positioned.fill(
             child: IgnorePointer(
               child: CustomPaint(
-                painter: _LiquidGlassButtonEdgePainter(
-                  contourColor: kLiquidGlassButtonLightContourColor,
-                  rimColor: kLiquidGlassButtonLightCheckmarkRim,
-                  paintContour: false,
-                ),
+                painter: const _LiquidGlassCheckmarkContourPainter(),
               ),
             ),
           ),
