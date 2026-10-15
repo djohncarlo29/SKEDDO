@@ -46,19 +46,13 @@
  - [Light-mode attachment confirm surface](light-mode-checkmark-glass.md) — confirm uses a solid accent circle with a white glyph in Light Mode; the glass lens neutralizes saturated surfaces.
 - [Subscreen checkmark layout](subscreen-checkmark-layout.md) — selectable rows share an OS-scaled checkmark slot with fixed 16px label and edge gaps.
 - [Flutter APK Gradle stability](flutter-apk-gradle-stability.md) — SIGBUS fix requires DEFAULT_JVM_OPTS in gradlew (not just gradle.properties); daemon=false runs in wrapper JVM which ignores org.gradle.jvmargs.
-- [Shorebird patch environment](shorebird-patch-env.md) — set TMPDIR to workspace before every patch push; /tmp overlayfs fails on large writes. shorebird-push.sh now auto-restores symlinks and sets TMPDIR.
-- [Shorebird conflict-marker preflight](shorebird-conflict-marker-preflight.md) — committed merge markers cause misleading "'double' isn't a type" cascades; scan sources before patching.
-- [Shorebird release build verification](shorebird-release-build-verification.md) — a successful Flutter APK build can still end with duplicate-release handoff failure; verify and deliver the generated APK separately.
-- [Shorebird native diff safety](shorebird-native-diff.md) — DEX field/method differences mean the patch no longer matches the installed release’s native baseline; publish a new release instead of allowing native diffs.
+- [Shorebird patch and release workflow](shorebird-workflow.md) — grouped preflight, SDK, temporary-storage, native-baseline, and release-handoff constraints.
 - [Dart 3.9 collection nesting](dart39-collection-nesting.md) — if→for→if collection elements crash Dart 3.9 parser; fold outer if into for-loop condition instead.
-- [Shorebird SDK constraint](shorebird-sdk-constraint.md) — app sdk must be >=3.8.0 <4.0.0; also patch cupertino_native cached pubspec which ships ^3.9.0.
 - [liquid_glass_widgets Android crash](liquid-glass-android-crash.md) — liquid_glass shaders are SkSL-incompatible; app crashes on Android when any GlassSwitch is rendered. Use _SlidingSwitch (pure Flutter) on non-iOS.
 - [Android performance visual fidelity](android-performance-visual-fidelity.md) — preserve designed glass effects; require physical-device confirmation before claiming renderer-dependent Android blur is verified.
 - [Static Liquid Glass controls](static-liquid-glass-action-buttons.md) — fixed-color action circles and simple cards use bounded static glass; dynamic controls keep live optics.
 - [Replit home partition quota](replit-home-quota.md) — /home/runner has a per-user quota well below its 32GB size; move caches to /home/runner/workspace/.cache and symlink back.
-- [Native iOS switch routing](cupertino-native-switch-package.md) — use CNSwitch only on native iOS; preserve LiquidGlassSwitch on web, Android, and other platforms.
-- [Liquid Glass Widgets compatibility](liquid-glass-widgets-compatibility.md) — current Flutter 3.35.7 toolchain supports liquid_glass_widgets 0.5.0; 0.29.x requires Flutter 3.41+.
-- [Liquid Glass Easy fork compatibility](liquid-glass-easy-fork-compatibility.md) — preserve the app-specific local fork when adding upstream components; blanket upgrades can remove APIs used by existing controls.
+- [Liquid Glass platform compatibility](liquid-glass-platform-compatibility.md) — preserve the app fork, check toolchain compatibility, and route native iOS controls separately.
 - [flutter_onnxruntime Android crash](onnxruntime-android-crash.md) — ONNX session.run() causes an unrecoverable JNI SIGSEGV on Android; also covers the earlier UnsatisfiedLinkError fix and plugin registration patch.
 - [TFLite Android embedding](tflite-android-embedding.md) — all-MiniLM-L6-v2 TFLite model tensor layout, source URL, and KGP 2.1 Gradle fix (kotlin.jvm.target.validation.mode=WARNING).
 - [Event creation save architecture](event-creation-save-architecture.md) — all ScheduledEvent fields, picker constraints, recurrence storage rule, alert timing logic, and normalisation decisions.
@@ -81,8 +75,7 @@
 - [Cupertino selection styling across Shorebird versions](cupertino-selection-style-shorebird.md) — use DefaultSelectionStyle plus CupertinoTheme; Shorebird's CupertinoTextField has no selectionColor parameter.
 - [Targeted style patch context](targeted-style-patch-context.md) — repeated font-size edits need unique surrounding labels plus a diff check to prevent adjacent UI styles changing.
 - [Variable category row heights](variable-category-row-heights.md) — category slots and drag geometry must use each item’s measured height, not the tallest row globally.
-- [Flutter web preview rebuilds](flutter-web-preview-rebuild.md) — compiled Flutter web previews need a workflow restart for Dart changes to appear; file touches do not provide hot reload.
-- [Flutter web stale bundle](flutter-web-build-failure-serves-old-bundle.md) — a failed web compile can still start the server, which then serves the previous bundle.
+- [Flutter web preview builds](flutter-web-preview-build.md) — restart after Dart edits and confirm a successful compile so a stale bundle is not mistaken for the current app.
 - [Search cancel and checkmark glass edges](search-cancel-glass-reparenting.md) — preserve search reveal; checkmarks use a 50%-white inner contour over LiquidGlass, thinnest at upper-right/lower-left.
 - [Editable DCV section keyboard reveal](editable-dcv-section-keyboard.md) — focused section headers near the viewport bottom need post-inset ensureVisible, including after wrapped text grows.
 - [DCV section membership reconciliation](dcv-section-membership-reconciliation.md) — reconcile newly visible events into the first section before permuting headers, or stale parent membership moves them with the new first header.
@@ -157,3 +150,4 @@
 - [Modal card shadow overflow](modal-card-shadow-overflow.md) — let modal card shadows overflow the scroll viewport and sheet wrapper; keep the rounded route clip as the outer sheet boundary.
 - [Pinned Flutter dependency resolution](flutter-pub-lock-sdk-resolution.md) — the managed preview resolves transitive package versions against its pinned Dart SDK and may update pubspec.lock on restart.
 - [Nested modal header alignment](nested-modal-header-alignment.md) — nested titles and controls stay at the same screen coordinates as their parent sheet.
+- [Landscape pill contour sampling](landscape-pill-contour-sampling.md) — preserve portrait styling and densify landscape pill outlines to avoid faceted end caps.

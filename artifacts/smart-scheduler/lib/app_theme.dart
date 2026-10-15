@@ -3226,7 +3226,10 @@ class LightModeLiquidGlassPillContour extends StatelessWidget {
         Positioned.fill(
           child: IgnorePointer(
             child: CustomPaint(
-              painter: const _LiquidGlassPillEdgePainter(),
+              painter: _LiquidGlassPillEdgePainter(
+                isLandscape:
+                    MediaQuery.orientationOf(context) == Orientation.landscape,
+              ),
             ),
           ),
         ),
@@ -3240,12 +3243,29 @@ class LightModeLiquidGlassPillContour extends StatelessWidget {
 /// The inner white highlight follows the pill edge; a smooth, variable-width
 /// tertiary contour grows outwards at the left/right midpoints.
 class _LiquidGlassPillEdgePainter extends CustomPainter {
-  const _LiquidGlassPillEdgePainter();
+  const _LiquidGlassPillEdgePainter({required this.isLandscape});
+
+  final bool isLandscape;
 
   static const double _whiteRimWidth = 1.15;
   static const double _maximumContourWidth = 1.3;
   static const double _minimumContourWidth = 0.5;
-  static const int _contourSegments = 256;
+  static const int _portraitContourSegments = 256;
+  static const int _minimumLandscapeContourSegments = 512;
+  static const int _maximumLandscapeContourSegments = 4096;
+  static const double _landscapeSegmentsPerAspectRatio = 128;
+
+  int _segmentCountFor(Size size) {
+    if (!isLandscape) return _portraitContourSegments;
+    final aspectRatio = size.width / size.height;
+    return (aspectRatio * _landscapeSegmentsPerAspectRatio)
+        .round()
+        .clamp(
+          _minimumLandscapeContourSegments,
+          _maximumLandscapeContourSegments,
+        )
+        .toInt();
+  }
 
   double _contourWidthAt(double angle) {
     final sideStrength = math.pow(math.cos(angle).abs(), 2.2).toDouble();
@@ -3284,7 +3304,7 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
     return projection + math.sqrt(discriminant);
   }
 
-  Path _outlinePath(Size size, double radialInset) {
+  Path _outlinePath(Size size, double radialInset, int segmentCount) {
     final halfWidth = size.width / 2;
     final halfHeight = size.height / 2;
     final cornerRadius = math.min(
@@ -3294,8 +3314,8 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
     final center = Offset(halfWidth, halfHeight);
     final path = Path();
 
-    for (var i = 0; i < _contourSegments; i++) {
-      final angle = math.pi * 2 * i / _contourSegments;
+    for (var i = 0; i < segmentCount; i++) {
+      final angle = math.pi * 2 * i / segmentCount;
       final radius = _boundaryRadiusAt(
             angle: angle,
             halfWidth: halfWidth,
@@ -3316,7 +3336,7 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
     return path..close();
   }
 
-  Path _contourPath(Size size) {
+  Path _contourPath(Size size, int segmentCount) {
     final halfWidth = size.width / 2;
     final halfHeight = size.height / 2;
     final cornerRadius = math.min(
@@ -3326,8 +3346,8 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
     final center = Offset(halfWidth, halfHeight);
     final path = Path()..fillType = PathFillType.evenOdd;
 
-    for (var i = 0; i < _contourSegments; i++) {
-      final angle = math.pi * 2 * i / _contourSegments;
+    for (var i = 0; i < segmentCount; i++) {
+      final angle = math.pi * 2 * i / segmentCount;
       final radius = _boundaryRadiusAt(
             angle: angle,
             halfWidth: halfWidth,
@@ -3347,8 +3367,8 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
     }
     path.close();
 
-    for (var i = _contourSegments - 1; i >= 0; i--) {
-      final angle = math.pi * 2 * i / _contourSegments;
+    for (var i = segmentCount - 1; i >= 0; i--) {
+      final angle = math.pi * 2 * i / segmentCount;
       final radius = _boundaryRadiusAt(
             angle: angle,
             halfWidth: halfWidth,
@@ -3360,7 +3380,7 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
         center.dx + math.cos(angle) * radius,
         center.dy + math.sin(angle) * radius,
       );
-      if (i == _contourSegments - 1) {
+      if (i == segmentCount - 1) {
         path.moveTo(point.dx, point.dy);
       } else {
         path.lineTo(point.dx, point.dy);
@@ -3372,9 +3392,10 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty) return;
+    final segmentCount = _segmentCountFor(size);
 
     canvas.drawPath(
-      _outlinePath(size, -_whiteRimWidth / 2),
+      _outlinePath(size, -_whiteRimWidth / 2, segmentCount),
       Paint()
         ..color = kLiquidGlassButtonLightRim
         ..style = PaintingStyle.stroke
@@ -3382,7 +3403,7 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
         ..isAntiAlias = true,
     );
     canvas.drawPath(
-      _contourPath(size),
+      _contourPath(size, segmentCount),
       Paint()
         ..color = kLiquidGlassButtonLightContourColor
         ..style = PaintingStyle.fill
@@ -3392,7 +3413,7 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _LiquidGlassPillEdgePainter oldDelegate) =>
-      false;
+      oldDelegate.isLandscape != isLandscape;
 }
 
 /// A single translucent, variable-width checkmark contour, kept inside the
