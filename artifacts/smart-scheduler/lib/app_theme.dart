@@ -355,8 +355,8 @@ const List<BoxShadow> kCardShadow = [
 // action buttons while retaining a soft natural falloff.
 const List<BoxShadow> kLiquidGlassActionButtonShadow = [
   BoxShadow(
-    color: Color(0x2E000000),
-    blurRadius: 12,
+    color: Color(0x29000000),
+    blurRadius: 8,
     offset: Offset(0, 3),
   ),
 ];
