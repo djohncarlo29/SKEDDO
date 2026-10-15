@@ -930,7 +930,10 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   // These are layout dimensions, not text dimensions. Keep them fixed so
   // Dynamic Type cannot stretch this card farther below the parent sheet's
   // Card 1.
-  static const double _emojiSheetHeaderHeight = 64.0;
+  // Keep the 64 px total header reservation while centering its 40 px control
+  // on the same y-coordinate as buttons in the parent modal header.
+  static const double _emojiSheetHeaderTopInset = 8.0;
+  static const double _emojiSheetHeaderHeight = 56.0;
   static const double _emojiSheetHorizontalInset = 16.0;
   static const double _emojiCategoryInset = 16.0;
   // Four points of breathing room on each side of a category slot gives the
@@ -1520,6 +1523,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
       child: ModalSheetScrollUnder(
         scrollController: _scrollCtrl,
         showTopEdgeOnShortContentRubberband: true,
+        headerTopInset: _emojiSheetHeaderTopInset,
         headerHeight: _emojiSheetHeaderHeight,
         headerGap: 0,
         baseScrollPadding: EdgeInsets.fromLTRB(
@@ -1554,7 +1558,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                         ),
                         fadeColor: resolveThemeColor(kModalBackground, context),
                         centerWhenContentFits: true,
-                        contentAlignment: Alignment.centerLeft,
+                        contentAlignment: Alignment.center,
                       ),
                     ),
                     const SizedBox(width: kHorizontalFadeEdgeGap),

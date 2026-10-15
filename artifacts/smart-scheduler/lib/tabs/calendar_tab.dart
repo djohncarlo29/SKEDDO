@@ -15468,8 +15468,8 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
         top: false,
         child: ModalSheetScrollUnder(
           showTopEdgeOnShortContentRubberband: true,
-          headerTopInset: 12.5,
-          headerHeight: 40,
+          headerTopInset: kModalSheetButtonEdgeGap,
+          headerHeight: kModalSheetButtonDiameter,
           headerGap: 12,
           baseScrollPadding: EdgeInsets.fromLTRB(
             16,
@@ -15480,7 +15480,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
           surfaceColor: resolveThemeColor(kModalBackground, context),
           header: RoundedCupertinoSheetHeader(
               child: SizedBox(
-                height: 40.0,
+                height: kModalSheetButtonDiameter,
                 width: double.infinity,
                 child: Stack(
                   alignment: Alignment.center,
@@ -15502,7 +15502,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                       ),
                     ),
                     Positioned(
-                      left: 16.0,
+                      left: kModalSheetButtonEdgeGap,
                       child: _CalModalCircleButton(
                         icon: CupertinoIcons.chevron_left,
                         iconColor: kPrimaryLabel,
@@ -15512,7 +15512,7 @@ class _NewEventCustomRepeatSheetState extends State<_NewEventCustomRepeatSheet>
                       ),
                     ),
                     Positioned(
-                      right: 16.0,
+                      right: kModalSheetButtonEdgeGap,
                       child: _CalModalCircleButton(
                         icon: CupertinoIcons.checkmark,
                         containerColor: widget.accentColor,
