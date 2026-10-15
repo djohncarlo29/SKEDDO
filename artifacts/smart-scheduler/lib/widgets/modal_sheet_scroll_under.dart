@@ -6,6 +6,7 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 
 import '../app_theme.dart'
     show BoundedSquircleStadiumBorder, kModalSheetCornerRadius;
+import 'live_rotation_geometry.dart';
 
 /// The top scroll-edge effect is anchored to the modal sheet's top edge,
 /// independently of the inset used to position its header.
@@ -134,6 +135,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder>
   ));
   Animation<double>? _parentRouteSecondaryAnimation;
   bool _parentRouteIsCovered = false;
+  bool _rotationInProgress = false;
   bool _metricsRefreshScheduled = false;
 
   @override
@@ -147,6 +149,12 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final rotationInProgress =
+        InheritedRotationGeometry.maybeOf(context)?.isTransitioning ?? false;
+    final finishedRotation = _rotationInProgress && !rotationInProgress;
+    _rotationInProgress = rotationInProgress;
+    if (finishedRotation) _scheduleMetricsRefresh();
+
     final secondaryAnimation = ModalRoute.of(context)?.secondaryAnimation;
     if (secondaryAnimation != _parentRouteSecondaryAnimation) {
       _parentRouteSecondaryAnimation?.removeStatusListener(
@@ -199,15 +207,20 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder>
 
   @override
   void didChangeMetrics() {
+    if (_rotationInProgress) return;
+    _scheduleMetricsRefresh();
+  }
+
+  void _scheduleMetricsRefresh() {
     if (_metricsRefreshScheduled) return;
     _metricsRefreshScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _metricsRefreshScheduled = false;
-      if (!mounted) return;
+      if (!mounted || _rotationInProgress) return;
 
-      // Orientation changes can resize the scroll viewport without producing
-      // a useful scroll notification. Read its newly laid-out metrics and
-      // refresh the backdrop-filter layer even if progress itself is unchanged.
+      // Window metric changes can resize the scroll viewport without
+      // producing a useful scroll notification. Read its newly laid-out
+      // metrics and refresh the filter after geometry has settled.
       final synced = _syncFromScrollController();
       final current = _edgeProgress.value;
       _edgeProgress.value = (
@@ -267,9 +280,10 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder>
     ScrollMetrics metrics,
   ) {
     // Ignore route-transition scroll notifications while covered. At settle,
-    // _handleParentRouteAnimationStatus resyncs from the live ScrollPosition;
-    // transient route metrics must not replace that settled value.
-    if (_parentRouteIsCovered) return;
+    // _handleParentRouteAnimationStatus resyncs from the live ScrollPosition.
+    // During orientation changes, preserve the last visible edge state until
+    // the shared rotation geometry reports that the transition has settled.
+    if (_parentRouteIsCovered || _rotationInProgress) return;
 
     if (metrics.maxScrollExtent <= 1) {
       final distance = _activationDistance;
