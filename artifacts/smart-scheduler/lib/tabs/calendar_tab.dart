@@ -6908,6 +6908,10 @@ class _DayBannerState extends State<_DayBanner>
             builder: (ctx, cons) {
               final totalW = cons.maxWidth;
               final inset = horizontalInset;
+              final mediaSize = MediaQuery.sizeOf(ctx);
+              final hideOuterRightSeparator =
+                  mediaSize.width > mediaSize.height &&
+                  widget.daySubMode == DayViewSubMode.multiDay;
               final labelColW = _hourLabelColW(MediaQuery.textScalerOf(ctx));
               final contentW = math.max(
                 0.0,
@@ -7019,13 +7023,14 @@ class _DayBannerState extends State<_DayBanner>
                       width: 0.5,
                       child: ColoredBox(color: separatorColor),
                     ),
-                    Positioned(
-                      right: inset,
-                      top: 0,
-                      bottom: 0,
-                      width: 0.5,
-                      child: ColoredBox(color: separatorColor),
-                    ),
+                    if (!hideOuterRightSeparator)
+                      Positioned(
+                        right: inset,
+                        top: 0,
+                        bottom: 0,
+                        width: 0.5,
+                        child: ColoredBox(color: separatorColor),
+                      ),
                     // Sliding day labels.
                     if (!goingLeft && labelAt(Aminus1, posAminus1) != null)
                       labelAt(Aminus1, posAminus1)!,
@@ -7102,13 +7107,14 @@ class _DayBannerState extends State<_DayBanner>
                       width: 0.5,
                       child: ColoredBox(color: separatorColor),
                     ),
-                    Positioned(
-                      right: inset,
-                      top: 0,
-                      bottom: 0,
-                      width: 0.5,
-                      child: ColoredBox(color: separatorColor),
-                    ),
+                    if (!hideOuterRightSeparator)
+                      Positioned(
+                        right: inset,
+                        top: 0,
+                        bottom: 0,
+                        width: 0.5,
+                        child: ColoredBox(color: separatorColor),
+                      ),
                   ],
                 );
               }
@@ -7268,16 +7274,17 @@ class _DayBannerState extends State<_DayBanner>
                     ),
                   // Right-edge separator: mirrors the timeline's rightmost line
                   // so the Day Banner and timeline columns stay visually aligned.
-                  Positioned(
-                    right: inset,
-                    top: 0,
-                    bottom: 0,
-                    width: 0.5,
-                    child: Opacity(
-                      opacity: t.clamp(0.0, 1.0),
-                      child: ColoredBox(color: separatorColor),
+                  if (!hideOuterRightSeparator)
+                    Positioned(
+                      right: inset,
+                      top: 0,
+                      bottom: 0,
+                      width: 0.5,
+                      child: Opacity(
+                        opacity: t.clamp(0.0, 1.0),
+                        child: ColoredBox(color: separatorColor),
+                      ),
                     ),
-                  ),
                 ],
               );
             },
@@ -7444,6 +7451,8 @@ class _DayTimelineState extends State<_DayTimeline>
     final isMultiDay = widget.daySubMode == DayViewSubMode.multiDay;
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
     final horizontalInset = AppWindowContentScope.of(context).horizontalInset;
+    final mediaSize = MediaQuery.sizeOf(context);
+    final isLandscape = mediaSize.width > mediaSize.height;
 
     return ColoredBox(
       color: resolveThemeColor(kBackgroundColor, context),
@@ -7557,17 +7566,19 @@ class _DayTimelineState extends State<_DayTimeline>
                                 width: 0.5,
                                 child: Container(color: separatorColor),
                               ),
-                            // Right-edge separator
-                            Positioned(
-                              right: horizontalInset,
-                              top: -9999,
-                              bottom: -9999,
-                              width: 0.5,
-                              child: Opacity(
-                                opacity: t.clamp(0.0, 1.0),
-                                child: Container(color: separatorColor),
+                            // Keep the right side of landscape Multi-Day open
+                            // to the physical edge of the phone.
+                            if (!isMultiDay || !isLandscape)
+                              Positioned(
+                                right: horizontalInset,
+                                top: -9999,
+                                bottom: -9999,
+                                width: 0.5,
+                                child: Opacity(
+                                  opacity: t.clamp(0.0, 1.0),
+                                  child: Container(color: separatorColor),
+                                ),
                               ),
-                            ),
 
                           ],
                         );
@@ -7636,14 +7647,16 @@ class _DayTimelineState extends State<_DayTimeline>
                           width: 0.5,
                           child: Container(color: separatorColor),
                         ),
-                        // Right-edge separator.
-                        Positioned(
-                          right: horizontalInset,
-                          top: -9999,
-                          bottom: -9999,
-                          width: 0.5,
-                          child: Container(color: separatorColor),
-                        ),
+                        // Keep the right side of landscape Multi-Day open
+                        // to the physical edge of the phone.
+                        if (!isMultiDay || !isLandscape)
+                          Positioned(
+                            right: horizontalInset,
+                            top: -9999,
+                            bottom: -9999,
+                            width: 0.5,
+                            child: Container(color: separatorColor),
+                          ),
 
                       ],
                     );
@@ -8045,33 +8058,36 @@ class _CurrentTimeIndicator extends StatelessWidget {
         ],
       );
 
-      return ClipRect(
-        child: Transform.translate(
-          offset: Offset(multiDayWholeShiftX, 0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              pill,
-              // Normally the pill remains anchored in the left label column
-              // and only the marker moves. During a left-side exit,
-              // multiDayWholeShiftX carries both as one element.
-              Expanded(
-                child: ClipRect(
-                  child: Transform.translate(
-                    offset: Offset(
-                      multiDayWholeShiftX == 0.0
-                          ? multiDayMarkerShiftX
-                          : 0.0,
-                      0,
-                    ),
-                    child: marker,
+      final movingIndicator = Transform.translate(
+        offset: Offset(multiDayWholeShiftX, 0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            pill,
+            // Normally the pill remains anchored in the left label column
+            // and only the marker moves. During a left-side exit,
+            // multiDayWholeShiftX carries both as one element.
+            Expanded(
+              child: ClipRect(
+                child: Transform.translate(
+                  offset: Offset(
+                    multiDayWholeShiftX == 0.0
+                        ? multiDayMarkerShiftX
+                        : 0.0,
+                    0,
                   ),
+                  child: marker,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
+      final windowSize = MediaQuery.sizeOf(context);
+      if (windowSize.width > windowSize.height) {
+        return movingIndicator;
+      }
+      return ClipRect(child: movingIndicator);
     }
 
     return Row(
@@ -8317,6 +8333,8 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                   final colW = contentW / 2;
                   final contentLeft = horizontalInset + labelColW;
                   final contentRight = totalW - horizontalInset;
+                  final mediaSize = MediaQuery.sizeOf(ctx);
+                  final isLandscape = mediaSize.width > mediaSize.height;
                   final sw = widget.screenW > 0 ? widget.screenW : totalW;
                   final slideX = widget.slideX;
                   final bool goingLeft = slideX <= 0;
@@ -8509,6 +8527,8 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                           animateIndicatorWithSeparators &&
                               !todayIsRightColumn
                           ? animatedCenterX
+                          : isLandscape && todayIsRightColumn
+                          ? totalW
                           : contentLeft + todayColumnPos + colW;
                       // The marker row has a 2 px gap and a 7 px dot before
                       // the line. Its endpoint now tracks the animated center
@@ -8561,17 +8581,19 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                                 color: separatorColor,
                               ),
                             ),
-                          // Right-edge sep fades in with the transition.
-                          Positioned(
-                            right: horizontalInset,
-                            top: -9999,
-                            bottom: -9999,
-                            width: 0.5,
-                            child: Opacity(
-                              opacity: t.clamp(0.0, 1.0),
-                              child: ColoredBox(color: separatorColor),
+                          // Keep the right side of landscape Multi-Day open
+                          // to the physical edge of the phone.
+                          if (!isLandscape)
+                            Positioned(
+                              right: horizontalInset,
+                              top: -9999,
+                              bottom: -9999,
+                              width: 0.5,
+                              child: Opacity(
+                                opacity: t.clamp(0.0, 1.0),
+                                child: ColoredBox(color: separatorColor),
+                              ),
                             ),
-                          ),
 
                             // Current-time marker belongs to the active day
                             // column. The pill normally remains in the left
