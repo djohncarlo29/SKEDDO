@@ -400,3 +400,61 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder> {
     );
   }
 }
+
+/// Matches [SizeTransition]'s vertical layout/animation while giving fully
+/// visible modal cards enough paint room for their outer shadows.
+///
+/// During the size animation, content remains clipped exactly like a normal
+/// [SizeTransition]. Once fully open, the clip expands beyond the layout box
+/// so a card at the edge of a transition group can paint its shadow.
+class ModalCardShadowSizeTransition extends AnimatedWidget {
+  const ModalCardShadowSizeTransition({
+    super.key,
+    required Animation<double> sizeFactor,
+    required this.child,
+    this.axisAlignment = 0,
+    this.shadowOutset = 20,
+  }) : super(listenable: sizeFactor);
+
+  final Widget child;
+  final double axisAlignment;
+  final double shadowOutset;
+
+  Animation<double> get sizeFactor => listenable as Animation<double>;
+
+  @override
+  Widget build(BuildContext context) {
+    final factor = math.max(sizeFactor.value, 0.0);
+    final outset = factor >= 1.0 ? shadowOutset : 0.0;
+
+    return ClipRect(
+      clipper: _ModalCardShadowClipper(outset: outset),
+      child: Align(
+        alignment: AlignmentDirectional(-1.0, axisAlignment),
+        heightFactor: factor,
+        child: child,
+      ),
+    );
+  }
+}
+
+class _ModalCardShadowClipper extends CustomClipper<Rect> {
+  const _ModalCardShadowClipper({required this.outset});
+
+  final double outset;
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTRB(
+    -outset,
+    -outset,
+    size.width + outset,
+    size.height + outset,
+  );
+
+  @override
+  Rect getApproximateClipRect(Size size) => getClip(size);
+
+  @override
+  bool shouldReclip(covariant _ModalCardShadowClipper oldClipper) =>
+      outset != oldClipper.outset;
+}

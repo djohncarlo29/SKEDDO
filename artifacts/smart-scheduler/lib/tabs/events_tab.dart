@@ -16445,7 +16445,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                                       height: 0,
                                     ),
                           ),
-                          SizeTransition(
+                          ModalCardShadowSizeTransition(
                             sizeFactor: ReverseAnimation(_smartCategoryCtrl),
                             axisAlignment: -1.0,
                             child: Column(

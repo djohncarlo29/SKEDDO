@@ -14076,7 +14076,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                           // + inline calendar picker + Custom subsheet.
                           // Wrapped in SizeTransition so it animates away (rather
                           // than snapping) when Unscheduled is toggled on.
-                          SizeTransition(
+                          ModalCardShadowSizeTransition(
                             sizeFactor: _repeatCardCtrl,
                             axisAlignment: 1.0,
                             child: Column(
@@ -14110,7 +14110,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
                           // The two sections cross-fade via _alertCardCtrl and
                           // _reminderCardCtrl; each carries its own top SizedBox
                           // so the gap disappears when the card collapses.
-                          SizeTransition(
+                          ModalCardShadowSizeTransition(
                             sizeFactor: _alertCardCtrl,
                             axisAlignment: 1.0,
                             child: Column(
