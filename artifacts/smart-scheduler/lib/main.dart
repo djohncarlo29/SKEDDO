@@ -2381,14 +2381,19 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final physicalShortEdgeWidth = display == null
         ? min(physicalWindowWidth, windowSize.height)
         : display.size.shortestSide / displayPixelRatio;
+    final landscapeHorizontalInset = AppWindowContentScope.of(
+      context,
+    ).horizontalInset;
+    // The master pane starts at the physical left edge, while its content is
+    // inset from that edge by landscapeHorizontalInset. Add that one inset to
+    // the portrait-width content target so the visible content itself remains
+    // exactly as wide as the phone in portrait.
     final landscapeMasterWidth = min(
       physicalWindowWidth,
-      physicalShortEdgeWidth,
+      physicalShortEdgeWidth + landscapeHorizontalInset,
     );
     final landscapeDetailUsableWidth =
-        physicalWindowWidth -
-        landscapeMasterWidth -
-        AppWindowContentScope.of(context).horizontalInset;
+        physicalWindowWidth - landscapeMasterWidth - landscapeHorizontalInset;
     const minimumDcvPaneWidth = 320.0;
     final landscapeDcvSplit =
         isLandscape &&
@@ -2396,6 +2401,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _dcvCategory != null &&
         !_searchFocused &&
         landscapeDetailUsableWidth >= minimumDcvPaneWidth;
+    final landscapeTabBarHorizontalOffset =
+        (landscapeMasterWidth - physicalWindowWidth) / 2;
     final topInset = MediaQuery.of(context).padding.top;
     final headerContentHeight = isLandscape ? 52.0 : 101.0;
     final keyboardBottomInset = MediaQuery.of(context).viewInsets.bottom;
@@ -3147,6 +3154,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                           : FloatingTabPill(
                               selectedIndex: _selectedIndex,
                               eventsAccent: eventsAccent,
+                              horizontalOffset: landscapeDcvSplit
+                                  ? landscapeTabBarHorizontalOffset
+                                  : 0,
                               onTabSelected: _switchTab,
                             ),
                     ),

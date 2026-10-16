@@ -35,11 +35,14 @@ class FloatingTabPill extends StatefulWidget {
     required this.selectedIndex,
     required this.onTabSelected,
     required this.eventsAccent,
+    this.horizontalOffset = 0,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onTabSelected;
   final Color eventsAccent;
+  /// Horizontal movement from the normal centered position, in logical pixels.
+  final double horizontalOffset;
 
   @override
   State<FloatingTabPill> createState() => _FloatingTabPillState();
@@ -90,6 +93,8 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
               .clamp(0.0, double.infinity);
           if (isPortrait) _portraitBarWidth = barWidth;
           final barSideInset = (constraints.maxWidth - barWidth) / 2;
+          final barLeft = barSideInset + widget.horizontalOffset;
+          final barRight = barSideInset - widget.horizontalOffset;
           final tabBar = LiquidGlassTabBar.withImpeller(
             items: [
               _tabItem(SFIcons.sf_text_document, 'Notes'),
@@ -170,9 +175,11 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
               // onto the page first, then the translucent bar composites above it.
               // Nothing in the shadow can therefore darken or refract through the
               // bar's material.
-              Positioned(
-                left: barSideInset,
-                right: barSideInset,
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeInOutCubic,
+                left: barLeft,
+                right: barRight,
                 bottom: bottomOffset,
                 height: kFloatingTabBarHeight,
                 child: IgnorePointer(
@@ -192,9 +199,11 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
               // as its shadow. StackFit.expand alone used to give it the whole
               // host width, so its physical hit/render bounds could reach the
               // landscape system area even though the authored width was smaller.
-              Positioned(
-                left: barSideInset,
-                right: barSideInset,
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeInOutCubic,
+                left: barLeft,
+                right: barRight,
                 top: 0,
                 bottom: 0,
                 child: MediaQuery.removePadding(
