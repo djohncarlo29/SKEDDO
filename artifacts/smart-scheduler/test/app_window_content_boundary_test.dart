@@ -79,6 +79,25 @@ void main() {
     expect(AppWindowContentBoundary.landscapeSystemInsetFor(withInset), 0);
   });
 
+  test('centers a floating overlay on the physical master pane', () {
+    const geometry = AppWindowMasterDetailGeometry(
+      isLandscape: true,
+      physicalWidth: 1024,
+      horizontalInset: 32,
+      portraitShortEdgeWidth: 468,
+      masterPaneWidth: 500,
+      masterContentWidth: 468,
+      detailPaneWidth: 523.25,
+      detailContentWidth: 491.25,
+    );
+
+    final tabBarCenter =
+        geometry.physicalWidth / 2 + geometry.masterPaneCenterOffset;
+
+    expect(tabBarCenter, geometry.masterPaneWidth / 2);
+    expect(tabBarCenter, 250);
+  });
+
   test('uses only persistent view padding, not padding or gesture insets', () {
     final landscape = MediaQueryData(size: const Size(844, 390));
     final withPlatformInsets = landscape.copyWith(

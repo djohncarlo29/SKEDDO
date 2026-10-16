@@ -2371,7 +2371,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
               return Stack(
                 fit: StackFit.expand,
-                clipBehavior: Clip.hardEdge,
+                // The outer reveal clip owns the viewport and extends through
+                // the trailing system inset while the right pane is entering.
+                // Clipping here to the content width cuts off the page during
+                // that part of its slide.
+                clipBehavior: Clip.none,
                 children: [
                   if (_previousDcvCategory != null)
                     Positioned.fill(
@@ -2619,7 +2623,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _selectedIndex == 2 &&
         !_searchFocused;
     final landscapeTabBarHorizontalOffset =
-        (landscapeMasterContentWidth - physicalWindowWidth) / 2;
+        masterDetailGeometry.masterPaneCenterOffset;
     final topInset = MediaQuery.of(context).padding.top;
     final headerContentHeight = isLandscape ? 52.0 : 101.0;
     final keyboardBottomInset = MediaQuery.of(context).viewInsets.bottom;
@@ -2785,7 +2789,22 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                 leftHeaderWidth -
                                                 headerDividerWidth,
                                           );
-                                          return Row(
+                                          // Keep header controls laid out in the
+                                          // inset-safe content width, but let the
+                                          // right pane's reveal viewport grow into
+                                          // the trailing system area. That area
+                                          // is visible during the slide, not an
+                                          // extra reserved clip boundary.
+                                          final rightHeaderRevealInset =
+                                              landscapeDcvSplit
+                                                  ? masterDetailGeometry
+                                                        .horizontalInset *
+                                                    splitProgress
+                                                  : 0.0;
+                                          final headerRowWidth =
+                                              constraints.maxWidth +
+                                              rightHeaderRevealInset;
+                                          final headerRow = Row(
                                             children: [
                                               SizedBox(
                                                 width: leftHeaderWidth,
@@ -3259,28 +3278,47 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                 ),
                                               if (landscapeDcvSplit)
                                                 SizedBox(
-                                                  width: rightHeaderWidth,
+                                                  width:
+                                                      rightHeaderWidth +
+                                                      rightHeaderRevealInset,
                                                   child: ClipRect(
-                                                    child: Padding(
-                                                      padding: EdgeInsets.only(
-                                                        top: topInset,
+                                                    child: Align(
+                                                      alignment:
+                                                          Alignment.topLeft,
+                                                      child: SizedBox(
+                                                        width: rightHeaderWidth,
+                                                        child: Padding(
+                                                          padding:
+                                                              EdgeInsets.only(
+                                                                top: topInset,
+                                                              ),
+                                                          child:
+                                                              _buildLandscapeDcvPaneHeader(
+                                                                accent:
+                                                                    _dcvColor ??
+                                                                    resolveAccentColor(
+                                                                      context,
+                                                                    ),
+                                                                headerColor:
+                                                                    headerColor,
+                                                                primaryLabel:
+                                                                    primaryLabel,
+                                                              ),
                                                       ),
-                                                      child:
-                                                          _buildLandscapeDcvPaneHeader(
-                                                            accent:
-                                                                _dcvColor ??
-                                                                resolveAccentColor(
-                                                                  context,
-                                                                ),
-                                                            headerColor:
-                                                                headerColor,
-                                                            primaryLabel:
-                                                                primaryLabel,
-                                                          ),
+                                                      ),
                                                       ),
                                                     ),
                                                   ),
                                             ],
+                                          );
+                                          return OverflowBox(
+                                            alignment: Alignment.topLeft,
+                                            minWidth: constraints.maxWidth,
+                                            maxWidth: headerRowWidth,
+                                            child: SizedBox(
+                                              width: headerRowWidth,
+                                              child: headerRow,
+                                            ),
                                           );
                                         },
                                       ),

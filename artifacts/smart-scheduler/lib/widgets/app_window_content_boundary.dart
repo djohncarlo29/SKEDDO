@@ -213,6 +213,10 @@ class AppWindowMasterDetailGeometry {
   final double detailPaneWidth;
   final double detailContentWidth;
 
+  /// Horizontal offset from the full-window center to the physical master
+  /// pane's center, for centered overlays such as the floating tab bar.
+  double get masterPaneCenterOffset => (masterPaneWidth - physicalWidth) / 2;
+
   static AppWindowMasterDetailGeometry of(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final scope = AppWindowContentScope.of(context);
