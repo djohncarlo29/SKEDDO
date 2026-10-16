@@ -29,7 +29,7 @@ const LiquidGlassShape kLiquidGlassPreviewGlassShape =
 /// This widget owns the pill's presentation and tab-item interaction only.
 /// AppShell remains responsible for the selected index, navigation callbacks,
 /// safe-area positioning, and overlay ordering.
-class FloatingTabPill extends StatelessWidget {
+class FloatingTabPill extends StatefulWidget {
   const FloatingTabPill({
     super.key,
     required this.selectedIndex,
@@ -42,10 +42,18 @@ class FloatingTabPill extends StatelessWidget {
   final Color eventsAccent;
 
   @override
+  State<FloatingTabPill> createState() => _FloatingTabPillState();
+}
+
+class _FloatingTabPillState extends State<FloatingTabPill> {
+  double? _portraitBarWidth;
+
+  @override
   Widget build(BuildContext context) {
+    final selectedIndex = widget.selectedIndex;
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
     final selectedColor = selectedIndex == 2
-        ? CupertinoDynamicColor.resolve(eventsAccent, context)
+        ? CupertinoDynamicColor.resolve(widget.eventsAccent, context)
         : resolveAccentColor(context);
     // Keep the animated pill's rest endpoint in lock-step with the static
     // active-pill surface. If this is omitted, liquid_glass_easy falls back to
@@ -70,16 +78,17 @@ class FloatingTabPill extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final screenSize = MediaQuery.sizeOf(context);
-          final portraitWidth = math.min(screenSize.width, screenSize.height);
-          final maxPortraitBarWidth =
-              portraitWidth - (kFloatingTabBarHorizontalMargin * 2);
-          final barWidth = math
-              .min(
-                constraints.maxWidth -
-                    (kFloatingTabBarHorizontalMargin * 2),
-                maxPortraitBarWidth,
-              )
+          final isPortrait = screenSize.width <= screenSize.height;
+          final availableBarWidth =
+              constraints.maxWidth - (kFloatingTabBarHorizontalMargin * 2);
+          final portraitWidth = _portraitBarWidth ??
+              (math.min(screenSize.width, screenSize.height) -
+                  (kFloatingTabBarHorizontalMargin * 2));
+          final barWidth = (isPortrait
+                  ? availableBarWidth
+                  : math.min(availableBarWidth, portraitWidth))
               .clamp(0.0, double.infinity);
+          if (isPortrait) _portraitBarWidth = barWidth;
           final barSideInset = (constraints.maxWidth - barWidth) / 2;
           final tabBar = LiquidGlassTabBar.withImpeller(
             items: [
@@ -88,7 +97,7 @@ class FloatingTabPill extends StatelessWidget {
               _tabItem(SFIcons.sf_list_bullet, 'Events'),
             ],
             selectedIndex: selectedIndex,
-            onChanged: onTabSelected,
+            onChanged: widget.onTabSelected,
             width: barWidth,
             height: kFloatingTabBarHeight,
             margin: EdgeInsets.only(bottom: bottomOffset),
