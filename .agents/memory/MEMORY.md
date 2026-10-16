@@ -50,6 +50,7 @@
 - [Dart 3.9 collection nesting](dart39-collection-nesting.md) — if→for→if collection elements crash Dart 3.9 parser; fold outer if into for-loop condition instead.
 - [liquid_glass_widgets Android crash](liquid-glass-android-crash.md) — liquid_glass shaders are SkSL-incompatible; app crashes on Android when any GlassSwitch is rendered. Use _SlidingSwitch (pure Flutter) on non-iOS.
 - [Android performance visual fidelity](android-performance-visual-fidelity.md) — preserve designed glass effects; require physical-device confirmation before claiming renderer-dependent Android blur is verified.
+- [Android Freeform/Recents window band](android-recents-preview-theme.md) — distinguish system caption and Recents layers before changing inset behavior; preserve floating-window controls.
 - [Static Liquid Glass controls](static-liquid-glass-action-buttons.md) — fixed-color action circles and simple cards use bounded static glass; dynamic controls keep live optics.
 - [Replit home partition quota](replit-home-quota.md) — /home/runner has a per-user quota well below its 32GB size; move caches to /home/runner/workspace/.cache and symlink back.
 - [Liquid Glass platform compatibility](liquid-glass-platform-compatibility.md) — preserve the app fork, check toolchain compatibility, and route native iOS controls separately.
