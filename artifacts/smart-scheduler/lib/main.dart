@@ -14,6 +14,7 @@ import 'ai/event_pipeline.dart';
 import 'app_theme.dart';
 import 'services/event_store.dart';
 import 'services/local_storage.dart';
+import 'services/window_caption_appearance.dart';
 import 'tabs/calendar_tab.dart';
 import 'tabs/events_tab.dart';
 import 'tabs/notes_tab.dart';
@@ -671,6 +672,7 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
         final accentSwatch = kAccentSwatches[appAccentNotifier.value];
         final effectiveBrightness =
             brightness ?? MediaQuery.platformBrightnessOf(context);
+        WindowCaptionAppearance.synchronize(effectiveBrightness);
 
         // Status-bar icon brightness tracks the active mode so icons remain
         // legible: dark mode → light icons; light (or system) → dark icons.

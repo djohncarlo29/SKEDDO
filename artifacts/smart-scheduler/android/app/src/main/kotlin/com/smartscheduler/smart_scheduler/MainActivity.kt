@@ -11,6 +11,7 @@ import android.provider.OpenableColumns
 import android.util.TypedValue
 import android.view.View
 import android.view.WindowInsets
+import android.view.WindowInsetsController
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.platform.PlatformPlugin
@@ -23,12 +24,14 @@ class MainActivity : FlutterActivity() {
     private val dropMetadataChannel = "com.smartscheduler/drop_metadata"
     private val selectionHapticsChannel = "com.smartscheduler/selection_haptics"
     private val windowGeometryChannel = "com.smartscheduler/window_geometry"
+    private val windowAppearanceChannel = "com.smartscheduler/window_appearance"
     // These are probe sizes, not app-defined text stops. They let Flutter
     // reproduce Android's non-linear accessibility curve for every native
     // setting exposed by the device.
     private val textProbeSizes = (4..1024).map { it / 4f }
     private var nativeStt: NativeSttPlugin? = null
     private var offlineOcr: NativeOfflineOcrPlugin? = null
+    private var captionBarLightSurface = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         configureEdgeToEdgeWindow()
@@ -40,6 +43,13 @@ class MainActivity : FlutterActivity() {
         configureEdgeToEdgeWindow()
     }
 
+    override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean) {
+        super.onMultiWindowModeChanged(isInMultiWindowMode)
+        if (isInMultiWindowMode) {
+            applyCaptionBarAppearance(captionBarLightSurface)
+        }
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, windowGeometryChannel)
@@ -49,6 +59,24 @@ class MainActivity : FlutterActivity() {
                 } else {
                     result.notImplemented()
                 }
+            }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, windowAppearanceChannel)
+            .setMethodCallHandler { call, result ->
+                if (call.method != "setCaptionBarAppearance") {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                }
+                val lightSurface = call.argument<Boolean>("lightSurface")
+                if (lightSurface == null) {
+                    result.error(
+                        "invalid_argument",
+                        "setCaptionBarAppearance requires lightSurface.",
+                        null,
+                    )
+                    return@setMethodCallHandler
+                }
+                applyCaptionBarAppearance(lightSurface)
+                result.success(null)
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, textScaleChannel)
             .setMethodCallHandler { call, result ->
@@ -276,6 +304,26 @@ class MainActivity : FlutterActivity() {
                     View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
                     View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
         }
+        val isLightSurface =
+            resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK !=
+                Configuration.UI_MODE_NIGHT_YES
+        applyCaptionBarAppearance(isLightSurface)
+    }
+
+    private fun applyCaptionBarAppearance(lightSurface: Boolean) {
+        captionBarLightSurface = lightSurface
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return
+
+        val controller = window.insetsController ?: return
+        val transparentCaption =
+            WindowInsetsController.APPEARANCE_TRANSPARENT_CAPTION_BAR_BACKGROUND
+        val lightCaptionControls = WindowInsetsController.APPEARANCE_LIGHT_CAPTION_BARS
+        val appearance = transparentCaption or
+            (if (lightSurface) lightCaptionControls else 0)
+        controller.setSystemBarsAppearance(
+            appearance,
+            transparentCaption or lightCaptionControls,
+        )
     }
 
     private fun rectMap(rect: Rect): Map<String, Int> = mapOf(
