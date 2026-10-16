@@ -1667,6 +1667,9 @@ class EventsTab extends StatefulWidget {
   // and the AppShell header AnimatedBuilder guarantees they rebuild and paint
   // in the exact same Flutter frame — zero lag on Impeller/Skia.
   final AnimationController dcvSlideController;
+  // The shared eased progress also drives AppShell's landscape split geometry,
+  // keeping the master pane, divider, and entering detail pane in lock-step.
+  final Animation<double> dcvSlideProgress;
 
   // Fired whenever a category matching [activeDCV] has its color/icon edited
   // while its DCV is open, so AppShell can refresh the header's cached
@@ -1707,6 +1710,7 @@ class EventsTab extends StatefulWidget {
     this.dcvSortDir,
     this.dcvShowManualDateSections = true,
     required this.dcvSlideController,
+    required this.dcvSlideProgress,
   });
 
   @override
@@ -8137,9 +8141,7 @@ class EventsTabState extends State<EventsTab>
       0.0,
       targetGridPanelWidth - horizontalInset,
     );
-    final slideCurve = CurveTween(
-      curve: Curves.easeInOutCubic,
-    ).animate(widget.dcvSlideController);
+    final slideCurve = widget.dcvSlideProgress;
     final Widget gridView = LayoutBuilder(
       builder: (context, constraints) {
         final panelWidth = constraints.maxWidth;
@@ -8503,71 +8505,77 @@ class EventsTabState extends State<EventsTab>
                               .length,
                   };
                   final Widget detailView = AppWindowPhysicalWidth(
-                    child: AppWindowContentPadding(
-                      includeLeft: !widget.landscapeMasterDetail,
-                      child: _CategoryDetailView(
-                        key: ValueKey(widget.activeDCV ?? '_none'),
-                        label: widget.activeDCV ?? '',
-                        icon: cat?.iconOrSvg,
-                        categoryType: cat?.categoryType ?? 'Standard',
-                        showStandardCategoryName:
-                            isBuiltInSmartCategory ||
-                            cat?.categoryType == 'Smart Category',
-                        events: dcvEvents,
-                        sortBy:
-                            isArchivedUtility || isRecentlyDeletedUtility
-                                ? 'Creation Date'
-                                : (widget.dcvSortBy ?? 'Manual'),
-                        sortDir:
-                            isArchivedUtility || isRecentlyDeletedUtility
-                                ? (widget.dcvSortDir == 'Oldest First'
-                                    ? 'Oldest First'
-                                    : 'Newest First')
-                                : (widget.dcvSortDir ?? ''),
-                        showManualDateSections:
-                            widget.dcvShowManualDateSections &&
-                            cat?.categoryType != 'Smart Category',
-                        customSectionNames: List<String>.of(
-                          cat?.categoryType == 'Smart Category'
-                              ? const <String>[]
-                              : _dcvCustomSectionNames[dcvLabel] ??
-                                  const <String>[],
-                        ),
-                        customSectionEventIds:
+                    child: ColoredBox(
+                      color: widget.landscapeMasterDetail
+                          ? resolveThemeColor(kCardColor, context)
+                          : CupertinoColors.transparent,
+                      child: AppWindowContentPadding(
+                        includeLeft: !widget.landscapeMasterDetail,
+                        child: _CategoryDetailView(
+                          key: ValueKey(widget.activeDCV ?? '_none'),
+                          label: widget.activeDCV ?? '',
+                          icon: cat?.iconOrSvg,
+                          categoryType: cat?.categoryType ?? 'Standard',
+                          landscapeMasterDetail:
+                              widget.landscapeMasterDetail,
+                          showStandardCategoryName:
+                              isBuiltInSmartCategory ||
+                              cat?.categoryType == 'Smart Category',
+                          events: dcvEvents,
+                          sortBy:
+                              isArchivedUtility || isRecentlyDeletedUtility
+                                  ? 'Creation Date'
+                                  : (widget.dcvSortBy ?? 'Manual'),
+                          sortDir:
+                              isArchivedUtility || isRecentlyDeletedUtility
+                                  ? (widget.dcvSortDir == 'Oldest First'
+                                      ? 'Oldest First'
+                                      : 'Newest First')
+                                  : (widget.dcvSortDir ?? ''),
+                          showManualDateSections:
+                              widget.dcvShowManualDateSections &&
+                              cat?.categoryType != 'Smart Category',
+                          customSectionNames: List<String>.of(
                             cat?.categoryType == 'Smart Category'
-                                ? null
-                                : _dcvCustomSectionEventIds[dcvLabel]
-                                    ?.map(List<String>.of)
-                                    .toList(),
-                    onCustomSectionRenamed: (index, title) {
-                      if (dcvLabel != null) {
-                        _renameDcvSection(dcvLabel, index, title);
-                      }
-                    },
-                    onCustomSectionEditingChanged: (index, title) {
-                      if (dcvLabel != null) {
-                        _renameDcvSection(
-                          dcvLabel,
-                          index,
-                          title,
-                        );
-                      }
-                    },
-                    onCustomSectionDeleted: (index) {
-                      if (dcvLabel != null) {
-                        deleteDcvSection(dcvLabel, index);
-                      }
-                    },
-                    onCustomSectionReordered: (sectionEventIds) {
-                      if (dcvLabel != null) {
-                        _reorderDcvSections(dcvLabel, sectionEventIds);
-                      }
-                    },
-                        onEditEvent: widget.onEditEvent,
-                        color: dcvColor,
-                        specialContentBuilder:
-                        isArchivedUtility && hasArchivedUtilityItems
-                            ? (_) => _DcvUtilityContent(
+                                ? const <String>[]
+                                : _dcvCustomSectionNames[dcvLabel] ??
+                                    const <String>[],
+                          ),
+                          customSectionEventIds:
+                              cat?.categoryType == 'Smart Category'
+                                  ? null
+                                  : _dcvCustomSectionEventIds[dcvLabel]
+                                      ?.map(List<String>.of)
+                                      .toList(),
+                          onCustomSectionRenamed: (index, title) {
+                            if (dcvLabel != null) {
+                              _renameDcvSection(dcvLabel, index, title);
+                            }
+                          },
+                          onCustomSectionEditingChanged: (index, title) {
+                            if (dcvLabel != null) {
+                              _renameDcvSection(
+                                dcvLabel,
+                                index,
+                                title,
+                              );
+                            }
+                          },
+                          onCustomSectionDeleted: (index) {
+                            if (dcvLabel != null) {
+                              deleteDcvSection(dcvLabel, index);
+                            }
+                          },
+                          onCustomSectionReordered: (sectionEventIds) {
+                            if (dcvLabel != null) {
+                              _reorderDcvSections(dcvLabel, sectionEventIds);
+                            }
+                          },
+                          onEditEvent: widget.onEditEvent,
+                          color: dcvColor,
+                          specialContentBuilder:
+                              isArchivedUtility && hasArchivedUtilityItems
+                                  ? (_) => _DcvUtilityContent(
                               categoryColor: dcvColor,
                               smartCategoryColors: _smartCategoryColors,
                               archivedSmartLabels: _archivedSmartLabels,
@@ -8603,9 +8611,9 @@ class EventsTabState extends State<EventsTab>
                               onArchivedCategoryTap: _openArchivedCategory,
                               onArchivedEventTap: _openArchivedEvent,
                             )
-                            : isRecentlyDeletedUtility &&
-                                hasRecentlyDeletedUtilityItems
-                            ? (_) => _DcvUtilityContent(
+                                  : isRecentlyDeletedUtility &&
+                                        hasRecentlyDeletedUtilityItems
+                                  ? (_) => _DcvUtilityContent(
                               categoryColor: dcvColor,
                               smartCategoryColors: _smartCategoryColors,
                               deletedEvents:
@@ -8643,15 +8651,16 @@ class EventsTabState extends State<EventsTab>
                               onDeletedEventTap: _openDeletedEvent,
                               onDeletedSmartCategoryTap:
                                   _openDeletedSmartCategory,
-                      onDeletedCategoryTap: _openDeletedCategory,
+                              onDeletedCategoryTap: _openDeletedCategory,
                             )
-                            : null,
+                                  : null,
+                        ),
                       ),
                     ),
                   );
                   if (!widget.landscapeMasterDetail) return detailView;
                   return AnimatedBuilder(
-                    animation: widget.dcvSlideController,
+                    animation: widget.dcvSlideProgress,
                     builder: (context, _) {
                       final splitProgress = slideCurve.value;
                       final masterWidth =
@@ -19148,6 +19157,7 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
 class _CategoryDetailView extends StatefulWidget {
   final String label;
   final bool embedded;
+  final bool landscapeMasterDetail;
   final bool timeGroupedManualEvents;
   final ScrollController? externalScrollController;
   final GlobalKey? externalScrollViewportKey;
@@ -19219,6 +19229,7 @@ class _CategoryDetailView extends StatefulWidget {
     super.key,
     required this.label,
     this.embedded = false,
+    this.landscapeMasterDetail = false,
     this.timeGroupedManualEvents = false,
     this.externalScrollController,
     this.externalScrollViewportKey,
@@ -20869,7 +20880,9 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     // positional flash on Flutter web before the sliver settled to center.
     final emptyStateContent = Padding(
       padding: EdgeInsets.only(
-        bottom: floatingTabBarContentBottomClearance(context),
+        bottom: widget.landscapeMasterDetail
+            ? 0
+            : floatingTabBarContentBottomClearance(context),
       ),
       child: buildDcvEmptyState(
         label: widget.label,

@@ -871,6 +871,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // the exact same frame, making one-frame header/content desync physically
   // impossible on Impeller/Skia.
   late final AnimationController _dcvSlideController;
+  late final CurvedAnimation _dcvSlideProgress;
 
   // ── Settings panel slide animation ──────────────────────────────────────
   // One controller governs everything: panel slide, scrim fade, and the
@@ -1594,6 +1595,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 380),
     );
+    _dcvSlideProgress = CurvedAnimation(
+      parent: _dcvSlideController,
+      curve: Curves.easeInOutCubic,
+    );
     _settingsController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 320),
@@ -1627,6 +1632,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   void dispose() {
     _nativeTabBarChannel.setMethodCallHandler(null);
     _midnightTimer?.cancel();
+    _dcvSlideProgress.dispose();
     _dcvSlideController.dispose();
     _searchModeController.dispose();
     _settingsController.dispose();
@@ -2150,7 +2156,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 child: AnimatedTapIcon(
                   padding: EdgeInsets.zero,
                   onTap: onTap,
-                  child: child,
+                  // The slot is a fixed 36×52 tap target. Center loosens the
+                  // constraints for fixed-size icons so they keep their
+                  // authored size instead of filling the whole slot.
+                  child: Center(child: child),
                 ),
               );
             }
@@ -2452,6 +2461,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               }
             },
             dcvSlideController: _dcvSlideController,
+            dcvSlideProgress: _dcvSlideProgress,
             onEditEvent: (event) => _calendarTabKey.currentState
                 ?.showEditEventSheet(context, event),
           ),
@@ -2592,7 +2602,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                             // Impeller/Skia, eliminating the 1-frame flicker.
                             animation: Listenable.merge([
                               _searchModeAnim,
-                              _dcvSlideController,
+                              _dcvSlideProgress,
                               _settingsController,
                             ]),
                             builder: (context, _) {
@@ -2602,7 +2612,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                 1.0,
                               );
                               final splitProgress = landscapeDcvSplit
-                                  ? Curves.easeInOutCubic.transform(pageP)
+                                  ? _dcvSlideProgress.value
                                   : 0.0;
                               // Midpoint snap: header shows DCV state once the slide
                               // passes 50 % in either direction.  Because pageP comes
@@ -3133,15 +3143,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                   height:
                                                       topInset +
                                                       headerContentHeight,
-                                                  child: Align(
-                                                    alignment:
-                                                        Alignment.bottomCenter,
-                                                    child: Container(
-                                                      width: headerDividerWidth,
-                                                      height:
-                                                          headerContentHeight,
-                                                      color: separatorColor,
-                                                    ),
+                                                  child: ColoredBox(
+                                                    color: separatorColor,
                                                   ),
                                                 ),
                                               if (landscapeDcvSplit)
