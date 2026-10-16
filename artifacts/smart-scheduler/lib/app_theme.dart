@@ -3209,9 +3209,11 @@ class LightModeLiquidGlassPillContour extends StatelessWidget {
   const LightModeLiquidGlassPillContour({
     super.key,
     required this.child,
+    required this.whiteOutlineOpacity,
   });
 
   final Widget child;
+  final double whiteOutlineOpacity;
 
   @override
   Widget build(BuildContext context) {
@@ -3229,6 +3231,7 @@ class LightModeLiquidGlassPillContour extends StatelessWidget {
               painter: _LiquidGlassPillEdgePainter(
                 isLandscape:
                     MediaQuery.orientationOf(context) == Orientation.landscape,
+                whiteOutlineOpacity: whiteOutlineOpacity,
               ),
             ),
           ),
@@ -3243,9 +3246,13 @@ class LightModeLiquidGlassPillContour extends StatelessWidget {
 /// The inner white highlight follows the pill edge; a smooth, variable-width
 /// tertiary contour grows outwards at the left/right midpoints.
 class _LiquidGlassPillEdgePainter extends CustomPainter {
-  const _LiquidGlassPillEdgePainter({required this.isLandscape});
+  const _LiquidGlassPillEdgePainter({
+    required this.isLandscape,
+    required this.whiteOutlineOpacity,
+  });
 
   final bool isLandscape;
+  final double whiteOutlineOpacity;
 
   static const double _whiteRimWidth = 1.15;
   static const double _maximumContourWidth = 1.3;
@@ -3393,11 +3400,14 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty) return;
     final segmentCount = _segmentCountFor(size);
+    final whiteRimColor = kLiquidGlassButtonLightRim.withValues(
+      alpha: whiteOutlineOpacity.clamp(0.0, 1.0).toDouble(),
+    );
 
     canvas.drawPath(
       _outlinePath(size, -_whiteRimWidth / 2, segmentCount),
       Paint()
-        ..color = kLiquidGlassButtonLightRim
+        ..color = whiteRimColor
         ..style = PaintingStyle.stroke
         ..strokeWidth = _whiteRimWidth
         ..isAntiAlias = true,
@@ -3413,7 +3423,8 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _LiquidGlassPillEdgePainter oldDelegate) =>
-      oldDelegate.isLandscape != isLandscape;
+      oldDelegate.isLandscape != isLandscape ||
+      oldDelegate.whiteOutlineOpacity != whiteOutlineOpacity;
 }
 
 /// A single translucent, variable-width checkmark contour, kept inside the

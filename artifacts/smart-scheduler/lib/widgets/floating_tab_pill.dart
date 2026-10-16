@@ -61,6 +61,8 @@ class FloatingTabPill extends StatelessWidget {
     final unselectedColor = resolveThemeColor(kSecondaryLabel, context);
     final bottomOffset = floatingTabBarBottomOffset(context);
     final barStyle = _floatingTabBarStyle(context);
+    final glassOpacityProgress =
+        _normalizedLiquidGlassOpacity(appLiquidGlassOpacityNotifier.value);
 
     return Semantics(
       container: true,
@@ -134,6 +136,7 @@ class FloatingTabPill extends StatelessWidget {
                       ),
                       style: barStyle,
                       barOverlay: LightModeLiquidGlassPillContour(
+                        whiteOutlineOpacity: glassOpacityProgress,
                         child: const SizedBox.expand(),
                       ),
                       // The environmental shadows above own elevation. Keep the
@@ -450,10 +453,16 @@ class _FloatingTabBarGlassPreviewState
                             );
                           },
                         ),
-                        LightModeLiquidGlassPillContour(
-                          child: SizedBox(
-                            width: barWidth,
-                            height: pillHeight,
+                        ValueListenableBuilder<double>(
+                          valueListenable: appLiquidGlassOpacityNotifier,
+                          builder: (context, glassOpacity, _) =>
+                              LightModeLiquidGlassPillContour(
+                            whiteOutlineOpacity:
+                                _normalizedLiquidGlassOpacity(glassOpacity),
+                            child: SizedBox(
+                              width: barWidth,
+                              height: pillHeight,
+                            ),
                           ),
                         ),
                      ],
@@ -526,9 +535,7 @@ LiquidGlassStyle _floatingTabBarStyle(
   final headerColor = resolveThemeColor(kFloatingTabBarSurfaceColor, context);
   final defaultBlur = LiquidGlassTabBar.defaultStyle.appearance.blur;
   final blurProgress =
-      ((appLiquidGlassOpacityNotifier.value - kLiquidGlassMinimumOpacity) /
-              (kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity))
-          .clamp(0.0, 1.0);
+      _normalizedLiquidGlassOpacity(appLiquidGlassOpacityNotifier.value);
   final blurScale = blurProgress < 0.9
       ? (0.3 + blurProgress * 3) / 2
       : blurProgress < 1.0
@@ -566,4 +573,11 @@ LiquidGlassStyle _floatingTabBarStyle(
       chromaticAberration: kFloatingTabBarChromaticAberration,
     ),
   );
+}
+
+double _normalizedLiquidGlassOpacity(double materialOpacity) {
+  final range = kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity;
+  return ((materialOpacity - kLiquidGlassMinimumOpacity) / range)
+      .clamp(0.0, 1.0)
+      .toDouble();
 }
