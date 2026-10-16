@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 
 void main() {
@@ -124,64 +127,27 @@ void main() {
     expect(geometry.detailContentWidthAt(1), 491.25);
   });
 
-  testWidgets('centers the source item when the master pane settles', (
-    tester,
-  ) async {
+  testWidgets(
+    'keeps visible anchors in place and reveals them in both pane directions',
+    (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(1024, 600);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
 
-    const geometry = AppWindowMasterDetailGeometry(
-      isLandscape: true,
-      physicalWidth: 1024,
-      horizontalInset: 32,
-      portraitShortEdgeWidth: 468,
-      masterPaneWidth: 500,
-      masterContentWidth: 468,
-      detailPaneWidth: 523.25,
-      detailContentWidth: 491.25,
-    );
     final progress = AnimationController(
       vsync: const TestVSync(),
       duration: const Duration(milliseconds: 100),
     );
     final scrollController = ScrollController();
     final anchorKey = GlobalKey();
-    double? detailViewportWidth;
 
     await tester.pumpWidget(
-      CupertinoApp(
-        home: AppWindowContentScope(
-          horizontalInset: geometry.horizontalInset,
-          physicalWidth: geometry.physicalWidth,
-          child: AppWindowMasterDetailTransition(
-            geometry: geometry,
-            progress: progress,
-            applyDetailPaneInsets: false,
-            focusAnchorKey: anchorKey,
-            dividerColor: CupertinoColors.separator,
-            master: ListView(
-              controller: scrollController,
-              children: [
-                for (var index = 0; index < 30; index++)
-                  SizedBox(
-                    key: index == 10 ? anchorKey : null,
-                    height: 72,
-                    child: Center(child: Text('Row $index')),
-                  ),
-              ],
-            ),
-            detail: LayoutBuilder(
-              builder: (context, constraints) {
-                detailViewportWidth = constraints.maxWidth;
-                return const ColoredBox(
-                  color: CupertinoColors.systemBackground,
-                );
-              },
-            ),
-          ),
-        ),
+      _focusTransitionApp(
+        progress: progress,
+        scrollController: scrollController,
+        anchorKey: anchorKey,
+        anchorIndex: 10,
       ),
     );
     await tester.pump();
@@ -189,29 +155,66 @@ void main() {
     await tester.pump();
 
     progress.forward();
+    await tester.pumpAndSettle();
+    expect(scrollController.offset, 650);
+    _expectAnchorVisible(tester, anchorKey, avoidTabBar: true);
+
+    // Closing the pane must also restore a selected row that has moved above
+    // the usable viewport while the split is open.
+    scrollController.jumpTo(900);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+    progress.reverse();
+    await tester.pumpAndSettle();
+    _expectAnchorVisible(tester, anchorKey, avoidTabBar: true);
+    expect(scrollController.offset, closeTo(720, 1));
 
-    final midTransitionTargetRect = tester.getRect(find.byKey(anchorKey));
-    final midTransitionViewportRect = tester.getRect(find.byType(ListView));
-    expect(
-      (midTransitionTargetRect.center.dy -
-              midTransitionViewportRect.center.dy)
-          .abs(),
-      lessThan(2),
+    // Opening from full width must reveal the same row if it starts below the
+    // usable area, without centering it under the floating tab bar.
+    scrollController.jumpTo(0);
+    await tester.pump();
+    progress.forward();
+    await tester.pumpAndSettle();
+    _expectAnchorVisible(tester, anchorKey, avoidTabBar: true);
+    expect(scrollController.offset, closeTo(270, 1));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    progress.dispose();
+    scrollController.dispose();
+  });
+
+  testWidgets('uses the full viewport bottom when tab-bar avoidance is off', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1024, 600);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final progress = AnimationController(
+      vsync: const TestVSync(),
+      duration: const Duration(milliseconds: 100),
     );
+    final scrollController = ScrollController();
+    final anchorKey = GlobalKey();
 
+    await tester.pumpWidget(
+      _focusTransitionApp(
+        progress: progress,
+        scrollController: scrollController,
+        anchorKey: anchorKey,
+        anchorIndex: 26,
+        avoidTabBar: false,
+      ),
+    );
+    await tester.pump();
+    scrollController.jumpTo(1350);
+    await tester.pump();
+
+    progress.forward();
     await tester.pumpAndSettle();
 
-    final targetRect = tester.getRect(find.byKey(anchorKey));
-    final viewportRect = tester.getRect(find.byType(ListView));
-    expect((targetRect.center.dy - viewportRect.center.dy).abs(), lessThan(2));
-    expect(viewportRect.width, geometry.masterContentWidth);
-    expect(detailViewportWidth, geometry.detailPaneWidth);
-
-    final settledOffset = scrollController.offset;
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(scrollController.offset, settledOffset);
+    expect(scrollController.offset, 1350);
+    _expectAnchorVisible(tester, anchorKey, avoidTabBar: false);
 
     await tester.pumpWidget(const SizedBox.shrink());
     progress.dispose();
@@ -323,6 +326,72 @@ void main() {
     expect(nestedPadding!.left, 18);
     expect(nestedViewPadding!.left, 18);
   });
+}
+
+const _focusTestGeometry = AppWindowMasterDetailGeometry(
+  isLandscape: true,
+  physicalWidth: 1024,
+  horizontalInset: 32,
+  portraitShortEdgeWidth: 468,
+  masterPaneWidth: 500,
+  masterContentWidth: 468,
+  detailPaneWidth: 523.25,
+  detailContentWidth: 491.25,
+);
+
+Widget _focusTransitionApp({
+  required Animation<double> progress,
+  required ScrollController scrollController,
+  required GlobalKey anchorKey,
+  required int anchorIndex,
+  bool avoidTabBar = true,
+}) {
+  return CupertinoApp(
+    home: AppWindowContentScope(
+      horizontalInset: _focusTestGeometry.horizontalInset,
+      physicalWidth: _focusTestGeometry.physicalWidth,
+      child: AppWindowMasterDetailTransition(
+        geometry: _focusTestGeometry,
+        progress: progress,
+        applyDetailPaneInsets: false,
+        focusAnchorKey: anchorKey,
+        focusRevealDuration: const Duration(milliseconds: 100),
+        focusAvoidTabBar: avoidTabBar,
+        dividerColor: CupertinoColors.separator,
+        master: ListView(
+          controller: scrollController,
+          children: [
+            for (var index = 0; index < 30; index++)
+              SizedBox(
+                key: index == anchorIndex ? anchorKey : null,
+                height: 72,
+                child: Center(child: Text('Row $index')),
+              ),
+          ],
+        ),
+        detail: const ColoredBox(color: CupertinoColors.systemBackground),
+      ),
+    ),
+  );
+}
+
+void _expectAnchorVisible(
+  WidgetTester tester,
+  GlobalKey anchorKey, {
+  required bool avoidTabBar,
+}) {
+  final anchorRect = tester.getRect(find.byKey(anchorKey));
+  final viewportRect = tester.getRect(find.byType(ListView));
+  final context = tester.element(find.byType(AppWindowMasterDetailTransition));
+  final bottom = avoidTabBar
+      ? math.min(
+          viewportRect.bottom,
+          MediaQuery.sizeOf(context).height -
+              floatingTabBarContentBottomClearance(context),
+        )
+      : viewportRect.bottom;
+  expect(anchorRect.top, greaterThanOrEqualTo(viewportRect.top - 1));
+  expect(anchorRect.bottom, lessThanOrEqualTo(bottom + 1));
 }
 
 class _DraftForm extends StatefulWidget {

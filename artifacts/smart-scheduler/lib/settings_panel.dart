@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -310,7 +311,7 @@ class _SettingsPanelState extends State<SettingsPanel>
         }
         // The shared transition is no longer mounted after this layout-mode
         // change, so settle the master anchor immediately in the new viewport.
-        _centerCurrentMasterAnchor(Duration.zero);
+        _revealCurrentMasterAnchorIfNeeded(Duration.zero);
       } else if (widget.isLandscapeTwoPane) {
         widget.subScreenBackAction.value = null;
       } else if (_activeRoute != null && _navCtrl.value >= 0.5) {
@@ -464,18 +465,26 @@ class _SettingsPanelState extends State<SettingsPanel>
       _previousRoute = null;
     });
     _splitDetailController.value = 0.0;
+    _revealCurrentMasterAnchorIfNeeded(const Duration(milliseconds: 180));
   }
 
-  void _centerCurrentMasterAnchor(Duration duration) {
+  void _revealCurrentMasterAnchorIfNeeded(Duration duration) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final anchor = _masterAnchorKey?.currentContext;
       if (anchor == null || !anchor.mounted) return;
-      Scrollable.ensureVisible(
-        anchor,
-        alignment: 0.5,
-        duration: duration,
-        curve: Curves.easeInOutCubic,
+      final target = appWindowFocusAnchorScrollTarget(
+        anchorContext: anchor,
+        viewportContext: context,
+        avoidTabBar: false,
+      );
+      if (target == null) return;
+      unawaited(
+        target.position.animateTo(
+          target.offset,
+          duration: duration,
+          curve: Curves.easeInOutCubic,
+        ),
       );
     });
   }
@@ -593,6 +602,7 @@ class _SettingsPanelState extends State<SettingsPanel>
           dividerColor: separatorColor,
           applyDetailPaneInsets: false,
           focusRevealDuration: _paneTransitionController.duration!,
+          focusAvoidTabBar: false,
           focusAnchorKey: _masterAnchorKey,
           master: ColoredBox(
             color: backgroundColor,

@@ -7015,9 +7015,8 @@ class EventsTabState extends State<EventsTab>
         widget.landscapeMasterDetail;
     if (old.activeDCV != widget.activeDCV) {
       _utilityExitScheduled = false;
-      if (old.activeDCV != null && widget.activeDCV == null) {
-        _masterFocusAnchorContext = null;
-      }
+      // Keep the last selected tile through the reverse pane animation so the
+      // shared transition can make a final visibility correction at full width.
     }
     // The active section editor can still have focus when the DCV closes, so
     // its final onSubmitted callback is not guaranteed to run. Persist the

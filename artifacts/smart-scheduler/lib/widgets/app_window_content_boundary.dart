@@ -309,6 +309,7 @@ class AppWindowMasterDetailTransition extends StatefulWidget {
     this.focusAnchorContext,
     this.focusAnchorKey,
     this.focusRevealDuration = const Duration(milliseconds: 360),
+    this.focusAvoidTabBar = true,
   });
 
   final AppWindowMasterDetailGeometry geometry;
@@ -322,24 +323,101 @@ class AppWindowMasterDetailTransition extends StatefulWidget {
   final BuildContext? focusAnchorContext;
   final GlobalKey? focusAnchorKey;
   final Duration focusRevealDuration;
+  final bool focusAvoidTabBar;
 
   @override
   State<AppWindowMasterDetailTransition> createState() =>
       _AppWindowMasterDetailTransitionState();
 }
 
+class AppWindowFocusAnchorScrollTarget {
+  const AppWindowFocusAnchorScrollTarget({
+    required this.position,
+    required this.offset,
+  });
+
+  final ScrollPosition position;
+  final double offset;
+}
+
+/// Returns the smallest vertical scroll adjustment needed to keep an anchor
+/// inside its actual viewport and, optionally, above the floating tab bar.
+AppWindowFocusAnchorScrollTarget? appWindowFocusAnchorScrollTarget({
+  required BuildContext anchorContext,
+  required BuildContext viewportContext,
+  required bool avoidTabBar,
+}) {
+  if (!anchorContext.mounted || !viewportContext.mounted) return null;
+  final scrollable = Scrollable.maybeOf(anchorContext);
+  if (scrollable == null) return null;
+  final position = scrollable.position;
+  if (!position.hasPixels || !position.hasContentDimensions) return null;
+  if (position.axisDirection != AxisDirection.down &&
+      position.axisDirection != AxisDirection.up) {
+    return null;
+  }
+
+  final anchorRenderObject = anchorContext.findRenderObject();
+  if (anchorRenderObject is! RenderBox || !anchorRenderObject.attached) {
+    return null;
+  }
+  final viewport = RenderAbstractViewport.maybeOf(anchorRenderObject);
+  if (viewport == null || viewport is! RenderBox) return null;
+  final viewportBox = viewport as RenderBox;
+  if (!viewportBox.attached) return null;
+
+  final anchorRect =
+      anchorRenderObject.localToGlobal(Offset.zero) & anchorRenderObject.size;
+  final viewportRect =
+      viewportBox.localToGlobal(Offset.zero) & viewportBox.size;
+  final visibleBottom = avoidTabBar
+      ? math.min(
+          viewportRect.bottom,
+          MediaQuery.sizeOf(viewportContext).height -
+              floatingTabBarContentBottomClearance(viewportContext),
+        )
+      : viewportRect.bottom;
+  final visibleHeight = visibleBottom - viewportRect.top;
+  if (visibleHeight <= 0) return null;
+
+  final topOverflow = math.max(0.0, viewportRect.top - anchorRect.top);
+  final bottomOverflow = math.max(0.0, anchorRect.bottom - visibleBottom);
+  if (topOverflow <= 1.0 && bottomOverflow <= 1.0) return null;
+
+  final isDown = position.axisDirection == AxisDirection.down;
+  final offsetDelta = anchorRect.height > visibleHeight
+      // An unusually tall item cannot fit in the available region. Align its
+      // leading edge when needed so the greatest possible portion stays visible.
+      ? (isDown ? -topOverflow : topOverflow)
+      : (isDown
+            ? bottomOverflow - topOverflow
+            : topOverflow - bottomOverflow);
+  final targetOffset = (position.pixels + offsetDelta)
+      .clamp(position.minScrollExtent, position.maxScrollExtent)
+      .toDouble();
+  if ((targetOffset - position.pixels).abs() <= 0.5) return null;
+
+  return AppWindowFocusAnchorScrollTarget(
+    position: position,
+    offset: targetOffset,
+  );
+}
+
 class _AppWindowMasterDetailTransitionState
     extends State<AppWindowMasterDetailTransition> {
   bool _focusAnchorSyncScheduled = false;
+  bool _focusAnchorSyncAllowSettled = false;
   bool _focusAnchorSyncSuppressed = false;
-  bool _focusAnchorRevealStarted = false;
+  bool _focusAnchorCorrectionInFlight = false;
 
   @override
   void initState() {
     super.initState();
     widget.progress.addStatusListener(_onProgressStatus);
     widget.progress.addListener(_onProgressChanged);
-    _scheduleFocusAnchorSync();
+    _scheduleFocusAnchorSync(
+      allowSettled: widget.progress.status == AnimationStatus.completed,
+    );
   }
 
   @override
@@ -354,30 +432,33 @@ class _AppWindowMasterDetailTransitionState
     if (oldWidget.focusAnchorContext != widget.focusAnchorContext ||
         oldWidget.focusAnchorKey != widget.focusAnchorKey) {
       _focusAnchorSyncSuppressed = false;
-      _focusAnchorRevealStarted = false;
-      if (widget.progress.status == AnimationStatus.forward) {
+      if (widget.progress.status == AnimationStatus.forward ||
+          widget.progress.status == AnimationStatus.reverse) {
         _scheduleFocusAnchorSync();
       }
     }
   }
 
   void _onProgressStatus(AnimationStatus status) {
-    if (status == AnimationStatus.forward) {
+    if (status == AnimationStatus.forward ||
+        status == AnimationStatus.reverse) {
       _focusAnchorSyncSuppressed = false;
-      _focusAnchorRevealStarted = false;
       _scheduleFocusAnchorSync();
       return;
     }
-    if (status == AnimationStatus.completed) {
-      if (!_focusAnchorSyncSuppressed) _scheduleFocusAnchorSync();
+    if (status == AnimationStatus.completed ||
+        status == AnimationStatus.dismissed) {
+      if (!_focusAnchorSyncSuppressed) {
+        _scheduleFocusAnchorSync(allowSettled: true);
+      }
     }
   }
 
   void _onProgressChanged() {
-    // Only inspect the anchor while the full-width pane is opening into the
-    // split. Never move the master after the split has settled or while it is
-    // closing.
-    if (widget.progress.status == AnimationStatus.forward) {
+    // Recheck during both directions because text wrapping and row geometry
+    // can change again as the pane returns to full width.
+    if (widget.progress.status == AnimationStatus.forward ||
+        widget.progress.status == AnimationStatus.reverse) {
       _scheduleFocusAnchorSync();
     }
   }
@@ -399,80 +480,85 @@ class _AppWindowMasterDetailTransitionState
     return false;
   }
 
-  void _scheduleFocusAnchorSync() {
-    if (_focusAnchorSyncScheduled || _focusAnchorSyncSuppressed) return;
+  void _scheduleFocusAnchorSync({bool allowSettled = false}) {
+    if (_focusAnchorSyncSuppressed) return;
+    if (_focusAnchorSyncScheduled) {
+      _focusAnchorSyncAllowSettled =
+          _focusAnchorSyncAllowSettled || allowSettled;
+      return;
+    }
     _focusAnchorSyncScheduled = true;
+    _focusAnchorSyncAllowSettled = allowSettled;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusAnchorSyncScheduled = false;
+      final checkSettled = _focusAnchorSyncAllowSettled;
+      _focusAnchorSyncAllowSettled = false;
       if (!mounted || _focusAnchorSyncSuppressed) return;
-      if (_focusAnchorRevealStarted) return;
-      if (widget.progress.status != AnimationStatus.forward &&
-          widget.progress.status != AnimationStatus.completed) {
-        return;
-      }
+      if (_focusAnchorCorrectionInFlight) return;
+      final status = widget.progress.status;
+      final isAnimating =
+          status == AnimationStatus.forward ||
+          status == AnimationStatus.reverse;
+      final isSettled =
+          status == AnimationStatus.completed ||
+          status == AnimationStatus.dismissed;
+      if (!isAnimating && !(checkSettled && isSettled)) return;
+
       final anchor =
           widget.focusAnchorKey?.currentContext ?? widget.focusAnchorContext;
       if (anchor == null || !anchor.mounted) return;
-      final scrollable = Scrollable.maybeOf(anchor);
-      if (scrollable == null) return;
-      final position = scrollable.position;
-      if (!position.hasPixels || !position.hasContentDimensions) return;
-      final renderObject = anchor.findRenderObject();
-      if (renderObject is! RenderBox || !renderObject.attached) return;
-      final viewport = RenderAbstractViewport.maybeOf(renderObject);
-      if (viewport == null) return;
-      final viewportBox = viewport as RenderBox;
+      final target = appWindowFocusAnchorScrollTarget(
+        anchorContext: anchor,
+        viewportContext: context,
+        avoidTabBar: widget.focusAvoidTabBar,
+      );
+      if (target == null) return;
 
-      final anchorRect =
-          renderObject.localToGlobal(Offset.zero) & renderObject.size;
-      final viewportRect =
-          viewportBox.localToGlobal(Offset.zero) & viewportBox.size;
-      final mediaQuery = MediaQuery.of(context);
-      final bottomClearance = usesClassicNativeTabBarForLayout.value
-          ? kClassicNativeTabBarHeight +
-                systemSafeAreaBottomInset(context) +
-                kClassicNativeTabBarMinimumContentGap
-          : kFloatingTabBarHeight +
-                floatingTabBarContentBottomOffset(context) +
-                kFloatingTabBarSafetyMargin;
-      final tabBarTop = mediaQuery.size.height - bottomClearance;
-      final visibleBottom = math.min(viewportRect.bottom, tabBarTop);
-
-      // A tapped item that remains visible should stay exactly where it is.
-      // Only reveal it if the narrower pane or the tab bar would obscure it.
-      if (anchorRect.top >= viewportRect.top - 1.0 &&
-          anchorRect.bottom <= visibleBottom + 1.0) {
-        return;
-      }
-
-      final targetOffset = viewport
-          .getOffsetToReveal(renderObject, 0.5)
-          .offset
-          .clamp(position.minScrollExtent, position.maxScrollExtent)
-          .toDouble();
-      if ((targetOffset - position.pixels).abs() > 0.5) {
-        _focusAnchorRevealStarted = true;
-        final remainingMilliseconds =
-            (widget.focusRevealDuration.inMilliseconds *
-                    (1.0 - widget.progress.value.clamp(0.0, 1.0)))
-                .round();
-        final duration = Duration(
-          milliseconds: remainingMilliseconds
-              .clamp(
-                120,
-                math.max(120, widget.focusRevealDuration.inMilliseconds),
-              )
-              .toInt(),
-        );
-        unawaited(
-          position.animateTo(
-            targetOffset,
-            duration: duration,
-            curve: Curves.easeInOutCubic,
-          ),
-        );
-      }
+      final progress = widget.progress.value.clamp(0.0, 1.0).toDouble();
+      final remainingFraction = switch (status) {
+        AnimationStatus.forward => 1.0 - progress,
+        AnimationStatus.reverse => progress,
+        _ => 0.0,
+      };
+      final duration = isAnimating
+          ? Duration(
+              milliseconds:
+                  (widget.focusRevealDuration.inMilliseconds *
+                          remainingFraction)
+                      .round()
+                      .clamp(
+                        120,
+                        math.max(
+                          120,
+                          widget.focusRevealDuration.inMilliseconds,
+                        ),
+                      )
+                      .toInt(),
+            )
+          : const Duration(milliseconds: 180);
+      _focusAnchorCorrectionInFlight = true;
+      unawaited(_animateFocusAnchor(target, duration));
     });
+  }
+
+  Future<void> _animateFocusAnchor(
+    AppWindowFocusAnchorScrollTarget target,
+    Duration duration,
+  ) async {
+    try {
+      await target.position.animateTo(
+        target.offset,
+        duration: duration,
+        curve: Curves.easeInOutCubic,
+      );
+    } finally {
+      if (mounted) {
+        _focusAnchorCorrectionInFlight = false;
+        if (!_focusAnchorSyncSuppressed) {
+          _scheduleFocusAnchorSync(allowSettled: true);
+        }
+      }
+    }
   }
 
   @override
