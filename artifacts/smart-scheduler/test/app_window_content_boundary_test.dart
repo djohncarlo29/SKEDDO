@@ -101,6 +101,94 @@ void main() {
     expect(tabBarCenter, 266);
   });
 
+  test('interpolates the shared master/detail pane geometry', () {
+    const geometry = AppWindowMasterDetailGeometry(
+      isLandscape: true,
+      physicalWidth: 1024,
+      horizontalInset: 32,
+      portraitShortEdgeWidth: 468,
+      masterPaneWidth: 500,
+      masterContentWidth: 468,
+      detailPaneWidth: 523.25,
+      detailContentWidth: 491.25,
+    );
+
+    expect(geometry.masterPaneWidthAt(0), 1024);
+    expect(geometry.masterPaneWidthAt(1), 500);
+    expect(geometry.masterContentWidthAt(0), 960);
+    expect(geometry.masterContentWidthAt(1), 468);
+    expect(geometry.dividerWidthAt(0), 0);
+    expect(geometry.dividerWidthAt(1), 0.75);
+    expect(geometry.detailPaneWidthAt(0), 0);
+    expect(geometry.detailPaneWidthAt(1), 523.25);
+    expect(geometry.detailContentWidthAt(1), 491.25);
+  });
+
+  testWidgets('centers the source item when the master pane settles', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1024, 600);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    const geometry = AppWindowMasterDetailGeometry(
+      isLandscape: true,
+      physicalWidth: 1024,
+      horizontalInset: 32,
+      portraitShortEdgeWidth: 468,
+      masterPaneWidth: 500,
+      masterContentWidth: 468,
+      detailPaneWidth: 523.25,
+      detailContentWidth: 491.25,
+    );
+    final progress = AnimationController(
+      vsync: const TestVSync(),
+      duration: const Duration(milliseconds: 100),
+    );
+    final scrollController = ScrollController();
+    final anchorKey = GlobalKey();
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: AppWindowMasterDetailTransition(
+          geometry: geometry,
+          progress: progress,
+          applyPaneInsets: false,
+          focusAnchorKey: anchorKey,
+          dividerColor: CupertinoColors.separator,
+          master: ListView(
+            controller: scrollController,
+            children: [
+              for (var index = 0; index < 30; index++)
+                SizedBox(
+                  key: index == 10 ? anchorKey : null,
+                  height: 72,
+                  child: Center(child: Text('Row $index')),
+                ),
+            ],
+          ),
+          detail: const ColoredBox(color: CupertinoColors.systemBackground),
+        ),
+      ),
+    );
+    await tester.pump();
+    scrollController.jumpTo(650);
+    await tester.pump();
+
+    progress.forward();
+    await tester.pumpAndSettle();
+
+    final targetRect = tester.getRect(find.byKey(anchorKey));
+    final viewportRect = tester.getRect(find.byType(ListView));
+    expect((targetRect.center.dy - viewportRect.center.dy).abs(), lessThan(2));
+    expect(viewportRect.width, geometry.masterPaneWidth);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    progress.dispose();
+    scrollController.dispose();
+  });
+
   test('uses only persistent view padding, not padding or gesture insets', () {
     final landscape = MediaQueryData(size: const Size(844, 390));
     final withPlatformInsets = landscape.copyWith(

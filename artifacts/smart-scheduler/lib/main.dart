@@ -2593,27 +2593,24 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final masterDetailGeometry =
         AppWindowMasterDetailGeometry.of(context);
     final isLandscape = masterDetailGeometry.isLandscape;
-    final physicalWindowWidth = masterDetailGeometry.physicalWidth;
     // The master pane starts at the physical left edge, while its content is
     // inset from that edge by landscapeHorizontalInset. Add that one inset to
     // the portrait-width content target so the visible content itself remains
     // exactly as wide as the phone in portrait.
     final landscapeMasterWidth = masterDetailGeometry.masterPaneWidth;
-    final landscapeMasterContentWidth =
-        masterDetailGeometry.masterContentWidth;
     final landscapeDetailUsableWidth =
         masterDetailGeometry.detailContentWidth;
     final landscapeSettingsTwoPane =
         isLandscape &&
         landscapeDetailUsableWidth >=
             kAppWindowMasterDetailMinimumDetailWidth;
-    final landscapeDcvLayoutActive =
+    final landscapeDcvLayoutAvailable =
         isLandscape &&
-        _dcvCategory != null &&
         landscapeDetailUsableWidth >=
             kAppWindowMasterDetailMinimumDetailWidth;
     final landscapeDcvSplit =
-        landscapeDcvLayoutActive &&
+        landscapeDcvLayoutAvailable &&
+        _dcvCategory != null &&
         _selectedIndex == 2 &&
         !_searchFocused;
     final landscapeTabBarHorizontalOffset =
@@ -2686,7 +2683,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                             );
                           },
                            child: _buildContent(
-                             landscapeMasterDetail: landscapeDcvLayoutActive,
+                             landscapeMasterDetail:
+                                 landscapeDcvLayoutAvailable,
                              landscapeMasterWidth: landscapeMasterWidth,
                            ),
                         ),
@@ -2769,14 +2767,18 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                         builder: (context, constraints) {
                                           final leftHeaderWidth =
                                               landscapeDcvSplit
-                                                  ? constraints.maxWidth +
-                                                        (landscapeMasterContentWidth -
-                                                                constraints
-                                                                    .maxWidth) *
-                                                            splitProgress
+                                                  ? masterDetailGeometry
+                                                        .masterContentWidthAt(
+                                                          splitProgress,
+                                                        )
                                                   : constraints.maxWidth;
                                           final headerDividerWidth =
-                                              0.75 * splitProgress;
+                                              landscapeDcvSplit
+                                                  ? masterDetailGeometry
+                                                        .dividerWidthAt(
+                                                          splitProgress,
+                                                        )
+                                                  : 0.0;
                                           final rightHeaderWidth = max(
                                             0.0,
                                             constraints.maxWidth -

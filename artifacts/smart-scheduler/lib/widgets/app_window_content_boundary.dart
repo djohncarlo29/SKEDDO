@@ -221,6 +221,29 @@ class AppWindowMasterDetailGeometry {
   double get masterContentCenterOffset =>
       horizontalInset + (masterContentWidth - physicalWidth) / 2;
 
+  double masterPaneWidthAt(double progress) {
+    final t = progress.clamp(0.0, 1.0).toDouble();
+    return physicalWidth + (masterPaneWidth - physicalWidth) * t;
+  }
+
+  double dividerWidthAt(double progress) =>
+      kAppWindowMasterDetailDividerWidth *
+      progress.clamp(0.0, 1.0).toDouble();
+
+  double detailPaneWidthAt(double progress) =>
+      math.max(0.0, physicalWidth - masterPaneWidthAt(progress) - dividerWidthAt(progress));
+
+  double masterContentWidthAt(double progress) {
+    final t = progress.clamp(0.0, 1.0).toDouble();
+    return math.max(
+      0.0,
+      masterPaneWidthAt(t) - horizontalInset - horizontalInset * (1.0 - t),
+    );
+  }
+
+  double detailContentWidthAt(double progress) =>
+      math.max(0.0, detailPaneWidthAt(progress) - horizontalInset);
+
   static AppWindowMasterDetailGeometry of(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final scope = AppWindowContentScope.of(context);
@@ -262,50 +285,146 @@ class AppWindowMasterDetailGeometry {
   }
 }
 
-/// Places master/detail content using the shared landscape pane geometry.
+/// Reusable full-width-to-master/detail transition for landscape navigation.
 ///
-/// Both panes receive their own usable-width MediaQuery, so cards can retain
-/// the same padding and wrapping rules used in portrait.
-class AppWindowTwoPaneLayout extends StatelessWidget {
-  const AppWindowTwoPaneLayout({
+/// The master shrinks to the shared portrait-width target while the detail
+/// enters from the physical right edge. Safe-area-aware callers can use the
+/// default pane insets; callers that already inset their contents can disable
+/// them. [focusAnchorContext] or [focusAnchorKey] keeps the item that opened
+/// the detail pane centered in the master when the transition settles.
+class AppWindowMasterDetailTransition extends StatefulWidget {
+  const AppWindowMasterDetailTransition({
     super.key,
     required this.geometry,
+    required this.progress,
     required this.master,
     required this.detail,
     required this.dividerColor,
+    this.applyPaneInsets = true,
+    this.drawDivider = true,
+    this.focusAnchorContext,
+    this.focusAnchorKey,
   });
 
   final AppWindowMasterDetailGeometry geometry;
+  final Animation<double> progress;
   final Widget master;
   final Widget detail;
   final Color dividerColor;
+  final bool applyPaneInsets;
+  final bool drawDivider;
+  final BuildContext? focusAnchorContext;
+  final GlobalKey? focusAnchorKey;
+
+  @override
+  State<AppWindowMasterDetailTransition> createState() =>
+      _AppWindowMasterDetailTransitionState();
+}
+
+class _AppWindowMasterDetailTransitionState
+    extends State<AppWindowMasterDetailTransition> {
+  @override
+  void initState() {
+    super.initState();
+    widget.progress.addStatusListener(_onProgressStatus);
+  }
+
+  @override
+  void didUpdateWidget(AppWindowMasterDetailTransition oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.progress != widget.progress) {
+      oldWidget.progress.removeStatusListener(_onProgressStatus);
+      widget.progress.addStatusListener(_onProgressStatus);
+    }
+    if (oldWidget.focusAnchorContext != widget.focusAnchorContext ||
+        oldWidget.focusAnchorKey != widget.focusAnchorKey) {
+      _centerFocusAnchor(Duration.zero);
+    }
+  }
+
+  void _onProgressStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed ||
+        status == AnimationStatus.dismissed) {
+      _centerFocusAnchor(const Duration(milliseconds: 180));
+    }
+  }
+
+  void _centerFocusAnchor(Duration duration) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final anchor =
+          widget.focusAnchorKey?.currentContext ?? widget.focusAnchorContext;
+      if (anchor == null || !anchor.mounted) return;
+      Scrollable.ensureVisible(
+        anchor,
+        alignment: 0.5,
+        duration: duration,
+        curve: Curves.easeInOutCubic,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    widget.progress.removeStatusListener(_onProgressStatus);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: geometry.physicalWidth,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: geometry.masterPaneWidth,
-            child: AppWindowPaneContent(
-              includeRight: false,
-              child: master,
-            ),
+    return AnimatedBuilder(
+      animation: widget.progress,
+      builder: (context, _) {
+        final progress = widget.progress.value.clamp(0.0, 1.0).toDouble();
+        final masterWidth = widget.geometry.masterPaneWidthAt(progress);
+        final dividerWidth = widget.geometry.dividerWidthAt(progress);
+        final rightInset = widget.geometry.horizontalInset * (1.0 - progress);
+        final master = widget.applyPaneInsets
+            ? AppWindowPaneContent(
+                includeRight: false,
+                additionalRightInset: rightInset,
+                child: widget.master,
+              )
+            : widget.master;
+        final detail = widget.applyPaneInsets
+            ? AppWindowPaneContent(
+                includeLeft: false,
+                child: widget.detail,
+              )
+            : widget.detail;
+
+        return SizedBox(
+          width: widget.geometry.physicalWidth,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: masterWidth,
+                child: ClipRect(child: master),
+              ),
+              SizedBox(
+                width: dividerWidth,
+                child: widget.drawDivider
+                    ? ColoredBox(color: widget.dividerColor)
+                    : const SizedBox.expand(),
+              ),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) => ClipRect(
+                    child: Transform.translate(
+                      offset: Offset(
+                        constraints.maxWidth * (1.0 - progress),
+                        0,
+                      ),
+                      child: detail,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          SizedBox(
-            width: kAppWindowMasterDetailDividerWidth,
-            child: ColoredBox(color: dividerColor),
-          ),
-          Expanded(
-            child: AppWindowPaneContent(
-              includeLeft: false,
-              child: detail,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

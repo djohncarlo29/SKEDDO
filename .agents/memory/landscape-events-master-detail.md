@@ -1,6 +1,6 @@
 ---
-name: Landscape Events master-detail geometry
-description: Keep the Events master pane portrait-width and animate the floating tab bar to its center only while its landscape DCV split is active.
+name: Landscape master-detail transition
+description: Shared Settings and Events split behavior, pane geometry, safe-area reveal, and source-item anchoring.
 ---
 
 The landscape Events master pane begins at the physical left edge, but its content receives the shared horizontal safe-area inset on the left. Its resting width is the portrait short-edge content width plus exactly one shared inset, leaving the visible master content equal to portrait width.
@@ -13,6 +13,10 @@ While the split is active, animate the shared floating tab bar from screen cente
 
 Keep right-pane DCV header controls laid out within the inset-safe content width, but extend the animated reveal clip through the trailing system inset as the pane enters. The inset is not a visual clipping boundary.
 
-**Why:** The tab bar's symmetric content-padding parent remains centered on the full window. Its target must account for the content's physical left origin while using only the portrait-width content to find that content's center. Centering on the inset-expanded pane places the tab bar left of the cards. Clipping the right header at the usable-content edge cuts off its slide before it reaches the physical window edge. A snapped pane or independently animated headers and content makes the DCV transition appear disconnected, and centering navigation on the whole landscape screen leaves it between the panes.
+Settings must open in landscape as a full-width master panel. Open the detail pane only after a Settings row is tapped; place its back control at the right side of the detail header and use it to return to the full-width parent. Settings and Events should use the same reusable master/detail transition.
 
-**How to apply:** Keep master-pane and content widths distinct. Compute the tab offset as `horizontalInset + (masterContentWidth - physicalWidth) / 2`, so the inset sets the content origin but is not counted as portrait content width. Keep Search/Plus outside the clipped detail-header transition, above it in the shell stack, and bind their callbacks to the active Events/DCV state. Let the detail-header reveal clip expand to the physical edge with the shared DCV progress. Keep the tab-bar target tied to split state so it recenters when the split ends.
+When a Settings row or Events category opens or changes the detail pane, preserve that source item as the master-pane focus anchor and center it after the pane width settles. Do not rely only on its old scroll offset because grid columns and row heights can change during the resize.
+
+**Why:** The tab bar's symmetric content-padding parent remains centered on the full window. Its target must account for the content's physical left origin while using only the portrait-width content to find that content's center. Centering on the inset-expanded pane places the tab bar left of the cards. Clipping the right header at the usable-content edge cuts off its slide before it reaches the physical window edge. A snapped pane or independently animated headers and content makes the DCV transition appear disconnected, and centering navigation on the whole landscape screen leaves it between the panes. Settings must not choose a default detail screen on open, and a scrolled source item must remain visible when the master narrows.
+
+**How to apply:** Keep master-pane and content widths distinct. Compute the tab offset as `horizontalInset + (masterContentWidth - physicalWidth) / 2`, so the inset sets the content origin but is not counted as portrait content width. Keep Search/Plus outside the clipped detail-header transition, above it in the shell stack, and bind their callbacks to the active Events/DCV state. Let the detail-header reveal clip expand to the physical edge with the shared progress. Use the shared transition for master width, detail reveal, and divider; keep a stable scroll anchor so entry, row changes, and collapse recenter the source correctly.

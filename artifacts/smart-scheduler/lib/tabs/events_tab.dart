@@ -1461,7 +1461,8 @@ class _ActionRowState extends State<_ActionRow> {
 // InheritedWidget so every tile/row can reach the "navigate to DCV" callback
 // without prop-drilling through _CategoryCard → _CategoryRow.
 class _CategoryTapCallback extends InheritedWidget {
-  final void Function(String label, Color color)? onTileTapped;
+  final void Function(String label, Color color, BuildContext sourceContext)?
+  onTileTapped;
 
   const _CategoryTapCallback({
     required this.onTileTapped,
@@ -1762,6 +1763,7 @@ class EventsTabState extends State<EventsTab>
   bool _hadArchivedUtilityItems = false;
   bool _hadRecentlyDeletedUtilityItems = false;
   bool _animateDcvCategoryReplacement = false;
+  BuildContext? _masterFocusAnchorContext;
 
   // ── Smart search results (filled asynchronously by _scheduleSearch) ────────
   List<SearchHit> _searchPrimary = [];
@@ -2757,9 +2759,10 @@ class EventsTabState extends State<EventsTab>
     });
   }
 
-  void _onCategoryTapped(_UserCategory category) {
+  void _onCategoryTapped(_UserCategory category, BuildContext sourceContext) {
     // System utility categories are first-class DCVs, just like every other
     // category. Their content is supplied by the detail-view builder below.
+    _masterFocusAnchorContext = sourceContext;
     widget.onTileTapped?.call(
       category.name,
       renderCategoryColor(category.color, context),
@@ -6247,7 +6250,6 @@ class EventsTabState extends State<EventsTab>
         onEdit: () => _editCategory(c),
         onArchive: () => _archiveCategory(c),
         onDelete: () => _requestDeleteCategory(c),
-        onTap: _isSystemUtilityCategory(c) ? () => _onCategoryTapped(c) : null,
         onReorderStart: (p) => _onGridReorderStart(c, p),
         onReorderUpdate: (p) => _onGridReorderUpdate(c, p),
         onReorderEnd: () => _onGridReorderEnd(c),
@@ -7013,6 +7015,9 @@ class EventsTabState extends State<EventsTab>
         widget.landscapeMasterDetail;
     if (old.activeDCV != widget.activeDCV) {
       _utilityExitScheduled = false;
+      if (old.activeDCV != null && widget.activeDCV == null) {
+        _masterFocusAnchorContext = null;
+      }
     }
     // The active section editor can still have focus when the DCV closes, so
     // its final onSubmitted callback is not guaranteed to run. Persist the
@@ -8392,7 +8397,10 @@ class EventsTabState extends State<EventsTab>
     // No PageView means no separate GPU compositor layers per page, so there
     // is also no layer-promotion flash when content changes.
     return _CategoryTapCallback(
-      onTileTapped: widget.onTileTapped,
+      onTileTapped: (label, color, sourceContext) {
+        _masterFocusAnchorContext = sourceContext;
+        widget.onTileTapped?.call(label, color);
+      },
       child: Stack(
         children: [
           // Grid slides out to the left as DCV enters from the right.
@@ -8415,11 +8423,13 @@ class EventsTabState extends State<EventsTab>
           // on screen.
           AnimatedBuilder(
             animation: widget.dcvSlideController,
-            builder:
-                (context, child) => IgnorePointer(
-                  ignoring: widget.dcvSlideController.value < 0.5,
-                  child: child,
-                ),
+            builder: (context, child) {
+              if (widget.landscapeMasterDetail) return child!;
+              return IgnorePointer(
+                ignoring: widget.dcvSlideController.value < 0.5,
+                child: child,
+              );
+            },
             child: SlideTransition(
               position: widget.landscapeMasterDetail
                   ? const AlwaysStoppedAnimation<Offset>(Offset.zero)
@@ -8723,49 +8733,25 @@ class EventsTabState extends State<EventsTab>
                     ),
                   );
                   if (!widget.landscapeMasterDetail) return detailView;
-                  return AnimatedBuilder(
-                    animation: widget.dcvSlideProgress,
-                    builder: (context, _) {
-                      final splitProgress = slideCurve.value;
-                      final masterWidth =
-                          physicalWidth +
-                          (targetGridPanelWidth - physicalWidth) *
-                              splitProgress;
-                      final dividerWidth = 0.75 * splitProgress;
-                      return Row(
-                        children: [
-                          SizedBox(
-                            width: masterWidth,
-                            child: ClipRect(child: gridView),
-                          ),
-                          SizedBox(
-                            width: dividerWidth,
-                            child: ColoredBox(
-                              color: resolveThemeColor(
-                                kSeparatorColor,
-                                context,
-                              ),
-                            ),
-                          ),
-                          // This viewport is the physical pane remainder,
-                          // including the trailing safe-area reveal.
-                          Expanded(
-                            child: LayoutBuilder(
-                              builder: (context, constraints) => ClipRect(
-                                child: Transform.translate(
-                                  offset: Offset(
-                                    constraints.maxWidth *
-                                        (1.0 - splitProgress),
-                                    0,
-                                  ),
-                                  child: detailView,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
+                  final landscapeDetailView = AnimatedBuilder(
+                    animation: widget.dcvSlideController,
+                    builder: (context, child) => IgnorePointer(
+                      ignoring: widget.dcvSlideController.value < 0.5,
+                      child: child,
+                    ),
+                    child: detailView,
+                  );
+                  return AppWindowMasterDetailTransition(
+                    geometry: AppWindowMasterDetailGeometry.of(context),
+                    progress: widget.dcvSlideProgress,
+                    dividerColor: resolveThemeColor(
+                      kSeparatorColor,
+                      context,
+                    ),
+                    applyPaneInsets: false,
+                    focusAnchorContext: _masterFocusAnchorContext,
+                    master: gridView,
+                    detail: landscapeDetailView,
                   );
                 },
               ),
@@ -9457,7 +9443,11 @@ class _CategoryTile extends StatelessWidget {
       // live accent so the DCV header always reflects the current user setting.
       onTap:
           onTap != null
-              ? () => onTap(data.label, renderCategoryColor(color, context))
+              ? () => onTap(
+                  data.label,
+                  renderCategoryColor(color, context),
+                  context,
+                )
               : null,
       reorderable: reorderable,
       onReorderStart: onReorderStart,
@@ -10062,10 +10052,11 @@ class _PinnedUserTile extends StatelessWidget {
       onTap:
           this.onTap ??
           (onTap != null
-              ? () => onTap(
-                category.name,
-                renderCategoryColor(category.color, context),
-              )
+               ? () => onTap(
+                 category.name,
+                 renderCategoryColor(category.color, context),
+                 context,
+               )
               : null),
       onReorderStart: onReorderStart,
       onReorderUpdate: onReorderUpdate,
@@ -10840,7 +10831,7 @@ class _CategoryCard extends StatelessWidget {
   /// (the dragged cat is hovering over a collapsed group and counting down).
   final String? collapsedGroupDwellId;
   final void Function(_UserCategory)? onPin;
-  final void Function(_UserCategory)? onCategoryTap;
+  final void Function(_UserCategory, BuildContext)? onCategoryTap;
   final void Function(_UserCategory)? onEdit;
   final void Function(_UserCategory)? onArchive;
   final void Function(_UserCategory)? onDelete;
@@ -11109,7 +11100,9 @@ class _CategoryCard extends StatelessWidget {
         isGroupTarget: isGroupTarget,
         stadium: stadium,
         onPin: item.isSolo && onPin != null ? () => onPin!(cat) : null,
-        onTap: onCategoryTap != null ? () => onCategoryTap!(cat) : null,
+        onTap: onCategoryTap != null
+            ? (sourceContext) => onCategoryTap!(cat, sourceContext)
+            : null,
         onEdit: onEdit != null ? () => onEdit!(cat) : null,
         onArchive: onArchive != null ? () => onArchive!(cat) : null,
         onDelete: onDelete != null ? () => onDelete!(cat) : null,
@@ -11231,7 +11224,7 @@ class _CategoryRow extends StatelessWidget {
   final bool stadium;
 
   final VoidCallback? onPin;
-  final VoidCallback? onTap;
+  final ValueChanged<BuildContext>? onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onArchive;
   final VoidCallback? onDelete;
@@ -11273,14 +11266,15 @@ class _CategoryRow extends StatelessWidget {
       onEdit: onEdit,
       onArchive: onArchive,
       onDelete: onDelete,
-      onTap:
-          this.onTap ??
-          (onTap != null
-              ? () => onTap(
-                category.name,
-                renderCategoryColor(category.color, context),
-              )
-              : null),
+      onTap: this.onTap != null
+          ? () => this.onTap!(context)
+          : onTap != null
+          ? () => onTap(
+              category.name,
+              renderCategoryColor(category.color, context),
+              context,
+            )
+          : null,
       onReorderStart: onReorderStart,
       onReorderUpdate: onReorderUpdate,
       onReorderEnd: onReorderEnd,

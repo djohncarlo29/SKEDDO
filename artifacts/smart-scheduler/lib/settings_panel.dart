@@ -186,6 +186,8 @@ class SettingsPanel extends StatefulWidget {
   final double topInset;
   final double bottomInset;
   final bool isOpen;
+  /// Whether the current landscape window can fit a master/detail layout.
+  /// Settings still opens as a full-width master pane until a row is tapped.
   final bool isLandscapeTwoPane;
 
   /// Called when the X button is tapped — triggers controller.reverse()
@@ -236,9 +238,23 @@ class _SettingsPanelState extends State<SettingsPanel>
     duration: const Duration(milliseconds: 360),
   );
 
+  late final AnimationController _paneTransitionController =
+      AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 360),
+      );
+  late final Animation<double> _paneTransitionProgress = CurvedAnimation(
+    parent: _paneTransitionController,
+    curve: Curves.easeInOutCubic,
+  );
+  final ScrollController _mainScrollController = ScrollController();
+  final Map<String, GlobalKey> _settingsRowAnchorKeys = {
+    for (final title in _kRoutes.keys) title: GlobalKey(),
+  };
   _SettingsRoute? _activeRoute;
   _SettingsRoute? _previousRoute;
-  bool _landscapeDefaultSelection = false;
+  bool _isSplitActive = false;
+  GlobalKey? _masterAnchorKey;
 
   // Listener added to _navCtrl when a push starts; fires the hard-snap of the
   // overlay icon to "<" at the 50 % midpoint — matching the DCV timing.
@@ -255,56 +271,49 @@ class _SettingsPanelState extends State<SettingsPanel>
     super.didUpdateWidget(oldWidget);
 
     final openedNow = widget.isOpen && !oldWidget.isOpen;
-    final enteredLandscapeSplit =
-        widget.isOpen &&
-        widget.isLandscapeTwoPane &&
-        !oldWidget.isLandscapeTwoPane;
 
-    if (openedNow && widget.isLandscapeTwoPane) {
-      _selectLandscapeDefault();
-    } else if (openedNow && !widget.isLandscapeTwoPane &&
-        _landscapeDefaultSelection) {
+    if (openedNow) {
       _activeRoute = null;
       _previousRoute = null;
-      _landscapeDefaultSelection = false;
+      _isSplitActive = false;
+      _masterAnchorKey = null;
       _navCtrl.value = 0.0;
+      _paneTransitionController.value = 0.0;
       _splitDetailController.value = 0.0;
-    } else if (enteredLandscapeSplit) {
-      if (_activeRoute == null) {
-        _selectLandscapeDefault();
-      } else {
-        _settleForLandscapeSplit();
-      }
+      widget.subScreenBackAction.value = null;
+    }
+
+    if (!widget.isOpen && oldWidget.isOpen) {
+      _navCtrl.stop();
+      _paneTransitionController.stop();
+      _splitDetailController.stop();
+      _isSplitActive = false;
+      _paneTransitionController.value = 0.0;
+      widget.subScreenBackAction.value = null;
     }
 
     if (widget.isOpen &&
         widget.isLandscapeTwoPane != oldWidget.isLandscapeTwoPane) {
-      if (widget.isLandscapeTwoPane) {
+      if (widget.isLandscapeTwoPane && _activeRoute != null) {
+        _isSplitActive = true;
+        _paneTransitionController.value = 1.0;
+        _splitDetailController.value = 1.0;
+        _navCtrl.value = 0.0;
+        widget.subScreenBackAction.value = null;
+      } else if (!widget.isLandscapeTwoPane && _isSplitActive) {
+        _isSplitActive = false;
+        _paneTransitionController.value = 0.0;
+        if (_activeRoute != null) {
+          _navCtrl.value = 1.0;
+          widget.subScreenBackAction.value = _pop;
+        }
+        _centerCurrentMasterAnchor(const Duration(milliseconds: 180));
+      } else if (widget.isLandscapeTwoPane) {
         widget.subScreenBackAction.value = null;
       } else if (_activeRoute != null && _navCtrl.value >= 0.5) {
         widget.subScreenBackAction.value = _pop;
       }
     }
-  }
-
-  void _selectLandscapeDefault() {
-    _activeRoute = _kRoutes['Profile'];
-    _previousRoute = null;
-    _landscapeDefaultSelection = true;
-    _navCtrl.value = 1.0;
-    _splitDetailController.value = 1.0;
-    widget.subScreenBackAction.value = null;
-  }
-
-  void _settleForLandscapeSplit() {
-    if (_snapListener != null) {
-      _navCtrl.removeListener(_snapListener!);
-      _snapListener = null;
-    }
-    _previousRoute = null;
-    _navCtrl.value = 1.0;
-    _splitDetailController.value = 1.0;
-    widget.subScreenBackAction.value = null;
   }
 
   void _onSplitDetailStatus(AnimationStatus status) {
@@ -394,17 +403,22 @@ class _SettingsPanelState extends State<SettingsPanel>
     );
   }
 
-  void _push(_SettingsRoute route) {
+  void _push(_SettingsRoute route, GlobalKey anchorKey) {
     if (widget.isLandscapeTwoPane) {
       if (_activeRoute?.title == route.title) return;
+      _masterAnchorKey = anchorKey;
       if (_activeRoute == null) {
-        setState(() => _activeRoute = route);
+        setState(() {
+          _activeRoute = route;
+          _isSplitActive = true;
+        });
         _splitDetailController.value = 1.0;
+        widget.subScreenBackAction.value = null;
+        _paneTransitionController.forward(from: 0.0);
       } else {
         setState(() {
           _previousRoute = _activeRoute;
           _activeRoute = route;
-          _landscapeDefaultSelection = false;
         });
         _splitDetailController.forward(from: 0.0);
       }
@@ -419,7 +433,6 @@ class _SettingsPanelState extends State<SettingsPanel>
     }
     setState(() {
       _activeRoute = route;
-      _landscapeDefaultSelection = false;
     });
     _navCtrl.forward(from: 0.0);
 
@@ -435,6 +448,34 @@ class _SettingsPanelState extends State<SettingsPanel>
 
     _snapListener = listener;
     _navCtrl.addListener(listener);
+  }
+
+  Future<void> _closeSplitPane() async {
+    if (!_isSplitActive) return;
+    widget.subScreenBackAction.value = null;
+    await _paneTransitionController.reverse();
+    if (!mounted) return;
+    setState(() {
+      _isSplitActive = false;
+      _activeRoute = null;
+      _previousRoute = null;
+    });
+    _splitDetailController.value = 0.0;
+    _centerCurrentMasterAnchor(const Duration(milliseconds: 180));
+  }
+
+  void _centerCurrentMasterAnchor(Duration duration) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final anchor = _masterAnchorKey?.currentContext;
+      if (anchor == null || !anchor.mounted) return;
+      Scrollable.ensureVisible(
+        anchor,
+        alignment: 0.5,
+        duration: duration,
+        curve: Curves.easeInOutCubic,
+      );
+    });
   }
 
   void _pop() {
@@ -454,6 +495,8 @@ class _SettingsPanelState extends State<SettingsPanel>
   void dispose() {
     if (_snapListener != null) _navCtrl.removeListener(_snapListener!);
     _splitDetailController.removeStatusListener(_onSplitDetailStatus);
+    _mainScrollController.dispose();
+    _paneTransitionController.dispose();
     _splitDetailController.dispose();
     _navCtrl.dispose();
     super.dispose();
@@ -516,8 +559,9 @@ class _SettingsPanelState extends State<SettingsPanel>
 
         final geometry = AppWindowMasterDetailGeometry.of(context);
         final isLandscape = geometry.isLandscape;
-        final isLandscapeTwoPane =
+        final canSplitInLandscape =
             widget.isLandscapeTwoPane && isLandscape;
+        final showLandscapeSplit = canSplitInLandscape && _isSplitActive;
         final headerContentHeight = isLandscape ? 52.0 : 101.0;
         final headerHeight = topInset + headerContentHeight;
         final backgroundColor = resolveThemeColor(kBackgroundColor, context);
@@ -525,6 +569,8 @@ class _SettingsPanelState extends State<SettingsPanel>
         final mainSettingsContent = _MainSettingsContent(
           bottomInset: bottomInset,
           onPush: _push,
+          scrollController: _mainScrollController,
+          rowAnchorKeys: _settingsRowAnchorKeys,
           accentColor: accentColor,
           accentSwatch: swatch,
           themeLabel: themeLabel,
@@ -538,13 +584,17 @@ class _SettingsPanelState extends State<SettingsPanel>
           liquidGlassOpacityLabel: liquidGlassOpacityLabel,
         );
         final splitRoute = _activeRoute ?? _kRoutes['Profile']!;
-        final splitBody = AppWindowTwoPaneLayout(
+        final splitBody = AppWindowMasterDetailTransition(
           geometry: geometry,
+          progress: _paneTransitionProgress,
           dividerColor: separatorColor,
+          focusAnchorKey: _masterAnchorKey,
           master: ColoredBox(
             color: backgroundColor,
             child: IgnorePointer(
-              ignoring: _splitDetailController.isAnimating,
+              ignoring:
+                  _paneTransitionController.isAnimating ||
+                  _splitDetailController.isAnimating,
               child: mainSettingsContent,
             ),
           ),
@@ -569,7 +619,7 @@ class _SettingsPanelState extends State<SettingsPanel>
                   // ── Main body — slides right (parallax) during sub-screen push ──
                   Positioned.fill(
                     top: headerHeight,
-                    child: isLandscapeTwoPane
+                    child: showLandscapeSplit
                         ? ClipRect(child: splitBody)
                         : AppWindowPhysicalWidth(
                             child: SlideTransition(
@@ -582,7 +632,7 @@ class _SettingsPanelState extends State<SettingsPanel>
                   ),
 
                   // ── Sub-screen body — slides in from right; no header ───────
-                  if (!isLandscapeTwoPane && _activeRoute != null)
+                  if (!showLandscapeSplit && _activeRoute != null)
                     Positioned.fill(
                       top: headerHeight,
                       child: AppWindowPhysicalWidth(
@@ -607,9 +657,12 @@ class _SettingsPanelState extends State<SettingsPanel>
                     top: 0,
                     left: 0,
                     right: 0,
-                    child: isLandscapeTwoPane
+                    child: showLandscapeSplit
                         ? AnimatedBuilder(
-                            animation: _splitDetailController,
+                            animation: Listenable.merge([
+                              _paneTransitionController,
+                              _splitDetailController,
+                            ]),
                             builder: (context, _) {
                               final progress = Curves.easeInOutCubic.transform(
                                 _splitDetailController.value,
@@ -618,10 +671,12 @@ class _SettingsPanelState extends State<SettingsPanel>
                                 geometry: geometry,
                                 topInset: topInset,
                                 contentHeight: headerContentHeight,
+                                paneProgress: _paneTransitionProgress,
                                 activeTitle: splitRoute.title,
                                 previousTitle: _previousRoute?.title,
                                 transitionProgress: progress,
                                 dividerColor: separatorColor,
+                                onBack: _closeSplitPane,
                               );
                             },
                           )
@@ -656,7 +711,9 @@ class _SettingsPanelState extends State<SettingsPanel>
 // ══════════════════════════════════════════════════════════════════════════════
 class _MainSettingsContent extends StatelessWidget {
   final double bottomInset;
-  final void Function(_SettingsRoute) onPush;
+  final void Function(_SettingsRoute, GlobalKey) onPush;
+  final ScrollController scrollController;
+  final Map<String, GlobalKey> rowAnchorKeys;
   // Current resolved accent color — used for the Accent Color row trailing.
   final Color accentColor;
   // Current accent swatch — name + color for the trailing circle + label.
@@ -675,6 +732,8 @@ class _MainSettingsContent extends StatelessWidget {
   const _MainSettingsContent({
     required this.bottomInset,
     required this.onPush,
+    required this.scrollController,
+    required this.rowAnchorKeys,
     required this.accentColor,
     required this.accentSwatch,
     required this.themeLabel,
@@ -690,7 +749,8 @@ class _MainSettingsContent extends StatelessWidget {
 
   void _tap(String title) {
     final route = _kRoutes[title];
-    if (route != null) onPush(route);
+    final anchorKey = rowAnchorKeys[title];
+    if (route != null && anchorKey != null) onPush(route, anchorKey);
   }
 
   @override
@@ -700,6 +760,7 @@ class _MainSettingsContent extends StatelessWidget {
       // independent controller instead of inheriting the active tab's primary
       // scroll position.
       primary: false,
+      controller: scrollController,
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
       ),
@@ -712,11 +773,13 @@ class _MainSettingsContent extends StatelessWidget {
           label: 'Account',
           rows: [
             _SettingsRow(
+              key: rowAnchorKeys['Profile'],
               title: 'Profile',
               trailing: const _ChevronTrailing(),
               onTap: () => _tap('Profile'),
             ),
             _SettingsRow(
+              key: rowAnchorKeys['Sync & Backup'],
               title: 'Sync & Backup',
               trailing: const _ChevronTrailing(),
               onTap: () => _tap('Sync & Backup'),
@@ -731,11 +794,13 @@ class _MainSettingsContent extends StatelessWidget {
           label: 'Appearance',
           rows: [
             _SettingsRow(
+              key: rowAnchorKeys['Theme'],
               title: 'Theme',
               trailing: _ValueTrailing(themeLabel),
               onTap: () => _tap('Theme'),
             ),
             _SettingsRow(
+              key: rowAnchorKeys['Accent Color'],
               title: 'Accent Color',
               trailing: _ColorTrailing(
                 color: accentColor,
@@ -744,11 +809,13 @@ class _MainSettingsContent extends StatelessWidget {
               onTap: () => _tap('Accent Color'),
             ),
             _SettingsRow(
+              key: rowAnchorKeys['Text Size'],
               title: 'Text Size',
               trailing: _ValueTrailing(textSizeLabel),
               onTap: () => _tap('Text Size'),
             ),
             _SettingsRow(
+              key: rowAnchorKeys['Liquid Glass'],
               title: 'Liquid Glass',
               trailing: _ValueTrailing(liquidGlassOpacityLabel),
               onTap: () => _tap('Liquid Glass'),
@@ -763,21 +830,25 @@ class _MainSettingsContent extends StatelessWidget {
           label: 'Calendar',
           rows: [
             _SettingsRow(
+              key: rowAnchorKeys['Default View'],
               title: 'Default View',
               trailing: _ValueTrailing(defaultViewLabel),
               onTap: () => _tap('Default View'),
             ),
             _SettingsRow(
+              key: rowAnchorKeys['Start of Week'],
               title: 'Start of Week',
               trailing: _ValueTrailing(startOfWeekLabel),
               onTap: () => _tap('Start of Week'),
             ),
             _SettingsRow(
+              key: rowAnchorKeys['Default Event Duration'],
               title: 'Default Event Duration',
               trailing: _ValueTrailing(eventDurationLabel),
               onTap: () => _tap('Default Event Duration'),
             ),
             _SettingsRow(
+              key: rowAnchorKeys['Default Category'],
               title: 'Default Category',
               trailing: _ValueTrailing(defaultCategoryLabel),
               onTap: () => _tap('Default Category'),
@@ -791,6 +862,7 @@ class _MainSettingsContent extends StatelessWidget {
               },
             ),
             _SettingsRow(
+              key: rowAnchorKeys['Date Format'],
               title: 'Date Format',
               trailing: _ValueTrailing(dateFormatLabel),
               onTap: () => _tap('Date Format'),
@@ -824,16 +896,19 @@ class _MainSettingsContent extends StatelessWidget {
           label: 'General',
           rows: [
             _SettingsRow(
+              key: rowAnchorKeys['Privacy'],
               title: 'Privacy',
               trailing: const _ChevronTrailing(),
               onTap: () => _tap('Privacy'),
             ),
             _SettingsRow(
+              key: rowAnchorKeys['Check for Updates'],
               title: 'Check for Updates',
               trailing: const _ChevronTrailing(),
               onTap: () => _tap('Check for Updates'),
             ),
             _SettingsRow(
+              key: rowAnchorKeys['About SKEDDO'],
               title: 'About SKEDDO',
               trailing: const _ChevronTrailing(),
               onTap: () => _tap('About SKEDDO'),
@@ -1208,19 +1283,23 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
   final AppWindowMasterDetailGeometry geometry;
   final double topInset;
   final double contentHeight;
+  final Animation<double> paneProgress;
   final String activeTitle;
   final String? previousTitle;
   final double transitionProgress;
   final Color dividerColor;
+  final VoidCallback onBack;
 
   const _SettingsTwoPaneHeader({
     required this.geometry,
     required this.topInset,
     required this.contentHeight,
+    required this.paneProgress,
     required this.activeTitle,
     required this.previousTitle,
     required this.transitionProgress,
     required this.dividerColor,
+    required this.onBack,
   });
 
   @override
@@ -1230,9 +1309,9 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
     final shadowColor = resolveThemeColor(kTabBarShadowColor, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
 
-    Widget title(String value) => Center(
+    Widget title(String value, {double horizontalPadding = 20}) => Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
         child: HeaderTitleScroller(
           title: value,
           fadeColor: cardColor,
@@ -1256,7 +1335,9 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
         if (previousTitle != null) {
           pages.add(
             Positioned.fill(
-              child: IgnorePointer(child: title(previousTitle!)),
+              child: IgnorePointer(
+                child: title(previousTitle!, horizontalPadding: 52),
+              ),
             ),
           );
         }
@@ -1270,7 +1351,7 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
                       : constraints.maxWidth * (1.0 - transitionProgress),
                   0.0,
                 ),
-                child: title(activeTitle),
+                child: title(activeTitle, horizontalPadding: 52),
               ),
             ),
           ),
@@ -1283,6 +1364,31 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
           ),
         );
       },
+    );
+
+    final detailHeader = Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned.fill(child: detailTitle),
+        Positioned(
+          right: 0,
+          top: 0,
+          bottom: 0,
+          child: SizedBox(
+            width: 48,
+            child: CupertinoButton(
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(44, 44),
+              onPressed: onBack,
+              child: Icon(
+                CupertinoIcons.back,
+                size: 19,
+                color: primaryLabel,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
 
     return Container(
@@ -1298,12 +1404,27 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
         children: [
           Positioned.fill(
             top: topInset,
-            child: AppWindowTwoPaneLayout(
+            child: AppWindowMasterDetailTransition(
               geometry: geometry,
+              progress: paneProgress,
               dividerColor: dividerColor,
+              drawDivider: false,
               master: title('Settings'),
-              detail: detailTitle,
+              detail: detailHeader,
             ),
+          ),
+          AnimatedBuilder(
+            animation: paneProgress,
+            builder: (context, _) {
+              final progress = paneProgress.value.clamp(0.0, 1.0).toDouble();
+              return Positioned(
+                left: geometry.masterPaneWidthAt(progress),
+                top: 0,
+                bottom: 0,
+                width: geometry.dividerWidthAt(progress),
+                child: ColoredBox(color: dividerColor),
+              );
+            },
           ),
           Positioned(
             left: 0,
@@ -2132,7 +2253,12 @@ class _SettingsRow extends StatefulWidget {
   final Widget? trailing;
   final VoidCallback? onTap;
 
-  const _SettingsRow({required this.title, this.trailing, this.onTap});
+  const _SettingsRow({
+    super.key,
+    required this.title,
+    this.trailing,
+    this.onTap,
+  });
 
   @override
   State<_SettingsRow> createState() => _SettingsRowState();
