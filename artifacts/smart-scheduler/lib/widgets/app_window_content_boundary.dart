@@ -4,6 +4,9 @@ import 'package:flutter/cupertino.dart';
 
 import '../services/window_geometry_diagnostics.dart';
 
+const double kAppWindowMasterDetailDividerWidth = 0.75;
+const double kAppWindowMasterDetailMinimumDetailWidth = 320.0;
+
 /// Publishes the app-wide content rectangle inside the physical window.
 ///
 /// This widget intentionally does not add visual surfaces or constrain the
@@ -110,6 +113,191 @@ class AppWindowContentPadding extends StatelessWidget {
         right: includeRight ? inset : 0.0,
       ),
       child: MediaQuery(data: contentMediaQuery, child: child),
+    );
+  }
+}
+
+/// Applies the shared landscape system inset inside a width-constrained pane
+/// and gives descendants a MediaQuery size that reflects that pane's usable
+/// width rather than the full app window.
+///
+/// Use this around responsive content inside a split pane. The normal
+/// [AppWindowContentPadding] positions content against the app-wide safe area,
+/// but intentionally leaves MediaQuery.size describing the app window for
+/// full-window transitions and overlays.
+class AppWindowPaneContent extends StatelessWidget {
+  const AppWindowPaneContent({
+    super.key,
+    required this.child,
+    this.includeLeft = true,
+    this.includeRight = true,
+    this.additionalRightInset = 0.0,
+  });
+
+  final Widget child;
+  final bool includeLeft;
+  final bool includeRight;
+
+  /// Extra temporary space on the pane's right edge, such as the safe-area
+  /// clearance that shrinks during a split transition.
+  final double additionalRightInset;
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = AppWindowContentScope.of(context);
+    final inset = scope.horizontalInset;
+    final mediaQuery = MediaQuery.of(context);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final paneWidth =
+            constraints.hasBoundedWidth
+                ? constraints.maxWidth
+                : mediaQuery.size.width;
+        final leftInset = includeLeft ? inset : 0.0;
+        final rightInset = (includeRight ? inset : 0.0) + additionalRightInset;
+        final contentWidth = math.max(
+          0.0,
+          paneWidth - leftInset - rightInset,
+        );
+
+        final paneMediaQuery = inset <= 0.0
+            ? mediaQuery.copyWith(
+                size: Size(contentWidth, mediaQuery.size.height),
+              )
+            : mediaQuery.copyWith(
+                size: Size(contentWidth, mediaQuery.size.height),
+                padding: mediaQuery.padding.copyWith(left: 0.0, right: 0.0),
+                viewPadding: mediaQuery.viewPadding.copyWith(
+                  left: 0.0,
+                  right: 0.0,
+                ),
+                systemGestureInsets: mediaQuery.systemGestureInsets.copyWith(
+                  left: 0.0,
+                  right: 0.0,
+                ),
+              );
+
+        return Padding(
+          padding: EdgeInsets.only(
+            left: leftInset,
+            right: rightInset,
+          ),
+          child: MediaQuery(data: paneMediaQuery, child: child),
+        );
+      },
+    );
+  }
+}
+
+/// Shared portrait-width master and remaining-width detail geometry for
+/// landscape split layouts.
+class AppWindowMasterDetailGeometry {
+  const AppWindowMasterDetailGeometry({
+    required this.isLandscape,
+    required this.physicalWidth,
+    required this.horizontalInset,
+    required this.portraitShortEdgeWidth,
+    required this.masterPaneWidth,
+    required this.masterContentWidth,
+    required this.detailPaneWidth,
+    required this.detailContentWidth,
+  });
+
+  final bool isLandscape;
+  final double physicalWidth;
+  final double horizontalInset;
+  final double portraitShortEdgeWidth;
+  final double masterPaneWidth;
+  final double masterContentWidth;
+  final double detailPaneWidth;
+  final double detailContentWidth;
+
+  static AppWindowMasterDetailGeometry of(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final scope = AppWindowContentScope.of(context);
+    final display = View.maybeOf(context)?.display;
+    final pixelRatio =
+        display?.devicePixelRatio ?? mediaQuery.devicePixelRatio;
+    final portraitShortEdgeWidth = display == null
+        ? math.min(scope.physicalWidth, mediaQuery.size.height)
+        : display.size.shortestSide / pixelRatio;
+    final masterPaneWidth = math.min(
+      scope.physicalWidth,
+      portraitShortEdgeWidth + scope.horizontalInset,
+    );
+    final masterContentWidth = math.max(
+      0.0,
+      masterPaneWidth - scope.horizontalInset,
+    );
+    final detailPaneWidth = math.max(
+      0.0,
+      scope.physicalWidth -
+          masterPaneWidth -
+          kAppWindowMasterDetailDividerWidth,
+    );
+    final detailContentWidth = math.max(
+      0.0,
+      detailPaneWidth - scope.horizontalInset,
+    );
+
+    return AppWindowMasterDetailGeometry(
+      isLandscape: scope.physicalWidth > mediaQuery.size.height,
+      physicalWidth: scope.physicalWidth,
+      horizontalInset: scope.horizontalInset,
+      portraitShortEdgeWidth: portraitShortEdgeWidth,
+      masterPaneWidth: masterPaneWidth,
+      masterContentWidth: masterContentWidth,
+      detailPaneWidth: detailPaneWidth,
+      detailContentWidth: detailContentWidth,
+    );
+  }
+}
+
+/// Places master/detail content using the shared landscape pane geometry.
+///
+/// Both panes receive their own usable-width MediaQuery, so cards can retain
+/// the same padding and wrapping rules used in portrait.
+class AppWindowTwoPaneLayout extends StatelessWidget {
+  const AppWindowTwoPaneLayout({
+    super.key,
+    required this.geometry,
+    required this.master,
+    required this.detail,
+    required this.dividerColor,
+  });
+
+  final AppWindowMasterDetailGeometry geometry;
+  final Widget master;
+  final Widget detail;
+  final Color dividerColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: geometry.physicalWidth,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: geometry.masterPaneWidth,
+            child: AppWindowPaneContent(
+              includeRight: false,
+              child: master,
+            ),
+          ),
+          SizedBox(
+            width: kAppWindowMasterDetailDividerWidth,
+            child: ColoredBox(color: dividerColor),
+          ),
+          Expanded(
+            child: AppWindowPaneContent(
+              includeLeft: false,
+              child: detail,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

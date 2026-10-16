@@ -185,6 +185,8 @@ const _kRoutes = <String, _SettingsRoute>{
 class SettingsPanel extends StatefulWidget {
   final double topInset;
   final double bottomInset;
+  final bool isOpen;
+  final bool isLandscapeTwoPane;
 
   /// Called when the X button is tapped — triggers controller.reverse()
   /// on the parent.
@@ -199,6 +201,8 @@ class SettingsPanel extends StatefulWidget {
     super.key,
     required this.topInset,
     required this.bottomInset,
+    required this.isOpen,
+    required this.isLandscapeTwoPane,
     required this.onClose,
     required this.subScreenBackAction,
   });
@@ -227,19 +231,196 @@ class _SettingsPanelState extends State<SettingsPanel>
     end: const Offset(1.0, 0.0),
   ).animate(CurvedAnimation(parent: _navCtrl, curve: Curves.easeInOutCubic));
 
+  late final AnimationController _splitDetailController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 360),
+  );
+
   _SettingsRoute? _activeRoute;
+  _SettingsRoute? _previousRoute;
+  bool _landscapeDefaultSelection = false;
 
   // Listener added to _navCtrl when a push starts; fires the hard-snap of the
   // overlay icon to "<" at the 50 % midpoint — matching the DCV timing.
   VoidCallback? _snapListener;
 
+  @override
+  void initState() {
+    super.initState();
+    _splitDetailController.addStatusListener(_onSplitDetailStatus);
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final openedNow = widget.isOpen && !oldWidget.isOpen;
+    final enteredLandscapeSplit =
+        widget.isOpen &&
+        widget.isLandscapeTwoPane &&
+        !oldWidget.isLandscapeTwoPane;
+
+    if (openedNow && widget.isLandscapeTwoPane) {
+      _selectLandscapeDefault();
+    } else if (openedNow && !widget.isLandscapeTwoPane &&
+        _landscapeDefaultSelection) {
+      _activeRoute = null;
+      _previousRoute = null;
+      _landscapeDefaultSelection = false;
+      _navCtrl.value = 0.0;
+      _splitDetailController.value = 0.0;
+    } else if (enteredLandscapeSplit) {
+      if (_activeRoute == null) {
+        _selectLandscapeDefault();
+      } else {
+        _settleForLandscapeSplit();
+      }
+    }
+
+    if (widget.isOpen &&
+        widget.isLandscapeTwoPane != oldWidget.isLandscapeTwoPane) {
+      if (widget.isLandscapeTwoPane) {
+        widget.subScreenBackAction.value = null;
+      } else if (_activeRoute != null && _navCtrl.value >= 0.5) {
+        widget.subScreenBackAction.value = _pop;
+      }
+    }
+  }
+
+  void _selectLandscapeDefault() {
+    _activeRoute = _kRoutes['Profile'];
+    _previousRoute = null;
+    _landscapeDefaultSelection = true;
+    _navCtrl.value = 1.0;
+    _splitDetailController.value = 1.0;
+    widget.subScreenBackAction.value = null;
+  }
+
+  void _settleForLandscapeSplit() {
+    if (_snapListener != null) {
+      _navCtrl.removeListener(_snapListener!);
+      _snapListener = null;
+    }
+    _previousRoute = null;
+    _navCtrl.value = 1.0;
+    _splitDetailController.value = 1.0;
+    widget.subScreenBackAction.value = null;
+  }
+
+  void _onSplitDetailStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed &&
+        _previousRoute != null &&
+        mounted) {
+      setState(() => _previousRoute = null);
+    }
+  }
+
+  Widget _buildSubScreen({
+    required _SettingsRoute route,
+    required double bottomInset,
+    required Color accentColor,
+    required bool applyAppWindowContentPadding,
+  }) {
+    return _SubScreen(
+      key: ValueKey<String>('settings-route-${route.title}'),
+      bottomInset: bottomInset,
+      route: route,
+      accentColor: accentColor,
+      accentNotifier: appAccentNotifier,
+      applyAppWindowContentPadding: applyAppWindowContentPadding,
+    );
+  }
+
+  Widget _buildSplitSubScreenStack({
+    required _SettingsRoute activeRoute,
+    required _SettingsRoute? previousRoute,
+    required double bottomInset,
+    required Color accentColor,
+  }) {
+    return AnimatedBuilder(
+      animation: _splitDetailController,
+      builder: (context, _) {
+        final progress = Curves.easeInOutCubic.transform(
+          _splitDetailController.value,
+        );
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final incomingOffset = previousRoute == null
+                ? 0.0
+                : constraints.maxWidth * (1.0 - progress);
+            final pages = <Widget>[];
+            if (previousRoute != null) {
+              pages.add(
+                Positioned.fill(
+                  key: ValueKey<String>('settings-route-${previousRoute.title}'),
+                  child: IgnorePointer(
+                    child: _buildSubScreen(
+                      route: previousRoute,
+                      bottomInset: bottomInset,
+                      accentColor: accentColor,
+                      applyAppWindowContentPadding: false,
+                    ),
+                  ),
+                ),
+              );
+            }
+            pages.add(
+              Positioned.fill(
+                key: ValueKey<String>('settings-route-${activeRoute.title}'),
+                child: IgnorePointer(
+                  ignoring: _splitDetailController.isAnimating,
+                  child: Transform.translate(
+                    offset: Offset(incomingOffset, 0.0),
+                    child: _buildSubScreen(
+                      route: activeRoute,
+                      bottomInset: bottomInset,
+                      accentColor: accentColor,
+                      applyAppWindowContentPadding: false,
+                    ),
+                  ),
+                ),
+              ),
+            );
+            return ClipRect(
+              child: Stack(
+                fit: StackFit.expand,
+                clipBehavior: Clip.hardEdge,
+                children: pages,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _push(_SettingsRoute route) {
+    if (widget.isLandscapeTwoPane) {
+      if (_activeRoute?.title == route.title) return;
+      if (_activeRoute == null) {
+        setState(() => _activeRoute = route);
+        _splitDetailController.value = 1.0;
+      } else {
+        setState(() {
+          _previousRoute = _activeRoute;
+          _activeRoute = route;
+          _landscapeDefaultSelection = false;
+        });
+        _splitDetailController.forward(from: 0.0);
+      }
+      widget.subScreenBackAction.value = null;
+      return;
+    }
+
     // Clean up any leftover snap listener from a previous push.
     if (_snapListener != null) {
       _navCtrl.removeListener(_snapListener!);
       _snapListener = null;
     }
-    setState(() => _activeRoute = route);
+    setState(() {
+      _activeRoute = route;
+      _landscapeDefaultSelection = false;
+    });
     _navCtrl.forward(from: 0.0);
 
     // Hard-snap to "<" at the 50 % midpoint of the sub-screen slide, identical
@@ -272,6 +453,8 @@ class _SettingsPanelState extends State<SettingsPanel>
   @override
   void dispose() {
     if (_snapListener != null) _navCtrl.removeListener(_snapListener!);
+    _splitDetailController.removeStatusListener(_onSplitDetailStatus);
+    _splitDetailController.dispose();
     _navCtrl.dispose();
     super.dispose();
   }
@@ -331,14 +514,54 @@ class _SettingsPanelState extends State<SettingsPanel>
         final liquidGlassOpacityLabel =
             '${((appLiquidGlassOpacityNotifier.value - kLiquidGlassMinimumOpacity) / liquidGlassRange * 100).round()}%';
 
-        final isLandscape =
-            MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
+        final geometry = AppWindowMasterDetailGeometry.of(context);
+        final isLandscape = geometry.isLandscape;
+        final isLandscapeTwoPane =
+            widget.isLandscapeTwoPane && isLandscape;
         final headerContentHeight = isLandscape ? 52.0 : 101.0;
         final headerHeight = topInset + headerContentHeight;
+        final backgroundColor = resolveThemeColor(kBackgroundColor, context);
+        final separatorColor = resolveThemeColor(kSeparatorColor, context);
+        final mainSettingsContent = _MainSettingsContent(
+          bottomInset: bottomInset,
+          onPush: _push,
+          accentColor: accentColor,
+          accentSwatch: swatch,
+          themeLabel: themeLabel,
+          textSizeLabel: textSizeLabel,
+          startOfWeekLabel: startOfWeekLabel,
+          defaultViewLabel: defaultViewLabel,
+          fullMonthName: fullMonthName,
+          eventDurationLabel: eventDurationLabel,
+          defaultCategoryLabel: defaultCategoryLabel,
+          dateFormatLabel: dateFormatLabel,
+          liquidGlassOpacityLabel: liquidGlassOpacityLabel,
+        );
+        final splitRoute = _activeRoute ?? _kRoutes['Profile']!;
+        final splitBody = AppWindowTwoPaneLayout(
+          geometry: geometry,
+          dividerColor: separatorColor,
+          master: ColoredBox(
+            color: backgroundColor,
+            child: IgnorePointer(
+              ignoring: _splitDetailController.isAnimating,
+              child: mainSettingsContent,
+            ),
+          ),
+          detail: ColoredBox(
+            color: backgroundColor,
+            child: _buildSplitSubScreenStack(
+              activeRoute: splitRoute,
+              previousRoute: _previousRoute,
+              bottomInset: bottomInset,
+              accentColor: accentColor,
+            ),
+          ),
+        );
 
         return ClipRect(
           child: ColoredBox(
-            color: resolveThemeColor(kBackgroundColor, context),
+            color: backgroundColor,
             child: SizedBox.expand(
               child: Stack(
                 fit: StackFit.expand,
@@ -346,42 +569,30 @@ class _SettingsPanelState extends State<SettingsPanel>
                   // ── Main body — slides right (parallax) during sub-screen push ──
                   Positioned.fill(
                     top: headerHeight,
-                    child: AppWindowPhysicalWidth(
-                      child: SlideTransition(
-                        position: _mainParallax,
-                        child: AppWindowContentPadding(
-                          child: _MainSettingsContent(
-                            bottomInset: bottomInset,
-                            onPush: _push,
-                            accentColor: accentColor,
-                            accentSwatch: swatch,
-                            themeLabel: themeLabel,
-                            textSizeLabel: textSizeLabel,
-                            startOfWeekLabel: startOfWeekLabel,
-                            defaultViewLabel: defaultViewLabel,
-                            fullMonthName: fullMonthName,
-                            eventDurationLabel: eventDurationLabel,
-                            defaultCategoryLabel: defaultCategoryLabel,
-                            dateFormatLabel: dateFormatLabel,
-                            liquidGlassOpacityLabel: liquidGlassOpacityLabel,
+                    child: isLandscapeTwoPane
+                        ? ClipRect(child: splitBody)
+                        : AppWindowPhysicalWidth(
+                            child: SlideTransition(
+                              position: _mainParallax,
+                              child: AppWindowContentPadding(
+                                child: mainSettingsContent,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
                   ),
 
                   // ── Sub-screen body — slides in from right; no header ───────
-                  if (_activeRoute != null)
+                  if (!isLandscapeTwoPane && _activeRoute != null)
                     Positioned.fill(
                       top: headerHeight,
                       child: AppWindowPhysicalWidth(
                         child: SlideTransition(
                           position: _subSlide,
-                          child: _SubScreen(
-                            bottomInset: bottomInset,
+                          child: _buildSubScreen(
                             route: _activeRoute!,
+                            bottomInset: bottomInset,
                             accentColor: accentColor,
-                            accentNotifier: appAccentNotifier,
+                            applyAppWindowContentPadding: true,
                           ),
                         ),
                       ),
@@ -396,19 +607,39 @@ class _SettingsPanelState extends State<SettingsPanel>
                     top: 0,
                     left: 0,
                     right: 0,
-                    child: AnimatedBuilder(
-                      animation: _navCtrl,
-                      builder: (context, _) {
-                        final isSubScreen =
-                            _activeRoute != null && _navCtrl.value >= 0.5;
-                        return _SettingsHeader(
-                          topInset: topInset,
-                          contentHeight: headerContentHeight,
-                          isLandscape: isLandscape,
-                          title: isSubScreen ? _activeRoute!.title : 'Settings',
-                        );
-                      },
-                    ),
+                    child: isLandscapeTwoPane
+                        ? AnimatedBuilder(
+                            animation: _splitDetailController,
+                            builder: (context, _) {
+                              final progress = Curves.easeInOutCubic.transform(
+                                _splitDetailController.value,
+                              );
+                              return _SettingsTwoPaneHeader(
+                                geometry: geometry,
+                                topInset: topInset,
+                                contentHeight: headerContentHeight,
+                                activeTitle: splitRoute.title,
+                                previousTitle: _previousRoute?.title,
+                                transitionProgress: progress,
+                                dividerColor: separatorColor,
+                              );
+                            },
+                          )
+                        : AnimatedBuilder(
+                            animation: _navCtrl,
+                            builder: (context, _) {
+                              final isSubScreen =
+                                  _activeRoute != null && _navCtrl.value >= 0.5;
+                              return _SettingsHeader(
+                                topInset: topInset,
+                                contentHeight: headerContentHeight,
+                                isLandscape: isLandscape,
+                                title: isSubScreen
+                                    ? _activeRoute!.title
+                                    : 'Settings',
+                              );
+                            },
+                          ),
                   ),
                 ],
               ),

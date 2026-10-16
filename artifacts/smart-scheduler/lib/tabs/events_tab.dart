@@ -1739,6 +1739,14 @@ class EventsTabState extends State<EventsTab>
   final _dcvSearchCancelKey = GlobalKey();
   BuildContext get _gridLayoutContext =>
       _gridStackKey.currentContext ?? context;
+  double get _categoryListCardWidth {
+    final renderObject =
+        _listStackKey.currentContext?.findRenderObject();
+    if (renderObject is RenderBox && renderObject.hasSize) {
+      return renderObject.size.width;
+    }
+    return max(0.0, MediaQuery.sizeOf(context).width - 32.0);
+  }
   // dcvSlideController is owned by AppShell — EventsTabState must not dispose it.
   bool _searchFocused = false;
   bool _activatedFromOffScreen = false;
@@ -3826,6 +3834,7 @@ class EventsTabState extends State<EventsTab>
           context,
           item: _FlatItem.solo(key),
           liveEventCounts: _liveEventCounts,
+          cardWidth: _categoryListCardWidth,
         );
         if (listBox != null) {
           final listLocal = listBox.globalToLocal(globalPos);
@@ -3835,6 +3844,7 @@ class EventsTabState extends State<EventsTab>
             listItems,
             listLocal.dy,
             _liveEventCounts,
+            cardWidth: _categoryListCardWidth,
           ).clamp(0, _listTopOrder.length);
           // Map the tile grab-Y to an equivalent list-row grab-Y so the row
           // ghost stays under the finger after the shape transition.
@@ -3911,6 +3921,7 @@ class EventsTabState extends State<EventsTab>
                   context,
                   item: _FlatItem.solo(key as _UserCategory),
                   liveEventCounts: _liveEventCounts,
+                  cardWidth: _categoryListCardWidth,
                 ) /
                 2);
         final ghostGlobalY = globalPos.dy - rowGrabY;
@@ -4134,6 +4145,7 @@ class EventsTabState extends State<EventsTab>
       flatList,
       idx,
       _liveEventCounts,
+      cardWidth: _categoryListCardWidth,
     );
     final localPos = box.globalToLocal(globalPos);
     _joinGroupDwellTimer?.cancel();
@@ -4182,6 +4194,7 @@ class EventsTabState extends State<EventsTab>
       context,
       item: draggingItem,
       liveEventCounts: _liveEventCounts,
+      cardWidth: _categoryListCardWidth,
     );
 
     // ── Cross-section (pin) detection ─────────────────────────────────────────
@@ -4353,6 +4366,7 @@ class EventsTabState extends State<EventsTab>
         flatList,
         centerY,
         _liveEventCounts,
+        cardWidth: _categoryListCardWidth,
       ).clamp(0, flatList.length - 1);
       final targetItem = flatList[targetIdx];
       final draggedItem = flatList.firstWhere(
@@ -4421,6 +4435,7 @@ class EventsTabState extends State<EventsTab>
       flatList,
       centerY,
       _liveEventCounts,
+      cardWidth: _categoryListCardWidth,
     ).clamp(0, flatList.length - 1);
     final targetItem = flatList[targetIdx];
     final draggedItem = flatList[currentIdx];
@@ -4520,6 +4535,7 @@ class EventsTabState extends State<EventsTab>
                     context,
                     item: draggingItem,
                     liveEventCounts: _liveEventCounts,
+                    cardWidth: _categoryListCardWidth,
                   ) /
                   2;
           final ti = _eventsCategoryListIndexAtY(
@@ -4527,6 +4543,7 @@ class EventsTabState extends State<EventsTab>
             fl,
             cy,
             _liveEventCounts,
+            cardWidth: _categoryListCardWidth,
           ).clamp(0, fl.length - 1);
           final tItem = fl[ti];
           if (tItem.isGroupMember && tItem.groupId == joinGroupId) {
@@ -4690,6 +4707,7 @@ class EventsTabState extends State<EventsTab>
       flatList,
       centerY,
       _liveEventCounts,
+      cardWidth: _categoryListCardWidth,
     );
 
     // Allow exit when dragged above the list top or below the list bottom.
@@ -5098,6 +5116,7 @@ class EventsTabState extends State<EventsTab>
         flatList,
         idx,
         _liveEventCounts,
+        cardWidth: _categoryListCardWidth,
       );
       _dragListTopY = slotTopY;
       _dragListGrabOffsetY = localPos.dy - slotTopY;
@@ -5126,6 +5145,7 @@ class EventsTabState extends State<EventsTab>
       context,
       item: draggingItem,
       liveEventCounts: _liveEventCounts,
+      cardWidth: _categoryListCardWidth,
     );
     final centerY = rawTopY + rowHeight / 2;
 
@@ -5139,6 +5159,7 @@ class EventsTabState extends State<EventsTab>
       flatList,
       centerY,
       _liveEventCounts,
+      cardWidth: _categoryListCardWidth,
     ).clamp(0, flatList.length - 1);
     final targetItem = flatList[targetIdx];
 
@@ -5233,6 +5254,7 @@ class EventsTabState extends State<EventsTab>
       context,
       item: ghostItem,
       liveEventCounts: _liveEventCounts,
+      cardWidth: _categoryListCardWidth,
     );
 
     // ── Crossing up into pinned grid: tile ghost snapped to the live slot ─────
@@ -5478,6 +5500,7 @@ class EventsTabState extends State<EventsTab>
         context,
         item: _FlatItem.solo(key),
         liveEventCounts: _liveEventCounts,
+        cardWidth: _categoryListCardWidth,
       );
       final rowW = listBox?.size.width ?? box.size.width;
       final rowLeft = listGlobal?.dx ?? stackGlobal.dx;
@@ -8345,23 +8368,20 @@ class EventsTabState extends State<EventsTab>
         ],
           ],
         );
-        final gridContent = widget.landscapeMasterDetail
-            ? Row(
-                children: [
-                  Expanded(child: scrollView),
-                  SizedBox(width: trailingSafeInset),
-                ],
-              )
-            : scrollView;
         return SizedBox(
           width: panelWidth,
           child: _EventsGridColumnOverride(
             columns: gridColumns,
-            child: AppWindowContentPadding(
-              includeRight: !widget.landscapeMasterDetail,
-              child: gridContent,
+            child: widget.landscapeMasterDetail
+                ? AppWindowPaneContent(
+                    includeRight: false,
+                    additionalRightInset: trailingSafeInset,
+                    child: scrollView,
+                  )
+                : AppWindowContentPadding(
+                    child: scrollView,
+                  ),
             ),
-          ),
         );
       },
     );
@@ -10289,10 +10309,11 @@ double _eventsCategoryListRowHeight(
   _FlatItem? item,
   Map<String, int>? liveEventCounts,
   bool showTrailingCount = true,
+  double? cardWidth,
 }) {
   final scaler = MediaQuery.textScalerOf(context);
   final viewportWidth = MediaQuery.sizeOf(context).width;
-  final cardWidth = max(0.0, viewportWidth - 32.0);
+  final resolvedCardWidth = cardWidth ?? max(0.0, viewportWidth - 32.0);
   final categoryTitleStyle = _eventsCategoryListTextStyle(
     16,
     letterSpacing: kTracking16,
@@ -10331,7 +10352,7 @@ double _eventsCategoryListRowHeight(
             : 0.0;
     final leftPad = current.isGroupMember ? 32.0 : 16.0;
     final sideBySideTextWidth = _eventsCategorySideBySideTextWidth(
-      cardWidth: cardWidth,
+      cardWidth: resolvedCardWidth,
       leftPad: leftPad,
       iconSize: iconHeight,
       trailingWidth: trailingWidth,
@@ -10360,7 +10381,7 @@ double _eventsCategoryListRowHeight(
             );
 
     if (needsStackedText) {
-      final fullTextWidth = max(0.0, cardWidth - leftPad - 16);
+      final fullTextWidth = max(0.0, resolvedCardWidth - leftPad - 16);
       var textHeight = _eventsMeasuredTextHeight(
         titleText,
         titleStyle,
@@ -10427,14 +10448,16 @@ double _eventsCategoryListTopY(
   BuildContext context,
   List<_FlatItem> items,
   int index,
-  Map<String, int>? liveEventCounts,
-) {
+  Map<String, int>? liveEventCounts, {
+  double? cardWidth,
+}) {
   var top = 0.0;
   for (var i = 0; i < index && i < items.length; i++) {
     top += _eventsCategoryListRowHeight(
       context,
       item: items[i],
       liveEventCounts: liveEventCounts,
+      cardWidth: cardWidth,
     );
   }
   return top;
@@ -10447,8 +10470,9 @@ int _eventsCategoryListIndexAtY(
   BuildContext context,
   List<_FlatItem> items,
   double y,
-  Map<String, int>? liveEventCounts,
-) {
+  Map<String, int>? liveEventCounts, {
+  double? cardWidth,
+}) {
   if (y < 0) return -1;
   var top = 0.0;
   for (var i = 0; i < items.length; i++) {
@@ -10456,6 +10480,7 @@ int _eventsCategoryListIndexAtY(
       context,
       item: items[i],
       liveEventCounts: liveEventCounts,
+      cardWidth: cardWidth,
     );
     if (y < top) return i;
   }

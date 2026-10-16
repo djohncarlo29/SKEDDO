@@ -85,7 +85,8 @@
 - [Attachment import flow](attachment-import-flow.md) — remove only the pre-import confirmation overlay; keep the Importing sheet and its Cancel behavior unchanged.
 - [Attachment card corner stability](attachment-card-corner-stability.md) — let AnimatedList animate attachment rows inside one fixed-radius outer card; avoid AnimatedSize and empty-state stadium switching.
 - [AppShell floating overlays](app-shell-floating-overlays.md) — Positioned shell controls must be direct Stack children; nesting one in Column causes a blank Flutter web shell.
-- [Floating bar clearance math](floating-bar-clearance-math.md) — keep pill safety margin separate from layout gaps and subtract existing trailing padding before adding scroll clearance.
+- [Floating bar clearance math](floating-bar-clearance-math.md) — keep the Android landscape pill at 16px while preserving system gesture clearance for scroll content.
+- [Split-pane content sizing](split-pane-content-sizing.md) — responsive layouts in a bounded pane must use pane-local width while retaining portrait spacing constants.
 - [Shell backdrop filter bounds](shell-backdrop-filter-bounds.md) — permanent Android glass overlays need explicit finite clipping and clamped blur sampling or they can veil the whole app.
 - [Liquid Glass optical input field](liquid-glass-optical-input.md) — expand the shader source field in both axes while keeping the registered pill mask and full-strength refraction unchanged.
 - [Liquid Glass environmental shadows](liquid-glass-environment-shadow.md) — composite Light Mode shadows as parent layers beneath glass; do not attach them to the translucent material appearance.

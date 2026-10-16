@@ -815,7 +815,6 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   static const double _dcvColorSnapThreshold = 0.5;
-  static const double _minimumLandscapeDcvDetailWidth = 320.0;
 
   final _notesTabKey = GlobalKey<NotesTabState>();
   final _calendarTabKey = GlobalKey<CalendarTabState>();
@@ -915,20 +914,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   bool _canReplaceLandscapeDcvPage() {
     if (_dcvCategory == null || _selectedIndex != 2) return false;
-    final windowSize = MediaQuery.sizeOf(context);
-    if (windowSize.width <= windowSize.height) return false;
-
-    final windowContent = AppWindowContentScope.of(context);
-    final masterWidth = min(
-      windowContent.physicalWidth,
-      windowSize.height + windowContent.horizontalInset,
-    );
-    final detailUsableWidth =
-        windowContent.physicalWidth -
-        masterWidth -
-        windowContent.horizontalInset -
-        0.75;
-    return detailUsableWidth >= _minimumLandscapeDcvDetailWidth;
+    final geometry = AppWindowMasterDetailGeometry.of(context);
+    return geometry.isLandscape &&
+        geometry.detailContentWidth >=
+            kAppWindowMasterDetailMinimumDetailWidth;
   }
 
   void _onDcvCategoryTransitionStatus(AnimationStatus status) {
@@ -2604,39 +2593,30 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final windowSize = MediaQuery.sizeOf(context);
-    final isLandscape = windowSize.width > windowSize.height;
-    final physicalWindowWidth =
-        AppWindowContentScope.of(context).physicalWidth;
-    final display = View.maybeOf(context)?.display;
-    final displayPixelRatio =
-        display?.devicePixelRatio ?? MediaQuery.devicePixelRatioOf(context);
-    final physicalShortEdgeWidth = display == null
-        ? min(physicalWindowWidth, windowSize.height)
-        : display.size.shortestSide / displayPixelRatio;
-    final landscapeHorizontalInset = AppWindowContentScope.of(
-      context,
-    ).horizontalInset;
+    final masterDetailGeometry =
+        AppWindowMasterDetailGeometry.of(context);
+    final isLandscape = masterDetailGeometry.isLandscape;
+    final physicalWindowWidth = masterDetailGeometry.physicalWidth;
+    final landscapeHorizontalInset =
+        masterDetailGeometry.horizontalInset;
     // The master pane starts at the physical left edge, while its content is
     // inset from that edge by landscapeHorizontalInset. Add that one inset to
     // the portrait-width content target so the visible content itself remains
     // exactly as wide as the phone in portrait.
-    final landscapeMasterWidth = min(
-      physicalWindowWidth,
-      physicalShortEdgeWidth + landscapeHorizontalInset,
-    );
-    final landscapeMasterContentWidth = max(
-      0.0,
-      landscapeMasterWidth - landscapeHorizontalInset,
-    );
+    final landscapeMasterWidth = masterDetailGeometry.masterPaneWidth;
+    final landscapeMasterContentWidth =
+        masterDetailGeometry.masterContentWidth;
     final landscapeDetailUsableWidth =
-        physicalWindowWidth -
-        landscapeMasterWidth -
-        landscapeHorizontalInset -
-        0.75;
+        masterDetailGeometry.detailContentWidth;
+    final landscapeSettingsTwoPane =
+        isLandscape &&
+        landscapeDetailUsableWidth >=
+            kAppWindowMasterDetailMinimumDetailWidth;
     final landscapeDcvLayoutActive =
         isLandscape &&
         _dcvCategory != null &&
-        landscapeDetailUsableWidth >= _minimumLandscapeDcvDetailWidth;
+        landscapeDetailUsableWidth >=
+            kAppWindowMasterDetailMinimumDetailWidth;
     final landscapeDcvSplit =
         landscapeDcvLayoutActive &&
         _selectedIndex == 2 &&
@@ -3483,6 +3463,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                       child: SettingsPanel(
                         topInset: topInset,
                         bottomInset: bottomInset,
+                        isOpen: _settingsOpen,
+                        isLandscapeTwoPane: landscapeSettingsTwoPane,
                         onClose: _closeSettings,
                         subScreenBackAction: _settingsBackAction,
                       ),

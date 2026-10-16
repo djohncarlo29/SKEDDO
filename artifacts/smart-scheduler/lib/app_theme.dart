@@ -82,13 +82,10 @@ const double kModalRowHorizontalInset = 16.0;
 const double kUnifiedBottomPadding = kFixedVerticalPadding;
 const double kEmptyStateLabelFontSize = 17.0;
 
-/// The tab bar's bottom edge is constrained by two competing requirements:
-/// its 16 px design margin and the persistent system navigation/home-indicator
-/// inset. They are not additive. Persistent safe-area and gesture insets are
-/// compared rather than summed, and keyboard viewInsets are intentionally
-/// ignored so the bar does not move just because an editor is focused.
-/// Shared bottom padding rule for surfaces that should respect persistent
-/// system navigation without creating additive or colored safe-area bands.
+/// The floating pill uses a fixed design margin on Android landscape so an
+/// invisible gesture-exclusion region does not move the control away from the
+/// screen edge. Other layouts continue to respect persistent navigation and
+/// home-indicator insets.
 ///
 /// The authored 16 px breathing room is the minimum. If a home indicator,
 /// gesture area, or Android navigation bar is larger, use that actual inset
@@ -107,7 +104,19 @@ double modalSheetBottomPadding(BuildContext context) =>
 double floatingTabBarBottomOffsetForInset(double systemBottomInset) =>
     math.max(kFloatingTabBarBottomSpacing, systemBottomInset);
 
-double floatingTabBarBottomOffset(BuildContext context) =>
+double floatingTabBarBottomOffset(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  if (defaultTargetPlatform == TargetPlatform.android &&
+      size.width > size.height) {
+    return kFloatingTabBarBottomSpacing;
+  }
+  return floatingTabBarContentBottomOffset(context);
+}
+
+/// Bottom offset used when calculating scroll space behind the floating bar.
+/// Unlike the bar's landscape visual position, scroll content must also clear
+/// transparent Android gesture areas so its final rows remain reachable.
+double floatingTabBarContentBottomOffset(BuildContext context) =>
     floatingTabBarBottomOffsetForInset(
       math.max(
         MediaQuery.viewPaddingOf(context).bottom,
@@ -150,7 +159,7 @@ double floatingTabBarContentBottomClearance(
   final usesClassicNativeTabBar = usesClassicNativeTabBarForLayout.value;
   final barAndBottomInset = usesClassicNativeTabBar
       ? kClassicNativeTabBarHeight + systemSafeAreaBottomInset(context)
-      : kFloatingTabBarHeight + floatingTabBarBottomOffset(context);
+      : kFloatingTabBarHeight + floatingTabBarContentBottomOffset(context);
   final contentGap = usesClassicNativeTabBar
       ? math.max(finalContentGap, kClassicNativeTabBarMinimumContentGap)
       : finalContentGap;
