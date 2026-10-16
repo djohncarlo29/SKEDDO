@@ -2192,6 +2192,57 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildEventsHeaderActions(
+    BuildContext context, {
+    required Color accent,
+    required bool isLandscape,
+    required bool useDcvCategory,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedTapIcon(
+          padding: EdgeInsets.fromLTRB(
+            18,
+            10,
+            4,
+            isLandscape ? 10 : 0,
+          ),
+          onTap: _activateTabSearch,
+          child: Transform.translate(
+            offset: const Offset(5, 0),
+            child: SvgPicture.asset(
+              'assets/icons/search.svg',
+              width: 26,
+              height: 26,
+              colorFilter: ColorFilter.mode(accent, BlendMode.srcIn),
+            ),
+          ),
+        ),
+        AnimatedTapIcon(
+          padding: EdgeInsets.fromLTRB(
+            10,
+            10,
+            0,
+            isLandscape ? 10 : 0,
+          ),
+          onTap: () => _calendarTabKey.currentState?.showNewEventSheet(
+            context,
+            initialCategoryId: useDcvCategory
+                ? _eventsTabKey.currentState?.activeStandardDcvCategoryId
+                : null,
+          ),
+          child: SvgPicture.asset(
+            'assets/icons/plus.svg',
+            width: 26,
+            height: 26,
+            colorFilter: ColorFilter.mode(accent, BlendMode.srcIn),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildLandscapeDcvPaneHeader({
     required Color accent,
     required Color headerColor,
@@ -2223,9 +2274,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 required Color pageAccent,
                 required bool interactive,
               }) {
-                final trailingActionsOpacity = ((width - 144.0) / 64.0)
-                    .clamp(0.0, 1.0)
-                    .toDouble();
                 final titleOpacity = ((width - 144.0) / 72.0)
                     .clamp(0.0, 1.0)
                     .toDouble();
@@ -2306,60 +2354,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                 fontStyle: FontStyle.normal,
                                 color: primaryLabel,
                                 letterSpacing: -0.6,
-                              ),
-                            ),
-                          ),
-                        ),
-                      if (width >= 144)
-                        Positioned(
-                          right: 36,
-                          top: 0,
-                          bottom: 0,
-                          child: IgnorePointer(
-                            ignoring: trailingActionsOpacity < 0.8,
-                            child: Opacity(
-                              opacity: trailingActionsOpacity,
-                              child: headerButton(
-                                onTap: _activateTabSearch,
-                                child: SvgPicture.asset(
-                                  'assets/icons/search.svg',
-                                  width: 26,
-                                  height: 26,
-                                  colorFilter: ColorFilter.mode(
-                                    pageAccent,
-                                    BlendMode.srcIn,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      if (width >= 144)
-                        Positioned(
-                          right: -5,
-                          top: 0,
-                          bottom: 0,
-                          child: IgnorePointer(
-                            ignoring: trailingActionsOpacity < 0.8,
-                            child: Opacity(
-                              opacity: trailingActionsOpacity,
-                              child: headerButton(
-                                onTap: () => _calendarTabKey.currentState
-                                    ?.showNewEventSheet(
-                                      context,
-                                      initialCategoryId: _eventsTabKey
-                                          .currentState
-                                          ?.activeStandardDcvCategoryId,
-                                    ),
-                                child: SvgPicture.asset(
-                                  'assets/icons/plus.svg',
-                                  width: 26,
-                                  height: 26,
-                                  colorFilter: ColorFilter.mode(
-                                    pageAccent,
-                                    BlendMode.srcIn,
-                                  ),
-                                ),
                               ),
                             ),
                           ),
@@ -2623,7 +2617,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _selectedIndex == 2 &&
         !_searchFocused;
     final landscapeTabBarHorizontalOffset =
-        masterDetailGeometry.masterPaneCenterOffset;
+        masterDetailGeometry.masterContentCenterOffset;
     final topInset = MediaQuery.of(context).padding.top;
     final headerContentHeight = isLandscape ? 52.0 : 101.0;
     final keyboardBottomInset = MediaQuery.of(context).viewInsets.bottom;
@@ -3091,68 +3085,17 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                             ),
                                                           ),
                                                           const Spacer(),
-                                                          if (!landscapeDcvSplit) ...[
-                                                          AnimatedTapIcon(
-                                                            padding: EdgeInsets.fromLTRB(
-                                                              18,
-                                                              10,
-                                                              4,
-                                                              isLandscape ? 10 : 0,
+                                                          if (!landscapeDcvSplit)
+                                                            _buildEventsHeaderActions(
+                                                              context,
+                                                              accent: accent,
+                                                              isLandscape:
+                                                                  isLandscape,
+                                                              useDcvCategory:
+                                                                  isDCVVisual &&
+                                                                  _selectedIndex ==
+                                                                      2,
                                                             ),
-                                                            onTap:
-                                                                _activateTabSearch,
-                                                            child: Transform.translate(
-                                                              offset:
-                                                                  const Offset(
-                                                                    5,
-                                                                    0,
-                                                                  ),
-                                                              child: SvgPicture.asset(
-                                                                'assets/icons/search.svg',
-                                                                width: 26,
-                                                                height: 26,
-                                                                colorFilter:
-                                                                    ColorFilter.mode(
-                                                                      accent,
-                                                                      BlendMode
-                                                                          .srcIn,
-                                                                    ),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                          AnimatedTapIcon(
-                                                            padding: EdgeInsets.fromLTRB(
-                                                              10,
-                                                              10,
-                                                              0,
-                                                              isLandscape ? 10 : 0,
-                                                            ),
-                                                            onTap: () => _calendarTabKey
-                                                                .currentState
-                                                                ?.showNewEventSheet(
-                                                                  context,
-                                                                  initialCategoryId:
-                                                                      isDCVVisual &&
-                                                                          _selectedIndex ==
-                                                                              2
-                                                                      ? _eventsTabKey
-                                                                            .currentState
-                                                                            ?.activeStandardDcvCategoryId
-                                                                      : null,
-                                                                ),
-                                                            child: SvgPicture.asset(
-                                                              'assets/icons/plus.svg',
-                                                              width: 26,
-                                                              height: 26,
-                                                              colorFilter:
-                                                                  ColorFilter.mode(
-                                                                    accent,
-                                                                    BlendMode
-                                                                        .srcIn,
-                                                                  ),
-                                                            ),
-                                                          ),
-                                                          ],
                                                         ],
                                                       ),
                                                     ),
@@ -3408,6 +3351,28 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   );
                 },
               ),
+
+              // Keep one Search/Plus pair above the entering/leaving DCV
+              // header. The DCV title and leading controls slide beneath
+              // these shared actions; callbacks resolve the active DCV.
+              if (landscapeDcvSplit)
+                Positioned(
+                  top: topInset,
+                  right: 0,
+                  child: AppWindowContentPadding(
+                    includeLeft: false,
+                    child: SizedBox(
+                      height: headerContentHeight,
+                      child: _buildEventsHeaderActions(
+                        context,
+                        accent:
+                            _dcvColor ?? resolveAccentColor(context),
+                        isLandscape: isLandscape,
+                        useDcvCategory: true,
+                      ),
+                    ),
+                  ),
+                ),
 
               // The tab bar is now a floating shell control. It is placed
               // above the content but below the settings scrim so it stays

@@ -79,7 +79,7 @@ void main() {
     expect(AppWindowContentBoundary.landscapeSystemInsetFor(withInset), 0);
   });
 
-  test('centers a floating overlay on the physical master pane', () {
+  test('centers a floating overlay on portrait-width master content', () {
     const geometry = AppWindowMasterDetailGeometry(
       isLandscape: true,
       physicalWidth: 1024,
@@ -92,10 +92,13 @@ void main() {
     );
 
     final tabBarCenter =
-        geometry.physicalWidth / 2 + geometry.masterPaneCenterOffset;
+        geometry.physicalWidth / 2 + geometry.masterContentCenterOffset;
 
-    expect(tabBarCenter, geometry.masterPaneWidth / 2);
-    expect(tabBarCenter, 250);
+    expect(
+      tabBarCenter,
+      geometry.horizontalInset + geometry.masterContentWidth / 2,
+    );
+    expect(tabBarCenter, 266);
   });
 
   test('uses only persistent view padding, not padding or gesture insets', () {
