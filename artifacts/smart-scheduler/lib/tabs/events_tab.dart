@@ -3615,16 +3615,14 @@ class EventsTabState extends State<EventsTab>
   /// Finds the insertion position for a dragged tile from the grid's measured
   /// rectangles.
   ///
-  /// The old implementation converted the pointer to `row * 2 + column`.
-  /// That only works while every row is a two-column, fixed-height row.  The
-  /// grid now has pair rows, full-width rows, and independently wrapped title
-  /// heights, so the target must be expressed as an insertion boundary:
+  /// The grid has orientation-dependent column counts, full-width rows, and
+  /// independently wrapped title heights, so the target is expressed as an
+  /// insertion boundary from each row's measured tile centers:
   ///
-  ///   pair row       x < first centre → before first
-  ///                  x < second centre → before second
-  ///                  otherwise → after second
-  ///   single row     y < centre → before, otherwise → after
-  ///   row gap        nearest preceding/following row boundary
+  ///   multi-cell row  x before a tile center → before that tile
+  ///                   otherwise → after the final tile
+  ///   single row      y < center → before, otherwise → after
+  ///   row gap         nearest preceding/following row boundary
   ///
   /// The returned value is an index into the list *after* the dragged item is
   /// removed, which avoids the usual off-by-one when dragging downwards.
@@ -3700,18 +3698,13 @@ class EventsTabState extends State<EventsTab>
             : afterRawIndex(rawIndex);
       }
 
-      // A pair row has a shared measured height. Its centres form two stable
-      // horizontal insertion zones, including the case where the dragged
-      // tile occupies one side of the pair.
-      final firstGeometry = geometries[rowItems.first];
-      final secondGeometry = geometries[rowItems.last];
-      final firstCenterX = firstGeometry.left + firstGeometry.width / 2;
-      final secondCenterX = secondGeometry.left + secondGeometry.width / 2;
-      if (ghostCenter.dx < firstCenterX) {
-        return beforeRawIndex(rowItems.first);
-      }
-      if (ghostCenter.dx < secondCenterX) {
-        return beforeRawIndex(rowItems.last);
+      // Each cell in a multi-column row contributes its own insertion zone.
+      for (final rawIndex in rowItems) {
+        final geometry = geometries[rawIndex];
+        final centerX = geometry.left + geometry.width / 2;
+        if (ghostCenter.dx < centerX) {
+          return beforeRawIndex(rawIndex);
+        }
       }
       return afterRawIndex(rowItems.last);
     }
@@ -3855,7 +3848,11 @@ class EventsTabState extends State<EventsTab>
         // ── Exiting list back into grid ───────────────────────────────────
         final tw =
             _dragGridTileWidth ??
-            (box.size.width - _AnimatedCategoryGrid._colGap) / 2;
+            _eventsGridCellWidth(
+              box.size.width,
+              _eventsGridColumnCount(context),
+              _AnimatedCategoryGrid._colGap,
+            );
         final cx = newTopLeft.dx + tw / 2;
         final cy = newTopLeft.dy + capturedGhostHeight / 2;
         final reSlot = _gridInsertionIndexForPointer(
@@ -3911,10 +3908,14 @@ class EventsTabState extends State<EventsTab>
 
     // The ghost centre is measured from the captured resting geometry. The
     // insertion target itself is computed from the live grid rectangles below;
-    // no fixed row pitch or half-width assumption is used.
+    // no fixed row pitch or fixed column-count assumption is used.
     final ghostWidth =
         _dragGridTileWidth ??
-        (box.size.width - _AnimatedCategoryGrid._colGap) / 2;
+        _eventsGridCellWidth(
+          box.size.width,
+          _eventsGridColumnCount(context),
+          _AnimatedCategoryGrid._colGap,
+        );
     final ghostHeight =
         _dragGridTileHeight ?? _eventsGridTileRowHeight(context);
 
@@ -4178,12 +4179,15 @@ class EventsTabState extends State<EventsTab>
             _gridStackKey.currentContext?.findRenderObject() as RenderBox?;
         if (gridBox != null) {
           final availableWidth = gridBox.size.width;
-          final halfWidth =
-              (availableWidth - _AnimatedCategoryGrid._colGap) / 2;
+          final cellWidth = _eventsGridCellWidth(
+            availableWidth,
+            _eventsGridColumnCount(context),
+            _AnimatedCategoryGrid._colGap,
+          );
           final titleNeedsFullWidth =
               _eventsGridTitleWidth(context, cat.name) >
-              halfWidth - _kGridTileInset * 2;
-          final tileW = titleNeedsFullWidth ? availableWidth : halfWidth;
+              cellWidth - _kGridTileInset * 2;
+          final tileW = titleNeedsFullWidth ? availableWidth : cellWidth;
           final tileH = _eventsGridTileHeight(
             context,
             _GridLayoutSpec(title: cat.name, allowsFullWidthTitle: true),
@@ -4268,7 +4272,11 @@ class EventsTabState extends State<EventsTab>
         if (gridBox != null) {
           final tileW =
               _dragGridTileWidth ??
-              (gridBox.size.width - _AnimatedCategoryGrid._colGap) / 2;
+              _eventsGridCellWidth(
+                gridBox.size.width,
+                _eventsGridColumnCount(context),
+                _AnimatedCategoryGrid._colGap,
+              );
           final grab =
               _dragGridGrabOffset ??
               Offset(tileW / 2, _eventsGridTileRowHeight(context) / 2);
@@ -5213,7 +5221,11 @@ class EventsTabState extends State<EventsTab>
               ? (gridBox?.size.width ?? tileWidth)
               : (_dragGridTileWidth ??
                   (gridBox != null
-                      ? (gridBox.size.width - _AnimatedCategoryGrid._colGap) / 2
+                      ? _eventsGridCellWidth(
+                          gridBox.size.width,
+                          _eventsGridColumnCount(context),
+                          _AnimatedCategoryGrid._colGap,
+                        )
                       : 120.0));
       final tileH = _eventsGridTileRowHeight(context);
       final tl = _dragGridTopLeft;
@@ -5424,7 +5436,11 @@ class EventsTabState extends State<EventsTab>
     final stackGlobal = box.localToGlobal(Offset.zero);
     final tileWidth =
         _dragGridTileWidth ??
-        (box.size.width - _AnimatedCategoryGrid._colGap) / 2;
+        _eventsGridCellWidth(
+          box.size.width,
+          _eventsGridColumnCount(context),
+          _AnimatedCategoryGrid._colGap,
+        );
     final tileHeight = _dragGridTileHeight ?? _eventsGridTileRowHeight(context);
     final globalPos = stackGlobal + topLeft;
 
@@ -9012,6 +9028,18 @@ double _eventsGridTileHeight(
   return max(_eventsGridTileRowHeight(context), contentHeight);
 }
 
+int _eventsGridColumnCount(BuildContext context) =>
+    MediaQuery.orientationOf(context) == Orientation.landscape ? 3 : 2;
+
+double _eventsGridCellWidth(
+  double availableWidth,
+  int columnCount,
+  double colGap,
+) => max(
+  1.0,
+  (availableWidth - colGap * (columnCount - 1)) / columnCount,
+);
+
 List<_GridItemGeometry> _eventsGridItemGeometry(
   BuildContext context,
   List<_GridLayoutSpec> specs,
@@ -9021,22 +9049,32 @@ List<_GridItemGeometry> _eventsGridItemGeometry(
 
   const rowGap = 16.0;
   const colGap = 16.0;
-  final halfWidth = max(1.0, (availableWidth - colGap) / 2);
+  final columnCount = _eventsGridColumnCount(context);
+  final cellWidth = _eventsGridCellWidth(
+    availableWidth,
+    columnCount,
+    colGap,
+  );
   final geometries = List<_GridItemGeometry?>.filled(specs.length, null);
   var top = 0.0;
 
-  // A tile that cannot fit at half width occupies its own full-width row. It
-  // must not consume the next item as part of a forced-full-width pair:
-  // otherwise a long tile followed by two short tiles produces three
-  // full-width rows instead of [long full] + [short, short].
+  // Pack as many consecutive titles as fit into each row. A single fitting
+  // title that would otherwise share its row with an overlong title keeps the
+  // existing full-width accommodation; two or more fitting titles share cells.
   for (var i = 0; i < specs.length;) {
-    final second = i + 1 < specs.length ? i + 1 : null;
-    final currentNeedsFullWidth =
-        specs[i].allowsFullWidthTitle &&
-        _eventsGridTitleWidth(context, specs[i].title) >
-            halfWidth - _kGridTileInset * 2;
+    final rowLimit = min(columnCount, specs.length - i);
+    var rowCount = 0;
+    while (rowCount < rowLimit) {
+      final spec = specs[i + rowCount];
+      final titleNeedsFullWidth =
+          spec.allowsFullWidthTitle &&
+          _eventsGridTitleWidth(context, spec.title) >
+              cellWidth - _kGridTileInset * 2;
+      if (titleNeedsFullWidth) break;
+      rowCount++;
+    }
 
-    if (currentNeedsFullWidth || second == null) {
+    if (rowCount < 2) {
       final height = _eventsGridTileHeight(context, specs[i], availableWidth);
       geometries[i] = _GridItemGeometry(
         left: 0,
@@ -9049,47 +9087,24 @@ List<_GridItemGeometry> _eventsGridItemGeometry(
       continue;
     }
 
-    final secondNeedsFullWidth =
-        specs[second].allowsFullWidthTitle &&
-        _eventsGridTitleWidth(context, specs[second].title) >
-            halfWidth - _kGridTileInset * 2;
-
-    if (secondNeedsFullWidth) {
-      // Keep ordering intact: the current short title gets a full-width row
-      // rather than sharing a row with a title that cannot fit beside it.
-      final height = _eventsGridTileHeight(context, specs[i], availableWidth);
-      geometries[i] = _GridItemGeometry(
-        left: 0,
-        top: top,
-        width: availableWidth,
-        height: height,
+    var rowHeight = 0.0;
+    for (var slot = 0; slot < rowCount; slot++) {
+      rowHeight = max(
+        rowHeight,
+        _eventsGridTileHeight(context, specs[i + slot], cellWidth),
       );
-      top += height + rowGap;
-      i++;
-      continue;
     }
 
-    {
-      final height = max(
-        _eventsGridTileHeight(context, specs[i], halfWidth),
-        _eventsGridTileHeight(context, specs[second!], halfWidth),
-      );
-      geometries[i] = _GridItemGeometry(
-        left: 0,
+    for (var slot = 0; slot < rowCount; slot++) {
+      geometries[i + slot] = _GridItemGeometry(
+        left: slot * (cellWidth + colGap),
         top: top,
-        width: halfWidth,
-        height: height,
+        width: cellWidth,
+        height: rowHeight,
       );
-      geometries[second] = _GridItemGeometry(
-        left: halfWidth + colGap,
-        top: top,
-        width: halfWidth,
-        height: height,
-      );
-      top += height + rowGap;
     }
-
-    i += 2;
+    top += rowHeight + rowGap;
+    i += rowCount;
   }
 
   return geometries.cast<_GridItemGeometry>();
