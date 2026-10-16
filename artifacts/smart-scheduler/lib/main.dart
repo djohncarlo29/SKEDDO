@@ -2779,22 +2779,23 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                           splitProgress,
                                                         )
                                                   : 0.0;
-                                          final headerRowWidth =
-                                              landscapeDcvSplit
-                                                  ? leftHeaderWidth +
-                                                        headerDividerWidth +
-                                                        masterDetailGeometry
-                                                            .detailPaneWidthAt(
-                                                              splitProgress,
-                                                            )
-                                                  : constraints.maxWidth;
                                           final rightHeaderViewportWidth =
                                               landscapeDcvSplit
                                                   ? masterDetailGeometry
                                                         .detailPaneWidthAt(
                                                           splitProgress,
-                                                        )
+                                                        ) +
+                                                        masterDetailGeometry
+                                                                .horizontalInset *
+                                                            (1.0 -
+                                                                splitProgress)
                                                   : 0.0;
+                                          final headerRowWidth =
+                                              landscapeDcvSplit
+                                                  ? leftHeaderWidth +
+                                                        headerDividerWidth +
+                                                        rightHeaderViewportWidth
+                                                  : constraints.maxWidth;
                                           final headerRow = Row(
                                             children: [
                                               SizedBox(
@@ -3232,16 +3233,20 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                 top: topInset,
                                                               ),
                                                           child:
-                                                              _buildLandscapeDcvPaneHeader(
-                                                                accent:
-                                                                    _dcvColor ??
-                                                                    resolveAccentColor(
-                                                                      context,
-                                                                    ),
-                                                                headerColor:
-                                                                    headerColor,
-                                                                primaryLabel:
-                                                                    primaryLabel,
+                                                              AppWindowPaneContent(
+                                                                includeLeft:
+                                                                    false,
+                                                                child: _buildLandscapeDcvPaneHeader(
+                                                                  accent:
+                                                                      _dcvColor ??
+                                                                      resolveAccentColor(
+                                                                        context,
+                                                                      ),
+                                                                  headerColor:
+                                                                      headerColor,
+                                                                  primaryLabel:
+                                                                      primaryLabel,
+                                                                ),
                                                               ),
                                                       ),
                                                       ),

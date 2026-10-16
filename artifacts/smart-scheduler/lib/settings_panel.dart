@@ -248,6 +248,7 @@ class _SettingsPanelState extends State<SettingsPanel>
     curve: Curves.easeInOutCubic,
   );
   final ScrollController _mainScrollController = ScrollController();
+  final GlobalKey _mainSettingsContentKey = GlobalKey();
   final Map<String, GlobalKey> _settingsRowAnchorKeys = {
     for (final title in _kRoutes.keys) title: GlobalKey(),
   };
@@ -568,6 +569,7 @@ class _SettingsPanelState extends State<SettingsPanel>
         final backgroundColor = resolveThemeColor(kBackgroundColor, context);
         final separatorColor = resolveThemeColor(kSeparatorColor, context);
         final mainSettingsContent = _MainSettingsContent(
+          key: _mainSettingsContentKey,
           bottomInset: bottomInset,
           onPush: _push,
           scrollController: _mainScrollController,
@@ -590,6 +592,7 @@ class _SettingsPanelState extends State<SettingsPanel>
           progress: _paneTransitionProgress,
           dividerColor: separatorColor,
           applyDetailPaneInsets: false,
+          focusRevealDuration: _paneTransitionController.duration!,
           focusAnchorKey: _masterAnchorKey,
           master: ColoredBox(
             color: backgroundColor,
@@ -599,7 +602,7 @@ class _SettingsPanelState extends State<SettingsPanel>
             color: backgroundColor,
             child: AppWindowPaneContent(
               includeLeft: false,
-              includeRight: false,
+              includeRight: true,
               child: _buildSplitSubScreenStack(
                 activeRoute: splitRoute,
                 previousRoute: _previousRoute,
@@ -731,6 +734,7 @@ class _MainSettingsContent extends StatelessWidget {
   final String liquidGlassOpacityLabel;
 
   const _MainSettingsContent({
+    super.key,
     required this.bottomInset,
     required this.onPush,
     required this.scrollController,
@@ -1330,30 +1334,58 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
       ),
     );
 
-    final detailTitle = LayoutBuilder(
+    Widget headerPage(String value, {required bool interactive}) {
+      return IgnorePointer(
+        ignoring: !interactive,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(
+              child: title(value, horizontalPadding: 52),
+            ),
+            Positioned(
+              right: geometry.horizontalInset,
+              top: 0,
+              bottom: 0,
+              child: SizedBox(
+                width: 48,
+                child: CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(44, 44),
+                  onPressed: interactive ? onBack : null,
+                  child: Icon(
+                    CupertinoIcons.back,
+                    size: 19,
+                    color: primaryLabel,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final detailHeader = LayoutBuilder(
       builder: (context, constraints) {
         final pages = <Widget>[];
         if (previousTitle != null) {
           pages.add(
             Positioned.fill(
-              child: IgnorePointer(
-                child: title(previousTitle!, horizontalPadding: 52),
-              ),
+              child: headerPage(previousTitle!, interactive: false),
             ),
           );
         }
         pages.add(
           Positioned.fill(
-            child: ClipRect(
-              child: Transform.translate(
-                offset: Offset(
-                  previousTitle == null
-                      ? 0.0
-                      : constraints.maxWidth * (1.0 - transitionProgress),
-                  0.0,
-                ),
-                child: title(activeTitle, horizontalPadding: 52),
+            child: Transform.translate(
+              offset: Offset(
+                previousTitle == null
+                    ? 0.0
+                    : constraints.maxWidth * (1.0 - transitionProgress),
+                0.0,
               ),
+              child: headerPage(activeTitle, interactive: true),
             ),
           ),
         );
@@ -1365,31 +1397,6 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
           ),
         );
       },
-    );
-
-    final detailHeader = Stack(
-      fit: StackFit.expand,
-      children: [
-        Positioned.fill(child: detailTitle),
-        Positioned(
-          right: geometry.horizontalInset,
-          top: 0,
-          bottom: 0,
-          child: SizedBox(
-            width: 48,
-            child: CupertinoButton(
-              padding: EdgeInsets.zero,
-              minimumSize: const Size(44, 44),
-              onPressed: onBack,
-              child: Icon(
-                CupertinoIcons.back,
-                size: 19,
-                color: primaryLabel,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
 
     return Container(

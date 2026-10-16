@@ -8563,7 +8563,7 @@ class EventsTabState extends State<EventsTab>
                         : CupertinoColors.transparent,
                     child: AppWindowPaneContent(
                       includeLeft: !widget.landscapeMasterDetail,
-                      includeRight: !widget.landscapeMasterDetail,
+                      includeRight: true,
                       child: _CategoryDetailView(
                         key: ValueKey(widget.activeDCV ?? '_none'),
                         label: widget.activeDCV ?? '',
@@ -8750,6 +8750,7 @@ class EventsTabState extends State<EventsTab>
                       context,
                     ),
                     applyPaneInsets: false,
+                    focusRevealDuration: kDcvPaneTransitionDuration,
                     focusAnchorContext: _masterFocusAnchorContext,
                     master: gridView,
                     detail: landscapeDetailView,

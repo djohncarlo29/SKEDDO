@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/rendering.dart';
 
+import '../app_theme.dart';
 import '../services/window_geometry_diagnostics.dart';
 
 const double kAppWindowMasterDetailDividerWidth = 0.75;
@@ -292,7 +294,7 @@ class AppWindowMasterDetailGeometry {
 /// enters from the physical right edge. Safe-area-aware callers can use the
 /// default pane insets; callers that already inset their contents can disable
 /// them. [focusAnchorContext] or [focusAnchorKey] keeps the item that opened
-/// the detail pane centered while the master changes width.
+/// the detail pane visible if the master changes width would otherwise obscure it.
 class AppWindowMasterDetailTransition extends StatefulWidget {
   const AppWindowMasterDetailTransition({
     super.key,
@@ -306,6 +308,7 @@ class AppWindowMasterDetailTransition extends StatefulWidget {
     this.drawDivider = true,
     this.focusAnchorContext,
     this.focusAnchorKey,
+    this.focusRevealDuration = const Duration(milliseconds: 360),
   });
 
   final AppWindowMasterDetailGeometry geometry;
@@ -318,6 +321,7 @@ class AppWindowMasterDetailTransition extends StatefulWidget {
   final bool drawDivider;
   final BuildContext? focusAnchorContext;
   final GlobalKey? focusAnchorKey;
+  final Duration focusRevealDuration;
 
   @override
   State<AppWindowMasterDetailTransition> createState() =>
@@ -328,6 +332,7 @@ class _AppWindowMasterDetailTransitionState
     extends State<AppWindowMasterDetailTransition> {
   bool _focusAnchorSyncScheduled = false;
   bool _focusAnchorSyncSuppressed = false;
+  bool _focusAnchorRevealStarted = false;
 
   @override
   void initState() {
@@ -349,24 +354,32 @@ class _AppWindowMasterDetailTransitionState
     if (oldWidget.focusAnchorContext != widget.focusAnchorContext ||
         oldWidget.focusAnchorKey != widget.focusAnchorKey) {
       _focusAnchorSyncSuppressed = false;
-      _scheduleFocusAnchorSync();
+      _focusAnchorRevealStarted = false;
+      if (widget.progress.status == AnimationStatus.forward) {
+        _scheduleFocusAnchorSync();
+      }
     }
   }
 
   void _onProgressStatus(AnimationStatus status) {
-    if (status == AnimationStatus.forward ||
-        status == AnimationStatus.reverse) {
+    if (status == AnimationStatus.forward) {
       _focusAnchorSyncSuppressed = false;
+      _focusAnchorRevealStarted = false;
+      _scheduleFocusAnchorSync();
       return;
     }
-    if (status == AnimationStatus.completed ||
-        status == AnimationStatus.dismissed) {
+    if (status == AnimationStatus.completed) {
       if (!_focusAnchorSyncSuppressed) _scheduleFocusAnchorSync();
     }
   }
 
   void _onProgressChanged() {
-    _scheduleFocusAnchorSync();
+    // Only inspect the anchor while the full-width pane is opening into the
+    // split. Never move the master after the split has settled or while it is
+    // closing.
+    if (widget.progress.status == AnimationStatus.forward) {
+      _scheduleFocusAnchorSync();
+    }
   }
 
   bool _onMasterScroll(ScrollNotification notification) {
@@ -392,6 +405,11 @@ class _AppWindowMasterDetailTransitionState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusAnchorSyncScheduled = false;
       if (!mounted || _focusAnchorSyncSuppressed) return;
+      if (_focusAnchorRevealStarted) return;
+      if (widget.progress.status != AnimationStatus.forward &&
+          widget.progress.status != AnimationStatus.completed) {
+        return;
+      }
       final anchor =
           widget.focusAnchorKey?.currentContext ?? widget.focusAnchorContext;
       if (anchor == null || !anchor.mounted) return;
@@ -400,20 +418,59 @@ class _AppWindowMasterDetailTransitionState
       final position = scrollable.position;
       if (!position.hasPixels || !position.hasContentDimensions) return;
       final renderObject = anchor.findRenderObject();
-      if (renderObject == null || !renderObject.attached) return;
+      if (renderObject is! RenderBox || !renderObject.attached) return;
       final viewport = RenderAbstractViewport.maybeOf(renderObject);
       if (viewport == null) return;
+      final viewportBox = viewport as RenderBox;
 
-      // Keep the selected row centered against the live master-pane viewport
-      // while it changes width. A single post-transition ensureVisible animation
-      // leaves a second movement running after the pane has already settled.
+      final anchorRect =
+          renderObject.localToGlobal(Offset.zero) & renderObject.size;
+      final viewportRect =
+          viewportBox.localToGlobal(Offset.zero) & viewportBox.size;
+      final mediaQuery = MediaQuery.of(context);
+      final bottomClearance = usesClassicNativeTabBarForLayout.value
+          ? kClassicNativeTabBarHeight +
+                systemSafeAreaBottomInset(context) +
+                kClassicNativeTabBarMinimumContentGap
+          : kFloatingTabBarHeight +
+                floatingTabBarContentBottomOffset(context) +
+                kFloatingTabBarSafetyMargin;
+      final tabBarTop = mediaQuery.size.height - bottomClearance;
+      final visibleBottom = math.min(viewportRect.bottom, tabBarTop);
+
+      // A tapped item that remains visible should stay exactly where it is.
+      // Only reveal it if the narrower pane or the tab bar would obscure it.
+      if (anchorRect.top >= viewportRect.top - 1.0 &&
+          anchorRect.bottom <= visibleBottom + 1.0) {
+        return;
+      }
+
       final targetOffset = viewport
           .getOffsetToReveal(renderObject, 0.5)
           .offset
           .clamp(position.minScrollExtent, position.maxScrollExtent)
           .toDouble();
       if ((targetOffset - position.pixels).abs() > 0.5) {
-        position.jumpTo(targetOffset);
+        _focusAnchorRevealStarted = true;
+        final remainingMilliseconds =
+            (widget.focusRevealDuration.inMilliseconds *
+                    (1.0 - widget.progress.value.clamp(0.0, 1.0)))
+                .round();
+        final duration = Duration(
+          milliseconds: remainingMilliseconds
+              .clamp(
+                120,
+                math.max(120, widget.focusRevealDuration.inMilliseconds),
+              )
+              .toInt(),
+        );
+        unawaited(
+          position.animateTo(
+            targetOffset,
+            duration: duration,
+            curve: Curves.easeInOutCubic,
+          ),
+        );
       }
     });
   }
