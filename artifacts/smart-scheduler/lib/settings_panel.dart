@@ -1335,33 +1335,36 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
     );
 
     Widget headerPage(String value, {required bool interactive}) {
-      return IgnorePointer(
-        ignoring: !interactive,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Positioned.fill(
-              child: title(value, horizontalPadding: 52),
-            ),
-            Positioned(
-              right: geometry.horizontalInset,
-              top: 0,
-              bottom: 0,
-              child: SizedBox(
-                width: 48,
-                child: CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(44, 44),
-                  onPressed: interactive ? onBack : null,
-                  child: Icon(
-                    CupertinoIcons.back,
-                    size: 19,
-                    color: primaryLabel,
+      return ColoredBox(
+        color: cardColor,
+        child: IgnorePointer(
+          ignoring: !interactive,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned.fill(
+                child: title(value, horizontalPadding: 52),
+              ),
+              Positioned(
+                right: geometry.horizontalInset,
+                top: 0,
+                bottom: 0,
+                child: SizedBox(
+                  width: 48,
+                  child: CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(44, 44),
+                    onPressed: interactive ? onBack : null,
+                    child: Icon(
+                      CupertinoIcons.back,
+                      size: 19,
+                      color: primaryLabel,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
