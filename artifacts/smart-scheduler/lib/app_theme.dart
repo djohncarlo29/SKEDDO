@@ -3274,20 +3274,24 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
         .toInt();
   }
 
-  double _contourWidthAt(double angle) {
-    final sideStrength = math.pow(math.cos(angle).abs(), 2.2).toDouble();
+  double _contourWidthAt(Offset boundaryNormal) {
+    // Keep the full 1px minimum across the straight top/bottom edges. Grow
+    // smoothly toward the left/right sides as the actual edge normal turns.
+    final sideStrength = math.pow(boundaryNormal.dx.abs(), 2.2).toDouble();
     return _minimumContourWidth +
         (_maximumContourWidth - _minimumContourWidth) * sideStrength;
   }
 
-  double _boundaryRadiusAt({
+  ({Offset point, Offset normal}) _boundaryPointAndNormalAt({
     required double angle,
     required double halfWidth,
     required double halfHeight,
     required double cornerRadius,
   }) {
-    final absCos = math.cos(angle).abs();
-    final absSin = math.sin(angle).abs();
+    final cosine = math.cos(angle);
+    final sine = math.sin(angle);
+    final absCos = cosine.abs();
+    final absSin = sine.abs();
     final cornerCenterX = halfWidth - cornerRadius;
     final cornerCenterY = halfHeight - cornerRadius;
 
@@ -3295,11 +3299,21 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
     // before the rounded corner.
     if (absSin > 1e-9) {
       final distance = halfHeight / absSin;
-      if (distance * absCos <= cornerCenterX + 1e-9) return distance;
+      if (distance * absCos <= cornerCenterX + 1e-9) {
+        return (
+          point: Offset(cosine * distance, sine * distance),
+          normal: Offset(0, sine >= 0 ? 1 : -1),
+        );
+      }
     }
     if (absCos > 1e-9) {
       final distance = halfWidth / absCos;
-      if (distance * absSin <= cornerCenterY + 1e-9) return distance;
+      if (distance * absSin <= cornerCenterY + 1e-9) {
+        return (
+          point: Offset(cosine * distance, sine * distance),
+          normal: Offset(cosine >= 0 ? 1 : -1, 0),
+        );
+      }
     }
 
     // The remaining ray intersects the quarter-circle corner.
@@ -3308,10 +3322,19 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
         cornerCenterY * cornerCenterY -
         cornerRadius * cornerRadius;
     final discriminant = math.max(0.0, projection * projection - constant);
-    return projection + math.sqrt(discriminant);
+    final distance = projection + math.sqrt(discriminant);
+    final point = Offset(cosine * distance, sine * distance);
+    final cornerCenter = Offset(
+      (cosine >= 0 ? 1 : -1) * cornerCenterX,
+      (sine >= 0 ? 1 : -1) * cornerCenterY,
+    );
+    return (
+      point: point,
+      normal: (point - cornerCenter) / cornerRadius,
+    );
   }
 
-  Path _outlinePath(Size size, double radialInset, int segmentCount) {
+  Path _outlinePath(Size size, double normalInset, int segmentCount) {
     final halfWidth = size.width / 2;
     final halfHeight = size.height / 2;
     final cornerRadius = math.min(
@@ -3323,17 +3346,13 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
 
     for (var i = 0; i < segmentCount; i++) {
       final angle = math.pi * 2 * i / segmentCount;
-      final radius = _boundaryRadiusAt(
+      final boundary = _boundaryPointAndNormalAt(
             angle: angle,
             halfWidth: halfWidth,
             halfHeight: halfHeight,
             cornerRadius: cornerRadius,
-          ) +
-          radialInset;
-      final point = Offset(
-        center.dx + math.cos(angle) * radius,
-        center.dy + math.sin(angle) * radius,
-      );
+          );
+      final point = center + boundary.point + boundary.normal * normalInset;
       if (i == 0) {
         path.moveTo(point.dx, point.dy);
       } else {
@@ -3355,17 +3374,15 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
 
     for (var i = 0; i < segmentCount; i++) {
       final angle = math.pi * 2 * i / segmentCount;
-      final radius = _boundaryRadiusAt(
+      final boundary = _boundaryPointAndNormalAt(
             angle: angle,
             halfWidth: halfWidth,
             halfHeight: halfHeight,
             cornerRadius: cornerRadius,
-          ) +
-          _contourWidthAt(angle);
-      final point = Offset(
-        center.dx + math.cos(angle) * radius,
-        center.dy + math.sin(angle) * radius,
-      );
+          );
+      final point = center +
+          boundary.point +
+          boundary.normal * _contourWidthAt(boundary.normal);
       if (i == 0) {
         path.moveTo(point.dx, point.dy);
       } else {
@@ -3376,17 +3393,13 @@ class _LiquidGlassPillEdgePainter extends CustomPainter {
 
     for (var i = segmentCount - 1; i >= 0; i--) {
       final angle = math.pi * 2 * i / segmentCount;
-      final radius = _boundaryRadiusAt(
+      final boundary = _boundaryPointAndNormalAt(
             angle: angle,
             halfWidth: halfWidth,
             halfHeight: halfHeight,
             cornerRadius: cornerRadius,
-          ) -
-          0.05;
-      final point = Offset(
-        center.dx + math.cos(angle) * radius,
-        center.dy + math.sin(angle) * radius,
-      );
+          );
+      final point = center + boundary.point - boundary.normal * 0.05;
       if (i == segmentCount - 1) {
         path.moveTo(point.dx, point.dy);
       } else {

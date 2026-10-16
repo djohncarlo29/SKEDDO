@@ -150,4 +150,4 @@
 - [Modal card shadow overflow](modal-card-shadow-overflow.md) — let modal card shadows overflow the scroll viewport and sheet wrapper; keep the rounded route clip as the outer sheet boundary.
 - [Pinned Flutter dependency resolution](flutter-pub-lock-sdk-resolution.md) — the managed preview resolves transitive package versions against its pinned Dart SDK and may update pubspec.lock on restart.
 - [Nested modal header alignment](nested-modal-header-alignment.md) — nested titles and controls stay at the same screen coordinates as their parent sheet.
-- [Landscape pill contour sampling](landscape-pill-contour-sampling.md) — use a 1px rim, sync white-rim alpha to slider progress, and densify landscape sampling.
+- [Landscape pill contour sampling](landscape-pill-contour-sampling.md) — offset on local normals so flat edges stay 1px; preserve slider alpha and denser landscape sampling.
