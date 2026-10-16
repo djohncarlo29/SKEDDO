@@ -859,6 +859,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   bool _menuOpen = false;
   String? _dcvCategory;
   String? _previousDcvCategory;
+  Color? _previousDcvColor;
   // The tapped category's own colour, captured at DCV-entry time. While DCV
   // is visible this replaces kAccentColor for the header icons and the
   // active tab indicator; cleared on exit so the app reverts to the default
@@ -934,7 +935,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     if (status == AnimationStatus.completed &&
         _previousDcvCategory != null &&
         mounted) {
-      setState(() => _previousDcvCategory = null);
+      setState(() {
+        _previousDcvCategory = null;
+        _previousDcvColor = null;
+      });
     }
   }
 
@@ -950,6 +954,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       _dcvCategoryTransitionController.value = 1.0;
       setState(() {
         _previousDcvCategory = _dcvCategory;
+        _previousDcvColor = _dcvColor;
         _dcvCategory = label;
         _dcvColor = color;
       });
@@ -960,6 +965,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _dcvCategoryTransitionController.value = 1.0;
     setState(() {
       _previousDcvCategory = null;
+      _previousDcvColor = null;
       _dcvCategory = label;
       _dcvColor = color;
     });
@@ -2205,194 +2211,204 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     return SizedBox(
       height: 52,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            final trailingActionsOpacity = ((width - 144.0) / 64.0)
-                .clamp(0.0, 1.0)
-                .toDouble();
-            final titleOpacity = ((width - 144.0) / 72.0)
-                .clamp(0.0, 1.0)
-                .toDouble();
+        // Match the full-width Events header's 8 px leading inset and 16 px
+        // trailing action inset. The action slots below use the same visual
+        // centers as its search and plus icons.
+        padding: const EdgeInsets.only(left: 8, right: 16),
+        child: AnimatedBuilder(
+          animation: _dcvCategoryTransitionProgress,
+          builder: (context, _) => LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final transitionProgress =
+                  _dcvCategoryTransitionProgress.value.clamp(0.0, 1.0);
+              final slideWidth = AppWindowContentScope.of(
+                context,
+              ).physicalWidth;
+              final incomingOffset = _previousDcvCategory == null
+                  ? 0.0
+                  : slideWidth * (1.0 - transitionProgress);
 
-            Widget headerButton({
-              Key? key,
-              required VoidCallback onTap,
-              required Widget child,
-            }) {
-              return SizedBox(
-                key: key,
-                width: 36,
-                height: 52,
-                child: AnimatedTapIcon(
-                  padding: EdgeInsets.zero,
-                  onTap: onTap,
-                  // The slot is a fixed 36×52 tap target. Center loosens the
-                  // constraints for fixed-size icons so they keep their
-                  // authored size instead of filling the whole slot.
-                  child: Center(child: child),
-                ),
-              );
-            }
+              Widget headerPage({
+                required String title,
+                required Color pageAccent,
+                required bool interactive,
+              }) {
+                final trailingActionsOpacity = ((width - 144.0) / 64.0)
+                    .clamp(0.0, 1.0)
+                    .toDouble();
+                final titleOpacity = ((width - 144.0) / 72.0)
+                    .clamp(0.0, 1.0)
+                    .toDouble();
 
-            return Stack(
-              fit: StackFit.expand,
-              clipBehavior: Clip.none,
-              children: [
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: headerButton(
-                    onTap: _exitDCV,
-                    child: SearchWeightedIcon(
-                      CupertinoIcons.back,
-                      size: 19,
-                      color: accent,
-                      weight: 0,
+                Widget headerButton({
+                  Key? key,
+                  required VoidCallback onTap,
+                  required Widget child,
+                }) {
+                  return SizedBox(
+                    key: key,
+                    width: 36,
+                    height: 52,
+                    child: AnimatedTapIcon(
+                      padding: EdgeInsets.zero,
+                      onTap: onTap,
+                      // The slot is a fixed 36×52 tap target. Center loosens
+                      // the constraints for fixed-size icons so they keep
+                      // their authored size instead of filling the whole slot.
+                      child: Center(child: child),
                     ),
-                  ),
-                ),
-                Positioned(
-                  left: 36,
-                  top: 0,
-                  bottom: 0,
-                  child: headerButton(
-                    key: _splitDcvEllipsisKey,
-                    onTap: _showSplitDcvMenu,
-                    child: SearchWeightedIcon(
-                      CupertinoIcons.ellipsis_circle,
-                      size: 21,
-                      color: accent,
-                      weight: 0,
-                    ),
-                  ),
-                ),
-                if (width > 144)
-                  Positioned(
-                    left: 72,
-                    right: 72,
-                    top: 0,
-                    bottom: 0,
-                    child: Opacity(
-                      opacity: titleOpacity,
-                      child: AnimatedBuilder(
-                        animation: _dcvCategoryTransitionProgress,
-                        builder: (context, _) {
-                          final titleWidth = max(0.0, width - 144.0);
-                          Widget titleScroller(String title, Key key) =>
-                              HeaderTitleScroller(
-                                key: key,
-                                title: title,
-                                fadeColor: headerColor,
-                                centerWhenContentFits: true,
-                                contentAlignment: Alignment.center,
-                                style: TextStyle(
-                                  fontFamily: kSFProText,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w600,
-                                  fontStyle: FontStyle.normal,
-                                  color: primaryLabel,
-                                  letterSpacing: -0.6,
-                                ),
-                              );
+                  );
+                }
 
-                          return ClipRect(
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                if (_previousDcvCategory != null)
-                                  Positioned.fill(
-                                    child: titleScroller(
-                                      _previousDcvCategory!,
-                                      ValueKey(
-                                        'previous-dcv-title-$_previousDcvCategory',
-                                      ),
-                                    ),
-                                  ),
-                                Positioned.fill(
-                                  child: Transform.translate(
-                                    offset: Offset(
-                                      titleWidth *
-                                          (1 -
-                                              _dcvCategoryTransitionProgress
-                                                  .value),
-                                      0,
-                                    ),
-                                    child: titleScroller(
-                                      _dcvCategory ?? '',
-                                      ValueKey(
-                                        'active-dcv-title-$_dcvCategory',
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                if (width >= 144)
-                  Positioned(
-                    right: 36,
-                    top: 0,
-                    bottom: 0,
-                    child: IgnorePointer(
-                      ignoring: trailingActionsOpacity < 0.8,
-                      child: Opacity(
-                        opacity: trailingActionsOpacity,
+                return IgnorePointer(
+                  ignoring: !interactive,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
                         child: headerButton(
-                          onTap: _activateTabSearch,
-                          child: SvgPicture.asset(
-                            'assets/icons/search.svg',
-                            width: 26,
-                            height: 26,
-                            colorFilter: ColorFilter.mode(
-                              accent,
-                              BlendMode.srcIn,
-                            ),
+                          onTap: _exitDCV,
+                          child: SearchWeightedIcon(
+                            CupertinoIcons.back,
+                            size: 19,
+                            color: pageAccent,
+                            weight: 0,
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                if (width >= 144)
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    child: IgnorePointer(
-                      ignoring: trailingActionsOpacity < 0.8,
-                      child: Opacity(
-                        opacity: trailingActionsOpacity,
+                      Positioned(
+                        left: 36,
+                        top: 0,
+                        bottom: 0,
                         child: headerButton(
-                          onTap: () =>
-                              _calendarTabKey.currentState?.showNewEventSheet(
-                                context,
-                                initialCategoryId:
-                                    _eventsTabKey
-                                        .currentState
-                                        ?.activeStandardDcvCategoryId,
+                          key: interactive ? _splitDcvEllipsisKey : null,
+                          onTap: _showSplitDcvMenu,
+                          child: SearchWeightedIcon(
+                            CupertinoIcons.ellipsis_circle,
+                            size: 21,
+                            color: pageAccent,
+                            weight: 0,
+                          ),
+                        ),
+                      ),
+                      if (width > 144)
+                        Positioned(
+                          left: 72,
+                          right: 72,
+                          top: 0,
+                          bottom: 0,
+                          child: Opacity(
+                            opacity: titleOpacity,
+                            child: HeaderTitleScroller(
+                              key: ValueKey('landscape-dcv-title-$title'),
+                              title: title,
+                              fadeColor: headerColor,
+                              centerWhenContentFits: true,
+                              contentAlignment: Alignment.center,
+                              style: TextStyle(
+                                fontFamily: kSFProText,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                                fontStyle: FontStyle.normal,
+                                color: primaryLabel,
+                                letterSpacing: -0.6,
                               ),
-                          child: SvgPicture.asset(
-                            'assets/icons/plus.svg',
-                            width: 26,
-                            height: 26,
-                            colorFilter: ColorFilter.mode(
-                              accent,
-                              BlendMode.srcIn,
                             ),
                           ),
+                        ),
+                      if (width >= 144)
+                        Positioned(
+                          right: 36,
+                          top: 0,
+                          bottom: 0,
+                          child: IgnorePointer(
+                            ignoring: trailingActionsOpacity < 0.8,
+                            child: Opacity(
+                              opacity: trailingActionsOpacity,
+                              child: headerButton(
+                                onTap: _activateTabSearch,
+                                child: SvgPicture.asset(
+                                  'assets/icons/search.svg',
+                                  width: 26,
+                                  height: 26,
+                                  colorFilter: ColorFilter.mode(
+                                    pageAccent,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (width >= 144)
+                        Positioned(
+                          right: -5,
+                          top: 0,
+                          bottom: 0,
+                          child: IgnorePointer(
+                            ignoring: trailingActionsOpacity < 0.8,
+                            child: Opacity(
+                              opacity: trailingActionsOpacity,
+                              child: headerButton(
+                                onTap: () => _calendarTabKey.currentState
+                                    ?.showNewEventSheet(
+                                      context,
+                                      initialCategoryId: _eventsTabKey
+                                          .currentState
+                                          ?.activeStandardDcvCategoryId,
+                                    ),
+                                child: SvgPicture.asset(
+                                  'assets/icons/plus.svg',
+                                  width: 26,
+                                  height: 26,
+                                  colorFilter: ColorFilter.mode(
+                                    pageAccent,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }
+
+              return Stack(
+                fit: StackFit.expand,
+                clipBehavior: Clip.hardEdge,
+                children: [
+                  if (_previousDcvCategory != null)
+                    Positioned.fill(
+                      child: headerPage(
+                        title: _previousDcvCategory!,
+                        pageAccent: _previousDcvColor ?? accent,
+                        interactive: false,
+                      ),
+                    ),
+                  Positioned.fill(
+                    child: Transform.translate(
+                      offset: Offset(incomingOffset, 0),
+                      child: ColoredBox(
+                        color: headerColor,
+                        child: headerPage(
+                          title: _dcvCategory ?? '',
+                          pageAccent: accent,
+                          interactive: true,
                         ),
                       ),
                     ),
                   ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

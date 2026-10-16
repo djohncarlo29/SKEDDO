@@ -20823,17 +20823,24 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                widget.landscapeMasterDetail ? 0 : 16,
+              ),
               child: specialContent,
             ),
           ),
           SliverToBoxAdapter(
             child: SizedBox(
-              height: floatingTabBarContentBottomClearance(
-                context,
-                existingTrailingContentPadding: 32,
-                finalContentGap: _kDcvFinalContentGap,
-              ),
+              height: widget.landscapeMasterDetail
+                  ? 0
+                  : floatingTabBarContentBottomClearance(
+                      context,
+                      existingTrailingContentPadding: 32,
+                      finalContentGap: _kDcvFinalContentGap,
+                    ),
             ),
           ),
         ],
@@ -20897,10 +20904,15 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
           slivers: [
             SliverPadding(
-              // 16 px top follows the 8pt grid;
-              // 16 px sides give each card its edge margin; bottom 16 px plus
-              // each section's own 16 px bottom padding → 32 px total at end.
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              // 16 px top follows the 8pt grid, and 16 px sides give each card
+              // its edge margin. The last section already contributes 16 px
+              // below its card; only add the outer 16 px in full-screen mode.
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                widget.landscapeMasterDetail ? 0 : 16,
+              ),
               sliver: SliverList.builder(
                 itemCount: displaySections.length,
                 itemBuilder: (context, sectionIdx) {
@@ -21035,11 +21047,13 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
             ),
             SliverToBoxAdapter(
               child: SizedBox(
-                height: floatingTabBarContentBottomClearance(
-                  context,
-                  existingTrailingContentPadding: 32,
-                  finalContentGap: _kDcvFinalContentGap,
-                ),
+                height: widget.landscapeMasterDetail
+                    ? 0
+                    : floatingTabBarContentBottomClearance(
+                        context,
+                        existingTrailingContentPadding: 32,
+                        finalContentGap: _kDcvFinalContentGap,
+                      ),
               ),
             ),
           ],
