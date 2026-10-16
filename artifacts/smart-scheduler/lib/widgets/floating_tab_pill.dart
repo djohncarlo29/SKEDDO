@@ -69,9 +69,18 @@ class FloatingTabPill extends StatelessWidget {
       label: 'Main navigation',
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final barWidth = (constraints.maxWidth -
-                  (kFloatingTabBarHorizontalMargin * 2))
+          final screenSize = MediaQuery.sizeOf(context);
+          final portraitWidth = math.min(screenSize.width, screenSize.height);
+          final maxPortraitBarWidth =
+              portraitWidth - (kFloatingTabBarHorizontalMargin * 2);
+          final barWidth = math
+              .min(
+                constraints.maxWidth -
+                    (kFloatingTabBarHorizontalMargin * 2),
+                maxPortraitBarWidth,
+              )
               .clamp(0.0, double.infinity);
+          final barSideInset = (constraints.maxWidth - barWidth) / 2;
           final tabBar = LiquidGlassTabBar.withImpeller(
             items: [
               _tabItem(SFIcons.sf_text_document, 'Notes'),
@@ -153,8 +162,8 @@ class FloatingTabPill extends StatelessWidget {
               // Nothing in the shadow can therefore darken or refract through the
               // bar's material.
               Positioned(
-                left: kFloatingTabBarHorizontalMargin,
-                right: kFloatingTabBarHorizontalMargin,
+                left: barSideInset,
+                right: barSideInset,
                 bottom: bottomOffset,
                 height: kFloatingTabBarHeight,
                 child: IgnorePointer(
@@ -175,8 +184,8 @@ class FloatingTabPill extends StatelessWidget {
               // host width, so its physical hit/render bounds could reach the
               // landscape system area even though the authored width was smaller.
               Positioned(
-                left: kFloatingTabBarHorizontalMargin,
-                right: kFloatingTabBarHorizontalMargin,
+                left: barSideInset,
+                right: barSideInset,
                 top: 0,
                 bottom: 0,
                 child: MediaQuery.removePadding(
