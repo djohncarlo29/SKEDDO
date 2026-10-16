@@ -502,6 +502,11 @@ void _writeCrashReport(String message) {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Set the system-bar layout before startup awaits so Android can draw the
+  // first frame edge-to-edge, including when the app launches in a freeform
+  // window. The header separately uses MediaQuery.padding.top for safe layout.
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(_overlayStyle);
   await initializeDeviceTextScaleProfile();
 
   // ── Global crash capture (non-web only) ────────────────────────────────────
@@ -562,8 +567,6 @@ Future<void> main() async {
   EventPipeline.instance.scheduleBackgroundReembed(
     EventStore.instance.events.value,
   );
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  SystemChrome.setSystemUIOverlayStyle(_overlayStyle);
   runApp(const SKEDDOApp());
 }
 

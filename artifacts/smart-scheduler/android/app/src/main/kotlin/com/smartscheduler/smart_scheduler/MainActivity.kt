@@ -17,8 +17,6 @@ import io.flutter.plugin.platform.PlatformPlugin
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.SelectionQuietPlatformPlugin
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 
 class MainActivity : FlutterActivity() {
     private val textScaleChannel = "com.smartscheduler/text_scale"
@@ -40,11 +38,6 @@ class MainActivity : FlutterActivity() {
         // attached so the DecorView remains full-window on older Android
         // versions as well as Android 15+.
         configureEdgeToEdgeWindow()
-    }
-
-    override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean) {
-        super.onMultiWindowModeChanged(isInMultiWindowMode)
-        if (isInMultiWindowMode) hideWindowCaptionBar()
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -283,21 +276,6 @@ class MainActivity : FlutterActivity() {
                     View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
                     View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
         }
-        hideWindowCaptionBar()
-    }
-
-    private fun hideWindowCaptionBar() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
-
-        // Android freeform windows add a system caption bar above the
-        // activity. Hide only that strip; leave the status and navigation
-        // bars visible. Android may transiently reveal it on a swipe, and
-        // some OEM window managers may choose not to honor the request.
-        val insetsController =
-            WindowCompat.getInsetsController(window, window.decorView)
-        insetsController.systemBarsBehavior =
-            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        insetsController.hide(WindowInsetsCompat.Type.captionBar())
     }
 
     private fun rectMap(rect: Rect): Map<String, Int> = mapOf(

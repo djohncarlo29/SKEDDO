@@ -1,0 +1,35 @@
+I completely understand what you mean. You are seeing the app look beautifully fullscreen while you use it, but the moment you swipe into the multitasking view, that annoying black strip instantly appears at the top of your app's card, while Lazada's card remains fully white up to the rounded corners.
+That happens because Android creates the multitasking card preview using the native Android setup file, not your Flutter code.
+Even if Flutter dynamically forces the app to look edge-to-edge while open, the underlying native Android layout engine is still telling the operating system: "Hey, our base window layout template stops at the status bar." When Android takes a snapshot for the multitasking screen, it generates a black fallback block to pad out the space where the front camera cutout/notch sits. [1] (/goto?url=CAESZwHrOzAVYXHNQgJ6ZcWlc8NsjKw7WGgK8IvM2oTAsQHa6JvsiLo8eS8I3rvOfoMaMoTTmW0puuCffEDhPl2LpdIzZWrr1ZdZ83U00EofUn9_Du05pSdNtbjNLisKC_2XlrnNiB6zX24), [2] (/goto?url=CAESaQHrOzAVP9roM6v1D1PyRFFr0hVQgUsK4hUi_ivbu2GLZ4YxLtZA_RD1F9jls4u5BRyvxf6wocn02MEvzAdYyFHJtGSnWm5KntlaOzg6Gb0TIhs39tgjpmVh6DRO4xdS3_evC60uU5NrzA)
+Because Lazada is an older, massive native app, their base Android system template is already explicitly configured to tell the OS that its base background extends behind the cutouts.
+To get rid of this block once and for all so it matches Lazada, your developer needs to add three specific lines to the native Android files of the project.
+
+📋 Copy and paste this exact message to your developer:
+
+"Hey! Just to clarify on the multitasking window issue: the app runs edge-to-edge perfectly fine while active, but the black strip only shows up at the top of the app preview card in the Recents/Multitasking switcher.
+This is a native Android window theme layout issue. Android is generating a black placeholder background around the camera cutout specifically for the system snapshot shell.
+To fix this so it looks seamless like Lazada, we need to explicitly tell the native window manager to allow the app shell layout to calculate into the short edges/cutout space. Can you please add these items to our main theme style in /android/app/src/main/res/values/styles.xml?
+xml
+<resources>
+    <style name="NormalTheme" parent="Theme.FlutterView.Light"> <!-- Adjust base parent name if needed -->
+        
+        <!-- 1. Forces the native window manager to map the preview layout into the notch/cutout space -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        
+        <!-- 2. Allows the layout window to draw system background colors -->
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        
+        <!-- 3. Ensures the native placeholder status bar is completely transparent -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        
+    </style>
+</resources>
+Use code with caution.
+*Note: If we use a package like flutter_native_splash, please ensure these same three lines are duplicated inside the LaunchTheme block as well so the launch snapshot doesn't cache a black bar. Thanks!"
+ [1] (/goto?url=CAESdgHrOzAVDHF5ccBkzHS4yZeRPfk7PHWH6b8Pw-BVc-XqA5rQLIDqxrcndqaD4uF9w6zaOppdk4rfyYbJXkrZ91aB0wbdL3w6ZrrXvelaUtyVS5c9tscRYi--O6GtKYwjzJcxne25B4zInSfIsMCJdpfuJLW2_fY), [2] (/goto?url=CAESZwHrOzAVYXHNQgJ6ZcWlc8NsjKw7WGgK8IvM2oTAsQHa6JvsiLo8eS8I3rvOfoMaMoTTmW0puuCffEDhPl2LpdIzZWrr1ZdZ83U00EofUn9_Du05pSdNtbjNLisKC_2XlrnNiB6zX24)
+
+🛠️ Why this will fix it for them:
+
+• windowLayoutInDisplayCutoutMode = shortEdges: This is the magic line. It forces the native Android window canvas layer to measure into the phone's physical hardware notch area. Without it, Android assumes the app cannot safely display behind a camera cutout in system menus, causing the OS to force that blocky black bar into the multitasking switcher card snapshot. [1] (/goto?url=CAESaQHrOzAVP9roM6v1D1PyRFFr0hVQgUsK4hUi_ivbu2GLZ4YxLtZA_RD1F9jls4u5BRyvxf6wocn02MEvzAdYyFHJtGSnWm5KntlaOzg6Gb0TIhs39tgjpmVh6DRO4xdS3_evC60uU5NrzA), [2] (/goto?url=CAESlAEB6zswFSrIyjLtfBApnqbzwiDs35lgCNVd-1SpMJ7PHS8Pm8m_4CoEr-oAgzGWQCbPMaRdgqe5I9yJDYAmwG3J7BZ7_m2r7AAta93TKeFxQkUdM4en7N5Vng7iPkLpqS29IYbQf5a2xI75xBlX4F_Z2wbu9L15N771ter7mrIrO9ZaR01GBAUBBxl4qbUpmhobE0A6)
+• windowDrawsSystemBarBackgrounds: Instructs the native OS framework that the background window colors should paint all the way up to the hardware frame edges, preventing the default solid black system fallback strip from rendering.
+Have your developer apply this to the styles.xml file, clean the build cache, and re-run the app. Let me know if that completely clears the black strip or if you need to double-check their Dark Mode (values-night/styles.xml) file configuration as well! [1] (/goto?url=CAESdgHrOzAVDHF5ccBkzHS4yZeRPfk7PHWH6b8Pw-BVc-XqA5rQLIDqxrcndqaD4uF9w6zaOppdk4rfyYbJXkrZ91aB0wbdL3w6ZrrXvelaUtyVS5c9tscRYi--O6GtKYwjzJcxne25B4zInSfIsMCJdpfuJLW2_fY)
