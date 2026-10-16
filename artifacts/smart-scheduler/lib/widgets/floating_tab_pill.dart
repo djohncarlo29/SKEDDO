@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/gestures.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
@@ -44,6 +45,14 @@ class FloatingTabPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
+    // Avoid the dual live-Impeller capture in the one affected configuration:
+    // Android landscape Dark Mode showed a shifted second copy of the active
+    // glyphs and a clipped trailing edge. The regular lens keeps the glass bar
+    // and selected state without that extra compositing path.
+    final useSinglePassAndroidLandscapeBar =
+        defaultTargetPlatform == TargetPlatform.android &&
+        isDark &&
+        MediaQuery.orientationOf(context) == Orientation.landscape;
     final selectedColor = selectedIndex == 2
         ? CupertinoDynamicColor.resolve(eventsAccent, context)
         : resolveAccentColor(context);
@@ -72,6 +81,84 @@ class FloatingTabPill extends StatelessWidget {
           final barWidth = (constraints.maxWidth -
                   (kFloatingTabBarHorizontalMargin * 2))
               .clamp(0.0, double.infinity);
+          final tabBarConstructor = useSinglePassAndroidLandscapeBar
+              ? LiquidGlassTabBar.new
+              : LiquidGlassTabBar.withImpeller;
+          final tabBar = tabBarConstructor(
+            items: [
+              _tabItem(SFIcons.sf_text_document, 'Notes'),
+              _tabItem(SFIcons.sf_calendar, 'Calendar'),
+              _tabItem(SFIcons.sf_list_bullet, 'Events'),
+            ],
+            selectedIndex: selectedIndex,
+            onChanged: onTabSelected,
+            width: barWidth,
+            height: kFloatingTabBarHeight,
+            margin: useSinglePassAndroidLandscapeBar
+                ? EdgeInsets.zero
+                : EdgeInsets.only(bottom: bottomOffset),
+            itemPadding: 4,
+            itemStyle: LiquidGlassTabItemStyle(
+              selectedColor: selectedColor,
+              unselectedColor: unselectedColor,
+              iconSize: 22,
+              labelFontSize: 12,
+              underGlassLabelFontSize: 12,
+              iconLabelGap: 2,
+              selectedFontWeight: FontWeight.w600,
+              unselectedFontWeight: FontWeight.w500,
+            ),
+            style: barStyle,
+            barOverlay: LightModeLiquidGlassPillContour(
+              whiteOutlineOpacity: glassOpacityProgress,
+              child: const SizedBox.expand(),
+            ),
+            // The environmental shadows above own elevation. Keep the glass
+            // material itself shadow-free so its refraction remains clean.
+            pillStyle: LiquidGlassTabPillStyle(
+              mode: LiquidGlassPillMode.impellerOnly,
+              animated: true,
+              color: const Color(0x00000000),
+              transitionColor: transitionPillColor,
+              shape: LiquidGlassShape.squircle(
+                cornerRadius: kSquircleStadiumRadius,
+              ),
+              glassStyle: LiquidGlassStyle(
+                shape: LiquidGlassShape.squircle(
+                  cornerRadius: kSquircleStadiumRadius,
+                ),
+                appearance: LiquidGlassAppearance(
+                  shadow: LiquidGlassShadow(
+                    blur: 6,
+                    opacity: isDark ? 0 : 0.22,
+                    offset: const Offset(0, 3),
+                    cornerRadius: kSquircleStadiumRadius,
+                    inset: 1,
+                  ),
+                ),
+                refraction: LiquidGlassRefraction(
+                  distortion: 0.04,
+                  distortionWidth: 12,
+                  magnification: 1,
+                  chromaticAberration: kFloatingTabBarChromaticAberration,
+                ),
+              ),
+              rest: LiquidGlassStyle(
+                shape: LiquidGlassShape.squircle(
+                  cornerRadius: kSquircleStadiumRadius,
+                ),
+                appearance: LiquidGlassAppearance(
+                  color: settledPillColor,
+                ),
+                refraction: const LiquidGlassRefraction(
+                  distortion: 0,
+                  distortionWidth: 0,
+                  magnification: 1,
+                  chromaticAberration: kFloatingTabBarChromaticAberration,
+                ),
+              ),
+            ),
+          );
           return Stack(
             fit: StackFit.expand,
             children: [
@@ -101,95 +188,34 @@ class FloatingTabPill extends StatelessWidget {
               // as its shadow. StackFit.expand alone used to give it the whole
               // host width, so its physical hit/render bounds could reach the
               // landscape system area even though the authored width was smaller.
-              Positioned(
-                left: kFloatingTabBarHorizontalMargin,
-                right: kFloatingTabBarHorizontalMargin,
-                top: 0,
-                bottom: 0,
-                child: MediaQuery.removePadding(
-                  context: context,
-                  removeBottom: true,
+              if (useSinglePassAndroidLandscapeBar)
+                Positioned(
+                  left: kFloatingTabBarHorizontalMargin,
+                  right: kFloatingTabBarHorizontalMargin,
+                  bottom: bottomOffset,
+                  height: kFloatingTabBarHeight,
                   child: MediaQuery.withClampedTextScaling(
                     minScaleFactor: kFloatingTabBarMinimumTextScale,
                     maxScaleFactor: kFloatingTabBarMaximumTextScale,
-                    child: LiquidGlassTabBar.withImpeller(
-                      items: [
-                        _tabItem(SFIcons.sf_text_document, 'Notes'),
-                        _tabItem(SFIcons.sf_calendar, 'Calendar'),
-                        _tabItem(SFIcons.sf_list_bullet, 'Events'),
-                      ],
-                      selectedIndex: selectedIndex,
-                      onChanged: onTabSelected,
-                      width: barWidth,
-                      height: kFloatingTabBarHeight,
-                      margin: EdgeInsets.only(bottom: bottomOffset),
-                      itemPadding: 4,
-                      itemStyle: LiquidGlassTabItemStyle(
-                        selectedColor: selectedColor,
-                        unselectedColor: unselectedColor,
-                        iconSize: 22,
-                        labelFontSize: 12,
-                        underGlassLabelFontSize: 12,
-                        iconLabelGap: 2,
-                        selectedFontWeight: FontWeight.w600,
-                        unselectedFontWeight: FontWeight.w500,
-                      ),
-                      style: barStyle,
-                      barOverlay: LightModeLiquidGlassPillContour(
-                        whiteOutlineOpacity: glassOpacityProgress,
-                        child: const SizedBox.expand(),
-                      ),
-                      // The environmental shadows above own elevation. Keep the
-                      // glass material itself shadow-free so its refraction remains clean.
-                      pillStyle: LiquidGlassTabPillStyle(
-                        mode: LiquidGlassPillMode.impellerOnly,
-                        animated: true,
-                        color: const Color(0x00000000),
-                        transitionColor: transitionPillColor,
-                        shape: LiquidGlassShape.squircle(
-                          cornerRadius: kSquircleStadiumRadius,
-                        ),
-                        glassStyle: LiquidGlassStyle(
-                          shape: LiquidGlassShape.squircle(
-                            cornerRadius: kSquircleStadiumRadius,
-                          ),
-                          appearance: LiquidGlassAppearance(
-                            shadow: LiquidGlassShadow(
-                              blur: 6,
-                              opacity: isDark ? 0 : 0.22,
-                              offset: const Offset(0, 3),
-                              cornerRadius: kSquircleStadiumRadius,
-                              inset: 1,
-                            ),
-                          ),
-                          refraction: LiquidGlassRefraction(
-                            distortion: 0.04,
-                            distortionWidth: 12,
-                            magnification: 1,
-                            chromaticAberration:
-                                kFloatingTabBarChromaticAberration,
-                          ),
-                        ),
-                        rest: LiquidGlassStyle(
-                          shape: LiquidGlassShape.squircle(
-                            cornerRadius: kSquircleStadiumRadius,
-                          ),
-                          appearance: LiquidGlassAppearance(
-                            color: settledPillColor,
-                          ),
-                          refraction: const LiquidGlassRefraction(
-                            distortion: 0,
-                            distortionWidth: 0,
-                            magnification: 1,
-                            chromaticAberration:
-                                kFloatingTabBarChromaticAberration,
-                          ),
-                        ),
-                      ),
+                    child: tabBar,
+                  ),
+                )
+              else
+                Positioned(
+                  left: kFloatingTabBarHorizontalMargin,
+                  right: kFloatingTabBarHorizontalMargin,
+                  top: 0,
+                  bottom: 0,
+                  child: MediaQuery.removePadding(
+                    context: context,
+                    removeBottom: true,
+                    child: MediaQuery.withClampedTextScaling(
+                      minScaleFactor: kFloatingTabBarMinimumTextScale,
+                      maxScaleFactor: kFloatingTabBarMaximumTextScale,
+                      child: tabBar,
                     ),
                   ),
                 ),
-              ),
             ],
           );
         },
