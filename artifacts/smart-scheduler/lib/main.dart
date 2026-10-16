@@ -3358,7 +3358,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               if (landscapeDcvSplit)
                 Positioned(
                   top: topInset,
-                  right: 0,
+                  // Match the original full-width header row's 16px trailing
+                  // inset. AppWindowContentPadding below still reserves the
+                  // system safe area; this keeps the action glyphs stationary
+                  // as they move to the higher-z overlay during the DCV split.
+                  right: 16,
                   child: AppWindowContentPadding(
                     includeLeft: false,
                     child: SizedBox(

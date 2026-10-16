@@ -1297,6 +1297,7 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
+            top: topInset,
             child: AppWindowTwoPaneLayout(
               geometry: geometry,
               dividerColor: dividerColor,

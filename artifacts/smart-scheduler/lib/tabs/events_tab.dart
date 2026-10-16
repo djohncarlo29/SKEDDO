@@ -8747,6 +8747,8 @@ class EventsTabState extends State<EventsTab>
                               ),
                             ),
                           ),
+                          // This viewport is the physical pane remainder,
+                          // including the trailing safe-area reveal.
                           Expanded(
                             child: LayoutBuilder(
                               builder: (context, constraints) => ClipRect(
