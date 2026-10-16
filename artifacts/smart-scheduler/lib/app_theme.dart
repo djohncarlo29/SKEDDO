@@ -38,6 +38,7 @@ const kCardColor = CupertinoDynamicColor.withBrightness(
 const double kFloatingTabBarHorizontalMargin = 24.0;
 const double kFloatingTabBarBottomSpacing = 16.0;
 const double kFloatingTabBarHeight = 50.0;
+const Duration kDcvPaneTransitionDuration = Duration(milliseconds: 380);
 const double kClassicNativeTabBarHeight = 49.0;
 const double kClassicNativeTabBarMinimumContentGap = 16.0;
 const double kFloatingTabBarTouchTargetHeight = 44.0;
@@ -104,7 +105,7 @@ double modalSheetBottomPadding(BuildContext context) =>
     unifiedBottomPadding(context);
 
 double floatingTabBarBottomOffsetForInset(double systemBottomInset) =>
-    unifiedBottomPaddingForInset(systemBottomInset);
+    math.max(kFloatingTabBarBottomSpacing, systemBottomInset);
 
 double floatingTabBarBottomOffset(BuildContext context) =>
     floatingTabBarBottomOffsetForInset(

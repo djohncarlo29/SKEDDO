@@ -815,6 +815,7 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   static const double _dcvColorSnapThreshold = 0.5;
+  static const double _minimumLandscapeDcvDetailWidth = 320.0;
 
   final _notesTabKey = GlobalKey<NotesTabState>();
   final _calendarTabKey = GlobalKey<CalendarTabState>();
@@ -857,6 +858,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   bool _usesNativeTabBar = false;
   bool _menuOpen = false;
   String? _dcvCategory;
+  String? _previousDcvCategory;
   // The tapped category's own colour, captured at DCV-entry time. While DCV
   // is visible this replaces kAccentColor for the header icons and the
   // active tab indicator; cleared on exit so the app reverts to the default
@@ -872,6 +874,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // impossible on Impeller/Skia.
   late final AnimationController _dcvSlideController;
   late final CurvedAnimation _dcvSlideProgress;
+  // A category change inside an already-open landscape split only animates
+  // the new detail page over the previous one; it must not restart the pane
+  // transition that owns the master width and header geometry.
+  late final AnimationController _dcvCategoryTransitionController;
+  late final CurvedAnimation _dcvCategoryTransitionProgress;
 
   // ── Settings panel slide animation ──────────────────────────────────────
   // One controller governs everything: panel slide, scrim fade, and the
@@ -905,8 +912,54 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // the header AnimatedBuilder, derived from _dcvSlideController.value.
   bool get _isDCV => _dcvCategory != null && _selectedIndex == 2;
 
+  bool _canReplaceLandscapeDcvPage() {
+    if (_dcvCategory == null || _selectedIndex != 2) return false;
+    final windowSize = MediaQuery.sizeOf(context);
+    if (windowSize.width <= windowSize.height) return false;
+
+    final windowContent = AppWindowContentScope.of(context);
+    final masterWidth = min(
+      windowContent.physicalWidth,
+      windowSize.height + windowContent.horizontalInset,
+    );
+    final detailUsableWidth =
+        windowContent.physicalWidth -
+        masterWidth -
+        windowContent.horizontalInset -
+        0.75;
+    return detailUsableWidth >= _minimumLandscapeDcvDetailWidth;
+  }
+
+  void _onDcvCategoryTransitionStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed &&
+        _previousDcvCategory != null &&
+        mounted) {
+      setState(() => _previousDcvCategory = null);
+    }
+  }
+
   void _enterDCV(String label, Color color) {
+    if (_dcvCategory == label) {
+      if (_dcvColor != color) setState(() => _dcvColor = color);
+      return;
+    }
+
+    if (_canReplaceLandscapeDcvPage()) {
+      // Finish any in-flight replacement before starting the next one. The
+      // pane itself stays at its settled split width throughout.
+      _dcvCategoryTransitionController.value = 1.0;
+      setState(() {
+        _previousDcvCategory = _dcvCategory;
+        _dcvCategory = label;
+        _dcvColor = color;
+      });
+      _dcvCategoryTransitionController.forward(from: 0.0);
+      return;
+    }
+
+    _dcvCategoryTransitionController.value = 1.0;
     setState(() {
+      _previousDcvCategory = null;
       _dcvCategory = label;
       _dcvColor = color;
     });
@@ -914,6 +967,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }
 
   void _exitDCV() {
+    // If a category replacement is underway, settle it before the shared
+    // pane animation starts so no detail-page motion can finish after it.
+    _dcvCategoryTransitionController.value = 1.0;
     // Reverse the slide first; clear _dcvCategory only after the animation
     // completes so the DCV content stays mounted and visible while sliding out.
     _dcvSlideController
@@ -1593,11 +1649,22 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     ).animate(_searchModeAnim);
     _dcvSlideController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 380),
+      duration: kDcvPaneTransitionDuration,
     );
     _dcvSlideProgress = CurvedAnimation(
       parent: _dcvSlideController,
       curve: Curves.easeInOutCubic,
+    );
+    _dcvCategoryTransitionController = AnimationController(
+      vsync: this,
+      duration: kDcvPaneTransitionDuration,
+    )..value = 1.0;
+    _dcvCategoryTransitionProgress = CurvedAnimation(
+      parent: _dcvCategoryTransitionController,
+      curve: Curves.easeInOutCubic,
+    );
+    _dcvCategoryTransitionController.addStatusListener(
+      _onDcvCategoryTransitionStatus,
     );
     _settingsController = AnimationController(
       vsync: this,
@@ -1632,6 +1699,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   void dispose() {
     _nativeTabBarChannel.setMethodCallHandler(null);
     _midnightTimer?.cancel();
+    _dcvCategoryTransitionController.removeStatusListener(
+      _onDcvCategoryTransitionStatus,
+    );
+    _dcvCategoryTransitionProgress.dispose();
+    _dcvCategoryTransitionController.dispose();
     _dcvSlideProgress.dispose();
     _dcvSlideController.dispose();
     _searchModeController.dispose();
@@ -2205,19 +2277,61 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                     bottom: 0,
                     child: Opacity(
                       opacity: titleOpacity,
-                      child: HeaderTitleScroller(
-                        title: _dcvCategory ?? '',
-                        fadeColor: headerColor,
-                        centerWhenContentFits: true,
-                        contentAlignment: Alignment.center,
-                        style: TextStyle(
-                          fontFamily: kSFProText,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          fontStyle: FontStyle.normal,
-                          color: primaryLabel,
-                          letterSpacing: -0.6,
-                        ),
+                      child: AnimatedBuilder(
+                        animation: _dcvCategoryTransitionProgress,
+                        builder: (context, _) {
+                          final titleWidth = max(0.0, width - 144.0);
+                          Widget titleScroller(String title, Key key) =>
+                              HeaderTitleScroller(
+                                key: key,
+                                title: title,
+                                fadeColor: headerColor,
+                                centerWhenContentFits: true,
+                                contentAlignment: Alignment.center,
+                                style: TextStyle(
+                                  fontFamily: kSFProText,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w600,
+                                  fontStyle: FontStyle.normal,
+                                  color: primaryLabel,
+                                  letterSpacing: -0.6,
+                                ),
+                              );
+
+                          return ClipRect(
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                if (_previousDcvCategory != null)
+                                  Positioned.fill(
+                                    child: titleScroller(
+                                      _previousDcvCategory!,
+                                      ValueKey(
+                                        'previous-dcv-title-$_previousDcvCategory',
+                                      ),
+                                    ),
+                                  ),
+                                Positioned.fill(
+                                  child: Transform.translate(
+                                    offset: Offset(
+                                      titleWidth *
+                                          (1 -
+                                              _dcvCategoryTransitionProgress
+                                                  .value),
+                                      0,
+                                    ),
+                                    child: titleScroller(
+                                      _dcvCategory ?? '',
+                                      ValueKey(
+                                        'active-dcv-title-$_dcvCategory',
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -2462,6 +2576,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             },
             dcvSlideController: _dcvSlideController,
             dcvSlideProgress: _dcvSlideProgress,
+            dcvCategoryTransitionProgress: _dcvCategoryTransitionProgress,
             onEditEvent: (event) => _calendarTabKey.currentState
                 ?.showEditEventSheet(context, event),
           ),
@@ -2502,13 +2617,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         landscapeMasterWidth -
         landscapeHorizontalInset -
         0.75;
-    const minimumDcvPaneWidth = 320.0;
-    final landscapeDcvSplit =
+    final landscapeDcvLayoutActive =
         isLandscape &&
-        _selectedIndex == 2 &&
         _dcvCategory != null &&
-        !_searchFocused &&
-        landscapeDetailUsableWidth >= minimumDcvPaneWidth;
+        landscapeDetailUsableWidth >= _minimumLandscapeDcvDetailWidth;
+    final landscapeDcvSplit =
+        landscapeDcvLayoutActive &&
+        _selectedIndex == 2 &&
+        !_searchFocused;
     final landscapeTabBarHorizontalOffset =
         (landscapeMasterWidth - physicalWindowWidth) / 2;
     final topInset = MediaQuery.of(context).padding.top;
@@ -2579,7 +2695,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                             );
                           },
                            child: _buildContent(
-                             landscapeMasterDetail: landscapeDcvSplit,
+                             landscapeMasterDetail: landscapeDcvLayoutActive,
                              landscapeMasterWidth: landscapeMasterWidth,
                            ),
                         ),
@@ -2603,6 +2719,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                             animation: Listenable.merge([
                               _searchModeAnim,
                               _dcvSlideProgress,
+                              _dcvCategoryTransitionProgress,
                               _settingsController,
                             ]),
                             builder: (context, _) {
@@ -3272,6 +3389,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 ]),
                 builder: (context, _) {
                   final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
+                  final followsDcvPaneAnimation =
+                      landscapeDcvSplit && _dcvSlideController.isAnimating;
+                  final tabBarHorizontalOffset = landscapeDcvSplit
+                      ? landscapeTabBarHorizontalOffset *
+                            (followsDcvPaneAnimation
+                                ? _dcvSlideProgress.value
+                                : 1.0)
+                      : 0.0;
                   final isDCVVisual =
                       pageP >= _dcvColorSnapThreshold && _selectedIndex == 2;
                   final eventsAccent = isDCVVisual
@@ -3284,9 +3409,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                           : FloatingTabPill(
                               selectedIndex: _selectedIndex,
                               eventsAccent: eventsAccent,
-                              horizontalOffset: landscapeDcvSplit
-                                  ? landscapeTabBarHorizontalOffset
-                                  : 0,
+                              horizontalOffset: tabBarHorizontalOffset,
+                              animateHorizontalOffset:
+                                  !followsDcvPaneAnimation,
                               onTabSelected: _switchTab,
                             ),
                     ),

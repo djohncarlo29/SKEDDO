@@ -36,6 +36,7 @@ class FloatingTabPill extends StatefulWidget {
     required this.onTabSelected,
     required this.eventsAccent,
     this.horizontalOffset = 0,
+    this.animateHorizontalOffset = true,
   });
 
   final int selectedIndex;
@@ -43,6 +44,8 @@ class FloatingTabPill extends StatefulWidget {
   final Color eventsAccent;
   /// Horizontal movement from the normal centered position, in logical pixels.
   final double horizontalOffset;
+  /// False while AppShell supplies each frame of the shared DCV pane motion.
+  final bool animateHorizontalOffset;
 
   @override
   State<FloatingTabPill> createState() => _FloatingTabPillState();
@@ -95,6 +98,24 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
           final barSideInset = (constraints.maxWidth - barWidth) / 2;
           final barLeft = barSideInset + widget.horizontalOffset;
           final barRight = barSideInset - widget.horizontalOffset;
+          Widget positioned({
+            required Widget child,
+            double? top,
+            double? bottom,
+            double? height,
+          }) =>
+              AnimatedPositioned(
+                duration: widget.animateHorizontalOffset
+                    ? kDcvPaneTransitionDuration
+                    : Duration.zero,
+                curve: Curves.easeInOutCubic,
+              left: barLeft,
+              right: barRight,
+              top: top,
+              bottom: bottom,
+              height: height,
+              child: child,
+            );
           final tabBar = LiquidGlassTabBar.withImpeller(
             items: [
               _tabItem(SFIcons.sf_text_document, 'Notes'),
@@ -175,11 +196,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
               // onto the page first, then the translucent bar composites above it.
               // Nothing in the shadow can therefore darken or refract through the
               // bar's material.
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 380),
-                curve: Curves.easeInOutCubic,
-                left: barLeft,
-                right: barRight,
+              positioned(
                 bottom: bottomOffset,
                 height: kFloatingTabBarHeight,
                 child: IgnorePointer(
@@ -199,11 +216,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
               // as its shadow. StackFit.expand alone used to give it the whole
               // host width, so its physical hit/render bounds could reach the
               // landscape system area even though the authored width was smaller.
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 380),
-                curve: Curves.easeInOutCubic,
-                left: barLeft,
-                right: barRight,
+              positioned(
                 top: 0,
                 bottom: 0,
                 child: MediaQuery.removePadding(

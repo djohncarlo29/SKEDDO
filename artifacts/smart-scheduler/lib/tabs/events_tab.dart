@@ -1670,6 +1670,9 @@ class EventsTab extends StatefulWidget {
   // The shared eased progress also drives AppShell's landscape split geometry,
   // keeping the master pane, divider, and entering detail pane in lock-step.
   final Animation<double> dcvSlideProgress;
+  // Used only when replacing one category page over another in an already
+  // open landscape split. The split controller remains settled at its endpoint.
+  final Animation<double> dcvCategoryTransitionProgress;
 
   // Fired whenever a category matching [activeDCV] has its color/icon edited
   // while its DCV is open, so AppShell can refresh the header's cached
@@ -1711,6 +1714,7 @@ class EventsTab extends StatefulWidget {
     this.dcvShowManualDateSections = true,
     required this.dcvSlideController,
     required this.dcvSlideProgress,
+    required this.dcvCategoryTransitionProgress,
   });
 
   @override
@@ -1749,6 +1753,7 @@ class EventsTabState extends State<EventsTab>
   bool _utilityExitScheduled = false;
   bool _hadArchivedUtilityItems = false;
   bool _hadRecentlyDeletedUtilityItems = false;
+  bool _animateDcvCategoryReplacement = false;
 
   // ── Smart search results (filled asynchronously by _scheduleSearch) ────────
   List<SearchHit> _searchPrimary = [];
@@ -6977,6 +6982,12 @@ class EventsTabState extends State<EventsTab>
   @override
   void didUpdateWidget(covariant EventsTab old) {
     super.didUpdateWidget(old);
+    _animateDcvCategoryReplacement =
+        old.activeDCV != null &&
+        widget.activeDCV != null &&
+        old.activeDCV != widget.activeDCV &&
+        old.landscapeMasterDetail &&
+        widget.landscapeMasterDetail;
     if (old.activeDCV != widget.activeDCV) {
       _utilityExitScheduled = false;
     }
@@ -8220,13 +8231,19 @@ class EventsTabState extends State<EventsTab>
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             sliver: SliverToBoxAdapter(
-              child: _AnimatedCategoryGrid(
+              child: AnimatedBuilder(
+                animation: widget.dcvSlideController,
+                builder: (context, _) => _AnimatedCategoryGrid(
                 entries: gridItems,
                 gridStackKey: _gridStackKey,
                 draggingKey: _draggingGridKey,
                 dragLocalTopLeft: _dragGridTopLeft,
                 dragTileWidth: _dragGridTileWidth,
                 dragTileHeight: _dragGridTileHeight,
+                suppressGeometryAnimation:
+                    widget.landscapeMasterDetail &&
+                    widget.dcvSlideController.isAnimating,
+                ),
               ),
             ),
           ),
@@ -8257,7 +8274,9 @@ class EventsTabState extends State<EventsTab>
               return SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 sliver: SliverToBoxAdapter(
-                  child: _CategoryCard(
+                  child: AnimatedBuilder(
+                    animation: widget.dcvSlideController,
+                    builder: (context, _) => _CategoryCard(
                     items: flatItems,
                     liveEventCounts: _liveEventCounts,
                     removingCategories: _removingFromList,
@@ -8290,6 +8309,10 @@ class EventsTabState extends State<EventsTab>
                     onGroupHeaderReorderUpdate: _onGroupHeaderReorderUpdate,
                     onGroupHeaderReorderEnd: _onGroupHeaderReorderEnd,
                     onGroupHeaderReorderCancel: _onGroupHeaderReorderCancel,
+                    suppressGeometryAnimation:
+                        widget.landscapeMasterDetail &&
+                        widget.dcvSlideController.isAnimating,
+                    ),
                   ),
                 ),
               );
@@ -8504,158 +8527,179 @@ class EventsTabState extends State<EventsTab>
                               )
                               .length,
                   };
-                  final Widget detailView = AppWindowPhysicalWidth(
-                    child: ColoredBox(
-                      color: widget.landscapeMasterDetail
-                          ? resolveThemeColor(kCardColor, context)
-                          : CupertinoColors.transparent,
-                      child: AppWindowContentPadding(
-                        includeLeft: !widget.landscapeMasterDetail,
-                        child: _CategoryDetailView(
-                          key: ValueKey(widget.activeDCV ?? '_none'),
-                          label: widget.activeDCV ?? '',
-                          icon: cat?.iconOrSvg,
-                          categoryType: cat?.categoryType ?? 'Standard',
-                          landscapeMasterDetail:
-                              widget.landscapeMasterDetail,
-                          showStandardCategoryName:
-                              isBuiltInSmartCategory ||
-                              cat?.categoryType == 'Smart Category',
-                          events: dcvEvents,
-                          sortBy:
-                              isArchivedUtility || isRecentlyDeletedUtility
-                                  ? 'Creation Date'
-                                  : (widget.dcvSortBy ?? 'Manual'),
-                          sortDir:
-                              isArchivedUtility || isRecentlyDeletedUtility
-                                  ? (widget.dcvSortDir == 'Oldest First'
-                                      ? 'Oldest First'
-                                      : 'Newest First')
-                                  : (widget.dcvSortDir ?? ''),
-                          showManualDateSections:
-                              widget.dcvShowManualDateSections &&
-                              cat?.categoryType != 'Smart Category',
-                          customSectionNames: List<String>.of(
-                            cat?.categoryType == 'Smart Category'
-                                ? const <String>[]
-                                : _dcvCustomSectionNames[dcvLabel] ??
-                                    const <String>[],
-                          ),
-                          customSectionEventIds:
-                              cat?.categoryType == 'Smart Category'
-                                  ? null
-                                  : _dcvCustomSectionEventIds[dcvLabel]
-                                      ?.map(List<String>.of)
-                                      .toList(),
-                          onCustomSectionRenamed: (index, title) {
-                            if (dcvLabel != null) {
-                              _renameDcvSection(dcvLabel, index, title);
-                            }
-                          },
-                          onCustomSectionEditingChanged: (index, title) {
-                            if (dcvLabel != null) {
-                              _renameDcvSection(
-                                dcvLabel,
-                                index,
-                                title,
-                              );
-                            }
-                          },
-                          onCustomSectionDeleted: (index) {
-                            if (dcvLabel != null) {
-                              deleteDcvSection(dcvLabel, index);
-                            }
-                          },
-                          onCustomSectionReordered: (sectionEventIds) {
-                            if (dcvLabel != null) {
-                              _reorderDcvSections(dcvLabel, sectionEventIds);
-                            }
-                          },
-                          onEditEvent: widget.onEditEvent,
-                          color: dcvColor,
-                          specialContentBuilder:
-                              isArchivedUtility && hasArchivedUtilityItems
-                                  ? (_) => _DcvUtilityContent(
-                              categoryColor: dcvColor,
-                              smartCategoryColors: _smartCategoryColors,
-                              archivedSmartLabels: _archivedSmartLabels,
-                              archivedCategories: _archivedUserCategories,
-                              archivedEvents:
-                                  EventStore.instance.archivedEvents.value,
-                              archivedSmartDates: {
-                                for (final label in _archivedSmartLabels)
-                                  label: _utilityDateFor('archived-smart', label),
-                              },
-                              archivedCategoryDates: {
-                                for (final category in _archivedUserCategories)
-                                  category.id: _utilityDateFor(
-                                    'archived-category',
-                                    category.id,
-                                  ),
-                              },
-                              archivedEventDates: {
-                                for (final event
-                                    in EventStore.instance.archivedEvents.value)
-                                  event.id: _utilityDateFor(
-                                    'archived-event',
-                                    event.id,
-                                  ),
-                              },
-                              categoryCounts: {
-                                ..._liveEventCounts,
-                                ...archivedCategoryCounts,
-                              },
-                              sortNewestFirst: widget.dcvSortDir != 'Oldest First',
-                              onArchivedSmartCategoryTap:
-                                  _openArchivedSmartCategory,
-                              onArchivedCategoryTap: _openArchivedCategory,
-                              onArchivedEventTap: _openArchivedEvent,
-                            )
-                                  : isRecentlyDeletedUtility &&
-                                        hasRecentlyDeletedUtilityItems
-                                  ? (_) => _DcvUtilityContent(
-                              categoryColor: dcvColor,
-                              smartCategoryColors: _smartCategoryColors,
-                              deletedEvents:
-                                  EventStore.instance.deletedEvents.value,
-                              deletedSmartLabels: _recentlyDeletedSmartCategories,
-                              deletedCategories: _recentlyDeletedCategories,
-                              deletedEventDates: {
-                                for (final event
-                                    in EventStore.instance.deletedEvents.value)
-                                  event.id: _utilityDateFor(
-                                    'deleted-event',
-                                    event.id,
-                                  ),
-                              },
-                              deletedSmartDates: {
-                                for (final label
-                                    in _recentlyDeletedSmartCategories)
-                                  label: _utilityDateFor(
-                                    'deleted-smart',
-                                    label,
-                                  ),
-                              },
-                              deletedCategoryDates: {
-                                for (final category in _recentlyDeletedCategories)
-                                  category.id: _utilityDateFor(
-                                    'deleted-category',
-                                    category.id,
-                                  ),
-                              },
-                              categoryCounts: {
-                                ..._liveEventCounts,
-                                ...deletedCategoryCounts,
-                              },
-                              sortNewestFirst: widget.dcvSortDir != 'Oldest First',
-                              onDeletedEventTap: _openDeletedEvent,
-                              onDeletedSmartCategoryTap:
-                                  _openDeletedSmartCategory,
-                              onDeletedCategoryTap: _openDeletedCategory,
-                            )
-                                  : null,
+                  final Widget detailPage = ColoredBox(
+                    color: widget.landscapeMasterDetail
+                        ? resolveThemeColor(kCardColor, context)
+                        : CupertinoColors.transparent,
+                    child: AppWindowContentPadding(
+                      includeLeft: !widget.landscapeMasterDetail,
+                      child: _CategoryDetailView(
+                        key: ValueKey(widget.activeDCV ?? '_none'),
+                        label: widget.activeDCV ?? '',
+                        icon: cat?.iconOrSvg,
+                        categoryType: cat?.categoryType ?? 'Standard',
+                        landscapeMasterDetail:
+                            widget.landscapeMasterDetail,
+                        showStandardCategoryName:
+                            isBuiltInSmartCategory ||
+                            cat?.categoryType == 'Smart Category',
+                        events: dcvEvents,
+                        sortBy:
+                            isArchivedUtility || isRecentlyDeletedUtility
+                                ? 'Creation Date'
+                                : (widget.dcvSortBy ?? 'Manual'),
+                        sortDir:
+                            isArchivedUtility || isRecentlyDeletedUtility
+                                ? (widget.dcvSortDir == 'Oldest First'
+                                    ? 'Oldest First'
+                                    : 'Newest First')
+                                : (widget.dcvSortDir ?? ''),
+                        showManualDateSections:
+                            widget.dcvShowManualDateSections &&
+                            cat?.categoryType != 'Smart Category',
+                        customSectionNames: List<String>.of(
+                          cat?.categoryType == 'Smart Category'
+                              ? const <String>[]
+                              : _dcvCustomSectionNames[dcvLabel] ??
+                                  const <String>[],
                         ),
+                        customSectionEventIds:
+                            cat?.categoryType == 'Smart Category'
+                                ? null
+                                : _dcvCustomSectionEventIds[dcvLabel]
+                                    ?.map(List<String>.of)
+                                    .toList(),
+                        onCustomSectionRenamed: (index, title) {
+                          if (dcvLabel != null) {
+                            _renameDcvSection(dcvLabel, index, title);
+                          }
+                        },
+                        onCustomSectionEditingChanged: (index, title) {
+                          if (dcvLabel != null) {
+                            _renameDcvSection(
+                              dcvLabel,
+                              index,
+                              title,
+                            );
+                          }
+                        },
+                        onCustomSectionDeleted: (index) {
+                          if (dcvLabel != null) {
+                            deleteDcvSection(dcvLabel, index);
+                          }
+                        },
+                        onCustomSectionReordered: (sectionEventIds) {
+                          if (dcvLabel != null) {
+                            _reorderDcvSections(dcvLabel, sectionEventIds);
+                          }
+                        },
+                        onEditEvent: widget.onEditEvent,
+                        color: dcvColor,
+                        specialContentBuilder:
+                            isArchivedUtility && hasArchivedUtilityItems
+                                ? (_) => _DcvUtilityContent(
+                                    categoryColor: dcvColor,
+                                    smartCategoryColors: _smartCategoryColors,
+                                    archivedSmartLabels: _archivedSmartLabels,
+                                    archivedCategories:
+                                        _archivedUserCategories,
+                                    archivedEvents:
+                                        EventStore.instance.archivedEvents.value,
+                                    archivedSmartDates: {
+                                      for (final label
+                                          in _archivedSmartLabels)
+                                        label: _utilityDateFor(
+                                          'archived-smart',
+                                          label,
+                                        ),
+                                    },
+                                    archivedCategoryDates: {
+                                      for (final category
+                                          in _archivedUserCategories)
+                                        category.id: _utilityDateFor(
+                                          'archived-category',
+                                          category.id,
+                                        ),
+                                    },
+                                    archivedEventDates: {
+                                      for (final event
+                                          in EventStore.instance.archivedEvents
+                                              .value)
+                                        event.id: _utilityDateFor(
+                                          'archived-event',
+                                          event.id,
+                                        ),
+                                    },
+                                    categoryCounts: {
+                                      ..._liveEventCounts,
+                                      ...archivedCategoryCounts,
+                                    },
+                                    sortNewestFirst:
+                                        widget.dcvSortDir != 'Oldest First',
+                                    onArchivedSmartCategoryTap:
+                                        _openArchivedSmartCategory,
+                                    onArchivedCategoryTap:
+                                        _openArchivedCategory,
+                                    onArchivedEventTap: _openArchivedEvent,
+                                  )
+                                : isRecentlyDeletedUtility &&
+                                      hasRecentlyDeletedUtilityItems
+                                ? (_) => _DcvUtilityContent(
+                                    categoryColor: dcvColor,
+                                    smartCategoryColors: _smartCategoryColors,
+                                    deletedEvents:
+                                        EventStore.instance.deletedEvents.value,
+                                    deletedSmartLabels:
+                                        _recentlyDeletedSmartCategories,
+                                    deletedCategories:
+                                        _recentlyDeletedCategories,
+                                    deletedEventDates: {
+                                      for (final event
+                                          in EventStore.instance.deletedEvents
+                                              .value)
+                                        event.id: _utilityDateFor(
+                                          'deleted-event',
+                                          event.id,
+                                        ),
+                                    },
+                                    deletedSmartDates: {
+                                      for (final label
+                                          in _recentlyDeletedSmartCategories)
+                                        label: _utilityDateFor(
+                                          'deleted-smart',
+                                          label,
+                                        ),
+                                    },
+                                    deletedCategoryDates: {
+                                      for (final category
+                                          in _recentlyDeletedCategories)
+                                        category.id: _utilityDateFor(
+                                          'deleted-category',
+                                          category.id,
+                                        ),
+                                    },
+                                    categoryCounts: {
+                                      ..._liveEventCounts,
+                                      ...deletedCategoryCounts,
+                                    },
+                                    sortNewestFirst:
+                                        widget.dcvSortDir != 'Oldest First',
+                                    onDeletedEventTap: _openDeletedEvent,
+                                    onDeletedSmartCategoryTap:
+                                        _openDeletedSmartCategory,
+                                    onDeletedCategoryTap:
+                                        _openDeletedCategory,
+                                  )
+                                : null,
                       ),
+                    ),
+                  );
+                  final Widget detailView = AppWindowPhysicalWidth(
+                    child: _DcvCategoryPageStack(
+                      activeCategory: widget.activeDCV,
+                      progress: widget.dcvCategoryTransitionProgress,
+                      animateReplacement: _animateDcvCategoryReplacement,
+                      child: detailPage,
                     ),
                   );
                   if (!widget.landscapeMasterDetail) return detailView;
@@ -9265,6 +9309,7 @@ class _AnimatedCategoryGrid extends StatelessWidget {
   /// geometry after release.
   final double? dragTileWidth;
   final double? dragTileHeight;
+  final bool suppressGeometryAnimation;
 
   const _AnimatedCategoryGrid({
     required this.entries,
@@ -9273,6 +9318,7 @@ class _AnimatedCategoryGrid extends StatelessWidget {
     this.dragLocalTopLeft,
     this.dragTileWidth,
     this.dragTileHeight,
+    this.suppressGeometryAnimation = false,
   });
 
   static const _rowGap = 16.0;
@@ -9295,9 +9341,12 @@ class _AnimatedCategoryGrid extends StatelessWidget {
             geometries.isEmpty
                 ? 0.0
                 : geometries.last.top + geometries.last.height;
+        final geometryDuration = suppressGeometryAnimation
+            ? Duration.zero
+            : _duration;
 
         return AnimatedContainer(
-          duration: _duration,
+          duration: geometryDuration,
           curve: _curve,
           height: totalHeight,
           child: Stack(
@@ -9309,7 +9358,7 @@ class _AnimatedCategoryGrid extends StatelessWidget {
                 if (entries[i].key != draggingKey)
                   AnimatedPositioned(
                     key: ValueKey(entries[i].key),
-                    duration: _duration,
+                    duration: geometryDuration,
                     curve: _curve,
                     left: geometries[i].left,
                     top: geometries[i].top,
@@ -10785,6 +10834,7 @@ class _CategoryCard extends StatelessWidget {
   final void Function(_CategoryGroup, Offset)? onGroupHeaderReorderUpdate;
   final void Function(_CategoryGroup)? onGroupHeaderReorderEnd;
   final void Function(_CategoryGroup)? onGroupHeaderReorderCancel;
+  final bool suppressGeometryAnimation;
 
   const _CategoryCard({
     required this.items,
@@ -10819,6 +10869,7 @@ class _CategoryCard extends StatelessWidget {
     this.onGroupHeaderReorderUpdate,
     this.onGroupHeaderReorderEnd,
     this.onGroupHeaderReorderCancel,
+    this.suppressGeometryAnimation = false,
   });
 
   // A row is "collapsed" if it's mid-animation toward zero height.
@@ -10929,7 +10980,9 @@ class _CategoryCard extends StatelessWidget {
     // row shapes paint their own surfaces inside the shared outer boundary.
     const outerCardShape = BoundedSquircleStadiumBorder(radius: 24);
     return AnimatedContainer(
-      duration: const Duration(milliseconds: _kAnimMs),
+      duration: suppressGeometryAnimation
+          ? Duration.zero
+          : const Duration(milliseconds: _kAnimMs),
       curve: _kAnimCurve,
       height: totalH,
       clipBehavior: Clip.antiAlias,
@@ -11105,8 +11158,7 @@ class _CategoryCard extends StatelessWidget {
             : ValueKey(item.category!.id);
     return AnimatedPositioned(
       key: slotKey,
-      duration:
-          isDragging
+      duration: isDragging || suppressGeometryAnimation
               ? Duration.zero
               : Duration(milliseconds: isDeleting || isNew ? 230 : _kAnimMs),
       curve:
@@ -19145,6 +19197,127 @@ class _DcvEditableSectionLabelState extends State<_DcvEditableSectionLabel>
                     ],
                   ),
                 ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _DcvCategoryPageStack extends StatefulWidget {
+  const _DcvCategoryPageStack({
+    required this.activeCategory,
+    required this.progress,
+    required this.animateReplacement,
+    required this.child,
+  });
+
+  final String? activeCategory;
+  final Animation<double> progress;
+  final bool animateReplacement;
+  final Widget child;
+
+  @override
+  State<_DcvCategoryPageStack> createState() => _DcvCategoryPageStackState();
+}
+
+class _DcvCategoryPageStackState extends State<_DcvCategoryPageStack> {
+  Widget? _previousPage;
+  String? _previousCategory;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.progress.addStatusListener(_handleProgressStatus);
+  }
+
+  @override
+  void didUpdateWidget(covariant _DcvCategoryPageStack oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.progress != widget.progress) {
+      oldWidget.progress.removeStatusListener(_handleProgressStatus);
+      widget.progress.addStatusListener(_handleProgressStatus);
+    }
+
+    if (oldWidget.activeCategory != widget.activeCategory) {
+      if (widget.animateReplacement &&
+          oldWidget.activeCategory != null &&
+          widget.activeCategory != null) {
+        _previousCategory = oldWidget.activeCategory;
+        _previousPage = oldWidget.child;
+      } else {
+        _previousCategory = null;
+        _previousPage = null;
+      }
+    }
+  }
+
+  void _handleProgressStatus(AnimationStatus status) {
+    if ((status == AnimationStatus.completed ||
+            status == AnimationStatus.dismissed) &&
+        _previousPage != null &&
+        mounted) {
+      setState(() {
+        _previousCategory = null;
+        _previousPage = null;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.progress.removeStatusListener(_handleProgressStatus);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: widget.progress,
+      builder: (context, _) => LayoutBuilder(
+        builder: (context, constraints) {
+          final progress = widget.progress.value.clamp(0.0, 1.0);
+          final incomingOffset = _previousPage != null &&
+                  widget.animateReplacement
+              ? constraints.maxWidth * (1.0 - progress)
+              : 0.0;
+
+          Widget pageLayer({
+            required String? category,
+            required Widget child,
+            required double offset,
+            required bool ignorePointer,
+          }) {
+            return Positioned.fill(
+              key: ValueKey('dcv-page-${category ?? '_none'}'),
+              child: IgnorePointer(
+                ignoring: ignorePointer,
+                child: Transform.translate(
+                  offset: Offset(offset, 0),
+                  child: child,
+                ),
+              ),
+            );
+          }
+
+          return Stack(
+            fit: StackFit.expand,
+            clipBehavior: Clip.none,
+            children: [
+              if (_previousPage != null)
+                pageLayer(
+                  category: _previousCategory,
+                  child: _previousPage!,
+                  offset: 0.0,
+                  ignorePointer: true,
+                ),
+              pageLayer(
+                category: widget.activeCategory,
+                child: widget.child,
+                offset: incomingOffset,
+                ignorePointer: false,
               ),
             ],
           );
