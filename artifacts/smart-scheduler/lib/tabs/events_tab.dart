@@ -8128,17 +8128,40 @@ class EventsTabState extends State<EventsTab>
     // searchBarRow carries _searchBarKey.  When off-screen search activates
     // (_activatedFromOffScreen) the key lives in the Stack overlay so the
     // gridView scroll position is never disturbed.
-    final physicalWidth = AppWindowContentScope.of(context).physicalWidth;
-    final gridPanelWidth = widget.landscapeMasterDetail
-        ? (widget.landscapeMasterWidth ?? physicalWidth)
-        : physicalWidth;
-    final Widget gridView = SizedBox(
-      width: gridPanelWidth,
-      child: _EventsGridColumnOverride(
-        columns: widget.landscapeMasterDetail ? 2 : null,
-        child: AppWindowContentPadding(
-          includeRight: !widget.landscapeMasterDetail,
-        child: CustomScrollView(
+    final windowContent = AppWindowContentScope.of(context);
+    final physicalWidth = windowContent.physicalWidth;
+    final horizontalInset = windowContent.horizontalInset;
+    final targetGridPanelWidth =
+        widget.landscapeMasterWidth ?? physicalWidth;
+    final portraitGridContentWidth = max(
+      0.0,
+      targetGridPanelWidth - horizontalInset,
+    );
+    final slideCurve = CurveTween(
+      curve: Curves.easeInOutCubic,
+    ).animate(widget.dcvSlideController);
+    final Widget gridView = LayoutBuilder(
+      builder: (context, constraints) {
+        final panelWidth = constraints.maxWidth;
+        final splitProgress = widget.landscapeMasterDetail
+            ? slideCurve.value
+            : 0.0;
+        // At the start of the split, preserve the existing right safe-area
+        // clearance. It shrinks with the pane so the usable grid width moves
+        // continuously from the full landscape view to portrait width.
+        final trailingSafeInset = widget.landscapeMasterDetail
+            ? horizontalInset * (1.0 - splitProgress)
+            : 0.0;
+        final gridContentWidth = max(
+          0.0,
+          panelWidth - horizontalInset - trailingSafeInset,
+        );
+        final gridColumns = !widget.landscapeMasterDetail
+            ? null
+            : gridContentWidth > portraitGridContentWidth * 1.5
+            ? 3
+            : 2;
+        final scrollView = CustomScrollView(
           clipBehavior: Clip.none,
           key: _scrollViewportKey,
           controller: _scrollController,
@@ -8296,9 +8319,26 @@ class EventsTabState extends State<EventsTab>
           ),
         ],
           ],
-        ),
-        ),
-      ),
+        );
+        final gridContent = widget.landscapeMasterDetail
+            ? Row(
+                children: [
+                  Expanded(child: scrollView),
+                  SizedBox(width: trailingSafeInset),
+                ],
+              )
+            : scrollView;
+        return SizedBox(
+          width: panelWidth,
+          child: _EventsGridColumnOverride(
+            columns: gridColumns,
+            child: AppWindowContentPadding(
+              includeRight: !widget.landscapeMasterDetail,
+              child: gridContent,
+            ),
+          ),
+        );
+      },
     );
     // Both SlideTransitions read from the SAME AnimationController as the
     // header AnimatedBuilder in AppShell.  Flutter rebuilds and paints all
@@ -8306,9 +8346,6 @@ class EventsTabState extends State<EventsTab>
     // Impeller/Skia, which was the root cause of the 1-frame flicker.
     // No PageView means no separate GPU compositor layers per page, so there
     // is also no layer-promotion flash when content changes.
-    final slideCurve = CurveTween(
-      curve: Curves.easeInOutCubic,
-    ).animate(widget.dcvSlideController);
     return _CategoryTapCallback(
       onTileTapped: widget.onTileTapped,
       child: Stack(
@@ -8613,30 +8650,47 @@ class EventsTabState extends State<EventsTab>
                     ),
                   );
                   if (!widget.landscapeMasterDetail) return detailView;
-                  return Row(
-                    children: [
-                      SizedBox(
-                        width:
-                            widget.landscapeMasterWidth ??
-                            AppWindowContentScope.of(context).physicalWidth,
-                        child: ClipRect(child: gridView),
-                      ),
-                      Container(
-                        width: 0.75,
-                        color: resolveThemeColor(kSeparatorColor, context),
-                      ),
-                      Expanded(
-                        child: ClipRect(
-                          child: SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(1.0, 0.0),
-                              end: Offset.zero,
-                            ).animate(slideCurve),
-                            child: detailView,
+                  return AnimatedBuilder(
+                    animation: widget.dcvSlideController,
+                    builder: (context, _) {
+                      final splitProgress = slideCurve.value;
+                      final masterWidth =
+                          physicalWidth +
+                          (targetGridPanelWidth - physicalWidth) *
+                              splitProgress;
+                      final dividerWidth = 0.75 * splitProgress;
+                      return Row(
+                        children: [
+                          SizedBox(
+                            width: masterWidth,
+                            child: ClipRect(child: gridView),
                           ),
-                        ),
-                      ),
-                    ],
+                          SizedBox(
+                            width: dividerWidth,
+                            child: ColoredBox(
+                              color: resolveThemeColor(
+                                kSeparatorColor,
+                                context,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: LayoutBuilder(
+                              builder: (context, constraints) => ClipRect(
+                                child: Transform.translate(
+                                  offset: Offset(
+                                    constraints.maxWidth *
+                                        (1.0 - splitProgress),
+                                    0,
+                                  ),
+                                  child: detailView,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   );
                 },
               ),

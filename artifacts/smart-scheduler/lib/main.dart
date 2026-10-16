@@ -2128,57 +2128,145 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       height: 52,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 36,
-              height: 52,
-              child: AnimatedTapIcon(
-                padding: EdgeInsets.zero,
-                onTap: _exitDCV,
-                child: SearchWeightedIcon(
-                  CupertinoIcons.back,
-                  size: 19,
-                  color: accent,
-                  weight: 0,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final trailingActionsOpacity = ((width - 72.0) / 48.0)
+                .clamp(0.0, 1.0)
+                .toDouble();
+            final titleOpacity = ((width - 144.0) / 72.0)
+                .clamp(0.0, 1.0)
+                .toDouble();
+
+            Widget headerButton({
+              Key? key,
+              required VoidCallback onTap,
+              required Widget child,
+            }) {
+              return SizedBox(
+                key: key,
+                width: 36,
+                height: 52,
+                child: AnimatedTapIcon(
+                  padding: EdgeInsets.zero,
+                  onTap: onTap,
+                  child: child,
                 ),
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: HeaderTitleScroller(
-                  title: _dcvCategory ?? '',
-                  fadeColor: headerColor,
-                  centerWhenContentFits: true,
-                  contentAlignment: Alignment.center,
-                  style: TextStyle(
-                    fontFamily: kSFProText,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    fontStyle: FontStyle.normal,
-                    color: primaryLabel,
-                    letterSpacing: -0.6,
+              );
+            }
+
+            return Stack(
+              fit: StackFit.expand,
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: headerButton(
+                    onTap: _exitDCV,
+                    child: SearchWeightedIcon(
+                      CupertinoIcons.back,
+                      size: 19,
+                      color: accent,
+                      weight: 0,
+                    ),
                   ),
                 ),
-              ),
-            ),
-            SizedBox(
-              key: _splitDcvEllipsisKey,
-              width: 36,
-              height: 52,
-              child: AnimatedTapIcon(
-                padding: EdgeInsets.zero,
-                onTap: _showSplitDcvMenu,
-                child: SearchWeightedIcon(
-                  CupertinoIcons.ellipsis_circle,
-                  size: 21,
-                  color: accent,
-                  weight: 0,
+                Positioned(
+                  left: 36,
+                  top: 0,
+                  bottom: 0,
+                  child: headerButton(
+                    key: _splitDcvEllipsisKey,
+                    onTap: _showSplitDcvMenu,
+                    child: SearchWeightedIcon(
+                      CupertinoIcons.ellipsis_circle,
+                      size: 21,
+                      color: accent,
+                      weight: 0,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ],
+                if (width > 144)
+                  Positioned(
+                    left: 72,
+                    right: 72,
+                    top: 0,
+                    bottom: 0,
+                    child: Opacity(
+                      opacity: titleOpacity,
+                      child: HeaderTitleScroller(
+                        title: _dcvCategory ?? '',
+                        fadeColor: headerColor,
+                        centerWhenContentFits: true,
+                        contentAlignment: Alignment.center,
+                        style: TextStyle(
+                          fontFamily: kSFProText,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          fontStyle: FontStyle.normal,
+                          color: primaryLabel,
+                          letterSpacing: -0.6,
+                        ),
+                      ),
+                    ),
+                  ),
+                Positioned(
+                  right: 36,
+                  top: 0,
+                  bottom: 0,
+                  child: IgnorePointer(
+                    ignoring: trailingActionsOpacity < 0.8,
+                    child: Opacity(
+                      opacity: trailingActionsOpacity,
+                      child: headerButton(
+                        onTap: _activateTabSearch,
+                        child: SvgPicture.asset(
+                          'assets/icons/search.svg',
+                          width: 26,
+                          height: 26,
+                          colorFilter: ColorFilter.mode(
+                            accent,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: IgnorePointer(
+                    ignoring: trailingActionsOpacity < 0.8,
+                    child: Opacity(
+                      opacity: trailingActionsOpacity,
+                      child: headerButton(
+                        onTap: () =>
+                            _calendarTabKey.currentState?.showNewEventSheet(
+                              context,
+                              initialCategoryId:
+                                  _eventsTabKey
+                                      .currentState
+                                      ?.activeStandardDcvCategoryId,
+                            ),
+                        child: SvgPicture.asset(
+                          'assets/icons/plus.svg',
+                          width: 26,
+                          height: 26,
+                          colorFilter: ColorFilter.mode(
+                            accent,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -2392,6 +2480,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       physicalWindowWidth,
       physicalShortEdgeWidth + landscapeHorizontalInset,
     );
+    final landscapeMasterContentWidth = max(
+      0.0,
+      landscapeMasterWidth - landscapeHorizontalInset,
+    );
     final landscapeDetailUsableWidth =
         physicalWindowWidth - landscapeMasterWidth - landscapeHorizontalInset;
     const minimumDcvPaneWidth = 320.0;
@@ -2503,6 +2595,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                 0.0,
                                 1.0,
                               );
+                              final splitProgress = landscapeDcvSplit
+                                  ? Curves.easeInOutCubic.transform(pageP)
+                                  : 0.0;
                               // Midpoint snap: header shows DCV state once the slide
                               // passes 50 % in either direction.  Because pageP comes
                               // from the same controller tick as the SlideTransition,
@@ -2550,16 +2645,20 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                         builder: (context, constraints) {
                                           final leftHeaderWidth =
                                               landscapeDcvSplit
-                                                  ? max(
-                                                      0.0,
-                                                      landscapeMasterWidth -
-                                                          AppWindowContentScope
-                                                              .of(
-                                                                context,
-                                                              )
-                                                              .horizontalInset,
-                                                    )
+                                                  ? constraints.maxWidth +
+                                                        (landscapeMasterContentWidth -
+                                                                constraints
+                                                                    .maxWidth) *
+                                                            splitProgress
                                                   : constraints.maxWidth;
+                                          final headerDividerWidth =
+                                              0.75 * splitProgress;
+                                          final rightHeaderWidth = max(
+                                            0.0,
+                                            constraints.maxWidth -
+                                                leftHeaderWidth -
+                                                headerDividerWidth,
+                                          );
                                           return Row(
                                             children: [
                                               SizedBox(
@@ -2847,6 +2946,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                             ),
                                                           ),
                                                           const Spacer(),
+                                                          if (!landscapeDcvSplit) ...[
                                                           AnimatedTapIcon(
                                                             padding: EdgeInsets.fromLTRB(
                                                               18,
@@ -2907,6 +3007,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                   ),
                                                             ),
                                                           ),
+                                                          ],
                                                         ],
                                                       ),
                                                     ),
@@ -3021,23 +3122,44 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                               ),
                                               ),
                                               if (landscapeDcvSplit)
-                                                Expanded(
-                                                  child: Padding(
-                                                    padding: EdgeInsets.only(
-                                                      top: topInset,
+                                                SizedBox(
+                                                  width: headerDividerWidth,
+                                                  height:
+                                                      topInset +
+                                                      headerContentHeight,
+                                                  child: Align(
+                                                    alignment:
+                                                        Alignment.bottomCenter,
+                                                    child: Container(
+                                                      width: headerDividerWidth,
+                                                      height:
+                                                          headerContentHeight,
+                                                      color: separatorColor,
                                                     ),
-                                                    child:
-                                                        _buildLandscapeDcvPaneHeader(
-                                                          accent:
-                                                              _dcvColor ??
-                                                              resolveAccentColor(
-                                                                context,
-                                                              ),
-                                                          headerColor:
-                                                              headerColor,
-                                                          primaryLabel:
-                                                              primaryLabel,
-                                                        ),
+                                                  ),
+                                                ),
+                                              if (landscapeDcvSplit)
+                                                SizedBox(
+                                                  width: rightHeaderWidth,
+                                                  child: ClipRect(
+                                                    child: Padding(
+                                                      padding: EdgeInsets.only(
+                                                        top: topInset,
+                                                      ),
+                                                      child:
+                                                          _buildLandscapeDcvPaneHeader(
+                                                            accent:
+                                                                _dcvColor ??
+                                                                resolveAccentColor(
+                                                                  context,
+                                                                ),
+                                                            headerColor:
+                                                                headerColor,
+                                                            primaryLabel:
+                                                                primaryLabel,
+                                                          ),
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
                                             ],

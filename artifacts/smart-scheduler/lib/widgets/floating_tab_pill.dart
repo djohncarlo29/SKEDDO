@@ -176,7 +176,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
               // Nothing in the shadow can therefore darken or refract through the
               // bar's material.
               AnimatedPositioned(
-                duration: const Duration(milliseconds: 350),
+                duration: const Duration(milliseconds: 380),
                 curve: Curves.easeInOutCubic,
                 left: barLeft,
                 right: barRight,
@@ -200,7 +200,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
               // host width, so its physical hit/render bounds could reach the
               // landscape system area even though the authored width was smaller.
               AnimatedPositioned(
-                duration: const Duration(milliseconds: 350),
+                duration: const Duration(milliseconds: 380),
                 curve: Curves.easeInOutCubic,
                 left: barLeft,
                 right: barRight,
