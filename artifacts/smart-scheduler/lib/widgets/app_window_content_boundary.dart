@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/rendering.dart';
 
 import '../services/window_geometry_diagnostics.dart';
 
@@ -291,7 +292,7 @@ class AppWindowMasterDetailGeometry {
 /// enters from the physical right edge. Safe-area-aware callers can use the
 /// default pane insets; callers that already inset their contents can disable
 /// them. [focusAnchorContext] or [focusAnchorKey] keeps the item that opened
-/// the detail pane centered in the master when the transition settles.
+/// the detail pane centered while the master changes width.
 class AppWindowMasterDetailTransition extends StatefulWidget {
   const AppWindowMasterDetailTransition({
     super.key,
@@ -301,6 +302,7 @@ class AppWindowMasterDetailTransition extends StatefulWidget {
     required this.detail,
     required this.dividerColor,
     this.applyPaneInsets = true,
+    this.applyDetailPaneInsets = true,
     this.drawDivider = true,
     this.focusAnchorContext,
     this.focusAnchorKey,
@@ -312,6 +314,7 @@ class AppWindowMasterDetailTransition extends StatefulWidget {
   final Widget detail;
   final Color dividerColor;
   final bool applyPaneInsets;
+  final bool applyDetailPaneInsets;
   final bool drawDivider;
   final BuildContext? focusAnchorContext;
   final GlobalKey? focusAnchorKey;
@@ -323,10 +326,15 @@ class AppWindowMasterDetailTransition extends StatefulWidget {
 
 class _AppWindowMasterDetailTransitionState
     extends State<AppWindowMasterDetailTransition> {
+  bool _focusAnchorSyncScheduled = false;
+  bool _focusAnchorSyncSuppressed = false;
+
   @override
   void initState() {
     super.initState();
     widget.progress.addStatusListener(_onProgressStatus);
+    widget.progress.addListener(_onProgressChanged);
+    _scheduleFocusAnchorSync();
   }
 
   @override
@@ -334,39 +342,86 @@ class _AppWindowMasterDetailTransitionState
     super.didUpdateWidget(oldWidget);
     if (oldWidget.progress != widget.progress) {
       oldWidget.progress.removeStatusListener(_onProgressStatus);
+      oldWidget.progress.removeListener(_onProgressChanged);
       widget.progress.addStatusListener(_onProgressStatus);
+      widget.progress.addListener(_onProgressChanged);
     }
     if (oldWidget.focusAnchorContext != widget.focusAnchorContext ||
         oldWidget.focusAnchorKey != widget.focusAnchorKey) {
-      _centerFocusAnchor(Duration.zero);
+      _focusAnchorSyncSuppressed = false;
+      _scheduleFocusAnchorSync();
     }
   }
 
   void _onProgressStatus(AnimationStatus status) {
+    if (status == AnimationStatus.forward ||
+        status == AnimationStatus.reverse) {
+      _focusAnchorSyncSuppressed = false;
+      return;
+    }
     if (status == AnimationStatus.completed ||
         status == AnimationStatus.dismissed) {
-      _centerFocusAnchor(const Duration(milliseconds: 180));
+      if (!_focusAnchorSyncSuppressed) _scheduleFocusAnchorSync();
     }
   }
 
-  void _centerFocusAnchor(Duration duration) {
+  void _onProgressChanged() {
+    _scheduleFocusAnchorSync();
+  }
+
+  bool _onMasterScroll(ScrollNotification notification) {
+    final isUserDrag =
+        (notification is ScrollStartNotification &&
+            notification.dragDetails != null) ||
+        (notification is ScrollUpdateNotification &&
+            notification.dragDetails != null);
+    if (isUserDrag &&
+        (widget.progress.status == AnimationStatus.forward ||
+            widget.progress.status == AnimationStatus.reverse)) {
+      // A deliberate scroll takes precedence over automatic anchor correction.
+      // A later row selection clears this suppression and becomes the new
+      // focus anchor.
+      _focusAnchorSyncSuppressed = true;
+    }
+    return false;
+  }
+
+  void _scheduleFocusAnchorSync() {
+    if (_focusAnchorSyncScheduled || _focusAnchorSyncSuppressed) return;
+    _focusAnchorSyncScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      _focusAnchorSyncScheduled = false;
+      if (!mounted || _focusAnchorSyncSuppressed) return;
       final anchor =
           widget.focusAnchorKey?.currentContext ?? widget.focusAnchorContext;
       if (anchor == null || !anchor.mounted) return;
-      Scrollable.ensureVisible(
-        anchor,
-        alignment: 0.5,
-        duration: duration,
-        curve: Curves.easeInOutCubic,
-      );
+      final scrollable = Scrollable.maybeOf(anchor);
+      if (scrollable == null) return;
+      final position = scrollable.position;
+      if (!position.hasPixels || !position.hasContentDimensions) return;
+      final renderObject = anchor.findRenderObject();
+      if (renderObject == null || !renderObject.attached) return;
+      final viewport = RenderAbstractViewport.maybeOf(renderObject);
+      if (viewport == null) return;
+
+      // Keep the selected row centered against the live master-pane viewport
+      // while it changes width. A single post-transition ensureVisible animation
+      // leaves a second movement running after the pane has already settled.
+      final targetOffset = viewport
+          .getOffsetToReveal(renderObject, 0.5)
+          .offset
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+      if ((targetOffset - position.pixels).abs() > 0.5) {
+        position.jumpTo(targetOffset);
+      }
     });
   }
 
   @override
   void dispose() {
     widget.progress.removeStatusListener(_onProgressStatus);
+    widget.progress.removeListener(_onProgressChanged);
     super.dispose();
   }
 
@@ -386,7 +441,8 @@ class _AppWindowMasterDetailTransitionState
                 child: widget.master,
               )
             : widget.master;
-        final detail = widget.applyPaneInsets
+        final detail =
+            widget.applyPaneInsets && widget.applyDetailPaneInsets
             ? AppWindowPaneContent(
                 includeLeft: false,
                 child: widget.detail,
@@ -400,7 +456,10 @@ class _AppWindowMasterDetailTransitionState
             children: [
               SizedBox(
                 width: masterWidth,
-                child: ClipRect(child: master),
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: _onMasterScroll,
+                  child: ClipRect(child: master),
+                ),
               ),
               SizedBox(
                 width: dividerWidth,

@@ -8561,8 +8561,9 @@ class EventsTabState extends State<EventsTab>
                     color: widget.landscapeMasterDetail
                         ? resolveThemeColor(kCardColor, context)
                         : CupertinoColors.transparent,
-                    child: AppWindowContentPadding(
+                    child: AppWindowPaneContent(
                       includeLeft: !widget.landscapeMasterDetail,
+                      includeRight: !widget.landscapeMasterDetail,
                       child: _CategoryDetailView(
                         key: ValueKey(widget.activeDCV ?? '_none'),
                         label: widget.activeDCV ?? '',

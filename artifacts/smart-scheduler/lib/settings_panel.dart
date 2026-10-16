@@ -307,7 +307,9 @@ class _SettingsPanelState extends State<SettingsPanel>
           _navCtrl.value = 1.0;
           widget.subScreenBackAction.value = _pop;
         }
-        _centerCurrentMasterAnchor(const Duration(milliseconds: 180));
+        // The shared transition is no longer mounted after this layout-mode
+        // change, so settle the master anchor immediately in the new viewport.
+        _centerCurrentMasterAnchor(Duration.zero);
       } else if (widget.isLandscapeTwoPane) {
         widget.subScreenBackAction.value = null;
       } else if (_activeRoute != null && _navCtrl.value >= 0.5) {
@@ -461,7 +463,6 @@ class _SettingsPanelState extends State<SettingsPanel>
       _previousRoute = null;
     });
     _splitDetailController.value = 0.0;
-    _centerCurrentMasterAnchor(const Duration(milliseconds: 180));
   }
 
   void _centerCurrentMasterAnchor(Duration duration) {
@@ -588,23 +589,23 @@ class _SettingsPanelState extends State<SettingsPanel>
           geometry: geometry,
           progress: _paneTransitionProgress,
           dividerColor: separatorColor,
+          applyDetailPaneInsets: false,
           focusAnchorKey: _masterAnchorKey,
           master: ColoredBox(
             color: backgroundColor,
-            child: IgnorePointer(
-              ignoring:
-                  _paneTransitionController.isAnimating ||
-                  _splitDetailController.isAnimating,
-              child: mainSettingsContent,
-            ),
+            child: mainSettingsContent,
           ),
           detail: ColoredBox(
             color: backgroundColor,
-            child: _buildSplitSubScreenStack(
-              activeRoute: splitRoute,
-              previousRoute: _previousRoute,
-              bottomInset: bottomInset,
-              accentColor: accentColor,
+            child: AppWindowPaneContent(
+              includeLeft: false,
+              includeRight: false,
+              child: _buildSplitSubScreenStack(
+                activeRoute: splitRoute,
+                previousRoute: _previousRoute,
+                bottomInset: bottomInset,
+                accentColor: accentColor,
+              ),
             ),
           ),
         );
@@ -1371,7 +1372,7 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
       children: [
         Positioned.fill(child: detailTitle),
         Positioned(
-          right: 0,
+          right: geometry.horizontalInset,
           top: 0,
           bottom: 0,
           child: SizedBox(
@@ -1408,6 +1409,7 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
               geometry: geometry,
               progress: paneProgress,
               dividerColor: dividerColor,
+              applyDetailPaneInsets: false,
               drawDivider: false,
               master: title('Settings'),
               detail: detailHeader,

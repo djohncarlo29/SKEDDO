@@ -916,7 +916,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     if (_dcvCategory == null || _selectedIndex != 2) return false;
     final geometry = AppWindowMasterDetailGeometry.of(context);
     return geometry.isLandscape &&
-        geometry.detailContentWidth >=
+        geometry.detailPaneWidth >=
             kAppWindowMasterDetailMinimumDetailWidth;
   }
 
@@ -2599,7 +2599,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     // exactly as wide as the phone in portrait.
     final landscapeMasterWidth = masterDetailGeometry.masterPaneWidth;
     final landscapeDetailUsableWidth =
-        masterDetailGeometry.detailContentWidth;
+        masterDetailGeometry.detailPaneWidth;
     final landscapeSettingsTwoPane =
         isLandscape &&
         landscapeDetailUsableWidth >=
@@ -2779,27 +2779,22 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                           splitProgress,
                                                         )
                                                   : 0.0;
-                                          final rightHeaderWidth = max(
-                                            0.0,
-                                            constraints.maxWidth -
-                                                leftHeaderWidth -
-                                                headerDividerWidth,
-                                          );
-                                          // Keep header controls laid out in the
-                                          // inset-safe content width, but let the
-                                          // right pane's reveal viewport grow into
-                                          // the trailing system area. That area
-                                          // is visible during the slide, not an
-                                          // extra reserved clip boundary.
-                                          final rightHeaderRevealInset =
+                                          final headerRowWidth =
+                                              landscapeDcvSplit
+                                                  ? leftHeaderWidth +
+                                                        headerDividerWidth +
+                                                        masterDetailGeometry
+                                                            .detailPaneWidthAt(
+                                                              splitProgress,
+                                                            )
+                                                  : constraints.maxWidth;
+                                          final rightHeaderViewportWidth =
                                               landscapeDcvSplit
                                                   ? masterDetailGeometry
-                                                        .horizontalInset *
-                                                    splitProgress
+                                                        .detailPaneWidthAt(
+                                                          splitProgress,
+                                                        )
                                                   : 0.0;
-                                          final headerRowWidth =
-                                              constraints.maxWidth +
-                                              rightHeaderRevealInset;
                                           final headerRow = Row(
                                             children: [
                                               SizedBox(
@@ -3223,15 +3218,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                 ),
                                               if (landscapeDcvSplit)
                                                 SizedBox(
-                                                  width:
-                                                      rightHeaderWidth +
-                                                      rightHeaderRevealInset,
+                                                  width: rightHeaderViewportWidth,
                                                   child: ClipRect(
                                                     child: Align(
                                                       alignment:
                                                           Alignment.topLeft,
                                                       child: SizedBox(
-                                                        width: rightHeaderWidth,
+                                                        width:
+                                                            rightHeaderViewportWidth,
                                                         child: Padding(
                                                           padding:
                                                               EdgeInsets.only(

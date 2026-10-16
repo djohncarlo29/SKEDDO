@@ -148,27 +148,39 @@ void main() {
     );
     final scrollController = ScrollController();
     final anchorKey = GlobalKey();
+    double? detailViewportWidth;
 
     await tester.pumpWidget(
       CupertinoApp(
-        home: AppWindowMasterDetailTransition(
-          geometry: geometry,
-          progress: progress,
-          applyPaneInsets: false,
-          focusAnchorKey: anchorKey,
-          dividerColor: CupertinoColors.separator,
-          master: ListView(
-            controller: scrollController,
-            children: [
-              for (var index = 0; index < 30; index++)
-                SizedBox(
-                  key: index == 10 ? anchorKey : null,
-                  height: 72,
-                  child: Center(child: Text('Row $index')),
-                ),
-            ],
+        home: AppWindowContentScope(
+          horizontalInset: geometry.horizontalInset,
+          physicalWidth: geometry.physicalWidth,
+          child: AppWindowMasterDetailTransition(
+            geometry: geometry,
+            progress: progress,
+            applyDetailPaneInsets: false,
+            focusAnchorKey: anchorKey,
+            dividerColor: CupertinoColors.separator,
+            master: ListView(
+              controller: scrollController,
+              children: [
+                for (var index = 0; index < 30; index++)
+                  SizedBox(
+                    key: index == 10 ? anchorKey : null,
+                    height: 72,
+                    child: Center(child: Text('Row $index')),
+                  ),
+              ],
+            ),
+            detail: LayoutBuilder(
+              builder: (context, constraints) {
+                detailViewportWidth = constraints.maxWidth;
+                return const ColoredBox(
+                  color: CupertinoColors.systemBackground,
+                );
+              },
+            ),
           ),
-          detail: const ColoredBox(color: CupertinoColors.systemBackground),
         ),
       ),
     );
@@ -177,12 +189,29 @@ void main() {
     await tester.pump();
 
     progress.forward();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    final midTransitionTargetRect = tester.getRect(find.byKey(anchorKey));
+    final midTransitionViewportRect = tester.getRect(find.byType(ListView));
+    expect(
+      (midTransitionTargetRect.center.dy -
+              midTransitionViewportRect.center.dy)
+          .abs(),
+      lessThan(2),
+    );
+
     await tester.pumpAndSettle();
 
     final targetRect = tester.getRect(find.byKey(anchorKey));
     final viewportRect = tester.getRect(find.byType(ListView));
     expect((targetRect.center.dy - viewportRect.center.dy).abs(), lessThan(2));
-    expect(viewportRect.width, geometry.masterPaneWidth);
+    expect(viewportRect.width, geometry.masterContentWidth);
+    expect(detailViewportWidth, geometry.detailPaneWidth);
+
+    final settledOffset = scrollController.offset;
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(scrollController.offset, settledOffset);
 
     await tester.pumpWidget(const SizedBox.shrink());
     progress.dispose();
