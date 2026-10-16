@@ -46,7 +46,7 @@
  - [Light-mode attachment confirm surface](light-mode-checkmark-glass.md) — confirm uses a solid accent circle with a white glyph in Light Mode; the glass lens neutralizes saturated surfaces.
 - [Subscreen checkmark layout](subscreen-checkmark-layout.md) — selectable rows share an OS-scaled checkmark slot with fixed 16px label and edge gaps.
 - [Flutter APK Gradle stability](flutter-apk-gradle-stability.md) — SIGBUS fix requires DEFAULT_JVM_OPTS in gradlew (not just gradle.properties); daemon=false runs in wrapper JVM which ignores org.gradle.jvmargs.
-- [Shorebird patch and release workflow](shorebird-workflow.md) — grouped preflight, SDK, temporary-storage, native-baseline, and release-handoff constraints.
+- [Shorebird patch and release workflow](shorebird-workflow.md) — use `--platforms`; preserve preflight, SDK, temp-storage, native-baseline, and release checks.
 - [Dart 3.9 collection nesting](dart39-collection-nesting.md) — if→for→if collection elements crash Dart 3.9 parser; fold outer if into for-loop condition instead.
 - [liquid_glass_widgets Android crash](liquid-glass-android-crash.md) — liquid_glass shaders are SkSL-incompatible; app crashes on Android when any GlassSwitch is rendered. Use _SlidingSwitch (pure Flutter) on non-iOS.
 - [Android performance visual fidelity](android-performance-visual-fidelity.md) — preserve designed glass effects; require physical-device confirmation before claiming renderer-dependent Android blur is verified.

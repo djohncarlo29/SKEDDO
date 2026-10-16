@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# shorebird-push.sh  —  Push a Shorebird patch to all devices running SKEDDO
+# shorebird-push.sh  —  Push a Shorebird patch to devices running SKEDDO
 #
 # Usage:
-#   ./shorebird-push.sh                     # patch to all platforms
+#   ./shorebird-push.sh                     # Android (default)
 #   ./shorebird-push.sh android             # Android only
 #
 # Requirements:
@@ -23,6 +23,25 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$ROOT_DIR/artifacts/smart-scheduler"
+
+# ── Source preflight ──────────────────────────────────────────────────────────
+if ! command -v rg &>/dev/null; then
+  echo "❌  ripgrep (rg) is required for the Shorebird source preflight." >&2
+  exit 1
+fi
+if rg -n '^(<<<<<<< |=======|>>>>>>> )' \
+  "$APP_DIR/lib" "$APP_DIR/android" \
+  --glob '*.dart' --glob '*.xml' --glob '*.gradle' \
+  --glob '*.gradle.kts' --glob '*.kt' --glob '*.java'; then
+  echo "❌  Unresolved merge-conflict markers found; resolve them before patching." >&2
+  exit 1
+else
+  _marker_scan_status=$?
+  if [[ "$_marker_scan_status" -ne 1 ]]; then
+    echo "❌  Could not scan Dart and Android sources for merge-conflict markers." >&2
+    exit "$_marker_scan_status"
+  fi
+fi
 
 # ── Locate shorebird ──────────────────────────────────────────────────────────
 SHOREBIRD_BIN=""
@@ -102,7 +121,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
   echo "→ App version: $VERSION"
 
   # Pass --release-version explicitly so shorebird targets this release.
-  "$SHOREBIRD_BIN" patch "$PLATFORM" \
+  "$SHOREBIRD_BIN" patch --platforms "$PLATFORM" \
     --release-version "$VERSION" \
     -- --no-tree-shake-icons
 )
