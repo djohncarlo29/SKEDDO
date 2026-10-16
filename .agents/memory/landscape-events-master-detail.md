@@ -9,8 +9,8 @@ Entering a landscape Events DCV split must animate the master pane from the full
 
 In split mode, keep the hamburger and Add Category on the master header. Put the DCV back and ellipsis controls at the detail header's leading edge and Search and Add Event at its trailing edge; divide the two header areas with a vertical line. Do not duplicate Search or Add Event in the master header.
 
-While the split is active, animate the shared floating tab bar from screen center to the actual master-pane center, moving its glass and separate shadow together. Returning to another tab or leaving the split targets normal screen center.
+While the split is active, animate the shared floating tab bar from screen center to the center of the portrait-width master content, without adding the landscape system inset to that target. Move its glass and separate shadow together. Returning to another tab or leaving the split targets normal screen center.
 
-**Why:** Safe-area padding otherwise makes the visible master content narrower than portrait layout. A snapped pane or independently animated headers and content makes the DCV transition appear disconnected, and centering navigation on the whole landscape screen leaves it between the panes.
+**Why:** Safe-area padding otherwise makes the visible master content narrower than portrait layout. The tab bar is aligned to the authored portrait-width content, not shifted by the system safe-area reservation. A snapped pane or independently animated headers and content makes the DCV transition appear disconnected, and centering navigation on the whole landscape screen leaves it between the panes.
 
-**How to apply:** Derive the inset from `AppWindowContentScope`; don't add both left and right insets to the master width. Drive the pane, header, divider, and detail translation from the same DCV animation progress. Keep the tab-bar target tied to split state so it recenters when the split ends.
+**How to apply:** Derive the pane inset from `AppWindowContentScope`, but compute the tab-bar target from the portrait-width content dimension only. Don't add both left and right insets to the master width. Drive the pane, header, divider, and detail translation from the same DCV animation progress. Keep the tab-bar target tied to split state so it recenters when the split ends.

@@ -212,7 +212,7 @@ class SettingsPanel extends StatefulWidget {
 }
 
 class _SettingsPanelState extends State<SettingsPanel>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   // ── Navigation animation ───────────────────────────────────────────────────
   late final AnimationController _navCtrl = AnimationController(
     vsync: this,
@@ -855,6 +855,7 @@ class _MainSettingsContent extends StatelessWidget {
 class _SubScreen extends StatefulWidget {
   final double bottomInset;
   final _SettingsRoute route;
+  final bool applyAppWindowContentPadding;
   // Current resolved accent color — forwarded to _SubScreenSection for
   // checkmarks and selection highlights.
   final Color accentColor;
@@ -863,8 +864,10 @@ class _SubScreen extends StatefulWidget {
   final ValueNotifier<int> accentNotifier;
 
   const _SubScreen({
+    super.key,
     required this.bottomInset,
     required this.route,
+    required this.applyAppWindowContentPadding,
     required this.accentColor,
     required this.accentNotifier,
   });
@@ -938,45 +941,47 @@ class _SubScreenState extends State<_SubScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final content = CustomScrollView(
+      primary: false,
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
+      slivers: [
+        // Keep the settings rhythm on the 8 pt grid.
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+        // Branch: accent-color picker vs. standard option list.
+        if (widget.route.isAccentColor)
+          _AccentColorSection(accentNotifier: widget.accentNotifier)
+        else if (widget.route.isLiquidGlass)
+          const _LiquidGlassSection()
+        else if (widget.route.isTextSize)
+          _TextSizeSection(accentColor: widget.accentColor)
+        else if (widget.route.isDefaultCategory)
+          _DefaultCategorySection(accentColor: widget.accentColor)
+        else
+          _SubScreenSection(
+            options: widget.route.options,
+            selectedOption: _selected,
+            accentColor: widget.accentColor,
+            onSelect: _onSelect,
+          ),
+
+        // SliverPadding is intentionally unpainted: this is transparent
+        // breathing room, not a colored safe-area strip.
+        SliverPadding(
+          padding: EdgeInsets.only(
+            bottom: unifiedBottomPaddingForInset(widget.bottomInset),
+          ),
+        ),
+      ],
+    );
+
     return ColoredBox(
       color: resolveThemeColor(kBackgroundColor, context),
-      child: AppWindowContentPadding(
-        child: CustomScrollView(
-          primary: false,
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics(),
-          ),
-          slivers: [
-          // Keep the settings rhythm on the 8 pt grid.
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-          // Branch: accent-color picker vs. standard option list.
-          if (widget.route.isAccentColor)
-            _AccentColorSection(accentNotifier: widget.accentNotifier)
-          else if (widget.route.isLiquidGlass)
-            const _LiquidGlassSection()
-          else if (widget.route.isTextSize)
-            _TextSizeSection(accentColor: widget.accentColor)
-          else if (widget.route.isDefaultCategory)
-            _DefaultCategorySection(accentColor: widget.accentColor)
-          else
-            _SubScreenSection(
-              options: widget.route.options,
-              selectedOption: _selected,
-              accentColor: widget.accentColor,
-              onSelect: _onSelect,
-            ),
-
-          // SliverPadding is intentionally unpainted: this is transparent
-          // breathing room, not a colored safe-area strip.
-          SliverPadding(
-            padding: EdgeInsets.only(
-              bottom: unifiedBottomPaddingForInset(widget.bottomInset),
-            ),
-          ),
-          ],
-        ),
-      ),
+      child: widget.applyAppWindowContentPadding
+          ? AppWindowContentPadding(child: content)
+          : content,
     );
   }
 }
@@ -1198,6 +1203,120 @@ class _DefaultCategoryRowState extends State<_DefaultCategoryRow> {
 // ══════════════════════════════════════════════════════════════════════════════
 // Headers
 // ══════════════════════════════════════════════════════════════════════════════
+
+class _SettingsTwoPaneHeader extends StatelessWidget {
+  final AppWindowMasterDetailGeometry geometry;
+  final double topInset;
+  final double contentHeight;
+  final String activeTitle;
+  final String? previousTitle;
+  final double transitionProgress;
+  final Color dividerColor;
+
+  const _SettingsTwoPaneHeader({
+    required this.geometry,
+    required this.topInset,
+    required this.contentHeight,
+    required this.activeTitle,
+    required this.previousTitle,
+    required this.transitionProgress,
+    required this.dividerColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cardColor = resolveThemeColor(kCardColor, context);
+    final separatorColor = resolveThemeColor(kSeparatorColor, context);
+    final shadowColor = resolveThemeColor(kTabBarShadowColor, context);
+    final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
+
+    Widget title(String value) => Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: HeaderTitleScroller(
+          title: value,
+          fadeColor: cardColor,
+          centerWhenContentFits: true,
+          contentAlignment: Alignment.centerLeft,
+          style: TextStyle(
+            fontFamily: kSFProText,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            fontStyle: FontStyle.normal,
+            color: primaryLabel,
+            letterSpacing: -0.6,
+          ),
+        ),
+      ),
+    );
+
+    final detailTitle = LayoutBuilder(
+      builder: (context, constraints) {
+        final pages = <Widget>[];
+        if (previousTitle != null) {
+          pages.add(
+            Positioned.fill(
+              child: IgnorePointer(child: title(previousTitle!)),
+            ),
+          );
+        }
+        pages.add(
+          Positioned.fill(
+            child: ClipRect(
+              child: Transform.translate(
+                offset: Offset(
+                  previousTitle == null
+                      ? 0.0
+                      : constraints.maxWidth * (1.0 - transitionProgress),
+                  0.0,
+                ),
+                child: title(activeTitle),
+              ),
+            ),
+          ),
+        );
+        return ClipRect(
+          child: Stack(
+            fit: StackFit.expand,
+            clipBehavior: Clip.hardEdge,
+            children: pages,
+          ),
+        );
+      },
+    );
+
+    return Container(
+      width: double.infinity,
+      height: topInset + contentHeight,
+      decoration: BoxDecoration(
+        color: cardColor,
+        boxShadow: resolveThemeShadows([
+          BoxShadow(color: shadowColor, blurRadius: 6, offset: Offset(0, 2)),
+        ], context),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: AppWindowTwoPaneLayout(
+              geometry: geometry,
+              dividerColor: dividerColor,
+              master: title('Settings'),
+              detail: detailTitle,
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: IgnorePointer(
+              child: Container(height: 0.75, color: separatorColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 // ── Unified snapping header (shared by main settings and sub-screens) ─────────
 // The title is swapped by _SettingsPanelState at the 50 % midpoint of the

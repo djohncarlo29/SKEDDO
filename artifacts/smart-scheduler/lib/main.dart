@@ -2592,13 +2592,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final windowSize = MediaQuery.sizeOf(context);
     final masterDetailGeometry =
         AppWindowMasterDetailGeometry.of(context);
     final isLandscape = masterDetailGeometry.isLandscape;
     final physicalWindowWidth = masterDetailGeometry.physicalWidth;
-    final landscapeHorizontalInset =
-        masterDetailGeometry.horizontalInset;
     // The master pane starts at the physical left edge, while its content is
     // inset from that edge by landscapeHorizontalInset. Add that one inset to
     // the portrait-width content target so the visible content itself remains
@@ -2622,7 +2619,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _selectedIndex == 2 &&
         !_searchFocused;
     final landscapeTabBarHorizontalOffset =
-        (landscapeMasterWidth - physicalWindowWidth) / 2;
+        (landscapeMasterContentWidth - physicalWindowWidth) / 2;
     final topInset = MediaQuery.of(context).padding.top;
     final headerContentHeight = isLandscape ? 52.0 : 101.0;
     final keyboardBottomInset = MediaQuery.of(context).viewInsets.bottom;
