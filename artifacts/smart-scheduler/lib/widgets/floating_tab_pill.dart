@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/gestures.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
@@ -45,14 +44,6 @@ class FloatingTabPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
-    // Avoid the dual live-Impeller capture in the one affected configuration:
-    // Android landscape Dark Mode showed a shifted second copy of the active
-    // glyphs and a clipped trailing edge. The regular lens keeps the glass bar
-    // and selected state without that extra compositing path.
-    final useSinglePassAndroidLandscapeBar =
-        defaultTargetPlatform == TargetPlatform.android &&
-        isDark &&
-        MediaQuery.orientationOf(context) == Orientation.landscape;
     final selectedColor = selectedIndex == 2
         ? CupertinoDynamicColor.resolve(eventsAccent, context)
         : resolveAccentColor(context);
@@ -81,10 +72,7 @@ class FloatingTabPill extends StatelessWidget {
           final barWidth = (constraints.maxWidth -
                   (kFloatingTabBarHorizontalMargin * 2))
               .clamp(0.0, double.infinity);
-          final tabBarConstructor = useSinglePassAndroidLandscapeBar
-              ? LiquidGlassTabBar.new
-              : LiquidGlassTabBar.withImpeller;
-          final tabBar = tabBarConstructor(
+          final tabBar = LiquidGlassTabBar.withImpeller(
             items: [
               _tabItem(SFIcons.sf_text_document, 'Notes'),
               _tabItem(SFIcons.sf_calendar, 'Calendar'),
@@ -94,9 +82,7 @@ class FloatingTabPill extends StatelessWidget {
             onChanged: onTabSelected,
             width: barWidth,
             height: kFloatingTabBarHeight,
-            margin: useSinglePassAndroidLandscapeBar
-                ? EdgeInsets.zero
-                : EdgeInsets.only(bottom: bottomOffset),
+            margin: EdgeInsets.only(bottom: bottomOffset),
             itemPadding: 4,
             itemStyle: LiquidGlassTabItemStyle(
               selectedColor: selectedColor,
@@ -188,34 +174,21 @@ class FloatingTabPill extends StatelessWidget {
               // as its shadow. StackFit.expand alone used to give it the whole
               // host width, so its physical hit/render bounds could reach the
               // landscape system area even though the authored width was smaller.
-              if (useSinglePassAndroidLandscapeBar)
-                Positioned(
-                  left: kFloatingTabBarHorizontalMargin,
-                  right: kFloatingTabBarHorizontalMargin,
-                  bottom: bottomOffset,
-                  height: kFloatingTabBarHeight,
+              Positioned(
+                left: kFloatingTabBarHorizontalMargin,
+                right: kFloatingTabBarHorizontalMargin,
+                top: 0,
+                bottom: 0,
+                child: MediaQuery.removePadding(
+                  context: context,
+                  removeBottom: true,
                   child: MediaQuery.withClampedTextScaling(
                     minScaleFactor: kFloatingTabBarMinimumTextScale,
                     maxScaleFactor: kFloatingTabBarMaximumTextScale,
                     child: tabBar,
                   ),
-                )
-              else
-                Positioned(
-                  left: kFloatingTabBarHorizontalMargin,
-                  right: kFloatingTabBarHorizontalMargin,
-                  top: 0,
-                  bottom: 0,
-                  child: MediaQuery.removePadding(
-                    context: context,
-                    removeBottom: true,
-                    child: MediaQuery.withClampedTextScaling(
-                      minScaleFactor: kFloatingTabBarMinimumTextScale,
-                      maxScaleFactor: kFloatingTabBarMaximumTextScale,
-                      child: tabBar,
-                    ),
-                  ),
                 ),
+              ),
             ],
           );
         },

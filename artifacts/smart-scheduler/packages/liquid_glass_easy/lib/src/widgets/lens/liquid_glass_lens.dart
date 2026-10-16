@@ -8,6 +8,7 @@ import '../liquid_glass_style.dart';
 import '../utils/liquid_glass_touch.dart';
 import '../utils/liquid_glass_flex.dart';
 import '../utils/liquid_glass_shape.dart';
+import 'liquid_glass_screen_geometry.dart';
 import 'liquid_glass_blender.dart';
 import 'liquid_glass_lens_scope.dart';
 import 'liquid_glass_shaders.dart';
@@ -429,7 +430,13 @@ class _LiquidGlassLensState extends State<LiquidGlassLens>
       _borderShader ??= LiquidGlassShaders.createBorderShader(impeller);
     }
 
-    final Size screenSize = MediaQuery.sizeOf(context);
+    // Impeller's FlutterFragCoord is in full-window screen coordinates.
+    // MediaQuery.size can instead be the narrowed content size inside an
+    // app-wide landscape safe-area boundary; Skia still uses its captured
+    // view's own local dimensions.
+    final Size screenSize = impeller
+        ? liquidGlassFlutterViewSize(context)
+        : MediaQuery.sizeOf(context);
     final double dpr = MediaQuery.devicePixelRatioOf(context);
 
     // Clip at the deformed lens bounds, scale the content inside it: the

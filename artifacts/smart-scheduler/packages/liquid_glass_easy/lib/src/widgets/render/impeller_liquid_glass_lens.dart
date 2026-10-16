@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../liquid_glass_config.dart';
+import '../lens/liquid_glass_screen_geometry.dart';
 import '../painters/liquid_glass_uniforms.dart';
 import '../utils/liquid_glass_flex.dart';
 import '../utils/liquid_glass_shape.dart';
@@ -217,7 +218,7 @@ class _ImpellerLiquidGlassLensState extends State<ImpellerLiquidGlassLens> {
     // Screen-space geometry for the shader (see class doc). The widget
     // layout below still uses the parent-relative `lensPosition`; only
     // the shader uniforms are shifted into screen space.
-    final viewSize = MediaQuery.sizeOf(context);
+    final viewSize = liquidGlassFlutterViewSize(context);
     final Size resolution = (viewSize.width > 0 && viewSize.height > 0)
         ? viewSize
         : widget.parentSize;

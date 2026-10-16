@@ -151,4 +151,4 @@
 - [Pinned Flutter dependency resolution](flutter-pub-lock-sdk-resolution.md) — the managed preview resolves transitive package versions against its pinned Dart SDK and may update pubspec.lock on restart.
 - [Nested modal header alignment](nested-modal-header-alignment.md) — nested titles and controls stay at the same screen coordinates as their parent sheet.
 - [Landscape pill contour sampling](landscape-pill-contour-sampling.md) — offset on local normals so flat edges stay 1px; preserve slider alpha and denser landscape sampling.
-- [Android dark landscape tab bar](android-dark-landscape-tab-bar.md) — use the single-lens tab-bar renderer to avoid duplicate active glyphs and edge clipping in this Android configuration.
+- [Impeller screen-space glass geometry](impeller-screen-space-glass-geometry.md) — shader resolution must use the full FlutterView size, not narrowed landscape content MediaQuery dimensions.
