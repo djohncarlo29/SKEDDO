@@ -518,6 +518,8 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final bool showResults = _searchFocused && _searchText.isNotEmpty;
+    final bool isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
 
     // Search bar row — carries _searchBarKey.
     // When off-screen search is active (_activatedFromOffScreen) this widget
@@ -580,7 +582,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                   showSeparator: true,
                 ),
               )
-            else
+            else if (!isLandscape)
               SliverToBoxAdapter(child: searchBarRow),
 
             // ── Content ───────────────────────────────────────────────────

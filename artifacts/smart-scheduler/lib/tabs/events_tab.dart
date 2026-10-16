@@ -1657,6 +1657,8 @@ class EventsTab extends StatefulWidget {
   final ValueChanged<bool>? onSearchFocusChanged;
   final Animation<double>? searchModeAnimation;
   final String? activeDCV;
+  final bool landscapeMasterDetail;
+  final double? landscapeMasterWidth;
   final void Function(String label, Color color)? onTileTapped;
   /// Called after an open utility DCV has rendered its empty state.
   final VoidCallback? onUtilityBecameEmpty;
@@ -1695,6 +1697,8 @@ class EventsTab extends StatefulWidget {
     this.onSearchFocusChanged,
     this.searchModeAnimation,
     this.activeDCV,
+    this.landscapeMasterDetail = false,
+    this.landscapeMasterWidth,
     this.onTileTapped,
     this.onUtilityBecameEmpty,
     this.onActiveDCVCategoryChanged,
@@ -1725,6 +1729,8 @@ class EventsTabState extends State<EventsTab>
   // between the scrollable sliver and the off-screen search overlay.
   final _searchCancelKey = GlobalKey();
   final _dcvSearchCancelKey = GlobalKey();
+  BuildContext get _gridLayoutContext =>
+      _gridStackKey.currentContext ?? context;
   // dcvSlideController is owned by AppShell — EventsTabState must not dispose it.
   bool _searchFocused = false;
   bool _activatedFromOffScreen = false;
@@ -3637,7 +3643,11 @@ class EventsTabState extends State<EventsTab>
     if (draggedIndex == -1) return 0;
 
     final specs = _currentGridLayoutSpecs();
-    final geometries = _eventsGridItemGeometry(context, specs, availableWidth);
+    final geometries = _eventsGridItemGeometry(
+      _gridLayoutContext,
+      specs,
+      availableWidth,
+    );
     if (geometries.isEmpty) return 0;
 
     int beforeRawIndex(int rawIndex) {
@@ -3743,7 +3753,7 @@ class EventsTabState extends State<EventsTab>
     if (gridIdx == -1) return;
 
     final geometries = _eventsGridItemGeometry(
-      context,
+      _gridLayoutContext,
       _currentGridLayoutSpecs(),
       box.size.width,
     );
@@ -3794,7 +3804,8 @@ class EventsTabState extends State<EventsTab>
     // tile height below the grid stack's bottom edge.
     if (key is _UserCategory) {
       final capturedGhostHeight =
-          _dragGridTileHeight ?? _eventsGridTileRowHeight(context);
+          _dragGridTileHeight ??
+          _eventsGridTileRowHeight(_gridLayoutContext);
       final crossingDown =
           localPos.dy > box.size.height + capturedGhostHeight * 0.5;
       if (crossingDown && !_gridDragCrossingToList) {
@@ -3850,7 +3861,7 @@ class EventsTabState extends State<EventsTab>
             _dragGridTileWidth ??
             _eventsGridCellWidth(
               box.size.width,
-              _eventsGridColumnCount(context),
+              _eventsGridColumnCount(_gridLayoutContext),
               _AnimatedCategoryGrid._colGap,
             );
         final cx = newTopLeft.dx + tw / 2;
@@ -3913,11 +3924,11 @@ class EventsTabState extends State<EventsTab>
         _dragGridTileWidth ??
         _eventsGridCellWidth(
           box.size.width,
-          _eventsGridColumnCount(context),
+          _eventsGridColumnCount(_gridLayoutContext),
           _AnimatedCategoryGrid._colGap,
         );
     final ghostHeight =
-        _dragGridTileHeight ?? _eventsGridTileRowHeight(context);
+        _dragGridTileHeight ?? _eventsGridTileRowHeight(_gridLayoutContext);
 
     final ghostCenter = Offset(
       newTopLeft.dx + ghostWidth / 2,
@@ -4181,7 +4192,7 @@ class EventsTabState extends State<EventsTab>
           final availableWidth = gridBox.size.width;
           final cellWidth = _eventsGridCellWidth(
             availableWidth,
-            _eventsGridColumnCount(context),
+            _eventsGridColumnCount(_gridLayoutContext),
             _AnimatedCategoryGrid._colGap,
           );
           final titleNeedsFullWidth =
@@ -4237,7 +4248,7 @@ class EventsTabState extends State<EventsTab>
             // the next short title may be half-width.
             final finalIndex = _currentVisibleGridOrder().indexOf(cat);
             final finalGeometries = _eventsGridItemGeometry(
-              context,
+              _gridLayoutContext,
               _currentGridLayoutSpecs(),
               availableWidth,
             );
@@ -4274,19 +4285,23 @@ class EventsTabState extends State<EventsTab>
               _dragGridTileWidth ??
               _eventsGridCellWidth(
                 gridBox.size.width,
-                _eventsGridColumnCount(context),
+                _eventsGridColumnCount(_gridLayoutContext),
                 _AnimatedCategoryGrid._colGap,
               );
           final grab =
               _dragGridGrabOffset ??
-              Offset(tileW / 2, _eventsGridTileRowHeight(context) / 2);
+              Offset(
+                tileW / 2,
+                _eventsGridTileRowHeight(_gridLayoutContext) / 2,
+              );
           final gridLocal = gridBox.globalToLocal(globalPos);
           // Ghost top-left tracks the finger every frame (identical to a
           // normal grid drag — localPos − grab, fully continuous).
           final rawTopLeft = gridLocal - grab;
           // Slot from the same measured geometry used by the settled grid.
           final tileH =
-              _dragGridTileHeight ?? _eventsGridTileRowHeight(context);
+              _dragGridTileHeight ??
+              _eventsGridTileRowHeight(_gridLayoutContext);
           final targetInsert = _gridInsertionIndexForPointer(
             dragKey: cat,
             ghostCenter: Offset(
@@ -5223,11 +5238,11 @@ class EventsTabState extends State<EventsTab>
                   (gridBox != null
                       ? _eventsGridCellWidth(
                           gridBox.size.width,
-                          _eventsGridColumnCount(context),
+                          _eventsGridColumnCount(_gridLayoutContext),
                           _AnimatedCategoryGrid._colGap,
                         )
                       : 120.0));
-      final tileH = _eventsGridTileRowHeight(context);
+      final tileH = _eventsGridTileRowHeight(_gridLayoutContext);
       final tl = _dragGridTopLeft;
       final ghostLeft = (gridGlobal?.dx ?? 0) + (tl?.dx ?? 0);
       final ghostTop = (gridGlobal?.dy ?? 0) + (tl?.dy ?? 0);
@@ -5438,10 +5453,11 @@ class EventsTabState extends State<EventsTab>
         _dragGridTileWidth ??
         _eventsGridCellWidth(
           box.size.width,
-          _eventsGridColumnCount(context),
+          _eventsGridColumnCount(_gridLayoutContext),
           _AnimatedCategoryGrid._colGap,
         );
-    final tileHeight = _dragGridTileHeight ?? _eventsGridTileRowHeight(context);
+    final tileHeight =
+        _dragGridTileHeight ?? _eventsGridTileRowHeight(_gridLayoutContext);
     final globalPos = stackGlobal + topLeft;
 
     // ── Crossing down into list: row ghost follows finger freely ─────────────
@@ -7921,6 +7937,8 @@ class EventsTabState extends State<EventsTab>
   @override
   Widget build(BuildContext context) {
     final bool showResults = _searchFocused && _searchText.isNotEmpty;
+    final bool isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
 
     // ── Smart tile data (always 8, always in the grid) ─────────────────────
     // baseEvents — the raw list of user-created events (used for "All Events"
@@ -8111,9 +8129,15 @@ class EventsTabState extends State<EventsTab>
     // (_activatedFromOffScreen) the key lives in the Stack overlay so the
     // gridView scroll position is never disturbed.
     final physicalWidth = AppWindowContentScope.of(context).physicalWidth;
+    final gridPanelWidth = widget.landscapeMasterDetail
+        ? (widget.landscapeMasterWidth ?? physicalWidth)
+        : physicalWidth;
     final Widget gridView = SizedBox(
-      width: physicalWidth,
-      child: AppWindowContentPadding(
+      width: gridPanelWidth,
+      child: _EventsGridColumnOverride(
+        columns: widget.landscapeMasterDetail ? 2 : null,
+        child: AppWindowContentPadding(
+          includeRight: !widget.landscapeMasterDetail,
         child: CustomScrollView(
           clipBehavior: Clip.none,
           key: _scrollViewportKey,
@@ -8142,7 +8166,7 @@ class EventsTabState extends State<EventsTab>
               showSeparator: true,
             ),
           )
-        else
+        else if (!isLandscape)
           SliverToBoxAdapter(child: searchBarRow),
 
         // ── Inline search results ─────────────────────────────────────────
@@ -8273,6 +8297,7 @@ class EventsTabState extends State<EventsTab>
         ],
           ],
         ),
+        ),
       ),
     );
     // Both SlideTransitions read from the SAME AnimationController as the
@@ -8289,7 +8314,8 @@ class EventsTabState extends State<EventsTab>
       child: Stack(
         children: [
           // Grid slides out to the left as DCV enters from the right.
-          SlideTransition(
+          if (!widget.landscapeMasterDetail)
+            SlideTransition(
             position: Tween<Offset>(
               begin: Offset.zero,
               end: const Offset(-1.0, 0.0),
@@ -8313,10 +8339,12 @@ class EventsTabState extends State<EventsTab>
                   child: child,
                 ),
             child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(1.0, 0.0),
-                end: Offset.zero,
-              ).animate(slideCurve),
+              position: widget.landscapeMasterDetail
+                  ? const AlwaysStoppedAnimation<Offset>(Offset.zero)
+                  : Tween<Offset>(
+                      begin: const Offset(1.0, 0.0),
+                      end: Offset.zero,
+                    ).animate(slideCurve),
               child: Builder(
                 builder: (_) {
                   final cat =
@@ -8437,8 +8465,9 @@ class EventsTabState extends State<EventsTab>
                               )
                               .length,
                   };
-                  return AppWindowPhysicalWidth(
+                  final Widget detailView = AppWindowPhysicalWidth(
                     child: AppWindowContentPadding(
+                      includeLeft: !widget.landscapeMasterDetail,
                       child: _CategoryDetailView(
                         key: ValueKey(widget.activeDCV ?? '_none'),
                         label: widget.activeDCV ?? '',
@@ -8577,11 +8606,37 @@ class EventsTabState extends State<EventsTab>
                               onDeletedEventTap: _openDeletedEvent,
                               onDeletedSmartCategoryTap:
                                   _openDeletedSmartCategory,
-                              onDeletedCategoryTap: _openDeletedCategory,
+                      onDeletedCategoryTap: _openDeletedCategory,
                             )
                             : null,
                       ),
                     ),
+                  );
+                  if (!widget.landscapeMasterDetail) return detailView;
+                  return Row(
+                    children: [
+                      SizedBox(
+                        width:
+                            widget.landscapeMasterWidth ??
+                            AppWindowContentScope.of(context).physicalWidth,
+                        child: ClipRect(child: gridView),
+                      ),
+                      Container(
+                        width: 0.75,
+                        color: resolveThemeColor(kSeparatorColor, context),
+                      ),
+                      Expanded(
+                        child: ClipRect(
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(1.0, 0.0),
+                              end: Offset.zero,
+                            ).animate(slideCurve),
+                            child: detailView,
+                          ),
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -9028,8 +9083,27 @@ double _eventsGridTileHeight(
   return max(_eventsGridTileRowHeight(context), contentHeight);
 }
 
+class _EventsGridColumnOverride extends InheritedWidget {
+  const _EventsGridColumnOverride({
+    required this.columns,
+    required super.child,
+  });
+
+  final int? columns;
+
+  static int? maybeOf(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<_EventsGridColumnOverride>()
+          ?.columns;
+
+  @override
+  bool updateShouldNotify(_EventsGridColumnOverride oldWidget) =>
+      columns != oldWidget.columns;
+}
+
 int _eventsGridColumnCount(BuildContext context) =>
-    MediaQuery.orientationOf(context) == Orientation.landscape ? 3 : 2;
+    _EventsGridColumnOverride.maybeOf(context) ??
+    (MediaQuery.orientationOf(context) == Orientation.landscape ? 3 : 2);
 
 double _eventsGridCellWidth(
   double availableWidth,

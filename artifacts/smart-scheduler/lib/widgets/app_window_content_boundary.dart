@@ -72,9 +72,16 @@ class AppWindowContentBoundary extends StatelessWidget {
 /// Applies the centralized horizontal content positioning constraint without
 /// constraining a full-width surface that sits above or below it.
 class AppWindowContentPadding extends StatelessWidget {
-  const AppWindowContentPadding({super.key, required this.child});
+  const AppWindowContentPadding({
+    super.key,
+    required this.child,
+    this.includeLeft = true,
+    this.includeRight = true,
+  });
 
   final Widget child;
+  final bool includeLeft;
+  final bool includeRight;
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +105,10 @@ class AppWindowContentPadding extends StatelessWidget {
     // changes. In particular, modal form state must survive portrait/landscape
     // transitions even when the platform reports a landscape safe-area inset.
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: inset),
+      padding: EdgeInsets.only(
+        left: includeLeft ? inset : 0.0,
+        right: includeRight ? inset : 0.0,
+      ),
       child: MediaQuery(data: contentMediaQuery, child: child),
     );
   }
