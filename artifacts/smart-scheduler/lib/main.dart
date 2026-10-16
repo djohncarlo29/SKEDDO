@@ -2131,7 +2131,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth;
-            final trailingActionsOpacity = ((width - 72.0) / 48.0)
+            final trailingActionsOpacity = ((width - 144.0) / 64.0)
                 .clamp(0.0, 1.0)
                 .toDouble();
             final titleOpacity = ((width - 144.0) / 72.0)
@@ -2212,53 +2212,56 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
-                Positioned(
-                  right: 36,
-                  top: 0,
-                  bottom: 0,
-                  child: IgnorePointer(
-                    ignoring: trailingActionsOpacity < 0.8,
-                    child: Opacity(
-                      opacity: trailingActionsOpacity,
-                      child: headerButton(
-                        onTap: _activateTabSearch,
-                        child: SvgPicture.asset(
-                          'assets/icons/search.svg',
-                          width: 26,
-                          height: 26,
-                          colorFilter: ColorFilter.mode(
-                            accent,
-                            BlendMode.srcIn,
+                if (width >= 144)
+                  Positioned(
+                    right: 36,
+                    top: 0,
+                    bottom: 0,
+                    child: IgnorePointer(
+                      ignoring: trailingActionsOpacity < 0.8,
+                      child: Opacity(
+                        opacity: trailingActionsOpacity,
+                        child: headerButton(
+                          onTap: _activateTabSearch,
+                          child: SvgPicture.asset(
+                            'assets/icons/search.svg',
+                            width: 26,
+                            height: 26,
+                            colorFilter: ColorFilter.mode(
+                              accent,
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: IgnorePointer(
-                    ignoring: trailingActionsOpacity < 0.8,
-                    child: Opacity(
-                      opacity: trailingActionsOpacity,
-                      child: headerButton(
-                        onTap: () =>
-                            _calendarTabKey.currentState?.showNewEventSheet(
-                              context,
-                              initialCategoryId:
-                                  _eventsTabKey
-                                      .currentState
-                                      ?.activeStandardDcvCategoryId,
+                if (width >= 144)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: IgnorePointer(
+                      ignoring: trailingActionsOpacity < 0.8,
+                      child: Opacity(
+                        opacity: trailingActionsOpacity,
+                        child: headerButton(
+                          onTap: () =>
+                              _calendarTabKey.currentState?.showNewEventSheet(
+                                context,
+                                initialCategoryId:
+                                    _eventsTabKey
+                                        .currentState
+                                        ?.activeStandardDcvCategoryId,
+                              ),
+                          child: SvgPicture.asset(
+                            'assets/icons/plus.svg',
+                            width: 26,
+                            height: 26,
+                            colorFilter: ColorFilter.mode(
+                              accent,
+                              BlendMode.srcIn,
                             ),
-                        child: SvgPicture.asset(
-                          'assets/icons/plus.svg',
-                          width: 26,
-                          height: 26,
-                          colorFilter: ColorFilter.mode(
-                            accent,
-                            BlendMode.srcIn,
                           ),
                         ),
                       ),
@@ -2485,7 +2488,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       landscapeMasterWidth - landscapeHorizontalInset,
     );
     final landscapeDetailUsableWidth =
-        physicalWindowWidth - landscapeMasterWidth - landscapeHorizontalInset;
+        physicalWindowWidth -
+        landscapeMasterWidth -
+        landscapeHorizontalInset -
+        0.75;
     const minimumDcvPaneWidth = 320.0;
     final landscapeDcvSplit =
         isLandscape &&
@@ -3161,7 +3167,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                       ),
                                                     ),
                                                   ),
-                                                ),
                                             ],
                                           );
                                         },
