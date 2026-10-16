@@ -1,0 +1,44 @@
+I want to apologize directly. I completely missed the mark in my previous replies, and I completely understand why you are frustrated with me.
+Looking at your screenshot with full clarity now, you are using the Android Freeform / Floating Window mode (specifically the Xiaomi/MIUI style floating window system).
+Your app is running inside a floating desktop-style window over the background. At the very top of your app window, there is a thick, solid black caption header strip with the standard pill-control handles (the three dots and the close button). Lazada’s floating window, however, does not have that black strip; its white background fills the frame cleanly all the way up to those control buttons.
+I see exactly what is happening now. Here is the technical reality of why your app has that strip and why Lazada doesn’t.
+
+Why the Black Strip is There
+
+When Android puts an app into a freeform/floating window, the phone's operating system forces a native header decoration (caption bar) onto the top of the window so the user has a handle to drag and close it. [[1](https://www.google.com/goto?url=CAESYwHrOzAVdci86mVzMHdaYBk-Ja9rVnTTDVkEZJ_OMD-uzR-8_djaXvJiUIhx57r454eUP8Vu6-fbp6hDvopClzLb05mihuMvxYoo3Sfktv6G28BGXprrVQsAb7e2AVyQyj7tzQ)] (/goto?url=CAESYwHrOzAVdci86mVzMHdaYBk-Ja9rVnTTDVkEZJ_OMD-uzR-8_djaXvJiUIhx57r454eUP8Vu6-fbp6hDvopClzLb05mihuMvxYoo3Sfktv6G28BGXprrVQsAb7e2AVyQyj7tzQ)
+By default, Android colors this system decoration block using a solid background color derived from the native app theme. Because your app hasn't declared how to handle this window type at the native project level, Android falls back to a solid black block to house the control buttons.
+Lazada avoids this because their native app configuration specifies a borderless, action-bar-free theme layout template that forces the app's internal canvas color to blend natively into the floating window's caption decorations.
+
+Exactly What to Tell Your Developer to Change
+
+Because your app is built with Flutter, your developer needs to know that this cannot be fixed inside the main.dart file. It requires changing the native Android project engine settings that control how the app shell is built.
+
+📋 Copy and paste this exact message to your developer:
+
+"Hey! Sorry for the back-and-forth. The issue with the black strip is happening specifically when our app runs in Android Freeform / Floating Window mode.
+When the app is in a floating window, the system adds a native window decoration/caption bar at the top for the drag handles. Right now, our theme renders a solid black box behind those controls. If you look at apps like Lazada, they don't have that black strip because their layout draws transparently behind the decoration handles.
+To fix this, we need to adjust our native Android style attributes so the window decoration doesn't render a solid fallback background. Can you update our primary app theme inside /android/app/src/main/res/values/styles.xml with these window flag items?
+xml
+<resources>
+    <!-- Apply this to our primary active app theme -->
+    <style name="NormalTheme" parent="Theme.FlutterView.Light">
+        
+        <!-- 1. Removes the default native window title/action bar shell -->
+        <item name="android:windowNoTitle">true</item>
+        <item name="windowActionBar">false</item>
+        
+        <!-- 2. Instructs the native window manager to let the app background bleed behind the decoration layer -->
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        
+    </style>
+</resources>
+Use code with caution.
+Doing this will force the freeform window container to drop the hardcoded black background fill, matching Lazada's clean layout appearance. Let me know if we can test this on a new build!"
+
+How this resolves the issue:
+
+• windowNoTitle & windowActionBar: This tells the native Android container that your app provides its own headers. This forces the OS window manager to strip away its internal text/title container blocks. [1] (/goto?url=CAESjwEB6zswFZMW5H4HayDBQhKRIG4fAZ1HFB4BuxgtsMeixIMxXwwTBUMmoBuy2eRaW5qjL4syO9Hbzxo6EyNSAuZqWq9MoaH490B1w6aJ-7Aul3hE4w2NDz5VYG9e-Ms1XTiiquBBzeiuB3UOI4gs9qlU5vqkbvb4imh0q1JgRMarmPKncNwt3_UPsHJluQdNyA)
+• windowDrawsSystemBarBackgrounds & statusBarColor: In Freeform mode, Android treats the top dragging strip identically to how it handles the status bar. Making the native status bar property transparent natively removes the black strip fill from the floating system window shell layout. [1] (/goto?url=CAEShQEB6zswFa9akqRXE9gsbH4rnkpd3kkcQvVhNeRlWE2OQQjuAsA3yNXjmyevOMMDTdKJkuCyuTjW-tMuwYlCVH8xebT9kFTsslJDYu2l08Xge_i7FsjTnlQIBnvdCgc1OCd8QPHutnOl9jLLd8YjLBkm-lU-wgJA6zk8NjhVdY0j3fR2pDML), [2] (/goto?url=CAESYgHrOzAVOOzvulYl7gN3uiVCg-vMdfUdSYahPaxZQmC16O9XTEl-M5AcccEbDvUJOAtZVF0QUG0CM3KrEVOzX9Q0XvLfe1WIwTI91FSWRjKzl5gwZoFOmPbh2XgKvigk3Ndu)
+Thank you for your patience with me while I got this sorted out.
+Once your developer applies these native window configuration flags to the styles.xml file, build a fresh APK and launch it in floating window mode. Let me know if that completely blends the black strip into your white background layout!
