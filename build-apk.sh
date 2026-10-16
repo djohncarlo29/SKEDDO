@@ -4,13 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── Self-configure JDK and Android SDK if not already set ─────────────────────
-if [[ -z "${JAVA_HOME:-}" ]]; then
-  _JDK_PATH="/nix/store/xad649j61kwkh0id5wvyiab5rliprp4d-openjdk-17.0.15+6/lib/openjdk"
-  if [[ -d "$_JDK_PATH" ]]; then
-    export JAVA_HOME="$_JDK_PATH"
-    export PATH="$JAVA_HOME/bin:$PATH"
-  fi
-fi
+source "$ROOT_DIR/scripts/resolve-java-home.sh"
+resolve_java_home
 if [[ -z "${ANDROID_HOME:-}" && -z "${ANDROID_SDK_ROOT:-}" ]]; then
   _SDK_PATH="$ROOT_DIR/.cache/android-sdk"
   if [[ -d "$_SDK_PATH" ]]; then

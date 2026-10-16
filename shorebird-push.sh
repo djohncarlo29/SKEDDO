@@ -67,10 +67,8 @@ fi
 export SHOREBIRD_TOKEN
 
 # ── Environment ───────────────────────────────────────────────────────────────
-if [[ -z "${JAVA_HOME:-}" ]]; then
-  _JDK="/nix/store/xad649j61kwkh0id5wvyiab5rliprp4d-openjdk-17.0.15+6/lib/openjdk"
-  [[ -d "$_JDK" ]] && export JAVA_HOME="$_JDK" && export PATH="$JAVA_HOME/bin:$PATH"
-fi
+source "$ROOT_DIR/scripts/resolve-java-home.sh"
+resolve_java_home
 if [[ -z "${ANDROID_HOME:-}" ]]; then
   _SDK="$ROOT_DIR/.cache/android-sdk"
   [[ -d "$_SDK" ]] && export ANDROID_HOME="$_SDK" && export ANDROID_SDK_ROOT="$_SDK"
