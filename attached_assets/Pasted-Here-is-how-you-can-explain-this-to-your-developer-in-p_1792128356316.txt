@@ -1,0 +1,17 @@
+Here is how you can explain this to your developer in plain language. This approach focuses on the concept and the underlying system mechanics so they know exactly what needs to be changed in the code without you having to hand them snippets.
+
+🗣️ What to tell your developer:
+
+"Hey! For the Android multitasking floating/freeform window, we want to get rid of that solid colored strip (the white or black background) at the very top of the window, but we don't want to hide the window controls (like the three dots, close, and maximize buttons). We want the buttons to stay right where they are.
+To do this, we need to make the caption bar / status bar background completely transparent so our app's UI layouts bleed all the way to the top edge of the window.
+Could you look into doing this on the native Android side or via Flutter's SystemChrome? Specifically, we need to:
+1. Clear any flags forcing a translucent status bar and ensure the window is set to draw system bar backgrounds.
+2. Set the statusBarColor to Color.TRANSPARENT.
+3. Make sure to toggle the system bar appearance brightness (isAppearanceLightStatusBars or statusBarIconBrightness) so the window buttons automatically change color depending on our app's light or dark theme—otherwise, they might become invisible against our background.
+4. Lastly, since our app layout will now slide up under those window buttons, we’ll probably need to wrap our top UI layer in a SafeArea (or listen for the native captionBar window insets) so our buttons or text don't get overlapped by the system buttons."
+
+💡 Why this works for them:
+
+Developers speak in architecture and system states. By telling them to make the statusBarColor transparent, handle the icon brightness, and adjust for window insets/SafeArea, you are giving them the exact technical roadmap they need to write the code themselves in less than five minutes.
+Would you like to prepare a quick follow-up note on how you want the app to handle the layout padding once that colored bar drops away?
+Copying...

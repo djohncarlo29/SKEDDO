@@ -46,7 +46,10 @@ class MainActivity : FlutterActivity() {
     override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean) {
         super.onMultiWindowModeChanged(isInMultiWindowMode)
         if (isInMultiWindowMode) {
-            applyCaptionBarAppearance(captionBarLightSurface)
+            // Reassert the drawing contract when Android changes this Activity
+            // into a floating window; the system may update window flags and
+            // insets as part of that transition.
+            configureEdgeToEdgeWindow(captionBarLightSurface)
         }
     }
 
@@ -281,12 +284,25 @@ class MainActivity : FlutterActivity() {
         super.onDestroy()
     }
 
-    private fun configureEdgeToEdgeWindow() {
+    private fun configureEdgeToEdgeWindow(lightSurfaceOverride: Boolean? = null) {
         // This is the native source of truth for the Android application
         // window. SystemUiMode.edgeToEdge in Dart controls Flutter's system
         // bar appearance, but does not reliably change decor fitting on every
         // Android/OEM combination.
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        if (isInMultiWindowMode) {
+            // A translucent-status flag can cause Android to paint a solid
+            // system surface over the app even when statusBarColor is
+            // transparent. Apply these extra flags only to the floating window;
+            // full-screen edge-to-edge behavior is already correct.
+            window.clearFlags(
+                android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS,
+            )
+            window.addFlags(
+                android.view.WindowManager.LayoutParams
+                    .FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS,
+            )
+        }
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -304,16 +320,43 @@ class MainActivity : FlutterActivity() {
                     View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
                     View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
         }
-        val isLightSurface =
+        val isLightSurface = lightSurfaceOverride ?: (
             resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK !=
                 Configuration.UI_MODE_NIGHT_YES
+            )
         applyCaptionBarAppearance(isLightSurface)
     }
 
     private fun applyCaptionBarAppearance(lightSurface: Boolean) {
         captionBarLightSurface = lightSurface
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return
+        if (isInMultiWindowMode && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Keep Android's status-bar foreground legible when the in-app
+            // theme changes. APPEARANCE_LIGHT_STATUS_BARS means dark glyphs on
+            // a light surface; clearing it selects light glyphs for dark mode.
+            val controller = window.insetsController
+            controller?.setSystemBarsAppearance(
+                if (lightSurface) {
+                    WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                } else {
+                    0
+                },
+                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
+            )
+        } else if (isInMultiWindowMode && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // Pre-Android 11 equivalent, preserving the other decor flags.
+            val decorView = window.decorView
+            val lightStatusBar = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            val currentFlags = decorView.systemUiVisibility
+            decorView.systemUiVisibility =
+                (currentFlags and lightStatusBar.inv()) or
+                    (if (lightSurface) lightStatusBar else 0)
+        }
 
+        // Transparent freeform caption backgrounds and caption-control
+        // appearance are Android 15+ APIs. Keep caption controls visible.
+        if (!isInMultiWindowMode ||
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM
+        ) return
         val controller = window.insetsController ?: return
         val transparentCaption =
             WindowInsetsController.APPEARANCE_TRANSPARENT_CAPTION_BAR_BACKGROUND
