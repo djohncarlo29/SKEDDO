@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' show max;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -251,7 +252,13 @@ class _SettingsPanelState extends State<SettingsPanel>
   final ScrollController _mainScrollController = ScrollController();
   final GlobalKey _mainSettingsContentKey = GlobalKey();
   final Map<String, GlobalKey> _settingsRowAnchorKeys = {
-    for (final title in _kRoutes.keys) title: GlobalKey(),
+    for (final title in [
+      ..._kRoutes.keys,
+      'Full Month Name',
+      'Event Reminders',
+      'Daily Summary',
+    ])
+      title: GlobalKey(),
   };
   _SettingsRoute? _activeRoute;
   _SettingsRoute? _previousRoute;
@@ -610,6 +617,9 @@ class _SettingsPanelState extends State<SettingsPanel>
           applyDetailPaneInsets: false,
           focusAvoidTabBar: false,
           focusAnchorKey: _masterAnchorKey,
+          scrollAnchorKeys: _settingsRowAnchorKeys.values.toList(
+            growable: false,
+          ),
           master: ColoredBox(
             color: backgroundColor,
             child: mainSettingsContent,
@@ -875,6 +885,7 @@ class _MainSettingsContent extends StatelessWidget {
               onTap: () => _tap('Default Category'),
             ),
             _SettingsToggleRow(
+              key: rowAnchorKeys['Full Month Name'],
               title: 'Full Month Name',
               value: fullMonthName,
               onChanged: (value) {
@@ -898,11 +909,13 @@ class _MainSettingsContent extends StatelessWidget {
           label: 'Notifications',
           rows: [
             _SettingsToggleRow(
+              key: rowAnchorKeys['Event Reminders'],
               title: 'Event Reminders',
               value: true,
               onChanged: (_) {},
             ),
             _SettingsToggleRow(
+              key: rowAnchorKeys['Daily Summary'],
               title: 'Daily Summary',
               value: false,
               onChanged: (_) {},
@@ -2276,6 +2289,121 @@ class _SettingsCard extends StatelessWidget {
 const double _kSettingsRowHeight = 52.0;
 const double _kSettingsRowVerticalPadding = kFixedVerticalPadding;
 
+double _settingsWrappedTextHeight(
+  BuildContext context,
+  String text,
+  TextStyle style,
+  double width,
+) {
+  if (text.isEmpty) return 0.0;
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  )..layout(maxWidth: width.clamp(1.0, double.infinity).toDouble());
+  return painter.height;
+}
+
+double _settingsMasterRowHeight(
+  BuildContext context, {
+  required String title,
+  Widget? trailing,
+  bool hasSwitch = false,
+  required double rowWidth,
+}) {
+  final contentWidth =
+      (rowWidth - 32.0).clamp(1.0, double.infinity).toDouble();
+  final titleStyle = TextStyle(
+    fontFamily: kSFProText,
+    fontSize: 17,
+    fontWeight: FontWeight.w400,
+  );
+  final valueStyle = TextStyle(
+    fontFamily: kSFProText,
+    fontSize: 15,
+    fontWeight: FontWeight.w400,
+  );
+  final chevronWidth = _settingsChevronFontSize(context);
+  double textHeight(String text, TextStyle style, double width) =>
+      _settingsWrappedTextHeight(context, text, style, width);
+
+  double contentHeight;
+  if (hasSwitch) {
+    contentHeight = textHeight(
+      title,
+      titleStyle,
+      contentWidth - 56.0 - 12.0,
+    );
+  } else if (trailing is _ChevronTrailing) {
+    contentHeight = max(
+      textHeight(title, titleStyle, contentWidth - kLabelValueGap - chevronWidth),
+      chevronWidth,
+    );
+  } else if (trailing is _ValueTrailing || trailing is _ColorTrailing) {
+    final value = trailing is _ValueTrailing
+        ? trailing.text
+        : (trailing as _ColorTrailing).name;
+    final trailingExtra = trailing is _ValueTrailing ? 22.0 : 40.0;
+    final gap = kLabelValueGap;
+    final valueTextWidth = max(
+      1.0,
+      contentWidth * 0.38 - trailingExtra,
+    );
+    final titleWidth = max(
+      1.0,
+      contentWidth - gap - trailingExtra - valueTextWidth,
+    );
+    contentHeight = max(
+      textHeight(title, titleStyle, titleWidth),
+      textHeight(value, valueStyle, valueTextWidth),
+    );
+  } else {
+    contentHeight = textHeight(title, titleStyle, contentWidth);
+  }
+  return max(
+    _kSettingsRowHeight,
+    contentHeight + 2 * _kSettingsRowVerticalPadding,
+  );
+}
+
+Widget _settingsMasterRowAtPaneProgress(
+  BuildContext context, {
+  required BoxConstraints constraints,
+  required String title,
+  Widget? trailing,
+  bool hasSwitch = false,
+  required Widget child,
+}) {
+  final scope = AppWindowMasterDetailProgressScope.maybeOf(context);
+  if (scope == null || !constraints.maxWidth.isFinite) return child;
+  final fullWidth = scope.widthAtEndpoint(
+    constraints.maxWidth,
+    compact: false,
+  );
+  final compactWidth = scope.widthAtEndpoint(
+    constraints.maxWidth,
+    compact: true,
+  );
+  final fullHeight = _settingsMasterRowHeight(
+    context,
+    title: title,
+    trailing: trailing,
+    hasSwitch: hasSwitch,
+    rowWidth: fullWidth,
+  );
+  final compactHeight = _settingsMasterRowHeight(
+    context,
+    title: title,
+    trailing: trailing,
+    hasSwitch: hasSwitch,
+    rowWidth: compactWidth,
+  );
+  final height = fullHeight + (compactHeight - fullHeight) * scope.value;
+  return ClipRect(
+    child: SizedBox(height: height, child: child),
+  );
+}
+
 class _SettingsRow extends StatefulWidget {
   final String title;
   final Widget? trailing;
@@ -2297,24 +2425,32 @@ class _SettingsRowState extends State<_SettingsRow> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap?.call();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 80),
-        color: _pressed ? kActionPanelGroupBreak : const Color(0x00000000),
-        constraints: const BoxConstraints(minHeight: _kSettingsRowHeight),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: _kSettingsRowVerticalPadding,
+    return LayoutBuilder(
+      builder: (context, constraints) => _settingsMasterRowAtPaneProgress(
+        context,
+        constraints: constraints,
+        title: widget.title,
+        trailing: widget.trailing,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapUp: (_) {
+            setState(() => _pressed = false);
+            widget.onTap?.call();
+          },
+          onTapCancel: () => setState(() => _pressed = false),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 80),
+            color: _pressed ? kActionPanelGroupBreak : const Color(0x00000000),
+            constraints: const BoxConstraints(minHeight: _kSettingsRowHeight),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: _kSettingsRowVerticalPadding,
+            ),
+            alignment: Alignment.centerLeft,
+            child: _buildSettingsRowContent(context),
+          ),
         ),
-        alignment: Alignment.centerLeft,
-        child: _buildSettingsRowContent(context),
       ),
     );
   }
@@ -2330,6 +2466,8 @@ class _SettingsRowState extends State<_SettingsRow> {
     if (widget.trailing is _ValueTrailing) {
       final trailing = widget.trailing! as _ValueTrailing;
       return MinGapLabelValueRow(
+        animateHeight:
+            AppWindowMasterDetailProgressScope.maybeOf(context) == null,
         label: widget.title,
         labelStyle: labelStyle,
         value: trailing.text,
@@ -2346,6 +2484,8 @@ class _SettingsRowState extends State<_SettingsRow> {
     if (widget.trailing is _ColorTrailing) {
       final trailing = widget.trailing! as _ColorTrailing;
       return MinGapLabelValueRow(
+        animateHeight:
+            AppWindowMasterDetailProgressScope.maybeOf(context) == null,
         label: widget.title,
         labelStyle: labelStyle,
         value: trailing.name,
@@ -2385,6 +2525,7 @@ class _SettingsToggleRow extends StatefulWidget {
   final ValueChanged<bool> onChanged;
 
   const _SettingsToggleRow({
+    super.key,
     required this.title,
     required this.value,
     required this.onChanged,
@@ -2410,49 +2551,57 @@ class _SettingsToggleRowState extends State<_SettingsToggleRow> {
 
   @override
   Widget build(BuildContext context) {
-    return AppSwitchRow(
-      value: _value,
-      onChanged: _setValue,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: _kSettingsRowHeight),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: _kSettingsRowVerticalPadding,
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Text(
-                  widget.title,
-                  style: TextStyle(
-                    fontFamily: kSFProText,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w400,
-                    color: resolveThemeColor(kPrimaryLabel, context),
-                  ),
-                ),
+    return LayoutBuilder(
+      builder: (context, constraints) => _settingsMasterRowAtPaneProgress(
+        context,
+        constraints: constraints,
+        title: widget.title,
+        hasSwitch: true,
+        child: AppSwitchRow(
+          value: _value,
+          onChanged: _setValue,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: _kSettingsRowHeight),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: _kSettingsRowVerticalPadding,
               ),
-              SizedBox(
-                width: 70 * 0.80,
-                height: 30,
-                child: OverflowBox(
-                  maxWidth: 70,
-                  maxHeight: 31,
-                  alignment: Alignment.center,
-                  child: Transform.scale(
-                    scale: 0.80,
-                    child: AppSwitch(
-                      value: _value,
-                      color: resolveAccentColor(context),
-                      height: 31,
-                      onChanged: _setValue,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: TextStyle(
+                        fontFamily: kSFProText,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w400,
+                        color: resolveThemeColor(kPrimaryLabel, context),
+                      ),
                     ),
                   ),
-                ),
+                  SizedBox(
+                    width: 70 * 0.80,
+                    height: 30,
+                    child: OverflowBox(
+                      maxWidth: 70,
+                      maxHeight: 31,
+                      alignment: Alignment.center,
+                      child: Transform.scale(
+                        scale: 0.80,
+                        child: AppSwitch(
+                          value: _value,
+                          color: resolveAccentColor(context),
+                          height: 31,
+                          onChanged: _setValue,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

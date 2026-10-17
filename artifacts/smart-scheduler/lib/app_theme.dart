@@ -948,6 +948,7 @@ class MinGapLabelValueRow extends StatelessWidget {
     this.leadingWidth = 0.0,
     this.leadingGap = 12.0,
     this.alignTrailing = true,
+    this.animateHeight = true,
   });
 
   final String label;
@@ -960,6 +961,7 @@ class MinGapLabelValueRow extends StatelessWidget {
   final double leadingWidth;
   final double leadingGap;
   final bool alignTrailing;
+  final bool animateHeight;
 
   double _singleLineWidth(BuildContext context, String text, TextStyle style) {
     final painter = TextPainter(
@@ -1027,6 +1029,7 @@ class MinGapLabelValueRow extends StatelessWidget {
     Widget row, {
     Alignment alignment = Alignment.topCenter,
   }) {
+    if (!animateHeight) return row;
     return AnimatedSize(
       duration: const Duration(milliseconds: 220),
       reverseDuration: const Duration(milliseconds: 220),

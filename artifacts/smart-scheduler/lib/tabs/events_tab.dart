@@ -1764,6 +1764,16 @@ class EventsTabState extends State<EventsTab>
   bool _hadRecentlyDeletedUtilityItems = false;
   bool _animateDcvCategoryReplacement = false;
   BuildContext? _masterFocusAnchorContext;
+  final Map<String, GlobalKey> _gridScrollAnchorKeys =
+      <String, GlobalKey>{};
+  final Map<String, GlobalKey> _categoryScrollAnchorKeys =
+      <String, GlobalKey>{};
+
+  GlobalKey _gridScrollAnchorKey(String id) =>
+      _gridScrollAnchorKeys.putIfAbsent(id, GlobalKey.new);
+
+  GlobalKey _categoryScrollAnchorKey(String id) =>
+      _categoryScrollAnchorKeys.putIfAbsent(id, GlobalKey.new);
 
   // ── Smart search results (filled asynchronously by _scheduleSearch) ────────
   List<SearchHit> _searchPrimary = [];
@@ -8095,6 +8105,7 @@ class EventsTabState extends State<EventsTab>
         if (item is String && smartTileByLabel.containsKey(item))
           _GridEntry(
             key: 'smart_$item',
+            anchorKey: _gridScrollAnchorKey('smart_$item'),
             title: item,
             // Built-in Smart Categories are permanently pinned in the grid,
             // so they follow the same pair-level accommodation rules as
@@ -8138,6 +8149,7 @@ class EventsTabState extends State<EventsTab>
         else if (item is _UserCategory)
           _GridEntry(
             key: item,
+            anchorKey: _gridScrollAnchorKey('category_${item.id}'),
             title: item.name,
             allowsFullWidthTitle: true,
             child: _buildPinnedGridTile(item),
@@ -8305,6 +8317,17 @@ class EventsTabState extends State<EventsTab>
                     animation: widget.dcvSlideController,
                     builder: (context, _) => _CategoryCard(
                     items: flatItems,
+                    rowAnchorKeys: {
+                      for (final item in flatItems)
+                        (item.isGroupHeader
+                                ? 'group_${item.group!.id}'
+                                : 'category_${item.category!.id}'):
+                            _categoryScrollAnchorKey(
+                              item.isGroupHeader
+                                  ? 'group_${item.group!.id}'
+                                  : 'category_${item.category!.id}',
+                            ),
+                    },
                     liveEventCounts: _liveEventCounts,
                     removingCategories: _removingFromList,
                     newCategories: _newInList,
@@ -8750,6 +8773,16 @@ class EventsTabState extends State<EventsTab>
                     ),
                     applyPaneInsets: false,
                     focusAnchorContext: _masterFocusAnchorContext,
+                    scrollAnchorKeys: [
+                      for (final entry in gridItems)
+                        if (entry.anchorKey != null) entry.anchorKey!,
+                      for (final item in _buildFlatDisplayList())
+                        _categoryScrollAnchorKey(
+                          item.isGroupHeader
+                              ? 'group_${item.group!.id}'
+                              : 'category_${item.category!.id}',
+                        ),
+                    ],
                     master: gridView,
                     detail: landscapeDetailView,
                   );
@@ -8989,11 +9022,13 @@ class _TileData {
 // convention used elsewhere in this file for the same lists.
 class _GridEntry {
   final Object key;
+  final GlobalKey? anchorKey;
   final String title;
   final bool allowsFullWidthTitle;
   final Widget child;
   const _GridEntry({
     required this.key,
+    this.anchorKey,
     required this.title,
     required this.allowsFullWidthTitle,
     required this.child,
@@ -9232,16 +9267,18 @@ double _eventsGridCellWidth(
 List<_GridItemGeometry> _eventsGridItemGeometry(
   BuildContext context,
   List<_GridLayoutSpec> specs,
-  double availableWidth,
+    double availableWidth, {
+    int? columnCount,
+  }
 ) {
   if (specs.isEmpty) return const [];
 
   const rowGap = 16.0;
   const colGap = 16.0;
-  final columnCount = _eventsGridColumnCount(context);
+  final resolvedColumnCount = columnCount ?? _eventsGridColumnCount(context);
   final cellWidth = _eventsGridCellWidth(
     availableWidth,
-    columnCount,
+    resolvedColumnCount,
     colGap,
   );
   final geometries = List<_GridItemGeometry?>.filled(specs.length, null);
@@ -9251,7 +9288,7 @@ List<_GridItemGeometry> _eventsGridItemGeometry(
   // title that would otherwise share its row with an overlong title keeps the
   // existing full-width accommodation; two or more fitting titles share cells.
   for (var i = 0; i < specs.length;) {
-    final rowLimit = min(columnCount, specs.length - i);
+    final rowLimit = min(resolvedColumnCount, specs.length - i);
     var rowCount = 0;
     while (rowCount < rowLimit) {
       final spec = specs[i + rowCount];
@@ -9338,13 +9375,68 @@ class _AnimatedCategoryGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final geometries = _eventsGridItemGeometry(context, [
+        final specs = [
           for (final entry in entries)
             _GridLayoutSpec(
               title: entry.title,
               allowsFullWidthTitle: entry.allowsFullWidthTitle,
             ),
-        ], constraints.maxWidth);
+        ];
+        final paneProgress =
+            AppWindowMasterDetailProgressScope.maybeOf(context);
+        final List<_GridItemGeometry> geometries;
+        if (paneProgress == null) {
+          geometries = _eventsGridItemGeometry(
+            context,
+            specs,
+            constraints.maxWidth,
+          );
+        } else {
+          final fullWidth = paneProgress.widthAtEndpoint(
+            constraints.maxWidth,
+            compact: false,
+          );
+          final compactWidth = paneProgress.widthAtEndpoint(
+            constraints.maxWidth,
+            compact: true,
+          );
+          final fullViewportWidth = paneProgress.widthAtEndpoint(
+            constraints.maxWidth + 32.0,
+            compact: false,
+          );
+          final fullColumns =
+              fullViewportWidth >
+                      paneProgress.compactMasterContentWidth * 1.5
+                  ? 3
+                  : 2;
+          const compactColumns = 2;
+          final fullGeometry = _eventsGridItemGeometry(
+            context,
+            specs,
+            fullWidth,
+            columnCount: fullColumns,
+          );
+          final compactGeometry = _eventsGridItemGeometry(
+            context,
+            specs,
+            compactWidth,
+            columnCount: compactColumns,
+          );
+          final t = paneProgress.value;
+          geometries = [
+            for (var i = 0; i < fullGeometry.length; i++)
+              _GridItemGeometry(
+                left: fullGeometry[i].left +
+                    (compactGeometry[i].left - fullGeometry[i].left) * t,
+                top: fullGeometry[i].top +
+                    (compactGeometry[i].top - fullGeometry[i].top) * t,
+                width: fullGeometry[i].width +
+                    (compactGeometry[i].width - fullGeometry[i].width) * t,
+                height: fullGeometry[i].height +
+                    (compactGeometry[i].height - fullGeometry[i].height) * t,
+              ),
+          ];
+        }
         final totalHeight =
             geometries.isEmpty
                 ? 0.0
@@ -9365,7 +9457,7 @@ class _AnimatedCategoryGrid extends StatelessWidget {
               for (int i = 0; i < entries.length; i++)
                 if (entries[i].key != draggingKey)
                   AnimatedPositioned(
-                    key: ValueKey(entries[i].key),
+                    key: entries[i].anchorKey ?? ValueKey(entries[i].key),
                     duration: geometryDuration,
                     curve: _curve,
                     left: geometries[i].left,
@@ -9388,7 +9480,7 @@ class _AnimatedCategoryGrid extends StatelessWidget {
                 for (int i = 0; i < entries.length; i++)
                   if (entries[i].key == draggingKey)
                     AnimatedPositioned(
-                      key: ValueKey(entries[i].key),
+                      key: entries[i].anchorKey ?? ValueKey(entries[i].key),
                       duration: Duration.zero,
                       curve: Curves.linear,
                       left: dragLocalTopLeft!.dx,
@@ -10534,20 +10626,46 @@ Widget _buildCategoryListRowBody(
             textScaler,
           )
           : 0.0;
-  final textWidth = _eventsCategorySideBySideTextWidth(
-    cardWidth: cardWidth,
-    leftPad: leftPad,
-    iconSize: circleSize,
-    trailingWidth: trailingWidth,
-  );
-  final needsStackedText = _eventsCategoryNeedsStackedText(
+  double sideBySideTextWidth(double width) =>
+      _eventsCategorySideBySideTextWidth(
+        cardWidth: width,
+        leftPad: leftPad,
+        iconSize: circleSize,
+        trailingWidth: trailingWidth,
+      );
+  bool needsStackedAt(double width) => _eventsCategoryNeedsStackedText(
     title: category.name,
     subtitle: category.description,
     titleStyle: titleStyle,
     subtitleStyle: subtitleStyle,
     scaler: textScaler,
-    textWidth: textWidth,
+    textWidth: sideBySideTextWidth(width),
   );
+  final paneProgress =
+      AppWindowMasterDetailProgressScope.maybeOf(context);
+  final currentNeedsStacked = needsStackedAt(cardWidth);
+  final fullCardWidth = paneProgress == null
+      ? cardWidth
+      : max(
+          0.0,
+          paneProgress.widthAtEndpoint(
+                cardWidth + 32.0,
+                compact: false,
+              ) -
+              32.0,
+        );
+  final compactCardWidth = paneProgress == null
+      ? cardWidth
+      : max(
+          0.0,
+          paneProgress.widthAtEndpoint(
+                cardWidth + 32.0,
+                compact: true,
+              ) -
+              32.0,
+        );
+  final fullNeedsStacked = needsStackedAt(fullCardWidth);
+  final compactNeedsStacked = needsStackedAt(compactCardWidth);
   final titleText = _eventsCategoryNoWordBreakText(category.name);
   final subtitleText = _eventsCategoryNoWordBreakText(category.description);
 
@@ -10582,8 +10700,7 @@ Widget _buildCategoryListRowBody(
     ],
   );
 
-  if (needsStackedText) {
-    return Column(
+  Widget buildStacked() => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -10615,9 +10732,8 @@ Widget _buildCategoryListRowBody(
         ],
       ],
     );
-  }
 
-  return Row(
+  Widget buildSideBySide() => Row(
     children: [
       categoryIcon(),
       const SizedBox(width: _eventsCategoryIconTextGap),
@@ -10648,6 +10764,36 @@ Widget _buildCategoryListRowBody(
       ],
     ],
   );
+
+  if (paneProgress != null &&
+      paneProgress.isAnimating &&
+      fullNeedsStacked != compactNeedsStacked) {
+    final stackedOpacity = paneProgress.value;
+    return ClipRect(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          IgnorePointer(
+            child: Opacity(
+              opacity: fullNeedsStacked
+                  ? stackedOpacity
+                  : 1.0 - stackedOpacity,
+              child: fullNeedsStacked ? buildStacked() : buildSideBySide(),
+            ),
+          ),
+          IgnorePointer(
+            child: Opacity(
+              opacity: compactNeedsStacked
+                  ? stackedOpacity
+                  : 1.0 - stackedOpacity,
+              child: compactNeedsStacked ? buildStacked() : buildSideBySide(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  return currentNeedsStacked ? buildStacked() : buildSideBySide();
 }
 
 /// Shared visual body for a group header and its lifted reorder ghost.
@@ -10815,6 +10961,7 @@ class _CategoryCard extends StatelessWidget {
 
   /// The flat ordered display list (solo, groupHeader, groupMember items).
   final List<_FlatItem> items;
+  final Map<String, GlobalKey> rowAnchorKeys;
   final Set<_UserCategory> removingCategories;
   final Set<_UserCategory> newCategories;
   final Set<_UserCategory> archivingCategories;
@@ -10856,6 +11003,7 @@ class _CategoryCard extends StatelessWidget {
 
   const _CategoryCard({
     required this.items,
+    this.rowAnchorKeys = const {},
     required this.removingCategories,
     required this.newCategories,
     this.liveEventCounts = const {},
@@ -10899,17 +11047,58 @@ class _CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final paneProgress =
+        AppWindowMasterDetailProgressScope.maybeOf(context);
+    final currentContentWidth = MediaQuery.sizeOf(context).width;
+    final fullCardWidth = paneProgress == null
+        ? null
+        : max(
+            0.0,
+            paneProgress.widthAtEndpoint(
+                  currentContentWidth,
+                  compact: false,
+                ) -
+                32.0,
+          );
+    final compactCardWidth = paneProgress == null
+        ? null
+        : max(
+            0.0,
+            paneProgress.widthAtEndpoint(
+                  currentContentWidth,
+                  compact: true,
+                ) -
+                32.0,
+          );
     // Measure each row once per build. Recomputing TextPainter-based row
     // geometry inside every slot's prefix/visibility scan made opening a
     // second group increasingly expensive and could consume the animation's
     // first frames.
     final rowHeights = List<double>.generate(
       items.length,
-      (index) => _eventsCategoryListRowHeight(
-        context,
-        item: items[index],
-        liveEventCounts: liveEventCounts,
-      ),
+      (index) {
+        if (paneProgress == null) {
+          return _eventsCategoryListRowHeight(
+            context,
+            item: items[index],
+            liveEventCounts: liveEventCounts,
+          );
+        }
+        final fullHeight = _eventsCategoryListRowHeight(
+          context,
+          item: items[index],
+          liveEventCounts: liveEventCounts,
+          cardWidth: fullCardWidth,
+        );
+        final compactHeight = _eventsCategoryListRowHeight(
+          context,
+          item: items[index],
+          liveEventCounts: liveEventCounts,
+          cardWidth: compactCardWidth,
+        );
+        return fullHeight +
+            (compactHeight - fullHeight) * paneProgress.value;
+      },
       growable: false,
     );
     final targetHeights = List<double>.generate(items.length, (index) {
@@ -11172,10 +11361,13 @@ class _CategoryCard extends StatelessWidget {
     // If we used ValueKey(item), a solo↔member transition changes the key
     // (kind is part of _FlatItem.hashCode), disposing the _CategoryContextMenu
     // and killing the in-flight gesture — leaving the overlay ghost frozen.
-    final slotKey =
-        item.isGroupHeader
+    final anchorId = item.isGroupHeader
+        ? 'group_${item.group!.id}'
+        : 'category_${item.category!.id}';
+    final slotKey = rowAnchorKeys[anchorId] ??
+        (item.isGroupHeader
             ? ValueKey('grp-${item.group!.id}')
-            : ValueKey(item.category!.id);
+            : ValueKey(item.category!.id));
     return AnimatedPositioned(
       key: slotKey,
       duration: isDragging || suppressGeometryAnimation

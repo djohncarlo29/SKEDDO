@@ -288,6 +288,70 @@ class AppWindowMasterDetailGeometry {
   }
 }
 
+/// Exposes the pane transition's live eased progress to master-pane content.
+///
+/// Layouts that change shape while the master narrows can interpolate their
+/// own measurements against these same endpoints instead of starting a second
+/// implicit animation that lags behind the pane.
+class AppWindowMasterDetailProgressScope
+    extends InheritedNotifier<Animation<double>> {
+  const AppWindowMasterDetailProgressScope({
+    super.key,
+    required this.geometry,
+    required Animation<double> progress,
+    required super.child,
+  }) : super(notifier: progress);
+
+  final AppWindowMasterDetailGeometry geometry;
+
+  double get value => notifier?.value.clamp(0.0, 1.0).toDouble() ?? 0.0;
+
+  bool get isAnimating {
+    final status = notifier?.status;
+    return status == AnimationStatus.forward ||
+        status == AnimationStatus.reverse;
+  }
+
+  double get fullMasterContentWidth => geometry.masterContentWidthAt(0.0);
+
+  double get compactMasterContentWidth => geometry.masterContentWidthAt(1.0);
+
+  /// Maps a width measured in the current master pane to either endpoint while
+  /// preserving any fixed child insets (for example a card's 16px margins).
+  double widthAtEndpoint(double currentWidth, {required bool compact}) {
+    final endpoint = compact
+        ? compactMasterContentWidth
+        : fullMasterContentWidth;
+    return math.max(
+      0.0,
+      currentWidth + endpoint - geometry.masterContentWidthAt(value),
+    );
+  }
+
+  static AppWindowMasterDetailProgressScope? maybeOf(
+    BuildContext context,
+  ) => context.dependOnInheritedWidgetOfExactType<
+    AppWindowMasterDetailProgressScope
+  >();
+
+  @override
+  bool updateShouldNotify(
+    covariant AppWindowMasterDetailProgressScope oldWidget,
+  ) {
+    final geometryChanged =
+        geometry.isLandscape != oldWidget.geometry.isLandscape ||
+        geometry.physicalWidth != oldWidget.geometry.physicalWidth ||
+        geometry.horizontalInset != oldWidget.geometry.horizontalInset ||
+        geometry.portraitShortEdgeWidth !=
+            oldWidget.geometry.portraitShortEdgeWidth ||
+        geometry.masterPaneWidth != oldWidget.geometry.masterPaneWidth ||
+        geometry.masterContentWidth != oldWidget.geometry.masterContentWidth ||
+        geometry.detailPaneWidth != oldWidget.geometry.detailPaneWidth ||
+        geometry.detailContentWidth != oldWidget.geometry.detailContentWidth;
+    return geometryChanged || super.updateShouldNotify(oldWidget);
+  }
+}
+
 /// Reusable full-width-to-master/detail transition for landscape navigation.
 ///
 /// The master shrinks to the shared portrait-width target while the detail
@@ -308,6 +372,7 @@ class AppWindowMasterDetailTransition extends StatefulWidget {
     this.drawDivider = true,
     this.focusAnchorContext,
     this.focusAnchorKey,
+    this.scrollAnchorKeys = const [],
     this.focusRevealDuration = const Duration(milliseconds: 180),
     this.focusAvoidTabBar = true,
   });
@@ -322,6 +387,7 @@ class AppWindowMasterDetailTransition extends StatefulWidget {
   final bool drawDivider;
   final BuildContext? focusAnchorContext;
   final GlobalKey? focusAnchorKey;
+  final List<GlobalKey> scrollAnchorKeys;
   final Duration focusRevealDuration;
   final bool focusAvoidTabBar;
 
@@ -409,6 +475,9 @@ class _AppWindowMasterDetailTransitionState
   bool _focusAnchorSyncSuppressed = false;
   bool _focusAnchorCorrectionInFlight = false;
   bool _focusPaneTransitionInProgress = false;
+  GlobalKey? _visualScrollAnchorKey;
+  ScrollPosition? _visualScrollAnchorPosition;
+  double? _visualScrollAnchorTop;
   double? _focusPaneTransitionEndProgress;
   double? _focusCorrectionSegmentStartOffset;
   double? _focusCorrectionSegmentStartProgress;
@@ -475,6 +544,7 @@ class _AppWindowMasterDetailTransitionState
     _focusPaneTransitionEndProgress =
         status == AnimationStatus.forward ? 1.0 : 0.0;
     _clearFocusCorrectionSegment();
+    _captureVisibleScrollAnchor();
 
     // Cancel any standalone reveal already in progress. From now on, any
     // needed correction is driven by the pane transition's shared progress.
@@ -492,6 +562,74 @@ class _AppWindowMasterDetailTransitionState
     _scheduleFocusAnchorSync();
   }
 
+  void _captureVisibleScrollAnchor() {
+    _visualScrollAnchorKey = null;
+    _visualScrollAnchorPosition = null;
+    _visualScrollAnchorTop = null;
+    double? anchorTop;
+
+    for (final key in widget.scrollAnchorKeys) {
+      final anchorContext = key.currentContext;
+      if (anchorContext == null || !anchorContext.mounted) continue;
+      final renderObject = anchorContext.findRenderObject();
+      if (renderObject is! RenderBox || !renderObject.attached) continue;
+      final viewport = RenderAbstractViewport.maybeOf(renderObject);
+      if (viewport == null || viewport is! RenderBox) continue;
+      final viewportBox = viewport as RenderBox;
+      if (!viewportBox.attached) continue;
+      final anchorRect =
+          renderObject.localToGlobal(Offset.zero) & renderObject.size;
+      final viewportRect =
+          viewportBox.localToGlobal(Offset.zero) & viewportBox.size;
+      if (anchorRect.bottom <= viewportRect.top + 1 ||
+          anchorRect.top >= viewportRect.bottom - 1) {
+        continue;
+      }
+      if (anchorTop == null || anchorRect.top < anchorTop) {
+        _visualScrollAnchorKey = key;
+        anchorTop = anchorRect.top;
+      }
+    }
+
+    final anchor = _visualScrollAnchorKey?.currentContext;
+    final scrollable =
+        anchor == null ? null : Scrollable.maybeOf(anchor);
+    final position = scrollable?.position;
+    if (position == null ||
+        !position.hasPixels ||
+        anchorTop == null) {
+      _visualScrollAnchorKey = null;
+      return;
+    }
+    _visualScrollAnchorPosition = position;
+    _visualScrollAnchorTop = anchorTop;
+  }
+
+  void _syncVisibleScrollAnchor() {
+    final key = _visualScrollAnchorKey;
+    final position = _visualScrollAnchorPosition;
+    final targetTop = _visualScrollAnchorTop;
+    final anchor = key?.currentContext;
+    if (anchor == null ||
+        !anchor.mounted ||
+        position == null ||
+        targetTop == null ||
+        !position.hasPixels) {
+      return;
+    }
+    final renderObject = anchor.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.attached) return;
+    final currentTop = renderObject.localToGlobal(Offset.zero).dy;
+    final delta = currentTop - targetTop;
+    if (delta.abs() <= 0.25) return;
+    final targetOffset = (position.pixels + delta)
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    if ((targetOffset - position.pixels).abs() > 0.1) {
+      position.jumpTo(targetOffset);
+    }
+  }
+
   void _onProgressChanged() {
     if (_focusPaneTransitionInProgress &&
         !_focusAnchorSyncSuppressed &&
@@ -507,6 +645,10 @@ class _AppWindowMasterDetailTransitionState
   }
 
   void _syncFocusAnchorWithPane({required bool finalFrame}) {
+    // Keep the first visible content item at its original screen coordinate
+    // while width-dependent rows above it grow or shrink.
+    _syncVisibleScrollAnchor();
+
     final anchor =
         widget.focusAnchorKey?.currentContext ?? widget.focusAnchorContext;
     if (anchor == null || !anchor.mounted) return;
@@ -565,6 +707,9 @@ class _AppWindowMasterDetailTransitionState
       // A deliberate scroll takes precedence over automatic anchor correction.
       _focusAnchorSyncSuppressed = true;
       _clearFocusCorrectionSegment();
+      _visualScrollAnchorKey = null;
+      _visualScrollAnchorPosition = null;
+      _visualScrollAnchorTop = null;
     }
     return false;
   }
@@ -658,6 +803,11 @@ class _AppWindowMasterDetailTransitionState
                 child: widget.master,
               )
             : widget.master;
+        final masterWithProgress = AppWindowMasterDetailProgressScope(
+          geometry: widget.geometry,
+          progress: widget.progress,
+          child: master,
+        );
         final detail =
             widget.applyPaneInsets && widget.applyDetailPaneInsets
             ? AppWindowPaneContent(
@@ -675,7 +825,7 @@ class _AppWindowMasterDetailTransitionState
                 width: masterWidth,
                 child: NotificationListener<ScrollNotification>(
                   onNotification: _onMasterScroll,
-                  child: ClipRect(child: master),
+                  child: ClipRect(child: masterWithProgress),
                 ),
               ),
               SizedBox(
