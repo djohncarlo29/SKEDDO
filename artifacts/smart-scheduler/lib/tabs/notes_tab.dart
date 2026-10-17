@@ -548,7 +548,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
       ),
     );
 
-    return Stack(
+    return AppHeaderScrollStack(
       children: [
         // ── Main scroll view ──────────────────────────────────────────────
         // Never structurally modified when off-screen search is active.

@@ -7,9 +7,8 @@ const double kAppHeaderTitleHeight = 57;
 
 /// A scroll viewport whose content is allowed to paint beneath the pinned
 /// first-level header, where [AppHeaderScrollEdge] can apply its glass effect.
-///
-/// Keeping this behavior in one shared scroll-view type prevents individual
-/// tabs and Settings screens from clipping their content at the header boundary.
+/// Its page-level ancestors must also allow that paint overflow; use
+/// [AppHeaderScrollStack] for page stacks that contain one of these viewports.
 class AppHeaderScrollView extends CustomScrollView {
   const AppHeaderScrollView({
     super.key,
@@ -32,6 +31,21 @@ class AppHeaderScrollView extends CustomScrollView {
     super.hitTestBehavior,
     Clip clipBehavior = Clip.none,
   }) : super(clipBehavior: clipBehavior);
+}
+
+/// A page-level stack that lets scroll content paint up behind the app header.
+///
+/// The full-screen AppShell remains the physical viewport clip. Do not put a
+/// hard clip around a page-sized stack below the header, or it will cut off
+/// scrolling content at that internal boundary before the glass overlay.
+class AppHeaderScrollStack extends Stack {
+  const AppHeaderScrollStack({
+    super.key,
+    super.alignment = AlignmentDirectional.topStart,
+    super.textDirection,
+    super.fit = StackFit.loose,
+    super.children,
+  }) : super(clipBehavior: Clip.none);
 }
 
 /// Keeps a fixed large-title slot in the page's scroll extent while the title
@@ -65,7 +79,9 @@ class AppHeaderScrollInset extends StatelessWidget {
 }
 
 /// The shared Liquid Glass treatment used beneath the first, pinned header
-/// level. The caller supplies progress from the live page scroll gesture.
+/// level. This is a visual sibling overlay: its local filter clip bounds only
+/// the glass effect, never the scrollable content. The caller supplies progress
+/// from the live page scroll gesture.
 class AppHeaderScrollEdge extends StatelessWidget {
   const AppHeaderScrollEdge({
     super.key,

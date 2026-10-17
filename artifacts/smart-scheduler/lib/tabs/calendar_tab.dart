@@ -2509,8 +2509,7 @@ class CalendarTabState extends State<CalendarTab>
             // opaque veils that reveal it as rows above the selected week move
             // up and rows below move down.
             Widget buildDayViewUnderlay() => Positioned.fill(
-              child: Stack(
-                clipBehavior: Clip.hardEdge,
+              child: AppHeaderScrollStack(
                 children: [
                   // ── Day banner (weekday + full date) ────────────────
                   if (showDayHeaderChrome)
@@ -2673,8 +2672,7 @@ class CalendarTabState extends State<CalendarTab>
               onHorizontalDragEnd: swipeEnabled ? _onHDragEnd : null,
               child: ColoredBox(
                 color: resolveThemeColor(kBackgroundColor, context),
-                child: Stack(
-                  clipBehavior: Clip.none,
+                child: AppHeaderScrollStack(
                   children: [
                     // ── Year view ─────────────────────────────────────────
                     // Only shown when truly at rest (t < 0.001). The morph

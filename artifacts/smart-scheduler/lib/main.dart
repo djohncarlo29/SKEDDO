@@ -2662,6 +2662,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     // the engine skips the offstage tabs entirely, and vice-versa.
     return IndexedStack(
       index: _selectedIndex,
+      // Scroll views in these pages paint through their own viewport and this
+      // page stack into the full-screen AppShell, where the physical viewport
+      // is the only top clipping boundary.
+      clipBehavior: Clip.none,
       children: [
         RepaintBoundary(
           child: NotesTab(
@@ -2945,8 +2949,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                              (headerToolbarHeight +
                                                      kAppHeaderTitleHeight) *
                                                  (1 - t),
-                                          child: ClipRect(
-                                            child: Transform.translate(
+                                           child: Transform.translate(
                                               offset: Offset(
                                                 0,
                                                 -titleScrollOffset,
@@ -2983,8 +2986,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                       backgroundColor,
                                                                   primaryLabel:
                                                                       primaryLabel,
-                                                                ),
-                                                          ),
+                                               ),
                                                         ),
                                                       ),
                                                 ),

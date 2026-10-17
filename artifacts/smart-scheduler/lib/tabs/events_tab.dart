@@ -8452,7 +8452,7 @@ class EventsTabState extends State<EventsTab>
         _masterFocusAnchorKey = _gridFocusAnchorKeyForLabel(label);
         widget.onTileTapped?.call(label, color);
       },
-      child: Stack(
+      child: AppHeaderScrollStack(
         children: [
           // Grid slides out to the left as DCV enters from the right.
           if (!widget.landscapeMasterDetail)
