@@ -308,7 +308,7 @@ class AppWindowMasterDetailTransition extends StatefulWidget {
     this.drawDivider = true,
     this.focusAnchorContext,
     this.focusAnchorKey,
-    this.focusRevealDuration = const Duration(milliseconds: 360),
+    this.focusRevealDuration = const Duration(milliseconds: 180),
     this.focusAvoidTabBar = true,
   });
 
@@ -406,18 +406,26 @@ AppWindowFocusAnchorScrollTarget? appWindowFocusAnchorScrollTarget({
 class _AppWindowMasterDetailTransitionState
     extends State<AppWindowMasterDetailTransition> {
   bool _focusAnchorSyncScheduled = false;
-  bool _focusAnchorSyncAllowSettled = false;
   bool _focusAnchorSyncSuppressed = false;
   bool _focusAnchorCorrectionInFlight = false;
+  bool _focusPaneTransitionInProgress = false;
+  double? _focusPaneTransitionEndProgress;
+  double? _focusCorrectionSegmentStartOffset;
+  double? _focusCorrectionSegmentStartProgress;
+  int _focusCorrectionGeneration = 0;
 
   @override
   void initState() {
     super.initState();
     widget.progress.addStatusListener(_onProgressStatus);
     widget.progress.addListener(_onProgressChanged);
-    _scheduleFocusAnchorSync(
-      allowSettled: widget.progress.status == AnimationStatus.completed,
-    );
+    final status = widget.progress.status;
+    if (status == AnimationStatus.forward ||
+        status == AnimationStatus.reverse) {
+      _beginFocusPaneTransition(status);
+    } else {
+      _scheduleFocusAnchorSync();
+    }
   }
 
   @override
@@ -428,40 +436,124 @@ class _AppWindowMasterDetailTransitionState
       oldWidget.progress.removeListener(_onProgressChanged);
       widget.progress.addStatusListener(_onProgressStatus);
       widget.progress.addListener(_onProgressChanged);
+      final status = widget.progress.status;
+      if (status == AnimationStatus.forward ||
+          status == AnimationStatus.reverse) {
+        _beginFocusPaneTransition(status);
+      } else {
+        _scheduleFocusAnchorSync();
+      }
     }
     if (oldWidget.focusAnchorContext != widget.focusAnchorContext ||
         oldWidget.focusAnchorKey != widget.focusAnchorKey) {
       _focusAnchorSyncSuppressed = false;
-      if (widget.progress.status == AnimationStatus.forward ||
-          widget.progress.status == AnimationStatus.reverse) {
-        _scheduleFocusAnchorSync();
-      }
+      _clearFocusCorrectionSegment();
+      _scheduleFocusAnchorSync();
     }
   }
 
   void _onProgressStatus(AnimationStatus status) {
     if (status == AnimationStatus.forward ||
         status == AnimationStatus.reverse) {
-      _focusAnchorSyncSuppressed = false;
-      _scheduleFocusAnchorSync();
+      _beginFocusPaneTransition(status);
       return;
     }
     if (status == AnimationStatus.completed ||
         status == AnimationStatus.dismissed) {
-      if (!_focusAnchorSyncSuppressed) {
-        _scheduleFocusAnchorSync(allowSettled: true);
+      if (_focusAnchorSyncSuppressed) {
+        _focusPaneTransitionInProgress = false;
+        _clearFocusCorrectionSegment();
+      } else {
+        _scheduleFocusAnchorSync();
       }
     }
   }
 
+  void _beginFocusPaneTransition(AnimationStatus status) {
+    _focusAnchorSyncSuppressed = false;
+    _focusPaneTransitionInProgress = true;
+    _focusPaneTransitionEndProgress =
+        status == AnimationStatus.forward ? 1.0 : 0.0;
+    _clearFocusCorrectionSegment();
+
+    // Cancel any standalone reveal already in progress. From now on, any
+    // needed correction is driven by the pane transition's shared progress.
+    if (_focusAnchorCorrectionInFlight) {
+      final anchor =
+          widget.focusAnchorKey?.currentContext ?? widget.focusAnchorContext;
+      final scrollable = anchor == null ? null : Scrollable.maybeOf(anchor);
+      final position = scrollable?.position;
+      if (position != null && position.hasPixels) {
+        position.jumpTo(position.pixels);
+      }
+    }
+    _focusCorrectionGeneration++;
+    _focusAnchorCorrectionInFlight = false;
+    _scheduleFocusAnchorSync();
+  }
+
   void _onProgressChanged() {
-    // Recheck during both directions because text wrapping and row geometry
-    // can change again as the pane returns to full width.
-    if (widget.progress.status == AnimationStatus.forward ||
-        widget.progress.status == AnimationStatus.reverse) {
+    if (_focusPaneTransitionInProgress &&
+        !_focusAnchorSyncSuppressed &&
+        (widget.progress.status == AnimationStatus.forward ||
+            widget.progress.status == AnimationStatus.reverse)) {
       _scheduleFocusAnchorSync();
     }
   }
+
+  void _clearFocusCorrectionSegment() {
+    _focusCorrectionSegmentStartOffset = null;
+    _focusCorrectionSegmentStartProgress = null;
+  }
+
+  void _syncFocusAnchorWithPane({required bool finalFrame}) {
+    final anchor =
+        widget.focusAnchorKey?.currentContext ?? widget.focusAnchorContext;
+    if (anchor == null || !anchor.mounted) return;
+    final scrollable = Scrollable.maybeOf(anchor);
+    if (scrollable == null) return;
+    final position = scrollable.position;
+    if (!position.hasPixels || !position.hasContentDimensions) return;
+
+    final target = appWindowFocusAnchorScrollTarget(
+      anchorContext: anchor,
+      viewportContext: context,
+      avoidTabBar: widget.focusAvoidTabBar,
+    );
+    if (target == null) {
+      // If it is already visible, preserve its position rather than centering
+      // it or continuing an adjustment that is no longer needed.
+      _clearFocusCorrectionSegment();
+      return;
+    }
+
+    final progress = widget.progress.value.clamp(0.0, 1.0).toDouble();
+    _focusCorrectionSegmentStartOffset ??= position.pixels;
+    _focusCorrectionSegmentStartProgress ??= progress;
+    final startOffset = _focusCorrectionSegmentStartOffset!;
+    final startProgress = _focusCorrectionSegmentStartProgress!;
+    final endProgress = _focusPaneTransitionEndProgress ?? progress;
+    final progressRange = endProgress - startProgress;
+    final segmentProgress = finalFrame || progressRange.abs() < 0.0001
+        ? 1.0
+        : ((progress - startProgress) / progressRange)
+              .clamp(0.0, 1.0)
+              .toDouble();
+    final easedProgress = Curves.easeInOutCubic.transform(segmentProgress);
+    final desiredOffset = finalFrame
+        ? target.offset
+        : startOffset + (target.offset - startOffset) * easedProgress;
+    final clampedOffset = desiredOffset
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    if ((clampedOffset - position.pixels).abs() > 0.1) {
+      position.jumpTo(clampedOffset);
+    }
+  }
+
+  bool _isSettled(AnimationStatus status) =>
+      status == AnimationStatus.completed ||
+      status == AnimationStatus.dismissed;
 
   bool _onMasterScroll(ScrollNotification notification) {
     final isUserDrag =
@@ -469,40 +561,36 @@ class _AppWindowMasterDetailTransitionState
             notification.dragDetails != null) ||
         (notification is ScrollUpdateNotification &&
             notification.dragDetails != null);
-    if (isUserDrag &&
-        (widget.progress.status == AnimationStatus.forward ||
-            widget.progress.status == AnimationStatus.reverse)) {
+    if (isUserDrag && _focusPaneTransitionInProgress) {
       // A deliberate scroll takes precedence over automatic anchor correction.
-      // A later row selection clears this suppression and becomes the new
-      // focus anchor.
       _focusAnchorSyncSuppressed = true;
+      _clearFocusCorrectionSegment();
     }
     return false;
   }
 
-  void _scheduleFocusAnchorSync({bool allowSettled = false}) {
+  void _scheduleFocusAnchorSync() {
     if (_focusAnchorSyncSuppressed) return;
-    if (_focusAnchorSyncScheduled) {
-      _focusAnchorSyncAllowSettled =
-          _focusAnchorSyncAllowSettled || allowSettled;
-      return;
-    }
+    if (_focusAnchorSyncScheduled) return;
     _focusAnchorSyncScheduled = true;
-    _focusAnchorSyncAllowSettled = allowSettled;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusAnchorSyncScheduled = false;
-      final checkSettled = _focusAnchorSyncAllowSettled;
-      _focusAnchorSyncAllowSettled = false;
       if (!mounted || _focusAnchorSyncSuppressed) return;
-      if (_focusAnchorCorrectionInFlight) return;
       final status = widget.progress.status;
-      final isAnimating =
-          status == AnimationStatus.forward ||
-          status == AnimationStatus.reverse;
-      final isSettled =
-          status == AnimationStatus.completed ||
-          status == AnimationStatus.dismissed;
-      if (!isAnimating && !(checkSettled && isSettled)) return;
+      if (_focusPaneTransitionInProgress) {
+        if (status != AnimationStatus.forward &&
+            status != AnimationStatus.reverse &&
+            !_isSettled(status)) {
+          return;
+        }
+        _syncFocusAnchorWithPane(finalFrame: _isSettled(status));
+        if (_isSettled(status)) {
+          _focusPaneTransitionInProgress = false;
+          _clearFocusCorrectionSegment();
+        }
+        return;
+      }
+      if (_focusAnchorCorrectionInFlight || !_isSettled(status)) return;
 
       final anchor =
           widget.focusAnchorKey?.currentContext ?? widget.focusAnchorContext;
@@ -514,36 +602,22 @@ class _AppWindowMasterDetailTransitionState
       );
       if (target == null) return;
 
-      final progress = widget.progress.value.clamp(0.0, 1.0).toDouble();
-      final remainingFraction = switch (status) {
-        AnimationStatus.forward => 1.0 - progress,
-        AnimationStatus.reverse => progress,
-        _ => 0.0,
-      };
-      final duration = isAnimating
-          ? Duration(
-              milliseconds:
-                  (widget.focusRevealDuration.inMilliseconds *
-                          remainingFraction)
-                      .round()
-                      .clamp(
-                        120,
-                        math.max(
-                          120,
-                          widget.focusRevealDuration.inMilliseconds,
-                        ),
-                      )
-                      .toInt(),
-            )
-          : const Duration(milliseconds: 180);
       _focusAnchorCorrectionInFlight = true;
-      unawaited(_animateFocusAnchor(target, duration));
+      final generation = ++_focusCorrectionGeneration;
+      unawaited(
+        _animateFocusAnchor(
+          target,
+          widget.focusRevealDuration,
+          generation,
+        ),
+      );
     });
   }
 
   Future<void> _animateFocusAnchor(
     AppWindowFocusAnchorScrollTarget target,
     Duration duration,
+    int generation,
   ) async {
     try {
       await target.position.animateTo(
@@ -552,10 +626,10 @@ class _AppWindowMasterDetailTransitionState
         curve: Curves.easeInOutCubic,
       );
     } finally {
-      if (mounted) {
+      if (mounted && generation == _focusCorrectionGeneration) {
         _focusAnchorCorrectionInFlight = false;
         if (!_focusAnchorSyncSuppressed) {
-          _scheduleFocusAnchorSync(allowSettled: true);
+          _scheduleFocusAnchorSync();
         }
       }
     }

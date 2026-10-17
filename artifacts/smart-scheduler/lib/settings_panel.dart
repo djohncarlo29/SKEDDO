@@ -311,7 +311,9 @@ class _SettingsPanelState extends State<SettingsPanel>
         }
         // The shared transition is no longer mounted after this layout-mode
         // change, so settle the master anchor immediately in the new viewport.
-        _revealCurrentMasterAnchorIfNeeded(Duration.zero);
+        _revealCurrentMasterAnchorIfNeeded(
+          const Duration(milliseconds: 180),
+        );
       } else if (widget.isLandscapeTwoPane) {
         widget.subScreenBackAction.value = null;
       } else if (_activeRoute != null && _navCtrl.value >= 0.5) {
@@ -459,13 +461,18 @@ class _SettingsPanelState extends State<SettingsPanel>
     widget.subScreenBackAction.value = null;
     await _paneTransitionController.reverse();
     if (!mounted) return;
-    setState(() {
-      _isSplitActive = false;
-      _activeRoute = null;
-      _previousRoute = null;
+    // Keep the shared transition mounted through its final frame so its
+    // selected-row correction can finish on the same progress tick as the
+    // pane and header. Remove the split presentation immediately afterward.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _isSplitActive = false;
+        _activeRoute = null;
+        _previousRoute = null;
+      });
+      _splitDetailController.value = 0.0;
     });
-    _splitDetailController.value = 0.0;
-    _revealCurrentMasterAnchorIfNeeded(const Duration(milliseconds: 180));
   }
 
   void _revealCurrentMasterAnchorIfNeeded(Duration duration) {
@@ -601,7 +608,6 @@ class _SettingsPanelState extends State<SettingsPanel>
           progress: _paneTransitionProgress,
           dividerColor: separatorColor,
           applyDetailPaneInsets: false,
-          focusRevealDuration: _paneTransitionController.duration!,
           focusAvoidTabBar: false,
           focusAnchorKey: _masterAnchorKey,
           master: ColoredBox(

@@ -130,6 +130,62 @@ void main() {
   testWidgets(
     'keeps visible anchors in place and reveals them in both pane directions',
     (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1024, 600);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final progress = AnimationController(
+        vsync: const TestVSync(),
+        duration: const Duration(milliseconds: 100),
+      );
+      final scrollController = ScrollController();
+      final anchorKey = GlobalKey();
+
+      await tester.pumpWidget(
+        _focusTransitionApp(
+          progress: progress,
+          scrollController: scrollController,
+          anchorKey: anchorKey,
+          anchorIndex: 10,
+        ),
+      );
+      await tester.pump();
+      scrollController.jumpTo(650);
+      await tester.pump();
+
+      progress.forward();
+      await tester.pumpAndSettle();
+      expect(scrollController.offset, 650);
+      _expectAnchorVisible(tester, anchorKey, avoidTabBar: true);
+
+      // Closing the pane must also restore a selected row that has moved above
+      // the usable viewport while the split is open.
+      scrollController.jumpTo(900);
+      await tester.pump();
+      progress.reverse();
+      await tester.pumpAndSettle();
+      _expectAnchorVisible(tester, anchorKey, avoidTabBar: true);
+      expect(scrollController.offset, closeTo(720, 1));
+
+      // Opening from full width must reveal the same row if it starts below
+      // the usable area, without centering it under the floating tab bar.
+      scrollController.jumpTo(0);
+      await tester.pump();
+      progress.forward();
+      await tester.pumpAndSettle();
+      _expectAnchorVisible(tester, anchorKey, avoidTabBar: true);
+      expect(scrollController.offset, closeTo(270, 1));
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      progress.dispose();
+      scrollController.dispose();
+    },
+  );
+
+  testWidgets('waits for pane motion to settle before revealing a hidden row', (
+    tester,
+  ) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(1024, 600);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -139,7 +195,7 @@ void main() {
       vsync: const TestVSync(),
       duration: const Duration(milliseconds: 100),
     );
-    final scrollController = ScrollController();
+    final scrollController = ScrollController(initialScrollOffset: 650);
     final anchorKey = GlobalKey();
 
     await tester.pumpWidget(
@@ -151,31 +207,26 @@ void main() {
       ),
     );
     await tester.pump();
-    scrollController.jumpTo(650);
-    await tester.pump();
-
-    progress.forward();
-    await tester.pumpAndSettle();
     expect(scrollController.offset, 650);
     _expectAnchorVisible(tester, anchorKey, avoidTabBar: true);
 
-    // Closing the pane must also restore a selected row that has moved above
-    // the usable viewport while the split is open.
-    scrollController.jumpTo(900);
-    await tester.pump();
-    progress.reverse();
-    await tester.pumpAndSettle();
-    _expectAnchorVisible(tester, anchorKey, avoidTabBar: true);
-    expect(scrollController.offset, closeTo(720, 1));
-
-    // Opening from full width must reveal the same row if it starts below the
-    // usable area, without centering it under the floating tab bar.
     scrollController.jumpTo(0);
-    await tester.pump();
     progress.forward();
-    await tester.pumpAndSettle();
-    _expectAnchorVisible(tester, anchorKey, avoidTabBar: true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 51));
+    expect(progress.status, AnimationStatus.forward);
+    expect(scrollController.offset, greaterThan(0));
+    expect(scrollController.offset, lessThan(270));
+
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(progress.status, AnimationStatus.completed);
+    // The row correction reaches its final offset on the same frame as the
+    // pane transition, with no trailing independent animation.
     expect(scrollController.offset, closeTo(270, 1));
+
+    await tester.pumpAndSettle();
+    expect(scrollController.offset, closeTo(270, 1));
+    _expectAnchorVisible(tester, anchorKey, avoidTabBar: true);
 
     await tester.pumpWidget(const SizedBox.shrink());
     progress.dispose();

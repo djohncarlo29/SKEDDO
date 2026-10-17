@@ -48,6 +48,12 @@ void main() {
 
       await tester.tap(find.text('Theme'));
       await tester.pump();
+      final masterTransition = tester
+          .widgetList<AppWindowMasterDetailTransition>(
+            find.byType(AppWindowMasterDetailTransition),
+          )
+          .firstWhere((transition) => transition.focusAnchorKey != null);
+      expect(masterTransition.focusAvoidTabBar, isFalse);
       final masterView = find.byType(CustomScrollView).first;
       final masterScrollable = find.descendant(
         of: masterView,
@@ -80,6 +86,23 @@ void main() {
       await tester.tap(find.text('Start of Week'));
       await tester.pumpAndSettle();
       expect(find.text('Saturday'), findsOneWidget);
+
+      final detailBackButton = find.ancestor(
+        of: find.byIcon(CupertinoIcons.back),
+        matching: find.byType(CupertinoButton),
+      );
+      final onBack = tester.widget<CupertinoButton>(detailBackButton).onPressed;
+      expect(onBack, isNotNull);
+      onBack!();
+      await tester.pumpAndSettle();
+      expect(find.byType(AppWindowMasterDetailTransition), findsNothing);
+      expect(find.text('Saturday'), findsNothing);
+      final fullWidthMaster = tester.getRect(
+        find.byType(CustomScrollView).first,
+      );
+      final selectedMasterRow = tester.getRect(find.text('Default View').first);
+      expect(selectedMasterRow.top, greaterThanOrEqualTo(fullWidthMaster.top));
+      expect(selectedMasterRow.bottom, lessThanOrEqualTo(fullWidthMaster.bottom));
     },
   );
 }

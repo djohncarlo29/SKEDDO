@@ -8749,7 +8749,6 @@ class EventsTabState extends State<EventsTab>
                       context,
                     ),
                     applyPaneInsets: false,
-                    focusRevealDuration: kDcvPaneTransitionDuration,
                     focusAnchorContext: _masterFocusAnchorContext,
                     master: gridView,
                     detail: landscapeDetailView,
