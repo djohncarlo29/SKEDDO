@@ -2054,7 +2054,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     required Color primaryLabel,
   }) {
     if (!isDCVVisual && _selectedIndex == 1) {
-      return _buildCalendarTitleRow();
+      return _buildCalendarTitleRow(compactFadeColor: headerColor);
     }
 
     return SizedBox(
@@ -2852,7 +2852,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                 backgroundColor,
                                 t,
                               )!;
-                              final borderAlpha = (1 - t).clamp(0.0, 1.0);
                               final shadowAlpha = (1 - t).clamp(0.0, 1.0);
                               return Container(
                                 width: double.infinity,
@@ -2896,10 +2895,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                              opacity:
                                                  _searchModeContentOpacity,
                                              child: Container(
-                                               color: headerColor.withValues(
+                                                color: backgroundColor.withValues(
                                                  alpha:
                                                      (1.0 - edgeProgress) *
-                                                     headerColor.a,
+                                                      backgroundColor.a,
                                                ),
                                                child: AppWindowContentPadding(
                                                  child: Padding(
@@ -2917,8 +2916,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                          _buildLargeHeaderTitle(
                                                            isDCVVisual:
                                                                isDCVVisual,
-                                                           headerColor:
-                                                               headerColor,
+                                                          headerColor:
+                                                              backgroundColor,
                                                            primaryLabel:
                                                                primaryLabel,
                                                          ),
@@ -2932,7 +2931,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                      if (!isLandscape)
                                        AppHeaderScrollEdge(
                                          progress: edgeProgress,
-                                         surfaceColor: headerColor,
+                                         surfaceColor: backgroundColor,
                                          height:
                                              topInset +
                                              headerToolbarHeight * (1 - t),
@@ -3368,21 +3367,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                         },
                                       ),
                                     ),
-                                    if (borderAlpha > 0.001)
-                                      Positioned(
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                        child: IgnorePointer(
-                                          child: Opacity(
-                                            opacity: borderAlpha,
-                                            child: Container(
-                                              height: 0.75,
-                                              color: separatorColor,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
                                   ],
                                 ),
                               );
