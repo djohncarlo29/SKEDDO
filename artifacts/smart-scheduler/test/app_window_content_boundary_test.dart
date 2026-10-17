@@ -523,6 +523,48 @@ void main() {
     expect(nestedPadding!.left, 18);
     expect(nestedViewPadding!.left, 18);
   });
+
+  testWidgets(
+    'keeps the current parent viewport when no detail anchor is active',
+    (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1024, 600);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final progress = AnimationController(
+        vsync: tester,
+        duration: const Duration(milliseconds: 200),
+      );
+      addTearDown(progress.dispose);
+      final scrollController = ScrollController(initialScrollOffset: 650);
+      addTearDown(scrollController.dispose);
+      final previouslyOpenedItemKey = GlobalKey();
+      final visibleItemKey = GlobalKey();
+
+      await tester.pumpWidget(
+        _focusTransitionApp(
+          progress: progress,
+          scrollController: scrollController,
+          anchorKey: previouslyOpenedItemKey,
+          anchorIndex: 0,
+          useFocusAnchor: false,
+          visualAnchorKeys: {9: visibleItemKey},
+        ),
+      );
+      await tester.pump();
+
+      expect(scrollController.offset, closeTo(650, 0.1));
+      expect(find.byKey(previouslyOpenedItemKey), findsNothing);
+      expect(find.byKey(visibleItemKey), findsOneWidget);
+      expect(
+        tester.getRect(find.byKey(visibleItemKey)).overlaps(
+          tester.getRect(find.byType(ListView)),
+        ),
+        isTrue,
+      );
+    },
+  );
 }
 
 const _focusTestGeometry = AppWindowMasterDetailGeometry(
@@ -541,6 +583,7 @@ Widget _focusTransitionApp({
   required ScrollController scrollController,
   required GlobalKey anchorKey,
   required int anchorIndex,
+  bool useFocusAnchor = true,
   bool avoidTabBar = true,
   double focusBottomClearance = 0.0,
   bool variableHeights = false,
@@ -554,7 +597,7 @@ Widget _focusTransitionApp({
         geometry: _focusTestGeometry,
         progress: progress,
         applyDetailPaneInsets: false,
-        focusAnchorKey: anchorKey,
+        focusAnchorKey: useFocusAnchor ? anchorKey : null,
         focusRevealDuration: const Duration(milliseconds: 100),
         focusAvoidTabBar: avoidTabBar,
         focusBottomClearance: focusBottomClearance,

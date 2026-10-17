@@ -7042,6 +7042,12 @@ class EventsTabState extends State<EventsTab>
       _utilityExitScheduled = false;
       // Keep the last selected tile through the reverse pane animation so the
       // shared transition can make a final visibility correction at full width.
+      // Once that transition has completed, the parent viewport is authoritative;
+      // a later orientation change must not reveal this historical source row.
+      if (old.activeDCV != null && widget.activeDCV == null) {
+        _masterFocusAnchorContext = null;
+        _masterFocusAnchorKey = null;
+      }
     }
     // The active section editor can still have focus when the DCV closes, so
     // its final onSubmitted callback is not guaranteed to run. Persist the
