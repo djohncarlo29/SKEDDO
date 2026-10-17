@@ -1,0 +1,104 @@
+Month View / Year View: second-level header must scroll away with the content
+
+The screenshots show a very specific behavior problem.
+
+The first-level header is correct as a fixed header. It should remain at the top.
+
+The problem is that the second-level header is behaving as though it is also pinned/sticky.
+
+That is not what I want.
+
+Month View
+
+In Month View, the second-level header contains the current month/title and its associated controls.
+
+When I scroll the Month View upward, that entire second-level header should move upward together with the calendar content.
+
+Once it has scrolled underneath the first-level header, it should be gone.
+
+It must not:
+
+- remain visible behind the first-level header,
+- move back downward,
+- reappear as a second-level header,
+- or become pinned at the top again.
+
+The intended behavior is:
+
+FIRST-LEVEL HEADER
+────────────────────────
+        ↓ fixed
+
+SECOND-LEVEL HEADER
+        ↓
+CALENDAR CONTENT
+        ↓
+        ↓ scroll upward
+        ↓
+SECOND-LEVEL HEADER passes underneath
+FIRST-LEVEL HEADER
+        ↓
+SECOND-LEVEL HEADER disappears
+CALENDAR CONTENT continues scrolling
+
+So after the second-level header has scrolled away, only the first-level header remains fixed.
+
+Year View
+
+The exact same principle applies to Year View.
+
+In fact, the Year View currently demonstrates the problem even more aggressively: the second-level header keeps coming back and effectively behaves like another sticky header.
+
+That is wrong.
+
+The Year View's second-level header must be part of the same scrollable content stream as the months.
+
+Once it scrolls away, it stays away until the user's scroll position actually returns to it.
+
+The important architectural distinction
+
+Please do not solve this by simply changing the visual opacity, z-order, clipping, or `LiquidGlassScrollEdge`.
+
+The underlying behavior needs to be correct.
+
+The hierarchy should be:
+
+FIRST-LEVEL HEADER
+    → permanently fixed
+
+EVERYTHING BELOW IT
+    → one scrollable content hierarchy
+
+The second-level header is not a second fixed header.
+
+It is the first portion of the scrollable content.
+
+Therefore, when the content scrolls upward:
+
+second-level header + calendar content must move as one unified scrollable thing.
+
+The `LiquidGlassScrollEdge` on the first-level header should then visually affect the second-level header as it passes underneath it, exactly the same way it affects the ordinary content.
+
+Acceptance criteria
+
+Month View
+
+- First-level header stays fixed.
+- Second-level header scrolls normally with the Month View.
+- Scrolling upward causes the second-level header to disappear underneath the first-level header.
+- It does not remain pinned behind the first-level header.
+- It does not come back down independently.
+- Scrolling back toward the top naturally brings the second-level header back because the user's actual scroll position has returned to it.
+
+Year View
+
+- Same behavior.
+- The Year View's second-level header is part of the scrollable Year View content.
+- It must not become/revert to a pinned second-level header.
+- It should disappear completely after scrolling past it and only return when the scroll position actually moves back to it.
+
+Most importantly: I am not asking for the second-level header to be hidden manually after scrolling. I want it to genuinely be part of the scrollable content hierarchy so that it naturally scrolls away with that content.
+
+The first-level header is the only persistent header.
+
+Everything underneath it—including second-level headers/titles and their controls—should be allowed to scroll underneath the first-level header and participate in its `LiquidGlassScrollEdge`.

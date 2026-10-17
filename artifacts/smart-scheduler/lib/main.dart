@@ -829,6 +829,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   String _calendarPrevTitle = '';
   String _calendarTitle = '';
   String _calendarNextTitle = '';
+  // In portrait Month/Year views, the calendar title and its navigation
+  // controls are the first items in the calendar's own scrollable content.
+  bool _calendarTitleInScrollContent = true;
 
   // True when the header is displaying a month name — drives view-mode icon
   // visibility so it syncs with the shared midpoint title handoff rather than
@@ -2094,142 +2097,16 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     bool compact = false,
     Color? compactFadeColor,
   }) {
-    final canUp = _calendarView != CalendarView.day;
-    final canDown = _calendarView != CalendarView.year;
-    final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
-    const compactArrowWidth = 40.0;
-    const compactTrailingControlsWidth = compactArrowWidth + 24.0;
-
-    Widget buildPanel(String title, {required bool isActive}) {
-      final displayTitle = _formattedCalendarMonthTitle(title);
-      final isToday = _isTodayTitle(displayTitle, _calendarDisplayYear);
-      final titleStyle = TextStyle(
-        fontFamily: kSFProText,
-        fontSize: compact ? 17 : 34,
-        fontWeight: compact ? FontWeight.w600 : FontWeight.bold,
-        fontStyle: FontStyle.normal,
-        color: isToday ? resolveAccentColor(context) : primaryLabel,
-        letterSpacing: compact ? -0.6 : -1.2,
-      );
-
-      Widget compactArrow({
-        required _ChevronDir direction,
-        required VoidCallback? onTap,
-      }) {
-        return SizedBox(
-          width: compactArrowWidth,
-          height: 52,
-          child: Center(
-            child: SizedBox(
-              width: compactArrowWidth,
-              height: 40,
-              child: AnimatedTapIcon(
-                padding: const EdgeInsets.all(11),
-                onTap: onTap,
-                child: _ChevronIcon(
-                  direction: direction,
-                  color: resolveAccentColor(context),
-                  size: 18,
-                  strokeWidth: 1.6,
-                ),
-              ),
-            ),
-          ),
+    Widget buildPanel(String title, {required bool isActive}) =>
+        _buildCalendarTitlePanel(
+          context: context,
+          title: title,
+          displayYear: _calendarDisplayYear,
+          view: _calendarView,
+          isActive: isActive,
+          compact: compact,
+          compactFadeColor: compactFadeColor,
         );
-      }
-
-      final titleScroller = HeaderTitleScroller(
-        title: displayTitle,
-        fadeColor:
-            compactFadeColor ?? resolveThemeColor(kCardColor, context),
-        onTap: isActive && isToday ? _advanceCurrentCalendarHeader : null,
-        showTrailingFade: true,
-        leadingContentWidth: compact ? compactArrowWidth : null,
-        leadingGap: 0,
-        trailingContentWidth: compact ? compactTrailingControlsWidth : null,
-        centerWhenContentFits: compact,
-        contentAlignment: compact
-            ? Alignment.centerLeft
-            : Alignment.bottomLeft,
-        leadingBuilder: compact
-            ? (_) => compactArrow(
-                direction: _ChevronDir.left,
-                onTap: isActive
-                    ? () => _calendarTabKey.currentState?.navigatePrev()
-                    : null,
-              )
-            : null,
-        trailingBuilder: (titleFontSize) {
-          final verticalNavigation = _CalendarNavChevron(
-            titleFontSize: titleFontSize,
-            canUp: canUp,
-            canDown: canDown,
-            compact: compact,
-            onUp: isActive && canUp
-                ? () => _calendarTabKey.currentState?.navigateUp()
-                : null,
-            onDown: isActive && canDown
-                ? () => _calendarTabKey.currentState?.navigateDown()
-                : null,
-          );
-          if (!compact) return verticalNavigation;
-
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              verticalNavigation,
-              compactArrow(
-                direction: _ChevronDir.right,
-                onTap: isActive
-                    ? () => _calendarTabKey.currentState?.navigateNext()
-                    : null,
-              ),
-            ],
-          );
-        },
-        style: titleStyle,
-      );
-
-      final previousArrow = AnimatedTapIcon(
-        padding: const EdgeInsets.fromLTRB(18, 12, 4, 8),
-        onTap: isActive
-            ? () => _calendarTabKey.currentState?.navigatePrev()
-            : null,
-        child: _ChevronIcon(
-          direction: _ChevronDir.left,
-          color: resolveAccentColor(context),
-          size: 18,
-          strokeWidth: 1.6,
-        ),
-      );
-      final nextArrow = AnimatedTapIcon(
-        padding: const EdgeInsets.fromLTRB(10, 12, 0, 8),
-        onTap: isActive
-            ? () => _calendarTabKey.currentState?.navigateNext()
-            : null,
-        child: _ChevronIcon(
-          direction: _ChevronDir.right,
-          color: resolveAccentColor(context),
-          size: 18,
-          strokeWidth: 1.6,
-        ),
-      );
-
-      if (compact) {
-        return SizedBox.expand(child: titleScroller);
-      }
-
-      return Row(
-        // Keep the title's text baseline on the same bottom edge as the
-        // standard Notes/Events header title.
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(child: titleScroller),
-          previousArrow,
-          nextArrow,
-        ],
-      );
-    }
 
     return ValueListenableBuilder<double>(
       valueListenable: _calendarStripSlide,
@@ -2272,6 +2149,182 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildCalendarTitlePanel({
+    required BuildContext context,
+    required String title,
+    required int displayYear,
+    required CalendarView view,
+    required bool isActive,
+    bool compact = false,
+    Color? compactFadeColor,
+  }) {
+    final canUp = view != CalendarView.day;
+    final canDown = view != CalendarView.year;
+    final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
+    const compactArrowWidth = 40.0;
+    const compactTrailingControlsWidth = compactArrowWidth + 24.0;
+    final displayTitle = _formattedCalendarMonthTitle(title);
+    final isToday = _isTodayTitle(displayTitle, displayYear);
+    final titleStyle = TextStyle(
+      fontFamily: kSFProText,
+      fontSize: compact ? 17 : 34,
+      fontWeight: compact ? FontWeight.w600 : FontWeight.bold,
+      fontStyle: FontStyle.normal,
+      color: isToday ? resolveAccentColor(context) : primaryLabel,
+      letterSpacing: compact ? -0.6 : -1.2,
+    );
+
+    Widget compactArrow({
+      required _ChevronDir direction,
+      required VoidCallback? onTap,
+    }) {
+      return SizedBox(
+        width: compactArrowWidth,
+        height: 52,
+        child: Center(
+          child: SizedBox(
+            width: compactArrowWidth,
+            height: 40,
+            child: AnimatedTapIcon(
+              padding: const EdgeInsets.all(11),
+              onTap: onTap,
+              child: _ChevronIcon(
+                direction: direction,
+                color: resolveAccentColor(context),
+                size: 18,
+                strokeWidth: 1.6,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final titleScroller = HeaderTitleScroller(
+      title: displayTitle,
+      fadeColor: compactFadeColor ?? resolveThemeColor(kCardColor, context),
+      onTap: isActive && isToday ? _advanceCurrentCalendarHeader : null,
+      showTrailingFade: true,
+      leadingContentWidth: compact ? compactArrowWidth : null,
+      leadingGap: 0,
+      trailingContentWidth: compact ? compactTrailingControlsWidth : null,
+      centerWhenContentFits: compact,
+      contentAlignment: compact ? Alignment.centerLeft : Alignment.bottomLeft,
+      leadingBuilder: compact
+          ? (_) => compactArrow(
+              direction: _ChevronDir.left,
+              onTap: isActive
+                  ? () => _calendarTabKey.currentState?.navigatePrev()
+                  : null,
+            )
+          : null,
+      trailingBuilder: (titleFontSize) {
+        final verticalNavigation = _CalendarNavChevron(
+          titleFontSize: titleFontSize,
+          canUp: canUp,
+          canDown: canDown,
+          compact: compact,
+          onUp: isActive && canUp
+              ? () => _calendarTabKey.currentState?.navigateUp()
+              : null,
+          onDown: isActive && canDown
+              ? () => _calendarTabKey.currentState?.navigateDown()
+              : null,
+        );
+        if (!compact) return verticalNavigation;
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            verticalNavigation,
+            compactArrow(
+              direction: _ChevronDir.right,
+              onTap: isActive
+                  ? () => _calendarTabKey.currentState?.navigateNext()
+                  : null,
+            ),
+          ],
+        );
+      },
+      style: titleStyle,
+    );
+
+    if (compact) {
+      return SizedBox.expand(child: titleScroller);
+    }
+
+    final previousArrow = AnimatedTapIcon(
+      padding: const EdgeInsets.fromLTRB(18, 12, 4, 8),
+      onTap: isActive
+          ? () => _calendarTabKey.currentState?.navigatePrev()
+          : null,
+      child: _ChevronIcon(
+        direction: _ChevronDir.left,
+        color: resolveAccentColor(context),
+        size: 18,
+        strokeWidth: 1.6,
+      ),
+    );
+    final nextArrow = AnimatedTapIcon(
+      padding: const EdgeInsets.fromLTRB(10, 12, 0, 8),
+      onTap: isActive
+          ? () => _calendarTabKey.currentState?.navigateNext()
+          : null,
+      child: _ChevronIcon(
+        direction: _ChevronDir.right,
+        color: resolveAccentColor(context),
+        size: 18,
+        strokeWidth: 1.6,
+      ),
+    );
+
+    return Row(
+      // Keep the title's text baseline on the same bottom edge as the
+      // standard Notes/Events header title.
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(child: titleScroller),
+        previousArrow,
+        nextArrow,
+      ],
+    );
+  }
+
+  Widget _buildScrollableCalendarTitle(
+    BuildContext context,
+    String title,
+    int displayYear,
+    CalendarView view,
+    bool isActive,
+  ) {
+    return SizedBox(
+      height: kAppHeaderTitleHeight,
+      child: AppWindowContentPadding(
+        child: Padding(
+          padding: const EdgeInsets.only(
+            left: 16,
+            right: 16,
+            bottom: kHeaderTitleBottomInset,
+          ),
+          child: Align(
+            alignment: Alignment.bottomLeft,
+            child: SizedBox(
+              width: double.infinity,
+              child: _buildCalendarTitlePanel(
+                context: context,
+                title: title,
+                displayYear: displayYear,
+                view: view,
+                isActive: isActive,
+                compactFadeColor: resolveThemeColor(kBackgroundColor, context),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
