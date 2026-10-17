@@ -1385,6 +1385,9 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
+    final headerSurfaceColor = isLandscape
+        ? backgroundColor
+        : Colors.transparent;
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
 
     Widget title(String value, {double horizontalPadding = 20}) => Center(
@@ -1552,8 +1555,8 @@ class _SettingsHeader extends StatelessWidget {
             right: 0,
             height: topInset + toolbarHeight,
             child: ColoredBox(
-              color: backgroundColor.withValues(
-                alpha: (1 - collapseProgress) * backgroundColor.a,
+              color: headerSurfaceColor.withValues(
+                alpha: (1 - collapseProgress) * headerSurfaceColor.a,
               ),
             ),
           ),
@@ -1628,9 +1631,9 @@ class _SettingsHeader extends StatelessWidget {
               height: kAppHeaderTitleHeight,
               child: Transform.translate(
                 offset: Offset(0, -scrollOffset),
-                child: Container(
-                  color: backgroundColor.withValues(
-                    alpha: (1 - collapseProgress) * backgroundColor.a,
+                 child: Container(
+                   color: headerSurfaceColor.withValues(
+                     alpha: (1 - collapseProgress) * headerSurfaceColor.a,
                   ),
                   child: AppWindowContentPadding(
                     child: Padding(

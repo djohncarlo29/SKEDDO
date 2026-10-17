@@ -2732,6 +2732,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final keyboardBottomInset = MediaQuery.of(context).viewInsets.bottom;
     final bottomInset = systemSafeAreaBottomInset(context);
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
+    final headerSurfaceColor = isLandscape
+        ? backgroundColor
+        : Colors.transparent;
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     // AppShell uses a custom Stack instead of Scaffold, so the framework does
@@ -2857,7 +2860,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                     (1 - t);
                                 final titleScrollOffset =
                                     _headerTitleScrollOffset.value;
-                              final headerColor = backgroundColor;
+                              final headerColor = headerSurfaceColor;
                               return Container(
                                 width: double.infinity,
                                 height: topInset + innerHeight,
@@ -2890,12 +2893,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                 opacity:
                                                     _searchModeContentOpacity,
                                                 child: Container(
-                                                  color: backgroundColor
+                                                  color: headerSurfaceColor
                                                       .withValues(
                                                         alpha:
                                                             (1.0 -
                                                                 edgeProgress) *
-                                                            backgroundColor.a,
+                                                            headerSurfaceColor.a,
                                                       ),
                                                   child:
                                                       AppWindowContentPadding(
