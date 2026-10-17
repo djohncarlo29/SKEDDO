@@ -29,24 +29,31 @@ void main() {
             height: surfaceSize.height,
             child: RepaintBoundary(
               key: captureKey,
-              child: AppHeaderScrollStack(
+              child: Stack(
+                clipBehavior: Clip.none,
                 children: [
                   Positioned.fill(
                     top: 40,
-                    child: AppHeaderScrollView(
-                      controller: controller,
-                      physics: const NeverScrollableScrollPhysics(),
-                      slivers: const [
-                        SliverToBoxAdapter(child: SizedBox(height: 120)),
-                        SliverToBoxAdapter(
-                          child: SizedBox(
-                            key: contentKey,
-                            height: 40,
-                            child: ColoredBox(color: Color(0xFFD84A45)),
+                    child: RepaintBoundary(
+                      child: AppHeaderScrollStack(
+                        children: [
+                          AppHeaderScrollView(
+                            controller: controller,
+                            physics: const NeverScrollableScrollPhysics(),
+                            slivers: const [
+                              SliverToBoxAdapter(child: SizedBox(height: 120)),
+                              SliverToBoxAdapter(
+                                child: SizedBox(
+                                  key: contentKey,
+                                  height: 40,
+                                  child: ColoredBox(color: Color(0xFFD84A45)),
+                                ),
+                              ),
+                              SliverToBoxAdapter(child: SizedBox(height: 600)),
+                            ],
                           ),
-                        ),
-                        SliverToBoxAdapter(child: SizedBox(height: 600)),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   const AppHeaderScrollEdge(
