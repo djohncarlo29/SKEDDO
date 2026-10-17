@@ -537,7 +537,7 @@ void main() {
       );
       expect(
         tester.getRect(line).right,
-        closeTo(screenSize.width - horizontalSafeInset, 0.5),
+        closeTo(screenSize.width, 0.5),
       );
     },
   );

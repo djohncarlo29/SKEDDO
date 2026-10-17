@@ -935,6 +935,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       return false;
     }
 
+    // Day timelines are independent scroll surfaces inside the Calendar Tab.
+    // Their hourly content must not move the app's large title or its controls.
+    if (_selectedIndex == 1 &&
+        _calendarView == CalendarView.day &&
+        _activeDaySubMode != DayViewSubMode.list) {
+      return false;
+    }
+
     if (_searchModeController.value > 0.01) {
       _headerUserScrollActive = false;
       return false;
@@ -953,8 +961,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       // Follow the active Scrollable's actual position rather than summing
       // gesture deltas. This keeps the title aligned with ballistic motion,
       // restored offsets, and calendar panels that share their own controllers.
-      final next =
-          notification.metrics.pixels - notification.metrics.minScrollExtent;
+      // Bouncing physics can report a temporary position below minScrollExtent.
+      // Do not let that rubber-band pull the title back down behind the toolbar.
+      final next = max(
+        0.0,
+        notification.metrics.pixels - notification.metrics.minScrollExtent,
+      );
       if ((next - current).abs() >= 0.01) {
         _headerTitleScrollOffsets[scope] = next;
         _headerTitleScrollOffset.value = next;
@@ -2868,45 +2880,50 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                          right: 0,
                                          height:
                                              kAppHeaderTitleHeight * (1 - t),
-                                         child: Transform.translate(
-                                           offset: Offset(
-                                             0,
-                                             -titleScrollOffset,
-                                           ),
-                                           child: FadeTransition(
-                                             opacity:
-                                                 _searchModeContentOpacity,
-                                             child: Container(
-                                                color: backgroundColor.withValues(
-                                                 alpha:
-                                                     (1.0 - edgeProgress) *
-                                                      backgroundColor.a,
-                                               ),
-                                               child: AppWindowContentPadding(
-                                                 child: Padding(
-                                                   padding:
-                                                       const EdgeInsets.only(
-                                                         left: 16,
-                                                         right: 16,
-                                                         bottom:
-                                                             kHeaderTitleBottomInset,
-                                                       ),
-                                                   child: Align(
-                                                     alignment:
-                                                         Alignment.bottomLeft,
-                                                     child:
-                                                         _buildLargeHeaderTitle(
-                                                           isDCVVisual:
-                                                               isDCVVisual,
-                                                          headerColor:
-                                                              backgroundColor,
-                                                           primaryLabel:
-                                                               primaryLabel,
-                                                         ),
-                                                   ),
-                                                 ),
-                                               ),
-                                             ),
+                                          child: ClipRect(
+                                            child: Transform.translate(
+                                              offset: Offset(
+                                                0,
+                                                -titleScrollOffset,
+                                              ),
+                                              child: FadeTransition(
+                                                opacity:
+                                                    _searchModeContentOpacity,
+                                                child: Container(
+                                                  color: backgroundColor
+                                                      .withValues(
+                                                        alpha:
+                                                            (1.0 -
+                                                                edgeProgress) *
+                                                            backgroundColor.a,
+                                                      ),
+                                                  child:
+                                                      AppWindowContentPadding(
+                                                        child: Padding(
+                                                          padding:
+                                                              const EdgeInsets.only(
+                                                                left: 16,
+                                                                right: 16,
+                                                                bottom:
+                                                                    kHeaderTitleBottomInset,
+                                                              ),
+                                                          child: Align(
+                                                            alignment: Alignment
+                                                                .bottomLeft,
+                                                            child:
+                                                                _buildLargeHeaderTitle(
+                                                                  isDCVVisual:
+                                                                      isDCVVisual,
+                                                                  headerColor:
+                                                                      backgroundColor,
+                                                                  primaryLabel:
+                                                                      primaryLabel,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                ),
+                                              ),
                                            ),
                                          ),
                                        ),

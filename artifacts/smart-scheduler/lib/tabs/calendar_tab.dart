@@ -204,6 +204,11 @@ void _scheduleDayTimelinePosition({
 // vertical padding token.
 const double _kCalendarHeaderToDowGap = 8.0;
 
+double _calendarExpandedTitleHeight(BuildContext context) =>
+    MediaQuery.orientationOf(context) == Orientation.portrait
+        ? kAppHeaderTitleHeight
+        : 0.0;
+
 // The Day View circle slot is the same bounded slot that prevents the
 // row-level swipe copy from resolving to a larger Dynamic-Type diameter than
 // the in-cell marker. Extra row height is reserved below this slot, never
@@ -2343,9 +2348,12 @@ class CalendarTabState extends State<CalendarTab>
             // the Month View header group slides away as List mode enters.
             // Single Day and Multi Day keep the DOW/week strip fixed.
             final double listModeT = colT * _listModeCtrl.value;
+            final expandedTitleHeight =
+                _calendarExpandedTitleHeight(context);
             final double dayHeaderGroupSlideY =
                 -listModeT *
-                    (_kCalendarHeaderToDowGap +
+                    (expandedTitleHeight +
+                        _kCalendarHeaderToDowGap +
                         _kDayLabelHeight +
                         dayWeekStripHeight +
                         dayBannerHeight);
@@ -2354,6 +2362,7 @@ class CalendarTabState extends State<CalendarTab>
                     ? dayHeaderGroupSlideY
                     : 0.0;
             final dayContentTop =
+                expandedTitleHeight +
                 _kCalendarHeaderToDowGap +
                 _kDayLabelHeight +
                 dayWeekStripHeight;
@@ -2887,11 +2896,11 @@ class CalendarTabState extends State<CalendarTab>
                     // the DOW alignment remains independent of panel motion.
                     if (showDayHeaderChrome)
                       Positioned(
-                        // Cover the complete boundary below the app header.
-                        // The week rows are vertically transformed while
-                        // collapsing into Day View and can otherwise paint
-                        // through the small gap above the DOW letters.
-                        top: 0,
+                        // The app shell keeps the large calendar title below
+                        // its first-level toolbar. Align the pinned DOW cover
+                        // after that title, where the Month View's DOW row
+                        // naturally sits, instead of over the week strip.
+                        top: expandedTitleHeight,
                         left: 0,
                         right: 0,
                         height: _kCalendarHeaderToDowGap + _kDayLabelHeight,
