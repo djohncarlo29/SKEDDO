@@ -527,6 +527,9 @@ class _AppWindowVisualAnchor {
   final bool wasVisible;
 }
 
+const double _kAppWindowAnchorDriftComfortRange = 18.0;
+const double _kAppWindowAnchorDriftCorrectionFactor = 0.75;
+
 class _AppWindowMasterDetailTransitionState
     extends State<AppWindowMasterDetailTransition> {
   final GlobalKey _masterViewportClipKey = GlobalKey();
@@ -776,27 +779,86 @@ class _AppWindowMasterDetailTransitionState
   }
 
   double? _preservedOffsetDelta(_AppWindowVisualAnchor anchor) {
-    final anchorContext = anchor.key?.currentContext ?? anchor.context;
-    if (!anchorContext.mounted) return null;
-    final position = _positionForAnchor(anchorContext);
-    if (position == null ||
-        position != anchor.position ||
-        !position.hasPixels ||
-        !position.hasContentDimensions) {
-      return null;
+    final selectedKey = widget.focusAnchorKey;
+    final selectedContext =
+        selectedKey?.currentContext ?? widget.focusAnchorContext;
+    final drifts = <double>[];
+
+    // Use the visible rows as a soft shared anchor. Width-driven wrapping can
+    // move individual rows by different amounts, so a median is less sensitive
+    // to one row's height change than preserving only the tapped row exactly.
+    for (final visualAnchor in _visualAnchors) {
+      if (!visualAnchor.wasVisible) continue;
+      final anchorContext =
+          visualAnchor.key?.currentContext ?? visualAnchor.context;
+      if (!anchorContext.mounted) continue;
+      final position = _positionForAnchor(anchorContext);
+      if (position == null ||
+          position != visualAnchor.position ||
+          !position.hasPixels ||
+          !position.hasContentDimensions) {
+        continue;
+      }
+      final renderObject = anchorContext.findRenderObject();
+      final bounds = _usableViewportBounds(anchorContext);
+      if (renderObject is! RenderBox ||
+          !renderObject.attached ||
+          !renderObject.hasSize ||
+          bounds == null) {
+        continue;
+      }
+
+      final currentTop = renderObject.localToGlobal(Offset.zero).dy;
+      final axisSign =
+          position.axisDirection == AxisDirection.down ? 1.0 : -1.0;
+      final desiredTop = bounds.top + visualAnchor.topWithinViewport;
+      final drift = (currentTop - desiredTop) * axisSign;
+      final isSelected =
+          (selectedKey != null &&
+              identical(visualAnchor.key, selectedKey)) ||
+          (selectedContext != null &&
+              identical(visualAnchor.context, selectedContext));
+      // Give the selected item extra influence without making its exact
+      // coordinate the only thing the transition preserves.
+      drifts
+        ..add(drift)
+        ..addAll(isSelected ? [drift] : const []);
     }
-    final renderObject = anchorContext.findRenderObject();
-    final bounds = _usableViewportBounds(anchorContext);
-    if (renderObject is! RenderBox ||
-        !renderObject.attached ||
-        !renderObject.hasSize ||
-        bounds == null) {
-      return null;
+
+    if (drifts.isEmpty) {
+      // Keep the previous single-anchor behavior as a fallback if surrounding
+      // keyed rows are not mounted in this frame.
+      final anchorContext = anchor.key?.currentContext ?? anchor.context;
+      if (!anchorContext.mounted) return null;
+      final position = _positionForAnchor(anchorContext);
+      final renderObject = anchorContext.findRenderObject();
+      final bounds = _usableViewportBounds(anchorContext);
+      if (position == null ||
+          position != anchor.position ||
+          !position.hasPixels ||
+          !position.hasContentDimensions ||
+          renderObject is! RenderBox ||
+          !renderObject.attached ||
+          !renderObject.hasSize ||
+          bounds == null) {
+        return null;
+      }
+      final currentTop = renderObject.localToGlobal(Offset.zero).dy;
+      final axisSign =
+          position.axisDirection == AxisDirection.down ? 1.0 : -1.0;
+      drifts.add(
+        (currentTop - (bounds.top + anchor.topWithinViewport)) * axisSign,
+      );
     }
-    final currentTop = renderObject.localToGlobal(Offset.zero).dy;
-    final axisSign = position.axisDirection == AxisDirection.down ? 1.0 : -1.0;
-    final desiredTop = bounds.top + anchor.topWithinViewport;
-    return (currentTop - desiredTop) * axisSign;
+
+    drifts.sort();
+    final middle = drifts.length ~/ 2;
+    final drift = drifts.length.isOdd
+        ? drifts[middle]
+        : (drifts[middle - 1] + drifts[middle]) / 2.0;
+    final excessDrift = drift.abs() - _kAppWindowAnchorDriftComfortRange;
+    if (excessDrift <= 0.0) return 0.0;
+    return drift.sign * excessDrift * _kAppWindowAnchorDriftCorrectionFactor;
   }
 
   double? _scrollOffsetForFocus({

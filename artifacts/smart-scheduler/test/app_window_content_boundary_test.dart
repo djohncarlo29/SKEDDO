@@ -184,7 +184,7 @@ void main() {
   );
 
   testWidgets(
-    'keeps the selected item at its visual position when row heights reflow',
+    'softly stabilizes the selected item through width-driven row reflow',
     (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(1024, 600);
@@ -197,6 +197,9 @@ void main() {
       );
       final scrollController = ScrollController();
       final anchorKey = GlobalKey();
+      final nearbyAnchorKeys = {
+        for (final index in [8, 9, 11, 12]) index: GlobalKey(),
+      };
 
       await tester.pumpWidget(
         _focusTransitionApp(
@@ -205,6 +208,7 @@ void main() {
           anchorKey: anchorKey,
           anchorIndex: 10,
           variableHeights: true,
+          visualAnchorKeys: nearbyAnchorKeys,
         ),
       );
       await tester.pump();
@@ -214,12 +218,21 @@ void main() {
 
       progress.forward();
       await tester.pumpAndSettle();
-      expect(tester.getTopLeft(find.byKey(anchorKey)).dy, closeTo(initialTop, 1));
+      expect(
+        tester.getTopLeft(find.byKey(anchorKey)).dy,
+        closeTo(initialTop, _kAnchorDriftTolerance),
+      );
       _expectAnchorVisible(tester, anchorKey, avoidTabBar: true);
+      final settledOffset = scrollController.offset;
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(scrollController.offset, settledOffset);
 
       progress.reverse();
       await tester.pumpAndSettle();
-      expect(tester.getTopLeft(find.byKey(anchorKey)).dy, closeTo(initialTop, 1));
+      expect(
+        tester.getTopLeft(find.byKey(anchorKey)).dy,
+        closeTo(initialTop, _kAnchorDriftTolerance),
+      );
       _expectAnchorVisible(tester, anchorKey, avoidTabBar: true);
 
       await tester.pumpWidget(const SizedBox.shrink());
@@ -531,6 +544,7 @@ Widget _focusTransitionApp({
   bool avoidTabBar = true,
   double focusBottomClearance = 0.0,
   bool variableHeights = false,
+  Map<int, GlobalKey> visualAnchorKeys = const {},
 }) {
   return CupertinoApp(
     home: AppWindowContentScope(
@@ -544,6 +558,7 @@ Widget _focusTransitionApp({
         focusRevealDuration: const Duration(milliseconds: 100),
         focusAvoidTabBar: avoidTabBar,
         focusBottomClearance: focusBottomClearance,
+        scrollAnchorKeys: visualAnchorKeys.values.toList(growable: false),
         dividerColor: CupertinoColors.separator,
         master: ListView(
           controller: scrollController,
@@ -555,7 +570,9 @@ Widget _focusTransitionApp({
                       ? 96.0
                       : 72.0;
                   return SizedBox(
-                    key: index == anchorIndex ? anchorKey : null,
+                    key: index == anchorIndex
+                        ? anchorKey
+                        : visualAnchorKeys[index],
                     height: height,
                     child: Center(child: Text('Row $index')),
                   );
@@ -568,6 +585,8 @@ Widget _focusTransitionApp({
     ),
   );
 }
+
+const double _kAnchorDriftTolerance = 27.0;
 
 void _expectAnchorVisible(
   WidgetTester tester,
