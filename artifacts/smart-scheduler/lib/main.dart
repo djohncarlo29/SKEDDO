@@ -2734,7 +2734,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
     final headerSurfaceColor = isLandscape
         ? backgroundColor
-        : Colors.transparent;
+        : const Color(0x00000000);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     // AppShell uses a custom Stack instead of Scaffold, so the framework does

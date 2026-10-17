@@ -1385,9 +1385,6 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
-    final headerSurfaceColor = isLandscape
-        ? backgroundColor
-        : Colors.transparent;
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
 
     Widget title(String value, {double horizontalPadding = 20}) => Center(
@@ -1536,6 +1533,9 @@ class _SettingsHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
+    final headerSurfaceColor = isLandscape
+        ? backgroundColor
+        : const Color(0x00000000);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final toolbarHeight = isLandscape
         ? contentHeight
