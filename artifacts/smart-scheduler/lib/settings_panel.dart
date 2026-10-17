@@ -1384,8 +1384,7 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardColor = resolveThemeColor(kCardColor, context);
-    final shadowColor = resolveThemeColor(kTabBarShadowColor, context);
+    final backgroundColor = resolveThemeColor(kBackgroundColor, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
 
     Widget title(String value, {double horizontalPadding = 20}) => Center(
@@ -1393,7 +1392,7 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
         child: HeaderTitleScroller(
           title: value,
-          fadeColor: cardColor,
+          fadeColor: backgroundColor,
           centerWhenContentFits: true,
           contentAlignment: Alignment.centerLeft,
           style: TextStyle(
@@ -1410,7 +1409,7 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
 
     Widget headerPage(String value, {required bool interactive}) {
       return ColoredBox(
-        color: cardColor,
+        color: backgroundColor,
         child: IgnorePointer(
           ignoring: !interactive,
           child: Stack(
@@ -1479,12 +1478,7 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
     return Container(
       width: double.infinity,
       height: topInset + contentHeight,
-      decoration: BoxDecoration(
-        color: cardColor,
-        boxShadow: resolveThemeShadows([
-          BoxShadow(color: shadowColor, blurRadius: 6, offset: Offset(0, 2)),
-        ], context),
-      ),
+      color: backgroundColor,
       child: Stack(
         children: [
           Positioned.fill(
@@ -1538,9 +1532,7 @@ class _SettingsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardColor = resolveThemeColor(kCardColor, context);
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
-    final shadowColor = resolveThemeColor(kTabBarShadowColor, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     final toolbarHeight = isLandscape
         ? contentHeight
@@ -1559,18 +1551,9 @@ class _SettingsHeader extends StatelessWidget {
             left: 0,
             right: 0,
             height: topInset + toolbarHeight,
-            child: Container(
-              decoration: BoxDecoration(
-                color: cardColor.withValues(
-                  alpha: (1 - collapseProgress) * cardColor.a,
-                ),
-                boxShadow: resolveThemeShadows([
-                  BoxShadow(
-                    color: shadowColor,
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ], context),
+            child: ColoredBox(
+              color: backgroundColor.withValues(
+                alpha: (1 - collapseProgress) * backgroundColor.a,
               ),
             ),
           ),
@@ -1585,7 +1568,7 @@ class _SettingsHeader extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 84),
                         child: HeaderTitleScroller(
                           title: title,
-                          fadeColor: cardColor,
+                                  fadeColor: backgroundColor,
                           centerWhenContentFits: true,
                           contentAlignment: Alignment.centerLeft,
                           style: TextStyle(
@@ -1618,7 +1601,7 @@ class _SettingsHeader extends StatelessWidget {
                                 width: double.infinity,
                                 child: HeaderTitleScroller(
                                   title: title,
-                                  fadeColor: cardColor,
+                                  fadeColor: backgroundColor,
                                   style: TextStyle(
                                     fontFamily: kSFProText,
                                     fontSize: 34,

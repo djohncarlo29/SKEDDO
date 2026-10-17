@@ -2720,10 +2720,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final keyboardBottomInset = MediaQuery.of(context).viewInsets.bottom;
     final bottomInset = systemSafeAreaBottomInset(context);
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
-    final cardColor = resolveThemeColor(kCardColor, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
-    final shadowBlack = resolveThemeColor(kShadowBlack, context);
     // AppShell uses a custom Stack instead of Scaffold, so the framework does
     // not automatically shrink the content viewport when the IME appears.
     // Reserve the keyboard's space while editing a DCV section; otherwise
@@ -2755,8 +2753,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Header + Content share a Stack so the header (with its drop-shadow
-                  // and hairline separator) paints on top of the scrolling content.
+                  // Header + Content share a Stack so the scrolling glass edge
+                  // paints above content without changing the page's scroll layout.
                   // Previously the header was a Column sibling above the content;
                   // Column paints children in order, so the content layer painted
                   // over the header's shadow and made it invisible. Now the content
@@ -2847,12 +2845,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                     (1 - t);
                                 final titleScrollOffset =
                                     _headerTitleScrollOffset.value;
-                              final headerColor = Color.lerp(
-                                cardColor,
-                                backgroundColor,
-                                t,
-                              )!;
-                              final shadowAlpha = (1 - t).clamp(0.0, 1.0);
+                              final headerColor = backgroundColor;
                               return Container(
                                 width: double.infinity,
                                 height: topInset + innerHeight,
@@ -2862,17 +2855,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                          (1.0 - edgeProgress) *
                                          headerColor.a,
                                    ),
-                                  boxShadow: shadowAlpha > 0.001
-                                      ? resolveThemeShadows([
-                                          BoxShadow(
-                                            color: shadowBlack.withValues(
-                                              alpha: 0.094 * shadowAlpha,
-                                            ),
-                                            blurRadius: 6,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ], context)
-                                      : const [],
                                 ),
                                  child: Stack(
                                    clipBehavior: Clip.none,
