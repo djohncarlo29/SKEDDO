@@ -370,11 +370,13 @@ class AppWindowMasterDetailTransition extends StatefulWidget {
     this.applyPaneInsets = true,
     this.applyDetailPaneInsets = true,
     this.drawDivider = true,
+    this.masterScrollController,
     this.focusAnchorContext,
     this.focusAnchorKey,
     this.scrollAnchorKeys = const [],
     this.focusRevealDuration = const Duration(milliseconds: 180),
     this.focusAvoidTabBar = true,
+    this.focusBottomClearance = 0.0,
   });
 
   final AppWindowMasterDetailGeometry geometry;
@@ -385,11 +387,13 @@ class AppWindowMasterDetailTransition extends StatefulWidget {
   final bool applyPaneInsets;
   final bool applyDetailPaneInsets;
   final bool drawDivider;
+  final ScrollController? masterScrollController;
   final BuildContext? focusAnchorContext;
   final GlobalKey? focusAnchorKey;
   final List<GlobalKey> scrollAnchorKeys;
   final Duration focusRevealDuration;
   final bool focusAvoidTabBar;
+  final double focusBottomClearance;
 
   @override
   State<AppWindowMasterDetailTransition> createState() =>
@@ -412,11 +416,15 @@ AppWindowFocusAnchorScrollTarget? appWindowFocusAnchorScrollTarget({
   required BuildContext anchorContext,
   required BuildContext viewportContext,
   required bool avoidTabBar,
+  Rect? usableViewportBounds,
+  double bottomClearance = 0.0,
+  double baseScrollOffsetDelta = 0.0,
+  ScrollPosition? positionOverride,
 }) {
   if (!anchorContext.mounted || !viewportContext.mounted) return null;
-  final scrollable = Scrollable.maybeOf(anchorContext);
-  if (scrollable == null) return null;
-  final position = scrollable.position;
+  final position = positionOverride ??
+      Scrollable.maybeOf(anchorContext)?.position;
+  if (position == null) return null;
   if (!position.hasPixels || !position.hasContentDimensions) return null;
   if (position.axisDirection != AxisDirection.down &&
       position.axisDirection != AxisDirection.up) {
@@ -436,32 +444,66 @@ AppWindowFocusAnchorScrollTarget? appWindowFocusAnchorScrollTarget({
       anchorRenderObject.localToGlobal(Offset.zero) & anchorRenderObject.size;
   final viewportRect =
       viewportBox.localToGlobal(Offset.zero) & viewportBox.size;
-  final visibleBottom = avoidTabBar
-      ? math.min(
-          viewportRect.bottom,
-          MediaQuery.sizeOf(viewportContext).height -
-              floatingTabBarContentBottomClearance(viewportContext),
-        )
-      : viewportRect.bottom;
-  final visibleHeight = visibleBottom - viewportRect.top;
+  final visibleTop = math.max(
+    viewportRect.top,
+    usableViewportBounds?.top ?? viewportRect.top,
+  );
+  var visibleBottom = math.min(
+    viewportRect.bottom,
+    usableViewportBounds?.bottom ?? viewportRect.bottom,
+  );
+  if (avoidTabBar) {
+    visibleBottom = math.min(
+      visibleBottom,
+      MediaQuery.sizeOf(viewportContext).height -
+          floatingTabBarContentBottomClearance(viewportContext),
+    );
+  }
+  visibleBottom = math.min(
+    visibleBottom,
+    viewportRect.bottom - math.max(0.0, bottomClearance),
+  );
+  final visibleHeight = visibleBottom - visibleTop;
   if (visibleHeight <= 0) return null;
 
-  final topOverflow = math.max(0.0, viewportRect.top - anchorRect.top);
-  final bottomOverflow = math.max(0.0, anchorRect.bottom - visibleBottom);
-  if (topOverflow <= 1.0 && bottomOverflow <= 1.0) return null;
+  final axisSign = position.axisDirection == AxisDirection.down ? 1.0 : -1.0;
+  final predictedAnchorRect = anchorRect.shift(
+    Offset(0.0, -baseScrollOffsetDelta * axisSign),
+  );
+  final topOverflow = math.max(0.0, visibleTop - predictedAnchorRect.top);
+  final bottomOverflow = math.max(
+    0.0,
+    predictedAnchorRect.bottom - visibleBottom,
+  );
+  if (topOverflow <= 1.0 && bottomOverflow <= 1.0) {
+    final targetOffset = (position.pixels + baseScrollOffsetDelta)
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    if ((targetOffset - (position.pixels + baseScrollOffsetDelta)).abs() <= 0.5) {
+      return null;
+    }
+    return AppWindowFocusAnchorScrollTarget(
+      position: position,
+      offset: targetOffset,
+    );
+  }
 
   final isDown = position.axisDirection == AxisDirection.down;
-  final offsetDelta = anchorRect.height > visibleHeight
+  final offsetDelta = predictedAnchorRect.height > visibleHeight
       // An unusually tall item cannot fit in the available region. Align its
       // leading edge when needed so the greatest possible portion stays visible.
       ? (isDown ? -topOverflow : topOverflow)
       : (isDown
             ? bottomOverflow - topOverflow
             : topOverflow - bottomOverflow);
-  final targetOffset = (position.pixels + offsetDelta)
+  final targetOffset = (position.pixels +
+          baseScrollOffsetDelta +
+          offsetDelta)
       .clamp(position.minScrollExtent, position.maxScrollExtent)
       .toDouble();
-  if ((targetOffset - position.pixels).abs() <= 0.5) return null;
+  if ((targetOffset - (position.pixels + baseScrollOffsetDelta)).abs() <= 0.5) {
+    return null;
+  }
 
   return AppWindowFocusAnchorScrollTarget(
     position: position,
@@ -469,19 +511,54 @@ AppWindowFocusAnchorScrollTarget? appWindowFocusAnchorScrollTarget({
   );
 }
 
+class _AppWindowVisualAnchor {
+  const _AppWindowVisualAnchor({
+    required this.key,
+    required this.context,
+    required this.position,
+    required this.topWithinViewport,
+    required this.wasVisible,
+  });
+
+  final GlobalKey? key;
+  final BuildContext context;
+  final ScrollPosition position;
+  final double topWithinViewport;
+  final bool wasVisible;
+}
+
 class _AppWindowMasterDetailTransitionState
     extends State<AppWindowMasterDetailTransition> {
+  final GlobalKey _masterViewportClipKey = GlobalKey();
   bool _focusAnchorSyncScheduled = false;
   bool _focusAnchorSyncSuppressed = false;
   bool _focusAnchorCorrectionInFlight = false;
   bool _focusPaneTransitionInProgress = false;
-  GlobalKey? _visualScrollAnchorKey;
-  ScrollPosition? _visualScrollAnchorPosition;
-  double? _visualScrollAnchorTop;
+  List<_AppWindowVisualAnchor> _visualAnchors = const [];
+  ScrollPosition? _capturedScrollPosition;
+  double? _capturedScrollOffset;
   double? _focusPaneTransitionEndProgress;
   double? _focusCorrectionSegmentStartOffset;
   double? _focusCorrectionSegmentStartProgress;
   int _focusCorrectionGeneration = 0;
+
+  _AppWindowVisualAnchor? get _firstVisibleVisualAnchor {
+    for (final anchor in _visualAnchors) {
+      if (anchor.wasVisible) return anchor;
+    }
+    return null;
+  }
+
+  ScrollPosition? get _masterScrollPosition {
+    final controller = widget.masterScrollController;
+    if (controller != null && controller.positions.length == 1) {
+      return controller.position;
+    }
+    return null;
+  }
+
+  ScrollPosition? _positionForAnchor(BuildContext anchorContext) =>
+      _masterScrollPosition ?? Scrollable.maybeOf(anchorContext)?.position;
 
   @override
   void initState() {
@@ -529,12 +606,7 @@ class _AppWindowMasterDetailTransitionState
     }
     if (status == AnimationStatus.completed ||
         status == AnimationStatus.dismissed) {
-      if (_focusAnchorSyncSuppressed) {
-        _focusPaneTransitionInProgress = false;
-        _clearFocusCorrectionSegment();
-      } else {
-        _scheduleFocusAnchorSync();
-      }
+      _scheduleFocusAnchorSync();
     }
   }
 
@@ -544,15 +616,25 @@ class _AppWindowMasterDetailTransitionState
     _focusPaneTransitionEndProgress =
         status == AnimationStatus.forward ? 1.0 : 0.0;
     _clearFocusCorrectionSegment();
-    _captureVisibleScrollAnchor();
+    _captureVisualContext();
+
+    // If the selected item is already outside the usable area, reveal it
+    // progressively with the same pane animation rather than starting a
+    // second scroll animation after the pane settles.
+    final selected = _selectedVisualAnchor;
+    if (selected != null && !selected.wasVisible) {
+      _focusCorrectionSegmentStartOffset = selected.position.pixels;
+      _focusCorrectionSegmentStartProgress = widget.progress.value;
+    }
 
     // Cancel any standalone reveal already in progress. From now on, any
     // needed correction is driven by the pane transition's shared progress.
     if (_focusAnchorCorrectionInFlight) {
       final anchor =
           widget.focusAnchorKey?.currentContext ?? widget.focusAnchorContext;
-      final scrollable = anchor == null ? null : Scrollable.maybeOf(anchor);
-      final position = scrollable?.position;
+      final position = anchor == null
+          ? _masterScrollPosition
+          : _positionForAnchor(anchor);
       if (position != null && position.hasPixels) {
         position.jumpTo(position.pixels);
       }
@@ -562,81 +644,130 @@ class _AppWindowMasterDetailTransitionState
     _scheduleFocusAnchorSync();
   }
 
-  void _captureVisibleScrollAnchor() {
-    _visualScrollAnchorKey = null;
-    _visualScrollAnchorPosition = null;
-    _visualScrollAnchorTop = null;
-    double? anchorTop;
-
-    for (final key in widget.scrollAnchorKeys) {
-      final anchorContext = key.currentContext;
-      if (anchorContext == null || !anchorContext.mounted) continue;
-      final renderObject = anchorContext.findRenderObject();
-      if (renderObject is! RenderBox || !renderObject.attached) continue;
-      final viewport = RenderAbstractViewport.maybeOf(renderObject);
-      if (viewport == null || viewport is! RenderBox) continue;
-      final viewportBox = viewport as RenderBox;
-      if (!viewportBox.attached) continue;
-      final anchorRect =
-          renderObject.localToGlobal(Offset.zero) & renderObject.size;
-      final viewportRect =
-          viewportBox.localToGlobal(Offset.zero) & viewportBox.size;
-      if (anchorRect.bottom <= viewportRect.top + 1 ||
-          anchorRect.top >= viewportRect.bottom - 1) {
-        continue;
-      }
-      if (anchorTop == null || anchorRect.top < anchorTop) {
-        _visualScrollAnchorKey = key;
-        anchorTop = anchorRect.top;
+  _AppWindowVisualAnchor? get _selectedVisualAnchor {
+    final key = widget.focusAnchorKey;
+    final context = key?.currentContext ?? widget.focusAnchorContext;
+    if (context == null || !context.mounted) return null;
+    for (final anchor in _visualAnchors) {
+      if ((key != null && identical(anchor.key, key)) ||
+          identical(anchor.context, context)) {
+        return anchor;
       }
     }
+    return null;
+  }
 
-    final anchor = _visualScrollAnchorKey?.currentContext;
-    final scrollable =
-        anchor == null ? null : Scrollable.maybeOf(anchor);
-    final position = scrollable?.position;
+  Rect? _usableViewportBounds(BuildContext anchorContext) {
+    if (!anchorContext.mounted) return null;
+    final anchorRenderObject = anchorContext.findRenderObject();
+    if (anchorRenderObject == null) return null;
+    final viewport = RenderAbstractViewport.maybeOf(anchorRenderObject);
+    if (viewport == null || viewport is! RenderBox) {
+      return null;
+    }
+    final viewportBox = viewport as RenderBox;
+    if (!viewportBox.attached || !viewportBox.hasSize) return null;
+    final viewportRect =
+        viewportBox.localToGlobal(Offset.zero) & viewportBox.size;
+
+    var top = viewportRect.top;
+    var bottom = viewportRect.bottom;
+    final clipObject =
+        _masterViewportClipKey.currentContext?.findRenderObject();
+    if (clipObject is RenderBox && clipObject.attached && clipObject.hasSize) {
+      final clipRect = clipObject.localToGlobal(Offset.zero) & clipObject.size;
+      top = math.max(top, clipRect.top);
+      bottom = math.min(bottom, clipRect.bottom);
+    }
+    if (widget.focusAvoidTabBar) {
+      bottom = math.min(
+        bottom,
+        MediaQuery.sizeOf(context).height -
+            floatingTabBarContentBottomClearance(context),
+      );
+    }
+    bottom = math.min(
+      bottom,
+      viewportRect.bottom - math.max(0.0, widget.focusBottomClearance),
+    );
+    if (bottom <= top) return null;
+    return Rect.fromLTRB(
+      viewportRect.left,
+      top,
+      viewportRect.right,
+      bottom,
+    );
+  }
+
+  _AppWindowVisualAnchor? _captureAnchor({
+    required GlobalKey? key,
+    required BuildContext context,
+    required ScrollPosition? requiredPosition,
+  }) {
+    if (!context.mounted) return null;
+    final position = _positionForAnchor(context);
     if (position == null ||
+        (requiredPosition != null && position != requiredPosition) ||
         !position.hasPixels ||
-        anchorTop == null) {
-      _visualScrollAnchorKey = null;
-      return;
+        !position.hasContentDimensions) {
+      return null;
     }
-    _visualScrollAnchorPosition = position;
-    _visualScrollAnchorTop = anchorTop;
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox ||
+        !renderObject.attached ||
+        !renderObject.hasSize) {
+      return null;
+    }
+    final bounds = _usableViewportBounds(context);
+    if (bounds == null) return null;
+    final rect = renderObject.localToGlobal(Offset.zero) & renderObject.size;
+    final wasVisible =
+        rect.bottom > bounds.top + 1.0 && rect.top < bounds.bottom - 1.0;
+    return _AppWindowVisualAnchor(
+      key: key,
+      context: context,
+      position: position,
+      topWithinViewport: rect.top - bounds.top,
+      wasVisible: wasVisible,
+    );
   }
 
-  void _syncVisibleScrollAnchor() {
-    final key = _visualScrollAnchorKey;
-    final position = _visualScrollAnchorPosition;
-    final targetTop = _visualScrollAnchorTop;
-    final anchor = key?.currentContext;
-    if (anchor == null ||
-        !anchor.mounted ||
-        position == null ||
-        targetTop == null ||
-        !position.hasPixels) {
-      return;
-    }
-    final renderObject = anchor.findRenderObject();
-    if (renderObject is! RenderBox || !renderObject.attached) return;
-    final currentTop = renderObject.localToGlobal(Offset.zero).dy;
-    final delta = currentTop - targetTop;
-    if (delta.abs() <= 0.25) return;
-    final targetOffset = (position.pixels + delta)
-        .clamp(position.minScrollExtent, position.maxScrollExtent)
-        .toDouble();
-    if ((targetOffset - position.pixels).abs() > 0.1) {
-      position.jumpTo(targetOffset);
-    }
-  }
+  void _captureVisualContext() {
+    final anchors = <_AppWindowVisualAnchor>[];
+    final selectedKey = widget.focusAnchorKey;
+    final selectedContext =
+        selectedKey?.currentContext ?? widget.focusAnchorContext;
+    final selected = selectedContext == null
+        ? null
+        : _captureAnchor(
+            key: selectedKey,
+            context: selectedContext,
+            requiredPosition: null,
+          );
+    if (selected != null) anchors.add(selected);
 
-  void _onProgressChanged() {
-    if (_focusPaneTransitionInProgress &&
-        !_focusAnchorSyncSuppressed &&
-        (widget.progress.status == AnimationStatus.forward ||
-            widget.progress.status == AnimationStatus.reverse)) {
-      _scheduleFocusAnchorSync();
+    final position = selected?.position;
+    final nearby = <_AppWindowVisualAnchor>[];
+    for (final key in widget.scrollAnchorKeys) {
+      if (identical(key, selectedKey)) continue;
+      final context = key.currentContext;
+      if (context == null || !context.mounted) continue;
+      final anchor = _captureAnchor(
+        key: key,
+        context: context,
+        requiredPosition: position,
+      );
+      if (anchor != null && anchor.wasVisible) nearby.add(anchor);
     }
+    nearby.sort(
+      (a, b) => a.topWithinViewport.compareTo(b.topWithinViewport),
+    );
+    anchors.addAll(nearby);
+    _visualAnchors = anchors;
+    _capturedScrollPosition = position ?? (nearby.isEmpty ? null : nearby.first.position);
+    _capturedScrollOffset = _capturedScrollPosition?.hasPixels == true
+        ? _capturedScrollPosition!.pixels
+        : null;
   }
 
   void _clearFocusCorrectionSegment() {
@@ -644,52 +775,122 @@ class _AppWindowMasterDetailTransitionState
     _focusCorrectionSegmentStartProgress = null;
   }
 
-  void _syncFocusAnchorWithPane({required bool finalFrame}) {
-    // Keep the first visible content item at its original screen coordinate
-    // while width-dependent rows above it grow or shrink.
-    _syncVisibleScrollAnchor();
+  double? _preservedOffsetDelta(_AppWindowVisualAnchor anchor) {
+    final anchorContext = anchor.key?.currentContext ?? anchor.context;
+    if (!anchorContext.mounted) return null;
+    final position = _positionForAnchor(anchorContext);
+    if (position == null ||
+        position != anchor.position ||
+        !position.hasPixels ||
+        !position.hasContentDimensions) {
+      return null;
+    }
+    final renderObject = anchorContext.findRenderObject();
+    final bounds = _usableViewportBounds(anchorContext);
+    if (renderObject is! RenderBox ||
+        !renderObject.attached ||
+        !renderObject.hasSize ||
+        bounds == null) {
+      return null;
+    }
+    final currentTop = renderObject.localToGlobal(Offset.zero).dy;
+    final axisSign = position.axisDirection == AxisDirection.down ? 1.0 : -1.0;
+    final desiredTop = bounds.top + anchor.topWithinViewport;
+    return (currentTop - desiredTop) * axisSign;
+  }
 
-    final anchor =
-        widget.focusAnchorKey?.currentContext ?? widget.focusAnchorContext;
-    if (anchor == null || !anchor.mounted) return;
-    final scrollable = Scrollable.maybeOf(anchor);
-    if (scrollable == null) return;
-    final position = scrollable.position;
-    if (!position.hasPixels || !position.hasContentDimensions) return;
-
+  double? _scrollOffsetForFocus({
+    required BuildContext anchorContext,
+    required double baseOffsetDelta,
+  }) {
+    final bounds = _usableViewportBounds(anchorContext);
+    if (bounds == null) return null;
     final target = appWindowFocusAnchorScrollTarget(
-      anchorContext: anchor,
+      anchorContext: anchorContext,
       viewportContext: context,
       avoidTabBar: widget.focusAvoidTabBar,
+      usableViewportBounds: bounds,
+      bottomClearance: widget.focusBottomClearance,
+      baseScrollOffsetDelta: baseOffsetDelta,
+      positionOverride: _positionForAnchor(anchorContext),
     );
-    if (target == null) {
-      // If it is already visible, preserve its position rather than centering
-      // it or continuing an adjustment that is no longer needed.
-      _clearFocusCorrectionSegment();
+    return target?.offset;
+  }
+
+  void _syncFocusAnchorWithPane({required bool finalFrame}) {
+    final focusContext =
+        widget.focusAnchorKey?.currentContext ?? widget.focusAnchorContext;
+    final selected = focusContext == null || !focusContext.mounted
+        ? null
+        : _captureAnchor(
+            key: widget.focusAnchorKey,
+            context: focusContext,
+            requiredPosition: null,
+          );
+
+    final selectedSnapshot = _selectedVisualAnchor;
+    final preserveAnchor = !_focusAnchorSyncSuppressed
+        ? (selectedSnapshot?.wasVisible == true
+              ? selectedSnapshot
+              : _firstVisibleVisualAnchor)
+        : null;
+    final baseOffsetDelta = preserveAnchor == null
+        ? 0.0
+        : (_preservedOffsetDelta(preserveAnchor) ?? 0.0);
+
+    final position = selected?.position ??
+        preserveAnchor?.position ??
+        _capturedScrollPosition;
+    if (position == null || !position.hasPixels || !position.hasContentDimensions) {
       return;
     }
 
-    final progress = widget.progress.value.clamp(0.0, 1.0).toDouble();
-    _focusCorrectionSegmentStartOffset ??= position.pixels;
-    _focusCorrectionSegmentStartProgress ??= progress;
-    final startOffset = _focusCorrectionSegmentStartOffset!;
-    final startProgress = _focusCorrectionSegmentStartProgress!;
-    final endProgress = _focusPaneTransitionEndProgress ?? progress;
-    final progressRange = endProgress - startProgress;
-    final segmentProgress = finalFrame || progressRange.abs() < 0.0001
-        ? 1.0
-        : ((progress - startProgress) / progressRange)
-              .clamp(0.0, 1.0)
-              .toDouble();
-    final easedProgress = Curves.easeInOutCubic.transform(segmentProgress);
-    final desiredOffset = finalFrame
-        ? target.offset
-        : startOffset + (target.offset - startOffset) * easedProgress;
-    final clampedOffset = desiredOffset
+    final baseOffset = (position.pixels + baseOffsetDelta)
         .clamp(position.minScrollExtent, position.maxScrollExtent)
         .toDouble();
-    if ((clampedOffset - position.pixels).abs() > 0.1) {
-      position.jumpTo(clampedOffset);
+    final targetOffset = selected == null
+        ? null
+        : _scrollOffsetForFocus(
+            anchorContext: focusContext!,
+            baseOffsetDelta: baseOffsetDelta,
+          );
+    var desiredOffset = baseOffset;
+    if (selected == null &&
+        preserveAnchor == null &&
+        position == _capturedScrollPosition &&
+        _capturedScrollOffset != null) {
+      desiredOffset = _capturedScrollOffset!
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+    }
+    if (targetOffset != null &&
+        (targetOffset - baseOffset).abs() > 0.5 &&
+        !_focusAnchorSyncSuppressed) {
+      _focusCorrectionSegmentStartOffset ??= baseOffset;
+      _focusCorrectionSegmentStartProgress ??= widget.progress.value;
+      final startOffset = _focusCorrectionSegmentStartOffset!;
+      final startProgress = _focusCorrectionSegmentStartProgress!;
+      final endProgress = _focusPaneTransitionEndProgress ?? widget.progress.value;
+      final progressRange = endProgress - startProgress;
+      final segmentProgress = finalFrame || progressRange.abs() < 0.0001
+          ? 1.0
+          : ((widget.progress.value - startProgress) / progressRange)
+                .clamp(0.0, 1.0)
+                .toDouble();
+      // The pane's Animation is already eased. Applying another curve here
+      // would make scroll movement lag behind and finish after the pane.
+      desiredOffset = startOffset + (targetOffset - startOffset) * segmentProgress;
+      if (finalFrame) desiredOffset = targetOffset;
+    } else if (targetOffset == null ||
+        (targetOffset - baseOffset).abs() <= 0.5) {
+      _clearFocusCorrectionSegment();
+    }
+
+    desiredOffset = desiredOffset
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    if ((desiredOffset - position.pixels).abs() > 0.1) {
+      position.jumpTo(desiredOffset);
     }
   }
 
@@ -704,46 +905,50 @@ class _AppWindowMasterDetailTransitionState
         (notification is ScrollUpdateNotification &&
             notification.dragDetails != null);
     if (isUserDrag && _focusPaneTransitionInProgress) {
-      // A deliberate scroll takes precedence over automatic anchor correction.
+      // A deliberate scroll owns movement during the transition. At the final
+      // frame the selected row still receives a minimal visibility check.
       _focusAnchorSyncSuppressed = true;
       _clearFocusCorrectionSegment();
-      _visualScrollAnchorKey = null;
-      _visualScrollAnchorPosition = null;
-      _visualScrollAnchorTop = null;
     }
     return false;
   }
 
   void _scheduleFocusAnchorSync() {
-    if (_focusAnchorSyncSuppressed) return;
+    final status = widget.progress.status;
+    if (_focusAnchorSyncSuppressed && !_isSettled(status)) return;
     if (_focusAnchorSyncScheduled) return;
     _focusAnchorSyncScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusAnchorSyncScheduled = false;
-      if (!mounted || _focusAnchorSyncSuppressed) return;
-      final status = widget.progress.status;
+      if (!mounted) return;
+      final currentStatus = widget.progress.status;
+      if (_focusAnchorSyncSuppressed && !_isSettled(currentStatus)) return;
       if (_focusPaneTransitionInProgress) {
-        if (status != AnimationStatus.forward &&
-            status != AnimationStatus.reverse &&
-            !_isSettled(status)) {
+        if (currentStatus != AnimationStatus.forward &&
+            currentStatus != AnimationStatus.reverse &&
+            !_isSettled(currentStatus)) {
           return;
         }
-        _syncFocusAnchorWithPane(finalFrame: _isSettled(status));
-        if (_isSettled(status)) {
+        _syncFocusAnchorWithPane(finalFrame: _isSettled(currentStatus));
+        if (_isSettled(currentStatus)) {
           _focusPaneTransitionInProgress = false;
           _clearFocusCorrectionSegment();
         }
         return;
       }
-      if (_focusAnchorCorrectionInFlight || !_isSettled(status)) return;
+      if (_focusAnchorCorrectionInFlight || !_isSettled(currentStatus)) return;
 
       final anchor =
           widget.focusAnchorKey?.currentContext ?? widget.focusAnchorContext;
       if (anchor == null || !anchor.mounted) return;
+      final bounds = _usableViewportBounds(anchor);
       final target = appWindowFocusAnchorScrollTarget(
         anchorContext: anchor,
         viewportContext: context,
         avoidTabBar: widget.focusAvoidTabBar,
+        usableViewportBounds: bounds,
+        bottomClearance: widget.focusBottomClearance,
+        positionOverride: _positionForAnchor(anchor),
       );
       if (target == null) return;
 
@@ -787,6 +992,14 @@ class _AppWindowMasterDetailTransitionState
     super.dispose();
   }
 
+  void _onProgressChanged() {
+    if (_focusPaneTransitionInProgress &&
+        (widget.progress.status == AnimationStatus.forward ||
+            widget.progress.status == AnimationStatus.reverse)) {
+      _scheduleFocusAnchorSync();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -825,7 +1038,10 @@ class _AppWindowMasterDetailTransitionState
                 width: masterWidth,
                 child: NotificationListener<ScrollNotification>(
                   onNotification: _onMasterScroll,
-                  child: ClipRect(child: masterWithProgress),
+                  child: ClipRect(
+                    key: _masterViewportClipKey,
+                    child: masterWithProgress,
+                  ),
                 ),
               ),
               SizedBox(

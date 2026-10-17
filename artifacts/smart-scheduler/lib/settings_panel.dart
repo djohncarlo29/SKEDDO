@@ -316,11 +316,6 @@ class _SettingsPanelState extends State<SettingsPanel>
           _navCtrl.value = 1.0;
           widget.subScreenBackAction.value = _pop;
         }
-        // The shared transition is no longer mounted after this layout-mode
-        // change, so settle the master anchor immediately in the new viewport.
-        _revealCurrentMasterAnchorIfNeeded(
-          const Duration(milliseconds: 180),
-        );
       } else if (widget.isLandscapeTwoPane) {
         widget.subScreenBackAction.value = null;
       } else if (_activeRoute != null && _navCtrl.value >= 0.5) {
@@ -482,27 +477,6 @@ class _SettingsPanelState extends State<SettingsPanel>
     });
   }
 
-  void _revealCurrentMasterAnchorIfNeeded(Duration duration) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final anchor = _masterAnchorKey?.currentContext;
-      if (anchor == null || !anchor.mounted) return;
-      final target = appWindowFocusAnchorScrollTarget(
-        anchorContext: anchor,
-        viewportContext: context,
-        avoidTabBar: false,
-      );
-      if (target == null) return;
-      unawaited(
-        target.position.animateTo(
-          target.offset,
-          duration: duration,
-          curve: Curves.easeInOutCubic,
-        ),
-      );
-    });
-  }
-
   void _pop() {
     // Remove any pending snap listener (pop before reaching 50 %).
     if (_snapListener != null) {
@@ -617,6 +591,7 @@ class _SettingsPanelState extends State<SettingsPanel>
           applyDetailPaneInsets: false,
           focusAvoidTabBar: false,
           focusAnchorKey: _masterAnchorKey,
+          focusBottomClearance: bottomInset,
           scrollAnchorKeys: _settingsRowAnchorKeys.values.toList(
             growable: false,
           ),

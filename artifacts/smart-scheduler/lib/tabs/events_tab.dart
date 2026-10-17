@@ -1764,6 +1764,7 @@ class EventsTabState extends State<EventsTab>
   bool _hadRecentlyDeletedUtilityItems = false;
   bool _animateDcvCategoryReplacement = false;
   BuildContext? _masterFocusAnchorContext;
+  GlobalKey? _masterFocusAnchorKey;
   final Map<String, GlobalKey> _gridScrollAnchorKeys =
       <String, GlobalKey>{};
   final Map<String, GlobalKey> _categoryScrollAnchorKeys =
@@ -2773,10 +2774,24 @@ class EventsTabState extends State<EventsTab>
     // System utility categories are first-class DCVs, just like every other
     // category. Their content is supplied by the detail-view builder below.
     _masterFocusAnchorContext = sourceContext;
+    _masterFocusAnchorKey = _categoryScrollAnchorKey(
+      'category_${category.id}',
+    );
     widget.onTileTapped?.call(
       category.name,
       renderCategoryColor(category.color, context),
     );
+  }
+
+  GlobalKey? _gridFocusAnchorKeyForLabel(String label) {
+    final smartKey = _gridScrollAnchorKeys['smart_$label'];
+    if (smartKey != null) return smartKey;
+    for (final category in _pinnedUserCategories) {
+      if (category.name == label) {
+        return _gridScrollAnchorKeys['category_${category.id}'];
+      }
+    }
+    return null;
   }
 
   void _openUtilityItemSheet({
@@ -8421,6 +8436,7 @@ class EventsTabState extends State<EventsTab>
     return _CategoryTapCallback(
       onTileTapped: (label, color, sourceContext) {
         _masterFocusAnchorContext = sourceContext;
+        _masterFocusAnchorKey = _gridFocusAnchorKeyForLabel(label);
         widget.onTileTapped?.call(label, color);
       },
       child: Stack(
@@ -8773,6 +8789,7 @@ class EventsTabState extends State<EventsTab>
                     ),
                     applyPaneInsets: false,
                     focusAnchorContext: _masterFocusAnchorContext,
+                    focusAnchorKey: _masterFocusAnchorKey,
                     scrollAnchorKeys: [
                       for (final entry in gridItems)
                         if (entry.anchorKey != null) entry.anchorKey!,

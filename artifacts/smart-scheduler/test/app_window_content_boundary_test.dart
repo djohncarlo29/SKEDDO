@@ -183,6 +183,138 @@ void main() {
     },
   );
 
+  testWidgets(
+    'keeps the selected item at its visual position when row heights reflow',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1024, 600);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final progress = AnimationController(
+        vsync: const TestVSync(),
+        duration: const Duration(milliseconds: 100),
+      );
+      final scrollController = ScrollController();
+      final anchorKey = GlobalKey();
+
+      await tester.pumpWidget(
+        _focusTransitionApp(
+          progress: progress,
+          scrollController: scrollController,
+          anchorKey: anchorKey,
+          anchorIndex: 10,
+          variableHeights: true,
+        ),
+      );
+      await tester.pump();
+      scrollController.jumpTo(650);
+      await tester.pump();
+      final initialTop = tester.getTopLeft(find.byKey(anchorKey)).dy;
+
+      progress.forward();
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(find.byKey(anchorKey)).dy, closeTo(initialTop, 1));
+      _expectAnchorVisible(tester, anchorKey, avoidTabBar: true);
+
+      progress.reverse();
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(find.byKey(anchorKey)).dy, closeTo(initialTop, 1));
+      _expectAnchorVisible(tester, anchorKey, avoidTabBar: true);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      progress.dispose();
+      scrollController.dispose();
+    },
+  );
+
+  testWidgets(
+    'respects a full-screen Settings bottom safe-area clearance',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1024, 600);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final progress = AnimationController(
+        vsync: const TestVSync(),
+        duration: const Duration(milliseconds: 100),
+      );
+      final scrollController = ScrollController();
+      final anchorKey = GlobalKey();
+
+      await tester.pumpWidget(
+        _focusTransitionApp(
+          progress: progress,
+          scrollController: scrollController,
+          anchorKey: anchorKey,
+          anchorIndex: 7,
+          avoidTabBar: false,
+          focusBottomClearance: 80,
+        ),
+      );
+      await tester.pump();
+
+      progress.forward();
+      await tester.pumpAndSettle();
+
+      expect(scrollController.offset, closeTo(56, 1));
+      _expectAnchorVisible(
+        tester,
+        anchorKey,
+        avoidTabBar: false,
+        bottomClearance: 80,
+      );
+      final settledOffset = scrollController.offset;
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(scrollController.offset, settledOffset);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      progress.dispose();
+      scrollController.dispose();
+    },
+  );
+
+  testWidgets('rapid reversal settles anchor and pane together', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1024, 600);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final progress = AnimationController(
+      vsync: const TestVSync(),
+      duration: const Duration(milliseconds: 100),
+    );
+    final scrollController = ScrollController();
+    final anchorKey = GlobalKey();
+
+    await tester.pumpWidget(
+      _focusTransitionApp(
+        progress: progress,
+        scrollController: scrollController,
+        anchorKey: anchorKey,
+        anchorIndex: 10,
+      ),
+    );
+    await tester.pump();
+    scrollController.jumpTo(0);
+    await tester.pump();
+
+    progress.forward();
+    await tester.pump(const Duration(milliseconds: 40));
+    progress.reverse();
+    await tester.pumpAndSettle();
+    _expectAnchorVisible(tester, anchorKey, avoidTabBar: true);
+    expect(progress.status, AnimationStatus.dismissed);
+    final settledOffset = scrollController.offset;
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(scrollController.offset, settledOffset);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    progress.dispose();
+    scrollController.dispose();
+  });
+
   testWidgets('waits for pane motion to settle before revealing a hidden row', (
     tester,
   ) async {
@@ -211,6 +343,7 @@ void main() {
     _expectAnchorVisible(tester, anchorKey, avoidTabBar: true);
 
     scrollController.jumpTo(0);
+    await tester.pump();
     progress.forward();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 51));
@@ -396,6 +529,8 @@ Widget _focusTransitionApp({
   required GlobalKey anchorKey,
   required int anchorIndex,
   bool avoidTabBar = true,
+  double focusBottomClearance = 0.0,
+  bool variableHeights = false,
 }) {
   return CupertinoApp(
     home: AppWindowContentScope(
@@ -408,15 +543,23 @@ Widget _focusTransitionApp({
         focusAnchorKey: anchorKey,
         focusRevealDuration: const Duration(milliseconds: 100),
         focusAvoidTabBar: avoidTabBar,
+        focusBottomClearance: focusBottomClearance,
         dividerColor: CupertinoColors.separator,
         master: ListView(
           controller: scrollController,
           children: [
             for (var index = 0; index < 30; index++)
-              SizedBox(
-                key: index == anchorIndex ? anchorKey : null,
-                height: 72,
-                child: Center(child: Text('Row $index')),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final height = variableHeights && constraints.maxWidth < 650
+                      ? 96.0
+                      : 72.0;
+                  return SizedBox(
+                    key: index == anchorIndex ? anchorKey : null,
+                    height: height,
+                    child: Center(child: Text('Row $index')),
+                  );
+                },
               ),
           ],
         ),
@@ -430,6 +573,7 @@ void _expectAnchorVisible(
   WidgetTester tester,
   GlobalKey anchorKey, {
   required bool avoidTabBar,
+  double bottomClearance = 0.0,
 }) {
   final anchorRect = tester.getRect(find.byKey(anchorKey));
   final viewportRect = tester.getRect(find.byType(ListView));
@@ -440,7 +584,7 @@ void _expectAnchorVisible(
           MediaQuery.sizeOf(context).height -
               floatingTabBarContentBottomClearance(context),
         )
-      : viewportRect.bottom;
+      : viewportRect.bottom - bottomClearance;
   expect(anchorRect.top, greaterThanOrEqualTo(viewportRect.top - 1));
   expect(anchorRect.bottom, lessThanOrEqualTo(bottom + 1));
 }
