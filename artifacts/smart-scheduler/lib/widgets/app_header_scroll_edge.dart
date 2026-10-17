@@ -5,6 +5,35 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 const double kAppHeaderToolbarHeight = 44;
 const double kAppHeaderTitleHeight = 57;
 
+/// A scroll viewport whose content is allowed to paint beneath the pinned
+/// first-level header, where [AppHeaderScrollEdge] can apply its glass effect.
+///
+/// Keeping this behavior in one shared scroll-view type prevents individual
+/// tabs and Settings screens from clipping their content at the header boundary.
+class AppHeaderScrollView extends CustomScrollView {
+  const AppHeaderScrollView({
+    super.key,
+    super.scrollDirection,
+    super.reverse,
+    super.controller,
+    super.primary,
+    super.physics,
+    super.scrollBehavior,
+    super.shrinkWrap,
+    super.center,
+    super.anchor,
+    super.cacheExtent,
+    super.paintOrder,
+    super.slivers,
+    super.semanticChildCount,
+    super.dragStartBehavior,
+    super.keyboardDismissBehavior,
+    super.restorationId,
+    super.hitTestBehavior,
+    Clip clipBehavior = Clip.none,
+  }) : super(clipBehavior: clipBehavior);
+}
+
 /// Keeps a fixed large-title slot in the page's scroll extent while the title
 /// itself is painted in the AppShell header above the scrolling content.
 class AppHeaderScrollInset extends StatelessWidget {

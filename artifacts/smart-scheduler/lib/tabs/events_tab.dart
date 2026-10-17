@@ -8235,8 +8235,7 @@ class EventsTabState extends State<EventsTab>
             : gridContentWidth > portraitGridContentWidth * 1.5
             ? 3
             : 2;
-        final scrollView = CustomScrollView(
-          clipBehavior: Clip.none,
+        final scrollView = AppHeaderScrollView(
           key: _scrollViewportKey,
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(
@@ -21056,7 +21055,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     // scrolling behavior; only their body content is specialized.
     final specialContent = widget.specialContentBuilder?.call(context);
     if (specialContent != null) {
-      return CustomScrollView(
+      return AppHeaderScrollView(
         key: _dcvScrollViewportKey,
         controller: _dcvScrollController,
         primary: false,
@@ -21144,7 +21143,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       }
       return Opacity(
         opacity: hideForSortMeasurement ? 0.0 : 1.0,
-        child: CustomScrollView(
+        child: AppHeaderScrollView(
           key: _dcvScrollViewportKey,
           controller: _dcvScrollController,
           primary: false,
@@ -21344,7 +21343,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     if (widget.label.isEmpty) {
       return SizedBox.expand(child: emptyStateContent);
     }
-    return CustomScrollView(
+    return AppHeaderScrollView(
       key: _dcvScrollViewportKey,
       controller: _dcvScrollController,
       primary: false,

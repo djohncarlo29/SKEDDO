@@ -555,7 +555,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
         // The overlay Stack child covers it entirely, preserving scroll
         // position for the whole duration of the off-screen session.
         AppWindowContentPadding(
-          child: CustomScrollView(
+          child: AppHeaderScrollView(
             clipBehavior: Clip.none,
             controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(

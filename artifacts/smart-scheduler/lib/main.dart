@@ -2876,13 +2876,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                   children: [
                                      if (!isLandscape)
                                        Positioned(
-                                         top:
-                                             topInset +
-                                             headerToolbarHeight * (1 - t),
+                                         top: topInset,
                                          left: 0,
                                          right: 0,
                                          height:
-                                             kAppHeaderTitleHeight * (1 - t),
+                                             (headerToolbarHeight +
+                                                     kAppHeaderTitleHeight) *
+                                                 (1 - t),
                                           child: ClipRect(
                                             child: Transform.translate(
                                               offset: Offset(

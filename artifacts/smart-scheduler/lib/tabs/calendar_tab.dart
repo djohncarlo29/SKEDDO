@@ -6379,7 +6379,7 @@ class _DayListPlaceholder extends StatelessWidget {
     // Match the DCV scroll structure: the content is centered in the space
     // left after the floating-tab-bar clearance, while the scroll view still
     // provides the same rubber-band overscroll behavior.
-    return CustomScrollView(
+    return AppHeaderScrollView(
       primary: false,
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),

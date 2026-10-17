@@ -820,7 +820,7 @@ class _MainSettingsContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
+    return AppHeaderScrollView(
       // Settings is a Stack overlay inside CupertinoTabScaffold. Give it an
       // independent controller instead of inheriting the active tab's primary
       // scroll position.
@@ -1090,7 +1090,7 @@ class _SubScreenState extends State<_SubScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final content = CustomScrollView(
+    final content = AppHeaderScrollView(
       primary: false,
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
