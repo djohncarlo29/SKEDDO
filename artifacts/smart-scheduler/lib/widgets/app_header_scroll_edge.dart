@@ -4,6 +4,8 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 
 const double kAppHeaderToolbarHeight = 44;
 const double kAppHeaderTitleHeight = 57;
+const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;
+const double _kAppHeaderScrollEdgeMaxBlurSigma = 8;
 
 /// A scroll viewport whose content is allowed to paint beneath the pinned
 /// first-level header, where [AppHeaderScrollEdge] can apply its glass effect.
@@ -112,13 +114,21 @@ class AppHeaderScrollEdge extends StatelessWidget {
           child: LiquidGlassScrollEdge(
             edge: LiquidGlassEdge.top,
             color: surfaceColor.withValues(
-              alpha: (0.78 * normalizedProgress * surfaceColor.a)
+              // Keep the shared app-level edge translucent enough that content
+              // passing behind it remains visibly present. The edge is a
+              // compositing treatment, never a visibility threshold.
+              alpha:
+                  (_kAppHeaderScrollEdgeMaxTintOpacity *
+                          normalizedProgress *
+                          surfaceColor.a)
                   .clamp(0.0, 1.0)
                   .toDouble(),
             ),
-            // Match the modal sheet's inactive sigma while keeping this
-            // overlay's render-tree shape stable at rest.
-            blur: normalizedProgress > 0 ? 12 * normalizedProgress : 0.001,
+            // Keep the same overlay subtree at rest while limiting blur so
+            // text and controls remain perceptible as they pass through.
+            blur: normalizedProgress > 0
+                ? _kAppHeaderScrollEdgeMaxBlurSigma * normalizedProgress
+                : 0.001,
           ),
         ),
       ),
