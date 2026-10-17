@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math' show max;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -286,12 +287,12 @@ class _SettingsPanelState extends State<SettingsPanel>
     }
 
     if (notification is ScrollUpdateNotification &&
-        _headerUserScrollActive &&
-        notification.scrollDelta != null) {
+        _headerUserScrollActive) {
       final current = _headerTitleScrollOffset.value;
-      final next = (current + notification.scrollDelta!)
-          .clamp(0.0, kAppHeaderTitleHeight)
-          .toDouble();
+      // Mirror the real scroll position so the title keeps moving after it
+      // passes beneath the pinned toolbar and out of view.
+      final next =
+          notification.metrics.pixels - notification.metrics.minScrollExtent;
       if ((next - current).abs() >= 0.01) {
         _headerTitleScrollOffsets[_headerScrollScope] = next;
         _headerTitleScrollOffset.value = next;

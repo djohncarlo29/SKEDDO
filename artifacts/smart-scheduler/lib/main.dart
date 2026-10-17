@@ -4,6 +4,7 @@ import 'dart:math' show max, min;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
@@ -916,8 +917,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // the header AnimatedBuilder, derived from _dcvSlideController.value.
   bool get _isDCV => _dcvCategory != null && _selectedIndex == 2;
 
-  String get _headerScrollScope =>
-      _selectedIndex == 2 && _isDCV ? '2:dcv:$_dcvCategory' : '$_selectedIndex';
+  String get _headerScrollScope {
+    if (_selectedIndex == 2 && _isDCV) {
+      return '2:dcv:$_dcvCategory';
+    }
+    if (_selectedIndex == 1) {
+      return '1:${_calendarView.name}:${_activeDaySubMode.name}';
+    }
+    return '$_selectedIndex';
+  }
 
   bool _onHeaderScrollNotification(ScrollNotification notification) {
     final viewportHeight = notification.metrics.viewportDimension;
@@ -939,13 +947,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
 
     if (notification is ScrollUpdateNotification &&
-        _headerUserScrollActive &&
-        notification.scrollDelta != null) {
+        _headerUserScrollActive) {
       final scope = _headerScrollScope;
       final current = _headerTitleScrollOffset.value;
-      final next = (current + notification.scrollDelta!)
-          .clamp(0.0, kAppHeaderTitleHeight)
-          .toDouble();
+      // Follow the active Scrollable's actual position rather than summing
+      // gesture deltas. This keeps the title aligned with ballistic motion,
+      // restored offsets, and calendar panels that share their own controllers.
+      final next =
+          notification.metrics.pixels - notification.metrics.minScrollExtent;
       if ((next - current).abs() >= 0.01) {
         _headerTitleScrollOffsets[scope] = next;
         _headerTitleScrollOffset.value = next;
@@ -1532,6 +1541,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     void doSelect(DayViewSubMode mode) {
       _hideDayViewModeMenu();
       setState(() => _activeDaySubMode = mode);
+      if (_selectedIndex == 1) _restoreHeaderScrollOffset();
       SharedPreferences.getInstance().then(
         (p) => p.setString('day_view_sub_mode', mode.name),
       );
@@ -2601,7 +2611,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             key: _calendarTabKey,
             daySubMode: _activeDaySubMode,
             onViewChanged: (view, displayYear, prev, curr, next) {
-              if (mounted)
+              final viewChanged = _calendarView != view;
+              if (mounted) {
                 setState(() {
                   _calendarView = view;
                   _calendarDisplayYear = displayYear;
@@ -2609,6 +2620,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   _calendarTitle = curr;
                   _calendarNextTitle = next;
                 });
+                if (viewChanged && _selectedIndex == 1) {
+                  _restoreHeaderScrollOffset();
+                }
+              }
             },
             onStripSlide: (x) => _calendarStripSlide.value = x,
             onSearchCancel: () => _setSearchFocused(false),
@@ -2824,14 +2839,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                   : resolveAccentColor(context);
                                final innerHeight =
                                    headerToolbarHeight * (1 - t);
-                               final titleScrollOffset =
-                                   _headerTitleScrollOffset.value
-                                       .clamp(0.0, kAppHeaderTitleHeight)
-                                       .toDouble();
                                final edgeProgress =
-                                   (titleScrollOffset /
-                                       kAppHeaderTitleHeight) *
-                                   (1 - t);
+                                    (_headerTitleScrollOffset.value /
+                                            kAppHeaderTitleHeight)
+                                        .clamp(0.0, 1.0)
+                                        .toDouble() *
+                                    (1 - t);
+                                final titleScrollOffset =
+                                    _headerTitleScrollOffset.value;
                               final headerColor = Color.lerp(
                                 cardColor,
                                 backgroundColor,
@@ -3243,7 +3258,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                        ],
                        ),
                                                             ),
-                                                          ),
                                                           const Spacer(),
                                                           if (!landscapeDcvSplit)
                                                             _buildEventsHeaderActions(
@@ -3378,6 +3392,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                       ],
                     ),
                   ),
+                ),
                 ],
               ),
 
