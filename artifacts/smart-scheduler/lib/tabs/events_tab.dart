@@ -27,6 +27,7 @@ import '../widgets/text_editing_helpers.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/modal_sheet_scroll_under.dart';
+import '../widgets/app_header_scroll_edge.dart';
 import '../widgets/modal_sheet_title_scroller.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/selection_handle_haptics.dart';
@@ -8243,6 +8244,13 @@ class EventsTabState extends State<EventsTab>
           ),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
           slivers: [
+        SliverToBoxAdapter(
+          child: AppHeaderScrollInset(
+            collapseAnimation: widget.searchModeAnimation,
+            enabled:
+                MediaQuery.orientationOf(context) == Orientation.portrait,
+          ),
+        ),
         // ── Search bar sliver ─────────────────────────────────────────────
         // Off-screen active : _searchBarKey lives in the Stack overlay;
         //   height placeholder keeps all content in position.
@@ -21058,6 +21066,12 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
         slivers: [
           SliverToBoxAdapter(
+            child: AppHeaderScrollInset(
+              enabled:
+                  MediaQuery.orientationOf(context) == Orientation.portrait,
+            ),
+          ),
+          SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.fromLTRB(
                 16,
@@ -21139,6 +21153,12 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
           ),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
           slivers: [
+            SliverToBoxAdapter(
+              child: AppHeaderScrollInset(
+                enabled:
+                    MediaQuery.orientationOf(context) == Orientation.portrait,
+              ),
+            ),
             SliverPadding(
               // 16 px top follows the 8pt grid, and 16 px sides give each card
               // its edge margin. The last section already contributes 16 px
@@ -21333,6 +21353,12 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       ),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
       slivers: [
+        SliverToBoxAdapter(
+          child: AppHeaderScrollInset(
+            enabled:
+                MediaQuery.orientationOf(context) == Orientation.portrait,
+          ),
+        ),
         SliverFillRemaining(hasScrollBody: false, child: emptyStateContent),
       ],
     );

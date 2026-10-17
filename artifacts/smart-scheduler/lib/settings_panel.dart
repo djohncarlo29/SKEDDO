@@ -19,6 +19,7 @@ import 'widgets/floating_tab_pill.dart';
 import 'widgets/header_title_scroller.dart';
 import 'widgets/native_fluid_slider_row.dart';
 import 'widgets/app_window_content_boundary.dart';
+import 'widgets/app_header_scroll_edge.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SettingsPanel — full-screen slide-in settings surface with sub-screen nav.
@@ -250,6 +251,9 @@ class _SettingsPanelState extends State<SettingsPanel>
     curve: Curves.easeInOutCubic,
   );
   final ScrollController _mainScrollController = ScrollController();
+  final ValueNotifier<double> _headerTitleScrollOffset = ValueNotifier(0.0);
+  final Map<String, double> _headerTitleScrollOffsets = {};
+  bool _headerUserScrollActive = false;
   final GlobalKey _mainSettingsContentKey = GlobalKey();
   final Map<String, GlobalKey> _settingsRowAnchorKeys = {
     for (final title in [
@@ -264,6 +268,43 @@ class _SettingsPanelState extends State<SettingsPanel>
   _SettingsRoute? _previousRoute;
   bool _isSplitActive = false;
   GlobalKey? _masterAnchorKey;
+
+  String get _headerScrollScope => _activeRoute?.title ?? 'main';
+
+  bool _onHeaderScrollNotification(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical ||
+        notification.depth != 0 ||
+        notification.metrics.viewportDimension <
+            max(240, MediaQuery.sizeOf(context).height * 0.35)) {
+      return false;
+    }
+
+    if (notification is UserScrollNotification) {
+      _headerUserScrollActive =
+          notification.direction != ScrollDirection.idle;
+      return false;
+    }
+
+    if (notification is ScrollUpdateNotification &&
+        _headerUserScrollActive &&
+        notification.scrollDelta != null) {
+      final current = _headerTitleScrollOffset.value;
+      final next = (current + notification.scrollDelta!)
+          .clamp(0.0, kAppHeaderTitleHeight)
+          .toDouble();
+      if ((next - current).abs() >= 0.01) {
+        _headerTitleScrollOffsets[_headerScrollScope] = next;
+        _headerTitleScrollOffset.value = next;
+      }
+    }
+    return false;
+  }
+
+  void _restoreHeaderScrollOffset() {
+    _headerUserScrollActive = false;
+    _headerTitleScrollOffset.value =
+        _headerTitleScrollOffsets[_headerScrollScope] ?? 0.0;
+  }
 
   // Listener added to _navCtrl when a push starts; fires the hard-snap of the
   // overlay icon to "<" at the 50 % midpoint — matching the DCV timing.
@@ -290,6 +331,7 @@ class _SettingsPanelState extends State<SettingsPanel>
       _paneTransitionController.value = 0.0;
       _splitDetailController.value = 0.0;
       widget.subScreenBackAction.value = null;
+      _restoreHeaderScrollOffset();
     }
 
     if (!widget.isOpen && oldWidget.isOpen) {
@@ -442,6 +484,7 @@ class _SettingsPanelState extends State<SettingsPanel>
     setState(() {
       _activeRoute = route;
     });
+    _restoreHeaderScrollOffset();
     _navCtrl.forward(from: 0.0);
 
     // Hard-snap to "<" at the 50 % midpoint of the sub-screen slide, identical
@@ -486,7 +529,10 @@ class _SettingsPanelState extends State<SettingsPanel>
     // Immediately clear the back action so the overlay icon snaps back.
     widget.subScreenBackAction.value = null;
     _navCtrl.reverse().then((_) {
-      if (mounted) setState(() => _activeRoute = null);
+      if (mounted) {
+        setState(() => _activeRoute = null);
+        _restoreHeaderScrollOffset();
+      }
     });
   }
 
@@ -495,6 +541,7 @@ class _SettingsPanelState extends State<SettingsPanel>
     if (_snapListener != null) _navCtrl.removeListener(_snapListener!);
     _splitDetailController.removeStatusListener(_onSplitDetailStatus);
     _mainScrollController.dispose();
+    _headerTitleScrollOffset.dispose();
     _paneTransitionController.dispose();
     _splitDetailController.dispose();
     _navCtrl.dispose();
@@ -562,7 +609,10 @@ class _SettingsPanelState extends State<SettingsPanel>
             widget.isLandscapeTwoPane && isLandscape;
         final showLandscapeSplit = canSplitInLandscape && _isSplitActive;
         final headerContentHeight = isLandscape ? 52.0 : 101.0;
-        final headerHeight = topInset + headerContentHeight;
+        final headerToolbarHeight = isLandscape
+            ? headerContentHeight
+            : kAppHeaderToolbarHeight;
+        final headerHeight = topInset + headerToolbarHeight;
         final backgroundColor = resolveThemeColor(kBackgroundColor, context);
         final separatorColor = resolveThemeColor(kSeparatorColor, context);
         final mainSettingsContent = _MainSettingsContent(
@@ -614,8 +664,10 @@ class _SettingsPanelState extends State<SettingsPanel>
           ),
         );
 
-        return ClipRect(
-          child: ColoredBox(
+        return NotificationListener<ScrollNotification>(
+          onNotification: _onHeaderScrollNotification,
+          child: ClipRect(
+            child: ColoredBox(
             color: backgroundColor,
             child: SizedBox.expand(
               child: Stack(
@@ -686,7 +738,10 @@ class _SettingsPanelState extends State<SettingsPanel>
                             },
                           )
                         : AnimatedBuilder(
-                            animation: _navCtrl,
+                            animation: Listenable.merge([
+                              _navCtrl,
+                              _headerTitleScrollOffset,
+                            ]),
                             builder: (context, _) {
                               final isSubScreen =
                                   _activeRoute != null && _navCtrl.value >= 0.5;
@@ -694,6 +749,8 @@ class _SettingsPanelState extends State<SettingsPanel>
                                 topInset: topInset,
                                 contentHeight: headerContentHeight,
                                 isLandscape: isLandscape,
+                                scrollOffset:
+                                    _headerTitleScrollOffset.value,
                                 title: isSubScreen
                                     ? _activeRoute!.title
                                     : 'Settings',
@@ -703,6 +760,7 @@ class _SettingsPanelState extends State<SettingsPanel>
                   ),
                 ],
               ),
+            ),
             ),
           ),
         );
@@ -771,6 +829,12 @@ class _MainSettingsContent extends StatelessWidget {
         parent: BouncingScrollPhysics(),
       ),
       slivers: [
+        SliverToBoxAdapter(
+          child: AppHeaderScrollInset(
+            enabled:
+                MediaQuery.orientationOf(context) == Orientation.portrait,
+          ),
+        ),
         // Keep the settings rhythm on the 8 pt grid.
         const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
@@ -1031,6 +1095,12 @@ class _SubScreenState extends State<_SubScreen> {
         parent: BouncingScrollPhysics(),
       ),
       slivers: [
+        SliverToBoxAdapter(
+          child: AppHeaderScrollInset(
+            enabled:
+                MediaQuery.orientationOf(context) == Orientation.portrait,
+          ),
+        ),
         // Keep the settings rhythm on the 8 pt grid.
         const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
@@ -1463,12 +1533,14 @@ class _SettingsHeader extends StatelessWidget {
   final double topInset;
   final double contentHeight;
   final bool isLandscape;
+  final double scrollOffset;
   final String title;
 
   const _SettingsHeader({
     required this.topInset,
     required this.contentHeight,
     required this.isLandscape,
+    required this.scrollOffset,
     required this.title,
   });
 
@@ -1478,18 +1550,41 @@ class _SettingsHeader extends StatelessWidget {
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
     final shadowColor = resolveThemeColor(kTabBarShadowColor, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
-    return Container(
+    final toolbarHeight = isLandscape
+        ? contentHeight
+        : kAppHeaderToolbarHeight;
+    final collapseProgress = isLandscape
+        ? 0.0
+        : (scrollOffset / kAppHeaderTitleHeight).clamp(0.0, 1.0).toDouble();
+    return SizedBox(
       width: double.infinity,
       height: topInset + contentHeight,
-      decoration: BoxDecoration(
-        color: cardColor,
-        boxShadow: resolveThemeShadows([
-          BoxShadow(color: shadowColor, blurRadius: 6, offset: Offset(0, 2)),
-        ], context),
-      ),
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          AppWindowContentPadding(
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: topInset + toolbarHeight,
+            child: Container(
+              decoration: BoxDecoration(
+                color: cardColor.withValues(
+                  alpha: (1 - collapseProgress) * cardColor.a,
+                ),
+                boxShadow: resolveThemeShadows([
+                  BoxShadow(
+                    color: shadowColor,
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ], context),
+              ),
+            ),
+          ),
+          Offstage(
+            offstage: !isLandscape,
+            child: AppWindowContentPadding(
             child: Padding(
               padding: EdgeInsets.only(top: topInset),
               child: isLandscape
@@ -1549,12 +1644,61 @@ class _SettingsHeader extends StatelessWidget {
                     ),
             ),
           ),
+          ),
+          if (!isLandscape)
+            Positioned(
+              top: topInset + toolbarHeight,
+              left: 0,
+              right: 0,
+              height: kAppHeaderTitleHeight,
+              child: Transform.translate(
+                offset: Offset(0, -scrollOffset),
+                child: Container(
+                  color: cardColor.withValues(
+                    alpha: (1 - collapseProgress) * cardColor.a,
+                  ),
+                  child: AppWindowContentPadding(
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        left: 16,
+                        right: 16,
+                        bottom: kHeaderTitleBottomInset,
+                      ),
+                      child: Align(
+                        alignment: Alignment.bottomLeft,
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: HeaderTitleScroller(
+                            title: title,
+                            fadeColor: cardColor,
+                            style: TextStyle(
+                              fontFamily: kSFProText,
+                              fontSize: 34,
+                              fontWeight: FontWeight.bold,
+                              fontStyle: FontStyle.normal,
+                              color: primaryLabel,
+                              letterSpacing: -1.2,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          if (!isLandscape)
+            AppHeaderScrollEdge(
+              progress: collapseProgress,
+              surfaceColor: cardColor,
+              height: topInset + toolbarHeight,
+            ),
           // Shared by portrait and landscape. Keep the hairline above title
           // fades and rubberband overscroll so it remains visually continuous.
           Positioned(
             left: 0,
             right: 0,
-            bottom: 0,
+            top: topInset + toolbarHeight - 0.75,
             child: IgnorePointer(
               child: Container(height: 0.75, color: separatorColor),
             ),

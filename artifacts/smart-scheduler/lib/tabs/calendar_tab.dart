@@ -25,6 +25,7 @@ import '../widgets/native_text_input.dart';
 import '../widgets/text_editing_helpers.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/modal_sheet_scroll_under.dart';
+import '../widgets/app_header_scroll_edge.dart';
 import '../widgets/modal_sheet_title_scroller.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/app_window_content_boundary.dart';
@@ -3002,7 +3003,10 @@ class _YearView extends StatelessWidget {
           clipBehavior: Clip.hardEdge,
           padding: EdgeInsets.fromLTRB(
             _kYearOuterPad + horizontalInset,
-            17.5,
+            17.5 +
+                (MediaQuery.orientationOf(context) == Orientation.portrait
+                    ? kAppHeaderTitleHeight
+                    : 0),
             _kYearOuterPad + horizontalInset,
             14.5 + floatingTabBarContentBottomClearance(context),
           ),
@@ -4902,6 +4906,11 @@ class _MonthView extends StatelessWidget {
                   parent: BouncingScrollPhysics(),
                 )
               : const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.only(
+            top: MediaQuery.orientationOf(context) == Orientation.portrait
+                ? kAppHeaderTitleHeight
+                : 0,
+          ),
           clipBehavior: Clip.none,
           child: monthListUsesNaturalHeight
               ? ConstrainedBox(
@@ -6367,6 +6376,12 @@ class _DayListPlaceholder extends StatelessWidget {
         parent: BouncingScrollPhysics(),
       ),
       slivers: [
+        SliverToBoxAdapter(
+          child: AppHeaderScrollInset(
+            enabled:
+                MediaQuery.orientationOf(context) == Orientation.portrait,
+          ),
+        ),
         SliverFillRemaining(
           hasScrollBody: false,
           child: emptyStateContent,
@@ -7458,6 +7473,11 @@ class _DayTimelineState extends State<_DayTimeline>
       child: SingleChildScrollView(
         controller: _scroll,
         physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.only(
+          top: MediaQuery.orientationOf(context) == Orientation.portrait
+              ? kAppHeaderTitleHeight
+              : 0,
+        ),
         child: SizedBox(
           // Extra _kTimelinePad at both ends prevents the indicator and the
           // first/last hour labels from being hard-clipped by the Stack.
@@ -8303,6 +8323,11 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
       child: SingleChildScrollView(
         controller: _scroll,
         physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.only(
+          top: MediaQuery.orientationOf(context) == Orientation.portrait
+              ? kAppHeaderTitleHeight
+              : 0,
+        ),
         child: SizedBox(
           // Keep the end-of-day hairline immediately above the shared
           // floating-pill clearance.  This makes the visible gap from the

@@ -20,6 +20,7 @@ import 'tabs/events_tab.dart';
 import 'tabs/notes_tab.dart';
 import 'widgets/action_panel.dart';
 import 'widgets/accent_tinted_image.dart';
+import 'widgets/app_header_scroll_edge.dart';
 import 'widgets/app_window_content_boundary.dart';
 import 'widgets/fixed_size_icon.dart';
 import 'widgets/floating_tab_pill.dart';
@@ -851,6 +852,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   final _calendarStripSlide = ValueNotifier<double>(0.0);
 
   int _selectedIndex = 0;
+  final ValueNotifier<double> _headerTitleScrollOffset = ValueNotifier(0.0);
+  final Map<String, double> _headerTitleScrollOffsets = {};
+  bool _headerUserScrollActive = false;
   static const _nativeTabBarChannel = MethodChannel(
     'com.smartscheduler/native_tab_bar',
   );
@@ -912,6 +916,50 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // the header AnimatedBuilder, derived from _dcvSlideController.value.
   bool get _isDCV => _dcvCategory != null && _selectedIndex == 2;
 
+  String get _headerScrollScope =>
+      _selectedIndex == 2 && _isDCV ? '2:dcv:$_dcvCategory' : '$_selectedIndex';
+
+  bool _onHeaderScrollNotification(ScrollNotification notification) {
+    final viewportHeight = notification.metrics.viewportDimension;
+    if (notification.metrics.axis != Axis.vertical ||
+        notification.depth != 0 ||
+        viewportHeight < max(240, MediaQuery.sizeOf(context).height * 0.35)) {
+      return false;
+    }
+
+    if (_searchModeController.value > 0.01) {
+      _headerUserScrollActive = false;
+      return false;
+    }
+
+    if (notification is UserScrollNotification) {
+      _headerUserScrollActive =
+          notification.direction != ScrollDirection.idle;
+      return false;
+    }
+
+    if (notification is ScrollUpdateNotification &&
+        _headerUserScrollActive &&
+        notification.scrollDelta != null) {
+      final scope = _headerScrollScope;
+      final current = _headerTitleScrollOffset.value;
+      final next = (current + notification.scrollDelta!)
+          .clamp(0.0, kAppHeaderTitleHeight)
+          .toDouble();
+      if ((next - current).abs() >= 0.01) {
+        _headerTitleScrollOffsets[scope] = next;
+        _headerTitleScrollOffset.value = next;
+      }
+    }
+    return false;
+  }
+
+  void _restoreHeaderScrollOffset() {
+    _headerUserScrollActive = false;
+    _headerTitleScrollOffset.value =
+        _headerTitleScrollOffsets[_headerScrollScope] ?? 0.0;
+  }
+
   bool _canReplaceLandscapeDcvPage() {
     if (_dcvCategory == null || _selectedIndex != 2) return false;
     final geometry = AppWindowMasterDetailGeometry.of(context);
@@ -936,6 +984,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       if (_dcvColor != color) setState(() => _dcvColor = color);
       return;
     }
+
+    _headerTitleScrollOffsets['2:dcv:$label'] = 0.0;
+    _headerTitleScrollOffset.value = 0.0;
+    _headerUserScrollActive = false;
 
     if (_canReplaceLandscapeDcvPage()) {
       // Finish any in-flight replacement before starting the next one. The
@@ -975,6 +1027,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               _dcvCategory = null;
               _dcvColor = null;
             });
+          _restoreHeaderScrollOffset();
         })
         .catchError((_) {
           if (mounted)
@@ -982,6 +1035,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               _dcvCategory = null;
               _dcvColor = null;
             });
+          _restoreHeaderScrollOffset();
         });
   }
 
@@ -1704,6 +1758,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _searchModeController.dispose();
     _settingsController.dispose();
     _calendarStripSlide.dispose();
+    _headerTitleScrollOffset.dispose();
     super.dispose();
   }
 
@@ -1888,6 +1943,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       // tabs and is restored when the user returns to Events tab.
     });
     _searchModeController.value = 0;
+    _restoreHeaderScrollOffset();
     if (_usesNativeTabBar) {
       unawaited(
         _nativeTabBarChannel.invokeMethod<void>(
@@ -1980,6 +2036,32 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       default:
         return '';
     }
+  }
+
+  Widget _buildLargeHeaderTitle({
+    required bool isDCVVisual,
+    required Color headerColor,
+    required Color primaryLabel,
+  }) {
+    if (!isDCVVisual && _selectedIndex == 1) {
+      return _buildCalendarTitleRow();
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: HeaderTitleScroller(
+        title: isDCVVisual ? (_dcvCategory ?? '') : _nonDCVHeaderTitle,
+        fadeColor: headerColor,
+        style: TextStyle(
+          fontFamily: kSFProText,
+          fontSize: 34,
+          fontWeight: FontWeight.bold,
+          fontStyle: FontStyle.normal,
+          color: primaryLabel,
+          letterSpacing: -1.2,
+        ),
+      ),
+    );
   }
 
   // ── Calendar-tab header row (title + ↕ + < >) ────────────────────────────
@@ -2617,6 +2699,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         masterDetailGeometry.masterContentCenterOffset;
     final topInset = MediaQuery.of(context).padding.top;
     final headerContentHeight = isLandscape ? 52.0 : 101.0;
+    final headerToolbarHeight = isLandscape
+        ? headerContentHeight
+        : kAppHeaderToolbarHeight;
     final keyboardBottomInset = MediaQuery.of(context).viewInsets.bottom;
     final bottomInset = systemSafeAreaBottomInset(context);
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
@@ -2663,8 +2748,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   // is the first (bottom) Stack child and the header is the last
                   // (top) Stack child — guaranteeing the shadow/hairline are always
                   // rendered above whatever the scroll view draws.
-                  Positioned.fill(
-                    child: Stack(
+                   Positioned.fill(
+                     child: NotificationListener<ScrollNotification>(
+                       onNotification: _onHeaderScrollNotification,
+                       child: Stack(
                       children: [
                         // Content — fills the full Stack area but gets an animated
                         // top-padding equal to the current header height so the
@@ -2676,7 +2763,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                             final t = _searchModeAnim.value.clamp(0.0, 1.0);
                             return Padding(
                               padding: EdgeInsets.only(
-                                top: topInset + headerContentHeight * (1 - t),
+                                top: topInset + headerToolbarHeight * (1 - t),
                                 bottom: dcvKeyboardBottomInset,
                               ),
                               child: child,
@@ -2710,6 +2797,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               _dcvSlideProgress,
                               _dcvCategoryTransitionProgress,
                               _settingsController,
+                              _headerTitleScrollOffset,
                             ]),
                             builder: (context, _) {
                               final t = _searchModeAnim.value.clamp(0.0, 1.0);
@@ -2735,7 +2823,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                   ? _dcvColor!
                                   : resolveAccentColor(context);
                                final innerHeight =
-                                   headerContentHeight * (1 - t);
+                                   headerToolbarHeight * (1 - t);
+                               final titleScrollOffset =
+                                   _headerTitleScrollOffset.value
+                                       .clamp(0.0, kAppHeaderTitleHeight)
+                                       .toDouble();
+                               final edgeProgress =
+                                   (titleScrollOffset /
+                                       kAppHeaderTitleHeight) *
+                                   (1 - t);
                               final headerColor = Color.lerp(
                                 cardColor,
                                 backgroundColor,
@@ -2747,7 +2843,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                 width: double.infinity,
                                 height: topInset + innerHeight,
                                 decoration: BoxDecoration(
-                                  color: headerColor,
+                                   color: headerColor.withValues(
+                                     alpha:
+                                         (1.0 - edgeProgress) *
+                                         headerColor.a,
+                                   ),
                                   boxShadow: shadowAlpha > 0.001
                                       ? resolveThemeShadows([
                                           BoxShadow(
@@ -2760,8 +2860,68 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                         ], context)
                                       : const [],
                                 ),
-                                child: Stack(
+                                 child: Stack(
+                                   clipBehavior: Clip.none,
                                   children: [
+                                     if (!isLandscape)
+                                       Positioned(
+                                         top:
+                                             topInset +
+                                             headerToolbarHeight * (1 - t),
+                                         left: 0,
+                                         right: 0,
+                                         height:
+                                             kAppHeaderTitleHeight * (1 - t),
+                                         child: Transform.translate(
+                                           offset: Offset(
+                                             0,
+                                             -titleScrollOffset,
+                                           ),
+                                           child: FadeTransition(
+                                             opacity:
+                                                 _searchModeContentOpacity,
+                                             child: Container(
+                                               color: headerColor.withValues(
+                                                 alpha:
+                                                     (1.0 - edgeProgress) *
+                                                     headerColor.a,
+                                               ),
+                                               child: AppWindowContentPadding(
+                                                 child: Padding(
+                                                   padding:
+                                                       const EdgeInsets.only(
+                                                         left: 16,
+                                                         right: 16,
+                                                         bottom:
+                                                             kHeaderTitleBottomInset,
+                                                       ),
+                                                   child: Align(
+                                                     alignment:
+                                                         Alignment.bottomLeft,
+                                                     child:
+                                                         _buildLargeHeaderTitle(
+                                                           isDCVVisual:
+                                                               isDCVVisual,
+                                                           headerColor:
+                                                               headerColor,
+                                                           primaryLabel:
+                                                               primaryLabel,
+                                                         ),
+                                                   ),
+                                                 ),
+                                               ),
+                                             ),
+                                           ),
+                                         ),
+                                       ),
+                                     if (!isLandscape)
+                                       AppHeaderScrollEdge(
+                                         progress: edgeProgress,
+                                         surfaceColor: headerColor,
+                                         height:
+                                             topInset +
+                                             headerToolbarHeight * (1 - t),
+                                       ),
                                     AppWindowContentPadding(
                                       child: LayoutBuilder(
                                         builder: (context, constraints) {
@@ -2804,9 +2964,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                       child: OverflowBox(
                                         alignment: Alignment.topLeft,
                                         minHeight: 0,
-                                maxHeight: topInset + headerContentHeight,
+                                maxHeight: topInset + headerToolbarHeight,
                                         child: SizedBox(
-                                          height: topInset + headerContentHeight,
+                                          height:
+                                              topInset + headerToolbarHeight,
                                           child: Padding(
                                             padding: EdgeInsets.only(
                                               top: topInset,
@@ -3079,7 +3240,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                     ),
                                                                   ),
                                                                 ),
-                                                              ],
+                       ],
+                       ),
                                                             ),
                                                           ),
                                                           const Spacer(),
@@ -3097,7 +3259,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                         ],
                                                       ),
                                                     ),
-                                                   if (isLandscape)
+                                                  if (isLandscape)
                                                      Positioned.fill(
                                                        left: 84,
                                                        right: 84,
@@ -3124,81 +3286,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                  ],
                                                ),
                                              ),
-                                     if (!isLandscape)
-                                       Expanded(
-                                         child: Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                            left: 16,
-                                                            right: 16,
-                                                            bottom:
-                                                                kHeaderTitleBottomInset,
-                                                          ),
-                                                      child:
-                                                          !isDCVVisual &&
-                                                              _selectedIndex ==
-                                                                  1
-                                                          ? _buildCalendarTitleRow()
-                                                          : Align(
-                                                              alignment: Alignment
-                                                                  .bottomLeft,
-                                                              // Clean snap: _isDCV switches atomically in the
-                                                              // same setState that starts the slide, so both
-                                                              // the title and the content change at t=0 with
-                                                              // no overlap, no crossfade, no flicker.
-                                                              child: isDCVVisual
-                                                                  ? SizedBox(
-                                                                      width: double
-                                                                          .infinity,
-                                                                      child: HeaderTitleScroller(
-                                                                        title:
-                                                                            _dcvCategory ??
-                                                                            '',
-                                                                        fadeColor:
-                                                                            headerColor,
-                                                                        style: TextStyle(
-                                                                          fontFamily:
-                                                                              kSFProText,
-                                                                          fontSize:
-                                                                              34,
-                                                                          fontWeight:
-                                                                              FontWeight.bold,
-                                                                          fontStyle:
-                                                                              FontStyle.normal,
-                                                                          color:
-                                                                              primaryLabel,
-                                                                          letterSpacing:
-                                                                              -1.2,
-                                                                        ),
-                                                                      ),
-                                                                    )
-                                                                  : SizedBox(
-                                                                      width: double
-                                                                          .infinity,
-                                                                      child: HeaderTitleScroller(
-                                                                        title:
-                                                                            _nonDCVHeaderTitle,
-                                                                        fadeColor:
-                                                                            headerColor,
-                                                                        style: TextStyle(
-                                                                          fontFamily:
-                                                                              kSFProText,
-                                                                          fontSize:
-                                                                              34,
-                                                                          fontWeight:
-                                                                              FontWeight.bold,
-                                                                          fontStyle:
-                                                                              FontStyle.normal,
-                                                                          color:
-                                                                              primaryLabel,
-                                                                          letterSpacing:
-                                                                              -1.2,
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                            ),
-                                                    ),
-                                                  ),
                                                 ],
                                               ),
                                             ),

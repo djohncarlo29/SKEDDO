@@ -22,6 +22,7 @@ import '../widgets/action_panel.dart';
 import '../widgets/native_text_input.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/modal_sheet_scroll_under.dart';
+import '../widgets/app_header_scroll_edge.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/app_window_content_boundary.dart';
 import '../widgets/vertical_edge_fade.dart';
@@ -561,6 +562,12 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
               parent: BouncingScrollPhysics(),
             ),
             slivers: [
+            SliverToBoxAdapter(
+              child: AppHeaderScrollInset(
+                collapseAnimation: widget.searchModeAnimation,
+                enabled: !isLandscape,
+              ),
+            ),
             // ── Search bar sliver ─────────────────────────────────────────
             // Off-screen active : _searchBarKey lives in the overlay Stack;
             //   a same-height SizedBox placeholder occupies this slot so
