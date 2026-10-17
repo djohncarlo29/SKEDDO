@@ -1385,16 +1385,20 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardColor = resolveThemeColor(kCardColor, context);
-    final separatorColor = resolveThemeColor(kSeparatorColor, context);
+    final backgroundColor = resolveThemeColor(kBackgroundColor, context);
     final shadowColor = resolveThemeColor(kTabBarShadowColor, context);
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
 
-    Widget title(String value, {double horizontalPadding = 20}) => Center(
+    Widget title(
+      String value, {
+      double horizontalPadding = 20,
+      Color? fadeColor,
+    }) => Center(
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
         child: HeaderTitleScroller(
           title: value,
-          fadeColor: cardColor,
+          fadeColor: fadeColor ?? cardColor,
           centerWhenContentFits: true,
           contentAlignment: Alignment.centerLeft,
           style: TextStyle(
@@ -1411,14 +1415,18 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
 
     Widget headerPage(String value, {required bool interactive}) {
       return ColoredBox(
-        color: cardColor,
+        color: backgroundColor,
         child: IgnorePointer(
           ignoring: !interactive,
           child: Stack(
             fit: StackFit.expand,
             children: [
               Positioned.fill(
-                child: title(value, horizontalPadding: 52),
+                child: title(
+                  value,
+                  horizontalPadding: 52,
+                  fadeColor: backgroundColor,
+                ),
               ),
               Positioned(
                 right: geometry.horizontalInset,
@@ -1512,14 +1520,6 @@ class _SettingsTwoPaneHeader extends StatelessWidget {
                 child: ColoredBox(color: dividerColor),
               );
             },
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: IgnorePointer(
-              child: Container(height: 0.75, color: separatorColor),
-            ),
           ),
         ],
       ),
