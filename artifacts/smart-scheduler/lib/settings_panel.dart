@@ -677,30 +677,36 @@ class _SettingsPanelState extends State<SettingsPanel>
                   // ── Main body — slides right (parallax) during sub-screen push ──
                   Positioned.fill(
                     top: headerHeight,
-                    child: showLandscapeSplit
-                        ? ClipRect(child: splitBody)
-                        : AppWindowPhysicalWidth(
-                            child: SlideTransition(
-                              position: _mainParallax,
-                              child: AppWindowContentPadding(
-                                child: mainSettingsContent,
+                    child: AppHeaderScrollInsetScope(
+                      leadingInset: headerHeight,
+                      child: showLandscapeSplit
+                          ? ClipRect(child: splitBody)
+                          : AppWindowPhysicalWidth(
+                              child: SlideTransition(
+                                position: _mainParallax,
+                                child: AppWindowContentPadding(
+                                  child: mainSettingsContent,
+                                ),
                               ),
                             ),
-                          ),
+                    ),
                   ),
 
                   // ── Sub-screen body — slides in from right; no header ───────
                   if (!showLandscapeSplit && _activeRoute != null)
                     Positioned.fill(
                       top: headerHeight,
-                      child: AppWindowPhysicalWidth(
-                        child: SlideTransition(
-                          position: _subSlide,
-                          child: _buildSubScreen(
-                            route: _activeRoute!,
-                            bottomInset: bottomInset,
-                            accentColor: accentColor,
-                            applyAppWindowContentPadding: true,
+                      child: AppHeaderScrollInsetScope(
+                        leadingInset: headerHeight,
+                        child: AppWindowPhysicalWidth(
+                          child: SlideTransition(
+                            position: _subSlide,
+                            child: _buildSubScreen(
+                              route: _activeRoute!,
+                              bottomInset: bottomInset,
+                              accentColor: accentColor,
+                              applyAppWindowContentPadding: true,
+                            ),
                           ),
                         ),
                       ),

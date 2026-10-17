@@ -19,7 +19,7 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      final controller = ScrollController(initialScrollOffset: 130);
+      final controller = ScrollController(initialScrollOffset: 145);
       addTearDown(controller.dispose);
 
       await tester.pumpWidget(
@@ -45,7 +45,7 @@ void main() {
                               SliverToBoxAdapter(
                                 child: SizedBox(
                                   key: contentKey,
-                                  height: 40,
+                                  height: 20,
                                   child: ColoredBox(color: Color(0xFFD84A45)),
                                 ),
                               ),
@@ -81,11 +81,17 @@ void main() {
       );
       final contentRect = tester.getRect(find.byKey(contentKey));
 
-      expect(controller.offset, closeTo(130, 1));
+      expect(controller.offset, closeTo(145, 1));
       expect(
         contentRect.top,
+        greaterThanOrEqualTo(0),
+        reason: 'The row should still be within the physical device viewport.',
+      );
+      expect(
+        contentRect.bottom,
         lessThan(40),
-        reason: 'The row should physically pass above the scroll viewport.',
+        reason:
+            'The whole row is above the app page viewport, but not above the device viewport.',
       );
       expect(scrollViewWidget.clipBehavior, Clip.none);
       expect(stack.clipBehavior, Clip.none);
@@ -121,7 +127,7 @@ void main() {
           image.dispose();
         }
       }))!;
-      final pixelOffset = (35 * surfaceSize.width.toInt() + 160) * 4;
+      final pixelOffset = (25 * surfaceSize.width.toInt() + 160) * 4;
       final pixel = pixels.sublist(pixelOffset, pixelOffset + 4);
       expect(
         pixel[0] - pixel[1],

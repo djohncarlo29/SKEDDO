@@ -2232,7 +2232,7 @@ class CalendarTabState extends State<CalendarTab>
         curve: Curves.easeInOut,
         child: ColoredBox(
           color: resolveThemeColor(kBackgroundColor, context),
-          child: CustomScrollView(
+          child: AppHeaderScrollView(
             clipBehavior: Clip.none,
             primary: false,
             physics: const AlwaysScrollableScrollPhysics(
@@ -3129,25 +3129,30 @@ class _YearView extends StatelessWidget {
           ),
         );
 
-        return SingleChildScrollView(
-          controller: controller,
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics(),
-          ),
-          clipBehavior: Clip.none,
-          padding: EdgeInsets.only(
-            bottom: 14.5 + floatingTabBarContentBottomClearance(context),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (scrollTitle != null)
-                scrollTitle
-              else if (isPortrait)
-                const SizedBox(height: kAppHeaderTitleHeight),
-              const SizedBox(height: 17.5),
-              monthGrid,
-            ],
+        final leadingInset = AppHeaderScrollInsetScope.maybeOf(context);
+        return AppHeaderScrollViewport(
+          leadingInset: leadingInset,
+          child: SingleChildScrollView(
+            controller: controller,
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            clipBehavior: Clip.none,
+            padding: EdgeInsets.only(
+              top: leadingInset,
+              bottom: 14.5 + floatingTabBarContentBottomClearance(context),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (scrollTitle != null)
+                  scrollTitle
+                else if (isPortrait)
+                  const SizedBox(height: kAppHeaderTitleHeight),
+                const SizedBox(height: 17.5),
+                monthGrid,
+              ],
+            ),
           ),
         );
       },
@@ -5019,35 +5024,41 @@ class _MonthView extends StatelessWidget {
           ),
         );
 
-        return SingleChildScrollView(
-          key: scrollViewportKey,
-          controller: scrollController,
-          physics: collapseProgress < _kMonthDayTransitionThreshold
-              ? const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                )
-              : const NeverScrollableScrollPhysics(),
-          padding: EdgeInsets.only(
-            top: scrollTitleWidget == null && isPortrait
-                ? kAppHeaderTitleHeight
-                : 0,
-          ),
-          clipBehavior: Clip.none,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (scrollTitleWidget != null) scrollTitleWidget,
-              if (monthListUsesNaturalHeight)
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight,
-                  ),
-                  child: document,
-                )
-              else
-                SizedBox(height: contentH, child: document),
-            ],
+        final leadingInset = AppHeaderScrollInsetScope.maybeOf(context);
+        return AppHeaderScrollViewport(
+          leadingInset: leadingInset,
+          child: SingleChildScrollView(
+            key: scrollViewportKey,
+            controller: scrollController,
+            physics: collapseProgress < _kMonthDayTransitionThreshold
+                ? const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  )
+                : const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.only(
+              top:
+                  leadingInset +
+                  (scrollTitleWidget == null && isPortrait
+                      ? kAppHeaderTitleHeight
+                      : 0),
+            ),
+            clipBehavior: Clip.none,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (scrollTitleWidget != null) scrollTitleWidget,
+                if (monthListUsesNaturalHeight)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: document,
+                  )
+                else
+                  SizedBox(height: contentH, child: document),
+              ],
+            ),
           ),
         );
           },

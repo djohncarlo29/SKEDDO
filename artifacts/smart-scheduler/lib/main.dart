@@ -2850,12 +2850,17 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                           animation: _searchModeAnim,
                           builder: (context, child) {
                             final t = _searchModeAnim.value.clamp(0.0, 1.0);
-                            return Padding(
-                              padding: EdgeInsets.only(
-                                top: topInset + headerToolbarHeight * (1 - t),
-                                bottom: dcvKeyboardBottomInset,
+                            final leadingInset =
+                                topInset + headerToolbarHeight * (1 - t);
+                            return AppHeaderScrollInsetScope(
+                              leadingInset: leadingInset,
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  top: leadingInset,
+                                  bottom: dcvKeyboardBottomInset,
+                                ),
+                                child: child,
                               ),
-                              child: child,
                             );
                           },
                            child: _buildContent(

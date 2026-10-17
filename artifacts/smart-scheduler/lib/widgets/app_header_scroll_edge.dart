@@ -7,32 +7,151 @@ const double kAppHeaderTitleHeight = 57;
 const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;
 const double _kAppHeaderScrollEdgeMaxBlurSigma = 8;
 
-/// A scroll viewport whose content is allowed to paint beneath the pinned
-/// first-level header, where [AppHeaderScrollEdge] can apply its glass effect.
-/// Its page-level ancestors must also allow that paint overflow; use
-/// [AppHeaderScrollStack] for page stacks that contain one of these viewports.
-class AppHeaderScrollView extends CustomScrollView {
-  const AppHeaderScrollView({
+/// Provides the amount of app-shell space between a page's layout origin and
+/// the physical top of its scroll viewport.
+///
+/// The page can keep its existing layout below the fixed header. App-level
+/// scroll views use this inset to extend their viewport upward and add the same
+/// amount to their scroll extent, so slivers remain alive while passing behind
+/// the header instead of being culled at the page's internal top.
+class AppHeaderScrollInsetScope extends InheritedWidget {
+  const AppHeaderScrollInsetScope({
     super.key,
-    super.scrollDirection,
-    super.reverse,
-    super.controller,
-    super.primary,
-    super.physics,
-    super.scrollBehavior,
-    super.shrinkWrap,
-    super.center,
-    super.anchor,
-    super.cacheExtent,
-    super.paintOrder,
-    super.slivers,
-    super.semanticChildCount,
-    super.dragStartBehavior,
-    super.keyboardDismissBehavior,
-    super.restorationId,
-    super.hitTestBehavior,
-    Clip clipBehavior = Clip.none,
-  }) : super(clipBehavior: clipBehavior);
+    required this.leadingInset,
+    required super.child,
+  });
+
+  final double leadingInset;
+
+  static double maybeOf(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<AppHeaderScrollInsetScope>()
+          ?.leadingInset ??
+      0.0;
+
+  @override
+  bool updateShouldNotify(AppHeaderScrollInsetScope oldWidget) =>
+      leadingInset != oldWidget.leadingInset;
+}
+
+/// Extends a page scroll viewport upward by the shell inset without moving its
+/// parent's layout. The scrollable's own content must include a matching
+/// leading inset so its initial on-screen position stays unchanged.
+class AppHeaderScrollViewport extends StatelessWidget {
+  const AppHeaderScrollViewport({
+    super.key,
+    required this.leadingInset,
+    required this.child,
+  });
+
+  final double leadingInset;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (leadingInset <= 0.0 || !leadingInset.isFinite) return child;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (!constraints.hasBoundedHeight) return child;
+        final viewportHeight = constraints.maxHeight + leadingInset;
+        return OverflowBox(
+          alignment: Alignment.topCenter,
+          minHeight: viewportHeight,
+          maxHeight: viewportHeight,
+          child: Transform.translate(
+            offset: Offset(0.0, -leadingInset),
+            child: SizedBox(height: viewportHeight, child: child),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// A scroll viewport whose physical extent reaches behind the pinned
+/// first-level header, where [AppHeaderScrollEdge] applies its visual treatment.
+/// The scroll extent grows by the same amount as the viewport so initial layout
+/// and normal scroll metrics remain stable.
+class AppHeaderScrollView extends StatelessWidget {
+  const AppHeaderScrollView({
+    Key? key,
+    this.scrollDirection = Axis.vertical,
+    this.reverse = false,
+    this.controller,
+    this.primary,
+    this.physics,
+    this.scrollBehavior,
+    this.shrinkWrap = false,
+    this.center,
+    this.anchor = 0.0,
+    this.cacheExtent,
+    this.paintOrder = SliverPaintOrder.forward,
+    this.slivers = const <Widget>[],
+    this.semanticChildCount,
+    this.dragStartBehavior = DragStartBehavior.start,
+    this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
+    this.restorationId,
+    this.hitTestBehavior,
+    this.clipBehavior = Clip.none,
+  }) : _scrollViewKey = key,
+       super(key: null);
+
+  final Key? _scrollViewKey;
+  final Axis scrollDirection;
+  final bool reverse;
+  final ScrollController? controller;
+  final bool? primary;
+  final ScrollPhysics? physics;
+  final ScrollBehavior? scrollBehavior;
+  final bool shrinkWrap;
+  final Key? center;
+  final double anchor;
+  final double? cacheExtent;
+  final SliverPaintOrder paintOrder;
+  final List<Widget> slivers;
+  final int? semanticChildCount;
+  final DragStartBehavior dragStartBehavior;
+  final ScrollViewKeyboardDismissBehavior keyboardDismissBehavior;
+  final String? restorationId;
+  final HitTestBehavior? hitTestBehavior;
+  final Clip clipBehavior;
+
+  @override
+  Widget build(BuildContext context) {
+    final leadingInset = AppHeaderScrollInsetScope.maybeOf(context);
+    final scrollSlivers = <Widget>[
+      if (leadingInset > 0.0)
+        SliverToBoxAdapter(child: SizedBox(height: leadingInset)),
+      ...slivers,
+    ];
+    final scrollView = CustomScrollView(
+      key: _scrollViewKey,
+      scrollDirection: scrollDirection,
+      reverse: reverse,
+      controller: controller,
+      primary: primary,
+      physics: physics,
+      scrollBehavior: scrollBehavior,
+      shrinkWrap: shrinkWrap,
+      center: center,
+      anchor: anchor,
+      cacheExtent: cacheExtent,
+      paintOrder: paintOrder,
+      slivers: scrollSlivers,
+      semanticChildCount: semanticChildCount,
+      dragStartBehavior: dragStartBehavior,
+      keyboardDismissBehavior: keyboardDismissBehavior,
+      restorationId: restorationId,
+      hitTestBehavior: hitTestBehavior,
+      clipBehavior: clipBehavior,
+    );
+
+    return AppHeaderScrollViewport(
+      leadingInset: leadingInset,
+      child: scrollView,
+    );
+  }
 }
 
 /// A page-level stack that lets scroll content paint up behind the app header.

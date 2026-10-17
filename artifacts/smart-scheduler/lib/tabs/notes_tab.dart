@@ -695,7 +695,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
               // the tab's own scroll controller) — that would reset the tab's
               // scroll offset to 0 the moment this overlay appears.
               child: AppWindowContentPadding(
-                child: CustomScrollView(
+                child: AppHeaderScrollView(
                   clipBehavior: Clip.none,
                 primary: false,
                 physics: const AlwaysScrollableScrollPhysics(
