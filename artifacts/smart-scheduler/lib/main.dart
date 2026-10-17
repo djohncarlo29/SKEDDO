@@ -829,8 +829,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   String _calendarPrevTitle = '';
   String _calendarTitle = '';
   String _calendarNextTitle = '';
-  // In portrait Month/Year views, the calendar title and its navigation
-  // controls are the first items in the calendar's own scrollable content.
+  // In settled portrait Month/Year views, the calendar title and its
+  // navigation controls are rendered by the calendar's own scrollable content.
   bool _calendarTitleInScrollContent = true;
 
   // True when the header is displaying a month name — drives view-mode icon
@@ -2069,6 +2069,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     required Color primaryLabel,
   }) {
     if (!isDCVVisual && _selectedIndex == 1) {
+      if (_calendarTitleInScrollContent) return const SizedBox.shrink();
       return _buildCalendarTitleRow(compactFadeColor: headerColor);
     }
 
@@ -2675,7 +2676,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           child: CalendarTab(
             key: _calendarTabKey,
             daySubMode: _activeDaySubMode,
-            onViewChanged: (view, displayYear, prev, curr, next) {
+            onViewChanged:
+                (view, displayYear, prev, curr, next, titleInScrollContent) {
               final viewChanged = _calendarView != view;
               if (mounted) {
                 setState(() {
@@ -2684,12 +2686,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   _calendarPrevTitle = prev;
                   _calendarTitle = curr;
                   _calendarNextTitle = next;
+                  _calendarTitleInScrollContent = titleInScrollContent;
                 });
                 if (viewChanged && _selectedIndex == 1) {
                   _restoreHeaderScrollOffset();
                 }
               }
             },
+            scrollableTitleBuilder: _buildScrollableCalendarTitle,
             onStripSlide: (x) => _calendarStripSlide.value = x,
             onSearchCancel: () => _setSearchFocused(false),
             searchModeAnimation: _searchModeAnim,
@@ -2913,6 +2917,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                     (1 - t);
                                 final titleScrollOffset =
                                     _headerTitleScrollOffset.value;
+                              final calendarTitleInContent =
+                                  !isDCVVisual &&
+                                  _selectedIndex == 1 &&
+                                  _calendarTitleInScrollContent;
                               final headerColor = headerSurfaceColor;
                               return Container(
                                 width: double.infinity,
@@ -2927,7 +2935,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                  child: Stack(
                                    clipBehavior: Clip.none,
                                   children: [
-                                     if (!isLandscape)
+                                     if (!isLandscape &&
+                                         !calendarTitleInContent)
                                        Positioned(
                                          top: topInset,
                                          left: 0,

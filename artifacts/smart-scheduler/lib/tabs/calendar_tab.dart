@@ -425,6 +425,7 @@ class CalendarTab extends StatefulWidget {
   const CalendarTab({
     super.key,
     required this.onViewChanged,
+    this.scrollableTitleBuilder,
     this.onStripSlide,
     this.onSearchCancel,
     this.searchModeAnimation,
@@ -441,8 +442,17 @@ class CalendarTab extends StatefulWidget {
     String prevTitle,
     String title,
     String nextTitle,
+    bool titleInScrollContent,
   )
   onViewChanged;
+  final Widget Function(
+    BuildContext context,
+    String title,
+    int displayYear,
+    CalendarView view,
+    bool isActive,
+  )?
+  scrollableTitleBuilder;
   // Called with the current week-strip slide offset (logical px, 0.0 when idle)
   // so AppShell can translate the calendar header in lock-step with the strip.
   final void Function(double slideX)? onStripSlide;
@@ -1472,9 +1482,27 @@ class CalendarTabState extends State<CalendarTab>
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────────
+  bool get calendarTitleInScrollContent {
+    if (_zoomTargetView != null ||
+        _collapseTargetView != null ||
+        _collapseCtrl.value > 0.001) {
+      return false;
+    }
+    if (_view == CalendarView.year) return _zoomCtrl.value <= 0.001;
+    if (_view == CalendarView.month) return _zoomCtrl.value >= 0.999;
+    return false;
+  }
+
   void _notify() {
     final (prev, curr, next) = _adjacentTitles();
-    widget.onViewChanged(_view, _dispYear, prev, curr, next);
+    widget.onViewChanged(
+      _view,
+      _dispYear,
+      prev,
+      curr,
+      next,
+      calendarTitleInScrollContent,
+    );
   }
 
   // Physics spring: mass 1, stiffness 180, damping 23 (lightly underdamped —
@@ -1566,8 +1594,8 @@ class CalendarTabState extends State<CalendarTab>
       if (_zoomTargetView != null) {
         setState(() => _view = _zoomTargetView!);
         _zoomTargetView = null;
-        _notify();
       }
+      _notify();
     }
   }
 
@@ -1579,6 +1607,7 @@ class CalendarTabState extends State<CalendarTab>
     }
     _zoomTargetView = CalendarView.year;
     setState(() => _zoomMonthIdx = _dispMonth - 1);
+    _notify();
     await _zoomCtrl.animateWith(
       SpringSimulation(
         fast ? _kHierarchyZoomSpringExit : _kZoomSpringExit,
@@ -1592,8 +1621,8 @@ class CalendarTabState extends State<CalendarTab>
       if (_zoomTargetView != null) {
         setState(() => _view = _zoomTargetView!);
         _zoomTargetView = null;
-        _notify();
       }
+      _notify();
     }
   }
 
@@ -2074,6 +2103,7 @@ class CalendarTabState extends State<CalendarTab>
 
   _MonthView _monthPreviewView({
     required bool isPrev,
+    required bool showScrollTitle,
     required int year,
     required int month,
     required DateTime today,
@@ -2096,6 +2126,8 @@ class CalendarTabState extends State<CalendarTab>
       collapseWeekRow,
       rowHeight,
       _viewMode.index,
+      showScrollTitle,
+      _monthHeaderName(month),
       pendingBloomDate == null
           ? ''
           : '${pendingBloomDate.year}-${pendingBloomDate.month}-${pendingBloomDate.day}',
@@ -2117,6 +2149,11 @@ class CalendarTabState extends State<CalendarTab>
       collapseWeekRow: collapseWeekRow,
       rowHeight: rowHeight,
       viewMode: _viewMode,
+      scrollableTitleBuilder: showScrollTitle
+          ? widget.scrollableTitleBuilder
+          : null,
+      scrollTitle: _monthHeaderName(month),
+      scrollTitleIsActive: false,
       pendingBloomDate: pendingBloomDate,
       suppressScaleAnimation: suppressScaleAnimation,
       scrollController: scrollController,
@@ -2294,6 +2331,12 @@ class CalendarTabState extends State<CalendarTab>
           builder: (context, _) {
             final zoomT = _zoomAnim.value;
             final colT = _collapseAnim.value;
+            final titleInScrollContent =
+                calendarTitleInScrollContent &&
+                MediaQuery.orientationOf(context) == Orientation.portrait;
+            final scrollableTitleBuilder = titleInScrollContent
+                ? widget.scrollableTitleBuilder
+                : null;
             final dayWeekStripHeight = _dayViewWeekStripHeight(context);
             // Animated row height driven by the view-mode transition.
             final rowHeight = lerpDouble(
@@ -2657,6 +2700,9 @@ class CalendarTabState extends State<CalendarTab>
                                   isPrev: true,
                                   key: '$prevYear',
                                 ),
+                                scrollableTitleBuilder:
+                                    scrollableTitleBuilder,
+                                titleIsActive: false,
                               ),
                             ),
                             Positioned(
@@ -2672,6 +2718,9 @@ class CalendarTabState extends State<CalendarTab>
                                 onMonthTap: _enterMonth,
                                 controller: _yearScrollCtrl,
                                 rowKeys: _yearRowKeys,
+                                scrollableTitleBuilder:
+                                    scrollableTitleBuilder,
+                                titleIsActive: true,
                               ),
                             ),
                             Positioned(
@@ -2689,6 +2738,9 @@ class CalendarTabState extends State<CalendarTab>
                                   isPrev: false,
                                   key: '$nextYear',
                                 ),
+                                scrollableTitleBuilder:
+                                    scrollableTitleBuilder,
+                                titleIsActive: false,
                               ),
                             ),
                           ],
@@ -2754,6 +2806,8 @@ class CalendarTabState extends State<CalendarTab>
                                    child: IgnorePointer(
                                       child: _monthPreviewView(
                                         isPrev: true,
+                                        showScrollTitle:
+                                            titleInScrollContent,
                                         year: prevPanelYear,
                                         month: prevPanelMonth,
                                         today: _today,
@@ -2798,6 +2852,10 @@ class CalendarTabState extends State<CalendarTab>
                                   daySubMode: widget.daySubMode,
                                    onEditEvent: widget.onEditEvent,
                                   scrollController: _monthViewScrollCtrl,
+                                  scrollableTitleBuilder:
+                                      scrollableTitleBuilder,
+                                  scrollTitle: _monthHeaderName(_dispMonth),
+                                  scrollTitleIsActive: true,
                                   scrollViewportKey:
                                       _monthViewScrollViewportKey,
                                    monthListOrderByDay:
@@ -2864,6 +2922,8 @@ class CalendarTabState extends State<CalendarTab>
                                    child: IgnorePointer(
                                       child: _monthPreviewView(
                                         isPrev: false,
+                                        showScrollTitle:
+                                            titleInScrollContent,
                                         year: nextPanelYear,
                                         month: nextPanelMonth,
                                         today: _today,
@@ -2978,6 +3038,8 @@ class _YearView extends StatelessWidget {
     required this.onMonthTap,
     this.controller,
     this.rowKeys,
+    this.scrollableTitleBuilder,
+    this.titleIsActive = false,
   });
 
   final int year;
@@ -2990,6 +3052,15 @@ class _YearView extends StatelessWidget {
   // One key per row (0–3). Supplied only for the current-year panel so
   // CalendarTabState can measure actual rendered row positions before zooming.
   final List<GlobalKey>? rowKeys;
+  final Widget Function(
+    BuildContext context,
+    String title,
+    int displayYear,
+    CalendarView view,
+    bool isActive,
+  )?
+  scrollableTitleBuilder;
+  final bool titleIsActive;
 
   @override
   Widget build(BuildContext context) {
@@ -3003,28 +3074,25 @@ class _YearView extends StatelessWidget {
           context,
           math.max(0.0, totalW - horizontalInset * 2.0),
         );
-
-        return SingleChildScrollView(
-          controller: controller,
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics(),
-          ),
-          clipBehavior: Clip.hardEdge,
-          padding: EdgeInsets.fromLTRB(
-            _kYearOuterPad + horizontalInset,
-            17.5 +
-                (MediaQuery.orientationOf(context) == Orientation.portrait
-                    ? kAppHeaderTitleHeight
-                    : 0),
-            _kYearOuterPad + horizontalInset,
-            14.5 + floatingTabBarContentBottomClearance(context),
+        final isPortrait =
+            MediaQuery.orientationOf(context) == Orientation.portrait;
+        final scrollTitle = scrollableTitleBuilder?.call(
+          context,
+          '$year',
+          year,
+          CalendarView.year,
+          titleIsActive,
+        );
+        final monthGrid = Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: _kYearOuterPad + horizontalInset,
           ),
           child: Column(
             children: [
               for (int row = 0; row < grid.rowCount; row++) ...[
                 // KeyedSubtree lets CalendarTabState measure exact row positions
-                // via GlobalKey before the zoom animation starts, so _MorphOverlay
-                // can use actual Flutter-layout y coordinates instead of a formula.
+                // via GlobalKey before zooming, so _MorphOverlay can use actual
+                // Flutter-layout y coordinates instead of a formula.
                 KeyedSubtree(
                   key: rowKeys?[row],
                   child: Row(
@@ -3059,6 +3127,28 @@ class _YearView extends StatelessWidget {
                 if (row < grid.rowCount - 1)
                   const SizedBox(height: _kYearRowGap),
               ],
+            ],
+          ),
+        );
+
+        return SingleChildScrollView(
+          controller: controller,
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          clipBehavior: Clip.none,
+          padding: EdgeInsets.only(
+            bottom: 14.5 + floatingTabBarContentBottomClearance(context),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (scrollTitle != null)
+                scrollTitle
+              else if (isPortrait)
+                const SizedBox(height: kAppHeaderTitleHeight),
+              const SizedBox(height: 17.5),
+              monthGrid,
             ],
           ),
         );
@@ -4520,6 +4610,9 @@ class _MonthView extends StatelessWidget {
     this.suppressScaleAnimation = false,
     this.daySubMode = DayViewSubMode.singleDay,
     this.scrollController,
+    this.scrollableTitleBuilder,
+    this.scrollTitle,
+    this.scrollTitleIsActive = false,
     this.scrollViewportKey,
     this.monthListOrderByDay = const {},
     this.monthListOrderRevision = 0,
@@ -4547,6 +4640,16 @@ class _MonthView extends StatelessWidget {
   /// External scroll controller attached to the SingleChildScrollView so the
   /// parent can read the scroll offset at the moment _enterDay is called.
   final ScrollController? scrollController;
+  final Widget Function(
+    BuildContext context,
+    String title,
+    int displayYear,
+    CalendarView view,
+    bool isActive,
+  )?
+  scrollableTitleBuilder;
+  final String? scrollTitle;
+  final bool scrollTitleIsActive;
   final GlobalKey? scrollViewportKey;
   final Map<String, List<String>> monthListOrderByDay;
   final int monthListOrderRevision;
@@ -4702,6 +4805,17 @@ class _MonthView extends StatelessWidget {
                     : availableListEmptyStateH
                 : 0.0
             : math.max(0.0, emptyH - eventContentClearance);
+        final isPortrait =
+            MediaQuery.orientationOf(context) == Orientation.portrait;
+        final scrollTitleWidget = scrollTitle == null
+            ? null
+            : scrollableTitleBuilder?.call(
+                context,
+                scrollTitle!,
+                year,
+                CalendarView.month,
+                scrollTitleIsActive,
+              );
 
         // A non-empty Month List must use the selected DCV's measured height.
         // A collapsed final section therefore measures as its header plus the
@@ -4916,19 +5030,27 @@ class _MonthView extends StatelessWidget {
                 )
               : const NeverScrollableScrollPhysics(),
           padding: EdgeInsets.only(
-            top: MediaQuery.orientationOf(context) == Orientation.portrait
+            top: scrollTitleWidget == null && isPortrait
                 ? kAppHeaderTitleHeight
                 : 0,
           ),
           clipBehavior: Clip.none,
-          child: monthListUsesNaturalHeight
-              ? ConstrainedBox(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (scrollTitleWidget != null) scrollTitleWidget,
+              if (monthListUsesNaturalHeight)
+                ConstrainedBox(
                   constraints: BoxConstraints(
                     minHeight: constraints.maxHeight,
                   ),
                   child: document,
                 )
-              : SizedBox(height: contentH, child: document),
+              else
+                SizedBox(height: contentH, child: document),
+            ],
+          ),
         );
           },
         );
