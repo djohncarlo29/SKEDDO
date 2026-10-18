@@ -1788,8 +1788,12 @@ class CalendarTabState extends State<CalendarTab>
     if (_collapseTargetView != null) {
       setState(() => _view = _collapseTargetView!);
       _collapseTargetView = null;
-      _notify();
     }
+    // The collapse target is normally cleared at the midpoint by
+    // _onCollapseTick. Still notify here: calendarTitleInScrollContent changes
+    // only once the reverse animation reaches zero, and AppShell must remove
+    // its shell-owned title before the Month View title is exposed.
+    _notify();
   }
 
   @override
@@ -2408,10 +2412,11 @@ class CalendarTabState extends State<CalendarTab>
                         _kDayLabelHeight +
                         dayWeekStripHeight +
                         dayBannerHeight);
-            final double monthPanelSlideY =
-                widget.daySubMode == DayViewSubMode.list
-                    ? dayHeaderGroupSlideY
-                    : 0.0;
+            // Keep the month panel (which owns the week strip) on the same
+            // List-mode track while the header group enters and leaves. On the
+            // reverse transition daySubMode has already changed away from List,
+            // but the strip must remain translated until _listModeCtrl settles.
+            final double monthPanelSlideY = dayHeaderGroupSlideY;
             final dayContentTop =
                 expandedTitleHeight +
                 _kCalendarHeaderToDowGap +
@@ -5085,7 +5090,13 @@ class _MonthView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (stationaryScrollTitleWidget != null)
-                  stationaryScrollTitleWidget,
+                  Transform.translate(
+                    // The page viewport is raised to give calendar content
+                    // extra room, but its second-level title must stay aligned
+                    // with the shell-owned title used by the other tabs.
+                    offset: const Offset(0.0, kContentAreaTopRaise),
+                    child: stationaryScrollTitleWidget,
+                  ),
                 if (monthListUsesNaturalHeight)
                   ConstrainedBox(
                     constraints: BoxConstraints(
