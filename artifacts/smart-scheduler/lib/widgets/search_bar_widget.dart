@@ -834,20 +834,26 @@ class SearchModeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppWindowFullBleedWidth(
-      child: ColoredBox(
-        color: resolveThemeColor(kBackgroundColor, context),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppWindowContentPadding(child: searchBarRow),
-            const SizedBox(height: kSearchBarHeaderSeparatorGap),
-            Container(
-              height: kSearchBarSeparatorHeight,
-              color: resolveThemeColor(kSeparatorColor, context),
-            ),
-          ],
+    // A fixed extent is required because this header is also used as the first
+    // child of a Column. AppWindowFullBleedWidth intentionally overflows only
+    // horizontally; without a bounded height it would expand into the
+    // Column's unbounded main-axis constraint and consume the results area.
+    return SizedBox(
+      height: searchBarHeaderExtent(context),
+      child: AppWindowFullBleedWidth(
+        child: ColoredBox(
+          color: resolveThemeColor(kBackgroundColor, context),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppWindowContentPadding(child: searchBarRow),
+              const SizedBox(height: kSearchBarHeaderSeparatorGap),
+              Container(
+                height: kSearchBarSeparatorHeight,
+                color: resolveThemeColor(kSeparatorColor, context),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -876,34 +882,21 @@ class SearchNoResultsCentered extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final keyboardBottom = MediaQuery.viewInsetsOf(context).bottom;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (!constraints.hasBoundedHeight) {
-          return Center(child: child);
-        }
-        // While the keyboard is present it is the larger obstruction, so the
-        // tab bar does not steal additional space. As the keyboard dismisses,
-        // clearance transfers continuously to the tab bar without a binary
-        // layout jump at inset == 0.
-        final bottomObstruction = math.max(keyboardBottom, bottomClearance);
-        final usableHeight = (constraints.maxHeight - bottomObstruction)
-            .clamp(0.0, constraints.maxHeight)
-            .toDouble();
-        return SizedBox(
-          width: double.infinity,
-          height: constraints.maxHeight,
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              width: double.infinity,
-              height: usableHeight,
-              child: Center(child: child),
-            ),
-          ),
-        );
-      },
+    // While the keyboard is present it is the larger obstruction, so the tab
+    // bar does not steal additional space. As the keyboard dismisses,
+    // clearance transfers continuously to the tab bar without a binary layout
+    // jump at inset == 0.
+    //
+    // AnimatedPadding keeps the child centered in the remaining height while
+    // remaining intrinsic-size compatible with SliverFillRemaining. A
+    // LayoutBuilder here breaks that sliver's intrinsic sizing and leaves an
+    // empty search viewport unlaid out.
+    final bottomObstruction = math.max(keyboardBottom, bottomClearance);
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      padding: EdgeInsets.only(bottom: bottomObstruction),
+      child: Center(child: child),
     );
   }
 }

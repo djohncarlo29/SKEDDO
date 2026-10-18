@@ -1,0 +1,142 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
+import 'package:smart_scheduler/widgets/search_bar_widget.dart';
+import 'package:smart_scheduler/widgets/smart_search_results.dart';
+
+void main() {
+  testWidgets(
+    'empty offscreen results render immediately and rubberband below a fixed header',
+    (tester) async {
+      const surfaceSize = Size(390, 844);
+      const headerKey = ValueKey('fixed-search-mode-header');
+      tester.view.physicalSize = surfaceSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: AppWindowContentBoundary(
+              child: SizedBox.expand(
+                child: AppWindowContentPadding(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SearchModeHeader(
+                        searchBarRow: const SizedBox(
+                          key: headerKey,
+                          height: 52,
+                          child: ColoredBox(
+                            color: CupertinoColors.systemBlue,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: CustomScrollView(
+                          primary: false,
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics(),
+                          ),
+                          slivers: const [
+                            SmartSearchResultsSliver(hits: []),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('No Results'), findsOneWidget);
+      final headerFinder = find.byKey(headerKey);
+      final headerTop = tester.getTopLeft(headerFinder).dy;
+
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.text('No Results')),
+      );
+      await gesture.moveBy(const Offset(0, 48));
+      await tester.pump();
+      expect(tester.getTopLeft(headerFinder).dy, closeTo(headerTop, 0.5));
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      await tester.drag(
+        find.byType(CustomScrollView),
+        const Offset(0, -48),
+      );
+      await tester.pump();
+      expect(tester.getTopLeft(headerFinder).dy, closeTo(headerTop, 0.5));
+    },
+  );
+
+  testWidgets(
+    'no-results placeholder animates to the keyboard-adjusted viewport center',
+    (tester) async {
+      const surfaceSize = Size(320, 600);
+      tester.view.physicalSize = surfaceSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      Widget buildApp(double keyboardBottom) {
+        return CupertinoApp(
+          home: MediaQuery(
+            data: MediaQueryData(
+              size: surfaceSize,
+              viewInsets: EdgeInsets.only(bottom: keyboardBottom),
+            ),
+            child: const Center(
+              child: SizedBox(
+                width: 300,
+                height: 500,
+                child: SearchNoResultsCentered(
+                  child: Text('No Results'),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildApp(0));
+      await tester.pumpAndSettle();
+      final noResultsFinder = find.text('No Results');
+      final centerWithoutKeyboard = tester.getCenter(noResultsFinder).dy;
+      expect(centerWithoutKeyboard, closeTo(300, 1));
+
+      await tester.pumpWidget(buildApp(200));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 110));
+      final centerDuringKeyboardAnimation = tester
+          .getCenter(noResultsFinder)
+          .dy;
+      expect(
+        centerDuringKeyboardAnimation,
+        lessThan(centerWithoutKeyboard),
+      );
+      expect(
+        centerDuringKeyboardAnimation,
+        greaterThan(200),
+        reason: 'The placeholder should move smoothly instead of jumping.',
+      );
+      await tester.pumpAndSettle();
+      expect(tester.getCenter(noResultsFinder).dy, closeTo(200, 1));
+
+      await tester.pumpWidget(buildApp(0));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 110));
+      final centerDuringDismissal = tester.getCenter(noResultsFinder).dy;
+      expect(centerDuringDismissal, greaterThan(200));
+      expect(centerDuringDismissal, lessThan(300));
+      await tester.pumpAndSettle();
+      expect(tester.getCenter(noResultsFinder).dy, closeTo(300, 1));
+    },
+  );
+}

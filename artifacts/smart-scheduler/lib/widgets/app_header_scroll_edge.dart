@@ -54,12 +54,20 @@ class AppHeaderScrollTitle extends StatelessWidget {
     final scrollController = controller;
     if (scrollController == null) return child;
 
+    // Resolve the Scrollable that actually contains this title. Some calendar
+    // modes intentionally share one controller with an embedded list, so the
+    // controller can have multiple positions even though this title belongs to
+    // exactly one of them.
+    final owningPosition = Scrollable.maybeOf(context)?.position;
+    final Listenable animation = owningPosition ?? scrollController;
     return AnimatedBuilder(
-      animation: scrollController,
+      animation: animation,
       builder: (context, _) {
         final positions = scrollController.positions;
-        if (positions.length != 1) return child;
-        final position = positions.single;
+        final position =
+            owningPosition ??
+            (positions.length == 1 ? positions.single : null);
+        if (position == null) return child;
         if (!position.hasContentDimensions) return child;
         final correction =
             AppHeaderScrollBehavior.leadingOverscrollCorrection(position);

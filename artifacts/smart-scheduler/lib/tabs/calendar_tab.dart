@@ -1600,8 +1600,29 @@ class CalendarTabState extends State<CalendarTab>
     Rect? measureRect(GlobalKey key) {
       final box = key.currentContext?.findRenderObject() as RenderBox?;
       if (box == null || !box.attached || !box.hasSize) return null;
-      final topLeft = calendarBox.globalToLocal(box.localToGlobal(Offset.zero));
-      return topLeft & box.size;
+      // Convert all four rendered corners instead of combining a transformed
+      // origin with the untransformed local size. This keeps targets exact if
+      // a view-mode or responsive layout applies a scale/translation above a
+      // keyed row or day cell.
+      final corners = <Offset>[
+        Offset.zero,
+        Offset(box.size.width, 0.0),
+        Offset(0.0, box.size.height),
+        Offset(box.size.width, box.size.height),
+      ].map(
+        (point) => calendarBox.globalToLocal(box.localToGlobal(point)),
+      );
+      var left = double.infinity;
+      var top = double.infinity;
+      var right = double.negativeInfinity;
+      var bottom = double.negativeInfinity;
+      for (final point in corners) {
+        left = math.min(left, point.dx);
+        top = math.min(top, point.dy);
+        right = math.max(right, point.dx);
+        bottom = math.max(bottom, point.dy);
+      }
+      return Rect.fromLTRB(left, top, right, bottom);
     }
 
     final rowCount = _totalWeekRows(_dispYear, _dispMonth);
@@ -2891,7 +2912,14 @@ class CalendarTabState extends State<CalendarTab>
                             screenW: sw,
                             measuredRowTops: _yearMeasuredRowTops,
                             monthGeometry: _monthMorphGeometry,
-                            nonSelectedClipTop: titleInScrollContent
+                            // During Year→Month, title ownership temporarily
+                            // moves to the shell. The title band is still
+                            // visible and must remain protected from the
+                            // non-selected month scatter in either ownership
+                            // state.
+                            nonSelectedClipTop:
+                                MediaQuery.orientationOf(context) ==
+                                    Orientation.portrait
                                 ? expandedTitleHeight
                                 : 0.0,
                             viewModeRowHeight: rowHeight,

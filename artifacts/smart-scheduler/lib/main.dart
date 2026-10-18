@@ -640,7 +640,7 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
       // native bridge. Re-read it after returning from Settings so the
       // System thumb and captured scaler track the newly selected OS value.
       unawaited(initializeDeviceTextScaleProfile());
-    }
+  }
   }
 
   @override
@@ -2204,7 +2204,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             ),
           ),
         ),
-      ),
       );
     }
 
@@ -3911,12 +3910,10 @@ class _CalendarNavChevron extends StatelessWidget {
       return SizedBox(
         width: 24,
         height: compactControlHeight,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          excludeFromSemantics: true,
-          onTapUp: (details) {
+        child: _CalendarNavTapTarget(
+          onTapAt: (position) {
             final tappedUpperHalf =
-                details.localPosition.dy < compactControlHeight / 2;
+                position.dy < compactControlHeight / 2;
             (tappedUpperHalf ? onUp : onDown)?.call();
           },
           child: Column(
@@ -3961,12 +3958,8 @@ class _CalendarNavChevron extends StatelessWidget {
               ? 'Go to more detail'
               : 'Return to calendar overview',
           onTap: onTap,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            excludeFromSemantics: true,
-            // A disabled half still owns its painted hit target, preventing a
-            // tap from falling through to the tappable title behind it.
-            onTap: onTap ?? () {},
+          child: _CalendarNavTapTarget(
+            onTapAt: onTap == null ? null : (_) => onTap(),
             child: Stack(
               clipBehavior: Clip.none,
               children: [
@@ -3989,38 +3982,99 @@ class _CalendarNavChevron extends StatelessWidget {
 
     return SizedBox(
       width: hitW,
-      height: safeTitleFontSize,
-      child: OverflowBox(
-        alignment: Alignment.center,
-        minWidth: hitW,
-        maxWidth: hitW,
-        minHeight: hitHalfHeight * 2,
-        maxHeight: hitHalfHeight * 2,
-        child: SizedBox(
-          width: hitW,
-          height: hitHalfHeight * 2,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              half(
-                direction: _ChevronDir.up,
-                color: canUp ? resolveAccentColor(context) : disabledColor,
-                onTap: onUp,
-                top: 0,
-                iconTop: firstTop + overflowY,
-              ),
-              half(
-                direction: _ChevronDir.down,
-                color: canDown ? resolveAccentColor(context) : disabledColor,
-                onTap: onDown,
-                top: hitHalfHeight,
-                iconTop: halfHeight + secondTop + overflowY - hitHalfHeight,
-              ),
-            ],
+      height: hitHalfHeight * 2,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          half(
+            direction: _ChevronDir.up,
+            color: canUp ? resolveAccentColor(context) : disabledColor,
+            onTap: onUp,
+            top: 0,
+            iconTop: firstTop + overflowY,
           ),
-        ),
-      );
+          half(
+            direction: _ChevronDir.down,
+            color: canDown ? resolveAccentColor(context) : disabledColor,
+            onTap: onDown,
+            top: hitHalfHeight,
+            iconTop: halfHeight + secondTop + overflowY - hitHalfHeight,
+          ),
+        ],
+      ),
+    );
     }
+  }
+
+/// A split chevron hit target that remains reliable inside the horizontally
+/// rubber-banding title scroller. The raw pointer listener tracks tap slop
+/// independently of the scroll gesture arena, while the nested no-op tap
+/// recognizer keeps a chevron tap from also activating the title underneath.
+class _CalendarNavTapTarget extends StatefulWidget {
+  const _CalendarNavTapTarget({
+    required this.onTapAt,
+    required this.child,
+  });
+
+  final ValueChanged<Offset>? onTapAt;
+  final Widget child;
+
+  @override
+  State<_CalendarNavTapTarget> createState() => _CalendarNavTapTargetState();
+}
+
+class _CalendarNavTapTargetState extends State<_CalendarNavTapTarget> {
+  static const double _tapSlop = 18.0;
+  int? _activePointer;
+  Offset? _downPosition;
+
+  void _onPointerDown(event) {
+    if (_activePointer != null) return;
+    _activePointer = event.pointer;
+    _downPosition = event.localPosition;
+  }
+
+  void _onPointerMove(event) {
+    if (event.pointer != _activePointer) return;
+    final downPosition = _downPosition;
+    if (downPosition == null ||
+        (event.localPosition - downPosition).distance > _tapSlop) {
+      _activePointer = null;
+      _downPosition = null;
+    }
+  }
+
+  void _onPointerUp(event) {
+    if (event.pointer != _activePointer) return;
+    final downPosition = _downPosition;
+    _activePointer = null;
+    _downPosition = null;
+    if (downPosition != null) widget.onTapAt?.call(downPosition);
+  }
+
+  void _onPointerCancel(event) {
+    if (event.pointer != _activePointer) return;
+    _activePointer = null;
+    _downPosition = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      excludeFromSemantics: true,
+      // This recognizer intentionally does not invoke the action. It wins
+      // over the outer title tap for a tap in the chevron's own hit area.
+      onTap: () {},
+      child: Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: _onPointerDown,
+        onPointerMove: _onPointerMove,
+        onPointerUp: _onPointerUp,
+        onPointerCancel: _onPointerCancel,
+        child: widget.child,
+      ),
+    );
   }
 }
 
