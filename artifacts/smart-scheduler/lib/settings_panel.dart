@@ -291,8 +291,9 @@ class _SettingsPanelState extends State<SettingsPanel>
       final current = _headerTitleScrollOffset.value;
       // Mirror the real scroll position so the title keeps moving after it
       // passes beneath the pinned toolbar and out of view.
-      final next =
-          notification.metrics.pixels - notification.metrics.minScrollExtent;
+      final next = AppHeaderScrollBehavior.contentOffset(
+        notification.metrics,
+      );
       if ((next - current).abs() >= 0.01) {
         _headerTitleScrollOffsets[_headerScrollScope] = next;
         _headerTitleScrollOffset.value = next;

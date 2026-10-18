@@ -3082,6 +3082,12 @@ class _YearView extends StatelessWidget {
           CalendarView.year,
           titleIsActive,
         );
+        final stationaryScrollTitle = scrollTitle == null
+            ? null
+            : AppHeaderScrollTitle(
+                controller: controller,
+                child: scrollTitle,
+              );
         final monthGrid = Padding(
           padding: EdgeInsets.symmetric(
             horizontal: _kYearOuterPad + horizontalInset,
@@ -3146,8 +3152,8 @@ class _YearView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (scrollTitle != null)
-                  scrollTitle
+                if (stationaryScrollTitle != null)
+                  stationaryScrollTitle
                 else if (isPortrait)
                   const SizedBox(height: kAppHeaderTitleHeight),
                 const SizedBox(height: 17.5),
@@ -4820,6 +4826,12 @@ class _MonthView extends StatelessWidget {
                 CalendarView.month,
                 scrollTitleIsActive,
               );
+        final stationaryScrollTitleWidget = scrollTitleWidget == null
+            ? null
+            : AppHeaderScrollTitle(
+                controller: scrollController,
+                child: scrollTitleWidget,
+              );
 
         // A non-empty Month List must use the selected DCV's measured height.
         // A collapsed final section therefore measures as its header plus the
@@ -5039,7 +5051,7 @@ class _MonthView extends StatelessWidget {
             padding: EdgeInsets.only(
               top:
                   leadingInset +
-                  (scrollTitleWidget == null && isPortrait
+                  (stationaryScrollTitleWidget == null && isPortrait
                       ? kAppHeaderTitleHeight
                       : 0),
             ),
@@ -5048,7 +5060,8 @@ class _MonthView extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (scrollTitleWidget != null) scrollTitleWidget,
+                if (stationaryScrollTitleWidget != null)
+                  stationaryScrollTitleWidget,
                 if (monthListUsesNaturalHeight)
                   ConstrainedBox(
                     constraints: BoxConstraints(

@@ -966,9 +966,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       // restored offsets, and calendar panels that share their own controllers.
       // Bouncing physics can report a temporary position below minScrollExtent.
       // Do not let that rubber-band pull the title back down behind the toolbar.
-      final next = max(
-        0.0,
-        notification.metrics.pixels - notification.metrics.minScrollExtent,
+      final next = AppHeaderScrollBehavior.contentOffset(
+        notification.metrics,
       );
       if ((next - current).abs() >= 0.01) {
         _headerTitleScrollOffsets[scope] = next;

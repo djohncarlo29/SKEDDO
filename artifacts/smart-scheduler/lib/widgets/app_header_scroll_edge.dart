@@ -8,6 +8,71 @@ const double kAppHeaderTitleHeight = 57;
 const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;
 const double _kAppHeaderScrollEdgeMaxBlurSigma = 8;
 
+/// Shared scroll rules for second-level app headers.
+///
+/// Normal scrolling moves the title with its owning content and drives the
+/// shell's Liquid Glass edge. Leading overscroll is different: content may
+/// rubber-band, but the title stays at its resting position.
+abstract final class AppHeaderScrollBehavior {
+  /// Returns the non-negative distance scrolled away from the top.
+  ///
+  /// Use this for shell-owned titles and the shared scroll-edge progress so
+  /// leading rubber-band overscroll never pulls those titles downward.
+  static double contentOffset(ScrollMetrics metrics) {
+    final offset = metrics.pixels - metrics.minScrollExtent;
+    if (!offset.isFinite || offset <= 0.0) return 0.0;
+    return offset;
+  }
+
+  /// Returns the translation that cancels leading overscroll for a title
+  /// which is otherwise laid out inside the scrollable content.
+  static double leadingOverscrollCorrection(ScrollMetrics metrics) {
+    final offset = metrics.pixels - metrics.minScrollExtent;
+    if (!offset.isFinite || offset >= 0.0) return 0.0;
+    return offset;
+  }
+}
+
+/// Keeps a second-level title fixed during leading rubber-band overscroll while
+/// leaving its ordinary scroll-away motion unchanged.
+///
+/// The title remains part of the scrollable content, so it still travels
+/// beneath the app header and participates in the shared Liquid Glass edge
+/// during normal upward scrolling. Only negative top overscroll is cancelled.
+class AppHeaderScrollTitle extends StatelessWidget {
+  const AppHeaderScrollTitle({
+    super.key,
+    required this.controller,
+    required this.child,
+  });
+
+  final ScrollController? controller;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scrollController = controller;
+    if (scrollController == null) return child;
+
+    return AnimatedBuilder(
+      animation: scrollController,
+      builder: (context, _) {
+        final positions = scrollController.positions;
+        if (positions.length != 1) return child;
+        final position = positions.single;
+        if (!position.hasContentDimensions) return child;
+        final correction =
+            AppHeaderScrollBehavior.leadingOverscrollCorrection(position);
+        if (correction == 0.0) return child;
+        return Transform.translate(
+          offset: Offset(0.0, correction),
+          child: child,
+        );
+      },
+    );
+  }
+}
+
 /// Provides the amount of app-shell space between a page's layout origin and
 /// the physical top of its scroll viewport.
 ///
