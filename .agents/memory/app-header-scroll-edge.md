@@ -13,6 +13,13 @@ During normal scrolling away from the top, a second-level header travels with it
 
 **How to apply:** Use the shared header-scroll behavior for scroll-offset normalization and for titles laid out inside scroll content. Preserve normal positive-offset movement and keep the documented Day timeline exclusions.
 
+## Positioned timeline boundary
+Calendar Day timelines are positioned below the week strip and day banner, but their `AppHeaderScrollViewport` expands upward by the shell inset. Clip the timeline locally to its positioned slot so its scrolled labels and rules cannot paint over those headers. Do not add a page-level clip or change the app-wide header bleed behavior.
+
+**Why:** The timeline's intentional shell-inset overflow is only valid when its viewport begins at the page's top edge; inside a lower positioned slot it can cover the opaque calendar headers.
+
+**How to apply:** When an app-header-extending scroll viewport is placed below fixed header content, clip that child at its own viewport boundary and keep the week-strip and banner surfaces above it.
+
 **Why:** Transparent backplates alone do not guarantee compositing: a title clip or a scroll viewport's hard clip can keep that layer from ever reaching the glass edge. Page-sized stack clips can create an artificial cutoff exactly at the header bottom, and a shell-title clip at the safe-area inset prevents it from continuing beneath the status-bar glass. The user explicitly requires only the first-level header to persist and all other app content to leave only at the physical viewport. Clamping the title itself leaves it stuck beneath the pinned toolbar instead of allowing it to scroll away; summing gesture deltas can diverge from ballistic or restored positions. Flutter's bouncing physics can report pixels below the minimum extent, which otherwise translates the title back down behind the toolbar. A global notification listener also sees Day timeline scrolling, so using it as header input moves the entire title group once per hour.
 
 Keep the app-level scroll-edge treatment light enough that content passing through it remains perceptible; a strong tint or blur can look like removal even when no render clip exists.

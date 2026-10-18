@@ -2596,63 +2596,69 @@ class CalendarTabState extends State<CalendarTab>
                       right: 0,
                       top: dayContentTop + dayBannerHeight,
                       bottom: 0,
-                      child: IgnorePointer(
-                        ignoring: colT < 0.85,
-                        child: RepaintBoundary(
-                          child: widget.daySubMode == DayViewSubMode.multiDay
-                              ? _DayTimelineMulti(
-                                  key: const Key('multi-timeline'),
-                                  selectedDate: _selected,
-                                  today: _today,
-                                  nowNotifier: _nowNotifier,
-                                  sharedScrollOffset:
-                                      _sharedDayTimelineOffset,
-                                  positionResetNotifier:
-                                      _dayTimelinePositionReset,
-                                  slideX: timelineSlideX,
-                                  screenW: sw,
-                                  animateEntrance:
-                                      _animateMultiDayTransition,
-                                )
-                              : Stack(
-                                  // Key the positioned panels by date so a day
-                                  // keeps its own ScrollController as it moves
-                                  // between the left, center, and right slots.
-                                  // Slot-based reconciliation remounted these
-                                  // scroll views after every committed swipe.
-                                  children: [
-                                    Positioned(
-                                      key: ValueKey(
-                                        'day-panel-${prevDay.year}-${prevDay.month}-${prevDay.day}',
+                      // The timeline scroll viewport extends upward behind the
+                      // app header. Keep that overflow inside the timeline's
+                      // own slot so its labels and rules cannot paint over the
+                      // opaque week strip or day banner above it.
+                      child: ClipRect(
+                        child: IgnorePointer(
+                          ignoring: colT < 0.85,
+                          child: RepaintBoundary(
+                            child: widget.daySubMode == DayViewSubMode.multiDay
+                                ? _DayTimelineMulti(
+                                    key: const Key('multi-timeline'),
+                                    selectedDate: _selected,
+                                    today: _today,
+                                    nowNotifier: _nowNotifier,
+                                    sharedScrollOffset:
+                                        _sharedDayTimelineOffset,
+                                    positionResetNotifier:
+                                        _dayTimelinePositionReset,
+                                    slideX: timelineSlideX,
+                                    screenW: sw,
+                                    animateEntrance:
+                                        _animateMultiDayTransition,
+                                  )
+                                : Stack(
+                                    // Key the positioned panels by date so a day
+                                    // keeps its own ScrollController as it moves
+                                    // between the left, center, and right slots.
+                                    // Slot-based reconciliation remounted these
+                                    // scroll views after every committed swipe.
+                                    children: [
+                                      Positioned(
+                                        key: ValueKey(
+                                          'day-panel-${prevDay.year}-${prevDay.month}-${prevDay.day}',
+                                        ),
+                                        left: timelineSlideX - sw,
+                                        top: 0,
+                                        bottom: 0,
+                                        width: sw,
+                                        child: _singleDayTimelineFor(prevDay),
                                       ),
-                                      left: timelineSlideX - sw,
-                                      top: 0,
-                                      bottom: 0,
-                                      width: sw,
-                                      child: _singleDayTimelineFor(prevDay),
-                                    ),
-                                    Positioned(
-                                      key: ValueKey(
-                                        'day-panel-${_selected.year}-${_selected.month}-${_selected.day}',
+                                      Positioned(
+                                        key: ValueKey(
+                                          'day-panel-${_selected.year}-${_selected.month}-${_selected.day}',
+                                        ),
+                                        left: timelineSlideX,
+                                        top: 0,
+                                        bottom: 0,
+                                        width: sw,
+                                        child: _singleDayTimelineFor(_selected),
                                       ),
-                                      left: timelineSlideX,
-                                      top: 0,
-                                      bottom: 0,
-                                      width: sw,
-                                      child: _singleDayTimelineFor(_selected),
-                                    ),
-                                    Positioned(
-                                      key: ValueKey(
-                                        'day-panel-${nextDay.year}-${nextDay.month}-${nextDay.day}',
+                                      Positioned(
+                                        key: ValueKey(
+                                          'day-panel-${nextDay.year}-${nextDay.month}-${nextDay.day}',
+                                        ),
+                                        left: timelineSlideX + sw,
+                                        top: 0,
+                                        bottom: 0,
+                                        width: sw,
+                                        child: _singleDayTimelineFor(nextDay),
                                       ),
-                                      left: timelineSlideX + sw,
-                                      top: 0,
-                                      bottom: 0,
-                                      width: sw,
-                                      child: _singleDayTimelineFor(nextDay),
-                                    ),
-                                  ],
-                                ),
+                                    ],
+                                  ),
+                          ),
                         ),
                       ),
                     ),
