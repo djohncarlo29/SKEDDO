@@ -34,3 +34,11 @@ For targeted app pages, raise available content by extending the shared scroll v
 **Why:** Raising the ceiling should preserve existing spacing before the first element while increasing the area used to center empty states. Changing that spacing too would shift content twice, and omitting manual height calculations leaves placeholders centered in the old area.
 
 **How to apply:** Use a separate top-extension token at the viewport boundary, align custom positioned or morphing layers to it, and add the same amount to explicitly computed empty-state space.
+
+## Search-mode and Calendar title alignment
+
+The 16pt content-area raise applies to ordinary page content, not active search headers. Scroll-based search mode viewports must omit that extension so their bar and results retain the prior coordinates. Calendar Year and Month title rows, including their controls, remain in the scroll content but receive the matching positive paint offset; the Day title remains shell-owned and must not be offset again. A fixed Detailed Category search overlay is already outside the raised scroll viewport, so do not add another correction to it.
+
+**Why:** The user requires search bars to keep their pre-raise position and all Calendar second-level headers to align with the shared header slot. Applying the page raise indiscriminately lifts search bars and Calendar Year/Month titles.
+
+**How to apply:** Whenever the content top extension changes, audit active search viewports separately from normal page scroll views, and compare Year, Month, and Day title ownership before compensating.

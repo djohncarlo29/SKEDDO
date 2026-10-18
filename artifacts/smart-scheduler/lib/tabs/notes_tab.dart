@@ -556,7 +556,9 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
         // position for the whole duration of the off-screen session.
         AppWindowContentPadding(
           child: AppHeaderScrollView(
-            topExtension: kContentAreaTopRaise,
+            // Search mode keeps its original header position; the extra
+            // viewport raise is for normal page content only.
+            topExtension: _searchFocused ? 0.0 : kContentAreaTopRaise,
             clipBehavior: Clip.none,
             controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(
@@ -697,7 +699,9 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
               // scroll offset to 0 the moment this overlay appears.
               child: AppWindowContentPadding(
                 child: AppHeaderScrollView(
-                  topExtension: kContentAreaTopRaise,
+                  // This overlay is the search-mode viewport, not normal page
+                  // content, so it must not inherit the 16pt content raise.
+                  topExtension: 0.0,
                   clipBehavior: Clip.none,
                 primary: false,
                 physics: const AlwaysScrollableScrollPhysics(

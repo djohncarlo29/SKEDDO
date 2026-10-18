@@ -2237,7 +2237,9 @@ class CalendarTabState extends State<CalendarTab>
         child: ColoredBox(
           color: resolveThemeColor(kBackgroundColor, context),
           child: AppHeaderScrollView(
-            topExtension: kContentAreaTopRaise,
+            // Calendar search is a full-screen search mode, not raised page
+            // content; preserve its pre-extension header position.
+            topExtension: 0.0,
             clipBehavior: Clip.none,
             primary: false,
             physics: const AlwaysScrollableScrollPhysics(
@@ -3179,7 +3181,13 @@ class _YearView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (stationaryScrollTitle != null)
-                  stationaryScrollTitle
+                  Transform.translate(
+                    // The content viewport is raised for calendar content,
+                    // but the Year View's second-level title and controls stay
+                    // aligned with the shared AppShell title slot.
+                    offset: const Offset(0.0, kContentAreaTopRaise),
+                    child: stationaryScrollTitle,
+                  )
                 else if (isPortrait)
                   const SizedBox(height: kAppHeaderTitleHeight),
                 const SizedBox(height: 17.5),

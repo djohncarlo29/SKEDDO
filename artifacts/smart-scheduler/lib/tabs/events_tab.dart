@@ -8236,7 +8236,9 @@ class EventsTabState extends State<EventsTab>
             ? 3
             : 2;
         final scrollView = AppHeaderScrollView(
-          topExtension: kContentAreaTopRaise,
+          // Search mode retains the search header's original vertical
+          // position; only normal page content uses the 16pt raise.
+          topExtension: _searchFocused ? 0.0 : kContentAreaTopRaise,
           key: _scrollViewportKey,
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(
@@ -8853,7 +8855,8 @@ class EventsTabState extends State<EventsTab>
           // scroll offset to 0 the moment this overlay appears.
           child: AppWindowContentPadding(
             child: AppHeaderScrollView(
-              topExtension: kContentAreaTopRaise,
+              // Keep the full-screen search header at its original position.
+              topExtension: 0.0,
               clipBehavior: Clip.none,
             primary: false,
             physics: const AlwaysScrollableScrollPhysics(
