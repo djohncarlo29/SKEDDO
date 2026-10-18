@@ -137,10 +137,31 @@ class SmartDcvSearchResults extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardBottom = MediaQuery.viewInsetsOf(context).bottom;
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      padding: EdgeInsets.only(bottom: keyboardBottom),
+      child: MediaQuery.removeViewInsets(
+        context: context,
+        removeBottom: true,
+        child: _buildResults(
+          context,
+          keyboardSafeViewport: keyboardBottom > 0,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResults(
+    BuildContext context, {
+    required bool keyboardSafeViewport,
+  }) {
     if (primary.isEmpty && overflow.isEmpty) {
       // Keep the empty state inside the same bouncing scroll surface as
-      // populated DCV results. AlwaysScrollable is intentional: it gives the
-      // placeholder the native rubber-band response even when it fits.
+      // populated DCV results. The outer padding reserves the keyboard area;
+      // AlwaysScrollable gives the placeholder native rubber-band response
+      // even when it fits.
       return CustomScrollView(
         primary: false,
         physics: const AlwaysScrollableScrollPhysics(
@@ -151,7 +172,12 @@ class SmartDcvSearchResults extends StatelessWidget {
           SliverFillRemaining(
             hasScrollBody: false,
             child: SearchNoResultsCentered(
-              bottomClearance: floatingTabBarContentBottomClearance(context),
+              // The keyboard-safe viewport is already clear of the floating
+              // tab bar, so applying that obstruction again would shift the
+              // empty state too far upward.
+              bottomClearance: keyboardSafeViewport
+                  ? 0
+                  : floatingTabBarContentBottomClearance(context),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -255,11 +281,13 @@ class SmartDcvSearchResults extends StatelessWidget {
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         SliverToBoxAdapter(
           child: SizedBox(
-            height: floatingTabBarContentBottomClearance(
-              context,
-              existingTrailingContentPadding: 32,
-              finalContentGap: 20,
-            ),
+            height: keyboardSafeViewport
+                ? 0
+                : floatingTabBarContentBottomClearance(
+                    context,
+                    existingTrailingContentPadding: 32,
+                    finalContentGap: 20,
+                  ),
           ),
         ),
       ],

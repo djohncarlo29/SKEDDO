@@ -2135,7 +2135,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             Positioned.fill(
               child: Transform.translate(
                 offset: Offset(slideX - sw, 0),
-                child: buildPanel(_calendarPrevTitle, isActive: false),
+                child: IgnorePointer(
+                  child: buildPanel(_calendarPrevTitle, isActive: false),
+                ),
               ),
             ),
             Positioned.fill(
@@ -2147,7 +2149,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             Positioned.fill(
               child: Transform.translate(
                 offset: Offset(slideX + sw, 0),
-                child: buildPanel(_calendarNextTitle, isActive: false),
+                child: IgnorePointer(
+                  child: buildPanel(_calendarNextTitle, isActive: false),
+                ),
               ),
             ),
           ],
@@ -2179,6 +2183,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       fontStyle: FontStyle.normal,
       color: isToday ? resolveAccentColor(context) : primaryLabel,
       letterSpacing: compact ? -0.6 : -1.2,
+    );
+    Widget activePanelControl(Widget child) => Visibility(
+      visible: isActive,
+      maintainSize: true,
+      maintainAnimation: true,
+      maintainState: true,
+      child: child,
     );
 
     Widget compactArrow({
@@ -2238,7 +2249,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               ? () => _calendarTabKey.currentState?.navigateDown()
               : null,
         );
-        if (!compact) return verticalNavigation;
+        if (!compact) return activePanelControl(verticalNavigation);
 
         return Row(
           mainAxisSize: MainAxisSize.min,
@@ -2295,8 +2306,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Expanded(child: titleScroller),
-        previousArrow,
-        nextArrow,
+        activePanelControl(previousArrow),
+        activePanelControl(nextArrow),
       ],
     );
   }

@@ -139,4 +139,46 @@ void main() {
       expect(tester.getCenter(noResultsFinder).dy, closeTo(300, 1));
     },
   );
+
+  testWidgets(
+    'DCV empty results center within the area above the keyboard',
+    (tester) async {
+      const surfaceSize = Size(390, 800);
+      tester.view.physicalSize = surfaceSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: MediaQuery(
+            data: MediaQueryData(
+              size: surfaceSize,
+              viewInsets: const EdgeInsets.only(bottom: 200),
+            ),
+            child: SizedBox.expand(
+              child: Column(
+                children: [
+                  const SizedBox(height: 120),
+                  const Expanded(
+                    child: SmartDcvSearchResults(
+                      primary: [],
+                      overflow: [],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Results begin at y=120 and the keyboard begins at y=600.
+      expect(
+        tester.getCenter(find.byType(SearchNoResults)).dy,
+        closeTo(360, 1),
+      );
+    },
+  );
 }
