@@ -8236,6 +8236,7 @@ class EventsTabState extends State<EventsTab>
             ? 3
             : 2;
         final scrollView = AppHeaderScrollView(
+          topExtension: kContentAreaTopRaise,
           key: _scrollViewportKey,
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(
@@ -8852,6 +8853,7 @@ class EventsTabState extends State<EventsTab>
           // scroll offset to 0 the moment this overlay appears.
           child: AppWindowContentPadding(
             child: AppHeaderScrollView(
+              topExtension: kContentAreaTopRaise,
               clipBehavior: Clip.none,
             primary: false,
             physics: const AlwaysScrollableScrollPhysics(
@@ -21056,6 +21058,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
     final specialContent = widget.specialContentBuilder?.call(context);
     if (specialContent != null) {
       return AppHeaderScrollView(
+        topExtension: kContentAreaTopRaise,
         key: _dcvScrollViewportKey,
         controller: _dcvScrollController,
         primary: false,
@@ -21144,6 +21147,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       return Opacity(
         opacity: hideForSortMeasurement ? 0.0 : 1.0,
         child: AppHeaderScrollView(
+          topExtension: kContentAreaTopRaise,
           key: _dcvScrollViewportKey,
           controller: _dcvScrollController,
           primary: false,
@@ -21344,6 +21348,7 @@ class _CategoryDetailViewState extends State<_CategoryDetailView>
       return SizedBox.expand(child: emptyStateContent);
     }
     return AppHeaderScrollView(
+      topExtension: kContentAreaTopRaise,
       key: _dcvScrollViewportKey,
       controller: _dcvScrollController,
       primary: false,

@@ -108,25 +108,32 @@ class AppHeaderScrollViewport extends StatelessWidget {
     super.key,
     required this.leadingInset,
     required this.child,
+    this.topExtension = 0.0,
   });
 
   final double leadingInset;
   final Widget child;
+  final double topExtension;
 
   @override
   Widget build(BuildContext context) {
-    if (leadingInset <= 0.0 || !leadingInset.isFinite) return child;
+    final safeLeadingInset =
+        leadingInset.isFinite && leadingInset > 0.0 ? leadingInset : 0.0;
+    final safeTopExtension =
+        topExtension.isFinite && topExtension > 0.0 ? topExtension : 0.0;
+    if (safeLeadingInset == 0.0 && safeTopExtension == 0.0) return child;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         if (!constraints.hasBoundedHeight) return child;
-        final viewportHeight = constraints.maxHeight + leadingInset;
+        final totalTopExtension = safeLeadingInset + safeTopExtension;
+        final viewportHeight = constraints.maxHeight + totalTopExtension;
         return OverflowBox(
           alignment: Alignment.topCenter,
           minHeight: viewportHeight,
           maxHeight: viewportHeight,
           child: Transform.translate(
-            offset: Offset(0.0, -leadingInset),
+            offset: Offset(0.0, -totalTopExtension),
             child: SizedBox(height: viewportHeight, child: child),
           ),
         );
@@ -222,6 +229,7 @@ class AppHeaderScrollView extends StatelessWidget {
     this.restorationId,
     this.hitTestBehavior = HitTestBehavior.opaque,
     this.clipBehavior = Clip.none,
+    this.topExtension = 0.0,
   }) : _scrollViewKey = key,
        super(key: null);
 
@@ -244,6 +252,7 @@ class AppHeaderScrollView extends StatelessWidget {
   final String? restorationId;
   final HitTestBehavior hitTestBehavior;
   final Clip clipBehavior;
+  final double topExtension;
 
   @override
   Widget build(BuildContext context) {
@@ -280,6 +289,7 @@ class AppHeaderScrollView extends StatelessWidget {
 
     return AppHeaderScrollViewport(
       leadingInset: leadingInset,
+      topExtension: topExtension,
       child: scrollView,
     );
   }

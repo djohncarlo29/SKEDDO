@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/tabs/calendar_tab.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
@@ -58,7 +59,10 @@ void main() {
       final centerTimelineRect = tester.getRect(timelines.at(1));
       const weekStripHeight = 52.0;
 
-      expect(dowRect.top, closeTo(kAppHeaderTitleHeight, 0.5));
+      expect(
+        dowRect.top,
+        closeTo(kAppHeaderTitleHeight - kContentAreaTopRaise, 0.5),
+      );
       expect(
         centerBannerRect.top,
         closeTo(dowRect.bottom + weekStripHeight, 0.5),
@@ -66,6 +70,57 @@ void main() {
       expect(centerTimelineRect.top, closeTo(centerBannerRect.bottom, 0.5));
     },
   );
+
+  testWidgets('portrait Multi Day header uses the raised content edge', (
+    tester,
+  ) async {
+    const screenSize = Size(402, 874);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = screenSize;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        builder: (context, child) {
+          final mediaQuery = MediaQuery.of(context).copyWith(size: screenSize);
+          return MediaQuery(
+            data: mediaQuery,
+            child: AppWindowContentBoundary(
+              child: child ?? const SizedBox.shrink(),
+            ),
+          );
+        },
+        home: CupertinoPageScaffold(
+          child: CalendarTab(
+            daySubMode: DayViewSubMode.multiDay,
+            onViewChanged: (_, _, _, _, _, _) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    tester.state<CalendarTabState>(find.byType(CalendarTab)).jumpToTodayDay();
+    await tester.pumpAndSettle();
+
+    final dowMask = find.byWidgetPredicate(
+      (widget) => widget.runtimeType.toString() == '_DayViewDowMask',
+    );
+    final banners = find.byWidgetPredicate(
+      (widget) => widget.runtimeType.toString() == '_DayBanner',
+    );
+    expect(banners, findsOneWidget);
+    final centerBanner = banners.first;
+    expect(
+      tester.getRect(dowMask).top,
+      closeTo(kAppHeaderTitleHeight - kContentAreaTopRaise, 0.5),
+    );
+    expect(
+      tester.getRect(centerBanner).top,
+      greaterThan(tester.getRect(dowMask).bottom),
+    );
+  });
 
   testWidgets(
     'List Day View moves the selected week strip above the physical viewport',
@@ -115,25 +170,20 @@ void main() {
       final weekRows = find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString() == '_WeekRow',
       );
-      print('Calendar List test: ${weekRows.evaluate().length} week rows');
-      for (var i = 0; i < weekRows.evaluate().length; i++) {
-        final dynamic row = tester.widget(weekRows.at(i));
-        print(
-          'row ${row.year}-${row.month} selected=${row.selectedDate} '
-          'index=${row.row} rect=${tester.getRect(weekRows.at(i))}',
-        );
-      }
-
       expect(weekRows, findsWidgets);
-      final selectedWeek = weekRows.at(
-        weekRows.evaluate().toList().indexWhere((element) {
-          final dynamic row = element.widget;
-          return row.year == today.year &&
-              row.month == today.month &&
-              row.selectedDate == today &&
-              row.row == selectedWeekRow;
-        }),
-      );
+      final selectedWeekIndex = weekRows.evaluate().toList().indexWhere((
+        element,
+      ) {
+        final dynamic row = element.widget;
+        return row.year == today.year &&
+            row.month == today.month &&
+            row.selectedDate.year == today.year &&
+            row.selectedDate.month == today.month &&
+            row.selectedDate.day == today.day &&
+            row.row == selectedWeekRow;
+      });
+      expect(selectedWeekIndex, greaterThanOrEqualTo(0));
+      final selectedWeek = weekRows.at(selectedWeekIndex);
       expect(
         tester.getRect(selectedWeek).bottom,
         lessThanOrEqualTo(0.5),

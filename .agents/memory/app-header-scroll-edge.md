@@ -27,3 +27,10 @@ Keep the app-level scroll-edge treatment light enough that content passing throu
 **Why:** The shared edge is an overlay, but near-opaque tint and heavy blur can make rows, cards, and controls appear to vanish at its threshold. The user requires ordinary scrolling content to remain visible through the edge until it leaves the physical viewport.
 
 **How to apply:** Keep Month/Year title widgets inside the same vertical scrollable as their calendar content, reserve the same title-slot height when the shell owns the title during transitions, and let scroll views and page-level stacks paint through the edge band. Do not clip shell titles at the safe-area inset. Keep the AppShell's full-device viewport as the final app clipping boundary; do not change modal-sheet clips. Derive any remaining shell-title translation from `pixels - minScrollExtent`, flooring at zero but leaving positive movement unbounded; normalize and clamp that value only when driving the edge effect. Filter notifications to scrollables that actually own the header, and use distinct scopes for calendar views and day submodes. Keep the glass surface color matched to the content background and leave landscape fills unchanged.
+
+## Raised page content ceiling
+For targeted app pages, raise available content by extending the shared scroll viewport at the top; do not reduce authored first-item padding or reuse `kFixedVerticalPadding` for this separate viewport adjustment. Explicit empty-state calculations based on an outer layout constraint must include the extension once; calculations based on the expanded scroll viewport already receive it.
+
+**Why:** Raising the ceiling should preserve existing spacing before the first element while increasing the area used to center empty states. Changing that spacing too would shift content twice, and omitting manual height calculations leaves placeholders centered in the old area.
+
+**How to apply:** Use a separate top-extension token at the viewport boundary, align custom positioned or morphing layers to it, and add the same amount to explicitly computed empty-state space.

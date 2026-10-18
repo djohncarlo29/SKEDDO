@@ -27,7 +27,7 @@ Widget _landscapeCalendarHarness({
     home: CupertinoPageScaffold(
       child: CalendarTab(
         daySubMode: daySubMode,
-        onViewChanged: (view, _, _, _, _) {},
+        onViewChanged: (view, _, _, _, _, _) {},
       ),
     ),
   );
@@ -118,7 +118,7 @@ void main() {
           home: CupertinoPageScaffold(
             child: CalendarTab(
               onViewChanged:
-                  (view, displayYear, previousTitle, title, nextTitle) {
+                  (view, displayYear, previousTitle, title, nextTitle, _) {
                     visibleView = view;
                   },
             ),

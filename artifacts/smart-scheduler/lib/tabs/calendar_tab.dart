@@ -2233,6 +2233,7 @@ class CalendarTabState extends State<CalendarTab>
         child: ColoredBox(
           color: resolveThemeColor(kBackgroundColor, context),
           child: AppHeaderScrollView(
+            topExtension: kContentAreaTopRaise,
             clipBehavior: Clip.none,
             primary: false,
             physics: const AlwaysScrollableScrollPhysics(
@@ -2415,7 +2416,8 @@ class CalendarTabState extends State<CalendarTab>
                 expandedTitleHeight +
                 _kCalendarHeaderToDowGap +
                 _kDayLabelHeight +
-                dayWeekStripHeight;
+                dayWeekStripHeight -
+                kContentAreaTopRaise;
             final showDayHeaderChrome =
                 colT > 0.01 &&
                 (widget.daySubMode != DayViewSubMode.list ||
@@ -2783,7 +2785,12 @@ class CalendarTabState extends State<CalendarTab>
                             monthListOrderByDay: _monthListOrderByDay,
                             monthListOrderRevision: _monthListOrderRevision,
                             scrollOffset: _zoomScrollOffset,
-                            monthScrollOffset: _savedMonthScrollOffset,
+                            // The settled Month viewport is raised by the
+                            // same amount; include it in the morph endpoint
+                            // so week rows, cells, and List content stay aligned.
+                            monthScrollOffset:
+                                _savedMonthScrollOffset +
+                                kContentAreaTopRaise,
                             screenW: sw,
                             measuredRowTops: _yearMeasuredRowTops,
                             viewModeRowHeight: rowHeight,
@@ -2972,7 +2979,7 @@ class CalendarTabState extends State<CalendarTab>
                         // its first-level toolbar. Align the pinned DOW cover
                         // after that title, where the Month View's DOW row
                         // naturally sits, instead of over the week strip.
-                        top: expandedTitleHeight,
+                        top: expandedTitleHeight - kContentAreaTopRaise,
                         left: 0,
                         right: 0,
                         height: _kCalendarHeaderToDowGap + _kDayLabelHeight,
@@ -3152,6 +3159,7 @@ class _YearView extends StatelessWidget {
         final leadingInset = AppHeaderScrollInsetScope.maybeOf(context);
         return AppHeaderScrollViewport(
           leadingInset: leadingInset,
+          topExtension: kContentAreaTopRaise,
           child: SingleChildScrollView(
             controller: controller,
             physics: const AlwaysScrollableScrollPhysics(
@@ -3392,9 +3400,9 @@ class _MorphOverlay extends StatelessWidget {
   final Map<String, List<String>> monthListOrderByDay;
   final int monthListOrderRevision;
   final double scrollOffset; // _yearScrollCtrl offset at zoom start
-  /// Saved month-view scroll offset (_savedMonthScrollOffset).  Applied to all
-  /// month-side (t=1) positions in the morph so the painter's end-frame matches
-  /// the _MonthView that appears at zoomT > 0.999 — no pop at the swap point.
+  /// Saved month-view scroll offset plus the content-area top raise. Applied to
+  /// all month-side (t=1) positions so the painter's end-frame matches the
+  /// _MonthView that appears at zoomT > 0.999 — no pop at the swap point.
   final double monthScrollOffset;
   final double screenW;
   final double viewModeRowHeight;
@@ -4755,9 +4763,11 @@ class _MonthView extends StatelessWidget {
         // to the scroll document.  That leaves the scroll position at zero
         // while AlwaysScrollable+BouncingScrollPhysics still permits the
         // placeholder to move during a rubber-band overscroll.
+        final expandedViewportHeight =
+            constraints.maxHeight + kContentAreaTopRaise;
         final availableListEmptyStateH = math.max(
           0.0,
-          constraints.maxHeight - gridH - emptyStateFloatingClearance,
+          expandedViewportHeight - gridH - emptyStateFloatingClearance,
         );
         final selectedDayIsEmpty =
             listDayGroups.isEmpty ||
@@ -4799,7 +4809,7 @@ class _MonthView extends StatelessWidget {
                         emptyStateFallbackH +
                         emptyStateFloatingClearance
                     : math.max(
-                        constraints.maxHeight,
+                        expandedViewportHeight,
                         gridH +
                             availableListEmptyStateH +
                             emptyStateFloatingClearance,
@@ -4808,7 +4818,7 @@ class _MonthView extends StatelessWidget {
                   // enough scroll tail to place its final separator 16 pt
                   // above the Floating Tab Bar.
                   math.max(
-                    constraints.maxHeight,
+                    expandedViewportHeight,
                     gridH + emptyStateFloatingClearance,
                   )
             : // Keep a short event list at zero positive scroll extent. The
@@ -4816,7 +4826,7 @@ class _MonthView extends StatelessWidget {
               // long enough to require scrolling; it must not be appended
               // after a viewport-sized document.
               math.max(
-                constraints.maxHeight,
+                expandedViewportHeight,
                 gridH + listContentH + eventContentClearance,
               );
         final emptyH =
@@ -5053,6 +5063,7 @@ class _MonthView extends StatelessWidget {
         final leadingInset = AppHeaderScrollInsetScope.maybeOf(context);
         return AppHeaderScrollViewport(
           leadingInset: leadingInset,
+          topExtension: kContentAreaTopRaise,
           child: SingleChildScrollView(
             key: scrollViewportKey,
             controller: scrollController,
@@ -5078,7 +5089,7 @@ class _MonthView extends StatelessWidget {
                 if (monthListUsesNaturalHeight)
                   ConstrainedBox(
                     constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
+                      minHeight: expandedViewportHeight,
                     ),
                     child: document,
                   )
@@ -6538,6 +6549,7 @@ class _DayListPlaceholder extends StatelessWidget {
     // left after the floating-tab-bar clearance, while the scroll view still
     // provides the same rubber-band overscroll behavior.
     return AppHeaderScrollView(
+      topExtension: kContentAreaTopRaise,
       primary: false,
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),

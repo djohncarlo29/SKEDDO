@@ -71,6 +71,9 @@ const double kFloatingTabBarSafetyMargin = 12.0;
 // those controls may grow with the OS text scaler, but this authored breathing
 // room does not.
 const double kFixedVerticalPadding = 16.0;
+// Raised top edge of the usable content viewport on primary app pages. Keep
+// this separate from content padding so the existing first-item gap stays intact.
+const double kContentAreaTopRaise = 16.0;
 
 // Shared authored horizontal inset for controls aligned to the trailing edge
 // of modal rows. Keep this outside scaled content so Dynamic Type changes the

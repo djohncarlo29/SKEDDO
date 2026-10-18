@@ -214,4 +214,43 @@ void main() {
       expect(contentRect.bottom, lessThan(40));
     },
   );
+
+  testWidgets(
+    'page top extension raises content without shrinking its viewport',
+    (tester) async {
+      const surfaceSize = Size(320, 300);
+      const contentKey = ValueKey('content-after-raised-page-edge');
+      tester.view.physicalSize = surfaceSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: SizedBox(
+            width: surfaceSize.width,
+            height: surfaceSize.height,
+            child: AppHeaderScrollView(
+              topExtension: 16,
+              physics: const NeverScrollableScrollPhysics(),
+              slivers: const [
+                SliverToBoxAdapter(child: SizedBox(height: 40)),
+                SliverToBoxAdapter(
+                  child: SizedBox(key: contentKey, height: 20),
+                ),
+                SliverToBoxAdapter(child: SizedBox(height: 500)),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.getRect(find.byKey(contentKey)).top, closeTo(24, 1));
+      expect(
+        tester.getSize(find.byType(CustomScrollView)).height,
+        closeTo(surfaceSize.height + 16, 1),
+      );
+    },
+  );
 }

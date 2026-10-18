@@ -556,6 +556,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
         // position for the whole duration of the off-screen session.
         AppWindowContentPadding(
           child: AppHeaderScrollView(
+            topExtension: kContentAreaTopRaise,
             clipBehavior: Clip.none,
             controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(
@@ -696,6 +697,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
               // scroll offset to 0 the moment this overlay appears.
               child: AppWindowContentPadding(
                 child: AppHeaderScrollView(
+                  topExtension: kContentAreaTopRaise,
                   clipBehavior: Clip.none,
                 primary: false,
                 physics: const AlwaysScrollableScrollPhysics(
