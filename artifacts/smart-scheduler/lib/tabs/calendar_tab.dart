@@ -1010,6 +1010,12 @@ class CalendarTabState extends State<CalendarTab>
 
   // ↑ = go deeper into detail
   void navigateUp() {
+    if (_zoomCtrl.isAnimating ||
+        _collapseCtrl.isAnimating ||
+        _zoomTargetView != null ||
+        _collapseTargetView != null) {
+      return;
+    }
     switch (_view) {
       case CalendarView.year:
         _enterMonth(_dispMonth - 1);
@@ -1028,13 +1034,21 @@ class CalendarTabState extends State<CalendarTab>
 
   // ↓ = go back to overview
   void navigateDown() {
+    if (_zoomCtrl.isAnimating ||
+        _collapseCtrl.isAnimating ||
+        _zoomTargetView != null ||
+        _collapseTargetView != null) {
+      return;
+    }
     switch (_view) {
       case CalendarView.year:
         break;
       case CalendarView.month:
         _exitToYear();
+        break;
       case CalendarView.day:
         _exitToMonth();
+        break;
     }
   }
 

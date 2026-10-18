@@ -2204,6 +2204,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             ),
           ),
         ),
+      ),
       );
     }
 
@@ -2267,7 +2268,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           : null,
       child: _ChevronIcon(
         direction: _ChevronDir.left,
-        color: resolveAccentColor(context),
+        color: isActive
+            ? resolveAccentColor(context)
+            : resolveThemeColor(kSecondaryLabel, context),
         size: 18,
         strokeWidth: 1.6,
       ),
@@ -2279,7 +2282,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           : null,
       child: _ChevronIcon(
         direction: _ChevronDir.right,
-        color: resolveAccentColor(context),
+        color: isActive
+            ? resolveAccentColor(context)
+            : resolveThemeColor(kSecondaryLabel, context),
         size: 18,
         strokeWidth: 1.6,
       ),
