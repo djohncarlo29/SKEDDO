@@ -2391,11 +2391,18 @@ class CalendarTabState extends State<CalendarTab>
             // the Month View header group slides away as List mode enters.
             // Single Day and Multi Day keep the DOW/week strip fixed.
             final double listModeT = colT * _listModeCtrl.value;
+            // The page scroll viewport extends behind the shell header. Move
+            // the outgoing List-mode header by that same inset as well, so its
+            // week dates leave the physical viewport instead of peeking through
+            // the status-bar/header edge.
+            final double appHeaderLeadingInset =
+                AppHeaderScrollInsetScope.maybeOf(context);
             final expandedTitleHeight =
                 _calendarExpandedTitleHeight(context);
             final double dayHeaderGroupSlideY =
                 -listModeT *
-                    (expandedTitleHeight +
+                    (appHeaderLeadingInset +
+                        expandedTitleHeight +
                         _kCalendarHeaderToDowGap +
                         _kDayLabelHeight +
                         dayWeekStripHeight +

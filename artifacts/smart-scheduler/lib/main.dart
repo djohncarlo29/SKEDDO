@@ -2043,6 +2043,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
   }
 
+  bool get _calendarTitleOwnedByScrollContent =>
+      _calendarTabKey.currentState?.calendarTitleInScrollContent ??
+      _calendarTitleInScrollContent;
+
   // The tab's own title without any DCV override — used by the fade-out layer
   // in the header so it stays correct while the DCV title fades in.
   String get _nonDCVHeaderTitle {
@@ -2068,7 +2072,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     required Color primaryLabel,
   }) {
     if (!isDCVVisual && _selectedIndex == 1) {
-      if (_calendarTitleInScrollContent) return const SizedBox.shrink();
+      if (_calendarTitleOwnedByScrollContent) return const SizedBox.shrink();
       return _buildCalendarTitleRow(compactFadeColor: headerColor);
     }
 
@@ -2928,7 +2932,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               final calendarTitleInContent =
                                   !isDCVVisual &&
                                   _selectedIndex == 1 &&
-                                  _calendarTitleInScrollContent;
+                                   _calendarTitleOwnedByScrollContent;
                               final headerColor = headerSurfaceColor;
                               return Container(
                                 width: double.infinity,

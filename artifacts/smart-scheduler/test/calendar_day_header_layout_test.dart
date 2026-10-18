@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/tabs/calendar_tab.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
+import 'package:smart_scheduler/widgets/view_mode_icons.dart';
 
 void main() {
   testWidgets(
@@ -28,7 +29,7 @@ void main() {
             );
           },
           home: CupertinoPageScaffold(
-            child: CalendarTab(onViewChanged: (_, _, _, _, _) {}),
+                 child: CalendarTab(onViewChanged: (_, _, _, _, _, _) {}),
           ),
         ),
       );
@@ -63,6 +64,81 @@ void main() {
         closeTo(dowRect.bottom + weekStripHeight, 0.5),
       );
       expect(centerTimelineRect.top, closeTo(centerBannerRect.bottom, 0.5));
+    },
+  );
+
+  testWidgets(
+    'List Day View moves the selected week strip above the physical viewport',
+    (tester) async {
+      const screenSize = Size(402, 874);
+      const headerInset = 68.0;
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = screenSize;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          builder: (context, child) {
+            final mediaQuery = MediaQuery.of(context).copyWith(
+              size: screenSize,
+            );
+            return MediaQuery(
+              data: mediaQuery,
+              child: AppHeaderScrollInsetScope(
+                leadingInset: headerInset,
+                child: AppWindowContentBoundary(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: headerInset),
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+            );
+          },
+          home: CupertinoPageScaffold(
+            child: CalendarTab(
+              daySubMode: DayViewSubMode.list,
+              onViewChanged: (_, _, _, _, _, _) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      tester.state<CalendarTabState>(find.byType(CalendarTab)).jumpToTodayDay();
+      await tester.pumpAndSettle();
+
+      final today = DateTime.now();
+      final firstWeekday = DateTime(today.year, today.month, 1).weekday - 1;
+      final selectedWeekRow = (today.day + firstWeekday - 1) ~/ 7;
+      final weekRows = find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == '_WeekRow',
+      );
+      print('Calendar List test: ${weekRows.evaluate().length} week rows');
+      for (var i = 0; i < weekRows.evaluate().length; i++) {
+        final dynamic row = tester.widget(weekRows.at(i));
+        print(
+          'row ${row.year}-${row.month} selected=${row.selectedDate} '
+          'index=${row.row} rect=${tester.getRect(weekRows.at(i))}',
+        );
+      }
+
+      expect(weekRows, findsWidgets);
+      final selectedWeek = weekRows.at(
+        weekRows.evaluate().toList().indexWhere((element) {
+          final dynamic row = element.widget;
+          return row.year == today.year &&
+              row.month == today.month &&
+              row.selectedDate == today &&
+              row.row == selectedWeekRow;
+        }),
+      );
+      expect(
+        tester.getRect(selectedWeek).bottom,
+        lessThanOrEqualTo(0.5),
+        reason: 'List Day View must not leave dates peeking into the status bar.',
+      );
     },
   );
 }
