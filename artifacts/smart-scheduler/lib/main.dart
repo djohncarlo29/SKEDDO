@@ -2933,7 +2933,17 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                   !isDCVVisual &&
                                   _selectedIndex == 1 &&
                                    _calendarTitleOwnedByScrollContent;
-                              final headerColor = headerSurfaceColor;
+                              // Search overlays begin at the shell's current
+                              // content inset. In portrait the normal header
+                              // surface is transparent, which lets scrolled
+                              // page content bleed through the status-bar band.
+                              // Fade in the search surface behind the native
+                              // status icons as the header collapses.
+                              final headerColor = Color.lerp(
+                                headerSurfaceColor,
+                                backgroundColor,
+                                t,
+                              )!;
                               return Container(
                                 width: double.infinity,
                                 height: topInset + innerHeight,

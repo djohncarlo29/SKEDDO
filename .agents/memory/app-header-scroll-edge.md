@@ -42,3 +42,9 @@ The 16pt content-area raise applies to ordinary page content, not active search 
 **Why:** The user requires search bars to keep their pre-raise position and all Calendar second-level headers to align with the shared header slot. Applying the page raise indiscriminately lifts search bars and Calendar Year/Month titles.
 
 **How to apply:** Whenever the content top extension changes, audit active search viewports separately from normal page scroll views, and compare Year, Month, and Day title ownership before compensating.
+
+In portrait, the normal AppShell header surface is transparent so page content can scroll beneath it. When search mode collapses the header, fade an opaque search-background surface into the status-bar band; otherwise raised page content can remain visible behind native status icons.
+
+**Why:** Fixed search overlays start below the shell's leading inset, so they cannot cover the physical status-bar area themselves.
+
+**How to apply:** Keep normal header transparency unchanged, but resolve the search surface from the current theme and transition it with the search-mode animation.
