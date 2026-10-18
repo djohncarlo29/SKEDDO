@@ -8235,7 +8235,7 @@ class EventsTabState extends State<EventsTab>
             : gridContentWidth > portraitGridContentWidth * 1.5
             ? 3
             : 2;
-        final scrollView = AppHeaderScrollView(
+        final baseScrollView = AppHeaderScrollView(
           // Search mode retains the search header's original vertical
           // position; only normal page content uses the 16pt raise.
           topExtension: _searchFocused ? 0.0 : kContentAreaTopRaise,
@@ -8263,14 +8263,10 @@ class EventsTabState extends State<EventsTab>
             child: SizedBox(height: searchBarHostRowHeight(context)),
           )
         else if (_searchFocused)
-          SliverPersistentHeader(
-            pinned: true,
-            floating: true,
-            delegate: _SearchHeaderDelegate(
-              searchBarRow: searchBarRow,
-              extent: searchBarHeaderExtent(context),
-              showSeparator: true,
-            ),
+          // Reserve the header's normal layout slot, but keep the actual
+          // search chrome as a sibling overlay outside the scroll hierarchy.
+          SliverToBoxAdapter(
+            child: SizedBox(height: searchBarHeaderExtent(context)),
           )
         else if (!isLandscape)
           SliverToBoxAdapter(child: searchBarRow),
@@ -8426,6 +8422,20 @@ class EventsTabState extends State<EventsTab>
         ],
           ],
         );
+        final scrollView = _searchFocused && !_activatedFromOffScreen
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  baseScrollView,
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: SearchModeHeader(searchBarRow: searchBarRow),
+                  ),
+                ],
+              )
+            : baseScrollView;
         return SizedBox(
           width: panelWidth,
           child: _EventsGridColumnOverride(
@@ -8827,16 +8837,16 @@ class EventsTabState extends State<EventsTab>
           // active on the main Events view (not inside DCV).  The gridView
           // scroll position is completely untouched throughout.
           if (widget.activeDCV == null && _greyActive)
-            _buildGridSearchOverlay(searchBarRow, showResults),
+            _buildGridSearchOverlay(searchBarRow),
           // DCV search overlay — floats above the DCV content when active.
           if (widget.activeDCV != null && _greyActive)
-            _buildDcvSearchOverlay(showResults),
+            _buildDcvSearchOverlay(),
         ],
       ),
     );
   }
 
-  Widget _buildGridSearchOverlay(Widget searchBarRow, bool showResults) {
+  Widget _buildGridSearchOverlay(Widget searchBarRow) {
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
     return Positioned.fill(
       child: AnimatedOpacity(
@@ -8847,57 +8857,45 @@ class EventsTabState extends State<EventsTab>
         // _cancelSearch), so there is no fade-out to wait for.
         child: ColoredBox(
           color: backgroundColor,
-          // CustomScrollView gives the overlay its own rubber-band
-          // physics, matching the grid scroll view it sits above.
-          // primary:false prevents Flutter from adopting the
-          // PrimaryScrollController (which in a CupertinoTabScaffold is
-          // the tab's own scroll controller) — that would reset the tab's
-          // scroll offset to 0 the moment this overlay appears.
           child: AppWindowContentPadding(
-            child: AppHeaderScrollView(
-              // Keep the full-screen search header at its original position.
-              topExtension: 0.0,
-              clipBehavior: Clip.none,
-            primary: false,
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-            slivers: [
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _SearchHeaderDelegate(
-                  searchBarRow: searchBarRow,
-                  extent: searchBarHeaderExtent(context),
-                  showSeparator: true,
-                ),
-              ),
-              if (showResults)
-                SmartSearchResultsSliver(
-                  hits: _searchAll,
-                  suggestedQuery: _searchSuggestion,
-                  onSuggestionTap: _applySearchSuggestion,
-                  eventTopPadding: 16,
-                  eventTileWrapper: _wrapSearchEventTile,
-                  eventTilePressWrapper:
-                      (child) => _TilePressScale(child: child),
-                )
-              else
-                const SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: SizedBox.expand(),
-                ),
-              if (!showResults || _searchAll.isNotEmpty)
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: floatingTabBarContentBottomClearance(
-                      context,
-                      existingTrailingContentPadding: 32,
-                      finalContentGap: 24,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SearchModeHeader(searchBarRow: searchBarRow),
+                Expanded(
+                  child: CustomScrollView(
+                    primary: false,
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
                     ),
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.manual,
+                    slivers: [
+                      SmartSearchResultsSliver(
+                        hits: _searchText.isEmpty ? const [] : _searchAll,
+                        suggestedQuery: _searchText.isEmpty
+                            ? null
+                            : _searchSuggestion,
+                        onSuggestionTap: _applySearchSuggestion,
+                        eventTopPadding: 16,
+                        eventTileWrapper: _wrapSearchEventTile,
+                        eventTilePressWrapper:
+                            (child) => _TilePressScale(child: child),
+                      ),
+                      if (_searchText.isNotEmpty && _searchAll.isNotEmpty)
+                        SliverToBoxAdapter(
+                          child: SizedBox(
+                            height: floatingTabBarContentBottomClearance(
+                              context,
+                              existingTrailingContentPadding: 32,
+                              finalContentGap: 24,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-            ],
+              ],
             ),
           ),
         ),
@@ -8905,8 +8903,29 @@ class EventsTabState extends State<EventsTab>
     );
   }
 
-  Widget _buildDcvSearchOverlay(bool showResults) {
+  Widget _buildDcvSearchOverlay() {
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
+    final searchBarRow = Padding(
+      padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: AppSearchBar(
+              controller: _searchController,
+              onFocusChanged: _onSearchFocusChanged,
+              placeholder: 'Search ${widget.activeDCV ?? ''}',
+              selectionTint: _activeDcvColor(context),
+            ),
+          ),
+          SearchCancelButton(
+            key: _dcvSearchCancelKey,
+            animation: widget.searchModeAnimation,
+            searchFocused: _searchFocused,
+            onTap: _cancelSearch,
+          ),
+        ],
+      ),
+    );
     return Positioned.fill(
       child: AnimatedOpacity(
         opacity: _greyFadeIn ? 1.0 : 0.0,
@@ -8925,61 +8944,25 @@ class EventsTabState extends State<EventsTab>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Fixed search header (immune to rubber-band) ────────────
-              AppWindowContentPadding(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    16,
-                    kSearchBarHostTopPadding,
-                    16,
-                    0,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: AppSearchBar(
-                          controller: _searchController,
-                          onFocusChanged: _onSearchFocusChanged,
-                          placeholder: 'Search ${widget.activeDCV ?? ''}',
-                          selectionTint: _activeDcvColor(context),
-                        ),
-                      ),
-                      SearchCancelButton(
-                        key: _dcvSearchCancelKey,
-                        animation: widget.searchModeAnimation,
-                        searchFocused: _searchFocused,
-                        onTap: _cancelSearch,
-                      ),
-                    ],
+              SearchModeHeader(searchBarRow: searchBarRow),
+              Expanded(
+                child: AppWindowContentPadding(
+                  child: SmartDcvSearchResults(
+                    primary: _searchText.isEmpty ? const [] : _searchPrimary,
+                    overflow:
+                        _searchText.isEmpty ? const [] : _searchOverflow,
+                    suggestedQuery:
+                        _searchText.isEmpty ? null : _searchSuggestion,
+                    onSuggestionTap: _applySearchSuggestion,
+                    hidePrimaryCategoryName:
+                        activeStandardDcvCategoryId != null,
+                    eventTopPadding: 16,
+                    eventTileWrapper: _wrapSearchEventTile,
+                    eventTilePressWrapper:
+                        (child) => _TilePressScale(child: child),
                   ),
                 ),
               ),
-              const SizedBox(height: kSearchBarHeaderSeparatorGap),
-              Container(
-                height: kSearchBarSeparatorHeight,
-                color: resolveThemeColor(kSeparatorColor, context),
-              ),
-              // ── Scrollable content area (rubber-band stays here) ───────
-              if (showResults)
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.zero,
-                    child: AppWindowContentPadding(
-                      child: SmartDcvSearchResults(
-                        primary: _searchPrimary,
-                        overflow: _searchOverflow,
-                        suggestedQuery: _searchSuggestion,
-                        onSuggestionTap: _applySearchSuggestion,
-                        hidePrimaryCategoryName:
-                            activeStandardDcvCategoryId != null,
-                        eventTopPadding: 16,
-                        eventTileWrapper: _wrapSearchEventTile,
-                        eventTilePressWrapper:
-                            (child) => _TilePressScale(child: child),
-                      ),
-                    ),
-                  ),
-                ),
             ],
           ),
         ),

@@ -583,14 +583,8 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
                 child: SizedBox(height: searchBarHostRowHeight(context)),
               )
             else if (_searchFocused)
-              SliverPersistentHeader(
-                pinned: true,
-                floating: true,
-                delegate: _SearchHeaderDelegate(
-                  searchBarRow: searchBarRow,
-                  extent: searchBarHeaderExtent(context),
-                  showSeparator: true,
-                ),
+              SliverToBoxAdapter(
+                child: SizedBox(height: searchBarHeaderExtent(context)),
               )
             else if (!isLandscape)
               SliverToBoxAdapter(child: searchBarRow),
@@ -678,6 +672,14 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
           ),
         ),
 
+        if (_searchFocused && !_activatedFromOffScreen)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SearchModeHeader(searchBarRow: searchBarRow),
+          ),
+
         // ── Off-screen search overlay ─────────────────────────────────────
         // Covers the scroll view without touching it.  _searchBarKey lives
         // here while the overlay is present, moving back to the scroll view
@@ -691,67 +693,58 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
             // _cancelSearch), so there is no fade-out to wait for.
             child: ColoredBox(
               color: resolveThemeColor(kBackgroundColor, context),
-              // CustomScrollView gives the overlay its own rubber-band
-              // physics, identical to the scroll view it sits above.
-              // primary:false prevents Flutter from adopting the
-              // PrimaryScrollController (which in a CupertinoTabScaffold is
-              // the tab's own scroll controller) — that would reset the tab's
-              // scroll offset to 0 the moment this overlay appears.
+              // The header is a fixed sibling above this independently
+              // rubber-banding content viewport.
               child: AppWindowContentPadding(
-                child: AppHeaderScrollView(
-                  // This overlay is the search-mode viewport, not normal page
-                  // content, so it must not inherit the 16pt content raise.
-                  topExtension: 0.0,
-                  clipBehavior: Clip.none,
-                primary: false,
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.manual,
-                slivers: [
-                  // Search bar pinned at top — same delegate as inline
-                  // search so the appearance is identical.
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _SearchHeaderDelegate(
-                      searchBarRow: searchBarRow,
-                      extent: searchBarHeaderExtent(context),
-                      showSeparator: true,
-                    ),
-                  ),
-                  // Content area: smart search results or empty grey fill.
-                  if (showResults)
-                    SmartSearchResultsSliver(
-                      hits: _searchHits,
-                      suggestedQuery: _searchSuggestion,
-                      onSuggestionTap: _applySearchSuggestion,
-                      eventTopPadding: 16,
-                      eventTileWrapper: (hit, child, previewBuilder) =>
-                          wrapSearchEventTileWithActions(
-                            hit: hit,
-                            child: child,
-                            previewBuilder: previewBuilder,
-                            onEdit: widget.onEditEvent == null
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SearchModeHeader(searchBarRow: searchBarRow),
+                    Expanded(
+                      child: CustomScrollView(
+                        primary: false,
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.manual,
+                        slivers: [
+                          SmartSearchResultsSliver(
+                            hits: _searchText.isEmpty
+                                ? const []
+                                : _searchHits,
+                            suggestedQuery: _searchText.isEmpty
                                 ? null
-                                : () => widget.onEditEvent!(hit.event),
-                            onDelete: () =>
-                                confirmDeleteEvent(context, hit.event),
+                                : _searchSuggestion,
+                            onSuggestionTap: _applySearchSuggestion,
+                            eventTopPadding: 16,
+                            eventTileWrapper: (hit, child, previewBuilder) =>
+                                wrapSearchEventTileWithActions(
+                                  hit: hit,
+                                  child: child,
+                                  previewBuilder: previewBuilder,
+                                  onEdit: widget.onEditEvent == null
+                                      ? null
+                                      : () => widget.onEditEvent!(hit.event),
+                                  onDelete: () =>
+                                      confirmDeleteEvent(context, hit.event),
+                                ),
+                            eventTilePressWrapper:
+                                wrapSearchEventTileWithPressScale,
                           ),
-                      eventTilePressWrapper: wrapSearchEventTileWithPressScale,
-                    )
-                  else
-                    const SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: SizedBox.expand(),
-                    ),
-                  if (!showResults || _searchHits.isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: SizedBox(
-                        height: floatingTabBarContentBottomClearance(context),
+                          if (_searchText.isNotEmpty && _searchHits.isNotEmpty)
+                            SliverToBoxAdapter(
+                              child: SizedBox(
+                                height:
+                                    floatingTabBarContentBottomClearance(
+                                  context,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                ],
+                  ],
                 ),
               ),
             ),

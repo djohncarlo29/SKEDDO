@@ -7,6 +7,7 @@ import 'package:flutter/gestures.dart'
 import 'package:flutter_sficon/flutter_sficon.dart';
 import '../app_theme.dart';
 import '../services/speech_service.dart';
+import 'app_window_content_boundary.dart';
 import 'native_text_input.dart';
 import 'selection_handle_haptics.dart';
 import 'fixed_size_icon.dart';
@@ -818,6 +819,37 @@ class SearchNoResults extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Fixed search-mode chrome shared by inline and full-screen search surfaces.
+///
+/// Keep this widget outside every scrollable. The result viewport can then
+/// rubber-band independently without moving or stretching the search header.
+class SearchModeHeader extends StatelessWidget {
+  const SearchModeHeader({super.key, required this.searchBarRow});
+
+  final Widget searchBarRow;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppWindowFullBleedWidth(
+      child: ColoredBox(
+        color: resolveThemeColor(kBackgroundColor, context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppWindowContentPadding(child: searchBarRow),
+            const SizedBox(height: kSearchBarHeaderSeparatorGap),
+            Container(
+              height: kSearchBarSeparatorHeight,
+              color: resolveThemeColor(kSeparatorColor, context),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

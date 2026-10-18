@@ -714,6 +714,21 @@ class CalendarTabState extends State<CalendarTab>
   final List<GlobalKey> _yearRowKeys = List.generate(12, (_) => GlobalKey());
   List<double>?
   _yearMeasuredRowTops; // natural tops (scroll-offset-independent)
+  final List<GlobalKey> _monthMorphRowKeys = List.generate(
+    6,
+    (_) => GlobalKey(),
+  );
+  final List<GlobalKey> _monthMorphDayKeys = List.generate(
+    32,
+    (_) => GlobalKey(),
+  );
+  final GlobalKey _monthMorphDowKey = GlobalKey();
+  final List<GlobalKey> _monthMorphDowLabelKeys = List.generate(
+    7,
+    (_) => GlobalKey(),
+  );
+  final GlobalKey _monthMorphListKey = GlobalKey();
+  _MonthMorphGeometry? _monthMorphGeometry;
 
   // GlobalKey for the center _DayBanner — keeps morph animation state alive
   // when the parent switches between the Single Day 3-panel Stack and the
@@ -1562,6 +1577,61 @@ class CalendarTabState extends State<CalendarTab>
     if (tops.length == grid.rowCount) _yearMeasuredRowTops = tops;
   }
 
+  _MonthMorphGeometry? _measureMonthMorphGeometry() {
+    final calendarBox = context.findRenderObject() as RenderBox?;
+    if (calendarBox == null || !calendarBox.attached || !calendarBox.hasSize) {
+      return null;
+    }
+
+    Rect? measureRect(GlobalKey key) {
+      final box = key.currentContext?.findRenderObject() as RenderBox?;
+      if (box == null || !box.attached || !box.hasSize) return null;
+      final topLeft = calendarBox.globalToLocal(box.localToGlobal(Offset.zero));
+      return topLeft & box.size;
+    }
+
+    final rowCount = _totalWeekRows(_dispYear, _dispMonth);
+    final weekRows = <Rect>[];
+    for (final key in _monthMorphRowKeys.take(rowCount)) {
+      final rect = measureRect(key);
+      if (rect == null) return null;
+      weekRows.add(rect);
+    }
+
+    final dowHeader = measureRect(_monthMorphDowKey);
+    if (dowHeader == null) return null;
+    final dowLabelCenters = <Offset>[];
+    for (final key in _monthMorphDowLabelKeys) {
+      final rect = measureRect(key);
+      if (rect == null) return null;
+      dowLabelCenters.add(rect.center);
+    }
+
+    final daysInMonth = _daysInMonth(_dispYear, _dispMonth);
+    final dayCenters = List<Offset?>.filled(daysInMonth + 1, null);
+    final daySizes = List<Size?>.filled(daysInMonth + 1, null);
+    for (var day = 1; day <= daysInMonth; day++) {
+      final rect = measureRect(_monthMorphDayKeys[day]);
+      if (rect == null) return null;
+      dayCenters[day] = rect.center;
+      daySizes[day] = rect.size;
+    }
+
+    final listContent = _viewMode == CalendarViewMode.list
+        ? measureRect(_monthMorphListKey)
+        : null;
+    if (_viewMode == CalendarViewMode.list && listContent == null) return null;
+
+    return _MonthMorphGeometry(
+      weekRows: weekRows,
+      dayCenters: dayCenters,
+      daySizes: daySizes,
+      dowHeader: dowHeader,
+      dowLabelCenters: dowLabelCenters,
+      listContent: listContent,
+    );
+  }
+
   Future<void> _enterMonth(int monthIdx, {bool fast = false}) async {
     // Capture exact row positions before the zoom animation hides the YearView.
     _measureYearRowTops();
@@ -1572,12 +1642,46 @@ class CalendarTabState extends State<CalendarTab>
     // live offset before that happens so its later remount does not fall back
     // to the controller's original initialScrollOffset (normally 0).
     _savedYearScrollOffset = _zoomScrollOffset;
+    // Mount the real MonthView behind the morph so its rendered row, cell,
+    // weekday-header, and List-content geometry can be measured before the
+    // transition starts.
+    if (!_monthViewScrollCtrl.hasClients) {
+      _monthViewScrollCtrl.removeListener(_syncPreviewScrollToCurrent);
+      _monthViewScrollCtrl.dispose();
+      _monthViewScrollCtrl = ScrollController(
+        initialScrollOffset: _savedMonthScrollOffset,
+      )..addListener(_syncPreviewScrollToCurrent);
+    }
     _zoomTargetView = CalendarView.month;
+    _monthMorphGeometry = null;
     setState(() {
       _zoomMonthIdx = monthIdx;
       _dispMonth = monthIdx + 1;
     });
     _notify();
+
+    // Wait until the hidden MonthView has completed layout. Its measured
+    // coordinates are the destination for the painter; no viewport offsets or
+    // assumed header heights are used for the endpoint.
+    _MonthMorphGeometry? geometry;
+    for (var attempt = 0; attempt < 2 && geometry == null; attempt++) {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+      geometry = _measureMonthMorphGeometry();
+    }
+    if (geometry == null) {
+      // Never run the morph toward stale or guessed geometry. Keep navigation
+      // functional and show the actual MonthView directly if measurement fails.
+      setState(() {
+        _view = CalendarView.month;
+        _zoomTargetView = null;
+      });
+      _zoomCtrl.value = 1.0;
+      _notify();
+      return;
+    }
+    setState(() => _monthMorphGeometry = geometry);
+
     await _zoomCtrl.animateWith(
       SpringSimulation(
         fast ? _kHierarchyZoomSpring : _kZoomSpring,
@@ -1631,21 +1735,8 @@ class CalendarTabState extends State<CalendarTab>
   // becomes the incoming view after it, so the header, controls, and dependent
   // content all change as one unit.
   //
-  // Year→Month scroll restoration:
-  //   _MonthView is conditionally mounted only when zoomT > 0.999.  When
-  //   _savedMonthScrollOffset > 0 we must NOT use addPostFrameCallback because
-  //   that fires *after* the first _MonthView frame is already painted — causing
-  //   a one-frame flash of the unscrolled grid.
-  //
-  //   Instead, the moment zoomT crosses 0.999 going upward we recreate
-  //   _monthViewScrollCtrl with initialScrollOffset = _savedMonthScrollOffset
-  //   and call setState().  Flutter then rebuilds with zoomT > 0.999 (so
-  //   _MonthView IS mounted this rebuild) and the new controller already starts
-  //   at the saved offset — _MonthView is first painted at the correct position
-  //   with no flash whatsoever.
-  //
-  //   At that moment _monthViewScrollCtrl has no clients (zoomT was < 0.999 the
-  //   previous frame, so _MonthView was unmounted), making dispose() safe.
+  // The hidden MonthView is already mounted for the entire hierarchy morph, so
+  // its controller and measured geometry stay live through the final handoff.
   void _onZoomTick() {
     final t = _zoomCtrl.value;
     final target = _zoomTargetView;
@@ -1665,18 +1756,6 @@ class CalendarTabState extends State<CalendarTab>
         _zoomTargetView = null;
         _notify();
       }
-    }
-    if (_zoomPrevT < 0.999 && t >= 0.999 && _savedMonthScrollOffset > 0) {
-      // Recreate the controller with the saved offset as its initial position.
-      // The old controller has no clients at this point (safe to dispose).
-      _monthViewScrollCtrl.removeListener(_syncPreviewScrollToCurrent);
-      _monthViewScrollCtrl.dispose();
-      _monthViewScrollCtrl = ScrollController(
-        initialScrollOffset: _savedMonthScrollOffset,
-      )..addListener(_syncPreviewScrollToCurrent);
-      // setState triggers a rebuild in which zoomT > 0.999, so _MonthView
-      // mounts for the first time already positioned at _savedMonthScrollOffset.
-      setState(() {});
     }
     if (_zoomPrevT > 0.001 && t <= 0.001) {
       // Year View is about to mount again after the reverse morph. A
@@ -2208,7 +2287,6 @@ class CalendarTabState extends State<CalendarTab>
 
   // ── Full-screen search overlay (mirrors EventsTab._buildGridSearchOverlay) ──
   Widget _buildSearchOverlay() {
-    final showResults = _searchFocused && _searchText.isNotEmpty;
     final searchBarRow = Padding(
       padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
       child: Row(
@@ -2236,74 +2314,68 @@ class CalendarTabState extends State<CalendarTab>
         curve: Curves.easeInOut,
         child: ColoredBox(
           color: resolveThemeColor(kBackgroundColor, context),
-          child: AppHeaderScrollView(
-            // Calendar search is a full-screen search mode, not raised page
-            // content; preserve its pre-extension header position.
-            topExtension: 0.0,
-            clipBehavior: Clip.none,
-            primary: false,
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-            slivers: [
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _CalSearchHeaderDelegate(
-                  searchBarRow: searchBarRow,
-                  extent: searchBarHeaderExtent(context),
-                  showSeparator: true,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SearchModeHeader(searchBarRow: searchBarRow),
+              Expanded(
+                child: CustomScrollView(
+                  primary: false,
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.manual,
+                  slivers: [
+                    SliverPadding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal:
+                            AppWindowContentScope.of(context).horizontalInset,
+                      ),
+                      sliver: SmartSearchResultsSliver(
+                        hits: _searchText.isEmpty ? const [] : _searchHits,
+                        suggestedQuery: _searchText.isEmpty
+                            ? null
+                            : _searchSuggestion,
+                        onSuggestionTap: _applySearchSuggestion,
+                        eventTopPadding: 18,
+                        eventTileWrapper: (hit, child, previewBuilder) =>
+                            wrapSearchEventTileWithActions(
+                              hit: hit,
+                              child: child,
+                              previewBuilder: previewBuilder,
+                              onEdit: widget.onEditEvent == null
+                                  ? null
+                                  : () {
+                                      // Exit Calendar's overlay search session
+                                      // before presenting the edit sheet. The
+                                      // search field is focus-locked while
+                                      // search mode is active; leaving it
+                                      // mounted makes it reclaim focus when a
+                                      // sheet text field is tapped.
+                                      cancelSearch();
+                                      widget.onEditEvent!(hit.event);
+                                    },
+                              onDelete: () =>
+                                  confirmDeleteEvent(context, hit.event),
+                            ),
+                        eventTilePressWrapper:
+                            wrapSearchEventTileWithPressScale,
+                      ),
+                    ),
+                    if (_searchText.isNotEmpty && _searchHits.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: SizedBox(
+                          height: floatingTabBarContentBottomClearance(
+                            context,
+                            existingTrailingContentPadding: 32,
+                            finalContentGap: 20,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
-              if (showResults)
-                SliverPadding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal:
-                        AppWindowContentScope.of(context).horizontalInset,
-                  ),
-                  sliver: SmartSearchResultsSliver(
-                    hits: _searchHits,
-                    suggestedQuery: _searchSuggestion,
-                    onSuggestionTap: _applySearchSuggestion,
-                    eventTopPadding: 18,
-                    eventTileWrapper: (hit, child, previewBuilder) =>
-                        wrapSearchEventTileWithActions(
-                          hit: hit,
-                          child: child,
-                          previewBuilder: previewBuilder,
-                          onEdit: widget.onEditEvent == null
-                              ? null
-                              : () {
-                                  // Exit Calendar's overlay search session
-                                  // before presenting the edit sheet.  The
-                                  // search field is focus-locked while search
-                                  // mode is active; leaving it mounted makes
-                                  // it reclaim focus when a sheet text field is
-                                  // tapped.
-                                  cancelSearch();
-                                  widget.onEditEvent!(hit.event);
-                                },
-                          onDelete: () =>
-                              confirmDeleteEvent(context, hit.event),
-                        ),
-                    eventTilePressWrapper: wrapSearchEventTileWithPressScale,
-                  ),
-                )
-              else
-                const SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: SizedBox.expand(),
-                ),
-              if (!showResults || _searchHits.isNotEmpty)
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: floatingTabBarContentBottomClearance(
-                      context,
-                      existingTrailingContentPadding: 32,
-                      finalContentGap: 20,
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
@@ -2687,6 +2759,10 @@ class CalendarTabState extends State<CalendarTab>
               ),
             );
 
+            final mountMonthPanels =
+                zoomT > 0.001 || _zoomTargetView == CalendarView.month;
+            final showMonthPanels = zoomT > 0.999;
+
             return GestureDetector(
               behavior: HitTestBehavior.translucent,
               onHorizontalDragStart: swipeEnabled ? _onHDragStart : null,
@@ -2800,6 +2876,10 @@ class CalendarTabState extends State<CalendarTab>
                                 kContentAreaTopRaise,
                             screenW: sw,
                             measuredRowTops: _yearMeasuredRowTops,
+                            monthGeometry: _monthMorphGeometry,
+                            nonSelectedClipTop: titleInScrollContent
+                                ? expandedTitleHeight
+                                : 0.0,
                             viewModeRowHeight: rowHeight,
                           ),
                         ),
@@ -2807,11 +2887,15 @@ class CalendarTabState extends State<CalendarTab>
 
                     // ── Month view — three horizontal panels ───────────────
                     // Only mounted when the morph has fully settled (t > 0.999).
-                    if (zoomT > 0.999)
+                    if (mountMonthPanels)
                       Positioned.fill(
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
+                        child: IgnorePointer(
+                          ignoring: !showMonthPanels,
+                          child: Opacity(
+                            opacity: showMonthPanels ? 1.0 : 0.0,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
                             // Day View owns the layer underneath. The month
                             // rows below are the moving opaque veils.
                             // During the collapse the Month View remains on
@@ -2884,6 +2968,12 @@ class CalendarTabState extends State<CalendarTab>
                                   scrollTitleIsActive: true,
                                   scrollViewportKey:
                                       _monthViewScrollViewportKey,
+                                   morphWeekRowKeys: _monthMorphRowKeys,
+                                   morphDayKeys: _monthMorphDayKeys,
+                                   morphDowHeaderKey: _monthMorphDowKey,
+                                   morphDowLabelKeys:
+                                       _monthMorphDowLabelKeys,
+                                   morphListContentKey: _monthMorphListKey,
                                    monthListOrderByDay:
                                        _monthListOrderByDay,
                                    monthListOrderRevision:
@@ -2965,7 +3055,9 @@ class CalendarTabState extends State<CalendarTab>
                                  ),
                               ),
                             ),
-                          ],
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     if (colT >= 0.99) buildDayViewUnderlay(),
@@ -3387,6 +3479,24 @@ class _MiniMonthGrid extends StatelessWidget {
 // _MorphOverlay — resolves colors then delegates all drawing to _MorphPainter.
 // Zero widget allocation per frame: the painter draws directly onto the canvas.
 // ══════════════════════════════════════════════════════════════════════════════
+class _MonthMorphGeometry {
+  const _MonthMorphGeometry({
+    required this.weekRows,
+    required this.dayCenters,
+    required this.daySizes,
+    required this.dowHeader,
+    required this.dowLabelCenters,
+    required this.listContent,
+  });
+
+  final List<Rect> weekRows;
+  final List<Offset?> dayCenters;
+  final List<Size?> daySizes;
+  final Rect dowHeader;
+  final List<Offset> dowLabelCenters;
+  final Rect? listContent;
+}
+
 class _MorphOverlay extends StatelessWidget {
   const _MorphOverlay({
     required this.t,
@@ -3402,6 +3512,8 @@ class _MorphOverlay extends StatelessWidget {
     required this.screenW,
     required this.viewModeRowHeight,
     this.measuredRowTops,
+    this.monthGeometry,
+    this.nonSelectedClipTop = 0.0,
   });
 
   final double t; // 0 = year view, 1 = month view
@@ -3423,6 +3535,8 @@ class _MorphOverlay extends StatelessWidget {
   // scroll-offset-independent).  When supplied, replaces the formula-derived
   // rowTop so non-selected months track the year-view grid with pixel accuracy.
   final List<double>? measuredRowTops;
+  final _MonthMorphGeometry? monthGeometry;
+  final double nonSelectedClipTop;
 
   @override
   Widget build(BuildContext context) {
@@ -3487,18 +3601,25 @@ class _MorphOverlay extends StatelessWidget {
     return ClipRect(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final listContentTop = math.max(
-            0.0,
-            _kCalendarHeaderToDowGap +
-                _kDayLabelHeight +
-                _totalWeekRows(year, zoomMonthIdx + 1) *
-                    viewModeRowHeight -
-                monthScrollOffset,
-          );
+          final measuredListContent = monthGeometry?.listContent;
+          final listContentTop =
+              measuredListContent?.top ??
+              math.max(
+                0.0,
+                _kCalendarHeaderToDowGap +
+                    _kDayLabelHeight +
+                    _totalWeekRows(year, zoomMonthIdx + 1) *
+                        viewModeRowHeight -
+                    monthScrollOffset,
+              );
           final cellSz = grid.cellSize;
+          final renderedMonthWidth =
+              monthGeometry?.weekRows.isNotEmpty == true
+              ? monthGeometry!.weekRows.first.width
+              : screenW;
           final monthContentWidth = math.max(
             0.0,
-            screenW - yearHorizontalInset * 2.0,
+            renderedMonthWidth - yearHorizontalInset * 2.0,
           );
           final zCol = zoomMonthIdx % grid.columnCount;
           final zRow = zoomMonthIdx ~/ grid.columnCount;
@@ -3537,10 +3658,14 @@ class _MorphOverlay extends StatelessWidget {
             listContentTop,
             t,
           )!;
-          final contentLeft = lerpDouble(focalX, yearHorizontalInset, t)!;
+          final contentLeft = lerpDouble(
+            focalX,
+            measuredListContent?.left ?? yearHorizontalInset,
+            t,
+          )!;
           final contentScale = lerpDouble(
             miniW / screenW,
-            monthContentWidth / screenW,
+            (measuredListContent?.width ?? monthContentWidth) / screenW,
             t,
           )!;
           return Stack(
@@ -3560,6 +3685,8 @@ class _MorphOverlay extends StatelessWidget {
                   yearHorizontalInset: yearHorizontalInset,
                   yearGrid: grid,
                   measuredRowTops: measuredRowTops,
+                  monthGeometry: monthGeometry,
+                  nonSelectedClipTop: nonSelectedClipTop,
                   viewModeRowHeight: viewModeRowHeight,
                   bgColor: bgC,
                   primaryColor: priC,
@@ -3978,6 +4105,8 @@ class _MorphPainter extends CustomPainter {
     required this.monthDayScale,
     required this.monthDayCircleDiameter,
     this.measuredRowTops,
+    this.monthGeometry,
+    this.nonSelectedClipTop = 0.0,
   });
 
   final double t;
@@ -4002,6 +4131,8 @@ class _MorphPainter extends CustomPainter {
   final double monthDayScale;
   final double monthDayCircleDiameter;
   final List<double>? measuredRowTops;
+  final _MonthMorphGeometry? monthGeometry;
+  final double nonSelectedClipTop;
 
   final Paint _p = Paint()..isAntiAlias = true;
   // Many calendar cells share the same label and style during one morph
@@ -4027,6 +4158,8 @@ class _MorphPainter extends CustomPainter {
       o.yearDayScale != yearDayScale ||
       o.monthDayScale != monthDayScale ||
       o.monthDayCircleDiameter != monthDayCircleDiameter ||
+      o.monthGeometry != monthGeometry ||
+      o.nonSelectedClipTop != nonSelectedClipTop ||
       o.bgColor != bgColor;
 
   // ── Multiply a color's alpha by [a] without discarding its inherent opacity ─
@@ -4118,9 +4251,13 @@ class _MorphPainter extends CustomPainter {
     final miniW = grid.monthWidth;
     final cellSz = grid.cellSize;
     final yearGridLeft = yearHorizontalInset + _kYearOuterPad;
+    final renderedMonthWidth =
+        monthGeometry?.weekRows.isNotEmpty == true
+        ? monthGeometry!.weekRows.first.width
+        : sw;
     final monthContentWidth = math.max(
       0.0,
-      sw - yearHorizontalInset * 2.0,
+      renderedMonthWidth - yearHorizontalInset * 2.0,
     );
     final sFinal = monthContentWidth / miniW;
     final s = 1.0 + (sFinal - 1.0) * t;
@@ -4187,6 +4324,13 @@ class _MorphPainter extends CustomPainter {
     canvas.drawRect(Offset.zero & size, _p);
 
     // 1. Non-selected mini months — headers + per-cell shared-element morph ───
+    // These elements may scatter during the zoom, but they must never paint
+    // over the actual second-level Calendar header.
+    canvas.save();
+    final otherMonthsTop = nonSelectedClipTop.clamp(0.0, size.height);
+    canvas.clipRect(
+      Rect.fromLTRB(0.0, otherMonthsTop, size.width, size.height),
+    );
     for (var mi = 0; mi < 12; mi++) {
       if (mi == zoomMonthIdx) continue;
       final mCol = mi % grid.columnCount;
@@ -4332,22 +4476,32 @@ class _MorphPainter extends CustomPainter {
         }
       }
     }
+    canvas.restore();
 
     // Selected-month week rows use the same per-strip treatment as the
     // settled _WeekRow widget. Each surface follows its own year-view to
     // month-view geometry, so no full month-grid background is left behind.
     for (var wr = 0; wr < totalRows; wr++) {
       final yearRowTop = focalY + (wr + 1) * cellSz + 2.0;
+      final measuredRow =
+          monthGeometry != null && wr < monthGeometry!.weekRows.length
+          ? monthGeometry!.weekRows[wr]
+          : null;
       final monthRowTop =
-          _kCalendarHeaderToDowGap +
-          _kDayLabelHeight +
-          wr * viewModeRowHeight -
-          monthScrollOffset;
+          measuredRow?.top ??
+          (_kCalendarHeaderToDowGap +
+              _kDayLabelHeight +
+              wr * viewModeRowHeight -
+              monthScrollOffset);
       paintWeekStripSurface(
-        left: lerpDouble(focalX, 0.0, t)!,
+        left: lerpDouble(focalX, measuredRow?.left ?? 0.0, t)!,
         top: lerpDouble(yearRowTop, monthRowTop, t)!,
-        width: lerpDouble(miniW, sw, t)!,
-        height: lerpDouble(cellSz, viewModeRowHeight, t)!,
+        width: lerpDouble(miniW, measuredRow?.width ?? sw, t)!,
+        height: lerpDouble(
+          cellSz,
+          measuredRow?.height ?? viewModeRowHeight,
+          t,
+        )!,
       );
     }
 
@@ -4369,19 +4523,36 @@ class _MorphPainter extends CustomPainter {
       // the centre is the scaled circle offset — NOT rowHeight/2.
       // monthScrollOffset shifts the end position up so the morph's t=1 frame
       // matches the _MonthView that is scrolled to _savedMonthScrollOffset.
-      final monthCX = yearHorizontalInset + mCellW * (dow + 1.5);
+      final measuredCenter =
+          monthGeometry != null && d < monthGeometry!.dayCenters.length
+          ? monthGeometry!.dayCenters[d]
+          : null;
+      final measuredSize =
+          monthGeometry != null && d < monthGeometry!.daySizes.length
+          ? monthGeometry!.daySizes[d]
+          : null;
+      final measuredRow =
+          monthGeometry != null && weekRow < monthGeometry!.weekRows.length
+          ? monthGeometry!.weekRows[weekRow]
+          : null;
+      final monthCX =
+          measuredCenter?.dx ?? yearHorizontalInset + mCellW * (dow + 1.5);
       final monthCY =
-          _kCalendarHeaderToDowGap +
-          _kDayLabelHeight +
-          weekRow * viewModeRowHeight +
-          monthDayCircleOffset -
-          monthScrollOffset;
+          measuredCenter?.dy ??
+          (_kCalendarHeaderToDowGap +
+              _kDayLabelHeight +
+              weekRow * viewModeRowHeight +
+              monthDayCircleOffset -
+              monthScrollOffset);
+      final targetCircleDiameter = measuredSize == null
+          ? monthDayCircleDiameter
+          : math.min(measuredSize.width, measuredSize.height);
 
       final cx = lerpDouble(yearCX, monthCX, t)!;
       final cy = lerpDouble(yearCY, monthCY, t)!;
       final r = lerpDouble(
         cellSz * 0.575 * yearDayScale,
-        monthDayCircleDiameter / 2,
+        targetCircleDiameter / 2,
         t,
       )!;
       final fSize = lerpDouble(
@@ -4435,8 +4606,7 @@ class _MorphPainter extends CustomPainter {
         if (dotColor != null && dotAlpha > 0.0) {
           final dotCX = lerpDouble(yearCX, monthCX, t)!;
           final monthDotCY =
-              monthCY -
-              monthDayCircleOffset +
+              (measuredRow?.top ?? monthCY - monthDayCircleOffset) +
               kFixedTopPadding +
               _monthListDotTop(viewModeRowHeight) +
               _kMonthListDotDiameter / 2;
@@ -4456,19 +4626,34 @@ class _MorphPainter extends CustomPainter {
     // Separators widen from mini-month width → full screen width.
     for (var wr = 0; wr < totalRows; wr++) {
       final wkNum = zoomMonthLayout.weekNumbers[wr];
+      final measuredRow =
+          monthGeometry != null && wr < monthGeometry!.weekRows.length
+          ? monthGeometry!.weekRows[wr]
+          : null;
+      final rowSample = zoomMonthLayout.days.firstWhere(
+        (dayCell) => dayCell.weekRow == wr,
+      );
+      final measuredSampleCenter =
+          monthGeometry != null &&
+              rowSample.day < monthGeometry!.dayCenters.length
+          ? monthGeometry!.dayCenters[rowSample.day]
+          : null;
 
       final wkCX = lerpDouble(
         focalX,
-        yearHorizontalInset + mCellW / 2,
+        measuredRow == null
+            ? yearHorizontalInset + mCellW / 2
+            : measuredRow.left + yearHorizontalInset + mCellW / 2,
         t,
       )!;
       final wkCY = lerpDouble(
         focalY + (wr + 1) * cellSz + cellSz / 2,
-        _kCalendarHeaderToDowGap +
-            _kDayLabelHeight +
-            wr * viewModeRowHeight +
-            monthDayCircleOffset -
-            monthScrollOffset,
+        measuredSampleCenter?.dy ??
+            _kCalendarHeaderToDowGap +
+                _kDayLabelHeight +
+                wr * viewModeRowHeight +
+                monthDayCircleOffset -
+                monthScrollOffset,
         t,
       )!;
       _textC(
@@ -4484,14 +4669,19 @@ class _MorphPainter extends CustomPainter {
 
       final sepY = lerpDouble(
         focalY + (wr + 1) * cellSz,
-        _kCalendarHeaderToDowGap +
-            _kDayLabelHeight +
-            (wr + 1) * viewModeRowHeight -
-            monthScrollOffset,
+        measuredRow?.bottom ??
+            _kCalendarHeaderToDowGap +
+                _kDayLabelHeight +
+                (wr + 1) * viewModeRowHeight -
+                monthScrollOffset,
         t,
       )!;
-      final sepLeft = lerpDouble(focalX, 0.0, t)!;
-      final sepRight = lerpDouble(focalX + miniW, sw, t)!;
+      final sepLeft = lerpDouble(focalX, measuredRow?.left ?? 0.0, t)!;
+      final sepRight = lerpDouble(
+        focalX + miniW,
+        measuredRow?.right ?? sw,
+        t,
+      )!;
       _p.color = _fade(separatorColor, t.clamp(0.0, 1.0));
       canvas.drawRect(
         Rect.fromLTWH(sepLeft, sepY, sepRight - sepLeft, 0.5),
@@ -4511,11 +4701,24 @@ class _MorphPainter extends CustomPainter {
     if (hdrBgA > 0) {
       final dowTopY = lerpDouble(
         0.0,
-        _kCalendarHeaderToDowGap - monthScrollOffset,
+        monthGeometry?.dowHeader.top ??
+            _kCalendarHeaderToDowGap - monthScrollOffset,
         hdrBgA,
       )!;
       _p.color = _fade(bgColor, hdrBgA);
-      canvas.drawRect(Rect.fromLTWH(0, dowTopY, sw, _kDayLabelHeight), _p);
+      canvas.drawRect(
+        Rect.fromLTWH(
+          0,
+          dowTopY,
+          sw,
+          lerpDouble(
+            _kDayLabelHeight,
+            monthGeometry?.dowHeader.height ?? _kDayLabelHeight,
+            hdrBgA,
+          )!,
+        ),
+        _p,
+      );
     }
 
     // 6. DOW letters stay unified through the Year → Month morph ─────────────
@@ -4528,16 +4731,20 @@ class _MorphPainter extends CustomPainter {
       for (int i = 0; i < 7; i++) {
         final cx = lerpDouble(
           focalX + (i + 0.5) * cellSz,
-          yearHorizontalInset + mCellW * (i + 1.5),
+          monthGeometry != null &&
+                  i < monthGeometry!.dowLabelCenters.length
+              ? monthGeometry!.dowLabelCenters[i].dx
+              : yearHorizontalInset + mCellW * (i + 1.5),
           t,
         )!;
         // Month-side cy is shifted up by monthScrollOffset so the labels land
         // at the same visual position as in the scrolled _MonthView.
         final cy = lerpDouble(
           focalY + cellSz / 2,
-          _kCalendarHeaderToDowGap +
-              _kDayLabelHeight / 2 -
-              monthScrollOffset,
+          monthGeometry?.dowHeader.center.dy ??
+              _kCalendarHeaderToDowGap +
+                  _kDayLabelHeight / 2 -
+                  monthScrollOffset,
           t,
         )!;
         final fSz = lerpDouble(cellSz * 0.55, 11.0, t)!.clamp(1.0, 200.0);
@@ -4662,6 +4869,11 @@ class _MonthView extends StatelessWidget {
     this.monthListOrderRevision = 0,
     this.onMonthListOrderChanged,
     this.collapseScrollOffset = 0.0,
+    this.morphWeekRowKeys,
+    this.morphDayKeys,
+    this.morphDowHeaderKey,
+    this.morphDowLabelKeys,
+    this.morphListContentKey,
   });
 
   final int year, month;
@@ -4699,6 +4911,11 @@ class _MonthView extends StatelessWidget {
   final int monthListOrderRevision;
   final void Function(String dayKey, List<ScheduledEvent> orderedEvents)?
       onMonthListOrderChanged;
+  final List<GlobalKey>? morphWeekRowKeys;
+  final List<GlobalKey>? morphDayKeys;
+  final GlobalKey? morphDowHeaderKey;
+  final List<GlobalKey>? morphDowLabelKeys;
+  final GlobalKey? morphListContentKey;
 
   /// Scroll offset captured when the Month→Day collapse began.  Passed to
   /// each _AnimatedWeekRow so the selected row translates to visual-y = 0
@@ -4721,6 +4938,18 @@ class _MonthView extends StatelessWidget {
           Duration(days: _firstWeekday(year, month)),
         );
         final totalRows = _totalWeekRows(year, month);
+        List<GlobalKey?>? morphDayKeysForRow(int row) {
+          final keys = morphDayKeys;
+          if (keys == null) return null;
+          final monthOffset = _firstWeekday(year, month);
+          final daysInMonth = _daysInMonth(year, month);
+          return List<GlobalKey?>.generate(7, (column) {
+            final day = row * 7 + column - monthOffset + 1;
+            return day > 0 && day <= daysInMonth && day < keys.length
+                ? keys[day]
+                : null;
+          });
+        }
         // The grid is the only content used by Compact, Stacked, and Details
         // modes.  During Month↔Day transitions it is also the only content
         // visible after the midpoint.  Do not expand recurring events or
@@ -4900,6 +5129,12 @@ class _MonthView extends StatelessWidget {
                             year: year,
                             month: month,
                             row: row,
+                            morphRowKey:
+                                morphWeekRowKeys != null &&
+                                    row < morphWeekRowKeys!.length
+                                ? morphWeekRowKeys![row]
+                                : null,
+                            morphDayKeys: morphDayKeysForRow(row),
                             today: today,
                             selectedDate: selectedDate,
                             collapseProgress: collapseProgress,
@@ -4942,19 +5177,22 @@ class _MonthView extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                _monthSelectedEventsWidgetFor(
-                                  data: monthListData!,
-                                  selectedDayIndex: selectedListChildIndex,
-                                  height: monthListUsesNaturalHeight
-                                      ? null
-                                      : listContentH,
-                                  emptyStateHeight: selectedListIsEmpty
-                                      ? listContentH
-                                      : availableListEmptyStateH,
-                                  onEditEvent: onEditEvent,
-                                  scrollController: scrollController,
-                                  scrollViewportKey: scrollViewportKey,
-                                  onOrderChanged: onMonthListOrderChanged,
+                                KeyedSubtree(
+                                  key: morphListContentKey,
+                                  child: _monthSelectedEventsWidgetFor(
+                                    data: monthListData!,
+                                    selectedDayIndex: selectedListChildIndex,
+                                    height: monthListUsesNaturalHeight
+                                        ? null
+                                        : listContentH,
+                                    emptyStateHeight: selectedListIsEmpty
+                                        ? listContentH
+                                        : availableListEmptyStateH,
+                                    onEditEvent: onEditEvent,
+                                    scrollController: scrollController,
+                                    scrollViewportKey: scrollViewportKey,
+                                    onOrderChanged: onMonthListOrderChanged,
+                                  ),
                                 ),
                                 if (monthListUsesNaturalHeight)
                                   SizedBox(height: eventContentClearance),
@@ -5036,7 +5274,8 @@ class _MonthView extends StatelessWidget {
                     0,
                     collapseScrollOffset * collapseProgress,
                   ),
-                  child: ColoredBox(
+                   child: ColoredBox(
+                     key: morphDowHeaderKey,
                     color: resolveThemeColor(kBackgroundColor, context),
                     child: Padding(
                       padding: EdgeInsets.symmetric(
@@ -5045,10 +5284,14 @@ class _MonthView extends StatelessWidget {
                       child: Row(
                         children: [
                           const Expanded(child: SizedBox.shrink()),
-                          ...List.generate(
-                            7,
-                            (i) => Expanded(
-                              child: Center(
+                             ...List.generate(
+                             7,
+                             (i) => Expanded(
+                               child: Center(
+                                 key: morphDowLabelKeys != null &&
+                                         i < morphDowLabelKeys!.length
+                                     ? morphDowLabelKeys![i]
+                                     : null,
                                 child: Text(
                                   _kDayLetters[i],
                                   style: TextStyle(
@@ -5131,6 +5374,8 @@ class _AnimatedWeekRow extends StatelessWidget {
     required this.year,
     required this.month,
     required this.row,
+    this.morphRowKey,
+    this.morphDayKeys,
     required this.today,
     required this.selectedDate,
     required this.collapseProgress,
@@ -5153,6 +5398,8 @@ class _AnimatedWeekRow extends StatelessWidget {
   });
 
   final int year, month, row;
+  final GlobalKey? morphRowKey;
+  final List<GlobalKey?>? morphDayKeys;
   final DateTime today, selectedDate;
   final double collapseProgress;
   final int collapseWeekRow;
@@ -5225,6 +5472,8 @@ class _AnimatedWeekRow extends StatelessWidget {
         year: year,
         month: month,
         row: row,
+        morphRowKey: morphRowKey,
+        morphDayKeys: morphDayKeys,
         today: today,
         selectedDate: selectedDate,
         rowHeight: currentRowHeight,
@@ -5669,6 +5918,8 @@ class _WeekRow extends StatefulWidget {
     required this.year,
     required this.month,
     required this.row,
+    this.morphRowKey,
+    this.morphDayKeys,
     required this.today,
     required this.selectedDate,
     required this.onDayTap,
@@ -5689,6 +5940,8 @@ class _WeekRow extends StatefulWidget {
   });
 
   final int year, month, row;
+  final GlobalKey? morphRowKey;
+  final List<GlobalKey?>? morphDayKeys;
   final DateTime today, selectedDate;
   final double rowHeight; // current animated row height (view-mode × collapse)
   final void Function(DateTime) onDayTap;
@@ -5832,6 +6085,7 @@ class _WeekRowState extends State<_WeekRow> {
         // The row surface and bottom separator stay full-width; only the
         // week number, day cells, and their overlays use the inset content box.
         final rowContent = Container(
+          key: widget.morphRowKey,
           height: widget.rowHeight,
           decoration: BoxDecoration(
             color: resolveThemeColor(kBackgroundColor, context),
@@ -6070,7 +6324,15 @@ class _WeekRowState extends State<_WeekRow> {
                             clipBehavior: Clip.none,
                             alignment: Alignment.topCenter,
                             children: [
-                              dayCell,
+                              if (widget.morphDayKeys != null &&
+                                  col < widget.morphDayKeys!.length &&
+                                  widget.morphDayKeys![col] != null)
+                                KeyedSubtree(
+                                  key: widget.morphDayKeys![col],
+                                  child: dayCell,
+                                )
+                              else
+                                dayCell,
                               if (widget.viewMode == CalendarViewMode.list &&
                                   widget.collapseProgress <
                                       _kMonthDayTransitionThreshold &&

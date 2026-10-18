@@ -2228,8 +2228,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       trailingBuilder: (titleFontSize) {
         final verticalNavigation = _CalendarNavChevron(
           titleFontSize: titleFontSize,
-          canUp: canUp,
-          canDown: canDown,
+          canUp: isActive && canUp,
+          canDown: isActive && canDown,
           compact: compact,
           onUp: isActive && canUp
               ? () => _calendarTabKey.currentState?.navigateUp()
@@ -3841,17 +3841,6 @@ class _CalendarNavChevron extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Strategy: the whole widget is shifted 26 px to the LEFT via
-    // Transform.translate (which moves both visuals AND hit testing).
-    // Each GestureDetector is a 86 px wide SizedBox so the icon lands
-    // at exactly +8 px from the title's right edge:
-    //   visual icon left = –26 (shift) + 34 (left padding inside box) = +8 px ✓
-    // The hit area extends 26 px into the tap-dead title region (left)
-    // and 40 px beyond the icon (right), covering ≈±35 px of chevron
-    // drift as the title length changes between views.
-    const double shift = 26.0;
-    const double hitW = 86.0; // 34 left-of-icon + 12 icon + 40 right ext
-    const double iconLeft = 34.0; // shift + 8 px visual gap
     final safeTitleFontSize =
         titleFontSize.isFinite && titleFontSize > 0
         ? titleFontSize
@@ -3943,58 +3932,90 @@ class _CalendarNavChevron extends StatelessWidget {
       );
     }
 
+    const double hitW = 48.0;
+    const double hitHalfHeight = 24.0;
+    const double iconLeft = 8.0;
+    final overflowY = hitHalfHeight - halfHeight;
+
     Widget half({
       required _ChevronDir direction,
       required Color color,
       required VoidCallback? onTap,
       required double top,
-      required double bottom,
+      required double iconTop,
     }) {
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: SizedBox(
-          width: hitW,
-          height: halfHeight,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(iconLeft, top, 0, bottom),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _ChevronIcon(
-                direction: direction,
-                color: color,
-                size: iconSize,
-                strokeWidth: 1.6 * scale,
-              ),
+      return Positioned(
+        left: 0,
+        top: top,
+        width: hitW,
+        height: hitHalfHeight,
+        child: Semantics(
+          button: true,
+          enabled: onTap != null,
+          label: direction == _ChevronDir.up
+              ? 'Go to more detail'
+              : 'Return to calendar overview',
+          onTap: onTap,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            excludeFromSemantics: true,
+            // A disabled half still owns its painted hit target, preventing a
+            // tap from falling through to the tappable title behind it.
+            onTap: onTap ?? () {},
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  left: iconLeft,
+                  top: iconTop,
+                  child: _ChevronIcon(
+                    direction: direction,
+                    color: color,
+                    size: iconSize,
+                    strokeWidth: 1.6 * scale,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       );
     }
 
-    return Transform.translate(
-      offset: const Offset(-shift, 0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          half(
-            direction: _ChevronDir.up,
-            color: canUp ? resolveAccentColor(context) : disabledColor,
-            onTap: onUp,
-            top: firstTop,
-            bottom: firstBottom,
+    return SizedBox(
+      width: hitW,
+      height: safeTitleFontSize,
+      child: OverflowBox(
+        alignment: Alignment.center,
+        minWidth: hitW,
+        maxWidth: hitW,
+        minHeight: hitHalfHeight * 2,
+        maxHeight: hitHalfHeight * 2,
+        child: SizedBox(
+          width: hitW,
+          height: hitHalfHeight * 2,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              half(
+                direction: _ChevronDir.up,
+                color: canUp ? resolveAccentColor(context) : disabledColor,
+                onTap: onUp,
+                top: 0,
+                iconTop: firstTop + overflowY,
+              ),
+              half(
+                direction: _ChevronDir.down,
+                color: canDown ? resolveAccentColor(context) : disabledColor,
+                onTap: onDown,
+                top: hitHalfHeight,
+                iconTop: halfHeight + secondTop + overflowY - hitHalfHeight,
+              ),
+            ],
           ),
-          half(
-            direction: _ChevronDir.down,
-            color: canDown ? resolveAccentColor(context) : disabledColor,
-            onTap: onDown,
-            top: secondTop,
-            bottom: secondBottom,
-          ),
-        ],
-      ),
-    );
+        ),
+      );
+    }
   }
 }
 
