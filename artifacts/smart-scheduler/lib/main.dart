@@ -2937,13 +2937,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               // content inset. In portrait the normal header
                               // surface is transparent, which lets scrolled
                               // page content bleed through the status-bar band.
-                              // Fade in the search surface behind the native
-                              // status icons as the header collapses.
-                              final headerColor = Color.lerp(
-                                headerSurfaceColor,
-                                backgroundColor,
-                                t,
-                              )!;
+                              // Switch directly to the opaque search surface
+                              // while search is active; interpolating from
+                              // transparent tints the moving page underneath
+                              // and creates a transient grey band.
+                              final headerColor = _searchFocused
+                                  ? backgroundColor
+                                  : headerSurfaceColor;
                               return Container(
                                 width: double.infinity,
                                 height: topInset + innerHeight,

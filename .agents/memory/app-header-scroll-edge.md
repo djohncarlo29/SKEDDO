@@ -43,8 +43,8 @@ The 16pt content-area raise applies to ordinary page content, not active search 
 
 **How to apply:** Whenever the content top extension changes, audit active search viewports separately from normal page scroll views, and compare Year, Month, and Day title ownership before compensating.
 
-In portrait, the normal AppShell header surface is transparent so page content can scroll beneath it. When search mode collapses the header, fade an opaque search-background surface into the status-bar band; otherwise raised page content can remain visible behind native status icons.
+In portrait, the normal AppShell header surface is transparent so page content can scroll beneath it. During search, switch directly to the opaque search surface instead of interpolating alpha from transparent; a translucent midpoint tints moving content into a grey band.
 
-**Why:** Fixed search overlays start below the shell's leading inset, so they cannot cover the physical status-bar area themselves.
+**Why:** Fixed search overlays start below the shell's leading inset, so they cannot cover the physical status-bar area themselves. Alpha blending over the changing page underneath caused a transient grey strip during entry.
 
-**How to apply:** Keep normal header transparency unchanged, but resolve the search surface from the current theme and transition it with the search-mode animation.
+**How to apply:** Keep normal header transparency unchanged, but use the current theme's opaque search surface whenever search mode is active; don't fade the surface's alpha.
