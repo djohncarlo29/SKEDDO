@@ -2783,6 +2783,7 @@ class CalendarTabState extends State<CalendarTab>
                     if (zoomT > 0.999)
                       Positioned.fill(
                         child: Stack(
+                          clipBehavior: Clip.none,
                           children: [
                             // Day View owns the layer underneath. The month
                             // rows below are the moving opaque veils.
@@ -2798,7 +2799,7 @@ class CalendarTabState extends State<CalendarTab>
                               top: 0,
                               bottom: 0,
                               width: sw,
-                               child: ClipRect(
+                               child: AppHeaderScrollClip(
                                  child: Transform.translate(
                                    offset: Offset(0, monthPanelSlideY),
                                    child: IgnorePointer(
@@ -2827,7 +2828,7 @@ class CalendarTabState extends State<CalendarTab>
                               top: 0,
                               bottom: 0,
                               width: sw,
-                               child: ClipRect(
+                               child: AppHeaderScrollClip(
                                  child: Transform.translate(
                                    offset: Offset(0, monthPanelSlideY),
                                    child: _MonthView(
@@ -2914,7 +2915,7 @@ class CalendarTabState extends State<CalendarTab>
                               top: 0,
                               bottom: 0,
                               width: sw,
-                               child: ClipRect(
+                               child: AppHeaderScrollClip(
                                  child: Transform.translate(
                                    offset: Offset(0, monthPanelSlideY),
                                    child: IgnorePointer(
@@ -7607,16 +7608,20 @@ class _DayTimelineState extends State<_DayTimeline>
     final horizontalInset = AppWindowContentScope.of(context).horizontalInset;
     final mediaSize = MediaQuery.sizeOf(context);
     final isLandscape = mediaSize.width > mediaSize.height;
+    final shellInset = AppHeaderScrollInsetScope.maybeOf(context);
 
     return ColoredBox(
       color: resolveThemeColor(kBackgroundColor, context),
-      child: SingleChildScrollView(
+      child: AppHeaderSingleChildScrollView(
+        leadingInset: shellInset,
         controller: _scroll,
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.only(
-          top: MediaQuery.orientationOf(context) == Orientation.portrait
-              ? kAppHeaderTitleHeight
-              : 0,
+          top:
+              shellInset +
+              (MediaQuery.orientationOf(context) == Orientation.portrait
+                  ? kAppHeaderTitleHeight
+                  : 0),
         ),
         child: SizedBox(
           // Extra _kTimelinePad at both ends prevents the indicator and the
@@ -8457,16 +8462,20 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
     final separatorColor = resolveThemeColor(kSeparatorColor, context);
     final horizontalInset = AppWindowContentScope.of(context).horizontalInset;
+    final shellInset = AppHeaderScrollInsetScope.maybeOf(context);
 
     return ColoredBox(
       color: backgroundColor,
-      child: SingleChildScrollView(
+      child: AppHeaderSingleChildScrollView(
+        leadingInset: shellInset,
         controller: _scroll,
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.only(
-          top: MediaQuery.orientationOf(context) == Orientation.portrait
-              ? kAppHeaderTitleHeight
-              : 0,
+          top:
+              shellInset +
+              (MediaQuery.orientationOf(context) == Orientation.portrait
+                  ? kAppHeaderTitleHeight
+                  : 0),
         ),
         child: SizedBox(
           // Keep the end-of-day hairline immediately above the shared

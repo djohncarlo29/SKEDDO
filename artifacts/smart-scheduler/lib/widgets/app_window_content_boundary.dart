@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 
 import '../app_theme.dart';
 import '../services/window_geometry_diagnostics.dart';
+import 'app_header_scroll_edge.dart';
 
 const double kAppWindowMasterDetailDividerWidth = 0.75;
 const double kAppWindowMasterDetailMinimumDetailWidth = 320.0;
@@ -1100,7 +1101,7 @@ class _AppWindowMasterDetailTransitionState
                 width: masterWidth,
                 child: NotificationListener<ScrollNotification>(
                   onNotification: _onMasterScroll,
-                  child: ClipRect(
+                  child: AppHeaderScrollClip(
                     key: _masterViewportClipKey,
                     child: masterWithProgress,
                   ),
@@ -1114,7 +1115,7 @@ class _AppWindowMasterDetailTransitionState
               ),
               Expanded(
                 child: LayoutBuilder(
-                  builder: (context, constraints) => ClipRect(
+                  builder: (context, constraints) => AppHeaderScrollClip(
                     child: Transform.translate(
                       offset: Offset(
                         constraints.maxWidth * (1.0 - progress),

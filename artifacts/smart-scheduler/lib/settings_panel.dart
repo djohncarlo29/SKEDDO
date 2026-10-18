@@ -441,10 +441,10 @@ class _SettingsPanelState extends State<SettingsPanel>
                 ),
               ),
             );
-            return ClipRect(
+            return AppHeaderScrollClip(
               child: Stack(
                 fit: StackFit.expand,
-                clipBehavior: Clip.hardEdge,
+                clipBehavior: Clip.none,
                 children: pages,
               ),
             );
@@ -680,7 +680,7 @@ class _SettingsPanelState extends State<SettingsPanel>
                     child: AppHeaderScrollInsetScope(
                       leadingInset: headerHeight,
                       child: showLandscapeSplit
-                          ? ClipRect(child: splitBody)
+                          ? AppHeaderScrollClip(child: splitBody)
                           : AppWindowPhysicalWidth(
                               child: SlideTransition(
                                 position: _mainParallax,

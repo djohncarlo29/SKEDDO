@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/widgets.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart'
     show LiquidGlassEdge, LiquidGlassScrollEdge;
@@ -69,6 +70,68 @@ class AppHeaderScrollViewport extends StatelessWidget {
   }
 }
 
+/// A [SingleChildScrollView] whose viewport reaches behind the persistent
+/// first-level header while retaining the normal scrollable lifecycle.
+class AppHeaderSingleChildScrollView extends SingleChildScrollView {
+  const AppHeaderSingleChildScrollView({
+    super.key,
+    required this.leadingInset,
+    super.controller,
+    super.physics,
+    super.padding,
+    super.child,
+  });
+
+  final double leadingInset;
+
+  @override
+  Widget build(BuildContext context) => AppHeaderScrollViewport(
+    leadingInset: leadingInset,
+    child: super.build(context),
+  );
+}
+
+/// Keeps pane and page clips aligned with the physical viewport when their
+/// children scroll beneath the fixed app header. The clip still constrains the
+/// horizontal pane and bottom edge; only its top reaches through the shell
+/// inset.
+class AppHeaderScrollClip extends StatelessWidget {
+  const AppHeaderScrollClip({
+    super.key,
+    required this.child,
+    this.clipBehavior = Clip.hardEdge,
+  });
+
+  final Widget child;
+  final Clip clipBehavior;
+
+  @override
+  Widget build(BuildContext context) {
+    final leadingInset = AppHeaderScrollInsetScope.maybeOf(context);
+    return ClipRect(
+      clipBehavior: clipBehavior,
+      clipper: leadingInset > 0.0 && leadingInset.isFinite
+          ? _AppHeaderScrollClipper(leadingInset)
+          : null,
+      child: child,
+    );
+  }
+}
+
+class _AppHeaderScrollClipper extends CustomClipper<Rect> {
+  const _AppHeaderScrollClipper(this.leadingInset);
+
+  final double leadingInset;
+
+  @override
+  Rect getClip(Size size) =>
+      Rect.fromLTWH(0.0, -leadingInset, size.width, size.height + leadingInset);
+
+  @override
+  bool shouldReclip(_AppHeaderScrollClipper oldClipper) =>
+      leadingInset != oldClipper.leadingInset;
+}
+
 /// A scroll viewport whose physical extent reaches behind the pinned
 /// first-level header, where [AppHeaderScrollEdge] applies its visual treatment.
 /// The scroll extent grows by the same amount as the viewport so initial layout
@@ -86,13 +149,13 @@ class AppHeaderScrollView extends StatelessWidget {
     this.center,
     this.anchor = 0.0,
     this.cacheExtent,
-    this.paintOrder = SliverPaintOrder.forward,
+    this.paintOrder = SliverPaintOrder.firstIsTop,
     this.slivers = const <Widget>[],
     this.semanticChildCount,
     this.dragStartBehavior = DragStartBehavior.start,
-    this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
+    this.keyboardDismissBehavior,
     this.restorationId,
-    this.hitTestBehavior,
+    this.hitTestBehavior = HitTestBehavior.opaque,
     this.clipBehavior = Clip.none,
   }) : _scrollViewKey = key,
        super(key: null);
@@ -112,14 +175,17 @@ class AppHeaderScrollView extends StatelessWidget {
   final List<Widget> slivers;
   final int? semanticChildCount;
   final DragStartBehavior dragStartBehavior;
-  final ScrollViewKeyboardDismissBehavior keyboardDismissBehavior;
+  final ScrollViewKeyboardDismissBehavior? keyboardDismissBehavior;
   final String? restorationId;
-  final HitTestBehavior? hitTestBehavior;
+  final HitTestBehavior hitTestBehavior;
   final Clip clipBehavior;
 
   @override
   Widget build(BuildContext context) {
-    final leadingInset = AppHeaderScrollInsetScope.maybeOf(context);
+    final leadingInset =
+        scrollDirection == Axis.vertical && !reverse && !shrinkWrap
+        ? AppHeaderScrollInsetScope.maybeOf(context)
+        : 0.0;
     final scrollSlivers = <Widget>[
       if (leadingInset > 0.0)
         SliverToBoxAdapter(child: SizedBox(height: leadingInset)),
@@ -240,8 +306,8 @@ class AppHeaderScrollEdge extends StatelessWidget {
                   (_kAppHeaderScrollEdgeMaxTintOpacity *
                           normalizedProgress *
                           surfaceColor.a)
-                  .clamp(0.0, 1.0)
-                  .toDouble(),
+                      .clamp(0.0, 1.0)
+                      .toDouble(),
             ),
             // Keep the same overlay subtree at rest while limiting blur so
             // text and controls remain perceptible as they pass through.

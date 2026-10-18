@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/cupertino.dart';
@@ -34,25 +33,36 @@ void main() {
                 children: [
                   Positioned.fill(
                     top: 40,
-                    child: RepaintBoundary(
-                      child: AppHeaderScrollStack(
-                        children: [
-                          AppHeaderScrollView(
-                            controller: controller,
-                            physics: const NeverScrollableScrollPhysics(),
-                            slivers: const [
-                              SliverToBoxAdapter(child: SizedBox(height: 120)),
-                              SliverToBoxAdapter(
-                                child: SizedBox(
-                                  key: contentKey,
-                                  height: 20,
-                                  child: ColoredBox(color: Color(0xFFD84A45)),
-                                ),
+                    child: AppHeaderScrollInsetScope(
+                      leadingInset: 40,
+                      child: RepaintBoundary(
+                        child: AppHeaderScrollClip(
+                          child: AppHeaderScrollStack(
+                            children: [
+                              AppHeaderScrollView(
+                                controller: controller,
+                                physics: const NeverScrollableScrollPhysics(),
+                                slivers: const [
+                                  SliverToBoxAdapter(
+                                    child: SizedBox(height: 120),
+                                  ),
+                                  SliverToBoxAdapter(
+                                    child: SizedBox(
+                                      key: contentKey,
+                                      height: 20,
+                                      child: ColoredBox(
+                                        color: Color(0xFFD84A45),
+                                      ),
+                                    ),
+                                  ),
+                                  SliverToBoxAdapter(
+                                    child: SizedBox(height: 600),
+                                  ),
+                                ],
                               ),
-                              SliverToBoxAdapter(child: SizedBox(height: 600)),
                             ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -135,6 +145,73 @@ void main() {
         reason:
             'A red row crossing the edge must still be rendered there, not clipped away.',
       );
+    },
+  );
+
+  testWidgets(
+    'single-child page scrollables use the same physical viewport extension',
+    (tester) async {
+      const surfaceSize = Size(320, 300);
+      const contentKey = ValueKey('single-child-under-app-scroll-edge');
+      tester.view.physicalSize = surfaceSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final controller = ScrollController(initialScrollOffset: 145);
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: SizedBox(
+            width: surfaceSize.width,
+            height: surfaceSize.height,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned.fill(
+                  top: 40,
+                  child: AppHeaderScrollInsetScope(
+                    leadingInset: 40,
+                    child: AppHeaderScrollClip(
+                      child: AppHeaderScrollStack(
+                        children: [
+                          AppHeaderSingleChildScrollView(
+                            leadingInset: 40,
+                            controller: controller,
+                            physics: const NeverScrollableScrollPhysics(),
+                            padding: const EdgeInsets.only(top: 160),
+                            child: Column(
+                              children: const [
+                                SizedBox(
+                                  key: contentKey,
+                                  height: 20,
+                                  child: ColoredBox(color: Color(0xFFD84A45)),
+                                ),
+                                SizedBox(height: 600),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const AppHeaderScrollEdge(
+                  progress: 1,
+                  surfaceColor: Color(0xFFFFFFFF),
+                  height: 100,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final contentRect = tester.getRect(find.byKey(contentKey));
+      expect(controller.offset, closeTo(145, 1));
+      expect(contentRect.top, closeTo(15, 1));
+      expect(contentRect.bottom, lessThan(40));
     },
   );
 }
