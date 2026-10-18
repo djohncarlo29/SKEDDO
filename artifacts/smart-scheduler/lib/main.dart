@@ -23,6 +23,7 @@ import 'widgets/action_panel.dart';
 import 'widgets/accent_tinted_image.dart';
 import 'widgets/app_header_scroll_edge.dart';
 import 'widgets/app_window_content_boundary.dart';
+import 'widgets/dcv_keyboard_layout.dart';
 import 'widgets/fixed_size_icon.dart';
 import 'widgets/floating_tab_pill.dart';
 import 'widgets/header_title_scroller.dart';
@@ -2221,7 +2222,17 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final titleScroller = HeaderTitleScroller(
       title: displayTitle,
       fadeColor: compactFadeColor ?? resolveThemeColor(kCardColor, context),
-      onTap: isActive && isToday ? _advanceCurrentCalendarHeader : null,
+      onTap: isActive && (isToday || view == CalendarView.day)
+          ? () {
+              if (isToday) {
+                _advanceCurrentCalendarHeader();
+              } else {
+                // A non-today Day title still represents a real hierarchy
+                // level. Tapping it returns to that date's containing month.
+                _calendarTabKey.currentState?.navigateDown();
+              }
+            }
+          : null,
       showTrailingFade: true,
       leadingContentWidth: compact ? compactArrowWidth : null,
       leadingGap: 0,
@@ -2818,13 +2829,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     // AppShell uses a custom Stack instead of Scaffold, so the framework does
     // not automatically shrink the content viewport when the IME appears.
-    // Reserve the keyboard's space while editing a DCV section; otherwise
+    // Reserve keyboard space while editing a DCV section; otherwise
     // ensureVisible measures against the full screen and the keyboard can
-    // still cover the active New Section field.
-    final dcvKeyboardBottomInset =
-        _selectedIndex == 2 && _dcvCategory != null
-            ? keyboardBottomInset
-            : 0.0;
+    // still cover the active New Section field. DCV search results handle
+    // their own keyboard-safe viewport, so do not apply that inset twice.
+    final dcvKeyboardBottomInset = dcvKeyboardContentBottomInset(
+      hasActiveDcv: _selectedIndex == 2 && _dcvCategory != null,
+      searchFocused: _searchFocused,
+      keyboardBottomInset: keyboardBottomInset,
+    );
 
     // TapRegionSurface provides the registry that TapRegion widgets in the
     // tree (around each NativeTextInput) need so that tap-outside-to-dismiss

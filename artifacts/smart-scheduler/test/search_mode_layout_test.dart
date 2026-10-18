@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
+import 'package:smart_scheduler/widgets/dcv_keyboard_layout.dart';
 import 'package:smart_scheduler/widgets/search_bar_widget.dart';
 import 'package:smart_scheduler/widgets/smart_search_results.dart';
 
@@ -28,9 +29,7 @@ void main() {
                         searchBarRow: const SizedBox(
                           key: headerKey,
                           height: 52,
-                          child: ColoredBox(
-                            color: CupertinoColors.systemBlue,
-                          ),
+                          child: ColoredBox(color: CupertinoColors.systemBlue),
                         ),
                       ),
                       Expanded(
@@ -39,9 +38,7 @@ void main() {
                           physics: const AlwaysScrollableScrollPhysics(
                             parent: BouncingScrollPhysics(),
                           ),
-                          slivers: const [
-                            SmartSearchResultsSliver(hits: []),
-                          ],
+                          slivers: const [SmartSearchResultsSliver(hits: [])],
                         ),
                       ),
                     ],
@@ -67,10 +64,7 @@ void main() {
 
       await gesture.up();
       await tester.pumpAndSettle();
-      await tester.drag(
-        find.byType(CustomScrollView),
-        const Offset(0, -48),
-      );
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -48));
       await tester.pump();
       expect(tester.getTopLeft(headerFinder).dy, closeTo(headerTop, 0.5));
     },
@@ -96,9 +90,7 @@ void main() {
               child: SizedBox(
                 width: 300,
                 height: 500,
-                child: SearchNoResultsCentered(
-                  child: Text('No Results'),
-                ),
+                child: SearchNoResultsCentered(child: Text('No Results')),
               ),
             ),
           ),
@@ -114,13 +106,9 @@ void main() {
       await tester.pumpWidget(buildApp(200));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 110));
-      final centerDuringKeyboardAnimation = tester
-          .getCenter(noResultsFinder)
-          .dy;
-      expect(
-        centerDuringKeyboardAnimation,
-        lessThan(centerWithoutKeyboard),
-      );
+      final centerDuringKeyboardAnimation =
+          tester.getCenter(noResultsFinder).dy;
+      expect(centerDuringKeyboardAnimation, lessThan(centerWithoutKeyboard));
       expect(
         centerDuringKeyboardAnimation,
         greaterThan(200),
@@ -141,7 +129,7 @@ void main() {
   );
 
   testWidgets(
-    'DCV empty results center within the area above the keyboard',
+    'DCV empty results center above the keyboard without a duplicate shell inset',
     (tester) async {
       const surfaceSize = Size(390, 800);
       tester.view.physicalSize = surfaceSize;
@@ -149,24 +137,41 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
+      const keyboardBottomInset = 200.0;
+      final shellInsetDuringSearch = dcvKeyboardContentBottomInset(
+        hasActiveDcv: true,
+        searchFocused: true,
+        keyboardBottomInset: keyboardBottomInset,
+      );
+      expect(shellInsetDuringSearch, 0);
+      expect(
+        dcvKeyboardContentBottomInset(
+          hasActiveDcv: true,
+          searchFocused: false,
+          keyboardBottomInset: keyboardBottomInset,
+        ),
+        keyboardBottomInset,
+        reason: 'Section editing still needs the shell-level keyboard inset.',
+      );
+
       await tester.pumpWidget(
         CupertinoApp(
           home: MediaQuery(
             data: MediaQueryData(
               size: surfaceSize,
-              viewInsets: const EdgeInsets.only(bottom: 200),
+              viewInsets: const EdgeInsets.only(bottom: keyboardBottomInset),
             ),
             child: SizedBox.expand(
-              child: Column(
-                children: [
-                  const SizedBox(height: 120),
-                  const Expanded(
-                    child: SmartDcvSearchResults(
-                      primary: [],
-                      overflow: [],
+              child: Padding(
+                padding: EdgeInsets.only(bottom: shellInsetDuringSearch),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 120),
+                    const Expanded(
+                      child: SmartDcvSearchResults(primary: [], overflow: []),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
