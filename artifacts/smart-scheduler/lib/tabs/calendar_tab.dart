@@ -713,8 +713,15 @@ class CalendarTabState extends State<CalendarTab>
   // Landscape can reduce the year to two rows, so only mounted row keys are
   // measured.
   final List<GlobalKey> _yearRowKeys = List.generate(12, (_) => GlobalKey());
+  // Per-mini-month week rows let the morph use measured Year-view cells and
+  // row surfaces instead of reconstructing their settled coordinates.
+  final List<List<GlobalKey>> _yearMorphWeekRowKeys = List.generate(
+    12,
+    (_) => List.generate(6, (_) => GlobalKey()),
+  );
   List<double>?
   _yearMeasuredRowTops; // natural tops (scroll-offset-independent)
+  _YearMorphGeometry? _yearMorphGeometry;
   final List<GlobalKey> _monthMorphRowKeys = List.generate(
     6,
     (_) => GlobalKey(),
@@ -1731,6 +1738,95 @@ class CalendarTabState extends State<CalendarTab>
 
   static const _kHierarchyCollapseDuration = Duration(milliseconds: 185);
 
+  Rect? _measureCalendarLocalRect(GlobalKey key) {
+    final calendarBox = context.findRenderObject() as RenderBox?;
+    final box = key.currentContext?.findRenderObject() as RenderBox?;
+    if (calendarBox == null ||
+        !calendarBox.attached ||
+        !calendarBox.hasSize ||
+        box == null ||
+        !box.attached ||
+        !box.hasSize) {
+      return null;
+    }
+    final corners = <Offset>[
+      Offset.zero,
+      Offset(box.size.width, 0.0),
+      Offset(0.0, box.size.height),
+      Offset(box.size.width, box.size.height),
+    ].map(
+      (point) => calendarBox.globalToLocal(box.localToGlobal(point)),
+    );
+    var left = double.infinity;
+    var top = double.infinity;
+    var right = double.negativeInfinity;
+    var bottom = double.negativeInfinity;
+    for (final point in corners) {
+      left = math.min(left, point.dx);
+      top = math.min(top, point.dy);
+      right = math.max(right, point.dx);
+      bottom = math.max(bottom, point.dy);
+    }
+    return Rect.fromLTRB(left, top, right, bottom);
+  }
+
+  _YearMorphGeometry? _measureYearMorphGeometry(int monthIndex) {
+    if (monthIndex < 0 || monthIndex >= _yearMorphWeekRowKeys.length) {
+      return null;
+    }
+    final rowCount = _totalWeekRows(_dispYear, monthIndex + 1);
+    final weekRows = <Rect>[];
+    for (final key in _yearMorphWeekRowKeys[monthIndex].take(rowCount)) {
+      final rect = _measureCalendarLocalRect(key);
+      if (rect == null) return null;
+      weekRows.add(rect);
+    }
+    if (weekRows.isEmpty) return null;
+
+    final daysInMonth = _daysInMonth(_dispYear, monthIndex + 1);
+    final firstWeekday = _firstWeekday(_dispYear, monthIndex + 1);
+    final cellWidth = weekRows.first.width / 7.0;
+    final dayCenters = List<Offset?>.filled(daysInMonth + 1, null);
+    final daySizes = List<Size?>.filled(daysInMonth + 1, null);
+    for (var day = 1; day <= daysInMonth; day++) {
+      final cellIndex = firstWeekday + day - 1;
+      final week = weekRows[cellIndex ~/ 7];
+      final cell = Rect.fromLTWH(
+        week.left + (cellIndex % 7) * cellWidth,
+        week.top,
+        cellWidth,
+        week.height,
+      );
+      dayCenters[day] = cell.center;
+      daySizes[day] = cell.size;
+    }
+
+    // In _MiniMonthGrid the weekday strip is one cell tall and is followed by
+    // a fixed 2px gap before the first measured week row.
+    final dowHeaderHeight = weekRows.first.height;
+    final dowHeader = Rect.fromLTWH(
+      weekRows.first.left,
+      weekRows.first.top - dowHeaderHeight - 2.0,
+      weekRows.first.width,
+      dowHeaderHeight,
+    );
+    final dowLabelCenters = List<Offset>.generate(
+      7,
+      (column) => Offset(
+        weekRows.first.left + (column + 0.5) * cellWidth,
+        dowHeader.center.dy,
+      ),
+      growable: false,
+    );
+    return _YearMorphGeometry(
+      weekRows: weekRows,
+      dayCenters: dayCenters,
+      daySizes: daySizes,
+      dowHeader: dowHeader,
+      dowLabelCenters: dowLabelCenters,
+    );
+  }
+
   // Reads each year-view row's actual rendered top from the GlobalKeys.
   // Must be called while the year view is in the tree (zoomT ≈ 0).
   // Stores scroll-independent "natural" y coordinates so _MorphOverlay can
@@ -1834,6 +1930,7 @@ class CalendarTabState extends State<CalendarTab>
   Future<void> _enterMonth(int monthIdx, {bool fast = false}) async {
     // Capture exact row positions before the zoom animation hides the YearView.
     _measureYearRowTops();
+    _yearMorphGeometry = _measureYearMorphGeometry(monthIdx);
     _zoomScrollOffset = _yearScrollCtrl.hasClients
         ? _yearScrollCtrl.offset
         : 0.0;
@@ -1908,6 +2005,10 @@ class CalendarTabState extends State<CalendarTab>
     if (_monthViewScrollCtrl.hasClients) {
       _savedMonthScrollOffset = _monthViewScrollCtrl.offset;
     }
+    // The MonthView may have scrolled or reflowed since it was first mounted.
+    // Snapshot its current settled geometry so the reverse morph begins at the
+    // exact visible coordinates rather than the geometry cached on entry.
+    _monthMorphGeometry = _measureMonthMorphGeometry();
     _zoomTargetView = CalendarView.year;
     setState(() => _zoomMonthIdx = _dispMonth - 1);
     _notify();
@@ -3015,6 +3116,7 @@ class CalendarTabState extends State<CalendarTab>
                                 onMonthTap: _enterMonth,
                                 controller: _yearScrollCtrl,
                                 rowKeys: _yearRowKeys,
+                                morphWeekRowKeys: _yearMorphWeekRowKeys,
                                 scrollableTitleBuilder:
                                     scrollableTitleBuilder,
                                 titleIsActive: true,
@@ -3077,6 +3179,7 @@ class CalendarTabState extends State<CalendarTab>
                                 kContentAreaTopRaise,
                             screenW: sw,
                             measuredRowTops: _yearMeasuredRowTops,
+                            yearGeometry: _yearMorphGeometry,
                             monthGeometry: _monthMorphGeometry,
                             // During Year→Month, title ownership temporarily
                             // moves to the shell. The title band is still
@@ -3364,6 +3467,7 @@ class _YearView extends StatelessWidget {
     required this.onMonthTap,
     this.controller,
     this.rowKeys,
+    this.morphWeekRowKeys,
     this.scrollableTitleBuilder,
     this.titleIsActive = false,
   });
@@ -3378,6 +3482,9 @@ class _YearView extends StatelessWidget {
   // One key per row (0–3). Supplied only for the current-year panel so
   // CalendarTabState can measure actual rendered row positions before zooming.
   final List<GlobalKey>? rowKeys;
+  // Week-row boxes for each mini month, supplied only by the active year
+  // panel so the Year↔Month morph can use settled source coordinates.
+  final List<List<GlobalKey>>? morphWeekRowKeys;
   final Widget Function(
     BuildContext context,
     String title,
@@ -3449,6 +3556,12 @@ class _YearView extends StatelessWidget {
                               today: today,
                               selectedDate: selectedDate,
                               width: grid.monthWidth,
+                              morphWeekRowKeys:
+                                  morphWeekRowKeys == null
+                                  ? null
+                                  : morphWeekRowKeys![
+                                      row * grid.columnCount + col
+                                    ],
                             ),
                           ),
                         ),
@@ -3509,6 +3622,7 @@ class _MiniMonthGrid extends StatelessWidget {
     required this.today,
     required this.selectedDate,
     required this.width,
+    this.morphWeekRowKeys,
   });
 
   final int year;
@@ -3516,6 +3630,7 @@ class _MiniMonthGrid extends StatelessWidget {
   final DateTime today;
   final DateTime selectedDate;
   final double width;
+  final List<GlobalKey>? morphWeekRowKeys;
 
   @override
   Widget build(BuildContext context) {
@@ -3594,6 +3709,11 @@ class _MiniMonthGrid extends StatelessWidget {
         // adjacent content must not show through the mini-calendar rows.
         for (int row = 0; row < rows; row++)
           ColoredBox(
+            key:
+                morphWeekRowKeys != null &&
+                    row < morphWeekRowKeys!.length
+                ? morphWeekRowKeys![row]
+                : null,
             color: resolveThemeColor(kBackgroundColor, context),
             child: Row(
               children: List.generate(7, (col) {
@@ -3687,6 +3807,22 @@ class _MiniMonthGrid extends StatelessWidget {
 // _MorphOverlay — resolves colors then delegates all drawing to _MorphPainter.
 // Zero widget allocation per frame: the painter draws directly onto the canvas.
 // ══════════════════════════════════════════════════════════════════════════════
+class _YearMorphGeometry {
+  const _YearMorphGeometry({
+    required this.weekRows,
+    required this.dayCenters,
+    required this.daySizes,
+    required this.dowHeader,
+    required this.dowLabelCenters,
+  });
+
+  final List<Rect> weekRows;
+  final List<Offset?> dayCenters;
+  final List<Size?> daySizes;
+  final Rect dowHeader;
+  final List<Offset> dowLabelCenters;
+}
+
 class _MonthMorphGeometry {
   const _MonthMorphGeometry({
     required this.weekRows,
@@ -3720,6 +3856,7 @@ class _MorphOverlay extends StatelessWidget {
     required this.screenW,
     required this.viewModeRowHeight,
     this.measuredRowTops,
+    this.yearGeometry,
     this.monthGeometry,
     this.nonSelectedClipTop = 0.0,
   });
@@ -3743,6 +3880,7 @@ class _MorphOverlay extends StatelessWidget {
   // scroll-offset-independent).  When supplied, replaces the formula-derived
   // rowTop so non-selected months track the year-view grid with pixel accuracy.
   final List<double>? measuredRowTops;
+  final _YearMorphGeometry? yearGeometry;
   final _MonthMorphGeometry? monthGeometry;
   final double nonSelectedClipTop;
 
@@ -3832,9 +3970,11 @@ class _MorphOverlay extends StatelessWidget {
           final zCol = zoomMonthIdx % grid.columnCount;
           final zRow = zoomMonthIdx ~/ grid.columnCount;
           final focalX =
-              yearHorizontalInset +
-              _kYearOuterPad +
-              zCol * (miniW + grid.columnGap);
+              yearGeometry?.weekRows.isNotEmpty == true
+              ? yearGeometry!.weekRows.first.left
+              : yearHorizontalInset +
+                    _kYearOuterPad +
+                    zCol * (miniW + grid.columnGap);
           final List<double> rowTop;
           if (measuredRowTops != null &&
               measuredRowTops!.length == grid.rowCount) {
@@ -3853,13 +3993,16 @@ class _MorphOverlay extends StatelessWidget {
             }
             rowTop = computed;
           }
-          final focalY = rowTop[zRow] + cellSz * 1.35 + 5.0 - scrollOffset;
+          final focalY =
+              yearGeometry?.dowHeader.top ??
+              rowTop[zRow] + cellSz * 1.35 + 5.0 - scrollOffset;
           final totalRows = _totalWeekRows(year, zoomMonthIdx + 1);
           // The List content is another part of the selected month. Its
           // starting edge follows the same selected-month geometry as the
           // grid: at t=0 it sits below the selected mini-month, then travels
           // and grows into its full-width Month List position.
           final yearListContentTop =
+              yearGeometry?.weekRows.last.bottom ??
               focalY + (totalRows + 1) * cellSz + 2.0;
           final contentTop = lerpDouble(
             yearListContentTop,
@@ -3893,6 +4036,7 @@ class _MorphOverlay extends StatelessWidget {
                   yearHorizontalInset: yearHorizontalInset,
                   yearGrid: grid,
                   measuredRowTops: measuredRowTops,
+                  yearGeometry: yearGeometry,
                   monthGeometry: monthGeometry,
                   nonSelectedClipTop: nonSelectedClipTop,
                   viewModeRowHeight: viewModeRowHeight,
@@ -4313,6 +4457,7 @@ class _MorphPainter extends CustomPainter {
     required this.monthDayScale,
     required this.monthDayCircleDiameter,
     this.measuredRowTops,
+    this.yearGeometry,
     this.monthGeometry,
     this.nonSelectedClipTop = 0.0,
   });
@@ -4339,6 +4484,7 @@ class _MorphPainter extends CustomPainter {
   final double monthDayScale;
   final double monthDayCircleDiameter;
   final List<double>? measuredRowTops;
+  final _YearMorphGeometry? yearGeometry;
   final _MonthMorphGeometry? monthGeometry;
   final double nonSelectedClipTop;
 
@@ -4366,6 +4512,7 @@ class _MorphPainter extends CustomPainter {
       o.yearDayScale != yearDayScale ||
       o.monthDayScale != monthDayScale ||
       o.monthDayCircleDiameter != monthDayCircleDiameter ||
+      o.yearGeometry != yearGeometry ||
       o.monthGeometry != monthGeometry ||
       o.nonSelectedClipTop != nonSelectedClipTop ||
       o.bgColor != bgColor;
@@ -4495,8 +4642,13 @@ class _MorphPainter extends CustomPainter {
     }
 
     // Focal point: selected month's DOW-row top-left in year-view screen coords
-    final focalX = yearGridLeft + zCol * (miniW + grid.columnGap);
-    final focalY = rowTop[zRow] + cellSz * 1.35 + 5.0 - scrollOffset;
+    final focalX =
+        yearGeometry?.weekRows.isNotEmpty == true
+        ? yearGeometry!.weekRows.first.left
+        : yearGridLeft + zCol * (miniW + grid.columnGap);
+    final focalY =
+        yearGeometry?.dowHeader.top ??
+        rowTop[zRow] + cellSz * 1.35 + 5.0 - scrollOffset;
 
     // Zoom-transform helpers
     double xZ(double px) =>
@@ -4690,7 +4842,12 @@ class _MorphPainter extends CustomPainter {
     // settled _WeekRow widget. Each surface follows its own year-view to
     // month-view geometry, so no full month-grid background is left behind.
     for (var wr = 0; wr < totalRows; wr++) {
-      final yearRowTop = focalY + (wr + 1) * cellSz + 2.0;
+      final yearRow =
+          yearGeometry != null && wr < yearGeometry!.weekRows.length
+          ? yearGeometry!.weekRows[wr]
+          : null;
+      final yearRowTop =
+          yearRow?.top ?? focalY + (wr + 1) * cellSz + 2.0;
       final measuredRow =
           monthGeometry != null && wr < monthGeometry!.weekRows.length
           ? monthGeometry!.weekRows[wr]
@@ -4702,11 +4859,11 @@ class _MorphPainter extends CustomPainter {
               wr * viewModeRowHeight -
               monthScrollOffset);
       paintWeekStripSurface(
-        left: lerpDouble(focalX, measuredRow?.left ?? 0.0, t)!,
+        left: lerpDouble(yearRow?.left ?? focalX, measuredRow?.left ?? 0.0, t)!,
         top: lerpDouble(yearRowTop, monthRowTop, t)!,
-        width: lerpDouble(miniW, measuredRow?.width ?? sw, t)!,
+        width: lerpDouble(yearRow?.width ?? miniW, measuredRow?.width ?? sw, t)!,
         height: lerpDouble(
-          cellSz,
+          yearRow?.height ?? cellSz,
           measuredRow?.height ?? viewModeRowHeight,
           t,
         )!,
@@ -4723,8 +4880,24 @@ class _MorphPainter extends CustomPainter {
       final weekRow = dayCell.weekRow;
 
       // Year-view cell centre (focalY = top of DOW row; +2.0 = height:2 gap)
-      final yearCX = focalX + (dow + 0.5) * cellSz;
-      final yearCY = focalY + (weekRow + 1) * cellSz + cellSz / 2 + 2.0;
+      final yearDayCenter =
+          yearGeometry != null && d < yearGeometry!.dayCenters.length
+          ? yearGeometry!.dayCenters[d]
+          : null;
+      final yearCellSize =
+          yearGeometry != null &&
+              d < yearGeometry!.daySizes.length &&
+              yearGeometry!.daySizes[d] != null
+          ? math.min(
+              yearGeometry!.daySizes[d]!.width,
+              yearGeometry!.daySizes[d]!.height,
+            )
+          : cellSz;
+      final yearCX =
+          yearDayCenter?.dx ?? focalX + (dow + 0.5) * cellSz;
+      final yearCY =
+          yearDayCenter?.dy ??
+          focalY + (weekRow + 1) * cellSz + cellSz / 2 + 2.0;
 
       // Month-view cell centre.
       // Circles are pinned at kFixedTopPadding (8) from the row top, so
@@ -4759,12 +4932,12 @@ class _MorphPainter extends CustomPainter {
       final cx = lerpDouble(yearCX, monthCX, t)!;
       final cy = lerpDouble(yearCY, monthCY, t)!;
       final r = lerpDouble(
-        cellSz * 0.575 * yearDayScale,
+        yearCellSize * 0.575 * yearDayScale,
         targetCircleDiameter / 2,
         t,
       )!;
       final fSize = lerpDouble(
-        (cellSz * 0.62 + 1.0) * yearDayScale,
+        (yearCellSize * 0.62 + 1.0) * yearDayScale,
         17.0 * monthDayScale,
         t,
       )!.clamp(1.0, 200.0);
@@ -4834,6 +5007,10 @@ class _MorphPainter extends CustomPainter {
     // Separators widen from mini-month width → full screen width.
     for (var wr = 0; wr < totalRows; wr++) {
       final wkNum = zoomMonthLayout.weekNumbers[wr];
+      final yearRow =
+          yearGeometry != null && wr < yearGeometry!.weekRows.length
+          ? yearGeometry!.weekRows[wr]
+          : null;
       final measuredRow =
           monthGeometry != null && wr < monthGeometry!.weekRows.length
           ? monthGeometry!.weekRows[wr]
@@ -4848,14 +5025,14 @@ class _MorphPainter extends CustomPainter {
           : null;
 
       final wkCX = lerpDouble(
-        focalX,
+        yearRow?.left ?? focalX,
         measuredRow == null
             ? yearHorizontalInset + mCellW / 2
             : measuredRow.left + yearHorizontalInset + mCellW / 2,
         t,
       )!;
       final wkCY = lerpDouble(
-        focalY + (wr + 1) * cellSz + cellSz / 2,
+        yearRow?.center.dy ?? focalY + (wr + 1) * cellSz + cellSz / 2,
         measuredSampleCenter?.dy ??
             _kCalendarHeaderToDowGap +
                 _kDayLabelHeight +
@@ -4876,7 +5053,7 @@ class _MorphPainter extends CustomPainter {
       );
 
       final sepY = lerpDouble(
-        focalY + (wr + 1) * cellSz,
+        yearRow?.bottom ?? focalY + (wr + 1) * cellSz + 2.0,
         measuredRow?.bottom ??
             _kCalendarHeaderToDowGap +
                 _kDayLabelHeight +
@@ -4937,8 +5114,13 @@ class _MorphPainter extends CustomPainter {
       // animation so the letters transition smoothly into the Month View row.
       final dowColor = Color.lerp(tertiaryColor, secondaryColor, t)!;
       for (int i = 0; i < 7; i++) {
+        final yearDowCenter =
+            yearGeometry != null &&
+                i < yearGeometry!.dowLabelCenters.length
+            ? yearGeometry!.dowLabelCenters[i]
+            : null;
         final cx = lerpDouble(
-          focalX + (i + 0.5) * cellSz,
+          yearDowCenter?.dx ?? focalX + (i + 0.5) * cellSz,
           monthGeometry != null &&
                   i < monthGeometry!.dowLabelCenters.length
               ? monthGeometry!.dowLabelCenters[i].dx
@@ -4948,7 +5130,7 @@ class _MorphPainter extends CustomPainter {
         // Month-side cy is shifted up by monthScrollOffset so the labels land
         // at the same visual position as in the scrolled _MonthView.
         final cy = lerpDouble(
-          focalY + cellSz / 2,
+          yearDowCenter?.dy ?? focalY + cellSz / 2,
           monthGeometry?.dowHeader.center.dy ??
               _kCalendarHeaderToDowGap +
                   _kDayLabelHeight / 2 -

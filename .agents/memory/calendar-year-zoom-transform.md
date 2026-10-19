@@ -7,17 +7,25 @@ description: Per-element morph replaced the single Matrix4 Transform for the yea
 
 The `_MorphOverlay` StatelessWidget replaces the old single Matrix4 Transform. It renders for `0.005 < zoomT < 0.995` as an `IgnorePointer` overlay. At `zoomT < 0.005` the static year view shows; at `zoomT > 0.995` the static month view shows.
 
-**Why per-element instead of one Transform:** The Matrix4 approach is geometrically correct for preserving gaps, but it can't produce a true shared-element morph — individual cells can't converge on independent month-view positions. The per-element approach accepts a small positional approximation in exchange for the genuine shared-element visual.
+**Why per-element instead of one Transform:** The Matrix4 approach is geometrically correct for preserving gaps, but it can't produce a true shared-element morph — individual cells can't converge on independent month-view positions. Per-element interpolation lets each cell reach its own measured settled position.
+
+## Endpoint geometry
+
+Measure the selected mini-month's week rows while Year View is settled, then derive its cell centers from those rendered row bounds. Measure Month View's rows, cells, DOW header, labels, and List content in the same CalendarTab-local coordinate space. Refresh the Month geometry immediately before Month→Year; the entry snapshot can become stale after the user scrolls or the layout changes. Use these snapshots as the painter endpoints in both directions, not as a visual correction after the transition.
+
+**Why:** Formula-derived Year coordinates and a cached Month snapshot can diverge from the live settled layouts. The painter then reaches an intermediate position and the static view snaps to its real one.
+
+**How to apply:** Keep both endpoint snapshots in the same local coordinate space as the overlay painter. Re-measure Month geometry before the reverse animation, and preserve the existing morph/painter ownership and handoff logic.
 
 ## Geometry constants
 
 ```
 miniW   = (sw - 2*16 - 2*12) / 3       // _kYearOuterPad, _kYearColGap
-cellSz  = miniW / 7
+cellSz  = miniW / 7                     // fallback when measured Year geometry is unavailable
 sFinal  = sw / miniW
 s(t)    = 1 + (sFinal - 1) * t
 focalX  = 16 + zCol * (miniW + 12)
-focalY  = rowTop[zRow] + cellSz*1.35 + 5.0 - scrollOffset   // letters-row TOP in screen coords (NOT first data row!)
+focalY  = measured selected-month DOW-row top; formula fallback is rowTop[zRow] + cellSz*1.35 + 5.0 - scrollOffset
 rowTop  initialised at 17.5 (year-view scroll top padding, +1px from original 16.5)
 xZ(px)  = s*px - sFinal*focalX*t       // used only for non-selected months + name label
 yZ(py)  = s*py - sFinal*focalY*t
