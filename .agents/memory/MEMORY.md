@@ -147,4 +147,5 @@
 - [Landscape pill contour sampling](landscape-pill-contour-sampling.md) — offset on local normals so flat edges stay 1px; preserve slider alpha and denser landscape sampling.
 - [Impeller screen-space glass geometry](impeller-screen-space-glass-geometry.md) — shader resolution must use the full FlutterView size, not narrowed landscape content MediaQuery dimensions.
 - [Calendar header chevron continuity](calendar-header-chevron-continuity.md) — keep controls visible but non-interactive on inactive swipe panels so navigation glyphs travel with the page.
+- [Calendar hierarchy morph layout](calendar-midpoint-view-handoff.md) — keep the scroll-title slot mounted offstage and carry header offset through Year↔Month handoff; don't restore the destination scope mid-morph.
 - [Search-mode parent restoration](search-mode-parent-restoration.md) — closing search returns to the same settled parent screen, never a rubberbanded or partially swiped state.

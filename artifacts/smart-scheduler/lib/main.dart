@@ -2811,6 +2811,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             onViewChanged:
                 (view, displayYear, prev, curr, next, titleInScrollContent) {
               final viewChanged = _calendarView != view;
+              final keepHeaderScrollPosition =
+                  viewChanged &&
+                  _selectedIndex == 1 &&
+                  (_calendarTabKey.currentState?.calendarYearMonthMorphActive ??
+                      false);
               if (mounted) {
                 setState(() {
                   _calendarView = view;
@@ -2821,7 +2826,17 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   _calendarTitleInScrollContent = titleInScrollContent;
                 });
                 if (viewChanged && _selectedIndex == 1) {
-                  _restoreHeaderScrollOffset();
+                  if (keepHeaderScrollPosition) {
+                    // The hierarchy handoff happens halfway through the
+                    // morph. Do not restore another view's saved collapse
+                    // offset here: that translates the shell title while the
+                    // shared elements are still moving. Carry the current
+                    // header position into the new scope instead.
+                    _headerTitleScrollOffsets[_headerScrollScope] =
+                        _headerTitleScrollOffset.value;
+                  } else {
+                    _restoreHeaderScrollOffset();
+                  }
                 }
               }
             },

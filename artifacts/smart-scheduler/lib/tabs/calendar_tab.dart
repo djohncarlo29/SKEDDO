@@ -2714,7 +2714,16 @@ class CalendarTabState extends State<CalendarTab>
             final titleInScrollContent =
                 calendarTitleInScrollContent &&
                 MediaQuery.orientationOf(context) == Orientation.portrait;
-            final scrollableTitleBuilder = titleInScrollContent
+            // Keep the destination title's real 57px slot in the scroll
+            // content throughout Year↔Month morphing. AppShell's title is the
+            // only painted owner then; its companion is Offstage, not removed.
+            // Replacing this slot with top padding makes measured endpoints
+            // differ from the settled view and causes a final vertical snap.
+            final keepTitleSlotForMorph =
+                calendarYearMonthMorphActive &&
+                MediaQuery.orientationOf(context) == Orientation.portrait;
+            final scrollableTitleBuilder =
+                titleInScrollContent || keepTitleSlotForMorph
                 ? widget.scrollableTitleBuilder
                 : null;
             final dayWeekStripHeight = _dayViewWeekStripHeight(context);

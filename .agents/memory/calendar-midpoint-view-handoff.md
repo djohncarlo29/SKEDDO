@@ -9,11 +9,11 @@ The Calendar Year, Month, and Day hierarchy treats 50% of the transition as the 
 
 **How to apply:** Keep the morph/layout animation continuous, but commit the logical view and notify shared header owners only when the relevant transition controller crosses 0.5. Any dependent adornment must use the same threshold rather than its own endpoint or near-start gate.
 
-During the Year↔Month zoom, the shell takes title-row paint ownership as soon as the morph begins, while the outgoing scroll-content title must remain laid out for stable geometry. Make the content title's Offstage state listen to the morph lifecycle; a one-time bool can remain stale in a cached scroll panel. Do not gate it on the generic title-in-scroll-content state, because Month↔Day has separate ownership.
+During the Year↔Month zoom, the shell owns title-row painting while the scroll-content title stays mounted Offstage in its real fixed-size slot. Do not replace that slot with top padding during the morph. At the midpoint view handoff, carry the current shell header offset into the destination scope instead of restoring that scope's saved offset.
 
-**Why:** Cached scroll panels can retain their old title widget through the handoff. A snapshot Offstage value does not update when the shell takes ownership, so both locations paint the same custom up/down chevrons and the fixed stroke appears heavier.
+**Why:** Replacing the title slot with padding changes the measured Month endpoint from its settled layout. Restoring the destination's saved header offset at 50% also translates the shell title mid-morph, causing a visible vertical snap.
 
-**How to apply:** Listen to the Year↔Month morph state, preserve the outgoing title slot's size, and suppress its paint only during that zoom. Keep the Month↔Day collapse path unchanged.
+**How to apply:** Keep the shared title builder active during the portrait Year↔Month morph and let its Offstage state listen to the morph lifecycle, so only the shell paints the chevrons. Preserve the current header offset at the midpoint and copy it to the incoming view scope. Keep the Month↔Day collapse path unchanged.
 
 Keep the shell-owned Calendar title row in the same complete fixed 57px slot as the scroll-content row. The shell slot starts at `topInset + toolbarHeight`, matching the scroll title's `leadingInset`, and its bottom inset stays inside the slot. Do not place that inset around the taller toolbar-plus-title wrapper.
 
