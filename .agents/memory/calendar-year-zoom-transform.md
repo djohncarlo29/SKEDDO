@@ -1,52 +1,36 @@
 ---
 name: Calendar year↔month shared-element morph
-description: Per-element morph replaced the single Matrix4 Transform for the year↔month transition. The overlay approach is the current working pattern.
+description: The Year↔Month morph uses measured endpoint snapshots in the painter's coordinate space and retains painter ownership until the spring completes.
 ---
 
-## Current approach: _MorphOverlay per-element lerp
+## Morph ownership
 
-The `_MorphOverlay` StatelessWidget replaces the old single Matrix4 Transform. It renders for `0.005 < zoomT < 0.995` as an `IgnorePointer` overlay. At `zoomT < 0.005` the static year view shows; at `zoomT > 0.995` the static month view shows.
+`_MorphOverlay` renders per-element interpolation. `_zoomMorphActive` begins only after both endpoint snapshots are measured and remains true until the animation future completes. Do not let controller thresholds expose the static destination early: a bounded spring can touch its endpoint before it has settled.
 
 **Why per-element instead of one Transform:** The Matrix4 approach is geometrically correct for preserving gaps, but it can't produce a true shared-element morph — individual cells can't converge on independent month-view positions. Per-element interpolation lets each cell reach its own measured settled position.
 
+**Why keep painter ownership through completion:** A spring may reach the controller bound and move away from it before the simulation finishes. Swapping to the static layout at that temporary endpoint causes a visible flash or snap.
+
 ## Endpoint geometry
 
-Measure the selected mini-month's week rows while Year View is settled, then derive its cell centers from those rendered row bounds. Measure Month View's rows, cells, DOW header, labels, and List content in the same CalendarTab-local coordinate space. Refresh the Month geometry immediately before Month→Year; the entry snapshot can become stale after the user scrolls or the layout changes. Use these snapshots as the painter endpoints in both directions, not as a visual correction after the transition.
+Measure both endpoints in the render box that owns the `Positioned.fill` painter. Convert measured render-box corners into that box's local coordinates, so source, destination, and canvas share one frame.
 
-**Why:** Formula-derived Year coordinates and a cached Month snapshot can diverge from the live settled layouts. The painter then reaches an intermediate position and the static view snaps to its real one.
+- Year → Month: capture the settled Year source, mount the real Month view invisibly, then measure its rows, cells, headers, and List content before motion starts.
+- Month → Year: capture the current Month source, mount the real Year view invisibly, then freshly measure the destination instead of reusing the Year geometry from a previous visit.
+- Freeze both snapshots for the full animation. Do not recompute them after the view handoff, from a new scroll offset, or by adding viewport/header offsets to coordinates already measured from rendered widgets.
+- If either endpoint cannot be measured, do not run the morph with estimated geometry; settle directly into the real destination layout.
 
-**How to apply:** Keep both endpoint snapshots in the same local coordinate space as the overlay painter. Re-measure Month geometry before the reverse animation, and preserve the existing morph/painter ownership and handoff logic.
+**Why:** The prior capture used CalendarTab-local coordinates while the painter used its overlay's coordinate space; the midpoint handoff could shift their relationship. Reverse motion could also target an old Year snapshot. Adding the content-area raise to measured Month coordinates duplicated an inset.
 
-## Geometry constants
+**How to apply:** Keep capture helpers tied to the painter's keyed coordinate-space box. Re-measure the destination on every transition, keep the snapshots immutable while animating, and clear `_zoomMorphActive` only after the simulation completes.
 
-```
-miniW   = (sw - 2*16 - 2*12) / 3       // _kYearOuterPad, _kYearColGap
-cellSz  = miniW / 7                     // fallback when measured Year geometry is unavailable
-sFinal  = sw / miniW
-s(t)    = 1 + (sFinal - 1) * t
-focalX  = 16 + zCol * (miniW + 12)
-focalY  = measured selected-month DOW-row top; formula fallback is rowTop[zRow] + cellSz*1.35 + 5.0 - scrollOffset
-rowTop  initialised at 17.5 (year-view scroll top padding, +1px from original 16.5)
-xZ(px)  = s*px - sFinal*focalX*t       // used only for non-selected months + name label
-yZ(py)  = s*py - sFinal*focalY*t
-mCellW  = (sw - 7) / 8                 // month view: 8 equal cols (wk-num + 7 days)
-```
+## Remaining derived geometry
 
-## Render order (Stack children)
+The selected mini-month's actual week-row bounds are measured. Its day slots are evenly sized children of those rows, so cell centers/sizes derive exactly from the measured row bounds. Formula-based scaling and row positions are only fallbacks/decorative motion for non-selected months; never use them as the selected endpoint.
 
-1. Background (kBackgroundColor fill)
-2. 11 non-selected mini months — zoom-following via xZ/yZ + Transform.scale(s); non-horizontal fade out by t=0.4
-3. Selected-month day cells — straight-line lerp from year position to month position
-4. Week numbers + separator lines — fade in with opacity=t
-5. DOW header background — fades in from t=0.5 to t=1.0
-6. DOW letters → labels crossfade — letters alpha=(1-t*2.5).clamp, labels alpha=(t*2.5-1).clamp
-7. Selected month name label — zoom-following, fades out by t=0.4
+## Handoff
 
-## Thresholds
-
-- `headerTitle`: year case switch at t>=0.35 (month→year); month case switch at t<0.65 (year→month)
-- `_adjacentTitles`: same 0.65 threshold
-- `_onZoomTick`: forward snap at t=0.65, reverse snap at t=0.35
+The view/header handoff occurs at the transition midpoint. It may change ownership of the surrounding layout, but must not mutate or remeasure the morph endpoint snapshots.
 
 ## Key dependency
 

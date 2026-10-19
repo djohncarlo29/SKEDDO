@@ -9,6 +9,7 @@ Widget _landscapeCalendarHarness({
   required Size screenSize,
   required double horizontalSafeInset,
   DayViewSubMode daySubMode = DayViewSubMode.singleDay,
+  void Function(CalendarView view)? onViewChanged,
 }) {
   return CupertinoApp(
     builder: (context, child) {
@@ -27,7 +28,7 @@ Widget _landscapeCalendarHarness({
     home: CupertinoPageScaffold(
       child: CalendarTab(
         daySubMode: daySubMode,
-        onViewChanged: (view, _, _, _, _, _) {},
+        onViewChanged: (view, _, _, _, _, _) => onViewChanged?.call(view),
       ),
     ),
   );
@@ -163,6 +164,40 @@ void main() {
         }
       }
       expect(foundFullWidthYearViewport, isTrue);
+    },
+  );
+
+  testWidgets(
+    'Year ↔ Month transition can repeat without reusing stale endpoint geometry',
+    (tester) async {
+      const screenSize = Size(844, 390);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = screenSize;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      CalendarView? visibleView;
+      await tester.pumpWidget(
+        _landscapeCalendarHarness(
+          screenSize: screenSize,
+          horizontalSafeInset: 28.0,
+          onViewChanged: (view) => visibleView = view,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final calendar = tester.state<CalendarTabState>(find.byType(CalendarTab));
+      for (var cycle = 0; cycle < 2; cycle++) {
+        calendar.navigateDown();
+        await tester.pumpAndSettle();
+        expect(visibleView, CalendarView.year);
+        expect(tester.takeException(), isNull);
+
+        calendar.navigateUp();
+        await tester.pumpAndSettle();
+        expect(visibleView, CalendarView.month);
+        expect(tester.takeException(), isNull);
+      }
     },
   );
 

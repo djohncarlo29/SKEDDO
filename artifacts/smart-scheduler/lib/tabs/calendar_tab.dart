@@ -542,11 +542,10 @@ class CalendarTabState extends State<CalendarTab>
   //                                     jumpTo(saved) BEFORE reverse() so the
   //                                     animation carries the offset throughout.
   //   • Month → Year (_exitToYear):     captures current offset into it.
-  //   • Year  → Month (_onZoomTick):    jumpTo(saved) on the first frame zoomT
-  //                                     crosses 0.999 (MonthView just mounted).
-  //   • Morph overlay:                  monthScrollOffset = saved is passed so
-  //                                     the morph's t=1 frame matches the
-  //                                     scrolled MonthView with no pop.
+  //   • Year  → Month (_enterMonth):    mount MonthView with the saved initial
+  //                                     offset, then measure its live geometry.
+  //   • Morph overlay:                  use the captured MonthView geometry;
+  //                                     pass only the raw offset to fallbacks.
   //
   // _collapseScrollOffset: the value of _savedMonthScrollOffset at the moment
   //   _enterDay / _exitToMonth is called.  Factored into each _AnimatedWeekRow's
@@ -973,15 +972,17 @@ class CalendarTabState extends State<CalendarTab>
     final zoomTarget = _zoomTargetView ?? _view;
     final zoomInProgress =
         _zoomCtrl.isAnimating ||
+        _zoomMorphActive ||
         _zoomTargetView != null ||
         (_zoomCtrl.value > 0.001 && _zoomCtrl.value < 0.999);
     if (zoomInProgress) {
       _zoomCtrl.stop(canceled: false);
       _zoomCtrl.value = zoomTarget == CalendarView.year ? 0.0 : 1.0;
       _zoomTargetView = null;
-      if (_view != zoomTarget) {
-        setState(() => _view = zoomTarget);
-      }
+      setState(() {
+        _view = zoomTarget;
+        _zoomMorphActive = false;
+      });
     }
 
     final collapseTarget = _collapseTargetView ?? _view;
@@ -1202,6 +1203,7 @@ class CalendarTabState extends State<CalendarTab>
     _navLocked = false;
     _zoomPrevT = 1.0;
     _zoomTargetView = null;
+    _zoomMorphActive = false;
     _collapsePrevT = 1.0;
     _collapseTargetView = null;
 
@@ -1673,7 +1675,8 @@ class CalendarTabState extends State<CalendarTab>
 
   // ── Private helpers ───────────────────────────────────────────────────────────
   bool get calendarTitleInScrollContent {
-    if (_zoomTargetView != null ||
+    if (_zoomMorphActive ||
+        _zoomTargetView != null ||
         _collapseTargetView != null ||
         _collapseCtrl.value > 0.001) {
       return false;
@@ -2063,8 +2066,8 @@ class CalendarTabState extends State<CalendarTab>
   // becomes the incoming view after it, so the header, controls, and dependent
   // content all change as one unit.
   //
-  // The hidden MonthView is already mounted for the entire hierarchy morph, so
-  // its controller and measured geometry stay live through the final handoff.
+  // The incoming view remains mounted through the morph. Geometry is captured
+  // once before motion and the overlay retains ownership through completion.
   void _onZoomTick() {
     final t = _zoomCtrl.value;
     final target = _zoomTargetView;
@@ -3114,9 +3117,11 @@ class CalendarTabState extends State<CalendarTab>
                   key: _yearMonthMorphCoordinateSpaceKey,
                   children: [
                     // ── Year view ─────────────────────────────────────────
-                    // Only shown when truly at rest (t < 0.001). The morph
-                    // appears fully opaque from t = 0.001 and covers the
-                    // widgets with its solid background from the first frame.
+                    // Keep the settled YearView mounted at the endpoint, but
+                    // let the morph own every frame until its animation has
+                    // actually completed. A spring may touch its bound before
+                    // it settles; switching layers at that instant exposes a
+                    // competing layout and creates a visible snap.
                     if (zoomT < 0.001)
                       Positioned.fill(
                         child: IgnorePointer(
@@ -3219,19 +3224,14 @@ class CalendarTabState extends State<CalendarTab>
                       ),
 
                     // ── Morph overlay — per-element shared-element transition ─
-                    // Renders for 0 < t < 1.  Selected month cells travel from
-                    // year positions → month positions individually; other months
-                    // follow the zoom and leave the viewport.
+                    // The painter retains ownership until the spring completes,
+                    // including frames where the controller temporarily reaches
+                    // its endpoint and rebounds within its bounded range.
                     //
-                    // The morph is ALWAYS FULLY OPAQUE while active.  No Opacity
-                    // wrapper is used: crossfading a canvas over widgets that draw
-                    // the same content causes both layers to show simultaneously
-                    // (doubling).  Instead the thresholds are set very tight
-                    // (0.001 / 0.999) so the morph and each static view swap in
-                    // a single frame while the animation is essentially at rest —
-                    // the visual difference at those values is imperceptible.
-                    if (_zoomMorphActive ||
-                        (zoomT >= 0.001 && zoomT <= 0.999))
+                    // The morph is fully opaque while active. No Opacity wrapper
+                    // is used: crossfading a canvas over widgets that draw the
+                    // same content would show both layers at once.
+                    if (_zoomMorphActive)
                       Positioned.fill(
                         child: IgnorePointer(
                           child: _MorphOverlay(
@@ -3244,12 +3244,11 @@ class CalendarTabState extends State<CalendarTab>
                             monthListOrderByDay: _monthListOrderByDay,
                             monthListOrderRevision: _monthListOrderRevision,
                             scrollOffset: _zoomScrollOffset,
-                            // The settled Month viewport is raised by the
-                            // same amount; include it in the morph endpoint
-                            // so week rows, cells, and List content stay aligned.
-                            monthScrollOffset:
-                                _savedMonthScrollOffset +
-                                kContentAreaTopRaise,
+                            // Geometry snapshots already include the live
+                            // viewport, header inset, and scroll position.
+                            // Keep the raw scroll value only for non-geometric
+                            // fallbacks; never apply the viewport raise twice.
+                            monthScrollOffset: _savedMonthScrollOffset,
                             screenW: sw,
                             measuredRowTops: _yearMeasuredRowTops,
                             yearGeometry: _yearMorphGeometry,
@@ -3270,7 +3269,8 @@ class CalendarTabState extends State<CalendarTab>
                       ),
 
                     // ── Month view — three horizontal panels ───────────────
-                    // Only mounted when the morph has fully settled (t > 0.999).
+                    // Keep the real destination mounted behind the painter so
+                    // its measured geometry and final settled layout agree.
                     if (mountMonthPanels)
                       Positioned.fill(
                         child: IgnorePointer(
@@ -3943,9 +3943,9 @@ class _MorphOverlay extends StatelessWidget {
   final Map<String, List<String>> monthListOrderByDay;
   final int monthListOrderRevision;
   final double scrollOffset; // _yearScrollCtrl offset at zoom start
-  /// Saved month-view scroll offset plus the content-area top raise. Applied to
-  /// all month-side (t=1) positions so the painter's end-frame matches the
-  /// _MonthView that appears at zoomT > 0.999 — no pop at the swap point.
+  /// Raw saved Month-view scroll offset for fallback calculations. The active
+  /// morph uses the captured Month geometry, which already includes the live
+  /// viewport origin and scroll position.
   final double monthScrollOffset;
   final double screenW;
   final double viewModeRowHeight;
