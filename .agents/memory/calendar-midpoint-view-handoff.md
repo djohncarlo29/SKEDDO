@@ -14,3 +14,9 @@ During the Year↔Month zoom, the shell takes title-row paint ownership as soon 
 **Why:** Cached scroll panels can retain their old title widget through the handoff. A snapshot Offstage value does not update when the shell takes ownership, so both locations paint the same custom up/down chevrons and the fixed stroke appears heavier.
 
 **How to apply:** Listen to the Year↔Month morph state, preserve the outgoing title slot's size, and suppress its paint only during that zoom. Keep the Month↔Day collapse path unchanged.
+
+Keep the shell-owned Calendar title row constrained to the same fixed 57px title slot as the scroll-content row. The toolbar-plus-title wrapper is taller, so allowing the shell row to expand through it changes the vertical center of the trailing up/down controls when ownership switches.
+
+**Why:** HeaderTitleScroller expands to its available cross-axis constraints, and the navigation chevrons align to that row. The shell and scroll-content parents otherwise provide different heights.
+
+**How to apply:** Constrain only the Calendar title row inside the shell; keep the outer header and toolbar geometry unchanged.

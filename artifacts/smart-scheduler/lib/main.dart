@@ -2139,7 +2139,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }) {
     if (!isDCVVisual && _selectedIndex == 1) {
       if (_calendarTitleOwnedByScrollContent) return const SizedBox.shrink();
-      return _buildCalendarTitleRow(compactFadeColor: headerColor);
+      // Match the fixed slot used by the Year/Month scroll-content title.
+      // Without this bound, the shell-owned row can expand into the taller
+      // toolbar-plus-title region, changing the chevron pair's vertical center
+      // as title ownership moves between the shell and Calendar's scroll view.
+      return SizedBox(
+        height: kAppHeaderTitleHeight,
+        child: _buildCalendarTitleRow(compactFadeColor: headerColor),
+      );
     }
 
     return SizedBox(
