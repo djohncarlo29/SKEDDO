@@ -749,6 +749,8 @@ class CalendarTabState extends State<CalendarTab>
   double _slideX = 0.0; // live drag or snap offset (logical px)
   double _blobDeltaX = 0.0; // current-frame gesture delta → blob stretch
   int _blobSnapCount = 0; // incremented on release → triggers spring-back
+  bool _horizontalDragActive = false;
+  bool _ignoreHorizontalDragUntilEnd = false;
   // Per-frame drag invalidation stays local to the calendar animation builder.
   // Unlike setState(), this does not rebuild CalendarTab's surrounding state
   // or update every unrelated subtree while a finger is moving.
@@ -923,8 +925,92 @@ class CalendarTabState extends State<CalendarTab>
   }
 
   // ── Search overlay public API ─────────────────────────────────────────────────
+  void _settleScrollControllerForSearch(ScrollController controller) {
+    if (!controller.hasClients) return;
+    for (final position in List<ScrollPosition>.of(controller.positions)) {
+      if (!position.hasContentDimensions) {
+        position.jumpTo(position.pixels);
+        continue;
+      }
+      final settledOffset = position.pixels
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+      position.jumpTo(settledOffset);
+    }
+  }
+
+  void _settleHierarchyTransitionsForSearch() {
+    final zoomTarget = _zoomTargetView ?? _view;
+    final zoomInProgress =
+        _zoomCtrl.isAnimating ||
+        _zoomTargetView != null ||
+        (_zoomCtrl.value > 0.001 && _zoomCtrl.value < 0.999);
+    if (zoomInProgress) {
+      _zoomCtrl.stop(canceled: false);
+      _zoomCtrl.value = zoomTarget == CalendarView.year ? 0.0 : 1.0;
+      _zoomTargetView = null;
+      if (_view != zoomTarget) {
+        setState(() => _view = zoomTarget);
+      }
+    }
+
+    final collapseTarget = _collapseTargetView ?? _view;
+    final collapseInProgress =
+        _collapseCtrl.isAnimating ||
+        _collapseTargetView != null ||
+        (_collapseCtrl.value > 0.001 && _collapseCtrl.value < 0.999);
+    if (collapseInProgress) {
+      _collapseCtrl.stop(canceled: false);
+      _collapseCtrl.value = collapseTarget == CalendarView.day ? 1.0 : 0.0;
+      _collapseTargetView = null;
+      _collapseScrollOffset = 0.0;
+      if (_view != collapseTarget) {
+        setState(() => _view = collapseTarget);
+      }
+    }
+
+    if (_viewModeCtrl.isAnimating) {
+      _viewModeCtrl.stop(canceled: false);
+      _viewModeCtrl.value = 1.0;
+    }
+    if (_listModeCtrl.isAnimating) {
+      _listModeCtrl.stop(canceled: false);
+      _listModeCtrl.value =
+          widget.daySubMode == DayViewSubMode.list ? 1.0 : 0.0;
+      _dayChromeModeTransitionActive = false;
+    }
+    _animateMultiDayTransition = false;
+  }
+
+  void _prepareParentForSearch() {
+    _settleHierarchyTransitionsForSearch();
+    _settleScrollControllerForSearch(_yearScrollCtrl);
+    _settleScrollControllerForSearch(_monthViewScrollCtrl);
+    if (_view == CalendarView.year && _yearScrollCtrl.hasClients) {
+      _savedYearScrollOffset = _yearScrollCtrl.offset;
+    } else if (_view == CalendarView.month &&
+        _monthViewScrollCtrl.hasClients) {
+      _savedMonthScrollOffset = _monthViewScrollCtrl.offset;
+    }
+
+    // An unreleased calendar swipe is not a navigation commitment. Return its
+    // preview panels and header title to the current page before search covers
+    // the calendar. A released swipe keeps its normal settle animation.
+    if (_horizontalDragActive) {
+      _ignoreHorizontalDragUntilEnd = true;
+    }
+    if (!_snapCtrl.isAnimating && _slideX != 0.0) {
+      _slideX = 0.0;
+      _blobDeltaX = 0.0;
+      _weekStripDrag = false;
+      _dragFrameTick.value++;
+      widget.onStripSlide?.call(0.0);
+    }
+  }
+
   void activateSearchMode() {
     if (_searchFocused) return;
+    _prepareParentForSearch();
     setState(() {
       _greyActive = true;
       _greyFadeIn = true;
@@ -1428,6 +1514,11 @@ class CalendarTabState extends State<CalendarTab>
 
   // ── Horizontal drag callbacks (attached only when fully in one view) ─────────
   void _onHDragStart(DragStartDetails d) {
+    _horizontalDragActive = true;
+    if (_searchFocused || _greyActive || _ignoreHorizontalDragUntilEnd) {
+      _ignoreHorizontalDragUntilEnd = true;
+      return;
+    }
     if (_snapCtrl.isAnimating) {
       _snapCtrl.stop();
       _bloomTimer?.cancel(); // cancels timer so stale doThen() never fires;
@@ -1451,6 +1542,10 @@ class CalendarTabState extends State<CalendarTab>
   }
 
   void _onHDragUpdate(DragUpdateDetails d) {
+    if (_ignoreHorizontalDragUntilEnd || _searchFocused || _greyActive) {
+      _ignoreHorizontalDragUntilEnd = true;
+      return;
+    }
     _slideX = (_slideX + d.delta.dx).clamp(-_screenW, _screenW);
     _blobDeltaX = d.delta.dx; // per-frame velocity for blob stretch
     _dragFrameTick.value++;
@@ -1458,6 +1553,11 @@ class CalendarTabState extends State<CalendarTab>
   }
 
   void _onHDragEnd(DragEndDetails d) {
+    _horizontalDragActive = false;
+    if (_ignoreHorizontalDragUntilEnd || _searchFocused || _greyActive) {
+      _ignoreHorizontalDragUntilEnd = false;
+      return;
+    }
     // Reset blob delta and trigger spring-back before the snap animation fires.
     setState(() {
       _blobDeltaX = 0.0;
@@ -1506,6 +1606,17 @@ class CalendarTabState extends State<CalendarTab>
         // before a user-driven swipe has landed.
       );
     } else {
+      _animateSlide(from: _slideX, to: 0.0, then: () {});
+    }
+  }
+
+  void _onHDragCancel() {
+    _horizontalDragActive = false;
+    if (_ignoreHorizontalDragUntilEnd || _searchFocused || _greyActive) {
+      _ignoreHorizontalDragUntilEnd = false;
+      return;
+    }
+    if (_slideX != 0.0 && !_snapCtrl.isAnimating) {
       _animateSlide(from: _slideX, to: 0.0, then: () {});
     }
   }
@@ -2803,6 +2914,7 @@ class CalendarTabState extends State<CalendarTab>
               onHorizontalDragStart: swipeEnabled ? _onHDragStart : null,
               onHorizontalDragUpdate: swipeEnabled ? _onHDragUpdate : null,
               onHorizontalDragEnd: swipeEnabled ? _onHDragEnd : null,
+              onHorizontalDragCancel: swipeEnabled ? _onHDragCancel : null,
               child: ColoredBox(
                 color: resolveThemeColor(kBackgroundColor, context),
                 child: AppHeaderScrollStack(

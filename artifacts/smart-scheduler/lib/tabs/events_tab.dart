@@ -1752,6 +1752,7 @@ class EventsTabState extends State<EventsTab>
   // dcvSlideController is owned by AppShell — EventsTabState must not dispose it.
   bool _searchFocused = false;
   bool _activatedFromOffScreen = false;
+  bool _restoringSearchParent = false;
   double _savedScrollOffset = 0;
   // Re-entrancy guard for _enforceScrollLock — prevents jumpTo from
   // triggering the listener a second time and causing an infinite loop.
@@ -6920,7 +6921,7 @@ class EventsTabState extends State<EventsTab>
   // with a synchronous jumpTo.  The _lockingScrollDrift flag prevents the
   // jumpTo itself from re-entering and looping.
   void _enforceScrollLock() {
-    if (!_activatedFromOffScreen) return;
+    if (!_activatedFromOffScreen && !_restoringSearchParent) return;
     if (_lockingScrollDrift) return;
     if (!_scrollController.hasClients) return;
     final current = _scrollController.offset;
@@ -6930,13 +6931,65 @@ class EventsTabState extends State<EventsTab>
     _lockingScrollDrift = false;
   }
 
+  double _settleParentScrollForSearch() {
+    if (!_scrollController.hasClients) return 0.0;
+    final position = _scrollController.position;
+    if (!position.hasContentDimensions) {
+      position.jumpTo(position.pixels);
+      return position.pixels;
+    }
+    final settledOffset = position.pixels
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    position.jumpTo(settledOffset);
+    return _scrollController.offset;
+  }
+
+  void _restoreParentScrollAfterSearch() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _searchFocused || !_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      if (!position.hasContentDimensions) return;
+      final restoredOffset = _savedScrollOffset
+          .clamp(position.minScrollExtent, position.maxScrollExtent)
+          .toDouble();
+      position.jumpTo(restoredOffset);
+    });
+  }
+
+  void _holdParentScrollUntilSearchHeaderSettles() {
+    final animation = widget.searchModeAnimation;
+    late final void Function(AnimationStatus) animListener;
+    void releaseLock() {
+      if (mounted && _restoringSearchParent) {
+        setState(() => _restoringSearchParent = false);
+      }
+      animation?.removeStatusListener(animListener);
+    }
+
+    animListener = (AnimationStatus status) {
+      if (status == AnimationStatus.dismissed) releaseLock();
+    };
+    if (animation == null || animation.status == AnimationStatus.dismissed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => releaseLock());
+    } else {
+      animation.addStatusListener(animListener);
+    }
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted && _restoringSearchParent) releaseLock();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _enforceScrollLock();
+    });
+  }
+
   void activateSearchMode() {
     if (_searchFocused) return;
+    _restoringSearchParent = false;
+    _savedScrollOffset = _settleParentScrollForSearch();
     _activatedFromOffScreen = true;
     _greyActive = true;
     _greyFadeIn = true;
-    _savedScrollOffset =
-        _scrollController.hasClients ? _scrollController.offset : 0;
     // Do NOT scroll to 0.  The SliverPersistentHeader is pinned so it stays
     // visible at the viewport top regardless of scroll offset.  The
     // SliverFillRemaining grey fill covers the rest of the viewport, making
@@ -7862,6 +7915,8 @@ class EventsTabState extends State<EventsTab>
     if (_searchFocused == focused) return;
 
     if (focused) {
+      _restoringSearchParent = false;
+      _savedScrollOffset = _settleParentScrollForSearch();
       setState(() => _searchFocused = true);
       // The sliver type changed (SliverToBoxAdapter → SliverPersistentHeader),
       // which remounts AppSearchBar and its NativeTextInput platform view.
@@ -7932,6 +7987,7 @@ class EventsTabState extends State<EventsTab>
     setState(() {
       _searchFocused = false;
       _activatedFromOffScreen = false;
+      _restoringSearchParent = false;
       _greyActive = false;
       _greyFadeIn = false;
       _searchText = '';
@@ -7940,6 +7996,7 @@ class EventsTabState extends State<EventsTab>
       _searchOverflow = [];
       _searchAll = [];
     });
+    _restoreParentScrollAfterSearch();
     if (wasFocused) widget.onSearchFocusChanged?.call(false);
   }
 
@@ -8000,10 +8057,15 @@ class EventsTabState extends State<EventsTab>
       setState(() {
         _searchFocused = false;
         _activatedFromOffScreen = false;
+        _restoringSearchParent = true;
         _greyActive = false;
         _greyFadeIn = false;
         _searchText = '';
       });
+      // Inline search uses the parent scroll view for its results. Hold the
+      // original offset while the app header expands and the parent content
+      // returns, then restore the search row to its normal sliver position.
+      _holdParentScrollUntilSearchHeaderSettles();
     }
     if (wasFocused) widget.onSearchFocusChanged?.call(false);
   }
@@ -8258,7 +8320,7 @@ class EventsTabState extends State<EventsTab>
         //   height placeholder keeps all content in position.
         // Inline search     : SliverPersistentHeader (pinned) locks bar.
         // Normal            : SliverToBoxAdapter scrolls with content.
-        if (_activatedFromOffScreen)
+        if (_activatedFromOffScreen || _restoringSearchParent)
           SliverToBoxAdapter(
             child: SizedBox(height: searchBarHostRowHeight(context)),
           )
