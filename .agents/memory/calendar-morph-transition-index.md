@@ -5,7 +5,7 @@ description: Focused notes for Calendar hierarchy morphs, panel handoffs, and Da
 
 Use the view-specific note that matches the transition being changed:
 
-- [Midpoint view handoff](calendar-midpoint-view-handoff.md) — switch hierarchy-dependent controls at the transition midpoint.
+- [Midpoint view handoff](calendar-midpoint-view-handoff.md) — switch controls at 50%; keep shell and scroll-title painting exclusive during Year↔Month zoom.
 - [Day List header transition](calendar-day-list-header-transition.md) — keep the weekday row, week strip, and day banner moving together.
 - [Morph content bounds](calendar-morph-content-bounds.md) — keep positioned morph children content-sized.
 - [Year-to-Month List boundary](year-month-list-morph-boundary.md) — keep the List handoff in the overlay with intrinsic event content.

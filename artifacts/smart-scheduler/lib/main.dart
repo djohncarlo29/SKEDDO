@@ -2399,31 +2399,49 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     CalendarView view,
     bool isActive,
   ) {
-    return SizedBox(
-      height: kAppHeaderTitleHeight,
-      child: AppWindowContentPadding(
-        child: Padding(
-          padding: const EdgeInsets.only(
-            left: 16,
-            right: 16,
-            bottom: kHeaderTitleBottomInset,
-          ),
-          child: Align(
-            alignment: Alignment.bottomLeft,
-            child: SizedBox(
-              width: double.infinity,
-              child: _buildCalendarTitlePanel(
-                context: context,
-                title: title,
-                displayYear: displayYear,
-                view: view,
-                isActive: isActive,
-                compactFadeColor: resolveThemeColor(kBackgroundColor, context),
+    Widget titleContent(bool yearMonthMorphActive) => Offstage(
+      // AppShell owns the title and controls throughout the Year↔Month zoom.
+      // Listen to the transition state directly: cached scroll panels can keep
+      // this widget alive even when CalendarTab's title builder is replaced.
+      // Offstage preserves the slot's layout while suppressing the duplicate
+      // custom-painted chevrons. Month↔Day ownership is unchanged.
+      offstage: yearMonthMorphActive,
+      child: SizedBox(
+        height: kAppHeaderTitleHeight,
+        child: AppWindowContentPadding(
+          child: Padding(
+            padding: const EdgeInsets.only(
+              left: 16,
+              right: 16,
+              bottom: kHeaderTitleBottomInset,
+            ),
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: SizedBox(
+                width: double.infinity,
+                child: _buildCalendarTitlePanel(
+                  context: context,
+                  title: title,
+                  displayYear: displayYear,
+                  view: view,
+                  isActive: isActive,
+                  compactFadeColor: resolveThemeColor(
+                    kBackgroundColor,
+                    context,
+                  ),
+                ),
               ),
             ),
           ),
         ),
       ),
+    );
+    final calendarState = _calendarTabKey.currentState;
+    if (calendarState == null) return titleContent(false);
+    return ValueListenableBuilder<bool>(
+      valueListenable: calendarState.calendarYearMonthMorphActiveListenable,
+      builder: (context, yearMonthMorphActive, _) =>
+          titleContent(yearMonthMorphActive),
     );
   }
 

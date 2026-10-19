@@ -491,6 +491,7 @@ class CalendarTabState extends State<CalendarTab>
   // ── Year ↔ Month  (0 = year fully shown, 1 = month fully shown) ─────────────
   late final AnimationController _zoomCtrl;
   late final CurvedAnimation _zoomAnim;
+  final ValueNotifier<bool> _yearMonthMorphingNotifier = ValueNotifier(false);
   int _zoomMonthIdx = 0; // 0–11, which mini-month was tapped (sets zoom origin)
   double _zoomScrollOffset =
       0.0; // year-view scroll offset captured the moment zoom begins
@@ -1669,7 +1670,23 @@ class CalendarTabState extends State<CalendarTab>
     return false;
   }
 
+  bool get calendarYearMonthMorphActive =>
+      _zoomTargetView != null ||
+      _zoomCtrl.isAnimating ||
+      (_zoomCtrl.value > 0.001 && _zoomCtrl.value < 0.999);
+
+  ValueListenable<bool> get calendarYearMonthMorphActiveListenable =>
+      _yearMonthMorphingNotifier;
+
+  void _syncYearMonthMorphingNotifier() {
+    final isActive = calendarYearMonthMorphActive;
+    if (_yearMonthMorphingNotifier.value != isActive) {
+      _yearMonthMorphingNotifier.value = isActive;
+    }
+  }
+
   void _notify() {
+    _syncYearMonthMorphingNotifier();
     final (prev, curr, next) = _adjacentTitles();
     widget.onViewChanged(
       _view,
@@ -2332,6 +2349,7 @@ class CalendarTabState extends State<CalendarTab>
     _searchDebounce?.cancel();
     _dragFrameTick.dispose();
     _nowNotifier.dispose();
+    _yearMonthMorphingNotifier.dispose();
     _zoomAnim.dispose();
     _zoomCtrl.dispose();
     _collapseAnim.dispose();
