@@ -551,9 +551,10 @@ class CalendarTabState extends State<CalendarTab>
   //                                     pass only the raw offset to fallbacks.
   //
   // _collapseScrollOffset: the value of _savedMonthScrollOffset at the moment
-  //   _enterDay / _exitToMonth is called.  Factored into each _AnimatedWeekRow's
-  //   translateY so the selected row slides to visual-y = 0 (enter) or back
-  //   to its scrolled natural position (exit) regardless of prior scrolling.
+  //   _enterDay / _exitToMonth is called. Factored into each _AnimatedWeekRow's
+  //   translateY so the selected row lands at the Month content origin, already
+  //   aligned just below the pinned weekday header, then returns to its
+  //   scrolled Month position.
   //   Reset to 0 once collapseCtrl settles in either direction (collapseProgress
   //   is 0 or 1, so any value × 0 has no effect after the animation).
   ScrollController _monthViewScrollCtrl = ScrollController();
@@ -597,11 +598,11 @@ class CalendarTabState extends State<CalendarTab>
 
   // While at rest in Day View, _collapseScrollOffset is always 0.0 (it is
   // only non-zero mid-animation, during the enter/exit collapse itself —
-  // see the field doc above). The pinned week-row's on-screen position is
-  // (content top, which reads _collapseScrollOffset) minus (the "current"
-  // panel's live SingleChildScrollView pixel offset, i.e.
-  // _monthViewScrollCtrl's actual attached offset). Those two must match
-  // for the row to land at y = 0.
+  // see the field doc above). The pinned week-row's on-screen position is the
+  // Day week-strip slot plus (_collapseScrollOffset - the "current" panel's
+  // live SingleChildScrollView pixel offset, i.e. _monthViewScrollCtrl's
+  // actual attached offset). Those offsets must match so the row lands below
+  // the pinned weekday header instead of underneath it.
   //
   // Day-view navigation that crosses a month/year boundary changes the
   // "current" _MonthView's ValueKey ('$_dispYear-$_dispMonth'), forcing a
@@ -2194,9 +2195,9 @@ class CalendarTabState extends State<CalendarTab>
   void _enterDay(DateTime date, {bool fast = false}) {
     _animateMultiDayTransition = false;
     // Capture the current scroll offset of the month-view content area BEFORE
-    // setState triggers a rebuild.  This value is used by _AnimatedWeekRow to
-    // offset its Y-translation so the selected row lands at visual-y = 0 even
-    // when the user has scrolled in Details mode.
+    // setState triggers a rebuild. This value is used by _AnimatedWeekRow to
+    // offset its Y-translation so the selected row lands in the Day week-strip
+    // slot even when the user has scrolled in Details mode.
     final capturedOffset = _monthViewScrollCtrl.hasClients
         ? _monthViewScrollCtrl.offset
         : 0.0;
@@ -2217,7 +2218,8 @@ class CalendarTabState extends State<CalendarTab>
         : _collapseCtrl.forward(from: _collapseCtrl.value);
     collapse.then((_) {
       if (!mounted) return;
-      // Animation settled at colT=1.  The selected row is visually at y=0.
+      // Animation settled at colT=1. The selected row is below the pinned
+      // weekday header in the Day week-strip slot.
       // Reset the scroll controller and the captured compensation offset so
       // subsequent same-month Day-View navigation (fresh scroll at 0) works
       // without inheriting a stale base.  _savedMonthScrollOffset is kept
@@ -2239,8 +2241,8 @@ class CalendarTabState extends State<CalendarTab>
     // Restore the saved scroll position BEFORE starting the reverse animation
     // so that _collapseScrollOffset is non-zero throughout the reverse.
     // With _collapseScrollOffset = saved, _AnimatedWeekRow's translateY formula
-    // keeps the selected row at visual-y = 0 at colT=1 and moves it smoothly
-    // to its natural scrolled position at colT=0 — no pop, no jump.
+    // keeps the selected row in its Day week-strip slot at colT=1 and moves it
+    // smoothly to its natural scrolled position at colT=0 — no pop, no jump.
     if (_savedMonthScrollOffset > 0) {
       if (_monthViewScrollCtrl.hasClients) {
         _monthViewScrollCtrl.jumpTo(_savedMonthScrollOffset);
@@ -3175,10 +3177,15 @@ class CalendarTabState extends State<CalendarTab>
                 zoomT > 0.001 ||
                 _zoomTargetView == CalendarView.month ||
                 (_zoomMorphActive && _view == CalendarView.month);
+            // The MonthView continues to own the selected week row through
+            // Month↔Day transitions and in settled Day View. Keep that layer
+            // visible beneath the Day banner/timeline so the row remains the
+            // pinned week strip after the rest of the month has moved away.
             final showMonthPanels =
                 !_zoomMorphActive &&
-                _view == CalendarView.month &&
-                zoomT > 0.999;
+                zoomT > 0.999 &&
+                (_view == CalendarView.month ||
+                    (_view == CalendarView.day && colT > 0.01));
             final showYearPanels =
                 !_zoomMorphActive &&
                 _view == CalendarView.year &&
@@ -4800,11 +4807,17 @@ class _MorphPainter extends CustomPainter {
     final focalY =
         yearGeometry?.dowHeader.top ??
         rowTop[zRow] + cellSz * 1.35 + 5.0 - scrollOffset;
+    // The Month view's content starts below its second-level title. Anchor the
+    // zoom to the measured Month weekday-row position instead of canvas y=0,
+    // which is the top of the header/content stack and pulls the calendar
+    // through the title area before it reaches its settled position.
+    final monthFocalY = monthGeometry?.dowHeader.top ?? 0.0;
 
     // Zoom-transform helpers
     double xZ(double px) =>
         s * px - sFinal * focalX * t + yearHorizontalInset * t;
-    double yZ(double py) => s * py - sFinal * focalY * t;
+    double yZ(double py) =>
+        s * py - sFinal * focalY * t + monthFocalY * t;
 
     final mCellW = (monthContentWidth - 7) / 8;
     final totalRows = zoomMonthLayout.totalRows;
@@ -5458,9 +5471,9 @@ class _MonthView extends StatelessWidget {
   final List<GlobalKey>? morphDowLabelKeys;
   final GlobalKey? morphListContentKey;
 
-  /// Scroll offset captured when the Month→Day collapse began.  Passed to
-  /// each _AnimatedWeekRow so the selected row translates to visual-y = 0
-  /// even when the user previously scrolled in Details view-mode.
+  /// Scroll offset captured when the Month→Day collapse began. Passed to
+  /// each _AnimatedWeekRow so the selected row lands in the Day week-strip
+  /// slot even when the user previously scrolled in Details view-mode.
   final double collapseScrollOffset;
 
   @override
@@ -5967,8 +5980,8 @@ class _AnimatedWeekRow extends StatelessWidget {
 
   /// Scroll offset captured at the start of the collapse animation.
   /// Added to translateY (scaled by collapseProgress) for rows that move
-  /// upward, so the selected row arrives at visual-y = 0 regardless of how
-  /// far the user scrolled in Details view-mode before entering Day View.
+  /// upward, so the selected row reaches the Day week-strip slot regardless
+  /// of how far the user scrolled in Details view-mode before entering Day View.
   final double scrollOffset;
 
   @override
@@ -5990,16 +6003,16 @@ class _AnimatedWeekRow extends StatelessWidget {
     if (row <= collapseWeekRow) {
       // Selected row + all rows ABOVE it move as one solid block upward.
       // Every row in the block gets the same delta so relative spacing is preserved.
-      // At collapseProgress == 1 the selected row lands at y = 0 and all
-      // rows above it have negative y — they slide out past the header.
+      // At collapseProgress == 1 the selected row lands at the Month content
+      // origin, which is just below the pinned weekday header; rows above it
+      // have negative y and slide out past it.
       //
       // scrollOffset compensation: the SingleChildScrollView may have been
-      // scrolled before _enterDay was called (Details mode).  The selected
-      // row's absolute-top in the scroll-content must equal the viewport's
-      // scroll position so that its visual-y is 0.  Adding scrollOffset *
-      // collapseProgress achieves this: at colT=0 no effect; at colT=1 the
-      // row sits at (collapseWeekRow*h - collapseWeekRow*h + scrollOffset) =
-      // scrollOffset, exactly cancelling the viewport's own scrollOffset.
+      // scrolled before _enterDay was called (Details mode). Adding
+      // scrollOffset * collapseProgress cancels the viewport's scroll at
+      // colT=1. The Month content origin already includes the gap and weekday
+      // labels, so do not add a second header offset. At colT=0 the
+      // compensation is zero and the Month position is unchanged.
       translateY =
           -(collapseWeekRow * currentRowHeight * collapseProgress) +
           scrollOffset * collapseProgress;

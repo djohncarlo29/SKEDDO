@@ -55,14 +55,19 @@ void main() {
       expect(timelines, findsNWidgets(3));
 
       final dowRect = tester.getRect(dowMask);
+      final selectedWeek = _selectedWeekRow(DateTime.now());
       final centerBannerRect = tester.getRect(banners.at(1));
       final centerTimelineRect = tester.getRect(timelines.at(1));
+      expect(selectedWeek, findsOneWidget);
+      final selectedWeekRect = tester.getRect(selectedWeek);
       const weekStripHeight = 52.0;
 
       expect(
         dowRect.top,
         closeTo(kAppHeaderTitleHeight - kContentAreaTopRaise, 0.5),
       );
+      expect(selectedWeekRect.top, closeTo(dowRect.bottom, 0.5));
+      expect(selectedWeekRect.bottom, closeTo(centerBannerRect.top, 0.5));
       expect(
         centerBannerRect.top,
         closeTo(dowRect.bottom + weekStripHeight, 0.5),
@@ -112,13 +117,22 @@ void main() {
     );
     expect(banners, findsOneWidget);
     final centerBanner = banners.first;
+    final dowRect = tester.getRect(dowMask);
+    final selectedWeek = _selectedWeekRow(DateTime.now());
+    expect(selectedWeek, findsOneWidget);
+    final selectedWeekRect = tester.getRect(selectedWeek);
     expect(
-      tester.getRect(dowMask).top,
+      dowRect.top,
       closeTo(kAppHeaderTitleHeight - kContentAreaTopRaise, 0.5),
+    );
+    expect(selectedWeekRect.top, closeTo(dowRect.bottom, 0.5));
+    expect(
+      selectedWeekRect.bottom,
+      closeTo(tester.getRect(centerBanner).top, 0.5),
     );
     expect(
       tester.getRect(centerBanner).top,
-      greaterThan(tester.getRect(dowMask).bottom),
+      greaterThan(dowRect.bottom),
     );
   });
 
@@ -191,4 +205,20 @@ void main() {
       );
     },
   );
+}
+
+Finder _selectedWeekRow(DateTime date) {
+  final firstWeekday = DateTime(date.year, date.month, 1).weekday - 1;
+  final selectedRow = (date.day + firstWeekday - 1) ~/ 7;
+  return find.byWidgetPredicate((widget) {
+    if (widget.runtimeType.toString() != '_WeekRow') return false;
+    final dynamic row = widget;
+    final DateTime selectedDate = row.selectedDate;
+    return row.year == date.year &&
+        row.month == date.month &&
+        selectedDate.year == date.year &&
+        selectedDate.month == date.month &&
+        selectedDate.day == date.day &&
+        row.row == selectedRow;
+  });
 }

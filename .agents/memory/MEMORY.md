@@ -8,6 +8,7 @@
 - [Calendar Day View dual-axis swipe isolation](calendar-swipe-isolation.md) — week-strip drags and timeline drags must use separate slideX variables; header sync via ValueNotifier + onStripSlide callback.
 - [Multi-Day current-time indicator](calendar-multiday-current-time-indicator.md) — cap the line at today’s active column boundary and keep that endpoint aligned as columns move.
 - [Calendar year↔month shared-element morph](calendar-year-zoom-transform.md) — measure both endpoints in the painter’s coordinate space and freeze them until its spring completes.
+- [Calendar morph week-strip surfaces](calendar-morph-week-strip-surfaces.md) — keep the selected Month week row visible beneath Day content, landing below the pinned DOW mask.
 - [Calendar 3-panel swipe ±2 bug](calendar-3panel-plusminus2-bug.md) — early doThen remaps panel slots mid-animation, carrying header one extra step; fix is doThen at 100% only.
 - [Calendar month panel clipping](calendar-month-panel-clipping.md) — clip each horizontally positioned month panel before vertical strip transforms so off-screen week rows cannot bleed into the DOW boundary.
 - [ScrollController remount resync](calendar-scrollctrl-remount-resync.md) — a key-forced Scrollable remount resets to the controller's stale original initialScrollOffset, not the last jumpTo() value; recreate before remounting.
