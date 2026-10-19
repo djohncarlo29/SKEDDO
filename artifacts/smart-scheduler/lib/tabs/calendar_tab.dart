@@ -760,6 +760,7 @@ class CalendarTabState extends State<CalendarTab>
       0; // incremented on each _animateSlide call; stale Futures compare and bail
   bool _snapThenFired =
       false; // true once doThen() fires; guards interrupt restore
+  VoidCallback? _snapThenCallback;
   bool _navLocked = false; // true from nav-commit until anim fully settles
   bool _weekStripDrag =
       false; // true when drag started in the Day-View week strip
@@ -872,6 +873,21 @@ class CalendarTabState extends State<CalendarTab>
     }
   }
 
+  /// Current settled scroll offset for the shell-owned calendar header title.
+  /// Day View owns its title in the shell, so its timeline position must not
+  /// drive the large-title collapse state.
+  double? get searchParentHeaderScrollOffset {
+    final controller = switch (_view) {
+      CalendarView.year => _yearScrollCtrl,
+      CalendarView.month => _monthViewScrollCtrl,
+      CalendarView.day => null,
+    };
+    if (controller == null || !controller.hasClients) return null;
+    final position = controller.position;
+    if (!position.hasContentDimensions) return null;
+    return AppHeaderScrollBehavior.contentOffset(position);
+  }
+
   String _monthHeaderName(int month) => appFullMonthNameNotifier.value
       ? _kMonthNames[month - 1]
       : _kShortMonthNames[month - 1];
@@ -982,7 +998,21 @@ class CalendarTabState extends State<CalendarTab>
     _animateMultiDayTransition = false;
   }
 
-  void _prepareParentForSearch() {
+  void prepareParentForSearch() {
+    // Settle any already-released calendar slide before the search overlay
+    // covers the parent. The slide's completion callback commits a navigation
+    // that the user already released, or returns an uncommitted swipe to center.
+    if (_snapCtrl.isAnimating) {
+      _snapCtrl.stop(canceled: false);
+    }
+    if (!_snapThenFired && _snapThenCallback != null) {
+      // A new pointer can interrupt a committed snap before its completion
+      // future runs. Keep that released navigation committed when Search takes
+      // over instead of leaving its callback and navigation lock stranded.
+      _bloomTimer?.cancel();
+      _finishSnapSlide(_snapGeneration);
+    }
+
     _settleHierarchyTransitionsForSearch();
     _settleScrollControllerForSearch(_yearScrollCtrl);
     _settleScrollControllerForSearch(_monthViewScrollCtrl);
@@ -995,7 +1025,7 @@ class CalendarTabState extends State<CalendarTab>
 
     // An unreleased calendar swipe is not a navigation commitment. Return its
     // preview panels and header title to the current page before search covers
-    // the calendar. A released swipe keeps its normal settle animation.
+    // the calendar. Released snaps were finalized above.
     if (_horizontalDragActive) {
       _ignoreHorizontalDragUntilEnd = true;
     }
@@ -1006,11 +1036,12 @@ class CalendarTabState extends State<CalendarTab>
       _dragFrameTick.value++;
       widget.onStripSlide?.call(0.0);
     }
+    _notify();
   }
 
   void activateSearchMode() {
     if (_searchFocused) return;
-    _prepareParentForSearch();
+    prepareParentForSearch();
     setState(() {
       _greyActive = true;
       _greyFadeIn = true;
@@ -1409,6 +1440,7 @@ class CalendarTabState extends State<CalendarTab>
   }) {
     _snapThenFired = false;
     final myGen = ++_snapGeneration;
+    _snapThenCallback = then;
 
     setState(() => _slideX = from);
     _snapAnim = Tween<double>(
@@ -1429,21 +1461,25 @@ class CalendarTabState extends State<CalendarTab>
       );
     }
 
-    _snapCtrl.forward(from: 0).then((_) {
-      _bloomTimer?.cancel();
-      if (!mounted || _snapGeneration != myGen) return;
-      _snapThenFired = true;
-      // Keep the week mapping for the whole week-strip animation, then clear it
-      // before the committed date rebuilds the adjacent panels.
-      _weekStripDrag = false;
-      _slideX = 0.0;
-      widget.onStripSlide?.call(0.0);
-      then();
-      // Clear pending bloom now that nav has committed.
-      if (_pendingBloomDate != null) setState(() => _pendingBloomDate = null);
-      _snapCtrl.reset();
-      if (mounted) setState(() => _navLocked = false);
-    });
+    _snapCtrl.forward(from: 0).then((_) => _finishSnapSlide(myGen));
+  }
+
+  void _finishSnapSlide(int myGen) {
+    if (!mounted || _snapGeneration != myGen || _snapThenFired) return;
+    _snapThenFired = true;
+    _bloomTimer?.cancel();
+    // Keep the week mapping for the whole week-strip animation, then clear it
+    // before the committed date rebuilds the adjacent panels.
+    _weekStripDrag = false;
+    _slideX = 0.0;
+    widget.onStripSlide?.call(0.0);
+    final completion = _snapThenCallback;
+    _snapThenCallback = null;
+    completion?.call();
+    // Clear pending bloom now that navigation has committed.
+    if (_pendingBloomDate != null) setState(() => _pendingBloomDate = null);
+    _snapCtrl.reset();
+    if (mounted) setState(() => _navLocked = false);
   }
 
   // Pre-computes whether the upcoming swipe should start a bloom animation on

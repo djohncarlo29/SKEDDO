@@ -984,6 +984,58 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _headerTitleScrollOffsets[_headerScrollScope] ?? 0.0;
   }
 
+  double? _headerOffsetForController(ScrollController? controller) {
+    if (controller == null || !controller.hasClients) return null;
+    for (final position in controller.positions) {
+      if (position.hasContentDimensions) {
+        return AppHeaderScrollBehavior.contentOffset(position);
+      }
+    }
+    return null;
+  }
+
+  void _settleShellTransitionsForSearch() {
+    _headerUserScrollActive = false;
+
+    if (_dcvCategoryTransitionController.isAnimating) {
+      _dcvCategoryTransitionController.value = 1.0;
+    }
+    if (_previousDcvCategory != null) {
+      setState(() {
+        _previousDcvCategory = null;
+        _previousDcvColor = null;
+      });
+    }
+
+    if (_dcvSlideController.isAnimating) {
+      final isExiting = _dcvSlideController.status == AnimationStatus.reverse;
+      final target = isExiting
+          ? 0.0
+          : 1.0;
+      _dcvSlideController.stop(canceled: false);
+      _dcvSlideController.value = target;
+      if (isExiting) _finishDcvExit();
+    }
+  }
+
+  void _syncHeaderScrollOffsetToParent() {
+    final double? offset = switch (_selectedIndex) {
+      0 => _headerOffsetForController(
+        _notesTabKey.currentState?.scrollController,
+      ),
+      1 => _calendarTabKey.currentState?.searchParentHeaderScrollOffset,
+      2 => _headerOffsetForController(
+        _eventsTabKey.currentState?.scrollController,
+      ),
+      _ => null,
+    };
+    if (offset == null) return;
+
+    _headerUserScrollActive = false;
+    _headerTitleScrollOffsets[_headerScrollScope] = offset;
+    _headerTitleScrollOffset.value = offset;
+  }
+
   bool _canReplaceLandscapeDcvPage() {
     if (_dcvCategory == null || _selectedIndex != 2) return false;
     final geometry = AppWindowMasterDetailGeometry.of(context);
@@ -1045,22 +1097,17 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     // completes so the DCV content stays mounted and visible while sliding out.
     _dcvSlideController
         .reverse()
-        .then((_) {
-          if (mounted)
-            setState(() {
-              _dcvCategory = null;
-              _dcvColor = null;
-            });
-          _restoreHeaderScrollOffset();
-        })
-        .catchError((_) {
-          if (mounted)
-            setState(() {
-              _dcvCategory = null;
-              _dcvColor = null;
-            });
-          _restoreHeaderScrollOffset();
-        });
+        .then((_) => _finishDcvExit())
+        .catchError((_) => _finishDcvExit());
+  }
+
+  void _finishDcvExit() {
+    if (!mounted || (_dcvCategory == null && _dcvColor == null)) return;
+    setState(() {
+      _dcvCategory = null;
+      _dcvColor = null;
+    });
+    _restoreHeaderScrollOffset();
   }
 
   // ── Settings panel open / close ──────────────────────────────────────────
@@ -1865,6 +1912,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   void _setSearchFocused(bool focused) {
     if (_searchFocused == focused) return;
+    if (focused) {
+      // The tab settles its own scroll position before reporting focus. Sync
+      // the shell title from that settled parent so a stale overscroll value
+      // cannot hide the second-level header after Search closes.
+      _settleShellTransitionsForSearch();
+      _syncHeaderScrollOffsetToParent();
+    }
     setState(() => _searchFocused = focused);
     if (focused) {
       _searchModeController.forward();
@@ -1888,6 +1942,17 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   /// search bar is currently visible in the viewport.
   void _activateTabSearch() {
     if (_searchFocused) return;
+
+    _settleShellTransitionsForSearch();
+    switch (_selectedIndex) {
+      case 0:
+        _notesTabKey.currentState?.prepareParentForSearch();
+      case 1:
+        _calendarTabKey.currentState?.prepareParentForSearch();
+      case 2:
+        _eventsTabKey.currentState?.prepareParentForSearch();
+    }
+    _syncHeaderScrollOffsetToParent();
 
     // Calendar tab: always use the off-screen path so the header collapses
     // instantly and the calendar's own search overlay slides in from above.

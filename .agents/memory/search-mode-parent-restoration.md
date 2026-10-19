@@ -7,4 +7,4 @@ Search is temporary. On exit, return to the parent screen at its pre-search posi
 
 **Why:** The user explicitly wants opening and closing search to feel as if the parent screen was unaffected, including after rubberbanding or starting a swipe.
 
-**How to apply:** When changing search entry or dismissal in any tab, preserve the normalized parent position and settle in-progress presentation gestures before the search overlay replaces the screen.
+**How to apply:** Before search freezes shell header updates, sync the title from the parent's post-settle scroll metrics. Clamp Notes and Events scroll positions; finish released Calendar snaps (including their navigation callbacks), but center unreleased drags. Settle shell-level detail transitions too, so dismissing search restores a complete parent hierarchy.

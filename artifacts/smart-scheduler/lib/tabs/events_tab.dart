@@ -6985,8 +6985,7 @@ class EventsTabState extends State<EventsTab>
 
   void activateSearchMode() {
     if (_searchFocused) return;
-    _restoringSearchParent = false;
-    _savedScrollOffset = _settleParentScrollForSearch();
+    prepareParentForSearch();
     _activatedFromOffScreen = true;
     _greyActive = true;
     _greyFadeIn = true;
@@ -7009,6 +7008,14 @@ class EventsTabState extends State<EventsTab>
         NativeTextInput.lockFocus(_searchController);
       }
     });
+  }
+
+  /// Settles the parent scroll position before the shell begins its search
+  /// transition. This keeps a leading rubberband or ballistic scroll from
+  /// becoming the saved return position.
+  void prepareParentForSearch() {
+    _restoringSearchParent = false;
+    _savedScrollOffset = _settleParentScrollForSearch();
   }
 
   Timer? _midnightTimer;
@@ -7915,8 +7922,7 @@ class EventsTabState extends State<EventsTab>
     if (_searchFocused == focused) return;
 
     if (focused) {
-      _restoringSearchParent = false;
-      _savedScrollOffset = _settleParentScrollForSearch();
+      prepareParentForSearch();
       setState(() => _searchFocused = true);
       // The sliver type changed (SliverToBoxAdapter → SliverPersistentHeader),
       // which remounts AppSearchBar and its NativeTextInput platform view.
