@@ -499,6 +499,9 @@ class CalendarTabState extends State<CalendarTab>
   CalendarView? _zoomTargetView;
   bool _zoomMorphActive = false;
   ScrollController _yearScrollCtrl = ScrollController();
+  final GlobalKey _yearViewScrollViewportKey = GlobalKey(
+    debugLabel: 'calendar-year-scroll-viewport',
+  );
 
   // ── Year scroll offset — same single carried-forward source-of-truth model
   // as _savedMonthScrollOffset above (see that field's doc for the full
@@ -554,7 +557,9 @@ class CalendarTabState extends State<CalendarTab>
   //   Reset to 0 once collapseCtrl settles in either direction (collapseProgress
   //   is 0 or 1, so any value × 0 has no effect after the animation).
   ScrollController _monthViewScrollCtrl = ScrollController();
-  final GlobalKey _monthViewScrollViewportKey = GlobalKey();
+  final GlobalKey _monthViewScrollViewportKey = GlobalKey(
+    debugLabel: 'calendar-month-scroll-viewport',
+  );
   final Map<String, List<String>> _monthListOrderByDay = {};
   int _monthListOrderRevision = 0;
   // The hierarchy AnimatedBuilder runs every transition frame. Reuse the
@@ -1917,6 +1922,57 @@ class CalendarTabState extends State<CalendarTab>
     );
   }
 
+  // Debug-only handoff trace. All Y values are in the same local coordinate
+  // space used by _MorphOverlay; viewport tops are measured separately so a
+  // scroll-position change can be distinguished from an origin/layout change.
+  void _debugTraceYearMonthMorph(String phase) {
+    assert(() {
+      final yearLive = _measureYearMorphGeometry(_zoomMonthIdx);
+      final monthLive = _measureMonthMorphGeometry();
+      String y(double? value) =>
+          value == null ? 'unavailable' : value.toStringAsFixed(2);
+      final yearViewport = _measureMorphCoordinateLocalRect(
+        _yearViewScrollViewportKey,
+      );
+      final monthViewport = _measureMorphCoordinateLocalRect(
+        _monthViewScrollViewportKey,
+      );
+      final yearPositionId = _yearScrollCtrl.hasClients
+          ? identityHashCode(_yearScrollCtrl.position)
+          : null;
+      final monthPositionId = _monthViewScrollCtrl.hasClients
+          ? identityHashCode(_monthViewScrollCtrl.position)
+          : null;
+      debugPrint(
+        '[calendar-morph] $phase '
+        't=${_zoomCtrl.value.toStringAsFixed(4)} '
+        'view=$_view target=$_zoomTargetView '
+        'painterY(year=${y(_yearMorphGeometry?.dowHeader.top)},'
+        'month=${y(_monthMorphGeometry?.dowHeader.top)}) '
+        'liveY(year=${y(yearLive?.dowHeader.top)},'
+        'month=${y(monthLive?.dowHeader.top)}) '
+        'scroll(year=${y(_yearScrollCtrl.hasClients ? _yearScrollCtrl.offset : null)},'
+        'position=$yearPositionId,'
+        'savedYear=${y(_savedYearScrollOffset)},'
+        'month=${y(_monthViewScrollCtrl.hasClients ? _monthViewScrollCtrl.offset : null)},'
+        'position=$monthPositionId,'
+        'savedMonth=${y(_savedMonthScrollOffset)}) '
+        'viewportTop(year=${y(yearViewport?.top)},'
+        'month=${y(monthViewport?.top)})',
+      );
+      return true;
+    }());
+  }
+
+  void _scheduleYearMonthMorphTrace(String phase) {
+    assert(() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _debugTraceYearMonthMorph(phase);
+      });
+      return true;
+    }());
+  }
+
   Future<void> _enterMonth(int monthIdx, {bool fast = false}) async {
     // Capture exact row positions before the zoom animation hides the YearView.
     _measureYearRowTops();
@@ -1971,6 +2027,7 @@ class CalendarTabState extends State<CalendarTab>
       _monthMorphGeometry = geometry;
       _zoomMorphActive = true;
     });
+    _debugTraceYearMonthMorph('year-to-month capture');
 
     await _zoomCtrl.animateWith(
       SpringSimulation(
@@ -1991,6 +2048,7 @@ class CalendarTabState extends State<CalendarTab>
         _zoomMorphActive = false;
       });
       _notify();
+      _scheduleYearMonthMorphTrace('year-to-month live');
     }
   }
 
@@ -2041,6 +2099,7 @@ class CalendarTabState extends State<CalendarTab>
         : _savedYearScrollOffset;
     _savedYearScrollOffset = _zoomScrollOffset;
     setState(() => _zoomMorphActive = true);
+    _debugTraceYearMonthMorph('month-to-year capture');
 
     await _zoomCtrl.animateWith(
       SpringSimulation(
@@ -2058,6 +2117,7 @@ class CalendarTabState extends State<CalendarTab>
         _zoomMorphActive = false;
       });
       _notify();
+      _scheduleYearMonthMorphTrace('month-to-year live');
     }
   }
 
@@ -2086,6 +2146,7 @@ class CalendarTabState extends State<CalendarTab>
         setState(() => _view = target);
         _zoomTargetView = null;
         _notify();
+        _scheduleYearMonthMorphTrace('midpoint handoff');
       }
     }
     _zoomPrevT = t;
@@ -3101,9 +3162,16 @@ class CalendarTabState extends State<CalendarTab>
                 _view == CalendarView.year &&
                 zoomT < 0.001;
             final mountYearMorphTarget =
-                zoomT >= 0.001 &&
-                (_zoomTargetView == CalendarView.year ||
-                    (_zoomMorphActive && _view == CalendarView.year));
+                _zoomTargetView == CalendarView.year ||
+                (_zoomMorphActive && _view == CalendarView.year);
+            // Use one YearView subtree for both the hidden Month→Year target
+            // and the settled Year view. In particular, keep it mounted at
+            // zoomT == 0 while the morph is still active, then reveal that
+            // same Scrollable after the painter is removed. Replacing the
+            // target with a second keyed YearView recreates ScrollPosition
+            // from ScrollController.initialScrollOffset and can disagree with
+            // the live offset used by the measured morph geometry.
+            final mountYearPanels = showYearPanels || mountYearMorphTarget;
 
             return GestureDetector(
               behavior: HitTestBehavior.translucent,
@@ -3122,7 +3190,7 @@ class CalendarTabState extends State<CalendarTab>
                     // actually completed. A spring may touch its bound before
                     // it settles; switching layers at that instant exposes a
                     // competing layout and creates a visible snap.
-                    if (zoomT < 0.001)
+                    if (mountYearPanels)
                       Positioned.fill(
                         child: IgnorePointer(
                           ignoring: !showYearPanels,
@@ -3131,93 +3199,73 @@ class CalendarTabState extends State<CalendarTab>
                             child: Stack(
                               clipBehavior: Clip.none,
                               children: [
-                            Positioned(
-                              left: slideX - sw,
-                              top: 0,
-                              bottom: 0,
-                              width: sw,
-                              child: _YearView(
-                                key: ValueKey(prevYear),
-                                year: prevYear,
-                                today: _today,
-                                selectedDate: _selected,
-                                onMonthTap: _enterMonth,
-                                controller: _previewYearScrollCtrl(
-                                  isPrev: true,
-                                  key: '$prevYear',
+                                if (showYearPanels)
+                                  Positioned(
+                                    key: ValueKey('year-prev-$prevYear'),
+                                    left: slideX - sw,
+                                    top: 0,
+                                    bottom: 0,
+                                    width: sw,
+                                    child: _YearView(
+                                      key: ValueKey(prevYear),
+                                      year: prevYear,
+                                      today: _today,
+                                      selectedDate: _selected,
+                                      onMonthTap: _enterMonth,
+                                      controller: _previewYearScrollCtrl(
+                                        isPrev: true,
+                                        key: '$prevYear',
+                                      ),
+                                      scrollableTitleBuilder:
+                                          scrollableTitleBuilder,
+                                      titleIsActive: false,
+                                    ),
+                                  ),
+                                Positioned(
+                                  key: ValueKey('year-current-$_dispYear'),
+                                  left: slideX,
+                                  top: 0,
+                                  bottom: 0,
+                                  width: sw,
+                                  child: _YearView(
+                                    key: ValueKey(_dispYear),
+                                    year: _dispYear,
+                                    today: _today,
+                                    selectedDate: _selected,
+                                    onMonthTap: _enterMonth,
+                                    controller: _yearScrollCtrl,
+                                    scrollViewportKey:
+                                        _yearViewScrollViewportKey,
+                                    rowKeys: _yearRowKeys,
+                                    morphWeekRowKeys: _yearMorphWeekRowKeys,
+                                    scrollableTitleBuilder:
+                                        scrollableTitleBuilder,
+                                    titleIsActive: true,
+                                  ),
                                 ),
-                                scrollableTitleBuilder:
-                                    scrollableTitleBuilder,
-                                titleIsActive: false,
-                              ),
-                            ),
-                            Positioned(
-                              left: slideX,
-                              top: 0,
-                              bottom: 0,
-                              width: sw,
-                              child: _YearView(
-                                key: ValueKey(_dispYear),
-                                year: _dispYear,
-                                today: _today,
-                                selectedDate: _selected,
-                                onMonthTap: _enterMonth,
-                                controller: _yearScrollCtrl,
-                                rowKeys: _yearRowKeys,
-                                morphWeekRowKeys: _yearMorphWeekRowKeys,
-                                scrollableTitleBuilder:
-                                    scrollableTitleBuilder,
-                                titleIsActive: true,
-                              ),
-                            ),
-                            Positioned(
-                              left: slideX + sw,
-                              top: 0,
-                              bottom: 0,
-                              width: sw,
-                              child: _YearView(
-                                key: ValueKey(nextYear),
-                                year: nextYear,
-                                today: _today,
-                                selectedDate: _selected,
-                                onMonthTap: _enterMonth,
-                                controller: _previewYearScrollCtrl(
-                                  isPrev: false,
-                                  key: '$nextYear',
-                                ),
-                                scrollableTitleBuilder:
-                                    scrollableTitleBuilder,
-                                titleIsActive: false,
-                              ),
-                            ),
+                                if (showYearPanels)
+                                  Positioned(
+                                    key: ValueKey('year-next-$nextYear'),
+                                    left: slideX + sw,
+                                    top: 0,
+                                    bottom: 0,
+                                    width: sw,
+                                    child: _YearView(
+                                      key: ValueKey(nextYear),
+                                      year: nextYear,
+                                      today: _today,
+                                      selectedDate: _selected,
+                                      onMonthTap: _enterMonth,
+                                      controller: _previewYearScrollCtrl(
+                                        isPrev: false,
+                                        key: '$nextYear',
+                                      ),
+                                      scrollableTitleBuilder:
+                                          scrollableTitleBuilder,
+                                      titleIsActive: false,
+                                    ),
+                                  ),
                               ],
-                            ),
-                          ),
-                        ),
-                      ),
-
-                    // Mount the destination YearView invisibly before a
-                    // Month→Year morph. Its GlobalKeys provide the actual
-                    // settled destination geometry in the same coordinate
-                    // space as the overlay; it stays mounted through the
-                    // midpoint handoff so its layout cannot be replaced late.
-                    if (mountYearMorphTarget)
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: Opacity(
-                            opacity: 0.0,
-                            child: _YearView(
-                              key: ValueKey('year-morph-$_dispYear'),
-                              year: _dispYear,
-                              today: _today,
-                              selectedDate: _selected,
-                              onMonthTap: _enterMonth,
-                              controller: _yearScrollCtrl,
-                              rowKeys: _yearRowKeys,
-                              morphWeekRowKeys: _yearMorphWeekRowKeys,
-                              scrollableTitleBuilder:
-                                  scrollableTitleBuilder,
-                              titleIsActive: true,
                             ),
                           ),
                         ),
@@ -3539,6 +3587,7 @@ class _YearView extends StatelessWidget {
     required this.selectedDate,
     required this.onMonthTap,
     this.controller,
+    this.scrollViewportKey,
     this.rowKeys,
     this.morphWeekRowKeys,
     this.scrollableTitleBuilder,
@@ -3552,6 +3601,7 @@ class _YearView extends StatelessWidget {
   // Scroll controller — supplied only for the current-year panel so the
   // parent can read the scroll offset when the zoom animation starts.
   final ScrollController? controller;
+  final Key? scrollViewportKey;
   // One key per row (0–3). Supplied only for the current-year panel so
   // CalendarTabState can measure actual rendered row positions before zooming.
   final List<GlobalKey>? rowKeys;
@@ -3653,32 +3703,38 @@ class _YearView extends StatelessWidget {
         return AppHeaderScrollViewport(
           leadingInset: leadingInset,
           topExtension: kContentAreaTopRaise,
-          child: SingleChildScrollView(
-            controller: controller,
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            clipBehavior: Clip.none,
-            padding: EdgeInsets.only(
-              top: leadingInset,
-              bottom: 14.5 + floatingTabBarContentBottomClearance(context),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (stationaryScrollTitle != null)
-                  Transform.translate(
-                    // The content viewport is raised for calendar content,
-                    // but the Year View's second-level title and controls stay
-                    // aligned with the shared AppShell title slot.
-                    offset: const Offset(0.0, kContentAreaTopRaise),
-                    child: stationaryScrollTitle,
-                  )
-                else if (isPortrait)
-                  const SizedBox(height: kAppHeaderTitleHeight),
-                const SizedBox(height: 17.5),
-                monthGrid,
-              ],
+          child: KeyedSubtree(
+            key: scrollViewportKey == null
+                ? null
+                : const ValueKey('calendar-year-scroll-viewport'),
+            child: SingleChildScrollView(
+              key: scrollViewportKey,
+              controller: controller,
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              clipBehavior: Clip.none,
+              padding: EdgeInsets.only(
+                top: leadingInset,
+                bottom: 14.5 + floatingTabBarContentBottomClearance(context),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (stationaryScrollTitle != null)
+                    Transform.translate(
+                      // The content viewport is raised for calendar content,
+                      // but the Year View's second-level title and controls stay
+                      // aligned with the shared AppShell title slot.
+                      offset: const Offset(0.0, kContentAreaTopRaise),
+                      child: stationaryScrollTitle,
+                    )
+                  else if (isPortrait)
+                    const SizedBox(height: kAppHeaderTitleHeight),
+                  const SizedBox(height: 17.5),
+                  monthGrid,
+                ],
+              ),
             ),
           ),
         );
@@ -5783,44 +5839,49 @@ class _MonthView extends StatelessWidget {
         return AppHeaderScrollViewport(
           leadingInset: leadingInset,
           topExtension: kContentAreaTopRaise,
-          child: SingleChildScrollView(
-            key: scrollViewportKey,
-            controller: scrollController,
-            physics: collapseProgress < _kMonthDayTransitionThreshold
-                ? const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  )
-                : const NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.only(
-              top:
-                  leadingInset +
-                  (stationaryScrollTitleWidget == null && isPortrait
-                      ? kAppHeaderTitleHeight
-                      : 0),
-            ),
-            clipBehavior: Clip.none,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (stationaryScrollTitleWidget != null)
-                  Transform.translate(
-                    // The page viewport is raised to give calendar content
-                    // extra room, but its second-level title must stay aligned
-                    // with the shell-owned title used by the other tabs.
-                    offset: const Offset(0.0, kContentAreaTopRaise),
-                    child: stationaryScrollTitleWidget,
-                  ),
-                if (monthListUsesNaturalHeight)
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: expandedViewportHeight,
+          child: KeyedSubtree(
+            key: scrollViewportKey == null
+                ? null
+                : const ValueKey('calendar-month-scroll-viewport'),
+            child: SingleChildScrollView(
+              key: scrollViewportKey,
+              controller: scrollController,
+              physics: collapseProgress < _kMonthDayTransitionThreshold
+                  ? const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    )
+                  : const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.only(
+                top:
+                    leadingInset +
+                    (stationaryScrollTitleWidget == null && isPortrait
+                        ? kAppHeaderTitleHeight
+                        : 0),
+              ),
+              clipBehavior: Clip.none,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (stationaryScrollTitleWidget != null)
+                    Transform.translate(
+                      // The page viewport is raised to give calendar content
+                      // extra room, but its second-level title must stay aligned
+                      // with the shell-owned title used by the other tabs.
+                      offset: const Offset(0.0, kContentAreaTopRaise),
+                      child: stationaryScrollTitleWidget,
                     ),
-                    child: document,
-                  )
-                else
-                  SizedBox(height: contentH, child: document),
-              ],
+                  if (monthListUsesNaturalHeight)
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: expandedViewportHeight,
+                      ),
+                      child: document,
+                    )
+                  else
+                    SizedBox(height: contentH, child: document),
+                ],
+              ),
             ),
           ),
         );
