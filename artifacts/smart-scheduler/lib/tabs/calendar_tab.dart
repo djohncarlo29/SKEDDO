@@ -3221,6 +3221,7 @@ class CalendarTabState extends State<CalendarTab>
                     // competing layout and creates a visible snap.
                     if (mountYearPanels)
                       Positioned.fill(
+                        key: const ValueKey('calendar-year-panels'),
                         child: IgnorePointer(
                           ignoring: !showYearPanels,
                           child: Opacity(
@@ -3310,6 +3311,7 @@ class CalendarTabState extends State<CalendarTab>
                     // same content would show both layers at once.
                     if (_zoomMorphActive)
                       Positioned.fill(
+                        key: const ValueKey('calendar-year-month-morph'),
                         child: IgnorePointer(
                           child: _MorphOverlay(
                             t: zoomT.clamp(0.0, 1.0),
@@ -3350,6 +3352,7 @@ class CalendarTabState extends State<CalendarTab>
                     // its measured geometry and final settled layout agree.
                     if (mountMonthPanels)
                       Positioned.fill(
+                        key: const ValueKey('calendar-month-panels'),
                         child: IgnorePointer(
                           ignoring: !showMonthPanels,
                           child: Opacity(
@@ -4936,7 +4939,14 @@ class _MorphPainter extends CustomPainter {
           final monthCX =
               yearHorizontalInset + sFinal * (yearCX - focalX);
           final cx = lerpDouble(yearCX, monthCX, t)!;
-          final cy = lerpDouble(yearCY, sFinal * (yearCY - focalY), t)!;
+          // Use the measured Month content origin just like xZ/yZ. Without
+          // this anchor, same-row cells travel toward canvas y=0 (above the
+          // second-level title) and jump back when the live Month view appears.
+          final cy = lerpDouble(
+            yearCY,
+            monthFocalY + sFinal * (yearCY - focalY),
+            t,
+          )!;
           final r = lerpDouble(
             cellSz * 0.575 * yearDayScale,
             monthDayCircleDiameter / 2,

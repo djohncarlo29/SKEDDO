@@ -1,25 +1,62 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:smart_scheduler/main.dart';
+import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/tabs/calendar_tab.dart';
+import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
+import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 
 void main() {
   testWidgets(
-    'Year↔Month destination stays aligned through the real AppShell handoff',
+    'Year↔Month destination stays mounted while the painter owns the transition',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
-      tester.view.physicalSize = const Size(393, 850);
+      const screenSize = Size(393, 680);
+      const headerInset = 68.0;
+      tester.view.physicalSize = screenSize;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       tester.view.padding = const FakeViewPadding(top: 24, bottom: 24);
       addTearDown(() => tester.view.resetPadding());
 
-      // Pump the production root, not a bare CalendarTab. The shell owns the
-      // large title, scroll inset, and per-view header-scroll scopes involved
-      // in the installed-app handoff.
-      await tester.pumpWidget(const SKEDDOApp());
+      // Match the production content inset and title-slot height while keeping
+      // unrelated tabs out of this focused calendar transition test.
+      await tester.pumpWidget(
+        CupertinoApp(
+          builder: (context, child) {
+            final mediaQuery = MediaQuery.of(
+              context,
+            ).copyWith(size: screenSize);
+            return MediaQuery(
+              data: mediaQuery,
+              child: AppWindowContentBoundary(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: headerInset),
+                  child: AppHeaderScrollInsetScope(
+                    leadingInset: headerInset,
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+            );
+          },
+          home: CupertinoPageScaffold(
+            child: CalendarTab(
+              onViewChanged: (_, _, _, _, _, _) {},
+              scrollableTitleBuilder:
+                  (context, title, displayYear, view, isActive) =>
+                      SizedBox(
+                        height: kAppHeaderTitleHeight,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('$title $displayYear'),
+                        ),
+                      ),
+            ),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       final calendar = tester.state<CalendarTabState>(
         find.byType(CalendarTab),
@@ -48,6 +85,7 @@ void main() {
       await _pumpAndExpectStableViewport(
         tester,
         'year',
+        yearPosition,
         yearPixels,
         yearViewportTop,
       );
@@ -79,11 +117,13 @@ void main() {
       await _pumpAndExpectStableViewport(
         tester,
         'month',
+        monthPosition,
         monthPixels,
         monthViewportTop,
       );
       await monthTransition;
       final settledMonthPosition = _positionForViewport(tester, 'month');
+      expect(identical(settledMonthPosition, monthPosition), isTrue);
       expect(settledMonthPosition.pixels, monthPixels);
       expect(settledMonthPosition.pixels, savedMonthPixels);
       expect(_viewportTop(tester, 'month'), closeTo(monthViewportTop, 0.01));
@@ -104,6 +144,7 @@ void main() {
       await _pumpAndExpectStableViewport(
         tester,
         'year',
+        returningYearPosition,
         savedYearPixels,
         returningYearViewportTop,
       );
@@ -124,6 +165,7 @@ void main() {
 Future<void> _pumpAndExpectStableViewport(
   WidgetTester tester,
   String view,
+  ScrollPosition expectedPosition,
   double expectedPixels,
   double expectedViewportTop,
 ) async {
@@ -132,6 +174,11 @@ Future<void> _pumpAndExpectStableViewport(
   // origin must not move at the logical midpoint or the final handoff.
   for (var frame = 0; frame < 40; frame++) {
     await tester.pump(const Duration(milliseconds: 16));
+    expect(
+      identical(_positionForViewport(tester, view), expectedPosition),
+      isTrue,
+      reason: '$view ScrollPosition was replaced during the morph',
+    );
     expect(
       _positionForViewport(tester, view).pixels,
       closeTo(expectedPixels, 0.01),

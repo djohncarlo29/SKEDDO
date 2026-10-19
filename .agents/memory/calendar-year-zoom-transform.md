@@ -17,15 +17,15 @@ Measure both endpoints in the render box that owns the `Positioned.fill` painter
 
 - Year → Month: capture the settled Year source, mount the real Month view invisibly, then measure its rows, cells, headers, and List content before motion starts.
 - Month → Year: capture the current Month source, mount the real Year view invisibly, then freshly measure the destination instead of reusing the Year geometry from a previous visit.
-- During Year → Month, non-selected Year elements must zoom toward the measured Month weekday-row top. Painter canvas y=0 is above the Month content because the second-level title occupies space before that row.
+- During Year → Month, every non-selected Year element—including same-row day cells—must zoom toward the measured Month weekday-row top. Painter canvas y=0 is above the Month content because the second-level title occupies space before that row.
 - Freeze both snapshots for the full animation. Do not recompute them after the view handoff, from a new scroll offset, or by adding viewport/header offsets to coordinates already measured from rendered widgets.
 - If either endpoint cannot be measured, do not run the morph with estimated geometry; settle directly into the real destination layout.
 
 **Why:** The prior capture used CalendarTab-local coordinates while the painter used its overlay's coordinate space; the midpoint handoff could shift their relationship. Reverse motion could also target an old Year snapshot. Adding the content-area raise to measured Month coordinates duplicated an inset.
 
-Using canvas y=0 as the Month target also sends the morph through the title area before the static Month layout snaps to its actual content position.
+Non-selected same-row day cells must use the same target formula as the other non-selected elements: `monthFocalY + sFinal * (yearY - focalY)`. Omitting `monthFocalY` sends those still-visible cells above the title until the live Month view replaces the painter.
 
-**How to apply:** Keep capture helpers tied to the painter's keyed coordinate-space box. Re-measure the destination on every transition, keep the snapshots immutable while animating, and clear `_zoomMorphActive` only after the simulation completes.
+**How to apply:** Keep capture helpers tied to the painter's keyed coordinate-space box. Re-measure the destination on every transition, keep the snapshots immutable while animating, anchor every non-selected Month-target branch to its measured destination origin, and clear `_zoomMorphActive` only after the simulation completes.
 
 ## Remaining derived geometry
 
