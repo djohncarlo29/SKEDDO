@@ -497,6 +497,7 @@ class CalendarTabState extends State<CalendarTab>
       0.0; // year-view scroll offset captured the moment zoom begins
   double _zoomPrevT = 1.0; // tracks previous t for the midpoint view handoff
   CalendarView? _zoomTargetView;
+  bool _zoomMorphActive = false;
   ScrollController _yearScrollCtrl = ScrollController();
 
   // ── Year scroll offset — same single carried-forward source-of-truth model
@@ -713,6 +714,11 @@ class CalendarTabState extends State<CalendarTab>
   // Landscape can reduce the year to two rows, so only mounted row keys are
   // measured.
   final List<GlobalKey> _yearRowKeys = List.generate(12, (_) => GlobalKey());
+  // Geometry snapshots are measured in the same render box that owns the
+  // full-screen morph overlay. This keeps both endpoints and the painter's
+  // canvas in one coordinate space, even when CalendarTab ancestors relayout
+  // during the view handoff.
+  final GlobalKey _yearMonthMorphCoordinateSpaceKey = GlobalKey();
   // Per-mini-month week rows let the morph use measured Year-view cells and
   // row surfaces instead of reconstructing their settled coordinates.
   final List<List<GlobalKey>> _yearMorphWeekRowKeys = List.generate(
@@ -1678,6 +1684,7 @@ class CalendarTabState extends State<CalendarTab>
   }
 
   bool get calendarYearMonthMorphActive =>
+      _zoomMorphActive ||
       _zoomTargetView != null ||
       _zoomCtrl.isAnimating ||
       (_zoomCtrl.value > 0.001 && _zoomCtrl.value < 0.999);
@@ -1738,8 +1745,16 @@ class CalendarTabState extends State<CalendarTab>
 
   static const _kHierarchyCollapseDuration = Duration(milliseconds: 185);
 
-  Rect? _measureCalendarLocalRect(GlobalKey key) {
-    final calendarBox = context.findRenderObject() as RenderBox?;
+  RenderBox? _yearMonthMorphCoordinateBox() {
+    final box =
+        _yearMonthMorphCoordinateSpaceKey.currentContext?.findRenderObject()
+            as RenderBox?;
+    if (box == null || !box.attached || !box.hasSize) return null;
+    return box;
+  }
+
+  Rect? _measureMorphCoordinateLocalRect(GlobalKey key) {
+    final calendarBox = _yearMonthMorphCoordinateBox();
     final box = key.currentContext?.findRenderObject() as RenderBox?;
     if (calendarBox == null ||
         !calendarBox.attached ||
@@ -1777,7 +1792,7 @@ class CalendarTabState extends State<CalendarTab>
     final rowCount = _totalWeekRows(_dispYear, monthIndex + 1);
     final weekRows = <Rect>[];
     for (final key in _yearMorphWeekRowKeys[monthIndex].take(rowCount)) {
-      final rect = _measureCalendarLocalRect(key);
+      final rect = _measureMorphCoordinateLocalRect(key);
       if (rect == null) return null;
       weekRows.add(rect);
     }
@@ -1832,7 +1847,7 @@ class CalendarTabState extends State<CalendarTab>
   // Stores scroll-independent "natural" y coordinates so _MorphOverlay can
   // use them in place of its formulaic rowTop, eliminating layout drift.
   void _measureYearRowTops() {
-    final calBox = context.findRenderObject() as RenderBox?;
+    final calBox = _yearMonthMorphCoordinateBox();
     if (calBox == null) return;
     final grid = _yearGridGeometry(context, _screenW);
     final scrollOffset = _yearScrollCtrl.hasClients
@@ -1852,52 +1867,24 @@ class CalendarTabState extends State<CalendarTab>
   }
 
   _MonthMorphGeometry? _measureMonthMorphGeometry() {
-    final calendarBox = context.findRenderObject() as RenderBox?;
+    final calendarBox = _yearMonthMorphCoordinateBox();
     if (calendarBox == null || !calendarBox.attached || !calendarBox.hasSize) {
       return null;
-    }
-
-    Rect? measureRect(GlobalKey key) {
-      final box = key.currentContext?.findRenderObject() as RenderBox?;
-      if (box == null || !box.attached || !box.hasSize) return null;
-      // Convert all four rendered corners instead of combining a transformed
-      // origin with the untransformed local size. This keeps targets exact if
-      // a view-mode or responsive layout applies a scale/translation above a
-      // keyed row or day cell.
-      final corners = <Offset>[
-        Offset.zero,
-        Offset(box.size.width, 0.0),
-        Offset(0.0, box.size.height),
-        Offset(box.size.width, box.size.height),
-      ].map(
-        (point) => calendarBox.globalToLocal(box.localToGlobal(point)),
-      );
-      var left = double.infinity;
-      var top = double.infinity;
-      var right = double.negativeInfinity;
-      var bottom = double.negativeInfinity;
-      for (final point in corners) {
-        left = math.min(left, point.dx);
-        top = math.min(top, point.dy);
-        right = math.max(right, point.dx);
-        bottom = math.max(bottom, point.dy);
-      }
-      return Rect.fromLTRB(left, top, right, bottom);
     }
 
     final rowCount = _totalWeekRows(_dispYear, _dispMonth);
     final weekRows = <Rect>[];
     for (final key in _monthMorphRowKeys.take(rowCount)) {
-      final rect = measureRect(key);
+      final rect = _measureMorphCoordinateLocalRect(key);
       if (rect == null) return null;
       weekRows.add(rect);
     }
 
-    final dowHeader = measureRect(_monthMorphDowKey);
+    final dowHeader = _measureMorphCoordinateLocalRect(_monthMorphDowKey);
     if (dowHeader == null) return null;
     final dowLabelCenters = <Offset>[];
     for (final key in _monthMorphDowLabelKeys) {
-      final rect = measureRect(key);
+      final rect = _measureMorphCoordinateLocalRect(key);
       if (rect == null) return null;
       dowLabelCenters.add(rect.center);
     }
@@ -1906,14 +1893,14 @@ class CalendarTabState extends State<CalendarTab>
     final dayCenters = List<Offset?>.filled(daysInMonth + 1, null);
     final daySizes = List<Size?>.filled(daysInMonth + 1, null);
     for (var day = 1; day <= daysInMonth; day++) {
-      final rect = measureRect(_monthMorphDayKeys[day]);
+      final rect = _measureMorphCoordinateLocalRect(_monthMorphDayKeys[day]);
       if (rect == null) return null;
       dayCenters[day] = rect.center;
       daySizes[day] = rect.size;
     }
 
     final listContent = _viewMode == CalendarViewMode.list
-        ? measureRect(_monthMorphListKey)
+        ? _measureMorphCoordinateLocalRect(_monthMorphListKey)
         : null;
     if (_viewMode == CalendarViewMode.list && listContent == null) return null;
 
@@ -1965,18 +1952,22 @@ class CalendarTabState extends State<CalendarTab>
       if (!mounted) return;
       geometry = _measureMonthMorphGeometry();
     }
-    if (geometry == null) {
-      // Never run the morph toward stale or guessed geometry. Keep navigation
+    if (_yearMorphGeometry == null || geometry == null) {
+      // Never run the morph from or toward guessed geometry. Keep navigation
       // functional and show the actual MonthView directly if measurement fails.
       setState(() {
         _view = CalendarView.month;
         _zoomTargetView = null;
+        _zoomMorphActive = false;
       });
       _zoomCtrl.value = 1.0;
       _notify();
       return;
     }
-    setState(() => _monthMorphGeometry = geometry);
+    setState(() {
+      _monthMorphGeometry = geometry;
+      _zoomMorphActive = true;
+    });
 
     await _zoomCtrl.animateWith(
       SpringSimulation(
@@ -1991,10 +1982,11 @@ class CalendarTabState extends State<CalendarTab>
     // false and the overlay is cleared.
     if (mounted) {
       _zoomCtrl.value = 1.0;
-      if (_zoomTargetView != null) {
-        setState(() => _view = _zoomTargetView!);
+      setState(() {
+        _view = CalendarView.month;
         _zoomTargetView = null;
-      }
+        _zoomMorphActive = false;
+      });
       _notify();
     }
   }
@@ -2009,9 +2001,44 @@ class CalendarTabState extends State<CalendarTab>
     // Snapshot its current settled geometry so the reverse morph begins at the
     // exact visible coordinates rather than the geometry cached on entry.
     _monthMorphGeometry = _measureMonthMorphGeometry();
+    if (!_yearScrollCtrl.hasClients) {
+      _yearScrollCtrl.removeListener(_syncYearPreviewScrollToCurrent);
+      _yearScrollCtrl.dispose();
+      _yearScrollCtrl = ScrollController(
+        initialScrollOffset: _savedYearScrollOffset,
+      )..addListener(_syncYearPreviewScrollToCurrent);
+    }
     _zoomTargetView = CalendarView.year;
     setState(() => _zoomMonthIdx = _dispMonth - 1);
     _notify();
+
+    // The YearView is not normally mounted while MonthView is settled. Mount
+    // its real layout behind the source view, then capture its actual target
+    // positions in the morph canvas coordinate space before starting motion.
+    _YearMorphGeometry? yearGeometry;
+    for (var attempt = 0; attempt < 2 && yearGeometry == null; attempt++) {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+      _measureYearRowTops();
+      yearGeometry = _measureYearMorphGeometry(_zoomMonthIdx);
+    }
+    if (_monthMorphGeometry == null || yearGeometry == null) {
+      _zoomTargetView = null;
+      _zoomCtrl.value = 0.0;
+      setState(() {
+        _view = CalendarView.year;
+        _zoomMorphActive = false;
+      });
+      _notify();
+      return;
+    }
+    _yearMorphGeometry = yearGeometry;
+    _zoomScrollOffset = _yearScrollCtrl.hasClients
+        ? _yearScrollCtrl.offset
+        : _savedYearScrollOffset;
+    _savedYearScrollOffset = _zoomScrollOffset;
+    setState(() => _zoomMorphActive = true);
+
     await _zoomCtrl.animateWith(
       SpringSimulation(
         fast ? _kHierarchyZoomSpringExit : _kZoomSpringExit,
@@ -2022,10 +2049,11 @@ class CalendarTabState extends State<CalendarTab>
     );
     if (mounted) {
       _zoomCtrl.value = 0.0;
-      if (_zoomTargetView != null) {
-        setState(() => _view = _zoomTargetView!);
+      setState(() {
+        _view = CalendarView.year;
         _zoomTargetView = null;
-      }
+        _zoomMorphActive = false;
+      });
       _notify();
     }
   }
@@ -2056,18 +2084,6 @@ class CalendarTabState extends State<CalendarTab>
         _zoomTargetView = null;
         _notify();
       }
-    }
-    if (_zoomPrevT > 0.001 && t <= 0.001) {
-      // Year View is about to mount again after the reverse morph. A
-      // ScrollController's initialScrollOffset is reused for every future
-      // ScrollPosition, so jumpTo() from the old attachment would not survive
-      // this remount. Recreate it while the Year View is still unmounted.
-      _yearScrollCtrl.removeListener(_syncYearPreviewScrollToCurrent);
-      _yearScrollCtrl.dispose();
-      _yearScrollCtrl = ScrollController(
-        initialScrollOffset: _savedYearScrollOffset,
-      )..addListener(_syncYearPreviewScrollToCurrent);
-      setState(() {});
     }
     _zoomPrevT = t;
   }
@@ -3070,8 +3086,21 @@ class CalendarTabState extends State<CalendarTab>
             );
 
             final mountMonthPanels =
-                zoomT > 0.001 || _zoomTargetView == CalendarView.month;
-            final showMonthPanels = zoomT > 0.999;
+                zoomT > 0.001 ||
+                _zoomTargetView == CalendarView.month ||
+                (_zoomMorphActive && _view == CalendarView.month);
+            final showMonthPanels =
+                !_zoomMorphActive &&
+                _view == CalendarView.month &&
+                zoomT > 0.999;
+            final showYearPanels =
+                !_zoomMorphActive &&
+                _view == CalendarView.year &&
+                zoomT < 0.001;
+            final mountYearMorphTarget =
+                zoomT >= 0.001 &&
+                (_zoomTargetView == CalendarView.year ||
+                    (_zoomMorphActive && _view == CalendarView.year));
 
             return GestureDetector(
               behavior: HitTestBehavior.translucent,
@@ -3082,6 +3111,7 @@ class CalendarTabState extends State<CalendarTab>
               child: ColoredBox(
                 color: resolveThemeColor(kBackgroundColor, context),
                 child: AppHeaderScrollStack(
+                  key: _yearMonthMorphCoordinateSpaceKey,
                   children: [
                     // ── Year view ─────────────────────────────────────────
                     // Only shown when truly at rest (t < 0.001). The morph
@@ -3089,9 +3119,13 @@ class CalendarTabState extends State<CalendarTab>
                     // widgets with its solid background from the first frame.
                     if (zoomT < 0.001)
                       Positioned.fill(
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
+                        child: IgnorePointer(
+                          ignoring: !showYearPanels,
+                          child: Opacity(
+                            opacity: showYearPanels ? 1.0 : 0.0,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
                             Positioned(
                               left: slideX - sw,
                               top: 0,
@@ -3151,7 +3185,36 @@ class CalendarTabState extends State<CalendarTab>
                                 titleIsActive: false,
                               ),
                             ),
-                          ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // Mount the destination YearView invisibly before a
+                    // Month→Year morph. Its GlobalKeys provide the actual
+                    // settled destination geometry in the same coordinate
+                    // space as the overlay; it stays mounted through the
+                    // midpoint handoff so its layout cannot be replaced late.
+                    if (mountYearMorphTarget)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: Opacity(
+                            opacity: 0.0,
+                            child: _YearView(
+                              key: ValueKey('year-morph-$_dispYear'),
+                              year: _dispYear,
+                              today: _today,
+                              selectedDate: _selected,
+                              onMonthTap: _enterMonth,
+                              controller: _yearScrollCtrl,
+                              rowKeys: _yearRowKeys,
+                              morphWeekRowKeys: _yearMorphWeekRowKeys,
+                              scrollableTitleBuilder:
+                                  scrollableTitleBuilder,
+                              titleIsActive: true,
+                            ),
+                          ),
                         ),
                       ),
 
@@ -3167,7 +3230,8 @@ class CalendarTabState extends State<CalendarTab>
                     // (0.001 / 0.999) so the morph and each static view swap in
                     // a single frame while the animation is essentially at rest —
                     // the visual difference at those values is imperceptible.
-                    if (zoomT >= 0.001 && zoomT <= 0.999)
+                    if (_zoomMorphActive ||
+                        (zoomT >= 0.001 && zoomT <= 0.999))
                       Positioned.fill(
                         child: IgnorePointer(
                           child: _MorphOverlay(
