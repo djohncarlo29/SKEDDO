@@ -2205,6 +2205,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             width: compactArrowWidth,
             height: 40,
             child: AnimatedTapIcon(
+              // Keep the thin chevron strokes optically stable while pressed.
+              scaleEnabled: false,
               padding: const EdgeInsets.all(11),
               onTap: onTap,
               child: _ChevronIcon(
@@ -2283,6 +2285,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
 
     final previousArrow = AnimatedTapIcon(
+      // Press opacity is retained; scaling thin strokes causes a doubled edge.
+      scaleEnabled: false,
       padding: const EdgeInsets.fromLTRB(18, 12, 4, 8),
       onTap: isActive
           ? () => _calendarTabKey.currentState?.navigatePrev()
@@ -2297,6 +2301,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       ),
     );
     final nextArrow = AnimatedTapIcon(
+      scaleEnabled: false,
       padding: const EdgeInsets.fromLTRB(10, 12, 0, 8),
       onTap: isActive
           ? () => _calendarTabKey.currentState?.navigateNext()
@@ -2972,19 +2977,39 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               final headerColor = _searchFocused
                                   ? backgroundColor
                                   : headerSurfaceColor;
-                              return Container(
+                              final headerBaseHeight = topInset + innerHeight;
+                              final shellTitleHitTestHeight =
+                                  !isLandscape && !calendarTitleInContent
+                                  ? kAppHeaderTitleHeight * (1 - t)
+                                  : 0.0;
+                              final headerBackgroundColor = headerColor
+                                  .withValues(
+                                    alpha:
+                                        (1.0 - edgeProgress) * headerColor.a,
+                                  );
+                              return SizedBox(
                                 width: double.infinity,
-                                height: topInset + innerHeight,
-                                decoration: BoxDecoration(
-                                   color: headerColor.withValues(
-                                     alpha:
-                                         (1.0 - edgeProgress) *
-                                         headerColor.a,
-                                   ),
-                                ),
-                                 child: Stack(
-                                   clipBehavior: Clip.none,
+                                height:
+                                    headerBaseHeight +
+                                    shellTitleHitTestHeight,
+                                child: Stack(
+                                  clipBehavior: Clip.none,
                                   children: [
+                                    // The large shell-owned title is painted
+                                    // below the toolbar. Keep its hit-test area
+                                    // inside this Stack while leaving the
+                                    // header surface at its original height.
+                                    Positioned(
+                                      top: 0,
+                                      left: 0,
+                                      right: 0,
+                                      height: headerBaseHeight,
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          color: headerBackgroundColor,
+                                        ),
+                                      ),
+                                    ),
                                      if (!isLandscape &&
                                          !calendarTitleInContent)
                                        Positioned(
