@@ -1,32 +1,29 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smart_scheduler/main.dart';
 import 'package:smart_scheduler/tabs/calendar_tab.dart';
-import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 
 void main() {
   testWidgets(
-    'Year↔Month destination keeps its measured scroll position through handoff',
+    'Year↔Month destination stays aligned through the real AppShell handoff',
     (tester) async {
-      tester.view.physicalSize = const Size(390, 600);
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = const Size(393, 850);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
+      tester.view.padding = const FakeViewPadding(top: 24, bottom: 24);
+      addTearDown(() => tester.view.resetPadding());
 
-      final calendarKey = GlobalKey<CalendarTabState>();
-      await tester.pumpWidget(
-        CupertinoApp(
-          builder: (context, child) => AppWindowContentBoundary(
-            child: child ?? const SizedBox.shrink(),
-          ),
-          home: CupertinoPageScaffold(
-            child: CalendarTab(
-              key: calendarKey,
-              onViewChanged: (_, _, _, _, _, _) {},
-            ),
-          ),
-        ),
-      );
+      // Pump the production root, not a bare CalendarTab. The shell owns the
+      // large title, scroll inset, and per-view header-scroll scopes involved
+      // in the installed-app handoff.
+      await tester.pumpWidget(const SKEDDOApp());
       await tester.pumpAndSettle();
+      final calendar = tester.state<CalendarTabState>(
+        find.byType(CalendarTab),
+      );
 
       final initialMonthPosition = _positionForViewport(tester, 'month');
       final initialMonthViewportTop = _viewportTop(tester, 'month');
@@ -42,7 +39,7 @@ void main() {
       // Month → Year: capture the actual target ScrollPosition while the
       // painter owns the screen, then ensure the live Year view reveals that
       // same position instead of attaching a new one at initialScrollOffset.
-      calendarKey.currentState!.navigateDown();
+      calendar.navigateDown();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 16));
       final yearPosition = _positionForViewport(tester, 'year');
@@ -73,7 +70,7 @@ void main() {
       // Year → Month: the current Month view is likewise kept mounted behind
       // the painter. Its destination offset and geometry must match what the
       // painter measured when it relinquishes ownership.
-      final monthTransition = calendarKey.currentState!.advanceCurrentHeader();
+      final monthTransition = calendar.advanceCurrentHeader();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 16));
       final monthPosition = _positionForViewport(tester, 'month');
@@ -97,7 +94,7 @@ void main() {
 
       // Month → Year again with the stored non-zero Year offset. This catches
       // a remounted Scrollable silently returning to its original offset.
-      calendarKey.currentState!.navigateDown();
+      calendar.navigateDown();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 16));
       final returningYearPosition = _positionForViewport(tester, 'year');
