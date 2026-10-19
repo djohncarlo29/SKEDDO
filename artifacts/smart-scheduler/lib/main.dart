@@ -2139,12 +2139,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }) {
     if (!isDCVVisual && _selectedIndex == 1) {
       if (_calendarTitleOwnedByScrollContent) return const SizedBox.shrink();
-      // Match the fixed slot used by the Year/Month scroll-content title.
-      // Without this bound, the shell-owned row can expand into the taller
-      // toolbar-plus-title region, changing the chevron pair's vertical center
-      // as title ownership moves between the shell and Calendar's scroll view.
-      return SizedBox(
-        height: kAppHeaderTitleHeight,
+      // Use the same complete slot as the scroll-owned title. In particular,
+      // keep the bottom inset inside this fixed-height slot; the header parent
+      // must not position the title by aligning it inside its taller toolbar
+      // plus title region.
+      return _buildCalendarTitleSlot(
         child: _buildCalendarTitleRow(compactFadeColor: headerColor),
       );
     }
@@ -2230,6 +2229,28 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           ],
         );
       },
+    );
+  }
+
+  /// The fixed second-level Calendar title geometry shared by the shell and
+  /// the scroll-content owner. The slot begins immediately below the toolbar;
+  /// its bottom inset is part of the 57px slot, not part of its parent.
+  Widget _buildCalendarTitleSlot({required Widget child}) {
+    return SizedBox(
+      height: kAppHeaderTitleHeight,
+      child: AppWindowContentPadding(
+        child: Padding(
+          padding: const EdgeInsets.only(
+            left: 16,
+            right: 16,
+            bottom: kHeaderTitleBottomInset,
+          ),
+          child: Align(
+            alignment: Alignment.bottomLeft,
+            child: SizedBox(width: double.infinity, child: child),
+          ),
+        ),
+      ),
     );
   }
 
@@ -2413,32 +2434,16 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       // Offstage preserves the slot's layout while suppressing the duplicate
       // custom-painted chevrons. Month↔Day ownership is unchanged.
       offstage: yearMonthMorphActive,
-      child: SizedBox(
-        height: kAppHeaderTitleHeight,
-        child: AppWindowContentPadding(
-          child: Padding(
-            padding: const EdgeInsets.only(
-              left: 16,
-              right: 16,
-              bottom: kHeaderTitleBottomInset,
-            ),
-            child: Align(
-              alignment: Alignment.bottomLeft,
-              child: SizedBox(
-                width: double.infinity,
-                child: _buildCalendarTitlePanel(
-                  context: context,
-                  title: title,
-                  displayYear: displayYear,
-                  view: view,
-                  isActive: isActive,
-                  compactFadeColor: resolveThemeColor(
-                    kBackgroundColor,
-                    context,
-                  ),
-                ),
-              ),
-            ),
+      child: _buildCalendarTitleSlot(
+        child: _buildCalendarTitlePanel(
+          context: context,
+          title: title,
+          displayYear: displayYear,
+          view: view,
+          isActive: isActive,
+          compactFadeColor: resolveThemeColor(
+            kBackgroundColor,
+            context,
           ),
         ),
       ),
@@ -3076,6 +3081,37 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                     alpha:
                                         (1.0 - edgeProgress) * headerColor.a,
                                   );
+                               final calendarShellTitle =
+                                   !isDCVVisual && _selectedIndex == 1;
+                               final largeHeaderTitle = _buildLargeHeaderTitle(
+                                 isDCVVisual: isDCVVisual,
+                                 headerColor: backgroundColor,
+                                 primaryLabel: primaryLabel,
+                               );
+                               // Calendar's fixed slot owns its complete
+                               // vertical geometry. Align that slot to the
+                               // toolbar boundary instead of nesting it in the
+                               // generic title padding, whose bottom inset is
+                               // outside the slot and shifts the row upward.
+                               final largeHeaderTitleLayout =
+                                   calendarShellTitle
+                                   ? Align(
+                                       alignment: Alignment.bottomLeft,
+                                       child: largeHeaderTitle,
+                                     )
+                                   : AppWindowContentPadding(
+                                       child: Padding(
+                                         padding: const EdgeInsets.only(
+                                           left: 16,
+                                           right: 16,
+                                           bottom: kHeaderTitleBottomInset,
+                                         ),
+                                         child: Align(
+                                           alignment: Alignment.bottomLeft,
+                                           child: largeHeaderTitle,
+                                         ),
+                                       ),
+                                     );
                               return SizedBox(
                                 width: double.infinity,
                                 height:
@@ -3099,61 +3135,32 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                         ),
                                       ),
                                     ),
-                                     if (!isLandscape &&
-                                         !calendarTitleInContent)
-                                       Positioned(
-                                         top: topInset,
-                                         left: 0,
-                                         right: 0,
-                                         height:
-                                             (headerToolbarHeight +
-                                                     kAppHeaderTitleHeight) *
-                                                 (1 - t),
-                                           child: Transform.translate(
-                                              offset: Offset(
-                                                0,
-                                                -titleScrollOffset,
-                                              ),
-                                              child: FadeTransition(
-                                                opacity:
-                                                    _searchModeContentOpacity,
-                                                child: Container(
-                                                  color: headerSurfaceColor
-                                                      .withValues(
-                                                        alpha:
-                                                            (1.0 -
-                                                                edgeProgress) *
-                                                            headerSurfaceColor.a,
-                                                      ),
-                                                  child:
-                                                      AppWindowContentPadding(
-                                                        child: Padding(
-                                                          padding:
-                                                              const EdgeInsets.only(
-                                                                left: 16,
-                                                                right: 16,
-                                                                bottom:
-                                                                    kHeaderTitleBottomInset,
-                                                              ),
-                                                          child: Align(
-                                                            alignment: Alignment
-                                                                .bottomLeft,
-                                                            child:
-                                                                _buildLargeHeaderTitle(
-                                                                  isDCVVisual:
-                                                                      isDCVVisual,
-                                                                  headerColor:
-                                                                      backgroundColor,
-                                                                  primaryLabel:
-                                                                      primaryLabel,
-                                               ),
-                                                        ),
-                                                      ),
-                                                ),
-                                              ),
-                                           ),
-                                         ),
-                                       ),
+                                    if (!isLandscape &&
+                                        !calendarTitleInContent)
+                                      Positioned(
+                                        top: topInset,
+                                        left: 0,
+                                        right: 0,
+                                        height:
+                                            (headerToolbarHeight +
+                                                    kAppHeaderTitleHeight) *
+                                                (1 - t),
+                                        child: Transform.translate(
+                                          offset: Offset(0, -titleScrollOffset),
+                                          child: FadeTransition(
+                                            opacity: _searchModeContentOpacity,
+                                            child: Container(
+                                              color: headerSurfaceColor
+                                                  .withValues(
+                                                    alpha:
+                                                        (1.0 - edgeProgress) *
+                                                        headerSurfaceColor.a,
+                                                  ),
+                                              child: largeHeaderTitleLayout,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                      if (!isLandscape)
                                        AppHeaderScrollEdge(
                                          progress: edgeProgress,
