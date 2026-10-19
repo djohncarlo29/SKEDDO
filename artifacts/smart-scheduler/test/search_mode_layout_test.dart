@@ -106,8 +106,9 @@ void main() {
       await tester.pumpWidget(buildApp(200));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 110));
-      final centerDuringKeyboardAnimation =
-          tester.getCenter(noResultsFinder).dy;
+      final centerDuringKeyboardAnimation = tester
+          .getCenter(noResultsFinder)
+          .dy;
       expect(centerDuringKeyboardAnimation, lessThan(centerWithoutKeyboard));
       expect(
         centerDuringKeyboardAnimation,

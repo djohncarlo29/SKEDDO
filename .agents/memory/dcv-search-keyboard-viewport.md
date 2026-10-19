@@ -5,19 +5,20 @@ description: Keyboard geometry and empty-result centering for offscreen search o
 
 ## Rule
 
-The Events tab's DCV search overlay lives in a custom full-screen Stack that
-does not resize with the keyboard. `SmartDcvSearchResults` must reserve
-`MediaQuery.viewInsets.bottom` with `AnimatedPadding`, remove the bottom
-viewInsets from its inner scroll view, and use zero tab-bar clearance while the
-keyboard is open. When the keyboard is hidden, keep the normal floating-tab-bar
-clearance.
+The AppShell reserves keyboard space while editing an active DCV section, but
+must not apply that inset while DCV search is focused. `SmartDcvSearchResults`
+owns the search viewport's keyboard adjustment: it reserves
+`MediaQuery.viewInsets.bottom` with `AnimatedPadding`, removes the bottom
+viewInsets from its inner scroll view, and uses zero tab-bar clearance while
+the keyboard is open. When the keyboard is hidden, keep the normal
+floating-tab-bar clearance.
 
-**Why:** The Calendar search centers inside its keyboard-safe viewport. If both
-the parent and the empty-state helper count the keyboard, the placeholder shifts
-too far upward; if neither resizes the result area, it centers behind the
-keyboard.
+**Why:** The DCV overlay is inside the AppShell content stack. Applying the
+same keyboard inset at both boundaries double-shrinks its viewport and pushes
+the no-results placeholder above center; omitting it at both boundaries puts
+results behind the keyboard.
 
-**How to apply:** Keep the inset handling inside `SmartDcvSearchResults` so its
-callers cannot apply the same obstruction twice. Test it with explicit
-`MediaQuery.viewInsets` and assert the empty state centers between the fixed
-header and keyboard edge.
+**How to apply:** Keep the shell inset for section editing only and let
+`SmartDcvSearchResults` handle focused search. Test the combined shell-padding
+and results-widget layout with explicit `MediaQuery.viewInsets` so duplicate
+inset ownership is caught.
