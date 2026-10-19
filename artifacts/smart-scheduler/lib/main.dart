@@ -2185,13 +2185,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       color: isToday ? resolveAccentColor(context) : primaryLabel,
       letterSpacing: compact ? -0.6 : -1.2,
     );
-    Widget activePanelControl(Widget child) => Visibility(
-      visible: isActive,
-      maintainSize: true,
-      maintainAnimation: true,
-      maintainState: true,
-      child: child,
-    );
+    // Keep controls painted on the adjacent title panels so they travel with
+    // the incoming/outgoing screen instead of disappearing during the slide.
+    // Their callbacks are already null on inactive panels; this also protects
+    // the whole control from receiving input while it is only a preview.
+    Widget panelControl(Widget child) =>
+        IgnorePointer(ignoring: !isActive, child: child);
 
     Widget compactArrow({
       required _ChevronDir direction,
@@ -2262,7 +2261,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               ? () => _calendarTabKey.currentState?.navigateDown()
               : null,
         );
-        if (!compact) return activePanelControl(verticalNavigation);
+        if (!compact) return panelControl(verticalNavigation);
 
         return Row(
           mainAxisSize: MainAxisSize.min,
@@ -2322,8 +2321,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Expanded(child: titleScroller),
-        activePanelControl(previousArrow),
-        activePanelControl(nextArrow),
+        panelControl(previousArrow),
+        panelControl(nextArrow),
       ],
     );
   }

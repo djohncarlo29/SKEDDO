@@ -44,8 +44,8 @@
 - [Bounded squircle geometry](bounded-squircle-geometry.md) — constrain shared-radius paths to each card’s actual rect; Flutter’s individual clamp leaves seams on short cards.
 - [Split Cupertino picker chevrons](split-chevron-clipping.md) — clip upper/lower halves separately; translate the lower source by -half + offset to move only the lower chevron.
 - [Fixed Squircle Stadium radius](fixed-stadium-radius.md) — shared stadium controls use 24px corners; the 40px search bar explicitly remains 20px.
- - [Dark-mode ghost and sheet outlines](dark-mode-ghost-and-sheet-outlines.md) — overlay/lifted-card hairlines are Dark Mode-only; grouping snap glow bypasses shadow suppression.
- - [Light-mode attachment confirm surface](light-mode-checkmark-glass.md) — confirm uses a solid accent circle with a white glyph in Light Mode; the glass lens neutralizes saturated surfaces.
+- [Dark-mode ghost and sheet outlines](dark-mode-ghost-and-sheet-outlines.md) — overlay/lifted-card hairlines are Dark Mode-only; grouping snap glow bypasses shadow suppression.
+- [Light-mode attachment confirm surface](light-mode-checkmark-glass.md) — confirm uses a solid accent circle with a white glyph in Light Mode; the glass lens neutralizes saturated surfaces.
 - [Subscreen checkmark layout](subscreen-checkmark-layout.md) — selectable rows share an OS-scaled checkmark slot with fixed 16px label and edge gaps.
 - [Flutter APK Gradle stability](flutter-apk-gradle-stability.md) — SIGBUS fix requires DEFAULT_JVM_OPTS in gradlew (not just gradle.properties); daemon=false runs in wrapper JVM which ignores org.gradle.jvmargs.
 - [Shorebird patch and release workflow](shorebird-workflow.md) — use `--platforms`; preserve JDK, preflight, SDK, temp-storage, native-baseline, and release checks.
@@ -126,29 +126,18 @@
 - [Section delete confirmation](section-delete-confirmation.md) — section removal takes two confirmations; events stay in the category as unsectioned events.
 - [Edit Sections rubberbanding](edit-sections-rubberband.md) — the content area should bounce at its scroll edges, including when the section list fits.
 - [DCV section persistence](dcv-section-persistence.md) — keep live section state authoritative and serialize preference snapshots to prevent stale overwrites.
- - [Category preview ball gradient](category-preview-ball-gradient.md) — Card 1 soccerball artwork follows the circle’s per-swatch additive highlight, with reduced lift for bright swatches.
- - [Smart Category lifecycle](smart-category-lifecycle.md) — Smart Categories own rules, not events or sections; use red lifecycle actions and explicit utility confirmations.
+- [Category preview ball gradient](category-preview-ball-gradient.md) — Card 1 soccerball artwork follows the circle’s per-swatch additive highlight, with reduced lift for bright swatches.
+- [Smart Category lifecycle](smart-category-lifecycle.md) — Smart Categories own rules, not events or sections; use red lifecycle actions and explicit utility confirmations.
 - [Calendar month dot ordering](calendar-month-dot-order.md) — month-grid dots follow the first event in displayed list order, with all-day events first.
 - [Liquid Glass SF glyph normalization](liquid-glass-sf-glyph-normalization.md) — custom SF font glyphs need one shared slot and unconstrained rendering; per-glyph FittedBox sizing distorts optical comparisons.
 - [Date-picker weekday headers](date-picker-weekday-headers.md) — all calendar and modal date-picker weekday rows use single letters, `M T W T F S S`.
 - [Calendar swipe indicator geometry](calendar-swipe-indicator-geometry.md) — cap bloom overshoot globally and keep the selected swipe overlay blob-wrapped so fixed-height circles still deform horizontally.
 - [Day banner swipe height](day-banner-swipe-height.md) — interpolate banner height toward incoming Single Day labels or Multi Day pairs during horizontal navigation.
-- [Multi-Day faded circle compositing](multiday-faded-circle-compositing.md) — draw overlapping faded markers in one opaque union layer, then apply 40% opacity once.
 - [Smart Category semantic threshold](smart-category-semantic-threshold.md) — shared date/time text makes low cosine floors admit unrelated scheduled events; keep semantic matching conservative and normalize plural rules.
 - [Native iOS tab bar bridge](native-ios-tab-bar-bridge.md) — keep UIKit tab chrome across iOS versions; UIKit selects classic or floating styling and Flutter content clearance follows.
-- [Calendar midpoint view handoff](calendar-midpoint-view-handoff.md) — hierarchy-dependent Calendar UI switches at 50% in both directions; accelerated Year↔Day keeps the same handoff.
-- [Calendar Day List header transition](calendar-day-list-header-transition.md) — DOW, week strip, and day banner must share one mounted vertical transition when entering or leaving List mode.
-- [Calendar morph content bounds](calendar-morph-content-bounds.md) — Positioned morph children need content-sized alignment; an unconstrained Align can expand a list layer across the transition viewport.
-- [Year↔Month List morph boundary](year-month-list-morph-boundary.md) — position the List handoff in the overlay and keep its opacity layer intrinsic to the event content.
-- [Calendar week-strip veil architecture](calendar-morph-week-strip-surfaces.md) — keep Day content underneath fixed DOW chrome; each full week row is an opaque moving veil.
-- [Picker wide-layout geometry](picker-wide-layout-geometry.md) — reuse portrait-derived item/cell sizes and spacing at the current text scale, then fit extra left-aligned columns inside the sheet.
-- [Landscape date picker columns](cupertino-date-picker-landscape-width.md) — retain the compact label-sized group; fix clipping inside each wheel without changing spacing.
-- [Barrel option text fitting](barrel-option-text-fitting.md) — custom wheels inherit text scaling once; the native portrait date picker needs its theme font scaled before its no-scaling boundary.
+- [Calendar morph transition notes](calendar-morph-transition-index.md) — consult the view-specific handoff, bounds, veil, or Day List transition constraint before changing hierarchy animations.
+- [Picker and live rotation geometry](picker-rotation-index.md) — use the focused geometry notes for landscape picker sizing and live window-metric transitions.
 - [Smart Category count cache invalidation](smart-category-count-cache-invalidation.md) — matcher embeddings can change results asynchronously without changing the event list, so derived counts need matcher revisions.
-- [Live rotation layout](live-rotation-layout.md) — never freeze the root MediaQuery during native rotation; every intermediate window metric must reach adaptive layouts.
-- [Live rotation geometry](live-rotation-geometry.md) — picker morphs use live window metrics projected between settled portrait/landscape endpoints, never a timer-based orientation animation.
-- [Rotation endpoint focus settlement](rotation-focus-settlement.md) — finalize even when a single metrics event lands at the new endpoint; retain focus through late IME blur.
-- [Picker geometry consolidation](picker-geometry-consolidation.md) — icon, emoji, and color pickers share one geometry model; landscape preserves item size and turns extra width into gaps.
 - [Live slider persistence](live-slider-persistence.md) — persist on gesture completion even when live preview state already equals the snapped value.
 - [Calendar landscape safe-area insets](calendar-landscape-header-inset.md) — inset Year, Month, and Day content inside full-width panels; preserve bleed lines through Month↔Day transitions.
 - [Landscape current-time positioning](calendar-landscape-time-indicator-position.md) — center the Day timeline within usable height above the tab bar; preserve the portrait starting offset.
@@ -157,3 +146,4 @@
 - [Nested modal header alignment](nested-modal-header-alignment.md) — nested titles and controls stay at the same screen coordinates as their parent sheet.
 - [Landscape pill contour sampling](landscape-pill-contour-sampling.md) — offset on local normals so flat edges stay 1px; preserve slider alpha and denser landscape sampling.
 - [Impeller screen-space glass geometry](impeller-screen-space-glass-geometry.md) — shader resolution must use the full FlutterView size, not narrowed landscape content MediaQuery dimensions.
+- [Calendar header chevron continuity](calendar-header-chevron-continuity.md) — keep controls visible but non-interactive on inactive swipe panels so navigation glyphs travel with the page.
