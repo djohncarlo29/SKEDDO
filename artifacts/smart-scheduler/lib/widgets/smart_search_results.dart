@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 
 import '../app_theme.dart';
@@ -138,10 +140,21 @@ class SmartDcvSearchResults extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final keyboardBottom = MediaQuery.viewInsetsOf(context).bottom;
+    final isEmpty = primary.isEmpty && overflow.isEmpty;
+    // The empty-state viewport must clear whichever is larger: the keyboard
+    // or the floating tab bar. Use one animated inset so tab-bar clearance
+    // takes over continuously as the keyboard shrinks, rather than waiting for
+    // the keyboard inset to reach zero and starting a second animation.
+    final bottomObstruction = isEmpty
+        ? math.max(
+            keyboardBottom,
+            floatingTabBarContentBottomClearance(context),
+          )
+        : keyboardBottom;
     return AnimatedPadding(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
-      padding: EdgeInsets.only(bottom: keyboardBottom),
+      padding: EdgeInsets.only(bottom: bottomObstruction),
       child: MediaQuery.removeViewInsets(
         context: context,
         removeBottom: true,
@@ -159,7 +172,7 @@ class SmartDcvSearchResults extends StatelessWidget {
   }) {
     if (primary.isEmpty && overflow.isEmpty) {
       // Keep the empty state inside the same bouncing scroll surface as
-      // populated DCV results. The outer padding reserves the keyboard area;
+      // populated DCV results. The outer inset defines the usable viewport;
       // AlwaysScrollable gives the placeholder native rubber-band response
       // even when it fits.
       return CustomScrollView(
@@ -171,13 +184,7 @@ class SmartDcvSearchResults extends StatelessWidget {
         slivers: [
           SliverFillRemaining(
             hasScrollBody: false,
-            child: SearchNoResultsCentered(
-              // The keyboard-safe viewport is already clear of the floating
-              // tab bar, so applying that obstruction again would shift the
-              // empty state too far upward.
-              bottomClearance: keyboardSafeViewport
-                  ? 0
-                  : floatingTabBarContentBottomClearance(context),
+            child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [

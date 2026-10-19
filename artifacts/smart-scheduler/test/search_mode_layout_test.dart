@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/dcv_keyboard_layout.dart';
 import 'package:smart_scheduler/widgets/search_bar_widget.dart';
@@ -184,6 +185,79 @@ void main() {
       expect(
         tester.getCenter(find.byType(SearchNoResults)).dy,
         closeTo(360, 1),
+      );
+    },
+  );
+
+  testWidgets(
+    'DCV empty results transfer keyboard clearance to the tab bar continuously',
+    (tester) async {
+      const surfaceSize = Size(390, 800);
+      tester.view.physicalSize = surfaceSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      double? tabBarClearance;
+
+      Widget buildApp(double keyboardBottomInset) {
+        return CupertinoApp(
+          home: MediaQuery(
+            data: MediaQueryData(
+              size: surfaceSize,
+              viewInsets: EdgeInsets.only(bottom: keyboardBottomInset),
+            ),
+            child: Builder(
+              builder: (context) {
+                tabBarClearance ??= floatingTabBarContentBottomClearance(
+                  context,
+                );
+                return SizedBox.expand(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 120),
+                      const Expanded(
+                        child: SmartDcvSearchResults(
+                          primary: [],
+                          overflow: [],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildApp(0));
+      await tester.pumpAndSettle();
+      final placeholder = find.byType(SearchNoResults);
+      final centerWithoutKeyboard = tester.getCenter(placeholder).dy;
+
+      expect(tabBarClearance, isNotNull);
+      expect(tabBarClearance!, greaterThan(50));
+
+      await tester.pumpWidget(buildApp(200));
+      await tester.pumpAndSettle();
+      expect(tester.getCenter(placeholder).dy, closeTo(360, 1));
+
+      // Once the keyboard is shorter than the tab-bar clearance, the empty
+      // state should already be at its final resting center. It must not drop
+      // lower and then move back up when the inset reaches zero.
+      await tester.pumpWidget(buildApp(50));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getCenter(placeholder).dy,
+        closeTo(centerWithoutKeyboard, 1),
+      );
+
+      await tester.pumpWidget(buildApp(0));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getCenter(placeholder).dy,
+        closeTo(centerWithoutKeyboard, 1),
       );
     },
   );
