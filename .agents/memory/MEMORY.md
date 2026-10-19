@@ -135,7 +135,7 @@
 - [Day banner swipe height](day-banner-swipe-height.md) — interpolate banner height toward incoming Single Day labels or Multi Day pairs during horizontal navigation.
 - [Smart Category semantic threshold](smart-category-semantic-threshold.md) — shared date/time text makes low cosine floors admit unrelated scheduled events; keep semantic matching conservative and normalize plural rules.
 - [Native iOS tab bar bridge](native-ios-tab-bar-bridge.md) — keep UIKit tab chrome across iOS versions; UIKit selects classic or floating styling and Flutter content clearance follows.
-- [Calendar morph transition notes](calendar-morph-transition-index.md) — consult the view-specific handoff, bounds, veil, or Day List transition constraint before changing hierarchy animations.
+- [Calendar morph transition notes](calendar-morph-transition-index.md) — consult view-specific handoff, bounds, veil, Day List, and destination-scroll geometry constraints before hierarchy animation edits.
 - [Picker and live rotation geometry](picker-rotation-index.md) — use the focused geometry notes for landscape picker sizing and live window-metric transitions.
 - [Smart Category count cache invalidation](smart-category-count-cache-invalidation.md) — matcher embeddings can change results asynchronously without changing the event list, so derived counts need matcher revisions.
 - [Live slider persistence](live-slider-persistence.md) — persist on gesture completion even when live preview state already equals the snapped value.

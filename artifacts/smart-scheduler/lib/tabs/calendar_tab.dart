@@ -1937,26 +1937,48 @@ class CalendarTabState extends State<CalendarTab>
       final monthViewport = _measureMorphCoordinateLocalRect(
         _monthViewScrollViewportKey,
       );
-      final yearPositionId = _yearScrollCtrl.hasClients
-          ? identityHashCode(_yearScrollCtrl.position)
-          : null;
-      final monthPositionId = _monthViewScrollCtrl.hasClients
-          ? identityHashCode(_monthViewScrollCtrl.position)
-          : null;
+      String scrollState(ScrollController controller) {
+        final positions = controller.positions.toList();
+        if (positions.isEmpty) {
+          return 'controller=${identityHashCode(controller)} positions=none';
+        }
+        final positionValues = positions
+            .map(
+              (position) =>
+                  '${identityHashCode(position)}:${y(position.pixels)}'
+                  '/${y(position.maxScrollExtent)}',
+            )
+            .join(',');
+        return 'controller=${identityHashCode(controller)} '
+            'positions=${positions.length}[$positionValues]';
+      }
+
+      double? interpolate(double? from, double? to) {
+        if (from == null || to == null) return null;
+        return lerpDouble(from, to, _zoomCtrl.value);
+      }
+      double? firstTop(List<Rect>? rows) =>
+          rows == null || rows.isEmpty ? null : rows.first.top;
+      final yearGridTop = firstTop(_yearMorphGeometry?.weekRows);
+      final monthGridTop = firstTop(_monthMorphGeometry?.weekRows);
       debugPrint(
         '[calendar-morph] $phase '
         't=${_zoomCtrl.value.toStringAsFixed(4)} '
-        'view=$_view target=$_zoomTargetView '
-        'painterY(year=${y(_yearMorphGeometry?.dowHeader.top)},'
-        'month=${y(_monthMorphGeometry?.dowHeader.top)}) '
-        'liveY(year=${y(yearLive?.dowHeader.top)},'
-        'month=${y(monthLive?.dowHeader.top)}) '
-        'scroll(year=${y(_yearScrollCtrl.hasClients ? _yearScrollCtrl.offset : null)},'
-        'position=$yearPositionId,'
-        'savedYear=${y(_savedYearScrollOffset)},'
-        'month=${y(_monthViewScrollCtrl.hasClients ? _monthViewScrollCtrl.offset : null)},'
-        'position=$monthPositionId,'
-        'savedMonth=${y(_savedMonthScrollOffset)}) '
+        'view=$_view target=$_zoomTargetView morph=$_zoomMorphActive '
+        'targetY(headerY=${y(interpolate(_yearMorphGeometry?.dowHeader.top, _monthMorphGeometry?.dowHeader.top))},'
+        'gridY=${y(interpolate(yearGridTop, monthGridTop))};'
+        'yearHeader=${y(_yearMorphGeometry?.dowHeader.top)},'
+        'yearGrid=${y(yearGridTop)},'
+        'monthHeader=${y(_monthMorphGeometry?.dowHeader.top)},'
+        'monthGrid=${y(monthGridTop)}) '
+        'liveY(yearHeader=${y(yearLive?.dowHeader.top)},'
+        'yearGrid=${y(firstTop(yearLive?.weekRows))},'
+        'monthHeader=${y(monthLive?.dowHeader.top)},'
+        'monthGrid=${y(firstTop(monthLive?.weekRows))}) '
+        'scroll(year={${scrollState(_yearScrollCtrl)}},'
+        'saved=${y(_savedYearScrollOffset)};'
+        'month={${scrollState(_monthViewScrollCtrl)}},'
+        'saved=${y(_savedMonthScrollOffset)}) '
         'viewportTop(year=${y(yearViewport?.top)},'
         'month=${y(monthViewport?.top)})',
       );

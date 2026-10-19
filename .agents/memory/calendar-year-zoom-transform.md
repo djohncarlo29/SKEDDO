@@ -32,6 +32,12 @@ The selected mini-month's actual week-row bounds are measured. Its day slots are
 
 The view/header handoff occurs at the transition midpoint. It may change ownership of the surrounding layout, but must not mutate or remeasure the morph endpoint snapshots.
 
+Keep the measured destination `Scrollable` mounted through the painter's final release, and preserve its keyed parent slot as surrounding preview panels are added. A `ScrollController`'s `initialScrollOffset` seeds a new position; it does not track later live pixels.
+
+**Why:** Replacing the hidden destination immediately before reveal can reattach a new `ScrollPosition` from a stale initial offset. The painter can reach the right measured endpoint while the live view appears at a different scroll position.
+
+**How to apply:** Reconcile the destination as the same keyed child from capture through settled display. If adding sibling panels changes child order, key the direct Stack slots so the center destination is moved rather than remounted. Verify non-zero scroll offsets as well as viewport origin.
+
 ## Key dependency
 
 `lerpDouble` requires `import 'dart:ui' show lerpDouble;` — flutter/cupertino.dart alone does NOT expose it as a free function inside StatelessWidget.build.
