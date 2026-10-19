@@ -2427,23 +2427,27 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     CalendarView view,
     bool isActive,
   ) {
-    Widget titleContent(bool yearMonthMorphActive) => Offstage(
-      // AppShell owns the title and controls throughout the Year↔Month zoom.
-      // Listen to the transition state directly: cached scroll panels can keep
-      // this widget alive even when CalendarTab's title builder is replaced.
-      // Offstage preserves the slot's layout while suppressing the duplicate
-      // custom-painted chevrons. Month↔Day ownership is unchanged.
-      offstage: yearMonthMorphActive,
-      child: _buildCalendarTitleSlot(
-        child: _buildCalendarTitlePanel(
-          context: context,
-          title: title,
-          displayYear: displayYear,
-          view: view,
-          isActive: isActive,
-          compactFadeColor: resolveThemeColor(
-            kBackgroundColor,
-            context,
+    Widget titleContent(bool yearMonthMorphActive) => SizedBox(
+      height: kAppHeaderTitleHeight,
+      child: Offstage(
+        // AppShell owns the title and controls throughout the Year↔Month zoom.
+        // Listen to the transition state directly: cached scroll panels can
+        // keep this widget alive even when CalendarTab's title builder is
+        // replaced. Offstage reports zero size, so retain its 57px slot outside
+        // Offstage while suppressing duplicate custom-painted chevrons.
+        // Month↔Day ownership is unchanged.
+        offstage: yearMonthMorphActive,
+        child: _buildCalendarTitleSlot(
+          child: _buildCalendarTitlePanel(
+            context: context,
+            title: title,
+            displayYear: displayYear,
+            view: view,
+            isActive: isActive,
+            compactFadeColor: resolveThemeColor(
+              kBackgroundColor,
+              context,
+            ),
           ),
         ),
       ),

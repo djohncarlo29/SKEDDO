@@ -1,10 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:smart_scheduler/app_theme.dart';
+import 'package:smart_scheduler/main.dart';
 import 'package:smart_scheduler/tabs/calendar_tab.dart';
-import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
-import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 
 void main() {
   testWidgets(
@@ -12,7 +10,6 @@ void main() {
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       const screenSize = Size(393, 680);
-      const headerInset = 68.0;
       tester.view.physicalSize = screenSize;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -20,43 +17,13 @@ void main() {
       tester.view.padding = const FakeViewPadding(top: 24, bottom: 24);
       addTearDown(() => tester.view.resetPadding());
 
-      // Match the production content inset and title-slot height while keeping
-      // unrelated tabs out of this focused calendar transition test.
-      await tester.pumpWidget(
-        CupertinoApp(
-          builder: (context, child) {
-            final mediaQuery = MediaQuery.of(
-              context,
-            ).copyWith(size: screenSize);
-            return MediaQuery(
-              data: mediaQuery,
-              child: AppWindowContentBoundary(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: headerInset),
-                  child: AppHeaderScrollInsetScope(
-                    leadingInset: headerInset,
-                    child: child ?? const SizedBox.shrink(),
-                  ),
-                ),
-              ),
-            );
-          },
-          home: CupertinoPageScaffold(
-            child: CalendarTab(
-              onViewChanged: (_, _, _, _, _, _) {},
-              scrollableTitleBuilder:
-                  (context, title, displayYear, view, isActive) =>
-                      SizedBox(
-                        height: kAppHeaderTitleHeight,
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text('$title $displayYear'),
-                        ),
-                      ),
-            ),
-          ),
-        ),
-      );
+      // Exercise the actual shell, including its fixed title handoff and the
+      // scroll-offset scope changes that the phone recording shows.
+      await tester.pumpWidget(const SKEDDOApp());
+      await tester.pumpAndSettle();
+      final calendarTabLabel = find.text('Calendar');
+      expect(calendarTabLabel, findsNWidgets(2));
+      await tester.tapAt(tester.getCenter(calendarTabLabel.last));
       await tester.pumpAndSettle();
       final calendar = tester.state<CalendarTabState>(
         find.byType(CalendarTab),
@@ -210,7 +177,7 @@ Finder _scrollViewForViewport(String view) {
   return find.descendant(
     of: viewportKey,
     matching: find.byType(SingleChildScrollView),
-  );
+  ).first;
 }
 
 double _viewportTop(WidgetTester tester, String view) =>

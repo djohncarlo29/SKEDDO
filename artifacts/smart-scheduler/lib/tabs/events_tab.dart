@@ -9223,7 +9223,7 @@ Widget _buildUnifiedCalendarIconUnit({
                 right: 0,
                 child: Center(
                   child: Transform.scale(
-                    scale: dayScale,
+                    scaleX: dayScale,
                     scaleY: dayScaleY,
                     child: Text(
                       '$day',
