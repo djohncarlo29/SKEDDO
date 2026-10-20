@@ -4607,6 +4607,28 @@ _MonthSelectedEvents _monthSelectedEventsWidgetFor({
 }
 
 // ─── CustomPainter: all morph drawing via canvas calls, zero widget tree ──────
+class _MorphTextDraw {
+  const _MorphTextDraw({
+    required this.text,
+    required this.fontSize,
+    required this.fromWeight,
+    required this.toWeight,
+    required this.color,
+    required this.opacity,
+    required this.center,
+    required this.letterSpacing,
+  });
+
+  final String text;
+  final double fontSize;
+  final FontWeight fromWeight;
+  final FontWeight toWeight;
+  final Color color;
+  final double opacity;
+  final Offset center;
+  final double letterSpacing;
+}
+
 class _MorphPainter extends CustomPainter {
   _MorphPainter({
     required this.t,
@@ -4708,8 +4730,6 @@ class _MorphPainter extends CustomPainter {
       color.withAlpha((color.alpha * a.clamp(0.0, 1.0)).round());
 
   // ── Draw text centred at [centre] with alpha multiplier [a] ───────────────
-  // [wght] drives SFPro's variable weight axis continuously (e.g. 400.0–600.0)
-  // instead of the 9-step discrete FontWeight snaps.
   void _textC(
     Canvas canvas,
     String str,
@@ -4719,12 +4739,10 @@ class _MorphPainter extends CustomPainter {
     double a,
     Offset centre, {
     double ls = 0.0,
-    double? wght,
   }) {
     if (a <= 0 || sz < 1) return;
     final fadedColor = _fade(color, a);
-    final key =
-        'c|$str|$sz|${fw.index}|${wght ?? -1}|${fadedColor.toARGB32()}|$ls';
+    final key = 'c|$str|$sz|${fw.index}|${fadedColor.toARGB32()}|$ls';
     final tp = _frameTextCache[key] ??= TextPainter(
       text: TextSpan(
         text: str,
@@ -4738,7 +4756,6 @@ class _MorphPainter extends CustomPainter {
           // positions. Removing it makes _textC centre by the same bounding
           // box height as the widget's Center() wrapper, eliminating the snap.
           fontWeight: fw,
-          fontVariations: wght != null ? [FontVariation('wght', wght)] : null,
           color: fadedColor,
           letterSpacing: ls,
         ),
@@ -4747,6 +4764,79 @@ class _MorphPainter extends CustomPainter {
       textAlign: TextAlign.center,
     )..layout();
     tp.paint(canvas, centre - Offset(tp.width / 2, tp.height / 2));
+  }
+
+  // SF Pro is bundled as separate static weight files, so FontWeight.lerp
+  // can't produce an intermediate stroke and FontVariation('wght') has no
+  // variable axis to adjust. Crossfade the exact endpoint glyph masks and add
+  // their premultiplied coverage in a bounded layer for a smooth weight blend.
+  void _paintLerpedWeightTexts(
+    Canvas canvas,
+    Size size,
+    List<_MorphTextDraw> draws,
+  ) {
+    if (draws.isEmpty) return;
+
+    final weightT = t.clamp(0.0, 1.0);
+    void paintWeight(_MorphTextDraw draw, FontWeight weight, double opacity) {
+      _textC(
+        canvas,
+        draw.text,
+        draw.fontSize,
+        weight,
+        draw.color,
+        draw.opacity * opacity,
+        draw.center,
+        ls: draw.letterSpacing,
+      );
+    }
+
+    if (weightT <= 0.0) {
+      for (final draw in draws) {
+        paintWeight(draw, draw.fromWeight, 1.0);
+      }
+      return;
+    }
+    if (weightT >= 1.0) {
+      for (final draw in draws) {
+        paintWeight(draw, draw.toWeight, 1.0);
+      }
+      return;
+    }
+
+    var minX = double.infinity;
+    var minY = double.infinity;
+    var maxX = double.negativeInfinity;
+    var maxY = double.negativeInfinity;
+    var maxFontSize = 0.0;
+    for (final draw in draws) {
+      if (draw.opacity <= 0.0 || draw.fontSize < 1.0) continue;
+      minX = math.min(minX, draw.center.dx);
+      minY = math.min(minY, draw.center.dy);
+      maxX = math.max(maxX, draw.center.dx);
+      maxY = math.max(maxY, draw.center.dy);
+      maxFontSize = math.max(maxFontSize, draw.fontSize);
+    }
+    if (!minX.isFinite) return;
+    final margin = maxFontSize * 1.5 + 2.0;
+    final bounds = Rect.fromLTRB(
+      minX - margin,
+      minY - margin,
+      maxX + margin,
+      maxY + margin,
+    ).intersect(Offset.zero & size);
+    if (bounds.isEmpty) return;
+
+    canvas.saveLayer(bounds, Paint());
+    for (final draw in draws) {
+      paintWeight(draw, draw.fromWeight, 1.0 - weightT);
+    }
+    canvas.saveLayer(bounds, Paint()..blendMode = BlendMode.plus);
+    for (final draw in draws) {
+      paintWeight(draw, draw.toWeight, weightT);
+    }
+    canvas.restore();
+    canvas.restore();
   }
 
   // ── Draw text left-aligned, top at [topLeft], with alpha multiplier [a] ───
@@ -4948,6 +5038,7 @@ class _MorphPainter extends CustomPainter {
       // Day cells (per-cell shared-element morph)
       if (cellAlpha > 0) {
         final monthLayout = yearLayout.months[mi];
+        final numberDraws = <_MorphTextDraw>[];
         for (final dayCell in monthLayout.days) {
           final d = dayCell.day;
           final dow = dayCell.dayColumn;
@@ -5007,31 +5098,25 @@ class _MorphPainter extends CustomPainter {
             );
             canvas.drawCircle(Offset(cx, cy), r, _p);
           }
-          // Font weight lerps continuously via fontVariations (variable font axis)
-          // and discretely via FontWeight.lerp as a reliable fallback.
-          final fwStart = (isToday || isSelected)
-              ? FontWeight.w600
-              : FontWeight.w500;
-          final fwEnd = (isToday || isSelected)
-              ? FontWeight.w600
-              : FontWeight.w400;
-          final wght = lerpDouble(
-            (isToday || isSelected) ? 600.0 : 500.0,
-            (isToday || isSelected) ? 600.0 : 400.0,
-            t,
-          )!;
-          _textC(
-            canvas,
-            '$d',
-            fSize,
-            FontWeight.lerp(fwStart, fwEnd, t)!,
-            (isSelected || isToday) ? const Color(0xFFFFFFFF) : primaryColor,
-            cellAlpha,
-            Offset(cx, cy),
-            ls: -0.3,
-            wght: wght,
+          final isEmphasized = isToday || isSelected;
+          numberDraws.add(
+            _MorphTextDraw(
+              text: '$d',
+              fontSize: fSize,
+              fromWeight: isEmphasized
+                  ? FontWeight.w600
+                  : FontWeight.w500,
+              toWeight: isEmphasized
+                  ? FontWeight.w600
+                  : FontWeight.w400,
+              color: isEmphasized ? const Color(0xFFFFFFFF) : primaryColor,
+              opacity: cellAlpha,
+              center: Offset(cx, cy),
+              letterSpacing: 0.0,
+            ),
           );
         }
+        _paintLerpedWeightTexts(canvas, size, numberDraws);
       }
     }
     canvas.restore();
@@ -5072,6 +5157,7 @@ class _MorphPainter extends CustomPainter {
         kFixedTopPadding + monthDayCircleDiameter / 2;
 
     // 3. Selected-month day cells — per-element lerp year → month ─────────────
+    final selectedMonthNumberDraws = <_MorphTextDraw>[];
     for (final dayCell in zoomMonthLayout.days) {
       final d = dayCell.day;
       final dow = dayCell.dayColumn;
@@ -5151,27 +5237,18 @@ class _MorphPainter extends CustomPainter {
         _p.color = _fade(accentColor, isSelected ? 1.0 : 0.40);
         canvas.drawCircle(Offset(cx, cy), r, _p);
       }
-      // Font weight lerps continuously via fontVariations (variable font axis)
-      // and discretely via FontWeight.lerp as a reliable fallback.
-      final fwStart = (isToday || isSelected)
-          ? FontWeight.w600
-          : FontWeight.w500;
-      final fwEnd = (isToday || isSelected) ? FontWeight.w600 : FontWeight.w400;
-      final wght = lerpDouble(
-        (isToday || isSelected) ? 600.0 : 500.0,
-        (isToday || isSelected) ? 600.0 : 400.0,
-        t,
-      )!;
-      _textC(
-        canvas,
-        '$d',
-        fSize,
-        FontWeight.lerp(fwStart, fwEnd, t)!,
-        (isSelected || isToday) ? const Color(0xFFFFFFFF) : primaryColor,
-        1.0,
-        Offset(cx, cy),
-        ls: lerpDouble(-0.3, 0.0, t)!,
-        wght: wght,
+      final isEmphasized = isToday || isSelected;
+      selectedMonthNumberDraws.add(
+        _MorphTextDraw(
+          text: '$d',
+          fontSize: fSize,
+          fromWeight: isEmphasized ? FontWeight.w600 : FontWeight.w500,
+          toWeight: isEmphasized ? FontWeight.w600 : FontWeight.w400,
+          color: isEmphasized ? const Color(0xFFFFFFFF) : primaryColor,
+          opacity: 1.0,
+          center: Offset(cx, cy),
+          letterSpacing: 0.0,
+        ),
       );
 
       // Month List's event markers belong to the Month side of this
@@ -5199,6 +5276,7 @@ class _MorphPainter extends CustomPainter {
         }
       }
     }
+    _paintLerpedWeightTexts(canvas, size, selectedMonthNumberDraws);
 
     // 4. Week numbers + separator lines ────────────────────────────────────────
     // Week numbers travel from the mini-month left edge to the wk-num column.

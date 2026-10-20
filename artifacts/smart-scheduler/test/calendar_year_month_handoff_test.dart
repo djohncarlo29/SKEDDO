@@ -134,6 +134,42 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'Year↔Month weight blend completes below default text size',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = const Size(393, 680);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.padding = const FakeViewPadding(top: 24, bottom: 24);
+      tester.platformDispatcher.textScaleFactorTestValue = 0.8;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPadding);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+      await tester.pumpWidget(const SKEDDOApp());
+      await tester.pumpAndSettle();
+      final calendarTabLabel = find.text('Calendar');
+      expect(calendarTabLabel, findsNWidgets(2));
+      await tester.tapAt(tester.getCenter(calendarTabLabel.last));
+      await tester.pumpAndSettle();
+      final calendarFinder = find.byType(CalendarTab);
+      final calendar = tester.state<CalendarTabState>(calendarFinder);
+      expect(
+        MediaQuery.textScalerOf(tester.element(calendarFinder)).scale(11.0),
+        lessThan(11.0),
+      );
+
+      calendar.navigateDown();
+      await tester.pumpAndSettle();
+      final transition = calendar.advanceCurrentHeader();
+      await tester.pump();
+      await tester.pumpAndSettle();
+      await transition;
+      expect(calendar.calendarYearMonthMorphActive, isFalse);
+    },
+  );
 }
 
 Future<void> _pumpAndExpectStableViewport(

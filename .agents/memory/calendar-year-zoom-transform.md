@@ -57,6 +57,14 @@ Canvas `TextPainter` does not inherit the ambient OS `TextScaler`. Resolve Month
 
 **How to apply:** Derive DOW and week-number endpoint sizes from their own widget font sizes; include them in painter invalidation, and keep source/target weight and spacing aligned with the rendered endpoint styles.
 
+## Static-font weight blending
+
+The bundled SF Pro faces are static weights, not a variable `wght` font. Smoothly blend the exact Year and Month glyph weights with linear alpha coverage in a bounded additive layer; do not rely on `FontVariation('wght')` or `FontWeight.lerp` to create intermediate strokes. Match endpoint letter spacing too.
+
+**Why:** `FontWeight.lerp` can only choose among the available static faces, while the unused variable axis cannot change their outlines. A mismatch in tracking can also make enlarged digits appear heavier than the settled Month text.
+
+**How to apply:** Use the actual source and target font faces, blend their glyph coverage across the same size/position, and ensure t=0/t=1 paint only the exact endpoint face.
+
 ## Key dependency
 
 `lerpDouble` requires `import 'dart:ui' show lerpDouble;` — flutter/cupertino.dart alone does NOT expose it as a free function inside StatelessWidget.build.
