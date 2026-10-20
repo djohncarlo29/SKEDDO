@@ -941,6 +941,27 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       return false;
     }
 
+    // Year and Month views keep adjacent preview panels mounted beside the
+    // current panel. Their independent ScrollPositions can have different
+    // extents, so only the current panel is allowed to update the shared
+    // title/edge progress.
+    if (_selectedIndex == 1 &&
+        (_calendarView == CalendarView.year ||
+            _calendarView == CalendarView.month)) {
+      final activePosition =
+          _calendarTabKey.currentState?.headerScrollPosition;
+      final notificationContext = notification.context;
+      final sourcePosition = notificationContext == null
+          ? null
+          : Scrollable.maybeOf(
+              notificationContext,
+              axis: Axis.vertical,
+            )?.position;
+      if (activePosition == null || !identical(sourcePosition, activePosition)) {
+        return false;
+      }
+    }
+
     // Day timelines are independent scroll surfaces inside the Calendar Tab.
     // Their hourly content must not move the app's large title or its controls.
     if (_selectedIndex == 1 &&

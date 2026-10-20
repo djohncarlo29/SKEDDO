@@ -896,18 +896,28 @@ class CalendarTabState extends State<CalendarTab>
     }
   }
 
-  /// Current settled scroll offset for the shell-owned calendar header title.
-  /// Day View owns its title in the shell, so its timeline position must not
-  /// drive the large-title collapse state.
-  double? get searchParentHeaderScrollOffset {
+  /// The current Year/Month scroll position that owns the calendar header.
+  /// Adjacent preview panels have independent positions and must not drive the
+  /// shared shell edge or title while they mirror the current panel's offset.
+  ScrollPosition? get headerScrollPosition {
     final controller = switch (_view) {
       CalendarView.year => _yearScrollCtrl,
       CalendarView.month => _monthViewScrollCtrl,
       CalendarView.day => null,
     };
     if (controller == null || !controller.hasClients) return null;
-    final position = controller.position;
-    if (!position.hasContentDimensions) return null;
+    for (final position in controller.positions) {
+      if (position.hasContentDimensions) return position;
+    }
+    return null;
+  }
+
+  /// Current settled scroll offset for the shell-owned calendar header title.
+  /// Day View owns its title in the shell, so its timeline position must not
+  /// drive the large-title collapse state.
+  double? get searchParentHeaderScrollOffset {
+    final position = headerScrollPosition;
+    if (position == null) return null;
     return AppHeaderScrollBehavior.contentOffset(position);
   }
 
