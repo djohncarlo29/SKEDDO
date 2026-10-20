@@ -3226,7 +3226,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                          surfaceColor: backgroundColor,
                                          height:
                                              topInset +
-                                             headerToolbarHeight * (1 - t),
+                                              (headerToolbarHeight +
+                                                      kAppHeaderScrollEdgeTitleCapExtension) *
+                                                  (1 - t),
                                        ),
                                     AppWindowContentPadding(
                                       child: LayoutBuilder(

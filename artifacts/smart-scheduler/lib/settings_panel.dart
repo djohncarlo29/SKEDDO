@@ -1678,7 +1678,10 @@ class _SettingsHeader extends StatelessWidget {
             AppHeaderScrollEdge(
               progress: collapseProgress,
               surfaceColor: backgroundColor,
-              height: topInset + toolbarHeight,
+              height:
+                  topInset +
+                  toolbarHeight +
+                  kAppHeaderScrollEdgeTitleCapExtension,
             ),
         ],
       ),

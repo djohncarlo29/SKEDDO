@@ -48,3 +48,11 @@ In portrait, the normal AppShell header surface is transparent so page content c
 **Why:** Fixed search overlays start below the shell's leading inset, so they cannot cover the physical status-bar area themselves. Alpha blending over the changing page underneath caused a transient grey strip during entry.
 
 **How to apply:** Keep normal header transparency unchanged, but use the current theme's opaque search surface whenever search mode is active; don't fade the surface's alpha.
+
+## App-page title capline reach
+
+Extend the shared app-page Liquid Glass scroll edge 10 points beyond the toolbar boundary so it reaches the upper capline area of the second-level title. Collapse that extension with the toolbar during the AppShell transition. Keep modal-sheet edge extents independent.
+
+**Why:** The user wants the Notes, Settings, Calendar, Events, and Detailed Category page edge to reach the very top of titles such as “All Notes” and “All Events,” while explicitly excluding modal sheets.
+
+**How to apply:** Use a dedicated shared app-edge extension based on the 10-point large-title bottom inset; apply it at the AppShell and Settings header call sites, not in `LiquidGlassScrollEdge` globally or modal-sheet code.
