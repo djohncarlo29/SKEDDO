@@ -2344,8 +2344,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       trailingBuilder: (titleFontSize) {
         final verticalNavigation = _CalendarNavChevron(
           titleFontSize: titleFontSize,
-          canUp: isActive && canUp,
-          canDown: isActive && canDown,
+          // The preview panel should look like the same view once settled;
+          // its pointer and semantic actions remain disabled until activation.
+          canUp: canUp,
+          canDown: canDown,
           compact: compact,
           onUp: isActive && canUp
               ? () => _calendarTabKey.currentState?.navigateUp()
@@ -2385,9 +2387,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           : null,
       child: _ChevronIcon(
         direction: _ChevronDir.left,
-        color: isActive
-            ? resolveAccentColor(context)
-            : resolveThemeColor(kSecondaryLabel, context),
+        color: resolveAccentColor(context),
         size: 18,
         strokeWidth: 1.6,
       ),
@@ -2400,9 +2400,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           : null,
       child: _ChevronIcon(
         direction: _ChevronDir.right,
-        color: isActive
-            ? resolveAccentColor(context)
-            : resolveThemeColor(kSecondaryLabel, context),
+        color: resolveAccentColor(context),
         size: 18,
         strokeWidth: 1.6,
       ),
