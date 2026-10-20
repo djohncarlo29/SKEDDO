@@ -3350,7 +3350,7 @@ class CalendarTabState extends State<CalendarTab>
                             // visible and must remain protected from the
                             // non-selected month scatter in either ownership
                             // state.
-                            nonSelectedClipTop:
+                            contentClipTop:
                                 MediaQuery.orientationOf(context) ==
                                     Orientation.portrait
                                 ? expandedTitleHeight
@@ -4056,7 +4056,7 @@ class _MorphOverlay extends StatelessWidget {
     this.yearGeometry,
     this.monthGeometry,
     this.titleTargetRect,
-    this.nonSelectedClipTop = 0.0,
+    this.contentClipTop = 0.0,
   });
 
   final double t; // 0 = year view, 1 = month view
@@ -4081,7 +4081,7 @@ class _MorphOverlay extends StatelessWidget {
   final _YearMorphGeometry? yearGeometry;
   final _MonthMorphGeometry? monthGeometry;
   final Rect? titleTargetRect;
-  final double nonSelectedClipTop;
+  final double contentClipTop;
 
   @override
   Widget build(BuildContext context) {
@@ -4247,7 +4247,7 @@ class _MorphOverlay extends StatelessWidget {
                   yearGeometry: yearGeometry,
                   monthGeometry: monthGeometry,
                   titleTargetRect: titleTargetRect,
-                  nonSelectedClipTop: nonSelectedClipTop,
+                  contentClipTop: contentClipTop,
                   viewModeRowHeight: viewModeRowHeight,
                   monthTitleFontSize: monthTitleFontSize,
                   bgColor: bgC,
@@ -4701,7 +4701,7 @@ class _MorphPainter extends CustomPainter {
     this.yearGeometry,
     this.monthGeometry,
     this.titleTargetRect,
-    this.nonSelectedClipTop = 0.0,
+    this.contentClipTop = 0.0,
   });
 
   final double t;
@@ -4734,7 +4734,7 @@ class _MorphPainter extends CustomPainter {
   final _YearMorphGeometry? yearGeometry;
   final _MonthMorphGeometry? monthGeometry;
   final Rect? titleTargetRect;
-  final double nonSelectedClipTop;
+  final double contentClipTop;
 
   final Paint _p = Paint()..isAntiAlias = true;
   // Many calendar cells share the same label and style during one morph
@@ -4768,7 +4768,7 @@ class _MorphPainter extends CustomPainter {
       o.yearGeometry != yearGeometry ||
       o.monthGeometry != monthGeometry ||
       o.titleTargetRect != titleTargetRect ||
-      o.nonSelectedClipTop != nonSelectedClipTop ||
+      o.contentClipTop != contentClipTop ||
       o.bgColor != bgColor;
 
   // ── Multiply a color's alpha by [a] without discarding its inherent opacity ─
@@ -5025,9 +5025,9 @@ class _MorphPainter extends CustomPainter {
     // These elements may scatter during the zoom, but they must never paint
     // over the actual second-level Calendar header.
     canvas.save();
-    final otherMonthsTop = nonSelectedClipTop.clamp(0.0, size.height);
+    final contentTop = contentClipTop.clamp(0.0, size.height);
     canvas.clipRect(
-      Rect.fromLTRB(0.0, otherMonthsTop, size.width, size.height),
+      Rect.fromLTRB(0.0, contentTop, size.width, size.height),
     );
     for (var mi = 0; mi < 12; mi++) {
       if (mi == zoomMonthIdx) continue;
@@ -5043,8 +5043,8 @@ class _MorphPainter extends CustomPainter {
       final hdrAlpha = (1.0 - t / 0.42).clamp(0.0, 1.0);
 
       // Every mini-month title interpolates to the actual Month-header
-      // typography. Keep it fully painted; the shared header's clipping/surface
-      // hides titles that travel behind that area.
+      // typography, then fades out at the same early rate as the original
+      // Year→Month transition.
       final titleFontSize = lerpDouble(
         cellSz * 1.35,
         monthTitleFontSize,
@@ -5057,7 +5057,7 @@ class _MorphPainter extends CustomPainter {
         titleFontSize,
         FontWeight.w700,
         isCurrMonth ? accentColor : primaryColor,
-        1.0,
+        hdrAlpha,
         Offset(xZ(mnX), yZ(mnY)),
         ls: lerpDouble(-0.3, -1.2, t)!,
         height: titleLineHeight,
@@ -5512,6 +5512,10 @@ class _MorphPainter extends CustomPainter {
               lerpDouble(yearTitleTopLeft.dx, titleTargetRect!.left, t)!,
               lerpDouble(yearTitleTopLeft.dy, titleTargetRect!.top, t)!,
             );
+      canvas.save();
+      canvas.clipRect(
+        Rect.fromLTRB(0.0, contentTop, size.width, size.height),
+      );
       _textL(
         canvas,
         _kShortMonthNames[zMonth - 1],
@@ -5523,6 +5527,7 @@ class _MorphPainter extends CustomPainter {
         ls: lerpDouble(-0.3, -1.2, t)!,
         height: titleLineHeight,
       );
+      canvas.restore();
     }
   }
 }
