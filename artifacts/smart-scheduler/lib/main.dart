@@ -4,6 +4,7 @@ import 'dart:math' show max, min;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show Colors, NoSplash, Theme;
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
@@ -3910,22 +3911,32 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                           child: Stack(
                             clipBehavior: Clip.none,
                             children: [
-                              LightModeLiquidGlassButtonContour(
-                                child: LiquidGlassButton(
-                                  width: 36,
-                                  height: 36,
-                                  padding: EdgeInsets.zero,
-                                  onPressed: isDCVVisual
-                                      ? _exitDCV
-                                      : isSubScreen
-                                      ? backAction
-                                      : _settingsController.value > 0
-                                      ? _closeSettings
-                                      : _openSettings,
-                                  // Keep the animated glyph outside the lens so
-                                  // only the package-owned button samples and
-                                  // clips the glass surface.
-                                  child: const SizedBox.expand(),
+                              Theme(
+                                // The app-shell hamburger/X keeps the same
+                                // glass surface on press; only its action
+                                // changes, without Material's ink darkening.
+                                data: Theme.of(context).copyWith(
+                                  splashFactory: NoSplash.splashFactory,
+                                  splashColor: Colors.transparent,
+                                  highlightColor: Colors.transparent,
+                                ),
+                                child: LightModeLiquidGlassButtonContour(
+                                  child: LiquidGlassButton(
+                                    width: 36,
+                                    height: 36,
+                                    padding: EdgeInsets.zero,
+                                    onPressed: isDCVVisual
+                                        ? _exitDCV
+                                        : isSubScreen
+                                        ? backAction
+                                        : _settingsController.value > 0
+                                        ? _closeSettings
+                                        : _openSettings,
+                                    // Keep the animated glyph outside the lens so
+                                    // only the package-owned button samples and
+                                    // clips the glass surface.
+                                    child: const SizedBox.expand(),
+                                  ),
                                 ),
                               ),
                               IgnorePointer(
