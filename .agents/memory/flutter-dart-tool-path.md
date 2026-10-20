@@ -16,3 +16,11 @@ When `.dart_tool/package_config.json` points `flutter_test` at a Shorebird-cache
 **Why:** A stale or independently generated package config can pair newer Flutter test sources with the older wrapper's compiler, producing framework-wide language-version errors before project tests run.
 
 **How to apply:** If `flutter test --no-pub` reports a Flutter SDK language-version mismatch, inspect the `flutter_test` `rootUri` in `.dart_tool/package_config.json` and use the matching cached Flutter SDK for tests. Keep the managed app workflow on its configured SDK.
+
+## Test viewport dimensions
+
+When a widget test uses `tester.binding.setSurfaceSize`, the Shorebird test SDK may still expose the default `MediaQuery.size` to route code. Tests whose geometry depends on viewport height should explicitly set `MediaQueryData.size` to the test surface size.
+
+**Why:** A sheet transition used the default 600px MediaQuery height while its test surface was 700px high, so a safe-area ratio produced a rendered top offset larger than the expected physical gap.
+
+**How to apply:** In the test app builder, copy the inherited MediaQuery with `size` set to the same dimensions passed to `setSurfaceSize`, alongside any synthetic safe-area insets.

@@ -1,11 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_scheduler/app_theme.dart'
+    show kRoundedSheetSafeAreaGap;
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
 void main() {
   testWidgets(
-    'top-level sheet leaves the app full-size and clears the header control',
+    'parent and nested sheets rest exactly 10pt below the top safe area',
     (tester) async {
       const surfaceSize = Size(400, 700);
       const topInset = 30.0;
@@ -24,7 +26,9 @@ void main() {
             return AppWindowContentBoundary(
               child: MediaQuery(
                 data: mediaQuery.copyWith(
+                  size: surfaceSize,
                   padding: mediaQuery.padding.copyWith(top: topInset),
+                  viewPadding: mediaQuery.viewPadding.copyWith(top: topInset),
                 ),
                 child: child ?? const SizedBox.shrink(),
               ),
@@ -41,6 +45,7 @@ void main() {
         ),
       );
 
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 120));
       final movingSheetTop = tester.getRect(find.byKey(sheetKey)).top;
       await tester.pumpAndSettle();
@@ -55,14 +60,26 @@ void main() {
         greaterThan(sheetTop),
         reason: 'The sheet must continue moving until it reaches its top gap.',
       );
-      final headerControlBottom = topInset + 2.0 + 36.0;
       expect(
         sheetTop,
-        greaterThanOrEqualTo(headerControlBottom + 4.0),
-        reason:
-            'The sheet must leave the app-shell hamburger/X LiquidGlassButton uncovered.',
+        topInset + kRoundedSheetSafeAreaGap,
       );
-      expect(sheetTop, greaterThanOrEqualTo(surfaceSize.height * 0.08));
+
+      const nestedSheetKey = ValueKey('nested-sheet-content');
+      final nestedSheetFuture = showRoundedCupertinoSheet<void>(
+        context: tester.element(find.byKey(sheetKey)),
+        pageBuilder: (_) =>
+            const ColoredBox(key: nestedSheetKey, color: Color(0xFFEFEFEF)),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(find.byKey(nestedSheetKey)).top,
+        topInset + kRoundedSheetSafeAreaGap,
+      );
+
+      navigatorKey.currentState!.pop();
+      await tester.pumpAndSettle();
+      await nestedSheetFuture;
     },
   );
 }

@@ -8,7 +8,7 @@ import '../app_theme.dart'
         kModalBackground,
         BoundedSquircleStadiumBorder,
         kModalSheetCornerRadius,
-        kRoundedSheetTopGapRatio,
+        kRoundedSheetSafeAreaGap,
         resolveThemeColor,
         systemSafeAreaBottomInset;
 import 'app_window_content_boundary.dart';
@@ -27,10 +27,6 @@ import 'app_window_content_boundary.dart';
 // reimplemented here using only public ModalRoute/PageRoute API.
 // ══════════════════════════════════════════════════════════════════════════════
 
-final Animatable<Offset> _kBottomUpTweenWhenCoveringOtherSheet = Tween<Offset>(
-  begin: const Offset(0.0, 1.0),
-  end: const Offset(0.0, -0.02),
-);
 final Animatable<Offset> _kMidUpTween = Tween<Offset>(
   begin: Offset.zero,
   end: const Offset(0.0, -0.005),
@@ -40,20 +36,17 @@ Animatable<double> _sheetOpacityTween(BuildContext context) => Tween<double>(
   end: CupertinoTheme.brightnessOf(context) == Brightness.dark ? 0.13 : 0.10,
 );
 
-double _topLevelSheetTopGapRatio(
+double _roundedSheetTopGapRatio(
   BuildContext context, {
   double? viewportHeight,
 }) {
   final height = viewportHeight ?? MediaQuery.sizeOf(context).height;
-  if (height <= 0.0) return kRoundedSheetTopGapRatio;
-  // The app-shell hamburger/X occupies topInset + 2..38 px. Keep a small
-  // additional gap so the resting sheet edge never clips its glass button,
-  // even in short landscape windows.
-  final requiredGap = MediaQuery.paddingOf(context).top + 42.0;
-  final safeRatio = requiredGap / height;
-  return safeRatio > kRoundedSheetTopGapRatio
-      ? safeRatio
-      : kRoundedSheetTopGapRatio;
+  if (height <= 0.0) return 0.0;
+  // Both parent sheets and nested subsheets rest at the same physical gap
+  // below the top safe area, independent of device height.
+  final requiredGap =
+      MediaQuery.viewPaddingOf(context).top + kRoundedSheetSafeAreaGap;
+  return (requiredGap / height).clamp(0.0, 1.0).toDouble();
 }
 
 Widget? _withSheetDimOverlay(
@@ -310,15 +303,13 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
             color: resolveThemeColor(kModalBackground, context),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                // The route rests 8% below the viewport. Keep the authored
-                // page at the visible 92% so its scrollable content ends at
-                // the physical bottom instead of extending below the clip.
-                final topGapRatio = isNestedSheet
-                    ? kRoundedSheetTopGapRatio
-                    : _topLevelSheetTopGapRatio(
-                        context,
-                        viewportHeight: constraints.maxHeight,
-                      );
+                // Keep the authored page at the visible height below the
+                // shared safe-area gap so scrollable content ends at the
+                // physical bottom instead of extending below the clip.
+                final topGapRatio = _roundedSheetTopGapRatio(
+                  context,
+                  viewportHeight: constraints.maxHeight,
+                );
                 final double visiblePageHeight =
                     constraints.maxHeight * (1.0 - topGapRatio);
                 return Align(
@@ -445,11 +436,7 @@ mixin _RoundedSheetRouteTransitionMixin<T> on PageRoute<T> {
     bool enableDrag,
   ) {
     final bool linearTransition = route.popGestureInProgress;
-    final bool isNestedSheet =
-        (route as RoundedCupertinoSheetRoute<dynamic>).isNestedSheet;
-    final double topGapRatio = isNestedSheet
-        ? kRoundedSheetTopGapRatio
-        : _topLevelSheetTopGapRatio(context);
+    final double topGapRatio = _roundedSheetTopGapRatio(context);
     return _RoundedSheetTransition(
       primaryRouteAnimation: animation,
       secondaryRouteAnimation: secondaryAnimation,
@@ -608,18 +595,14 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
   }
 
   Widget _coverSheetPrimaryTransition(
-    BuildContext context,
     Animation<double> animation,
     bool linearTransition,
     Widget? child,
   ) {
-    final Animatable<Offset> offsetTween =
-        RoundedCupertinoSheetRoute.hasParentSheet(context)
-        ? _kBottomUpTweenWhenCoveringOtherSheet
-        : Tween<Offset>(
-            begin: const Offset(0.0, 1.0),
-            end: Offset(0.0, widget.topGapRatio),
-          );
+    final Animatable<Offset> offsetTween = Tween<Offset>(
+      begin: const Offset(0.0, 1.0),
+      end: Offset(0.0, widget.topGapRatio),
+    );
 
     final CurvedAnimation curvedAnimation = CurvedAnimation(
       parent: animation,
@@ -684,7 +667,6 @@ class _RoundedSheetTransitionState extends State<_RoundedSheetTransition> {
     return SizedBox.expand(
       child: _coverSheetSecondaryTransition(
         _coverSheetPrimaryTransition(
-          context,
           widget.primaryRouteAnimation,
           widget.linearTransition,
           widget.child,

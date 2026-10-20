@@ -415,8 +415,8 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
                       AppWindowContentScope.of(context).horizontalInset +
                       kDiscardConfirmationTopLeftEdgeGap,
                   top:
-                      MediaQuery.sizeOf(context).height *
-                          kRoundedSheetTopGapRatio +
+                      MediaQuery.viewPaddingOf(context).top +
+                      kRoundedSheetSafeAreaGap +
                       kDiscardConfirmationTopLeftEdgeGap,
                 ),
                 child: card,

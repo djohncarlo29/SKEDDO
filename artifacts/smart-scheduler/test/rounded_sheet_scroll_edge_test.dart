@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart'
     show LiquidGlassScrollEdge;
 import 'package:smart_scheduler/app_theme.dart'
-    show kRoundedSheetTopGapRatio;
+    show kRoundedSheetSafeAreaGap;
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/modal_sheet_scroll_under.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
@@ -69,7 +69,7 @@ void main() {
       }
 
       final beforeNestedSheet = await capturePixels();
-      final parentTop = (surfaceSize.height * kRoundedSheetTopGapRatio).round();
+      final parentTop = kRoundedSheetSafeAreaGap.round();
       final outsideTopCorner = pixelAt(beforeNestedSheet, 2, parentTop + 2);
       final parentTopCenter = pixelAt(beforeNestedSheet, 200, parentTop + 2);
 
