@@ -7,7 +7,7 @@ const double kAppHeaderToolbarHeight = 44;
 const double kAppHeaderTitleHeight = 57;
 const double kAppHeaderScrollEdgeTitleCapExtension = 10;
 const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;
-const double _kAppHeaderScrollEdgeMaxBlurSigma = 8;
+const double _kAppHeaderScrollEdgeMaxBlurSigma = 6;
 
 /// Shared scroll rules for second-level app headers.
 ///
@@ -350,20 +350,23 @@ class AppHeaderScrollInset extends StatelessWidget {
 }
 
 /// The shared Liquid Glass treatment used beneath the first, pinned header
-/// level. This is a visual sibling overlay: its local filter clip bounds only
-/// the glass effect, never the scrollable content. The caller supplies progress
-/// from the live page scroll gesture.
+/// level. A persistent background gradient keeps the physical top edge covered
+/// while the scroll-driven glass treatment remains tied to page progress. This
+/// is a visual sibling overlay: its local filter clip bounds only the glass
+/// effect, never the scrollable content.
 class AppHeaderScrollEdge extends StatelessWidget {
   const AppHeaderScrollEdge({
     super.key,
     required this.progress,
     required this.surfaceColor,
     required this.height,
+    required this.backgroundGradientHeight,
   });
 
   final double progress;
   final Color surfaceColor;
   final double height;
+  final double backgroundGradientHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -373,35 +376,64 @@ class AppHeaderScrollEdge extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final gradientHeight =
+        backgroundGradientHeight.clamp(0.0, height).toDouble();
+
     return Positioned(
       top: 0,
       left: 0,
       right: 0,
       height: height,
-      child: Offstage(
-        offstage: normalizedProgress <= 0.01,
-        child: IgnorePointer(
-          child: LiquidGlassScrollEdge(
-            edge: LiquidGlassEdge.top,
-            color: surfaceColor.withValues(
-              // Keep the shared app-level edge translucent while applying a
-              // stronger blur as content passes beneath the pinned header.
-              // The edge remains a compositing treatment, never a visibility
-              // threshold.
-              alpha:
-                  (_kAppHeaderScrollEdgeMaxTintOpacity *
-                          effectProgress *
-                          surfaceColor.a)
-                      .clamp(0.0, 1.0)
-                      .toDouble(),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Offstage(
+            offstage: normalizedProgress <= 0.01,
+            child: IgnorePointer(
+              child: LiquidGlassScrollEdge(
+                edge: LiquidGlassEdge.top,
+                color: surfaceColor.withValues(
+                  // Keep the shared app-level edge translucent while applying
+                  // blur as content passes beneath the pinned header.
+                  // The edge remains a compositing treatment, never a
+                  // visibility threshold.
+                  alpha:
+                      (_kAppHeaderScrollEdgeMaxTintOpacity *
+                              effectProgress *
+                              surfaceColor.a)
+                          .clamp(0.0, 1.0)
+                          .toDouble(),
+                ),
+                // Hold most of the glass strength across the scroll interval,
+                // then ease it away near the end instead of fading linearly.
+                blur: effectProgress > 0
+                    ? _kAppHeaderScrollEdgeMaxBlurSigma * effectProgress
+                    : 0.001,
+              ),
             ),
-            // Hold most of the glass strength across the scroll interval, then
-            // ease it away near the end instead of fading linearly.
-            blur: effectProgress > 0
-                ? _kAppHeaderScrollEdgeMaxBlurSigma * effectProgress
-                : 0.001,
           ),
-        ),
+          if (gradientHeight > 0)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: gradientHeight,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        surfaceColor.withValues(alpha: 1.0),
+                        surfaceColor.withValues(alpha: 0.0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

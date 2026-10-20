@@ -1683,6 +1683,7 @@ class _SettingsHeader extends StatelessWidget {
                   toolbarHeight +
                   kAppHeaderTitleHeight +
                   kAppHeaderScrollEdgeTitleCapExtension,
+              backgroundGradientHeight: topInset + toolbarHeight,
             ),
         ],
       ),

@@ -56,3 +56,11 @@ Extend the shared app-page Liquid Glass scroll edge through the full second-leve
 **Why:** The user wants second-level title text to blur as it passes through the glass, not just the page content behind it. A band ending just below the toolbar leaves most of the title near the soft-fade boundary. Modal sheets remain out of scope.
 
 **How to apply:** Keep the scroll edge overlay as a visual sibling after the moving title and before pinned controls. Extend its height to cover the title's full scroll path plus the capline extension, and preserve the physical viewport as the final clip.
+
+## Persistent top-to-header background fade
+
+Keep a theme-matched background gradient independent of scroll progress: fully opaque at the physical top edge and linearly transparent at the bottom of the first-level header. Draw it over the page/edge treatment but below fixed toolbar controls, and collapse its height with the shell header. Apply the same treatment to the Settings header; keep landscape and modal sheets separate.
+
+**Why:** The safe-area region should remain backed by the app surface even when the scroll-driven Liquid Glass edge is hidden at rest, while the gradient should ease to the content surface at the toolbar boundary.
+
+**How to apply:** Use the currently resolved background color with alpha 1→0 over the safe-area inset plus the first-level toolbar height. Keep this layer separate from the independently tuned blur and tint.
