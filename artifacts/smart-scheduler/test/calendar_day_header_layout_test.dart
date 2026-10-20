@@ -137,6 +137,93 @@ void main() {
   });
 
   testWidgets(
+    'Multi Day timeline separator reverses with its Day Banner separator',
+    (tester) async {
+      const screenSize = Size(402, 874);
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = screenSize;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      var daySubMode = DayViewSubMode.singleDay;
+      late StateSetter setParentState;
+      await tester.pumpWidget(
+        CupertinoApp(
+          builder: (context, child) {
+            final mediaQuery = MediaQuery.of(context).copyWith(
+              size: screenSize,
+            );
+            return MediaQuery(
+              data: mediaQuery,
+              child: AppWindowContentBoundary(
+                child: child ?? const SizedBox.shrink(),
+              ),
+            );
+          },
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              setParentState = setState;
+              return CupertinoPageScaffold(
+                child: CalendarTab(
+                  daySubMode: daySubMode,
+                  onViewChanged: (_, _, _, _, _, _) {},
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final calendarState = tester.state<CalendarTabState>(
+        find.byType(CalendarTab),
+      );
+      calendarState.jumpToTodayDay();
+      await tester.pumpAndSettle();
+
+      setParentState(() {
+        daySubMode = DayViewSubMode.multiDay;
+      });
+      await tester.pumpAndSettle();
+
+      final timelineSeparator = find.byKey(
+        const Key('calendar-multiday-left-separator'),
+      );
+      Finder centerBannerSeparator() {
+        final banners = find.byWidgetPredicate(
+          (widget) => widget.runtimeType.toString() == '_DayBanner',
+        );
+        final centerIndex = banners.evaluate().length == 1 ? 0 : 1;
+        return find.descendant(
+          of: banners.at(centerIndex),
+          matching: find.byKey(
+            const Key('calendar-multiday-banner-left-separator'),
+          ),
+        );
+      }
+      expect(timelineSeparator, findsOneWidget);
+      expect(centerBannerSeparator(), findsOneWidget);
+      final settledX = tester.getRect(timelineSeparator).left;
+
+      setParentState(() {
+        daySubMode = DayViewSubMode.singleDay;
+      });
+      await tester.pump();
+      expect(timelineSeparator, findsOneWidget);
+      expect(centerBannerSeparator(), findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 160));
+      final timelineX = tester.getRect(timelineSeparator).left;
+      final bannerX = tester.getRect(centerBannerSeparator()).left;
+      expect(timelineX, lessThan(settledX));
+      expect(timelineX, closeTo(bannerX, 1.0));
+
+      await tester.pumpAndSettle();
+      expect(timelineSeparator, findsNothing);
+    },
+  );
+
+  testWidgets(
     'List Day View moves the selected week strip above the physical viewport',
     (tester) async {
       const screenSize = Size(402, 874);

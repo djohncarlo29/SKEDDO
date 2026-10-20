@@ -813,6 +813,9 @@ class CalendarTabState extends State<CalendarTab>
   // switch while already in Day View. Mounting Multi Day for List or
   // Month↔Day transitions must start at its settled two-column geometry.
   bool _animateMultiDayTransition = false;
+  // Keep the outgoing Multi-Day timeline mounted while its separators reverse
+  // out, matching the banner's own Single↔Multi morph.
+  bool _retainMultiDayTimelineForExit = false;
 
   // ── View-mode state ───────────────────────────────────────────────────────────
   CalendarViewMode _viewMode = CalendarViewMode.compact;
@@ -1031,6 +1034,7 @@ class CalendarTabState extends State<CalendarTab>
       _dayChromeModeTransitionActive = false;
     }
     _animateMultiDayTransition = false;
+    _retainMultiDayTimelineForExit = false;
   }
 
   void prepareParentForSearch() {
@@ -2216,6 +2220,7 @@ class CalendarTabState extends State<CalendarTab>
 
   void _enterDay(DateTime date, {bool fast = false}) {
     _animateMultiDayTransition = false;
+    _retainMultiDayTimelineForExit = false;
     // Capture the current scroll offset of the month-view content area BEFORE
     // setState triggers a rebuild. This value is used by _AnimatedWeekRow to
     // offset its Y-translation so the selected row lands in the Day week-strip
@@ -2260,6 +2265,7 @@ class CalendarTabState extends State<CalendarTab>
 
   Future<void> _exitToMonth({bool fast = false}) async {
     _animateMultiDayTransition = false;
+    _retainMultiDayTimelineForExit = false;
     // Restore the saved scroll position BEFORE starting the reverse animation
     // so that _collapseScrollOffset is non-zero throughout the reverse.
     // With _collapseScrollOffset = saved, _AnimatedWeekRow's translateY formula
@@ -2549,6 +2555,10 @@ class CalendarTabState extends State<CalendarTab>
           inDayView &&
           oldWidget.daySubMode != DayViewSubMode.list &&
           widget.daySubMode != DayViewSubMode.list;
+      _retainMultiDayTimelineForExit =
+          inDayView &&
+          oldWidget.daySubMode == DayViewSubMode.multiDay &&
+          widget.daySubMode == DayViewSubMode.singleDay;
       _dayChromeSubMode = inDayView && widget.daySubMode == DayViewSubMode.list
           ? oldWidget.daySubMode
           : widget.daySubMode;
@@ -3020,6 +3030,9 @@ class CalendarTabState extends State<CalendarTab>
             final double timelineSlideX = (inDayView && _weekStripDrag)
                 ? 0.0
                 : slideX;
+            final retainMultiDayTimeline =
+                widget.daySubMode == DayViewSubMode.multiDay ||
+                _retainMultiDayTimelineForExit;
 
             // Swipe gesture is enabled only when fully settled in one view.
             final swipeEnabled =
@@ -3121,7 +3134,7 @@ class CalendarTabState extends State<CalendarTab>
                         child: IgnorePointer(
                           ignoring: colT < 0.85,
                           child: RepaintBoundary(
-                            child: widget.daySubMode == DayViewSubMode.multiDay
+                            child: retainMultiDayTimeline
                                 ? _DayTimelineMulti(
                                     key: const Key('multi-timeline'),
                                     selectedDate: _selected,
@@ -3134,7 +3147,24 @@ class CalendarTabState extends State<CalendarTab>
                                     slideX: timelineSlideX,
                                     screenW: sw,
                                     animateEntrance:
+                                        widget.daySubMode ==
+                                            DayViewSubMode.multiDay &&
                                         _animateMultiDayTransition,
+                                    animateExit:
+                                        _retainMultiDayTimelineForExit,
+                                    onExitAnimationComplete:
+                                        _retainMultiDayTimelineForExit
+                                        ? () {
+                                            if (!mounted ||
+                                                !_retainMultiDayTimelineForExit) {
+                                              return;
+                                            }
+                                            setState(() {
+                                              _retainMultiDayTimelineForExit =
+                                                  false;
+                                            });
+                                          }
+                                        : null,
                                   )
                                 : Stack(
                                     // Key the positioned panels by date so a day
@@ -8257,6 +8287,9 @@ class _DayBannerState extends State<_DayBanner>
                   children: [
                     // Fixed vertical separators at their fully-open positions.
                     Positioned(
+                      key: const Key(
+                        'calendar-multiday-banner-left-separator',
+                      ),
                       left:
                           contentLeft +
                           _kMultiDayIndicatorDividerShift -
@@ -8341,6 +8374,9 @@ class _DayBannerState extends State<_DayBanner>
                       ),
                     ),
                     Positioned(
+                      key: const Key(
+                        'calendar-multiday-banner-left-separator',
+                      ),
                       left:
                           contentLeft +
                           _kMultiDayIndicatorDividerShift -
@@ -8507,6 +8543,9 @@ class _DayBannerState extends State<_DayBanner>
                   ),
                   // Left separator: slides in from beyond the left edge
                   Positioned(
+                    key: const Key(
+                      'calendar-multiday-banner-left-separator',
+                    ),
                     left: sep1X,
                     top: 0,
                     bottom: 0,
@@ -9441,6 +9480,8 @@ class _DayTimelineMulti extends StatefulWidget {
     required this.slideX,
     required this.screenW,
     this.animateEntrance = false,
+    this.animateExit = false,
+    this.onExitAnimationComplete,
   });
 
   final DateTime selectedDate;
@@ -9455,6 +9496,8 @@ class _DayTimelineMulti extends StatefulWidget {
   /// Total screen width — used to scale column positions correctly.
   final double screenW;
   final bool animateEntrance;
+  final bool animateExit;
+  final VoidCallback? onExitAnimationComplete;
 
   @override
   State<_DayTimelineMulti> createState() => _DayTimelineMultiState();
@@ -9486,7 +9529,27 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
       value: widget.animateEntrance ? 0.0 : 1.0,
     );
     _sepAnim = CurvedAnimation(parent: _sepCtrl, curve: Curves.easeInOut);
+    _sepCtrl.addStatusListener(_handleSeparatorStatus);
     if (widget.animateEntrance) _sepCtrl.forward();
+    if (widget.animateExit) _sepCtrl.reverse();
+  }
+
+  void _handleSeparatorStatus(AnimationStatus status) {
+    if (status == AnimationStatus.dismissed && widget.animateExit) {
+      widget.onExitAnimationComplete?.call();
+    }
+  }
+
+  @override
+  void didUpdateWidget(_DayTimelineMulti oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.animateExit != oldWidget.animateExit) {
+      if (widget.animateExit) {
+        _sepCtrl.reverse();
+      } else if (widget.animateEntrance) {
+        _sepCtrl.forward();
+      }
+    }
   }
 
   @override
@@ -9788,7 +9851,8 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                           totalW +
                           (contentLeft + colW - 0.25 - totalW) * t;
                       final animateIndicatorWithSeparators =
-                          widget.animateEntrance && _sepCtrl.isAnimating;
+                          (widget.animateEntrance || widget.animateExit) &&
+                          _sepCtrl.isAnimating;
                       final animatedCenterX = sep2X + 0.25;
                       final indicatorMarkerShiftX =
                           animateIndicatorWithSeparators &&
@@ -9852,6 +9916,9 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
                           // ── Animated vertical separators ───────────────
                           // Left sep slides from beyond-left → label-col edge.
                           Positioned(
+                            key: const Key(
+                              'calendar-multiday-left-separator',
+                            ),
                             left: sep1X,
                             top: -9999,
                             bottom: -9999,
