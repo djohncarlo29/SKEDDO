@@ -7,7 +7,7 @@ const double kAppHeaderToolbarHeight = 44;
 const double kAppHeaderTitleHeight = 57;
 const double kAppHeaderScrollEdgeTitleCapExtension = 10;
 const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;
-const double _kAppHeaderScrollEdgeMaxBlurSigma = 6;
+const double _kAppHeaderScrollEdgeMaxBlurSigma = 4;
 
 /// Shared scroll rules for second-level app headers.
 ///
