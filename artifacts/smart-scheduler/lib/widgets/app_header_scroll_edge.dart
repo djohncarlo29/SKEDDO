@@ -6,8 +6,8 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 const double kAppHeaderToolbarHeight = 44;
 const double kAppHeaderTitleHeight = 57;
 const double kAppHeaderScrollEdgeTitleCapExtension = 10;
-const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.48;
-const double _kAppHeaderScrollEdgeMaxBlurSigma = 16;
+const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;
+const double _kAppHeaderScrollEdgeMaxBlurSigma = 8;
 
 /// Shared scroll rules for second-level app headers.
 ///
