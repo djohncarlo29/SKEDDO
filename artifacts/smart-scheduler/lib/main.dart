@@ -3903,35 +3903,37 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                       ignoring: fadeOpacity < 0.01,
                       child: Opacity(
                         opacity: fadeOpacity,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: isDCVVisual
-                              ? _exitDCV
-                              : isSubScreen
-                              ? backAction
-                              : _settingsController.value > 0
-                              ? _closeSettings
-                              : _openSettings,
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(0, 10, 10, 0),
-                            child: Transform.translate(
-                              offset: Offset(
-                                0,
-                                isLandscape
-                                    ? (isDCVVisual
-                                          ? 1.0
-                                          : isSubScreen
-                                          ? 1.0
-                                          : 0.8)
-                                    : 0,
-                              ),
-                              child: _MorphingMenuIcon(
-                                // Show hamburger/X only when settings is open
-                                // but NOT in a sub-screen (sub-screen uses the
-                                // same back-chevron as DCV).
-                                open: _settingsOpen && !isSubScreen,
-                                isDCV: isDCVVisual || isSubScreen,
-                                color: accent,
+                        child: LightModeLiquidGlassButtonContour(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: isDCVVisual
+                                ? _exitDCV
+                                : isSubScreen
+                                ? backAction
+                                : _settingsController.value > 0
+                                ? _closeSettings
+                                : _openSettings,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(0, 10, 10, 0),
+                              child: Transform.translate(
+                                offset: Offset(
+                                  0,
+                                  isLandscape
+                                      ? (isDCVVisual
+                                            ? 1.0
+                                            : isSubScreen
+                                            ? 1.0
+                                            : 0.8)
+                                      : 0,
+                                ),
+                                child: _MorphingMenuIcon(
+                                  // Show hamburger/X only when settings is open
+                                  // but NOT in a sub-screen (sub-screen uses the
+                                  // same back-chevron as DCV).
+                                  open: _settingsOpen && !isSubScreen,
+                                  isDCV: isDCVVisual || isSubScreen,
+                                  color: accent,
+                                ),
                               ),
                             ),
                           ),

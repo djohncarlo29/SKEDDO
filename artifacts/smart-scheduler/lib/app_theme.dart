@@ -3219,6 +3219,43 @@ class _LiquidGlassButtonEdgePainter extends CustomPainter {
       oldDelegate.contourColor != contourColor;
 }
 
+/// Adds the same Light Mode rim and outer contour as regular circular glass
+/// action buttons around an independent touch surface.
+///
+/// The overlay does not intercept input or change the child's layout, and is
+/// omitted entirely in Dark Mode.
+class LightModeLiquidGlassButtonContour extends StatelessWidget {
+  const LightModeLiquidGlassButtonContour({
+    super.key,
+    required this.child,
+  });
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (CupertinoTheme.brightnessOf(context) != Brightness.light) {
+      return child;
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        child,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: CustomPaint(
+              painter: const _LiquidGlassButtonEdgePainter(
+                contourColor: kLiquidGlassButtonLightContourColor,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Adds the Light Mode outer contour used by non-checkmark LiquidGlassButtons
 /// to pill-shaped Liquid Glass surfaces without changing their material fill.
 class LightModeLiquidGlassPillContour extends StatelessWidget {
@@ -3620,11 +3657,11 @@ class _GelBloomButtonState extends State<GelBloomButton>
     LiquidGlassGelCircle circle,
     Widget child,
   ) {
-    if (CupertinoTheme.brightnessOf(context) != Brightness.light) {
-      return child;
-    }
-
     if (circle.isCheckmark) {
+      if (CupertinoTheme.brightnessOf(context) != Brightness.light) {
+        return child;
+      }
+
       return Stack(
         children: [
           // Preserve the LiquidGlassButton fill and place one translucent
@@ -3642,21 +3679,7 @@ class _GelBloomButtonState extends State<GelBloomButton>
       );
     }
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        child,
-        Positioned.fill(
-          child: IgnorePointer(
-            child: CustomPaint(
-              painter: _LiquidGlassButtonEdgePainter(
-                contourColor: kLiquidGlassButtonLightContourColor,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
+    return LightModeLiquidGlassButtonContour(child: child);
   }
 
   Widget _buildLiquidGlassButton(
