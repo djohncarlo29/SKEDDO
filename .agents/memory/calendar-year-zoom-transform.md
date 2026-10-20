@@ -41,6 +41,22 @@ Keep the measured destination `Scrollable` mounted through the painter's final r
 
 **How to apply:** Reconcile the destination as the same keyed child from capture through settled display. If adding sibling panels changes child order, key the direct Stack slots so the center destination is moved rather than remounted. Verify non-zero scroll offsets as well as viewport origin.
 
+## Shell title slot
+
+Hiding the duplicate scrollable title during a Year↔Month morph must not remove its 57px layout slot. `Offstage` reports zero size, so keep the fixed-height slot outside it; otherwise both captured endpoints sit 57px too high and snap when the live title returns.
+
+**Why:** The Year and Month targets are measured while the shell owns the title. A zero-sized hidden child makes the scroll view believe the title is present while contributing no height.
+
+**How to apply:** Preserve the title slot's full height while hiding only its contents, and verify capture geometry against settled geometry in the real AppShell.
+
+## Morph text metrics
+
+Canvas `TextPainter` does not inherit the ambient OS `TextScaler`. Resolve Month endpoint sizes with `TextScaler.scale()` at each label's authored font size, then interpolate those sizes through the morph. Keep Year-side text under its existing `maxScaleFactor: 1.0` cap and retain the current transition duration.
+
+**Why:** Fixed painter font sizes render as system-default during the animation, then change abruptly when the scaled live Month view appears. The OS scaler can be nonlinear, so a ratio derived from another font size is not a reliable substitute.
+
+**How to apply:** Derive DOW and week-number endpoint sizes from their own widget font sizes; include them in painter invalidation, and keep source/target weight and spacing aligned with the rendered endpoint styles.
+
 ## Key dependency
 
 `lerpDouble` requires `import 'dart:ui' show lerpDouble;` — flutter/cupertino.dart alone does NOT expose it as a free function inside StatelessWidget.build.

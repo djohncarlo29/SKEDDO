@@ -104,6 +104,7 @@ const _kShortMonthNames = [
   'Dec',
 ];
 const _kDayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const _kYearViewDowFontSize = 8.5;
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 const double _kRowHeightList = 52.0;
@@ -3854,7 +3855,7 @@ class _MiniMonthGrid extends StatelessWidget {
                       textScaler: TextScaler.noScaling,
                       style: TextStyle(
                         fontFamily: kSFProText,
-                        fontSize: 8.5,
+                        fontSize: _kYearViewDowFontSize,
                         fontWeight: FontWeight.w500,
                         color: letterC,
                       ),
@@ -4066,6 +4067,14 @@ class _MorphOverlay extends StatelessWidget {
     final yearDayScale =
         _yearViewTextScaler(context).scale(yearFontSize) / yearFontSize;
     final monthDayScale = textScaleRatioFor(context, 17.0);
+    final textScaler = MediaQuery.textScalerOf(context);
+    // Match the live mini-month and Month-view typography at both endpoints.
+    // Year View's DOW labels are authored at a fixed size; Month View's labels
+    // and week numbers inherit the OS TextScaler, including nonlinear scales.
+    final yearDowFontSize = _kYearViewDowFontSize;
+    final monthDowFontSize = textScaler.scale(11.0);
+    final yearWeekNumberFontSize = _yearViewTextScaler(context).scale(12.0);
+    final monthWeekNumberFontSize = textScaler.scale(12.0);
     final monthDayCircleDiameter = _calendarDayCircleDiameterFor(context);
     final List<Color?> monthListDotColors;
     if (viewMode == CalendarViewMode.list) {
@@ -4209,6 +4218,10 @@ class _MorphOverlay extends StatelessWidget {
                   separatorColor: sepC,
                   yearDayScale: yearDayScale,
                   monthDayScale: monthDayScale,
+                  yearDowFontSize: yearDowFontSize,
+                  monthDowFontSize: monthDowFontSize,
+                  yearWeekNumberFontSize: yearWeekNumberFontSize,
+                  monthWeekNumberFontSize: monthWeekNumberFontSize,
                   monthDayCircleDiameter: monthDayCircleDiameter,
                 ),
               ),
@@ -4616,6 +4629,10 @@ class _MorphPainter extends CustomPainter {
     required this.viewModeRowHeight,
     required this.yearDayScale,
     required this.monthDayScale,
+    required this.yearDowFontSize,
+    required this.monthDowFontSize,
+    required this.yearWeekNumberFontSize,
+    required this.monthWeekNumberFontSize,
     required this.monthDayCircleDiameter,
     this.measuredRowTops,
     this.yearGeometry,
@@ -4643,6 +4660,10 @@ class _MorphPainter extends CustomPainter {
   final double viewModeRowHeight;
   final double yearDayScale;
   final double monthDayScale;
+  final double yearDowFontSize;
+  final double monthDowFontSize;
+  final double yearWeekNumberFontSize;
+  final double monthWeekNumberFontSize;
   final double monthDayCircleDiameter;
   final List<double>? measuredRowTops;
   final _YearMorphGeometry? yearGeometry;
@@ -4672,6 +4693,10 @@ class _MorphPainter extends CustomPainter {
       o.viewModeRowHeight != viewModeRowHeight ||
       o.yearDayScale != yearDayScale ||
       o.monthDayScale != monthDayScale ||
+      o.yearDowFontSize != yearDowFontSize ||
+      o.monthDowFontSize != monthDowFontSize ||
+      o.yearWeekNumberFontSize != yearWeekNumberFontSize ||
+      o.monthWeekNumberFontSize != monthWeekNumberFontSize ||
       o.monthDayCircleDiameter != monthDayCircleDiameter ||
       o.yearGeometry != yearGeometry ||
       o.monthGeometry != monthGeometry ||
@@ -4889,7 +4914,7 @@ class _MorphPainter extends CustomPainter {
         );
 
         // DOW letters (centred, zoom-following, quick fade)
-        final lSz = (cellSz * 0.55 * s).clamp(1.0, 200.0);
+        final lSz = (yearDowFontSize * s).clamp(1.0, 200.0);
         for (int i = 0; i < 7; i++) {
           _textC(
             canvas,
@@ -4899,7 +4924,6 @@ class _MorphPainter extends CustomPainter {
             tertiaryColor,
             hdrAlpha,
             Offset(xZ(mnX + (i + 0.5) * cellSz), yZ(otherFocalY + cellSz / 2)),
-            ls: -0.1,
           );
         }
       }
@@ -5218,12 +5242,15 @@ class _MorphPainter extends CustomPainter {
       _textC(
         canvas,
         '$wkNum',
-        12,
+        lerpDouble(
+          yearWeekNumberFontSize,
+          monthWeekNumberFontSize,
+          t,
+        )!.clamp(1.0, 200.0),
         FontWeight.w400,
         secondaryColor,
         t,
         Offset(wkCX, wkCY),
-        ls: lerpDouble(-0.1, 0.0, t)!,
       );
 
       final sepY = lerpDouble(
@@ -5311,7 +5338,11 @@ class _MorphPainter extends CustomPainter {
                   monthScrollOffset,
           t,
         )!;
-        final fSz = lerpDouble(cellSz * 0.55, 11.0, t)!.clamp(1.0, 200.0);
+        final fSz = lerpDouble(
+          yearDowFontSize,
+          monthDowFontSize,
+          t,
+        )!.clamp(1.0, 200.0);
         _textC(
           canvas,
           _kDayLetters[i],
@@ -5320,7 +5351,7 @@ class _MorphPainter extends CustomPainter {
           dowColor,
           1.0,
           Offset(cx, cy),
-          ls: -0.1,
+          ls: lerpDouble(0.0, -0.1, t)!,
         );
       }
     }

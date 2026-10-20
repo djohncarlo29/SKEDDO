@@ -6,12 +6,14 @@ import 'package:smart_scheduler/tabs/calendar_tab.dart';
 
 void main() {
   testWidgets(
-    'Year↔Month destination stays mounted while the painter owns the transition',
+    'Year↔Month morph preserves shell geometry at non-default text size',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       const screenSize = Size(393, 680);
       tester.view.physicalSize = screenSize;
       tester.view.devicePixelRatio = 1.0;
+      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       tester.view.padding = const FakeViewPadding(top: 24, bottom: 24);
@@ -27,6 +29,11 @@ void main() {
       await tester.pumpAndSettle();
       final calendar = tester.state<CalendarTabState>(
         find.byType(CalendarTab),
+      );
+      expect(
+        MediaQuery.textScalerOf(tester.element(find.byType(CalendarTab)))
+            .scale(11.0),
+        greaterThan(11.0),
       );
 
       final initialMonthPosition = _positionForViewport(tester, 'month');
