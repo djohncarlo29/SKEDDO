@@ -368,6 +368,7 @@ class AppHeaderScrollEdge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final normalizedProgress = progress.clamp(0.0, 1.0).toDouble();
+    final effectProgress = Curves.easeOutCubic.transform(normalizedProgress);
     if (height <= 0) {
       return const SizedBox.shrink();
     }
@@ -389,15 +390,15 @@ class AppHeaderScrollEdge extends StatelessWidget {
               // threshold.
               alpha:
                   (_kAppHeaderScrollEdgeMaxTintOpacity *
-                          normalizedProgress *
+                          effectProgress *
                           surfaceColor.a)
                       .clamp(0.0, 1.0)
                       .toDouble(),
             ),
-            // Keep the same overlay subtree at rest; the stronger blur matches
-            // the depth of the glass treatment shown in the reference.
-            blur: normalizedProgress > 0
-                ? _kAppHeaderScrollEdgeMaxBlurSigma * normalizedProgress
+            // Hold most of the glass strength across the scroll interval, then
+            // ease it away near the end instead of fading linearly.
+            blur: effectProgress > 0
+                ? _kAppHeaderScrollEdgeMaxBlurSigma * effectProgress
                 : 0.001,
           ),
         ),
