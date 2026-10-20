@@ -6,8 +6,8 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 const double kAppHeaderToolbarHeight = 44;
 const double kAppHeaderTitleHeight = 57;
 const double kAppHeaderScrollEdgeTitleCapExtension = 10;
-const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;
-const double _kAppHeaderScrollEdgeMaxBlurSigma = 8;
+const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.3;
+const double _kAppHeaderScrollEdgeMaxBlurSigma = 18;
 
 /// Shared scroll rules for second-level app headers.
 ///
@@ -383,9 +383,10 @@ class AppHeaderScrollEdge extends StatelessWidget {
           child: LiquidGlassScrollEdge(
             edge: LiquidGlassEdge.top,
             color: surfaceColor.withValues(
-              // Keep the shared app-level edge translucent enough that content
-              // passing behind it remains visibly present. The edge is a
-              // compositing treatment, never a visibility threshold.
+              // Keep the shared app-level edge translucent while applying a
+              // stronger blur as content passes beneath the pinned header.
+              // The edge remains a compositing treatment, never a visibility
+              // threshold.
               alpha:
                   (_kAppHeaderScrollEdgeMaxTintOpacity *
                           normalizedProgress *
@@ -393,8 +394,8 @@ class AppHeaderScrollEdge extends StatelessWidget {
                       .clamp(0.0, 1.0)
                       .toDouble(),
             ),
-            // Keep the same overlay subtree at rest while limiting blur so
-            // text and controls remain perceptible as they pass through.
+            // Keep the same overlay subtree at rest; the stronger blur matches
+            // the depth of the glass treatment shown in the reference.
             blur: normalizedProgress > 0
                 ? _kAppHeaderScrollEdgeMaxBlurSigma * normalizedProgress
                 : 0.001,

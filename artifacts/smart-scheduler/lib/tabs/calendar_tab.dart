@@ -8687,7 +8687,12 @@ class _DayTimelineState extends State<_DayTimeline>
 
   void _publishSharedScrollOffset() {
     if (!_scroll.hasClients) return;
-    final offset = _scroll.position.pixels;
+    final position = _scroll.position;
+    // Do not publish elastic overscroll into the shared in-range position.
+    // _applySharedScrollOffset clamps and jumps to the shared value, which
+    // would otherwise cancel the active timeline's rubberband.
+    if (position.outOfRange) return;
+    final offset = position.pixels;
     if ((widget.sharedScrollOffset.value - offset).abs() > 0.5) {
       widget.sharedScrollOffset.value = offset;
     }
@@ -8750,13 +8755,10 @@ class _DayTimelineState extends State<_DayTimeline>
         leadingInset: shellInset,
         controller: _scroll,
         physics: const BouncingScrollPhysics(),
-        padding: EdgeInsets.only(
-          top:
-              shellInset +
-              (MediaQuery.orientationOf(context) == Orientation.portrait
-                  ? kAppHeaderTitleHeight
-                  : 0),
-        ),
+        // The scroll viewport extends upward by shellInset, so this matching
+        // leading space keeps the first hour aligned directly below the banner.
+        // This timeline is already below its header and needs no title spacer.
+        padding: EdgeInsets.only(top: shellInset),
         child: SizedBox(
           // Extra _kTimelinePad at both ends prevents the indicator and the
           // first/last hour labels from being hard-clipped by the Stack.
@@ -9573,7 +9575,11 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
 
   void _publishSharedScrollOffset() {
     if (!_scroll.hasClients) return;
-    final offset = _scroll.position.pixels;
+    final position = _scroll.position;
+    // Preserve local elastic motion; publishing an out-of-range value makes
+    // the shared-offset listener clamp it back to the scroll extent.
+    if (position.outOfRange) return;
+    final offset = position.pixels;
     if ((widget.sharedScrollOffset.value - offset).abs() > 0.5) {
       widget.sharedScrollOffset.value = offset;
     }
@@ -9628,13 +9634,9 @@ class _DayTimelineMultiState extends State<_DayTimelineMulti>
         leadingInset: shellInset,
         controller: _scroll,
         physics: const BouncingScrollPhysics(),
-        padding: EdgeInsets.only(
-          top:
-              shellInset +
-              (MediaQuery.orientationOf(context) == Orientation.portrait
-                  ? kAppHeaderTitleHeight
-                  : 0),
-        ),
+        // Match the viewport's upward extension without reserving a second
+        // header-title slot: this timeline begins immediately below the banner.
+        padding: EdgeInsets.only(top: shellInset),
         child: SizedBox(
           // Keep the end-of-day hairline immediately above the shared
           // floating-pill clearance.  This makes the visible gap from the
