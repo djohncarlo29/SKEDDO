@@ -509,8 +509,10 @@ Future<void> main() async {
   // Set the system-bar layout before startup awaits so Android can draw the
   // first frame edge-to-edge, including when the app launches in a freeform
   // window. The header separately uses MediaQuery.padding.top for safe layout.
-  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  SystemChrome.setSystemUIOverlayStyle(_overlayStyle);
+  if (!kIsWeb) {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setSystemUIOverlayStyle(_overlayStyle);
+  }
   await initializeDeviceTextScaleProfile();
 
   // ── Global crash capture (non-web only) ────────────────────────────────────
