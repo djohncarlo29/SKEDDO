@@ -51,8 +51,8 @@ In portrait, the normal AppShell header surface is transparent so page content c
 
 ## App-page title capline reach
 
-Extend the shared app-page Liquid Glass scroll edge 10 points beyond the toolbar boundary so it reaches the upper capline area of the second-level title. Collapse that extension with the toolbar during the AppShell transition. Keep modal-sheet edge extents independent.
+Extend the shared app-page Liquid Glass scroll edge through the full second-level title travel region, plus its existing 10-point extension. Place it after the moving title and before fixed toolbar controls, so the title itself is included in the backdrop while the controls stay sharp. Collapse the full extent with the AppShell transition. Keep modal-sheet edge extents independent.
 
-**Why:** The user wants the Notes, Settings, Calendar, Events, and Detailed Category page edge to reach the very top of titles such as “All Notes” and “All Events,” while explicitly excluding modal sheets.
+**Why:** The user wants second-level title text to blur as it passes through the glass, not just the page content behind it. A band ending just below the toolbar leaves most of the title near the soft-fade boundary. Modal sheets remain out of scope.
 
-**How to apply:** Use a dedicated shared app-edge extension based on the 10-point large-title bottom inset; apply it at the AppShell and Settings header call sites, not in `LiquidGlassScrollEdge` globally or modal-sheet code.
+**How to apply:** Keep the scroll edge overlay as a visual sibling after the moving title and before pinned controls. Extend its height to cover the title's full scroll path plus the capline extension, and preserve the physical viewport as the final clip.

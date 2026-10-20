@@ -3227,6 +3227,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                          height:
                                              topInset +
                                               (headerToolbarHeight +
+                                                      kAppHeaderTitleHeight +
                                                       kAppHeaderScrollEdgeTitleCapExtension) *
                                                   (1 - t),
                                        ),
