@@ -16,7 +16,8 @@ import 'ai/parsed_date.dart';
 //   appDefaultViewNotifier   — 'Day' | 'Week' | 'Month' | 'Year'.
 //   appEventDurationNotifier — '15 minutes' | '30 minutes' | '1 hour' | '2 hours'.
 //   appDateLocaleNotifier    — monthFirst or dayFirst for ambiguous numeric dates.
-//   appLiquidGlassOpacityNotifier — 0.0..1.0 opacity of the floating tab bar.
+//   appLiquidGlassOpacityNotifier — 0.2..0.8 material opacity for Liquid Glass
+//     controls, including the floating tab bar and AppShell menu button.
 // ══════════════════════════════════════════════════════════════════════════════
 
 /// Brightness override applied to CupertinoThemeData.

@@ -3875,6 +3875,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   _dcvSlideController,
                   _searchModeAnim,
                   _settingsBackAction,
+                  appLiquidGlassOpacityNotifier,
                 ]),
                 builder: (context, _) {
                   final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
@@ -3890,6 +3891,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   final accent = (isDCVVisual && _dcvColor != null)
                       ? _dcvColor!
                       : resolveAccentColor(context);
+                  final buttonStyle = LiquidGlassButton.defaultStyle.copyWith(
+                    appearance: liquidGlassOpacitySettingAppearance(
+                      context,
+                      baseAppearance:
+                          LiquidGlassButton.defaultStyle.appearance,
+                    ),
+                  );
                   final fadeOpacity = (1.0 - _searchModeAnim.value).clamp(
                     0.0,
                     1.0,
@@ -3897,17 +3905,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   return Positioned(
                     left:
                         AppWindowContentScope.of(context).horizontalInset +
-                        16.0, // 6 (Row left padding) + 10 (inner Positioned left)
-                    top:
-                        topInset +
-                        2, // +2: original slot used Positioned(bottom:0) inside 38px slot, Padding height=36, so top = 38-36 = 2 below topInset
+                        16.0, // Match the Notes attachment-preview close button.
+                    top: topInset + 10.0,
                     child: IgnorePointer(
                       ignoring: fadeOpacity < 0.01,
                       child: Opacity(
                         opacity: fadeOpacity,
                         child: SizedBox(
-                          width: 36,
-                          height: 36,
+                          width: 40,
+                          height: 40,
                           child: Stack(
                             clipBehavior: Clip.none,
                             children: [
@@ -3922,9 +3928,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                 ),
                                 child: LightModeLiquidGlassButtonContour(
                                   child: LiquidGlassButton(
-                                    width: 36,
-                                    height: 36,
+                                    width: 40,
+                                    height: 40,
                                     padding: EdgeInsets.zero,
+                                    style: buttonStyle,
                                     onPressed: isDCVVisual
                                         ? _exitDCV
                                         : isSubScreen

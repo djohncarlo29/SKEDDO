@@ -567,27 +567,44 @@ class LiquidGlassPreviewClipper extends CustomClipper<Path> {
   bool shouldReclip(covariant LiquidGlassPreviewClipper oldClipper) => false;
 }
 
-LiquidGlassStyle _floatingTabBarStyle(
+/// Resolves the material appearance controlled by the Liquid Glass setting.
+///
+/// Keep other Liquid Glass controls on the same opacity and blur response as
+/// the floating tab bar by supplying their own base appearance.
+LiquidGlassAppearance liquidGlassOpacitySettingAppearance(
   BuildContext context, {
-  bool exactClip = false,
+  required LiquidGlassAppearance baseAppearance,
 }) {
   final headerColor = resolveThemeColor(kFloatingTabBarSurfaceColor, context);
-  final defaultBlur = LiquidGlassTabBar.defaultStyle.appearance.blur;
+  final setting = appLiquidGlassOpacityNotifier.value;
+  final defaultBlur = baseAppearance.blur;
   final blurProgress =
-      _normalizedLiquidGlassOpacity(appLiquidGlassOpacityNotifier.value);
+      _normalizedLiquidGlassOpacity(setting);
   final blurScale = blurProgress < 0.9
       ? (0.3 + blurProgress * 3) / 2
       : blurProgress < 1.0
       ? (3.0 + (blurProgress - 0.9) * 10) / 2
       : 2.0;
 
+  return baseAppearance.copyWith(
+    color: headerColor.withValues(alpha: setting),
+    blur: LiquidGlassBlur(
+      sigmaX: defaultBlur.sigmaX * blurScale,
+      sigmaY: defaultBlur.sigmaY * blurScale,
+    ),
+  );
+}
+
+LiquidGlassStyle _floatingTabBarStyle(
+  BuildContext context, {
+  bool exactClip = false,
+}) {
+  final defaultAppearance = LiquidGlassTabBar.defaultStyle.appearance;
+
   return LiquidGlassTabBar.defaultStyle.copyWith(
-    appearance: LiquidGlassTabBar.defaultStyle.appearance.copyWith(
-      color: headerColor.withValues(alpha: appLiquidGlassOpacityNotifier.value),
-      blur: LiquidGlassBlur(
-        sigmaX: defaultBlur.sigmaX * blurScale,
-        sigmaY: defaultBlur.sigmaY * blurScale,
-      ),
+    appearance: liquidGlassOpacitySettingAppearance(
+      context,
+      baseAppearance: defaultAppearance,
     ),
     shape: exactClip
         ? kLiquidGlassPreviewGlassShape
