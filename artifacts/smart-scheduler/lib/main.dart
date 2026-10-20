@@ -2184,6 +2184,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           isActive: isActive,
           compact: compact,
           compactFadeColor: compactFadeColor,
+          titleTextKey: isActive &&
+                  !compact &&
+                  !_calendarTitleOwnedByScrollContent
+              ? _calendarTabKey.currentState?.yearMonthMorphHeaderTitleKey
+              : null,
         );
 
     return ValueListenableBuilder<double>(
@@ -2264,6 +2269,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     required bool isActive,
     bool compact = false,
     Color? compactFadeColor,
+    GlobalKey? titleTextKey,
   }) {
     final canUp = view != CalendarView.day;
     final canDown = view != CalendarView.year;
@@ -2317,6 +2323,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
     final titleScroller = HeaderTitleScroller(
       title: displayTitle,
+      titleTextKey: titleTextKey,
       fadeColor: compactFadeColor ?? resolveThemeColor(kCardColor, context),
       onTap: isActive && (isToday || view == CalendarView.day)
           ? () {
@@ -2444,6 +2451,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             displayYear: displayYear,
             view: view,
             isActive: isActive,
+            titleTextKey: isActive &&
+                    !yearMonthMorphActive &&
+                    view != CalendarView.day
+                ? _calendarTabKey.currentState?.yearMonthMorphHeaderTitleKey
+                : null,
             compactFadeColor: resolveThemeColor(
               kBackgroundColor,
               context,

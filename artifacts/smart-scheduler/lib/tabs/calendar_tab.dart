@@ -32,6 +32,7 @@ import '../widgets/app_window_content_boundary.dart';
 import '../widgets/selection_handle_haptics.dart';
 import '../widgets/vertical_edge_fade.dart';
 import '../widgets/horizontal_edge_fade.dart';
+import '../widgets/header_title_scroller.dart' show headerTitleFontSize;
 import '../widgets/action_panel.dart';
 import '../widgets/view_mode_icons.dart';
 import '../widgets/app_switch.dart';
@@ -725,6 +726,8 @@ class CalendarTabState extends State<CalendarTab>
   // canvas in one coordinate space, even when CalendarTab ancestors relayout
   // during the view handoff.
   final GlobalKey _yearMonthMorphCoordinateSpaceKey = GlobalKey();
+  final GlobalKey _yearMonthMorphHeaderTitleKey = GlobalKey();
+  Rect? _yearMonthMorphTitleTargetRect;
   // Per-mini-month week rows let the morph use measured Year-view cells and
   // row surfaces instead of reconstructing their settled coordinates.
   final List<List<GlobalKey>> _yearMorphWeekRowKeys = List.generate(
@@ -1699,6 +1702,8 @@ class CalendarTabState extends State<CalendarTab>
       _zoomCtrl.isAnimating ||
       (_zoomCtrl.value > 0.001 && _zoomCtrl.value < 0.999);
 
+  GlobalKey get yearMonthMorphHeaderTitleKey => _yearMonthMorphHeaderTitleKey;
+
   ValueListenable<bool> get calendarYearMonthMorphActiveListenable =>
       _yearMonthMorphingNotifier;
 
@@ -2001,6 +2006,9 @@ class CalendarTabState extends State<CalendarTab>
     // Capture exact row positions before the zoom animation hides the YearView.
     _measureYearRowTops();
     _yearMorphGeometry = _measureYearMorphGeometry(monthIdx);
+    _yearMonthMorphTitleTargetRect = _measureMorphCoordinateLocalRect(
+      _yearMonthMorphHeaderTitleKey,
+    );
     _zoomScrollOffset = _yearScrollCtrl.hasClients
         ? _yearScrollCtrl.offset
         : 0.0;
@@ -2086,6 +2094,9 @@ class CalendarTabState extends State<CalendarTab>
     // Snapshot its current settled geometry so the reverse morph begins at the
     // exact visible coordinates rather than the geometry cached on entry.
     _monthMorphGeometry = _measureMonthMorphGeometry();
+    _yearMonthMorphTitleTargetRect = _measureMorphCoordinateLocalRect(
+      _yearMonthMorphHeaderTitleKey,
+    );
     if (!_yearScrollCtrl.hasClients) {
       _yearScrollCtrl.removeListener(_syncYearPreviewScrollToCurrent);
       _yearScrollCtrl.dispose();
@@ -3333,6 +3344,7 @@ class CalendarTabState extends State<CalendarTab>
                             measuredRowTops: _yearMeasuredRowTops,
                             yearGeometry: _yearMorphGeometry,
                             monthGeometry: _monthMorphGeometry,
+                            titleTargetRect: _yearMonthMorphTitleTargetRect,
                             // During Year→Month, title ownership temporarily
                             // moves to the shell. The title band is still
                             // visible and must remain protected from the
@@ -4043,6 +4055,7 @@ class _MorphOverlay extends StatelessWidget {
     this.measuredRowTops,
     this.yearGeometry,
     this.monthGeometry,
+    this.titleTargetRect,
     this.nonSelectedClipTop = 0.0,
   });
 
@@ -4067,6 +4080,7 @@ class _MorphOverlay extends StatelessWidget {
   final List<double>? measuredRowTops;
   final _YearMorphGeometry? yearGeometry;
   final _MonthMorphGeometry? monthGeometry;
+  final Rect? titleTargetRect;
   final double nonSelectedClipTop;
 
   @override
@@ -4091,6 +4105,7 @@ class _MorphOverlay extends StatelessWidget {
         _yearViewTextScaler(context).scale(yearFontSize) / yearFontSize;
     final monthDayScale = textScaleRatioFor(context, 17.0);
     final textScaler = MediaQuery.textScalerOf(context);
+    final monthTitleFontSize = headerTitleFontSize(context);
     // Match the live mini-month and Month-view typography at both endpoints.
     // Year View's DOW labels are authored at a fixed size; Month View's labels
     // and week numbers inherit the OS TextScaler, including nonlinear scales.
@@ -4231,8 +4246,10 @@ class _MorphOverlay extends StatelessWidget {
                   measuredRowTops: measuredRowTops,
                   yearGeometry: yearGeometry,
                   monthGeometry: monthGeometry,
+                  titleTargetRect: titleTargetRect,
                   nonSelectedClipTop: nonSelectedClipTop,
                   viewModeRowHeight: viewModeRowHeight,
+                  monthTitleFontSize: monthTitleFontSize,
                   bgColor: bgC,
                   primaryColor: priC,
                   accentColor: accC,
@@ -4679,9 +4696,11 @@ class _MorphPainter extends CustomPainter {
     required this.yearWeekNumberFontSize,
     required this.monthWeekNumberFontSize,
     required this.monthDayCircleDiameter,
+    required this.monthTitleFontSize,
     this.measuredRowTops,
     this.yearGeometry,
     this.monthGeometry,
+    this.titleTargetRect,
     this.nonSelectedClipTop = 0.0,
   });
 
@@ -4710,9 +4729,11 @@ class _MorphPainter extends CustomPainter {
   final double yearWeekNumberFontSize;
   final double monthWeekNumberFontSize;
   final double monthDayCircleDiameter;
+  final double monthTitleFontSize;
   final List<double>? measuredRowTops;
   final _YearMorphGeometry? yearGeometry;
   final _MonthMorphGeometry? monthGeometry;
+  final Rect? titleTargetRect;
   final double nonSelectedClipTop;
 
   final Paint _p = Paint()..isAntiAlias = true;
@@ -4743,8 +4764,10 @@ class _MorphPainter extends CustomPainter {
       o.yearWeekNumberFontSize != yearWeekNumberFontSize ||
       o.monthWeekNumberFontSize != monthWeekNumberFontSize ||
       o.monthDayCircleDiameter != monthDayCircleDiameter ||
+      o.monthTitleFontSize != monthTitleFontSize ||
       o.yearGeometry != yearGeometry ||
       o.monthGeometry != monthGeometry ||
+      o.titleTargetRect != titleTargetRect ||
       o.nonSelectedClipTop != nonSelectedClipTop ||
       o.bgColor != bgColor;
 
@@ -4872,17 +4895,18 @@ class _MorphPainter extends CustomPainter {
     double a,
     Offset topLeft, {
     double ls = 0.0,
+    double? height = 1.0,
   }) {
     if (a <= 0 || sz < 1) return;
     final fadedColor = _fade(color, a);
-    final key = 'l|$str|$sz|${fw.index}|${fadedColor.toARGB32()}|$ls';
+    final key = 'l|$str|$sz|${fw.index}|${fadedColor.toARGB32()}|$ls|$height';
     final tp = _frameTextCache[key] ??= TextPainter(
       text: TextSpan(
         text: str,
         style: TextStyle(
           fontFamily: kSFProText,
           fontSize: sz,
-          height: 1.0,
+          height: height,
           fontWeight: fw,
           color: fadedColor,
           letterSpacing: ls,
@@ -4965,6 +4989,15 @@ class _MorphPainter extends CustomPainter {
     final nameColor = (today.year == year && today.month == zMonth)
         ? accentColor
         : primaryColor;
+    final titleLineHeightRatio =
+        titleTargetRect != null && monthTitleFontSize > 0.0
+        ? titleTargetRect!.height / monthTitleFontSize
+        : 1.0;
+    final titleLineHeight = lerpDouble(
+      1.0,
+      titleLineHeightRatio,
+      t,
+    )!;
 
     // Week-row surfaces are part of the same shared element as the row's
     // dates. Keep them separate per row so each strip carries its background
@@ -5009,23 +5042,28 @@ class _MorphPainter extends CustomPainter {
       final cellAlpha = isHoriz ? 1.0 : ((0.95 - t) / 0.95).clamp(0.0, 1.0);
       final hdrAlpha = (1.0 - t / 0.42).clamp(0.0, 1.0);
 
-      if (cellAlpha <= 0 && hdrAlpha <= 0) continue;
+      // Every mini-month title interpolates to the actual Month-header
+      // typography. Keep it fully painted; the shared header's clipping/surface
+      // hides titles that travel behind that area.
+      final titleFontSize = lerpDouble(
+        cellSz * 1.35,
+        monthTitleFontSize,
+        t,
+      )!.clamp(1.0, 200.0);
+      final isCurrMonth = year == today.year && today.month == mMon;
+      _textL(
+        canvas,
+        _kShortMonthNames[mMon - 1],
+        titleFontSize,
+        FontWeight.w700,
+        isCurrMonth ? accentColor : primaryColor,
+        1.0,
+        Offset(xZ(mnX), yZ(mnY)),
+        ls: lerpDouble(-0.3, -1.2, t)!,
+        height: titleLineHeight,
+      );
 
-      // Month name (left-aligned, zoom-following, quick fade)
       if (hdrAlpha > 0) {
-        final fSz = (cellSz * 1.35 * s).clamp(1.0, 200.0);
-        final isCurrMonth = year == today.year && today.month == mMon;
-        _textL(
-          canvas,
-          _kShortMonthNames[mMon - 1],
-          fSz,
-          FontWeight.w700,
-          isCurrMonth ? accentColor : primaryColor,
-          hdrAlpha,
-          Offset(xZ(mnX), yZ(mnY)),
-          ls: -0.3,
-        );
-
         // DOW letters (centred, zoom-following, quick fade)
         final lSz = (yearDowFontSize * s).clamp(1.0, 200.0);
         for (int i = 0; i < 7; i++) {
@@ -5457,22 +5495,34 @@ class _MorphPainter extends CustomPainter {
       }
     }
 
-    // 7. Selected month name label (zoom-following, fades out by t = 0.4) ─────
+    // 7. Selected month title travels into the shared header title position.
     {
-      final labelAlpha = ((0.4 - t) / 0.3).clamp(0.0, 1.0);
-      if (labelAlpha > 0) {
-        final fSz = (cellSz * 1.35 * s).clamp(1.0, 200.0);
-        _textL(
-          canvas,
-          _kShortMonthNames[zMonth - 1],
-          fSz,
-          FontWeight.w700,
-          nameColor,
-          labelAlpha,
-          Offset(xZ(focalX), yZ(rowTop[zRow] - scrollOffset)),
-          ls: -0.3,
-        );
-      }
+      final titleFontSize = lerpDouble(
+        cellSz * 1.35,
+        monthTitleFontSize,
+        t,
+      )!.clamp(1.0, 200.0);
+      final yearTitleTopLeft = Offset(
+        focalX,
+        rowTop[zRow] - scrollOffset,
+      );
+      final titleTopLeft = titleTargetRect == null
+          ? Offset(xZ(yearTitleTopLeft.dx), yZ(yearTitleTopLeft.dy))
+          : Offset(
+              lerpDouble(yearTitleTopLeft.dx, titleTargetRect!.left, t)!,
+              lerpDouble(yearTitleTopLeft.dy, titleTargetRect!.top, t)!,
+            );
+      _textL(
+        canvas,
+        _kShortMonthNames[zMonth - 1],
+        titleFontSize,
+        FontWeight.w700,
+        nameColor,
+        1.0,
+        titleTopLeft,
+        ls: lerpDouble(-0.3, -1.2, t)!,
+        height: titleLineHeight,
+      );
     }
   }
 }

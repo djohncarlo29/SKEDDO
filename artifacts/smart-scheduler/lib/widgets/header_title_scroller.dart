@@ -85,6 +85,7 @@ double headerTitleFontSize(
 /// start-only, both, or end-only depending on the current scroll position.
 class HeaderTitleScroller extends StatefulWidget {
   final String title;
+  final GlobalKey? titleTextKey;
   final TextStyle style;
   final Color fadeColor;
   final double fadeWidth;
@@ -107,6 +108,7 @@ class HeaderTitleScroller extends StatefulWidget {
   const HeaderTitleScroller({
     super.key,
     required this.title,
+    this.titleTextKey,
     required this.style,
     required this.fadeColor,
     this.fadeWidth = 36,
@@ -364,17 +366,18 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                                     if (widget.leadingGap > 0)
                                       SizedBox(width: widget.leadingGap),
                                   ],
-                                 Text(
-                                   widget.title,
-                                   maxLines: 1,
-                                   softWrap: false,
-                                   overflow: TextOverflow.visible,
-                                   // Large Header titles are intentionally fixed-height. The
-                                   // rest of the app continues to follow the bounded
-                                   // header scale above instead of the ambient scaler.
-                                   textScaler: TextScaler.noScaling,
-                                   style: effectiveStyle,
-                                 ),
+                                  Text(
+                                    key: widget.titleTextKey,
+                                    widget.title,
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    overflow: TextOverflow.visible,
+                                    // Large Header titles are intentionally fixed-height. The
+                                    // rest of the app continues to follow the bounded
+                                    // header scale above instead of the ambient scaler.
+                                    textScaler: TextScaler.noScaling,
+                                    style: effectiveStyle,
+                                  ),
                                   if (trailing != null) ...[
                                    SizedBox(width: widget.trailingGap),
                                     trailing,
