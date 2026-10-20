@@ -40,6 +40,9 @@ void main() {
               const ColoredBox(key: sheetKey, color: Color(0xFFFFFFFF)),
         ),
       );
+
+      await tester.pump(const Duration(milliseconds: 120));
+      final movingSheetTop = tester.getRect(find.byKey(sheetKey)).top;
       await tester.pumpAndSettle();
 
       final rootRect = tester.getRect(find.byKey(rootKey));
@@ -47,6 +50,11 @@ void main() {
       expect(rootRect.size, surfaceSize);
 
       final sheetTop = tester.getRect(find.byKey(sheetKey)).top;
+      expect(
+        movingSheetTop,
+        greaterThan(sheetTop),
+        reason: 'The sheet must continue moving until it reaches its top gap.',
+      );
       final headerControlBottom = topInset + 2.0 + 36.0;
       expect(
         sheetTop,
