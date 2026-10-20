@@ -9188,7 +9188,7 @@ Widget _buildUnifiedCalendarIconUnit({
   required double dayFontSize,
   required double circleScale,
   double dayScale = 1.05,
-  double dayScaleY = 1.3,
+  double dayScaleY = 1.0,
 }) {
   return SizedBox(
     width: authoredCircleSize * circleScale,
@@ -14821,10 +14821,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
         dayTop: 14.6 * modalGeometryScale,
         dayFontSize: 9.5 * modalGeometryScale,
         circleScale: circleScale,
-        // Keep the badge centered while reducing it by one authored pixel
-        // across each visual axis in the large Card 1 preview.
+        // Keep the badge centered and proportional in the large Card 1 preview.
         dayScale: 0.97,
-        dayScaleY: 1.22,
+        dayScaleY: 0.97,
       );
     }
 
