@@ -8,3 +8,16 @@ Calendar's three-panel title transition must paint navigation chevrons on inacti
 **Why:** The outgoing active panel carries its controls away; if incoming preview panels hide theirs, the chevrons disappear during the handoff and only return after navigation commits.
 
 **How to apply:** When changing Calendar title panels, keep inactive controls visible and visually disabled, with pointer input ignored. Check both shell-owned and scrollable title builders, including compact and noncompact layouts.
+
+Compact landscape period chevrons are nested inside `HeaderTitleScroller`, whose
+parent tap returns a Day View title to Month View. `AnimatedTapIcon` handles raw
+pointer events but does not install a tap recognizer, so its callback can run alongside
+the enclosing title callback. Keep a child tap recognizer in the compact chevron hit
+target to consume the tap before it reaches the title.
+
+**Why:** Without the child recognizer, tapping a left/right Day View navigation arrow
+can both change the selected day and invoke the title's “return to Month” action.
+Swipes do not have this conflict.
+
+**How to apply:** Keep compact left/right period navigation separate from the split
+hierarchy chevron, and verify the Day View remains open after tapping either arrow.

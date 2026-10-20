@@ -4989,6 +4989,7 @@ class _MorphPainter extends CustomPainter {
     final nameColor = (today.year == year && today.month == zMonth)
         ? accentColor
         : primaryColor;
+    final monthTitleAlpha = (1.0 - t / 0.42).clamp(0.0, 1.0);
     final titleLineHeightRatio =
         titleTargetRect != null && monthTitleFontSize > 0.0
         ? titleTargetRect!.height / monthTitleFontSize
@@ -5057,7 +5058,7 @@ class _MorphPainter extends CustomPainter {
         titleFontSize,
         FontWeight.w700,
         isCurrMonth ? accentColor : primaryColor,
-        hdrAlpha,
+        monthTitleAlpha,
         Offset(xZ(mnX), yZ(mnY)),
         ls: lerpDouble(-0.3, -1.2, t)!,
         height: titleLineHeight,
@@ -5522,7 +5523,7 @@ class _MorphPainter extends CustomPainter {
         titleFontSize,
         FontWeight.w700,
         nameColor,
-        1.0,
+        monthTitleAlpha,
         titleTopLeft,
         ls: lerpDouble(-0.3, -1.2, t)!,
         height: titleLineHeight,
@@ -5746,6 +5747,30 @@ class _MonthView extends StatelessWidget {
           builder: (context, constraints) {
         final secondaryC = resolveThemeColor(kSecondaryLabel, context);
         final floatingClearance = floatingTabBarContentBottomClearance(context);
+        final isPortrait =
+            MediaQuery.orientationOf(context) == Orientation.portrait;
+        final scrollTitleWidget = scrollTitle == null
+            ? null
+            : scrollableTitleBuilder?.call(
+                context,
+                scrollTitle!,
+                year,
+                CalendarView.month,
+                scrollTitleIsActive,
+              );
+        final stationaryScrollTitleWidget = scrollTitleWidget == null
+            ? null
+            : AppHeaderScrollTitle(
+                controller: scrollController,
+                child: scrollTitleWidget,
+              );
+        // The transition measures the List content below the shared
+        // second-level title slot. Subtract the same slot here so the settled
+        // empty-state viewport does not center "No Events" lower on handoff.
+        final listContentTitleSlotHeight =
+            stationaryScrollTitleWidget != null || isPortrait
+            ? kAppHeaderTitleHeight
+            : 0.0;
         final emptyStateFloatingClearance =
             floatingTabBarContentBottomClearance(
               context,
@@ -5760,7 +5785,10 @@ class _MonthView extends StatelessWidget {
             constraints.maxHeight + kContentAreaTopRaise;
         final availableListEmptyStateH = math.max(
           0.0,
-          expandedViewportHeight - gridH - emptyStateFloatingClearance,
+          expandedViewportHeight -
+              listContentTitleSlotHeight -
+              gridH -
+              emptyStateFloatingClearance,
         );
         final selectedDayIsEmpty =
             listDayGroups.isEmpty ||
@@ -5831,24 +5859,6 @@ class _MonthView extends StatelessWidget {
                     : availableListEmptyStateH
                 : 0.0
             : math.max(0.0, emptyH - eventContentClearance);
-        final isPortrait =
-            MediaQuery.orientationOf(context) == Orientation.portrait;
-        final scrollTitleWidget = scrollTitle == null
-            ? null
-            : scrollableTitleBuilder?.call(
-                context,
-                scrollTitle!,
-                year,
-                CalendarView.month,
-                scrollTitleIsActive,
-              );
-        final stationaryScrollTitleWidget = scrollTitleWidget == null
-            ? null
-            : AppHeaderScrollTitle(
-                controller: scrollController,
-                child: scrollTitleWidget,
-              );
-
         // A non-empty Month List must use the selected DCV's measured height.
         // A collapsed final section therefore measures as its header plus the
         // section wrapper's trailing 16 pt, rather than retaining an estimated

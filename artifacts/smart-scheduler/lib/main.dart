@@ -2304,16 +2304,23 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           child: SizedBox(
             width: compactArrowWidth,
             height: 40,
-            child: AnimatedTapIcon(
-              // Keep the thin chevron strokes optically stable while pressed.
-              scaleEnabled: false,
-              padding: const EdgeInsets.all(11),
-              onTap: onTap,
-              child: _ChevronIcon(
-                direction: direction,
-                color: resolveAccentColor(context),
-                size: 18,
-                strokeWidth: 1.6,
+             child: _CalendarNavTapTarget(
+               // AnimatedTapIcon handles pointer input without a gesture
+               // recognizer. This no-op tap target prevents the surrounding
+               // title tap from also firing (which would return Day View to
+               // Month View when a landscape day-navigation chevron is tapped).
+               onTapAt: null,
+               child: AnimatedTapIcon(
+                 // Keep the thin chevron strokes optically stable while pressed.
+                 scaleEnabled: false,
+                 padding: const EdgeInsets.all(11),
+                 onTap: onTap,
+                 child: _ChevronIcon(
+                   direction: direction,
+                   color: resolveAccentColor(context),
+                   size: 18,
+                   strokeWidth: 1.6,
+                 ),
               ),
             ),
           ),

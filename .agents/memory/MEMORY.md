@@ -7,7 +7,7 @@
 - [Overlay scroll view primary controller reset](overlay-scroll-primary.md) — any CustomScrollView added as a Stack overlay inside CupertinoTabScaffold must set primary:false or it adopts the tab's scroll controller and resets the offset to 0.
 - [Calendar Day View dual-axis swipe isolation](calendar-swipe-isolation.md) — week-strip drags and timeline drags must use separate slideX variables; header sync via ValueNotifier + onStripSlide callback.
 - [Multi-Day current-time indicator](calendar-multiday-current-time-indicator.md) — cap the line at today’s active column boundary and keep that endpoint aligned as columns move.
-- [Calendar year↔month shared-element morph](calendar-year-zoom-transform.md) — measure both endpoints in the painter’s coordinate space and freeze them until its spring completes.
+- [Calendar year↔month shared-element morph](calendar-year-zoom-transform.md) — freeze measured endpoints through the spring; selected and unselected month titles share the early fade.
 - [Calendar morph week-strip surfaces](calendar-morph-week-strip-surfaces.md) — keep the selected Month week row visible beneath Day content, landing below the pinned DOW mask.
 - [Calendar 3-panel swipe ±2 bug](calendar-3panel-plusminus2-bug.md) — early doThen remaps panel slots mid-animation, carrying header one extra step; fix is doThen at 100% only.
 - [Calendar month panel clipping](calendar-month-panel-clipping.md) — clip each horizontally positioned month panel before vertical strip transforms so off-screen week rows cannot bleed into the DOW boundary.
@@ -137,6 +137,7 @@
 - [Smart Category semantic threshold](smart-category-semantic-threshold.md) — shared date/time text makes low cosine floors admit unrelated scheduled events; keep semantic matching conservative and normalize plural rules.
 - [Native iOS tab bar bridge](native-ios-tab-bar-bridge.md) — keep UIKit tab chrome across iOS versions; UIKit selects classic or floating styling and Flutter content clearance follows.
 - [Calendar morph transition notes](calendar-morph-transition-index.md) — consult view-specific handoff, bounds, veil, Day List, and destination-scroll geometry constraints before hierarchy animation edits.
+- [Calendar morph content bounds](calendar-morph-content-bounds.md) — size List content below the grid and subtract the title slot when centering an empty-day placeholder.
 - [Picker and live rotation geometry](picker-rotation-index.md) — use the focused geometry notes for landscape picker sizing and live window-metric transitions.
 - [Smart Category count cache invalidation](smart-category-count-cache-invalidation.md) — matcher embeddings can change results asynchronously without changing the event list, so derived counts need matcher revisions.
 - [Live slider persistence](live-slider-persistence.md) — persist on gesture completion even when live preview state already equals the snapped value.
@@ -147,6 +148,6 @@
 - [Nested modal header alignment](nested-modal-header-alignment.md) — nested titles and controls stay at the same screen coordinates as their parent sheet.
 - [Landscape pill contour sampling](landscape-pill-contour-sampling.md) — offset on local normals so flat edges stay 1px; preserve slider alpha and denser landscape sampling.
 - [Impeller screen-space glass geometry](impeller-screen-space-glass-geometry.md) — shader resolution must use the full FlutterView size, not narrowed landscape content MediaQuery dimensions.
-- [Calendar header chevron continuity](calendar-header-chevron-continuity.md) — keep controls visible but non-interactive on inactive swipe panels so navigation glyphs travel with the page.
+- [Calendar header chevron continuity](calendar-header-chevron-continuity.md) — keep inactive panels non-interactive; compact chevrons must block the enclosing title tap.
 - [Calendar hierarchy morph layout](calendar-midpoint-view-handoff.md) — keep the scroll-title slot mounted offstage and carry header offset through Year↔Month handoff; don't restore the destination scope mid-morph.
 - [Search-mode parent restoration](search-mode-parent-restoration.md) — closing search returns to the same settled parent screen, never a rubberbanded or partially swiped state.

@@ -57,6 +57,20 @@ Canvas `TextPainter` does not inherit the ambient OS `TextScaler`. Resolve Month
 
 **How to apply:** Derive DOW and week-number endpoint sizes from their own widget font sizes; include them in painter invalidation, and keep source/target weight and spacing aligned with the rendered endpoint styles.
 
+## Year→Month title fade
+
+Selected and unselected mini-month titles share the same early fade curve. The
+selected title still travels toward the measured header position and is clipped at
+the content boundary, but it does not remain fully opaque longer than the other
+month titles.
+
+**Why:** The selected label was initially exempted from fading; the user clarified
+that it should fade at the same time as the unselected labels.
+
+**How to apply:** Drive both selected and unselected month-title opacity from the
+same transition progress and fade duration. Keep its movement and clipping independent
+of the shared opacity.
+
 ## Static-font weight blending
 
 The bundled SF Pro faces are static weights, not a variable `wght` font. Smoothly blend the exact Year and Month glyph weights with linear alpha coverage in a bounded additive layer; do not rely on `FontVariation('wght')` or `FontWeight.lerp` to create intermediate strokes. Match endpoint letter spacing too.
