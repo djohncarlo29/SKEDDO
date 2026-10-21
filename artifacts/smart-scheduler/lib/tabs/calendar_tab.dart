@@ -32,7 +32,8 @@ import '../widgets/app_window_content_boundary.dart';
 import '../widgets/selection_handle_haptics.dart';
 import '../widgets/vertical_edge_fade.dart';
 import '../widgets/horizontal_edge_fade.dart';
-import '../widgets/header_title_scroller.dart' show headerTitleFontSize;
+import '../widgets/header_title_scroller.dart'
+    show headerTitleFontSize, kHeaderTitleBottomInset;
 import '../widgets/action_panel.dart';
 import '../widgets/view_mode_icons.dart';
 import '../widgets/app_switch.dart';
@@ -3728,6 +3729,7 @@ class _YearView extends StatelessWidget {
             ? null
             : AppHeaderScrollTitle(
                 controller: controller,
+                titleBottomInset: kHeaderTitleBottomInset,
                 child: scrollTitle,
               );
         final monthGrid = Padding(
@@ -5802,6 +5804,7 @@ class _MonthView extends StatelessWidget {
             ? null
             : AppHeaderScrollTitle(
                 controller: scrollController,
+                titleBottomInset: kHeaderTitleBottomInset,
                 child: scrollTitleWidget,
               );
         // The transition measures the List content below the shared

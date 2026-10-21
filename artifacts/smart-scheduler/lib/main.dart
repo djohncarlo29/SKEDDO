@@ -3116,13 +3116,20 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                               _headerTitleScrollOffset.value,
                                             ) *
                                     (1 - t);
-                                final titleHandoffProgress =
-                                    AppHeaderScrollBehavior.titleHandoffProgress(
+                                final largeTitleFadeProgress =
+                                    AppHeaderScrollBehavior
+                                        .largeTitleFadeProgress(
                                           _headerTitleScrollOffset.value,
                                           titleBottomInset:
                                               kHeaderTitleBottomInset,
-                                        ) *
-                                    (1 - t);
+                                        );
+                                final compactTitleFadeProgress =
+                                    AppHeaderScrollBehavior
+                                        .compactTitleFadeProgress(
+                                          _headerTitleScrollOffset.value,
+                                          titleBottomInset:
+                                              kHeaderTitleBottomInset,
+                                        );
                                 final edgeProgress =
                                     AppHeaderScrollBehavior.scrollEdgeProgress(
                                           _headerTitleScrollOffset.value,
@@ -3233,7 +3240,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                         headerSurfaceColor.a,
                                                   ),
                                               child: AppHeaderLargeTitleHandoff(
-                                                progress: titleHandoffProgress,
+                                                progress:
+                                                    largeTitleFadeProgress,
                                                 child: largeHeaderTitleLayout,
                                               ),
                                             ),
@@ -3600,7 +3608,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                         ),
                                                         child: AppHeaderCompactTitle(
                                                           progress:
-                                                              titleHandoffProgress,
+                                                              compactTitleFadeProgress,
                                                           isLandscape:
                                                               isLandscape,
                                                           child:

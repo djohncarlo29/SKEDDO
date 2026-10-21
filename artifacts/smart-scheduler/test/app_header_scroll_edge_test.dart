@@ -8,56 +8,98 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 
 void main() {
-  test('title handoff waits for descenders, then crossfades through toolbar', () {
+  test('large and compact title fades are sequential and end at content edge', () {
     const titleBottomInset = 10.0;
-    final handoffStart = kAppHeaderTitleHeight - titleBottomInset;
+    final titleBottom = kAppHeaderTitleHeight - titleBottomInset;
+    final handoffSplit = (titleBottom + kAppHeaderTitleHeight) / 2;
 
     expect(
-      AppHeaderScrollBehavior.titleHandoffProgress(
-        handoffStart - 1,
+      AppHeaderScrollBehavior.largeTitleFadeProgress(
+        titleBottom - 1,
         titleBottomInset: titleBottomInset,
       ),
       0,
     );
     expect(
-      AppHeaderScrollBehavior.titleHandoffProgress(
-        handoffStart,
+      AppHeaderScrollBehavior.largeTitleFadeProgress(
+        titleBottom,
         titleBottomInset: titleBottomInset,
       ),
       0,
     );
     expect(
-      AppHeaderScrollBehavior.titleHandoffProgress(
-        handoffStart + kAppHeaderToolbarHeight / 2,
+      AppHeaderScrollBehavior.largeTitleFadeProgress(
+        handoffSplit,
+        titleBottomInset: titleBottomInset,
+      ),
+      1,
+    );
+    expect(
+      AppHeaderScrollBehavior.compactTitleFadeProgress(
+        handoffSplit,
+        titleBottomInset: titleBottomInset,
+      ),
+      0,
+    );
+    expect(
+      AppHeaderScrollBehavior.compactTitleFadeProgress(
+        (handoffSplit + kAppHeaderTitleHeight) / 2,
         titleBottomInset: titleBottomInset,
       ),
       closeTo(0.5, 1e-9),
     );
     expect(
-      AppHeaderScrollBehavior.titleHandoffProgress(
-        handoffStart + kAppHeaderToolbarHeight,
+      AppHeaderScrollBehavior.compactTitleFadeProgress(
+        kAppHeaderTitleHeight,
         titleBottomInset: titleBottomInset,
       ),
       1,
     );
+    for (var offset = 0.0; offset <= kAppHeaderTitleHeight; offset += 0.25) {
+      final largeOpacity =
+          1 -
+          AppHeaderScrollBehavior.largeTitleFadeProgress(
+            offset,
+            titleBottomInset: titleBottomInset,
+          );
+      final compactOpacity =
+          AppHeaderScrollBehavior.compactTitleFadeProgress(
+            offset,
+            titleBottomInset: titleBottomInset,
+          );
+      expect(
+        largeOpacity == 0.0 || compactOpacity == 0.0,
+        isTrue,
+        reason: 'titles must not overlap at scroll offset $offset',
+      );
+    }
   });
 
-  testWidgets('large and compact titles crossfade together', (tester) async {
+  testWidgets('large title disappears before compact title appears', (
+    tester,
+  ) async {
     const largeTitleKey = ValueKey('large-title-handoff');
     const compactTitleKey = ValueKey('compact-title-handoff');
+    const titleBottomInset = 10.0;
 
-    Widget buildApp(double progress) {
+    Widget buildApp(double contentOffset) {
       return CupertinoApp(
         home: Center(
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               AppHeaderLargeTitleHandoff(
-                progress: progress,
+                progress: AppHeaderScrollBehavior.largeTitleFadeProgress(
+                  contentOffset,
+                  titleBottomInset: titleBottomInset,
+                ),
                 child: const Text('Large title', key: largeTitleKey),
               ),
               AppHeaderCompactTitle(
-                progress: progress,
+                progress: AppHeaderScrollBehavior.compactTitleFadeProgress(
+                  contentOffset,
+                  titleBottomInset: titleBottomInset,
+                ),
                 isLandscape: false,
                 child: const Text('Compact title', key: compactTitleKey),
               ),
@@ -79,18 +121,87 @@ void main() {
       return pointerGate.ignoring;
     }
 
-    await tester.pumpWidget(buildApp(0.25));
-    final opacityValues = tester
-        .widgetList<Opacity>(find.byType(Opacity))
-        .map((opacity) => opacity.opacity)
-        .toList();
-    expect(opacityValues, [0.75, 0.25]);
+    double opacityFor(Key key) => tester
+        .widget<Opacity>(
+          find
+              .ancestor(
+                of: find.byKey(key),
+                matching: find.byType(Opacity),
+              )
+              .first,
+        )
+        .opacity;
+
+    await tester.pumpWidget(buildApp(49));
+    expect(opacityFor(largeTitleKey), closeTo(0.6, 1e-9));
+    expect(opacityFor(compactTitleKey), 0);
     expect(ignoresPointer(largeTitleKey), isFalse);
     expect(ignoresPointer(compactTitleKey), isTrue);
 
-    await tester.pumpWidget(buildApp(0.75));
+    await tester.pumpWidget(buildApp(52));
+    expect(opacityFor(largeTitleKey), 0);
+    expect(opacityFor(compactTitleKey), 0);
     expect(ignoresPointer(largeTitleKey), isTrue);
+
+    await tester.pumpWidget(buildApp(kAppHeaderTitleHeight));
+    expect(opacityFor(largeTitleKey), 0);
+    expect(opacityFor(compactTitleKey), 1);
     expect(ignoresPointer(compactTitleKey), isFalse);
+  });
+
+  testWidgets('scroll-owned calendar title obeys the sequential handoff', (
+    tester,
+  ) async {
+    const titleBottomInset = 10.0;
+    const titleKey = ValueKey('scroll-owned-large-title');
+    final controller = ScrollController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: SizedBox(
+          height: 600,
+          child: CustomScrollView(
+            controller: controller,
+            slivers: [
+              const SliverToBoxAdapter(
+                child: SizedBox(height: kAppHeaderTitleHeight),
+              ),
+              SliverToBoxAdapter(
+                child: AppHeaderScrollTitle(
+                  controller: controller,
+                  titleBottomInset: titleBottomInset,
+                  child: const SizedBox(
+                    height: kAppHeaderTitleHeight,
+                    child: Text('Calendar', key: titleKey),
+                  ),
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 1000)),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    double titleOpacity() => tester
+        .widget<Opacity>(
+          find
+              .ancestor(
+                of: find.byKey(titleKey),
+                matching: find.byType(Opacity),
+              )
+              .first,
+        )
+        .opacity;
+
+    controller.jumpTo(52);
+    await tester.pump();
+    expect(titleOpacity(), 0);
+
+    controller.jumpTo(kAppHeaderTitleHeight);
+    await tester.pump();
+    expect(titleOpacity(), 0);
   });
 
   test('scroll edge progresses through the large-title and toolbar travel', () {

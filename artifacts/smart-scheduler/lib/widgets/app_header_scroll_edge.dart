@@ -30,10 +30,9 @@ abstract final class AppHeaderScrollBehavior {
     return (contentOffset / kAppHeaderTitleHeight).clamp(0.0, 1.0).toDouble();
   }
 
-  /// Starts the large-to-compact title crossfade after the large title's
-  /// descenders pass the lower edge of the pinned toolbar, then completes it
-  /// as the title travels through the toolbar.
-  static double titleHandoffProgress(
+  /// Fades the outgoing title after its descenders enter the pinned toolbar.
+  /// It is fully hidden before the compact title begins to appear.
+  static double largeTitleFadeProgress(
     double contentOffset, {
     required double titleBottomInset,
   }) {
@@ -42,12 +41,41 @@ abstract final class AppHeaderScrollBehavior {
         !titleBottomInset.isFinite) {
       return 0.0;
     }
-    final handoffStart =
+    final titleBottom =
         (kAppHeaderTitleHeight - titleBottomInset)
             .clamp(0.0, kAppHeaderTitleHeight)
             .toDouble();
-    if (contentOffset <= handoffStart) return 0.0;
-    return ((contentOffset - handoffStart) / kAppHeaderToolbarHeight)
+    final handoffSplit = (titleBottom + kAppHeaderTitleHeight) / 2.0;
+    if (contentOffset <= titleBottom) return 0.0;
+    if (contentOffset >= handoffSplit) return 1.0;
+    final fadeDistance = handoffSplit - titleBottom;
+    if (fadeDistance <= 0.0) return 1.0;
+    return ((contentOffset - titleBottom) / fadeDistance)
+        .clamp(0.0, 1.0)
+        .toDouble();
+  }
+
+  /// Fades the compact title in only after the large title has fully
+  /// disappeared. It is fully opaque when the content edge reaches the bottom
+  /// of the second-level title slot.
+  static double compactTitleFadeProgress(
+    double contentOffset, {
+    required double titleBottomInset,
+  }) {
+    if (!contentOffset.isFinite ||
+        contentOffset <= 0.0 ||
+        !titleBottomInset.isFinite) {
+      return 0.0;
+    }
+    final titleBottom =
+        (kAppHeaderTitleHeight - titleBottomInset)
+            .clamp(0.0, kAppHeaderTitleHeight)
+            .toDouble();
+    final handoffSplit = (titleBottom + kAppHeaderTitleHeight) / 2.0;
+    if (contentOffset <= handoffSplit) return 0.0;
+    final fadeDistance = kAppHeaderTitleHeight - handoffSplit;
+    if (fadeDistance <= 0.0) return 1.0;
+    return ((contentOffset - handoffSplit) / fadeDistance)
         .clamp(0.0, 1.0)
         .toDouble();
   }
@@ -124,10 +152,12 @@ class AppHeaderScrollTitle extends StatelessWidget {
   const AppHeaderScrollTitle({
     super.key,
     required this.controller,
+    required this.titleBottomInset,
     required this.child,
   });
 
   final ScrollController? controller;
+  final double titleBottomInset;
   final Widget child;
 
   @override
@@ -150,12 +180,21 @@ class AppHeaderScrollTitle extends StatelessWidget {
             (positions.length == 1 ? positions.single : null);
         if (position == null) return child;
         if (!position.hasContentDimensions) return child;
+        final contentOffset = AppHeaderScrollBehavior.contentOffset(position);
+        final fadeProgress = AppHeaderScrollBehavior.largeTitleFadeProgress(
+          contentOffset,
+          titleBottomInset: titleBottomInset,
+        );
         final correction =
             AppHeaderScrollBehavior.leadingOverscrollCorrection(position);
-        if (correction == 0.0) return child;
+        final title = AppHeaderLargeTitleHandoff(
+          progress: fadeProgress,
+          child: child,
+        );
+        if (correction == 0.0) return title;
         return Transform.translate(
           offset: Offset(0.0, correction),
-          child: child,
+          child: title,
         );
       },
     );
@@ -429,8 +468,8 @@ class AppHeaderScrollInset extends StatelessWidget {
   }
 }
 
-/// Keeps the landscape-style compact title in the first-level toolbar, fading
-/// it in as a portrait page's large second-level title scrolls beneath it.
+/// Keeps the compact title in the first-level toolbar. In portrait it begins
+/// fading in only after its large-title counterpart is fully invisible.
 class AppHeaderCompactTitle extends StatelessWidget {
   const AppHeaderCompactTitle({
     super.key,
@@ -457,8 +496,9 @@ class AppHeaderCompactTitle extends StatelessWidget {
   }
 }
 
-/// Fades the large title out in sync with [AppHeaderCompactTitle] and hands
-/// pointer interaction to the compact title at the midpoint of the crossfade.
+/// Fades the outgoing large title before [AppHeaderCompactTitle] begins to
+/// appear and hands pointer interaction away once the large title is mostly
+/// faded.
 class AppHeaderLargeTitleHandoff extends StatelessWidget {
   const AppHeaderLargeTitleHandoff({
     super.key,

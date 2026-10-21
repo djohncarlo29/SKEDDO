@@ -1552,9 +1552,15 @@ class _SettingsHeader extends StatelessWidget {
     final titleCollapseProgress = isLandscape
         ? 0.0
         : AppHeaderScrollBehavior.titleCollapseProgress(scrollOffset);
-    final titleHandoffProgress = isLandscape
+    final largeTitleFadeProgress = isLandscape
         ? 0.0
-        : AppHeaderScrollBehavior.titleHandoffProgress(
+        : AppHeaderScrollBehavior.largeTitleFadeProgress(
+            scrollOffset,
+            titleBottomInset: kHeaderTitleBottomInset,
+          );
+    final compactTitleFadeProgress = isLandscape
+        ? 0.0
+        : AppHeaderScrollBehavior.compactTitleFadeProgress(
             scrollOffset,
             titleBottomInset: kHeaderTitleBottomInset,
           );
@@ -1650,7 +1656,7 @@ class _SettingsHeader extends StatelessWidget {
               child: Transform.translate(
                 offset: Offset(0, -scrollOffset),
                   child: AppHeaderLargeTitleHandoff(
-                    progress: titleHandoffProgress,
+                    progress: largeTitleFadeProgress,
                     child: Container(
                       color: headerSurfaceColor.withValues(
                         alpha:
@@ -1704,7 +1710,7 @@ class _SettingsHeader extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 84),
                   child: AppHeaderCompactTitle(
-                    progress: titleHandoffProgress,
+                    progress: compactTitleFadeProgress,
                     isLandscape: false,
                     child: SizedBox.expand(
                       child: HeaderTitleScroller(
