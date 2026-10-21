@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/app_theme.dart'
-    show kRoundedSheetSafeAreaGap;
+    show kLightModeSheetAppShellDimColor, kRoundedSheetSafeAreaGap;
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
@@ -20,6 +20,7 @@ void main() {
 
       await tester.pumpWidget(
         CupertinoApp(
+          theme: const CupertinoThemeData(brightness: Brightness.light),
           navigatorKey: navigatorKey,
           builder: (context, child) {
             final mediaQuery = MediaQuery.of(context);
@@ -63,6 +64,30 @@ void main() {
       expect(
         sheetTop,
         topInset + kRoundedSheetSafeAreaGap,
+      );
+      final appShellFilter = tester
+          .widget<ColorFiltered>(
+            find.byKey(
+              const ValueKey('rounded-sheet-app-shell-dim-overlay'),
+            ),
+          )
+          .colorFilter;
+      expect(
+        appShellFilter,
+        ColorFilter.mode(
+          kLightModeSheetAppShellDimColor,
+          BlendMode.multiply,
+        ),
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(sheetKey),
+          matching: find.byKey(
+            const ValueKey('rounded-sheet-app-shell-dim-overlay'),
+          ),
+        ),
+        findsNothing,
+        reason: 'Only the AppShell receives the top-level sheet tint.',
       );
 
       const nestedSheetKey = ValueKey('nested-sheet-content');

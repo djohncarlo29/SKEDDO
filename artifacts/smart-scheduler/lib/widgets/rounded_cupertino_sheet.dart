@@ -7,6 +7,7 @@ import '../app_theme.dart'
         kBackgroundColor,
         kModalBackground,
         BoundedSquircleStadiumBorder,
+        kLightModeSheetAppShellDimColor,
         kModalSheetCornerRadius,
         kRoundedSheetSafeAreaGap,
         resolveThemeColor,
@@ -87,21 +88,33 @@ Widget? _withSheetDimOverlay(
   );
 }
 
-Widget? _withAlphaAwareSheetDimOverlay(
+Widget? _withAppShellDimOverlay(
   Widget? child,
-  Animation<double> opacityAnimation,
+  Animation<double> dimProgress,
 ) {
   if (child == null) return null;
   return AnimatedBuilder(
-    animation: opacityAnimation,
+    animation: dimProgress,
     child: child,
-    builder: (context, child) => ColorFiltered(
-      colorFilter: ColorFilter.mode(
-        const Color(0xFF000000).withValues(alpha: opacityAnimation.value),
-        BlendMode.srcATop,
-      ),
-      child: child,
-    ),
+    builder: (context, child) {
+      final bool isLightMode =
+          CupertinoTheme.brightnessOf(context) == Brightness.light;
+      final Color filterColor = isLightMode
+          ? Color.lerp(
+              const Color(0x00A8A8A3),
+              kLightModeSheetAppShellDimColor,
+              dimProgress.value,
+            )!
+          : const Color(0xFF000000).withValues(alpha: dimProgress.value);
+      return ColorFiltered(
+        key: const ValueKey('rounded-sheet-app-shell-dim-overlay'),
+        colorFilter: ColorFilter.mode(
+          filterColor,
+          isLightMode ? BlendMode.multiply : BlendMode.srcATop,
+        ),
+        child: child,
+      );
+    },
   );
 }
 
@@ -510,13 +523,17 @@ class _RoundedSheetTransition extends StatefulWidget {
       parent: secondaryAnimation,
     );
 
-    final Animation<double> opacityAnimation = curvedAnimation.drive(
-      _sheetOpacityTween(context),
+    final bool isLightMode =
+        CupertinoTheme.brightnessOf(context) == Brightness.light;
+    final Animation<double> dimProgress = curvedAnimation.drive(
+      isLightMode
+          ? Tween<double>(begin: 0.0, end: 1.0)
+          : _sheetOpacityTween(context),
     );
     // A top-level modal dims the app but does not turn it into a receding
     // sheet. Nested sheets use the parent route's secondary transition below.
     final Widget? dimmedApp = child != null && !secondaryAnimation.isDismissed
-        ? _withAlphaAwareSheetDimOverlay(child, opacityAnimation)
+        ? _withAppShellDimOverlay(child, dimProgress)
         : child;
     curvedAnimation.dispose();
     return dimmedApp ?? const SizedBox.shrink();

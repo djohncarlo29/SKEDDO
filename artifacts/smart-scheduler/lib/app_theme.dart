@@ -206,6 +206,9 @@ const kModalHandleColor = CupertinoDynamicColor.withBrightness(
   darkColor: Color(0xFF636366),
 );
 
+// Light Mode AppShell tint shown beneath a parent modal sheet (ARGB).
+const kLightModeSheetAppShellDimColor = Color(0x80A8A8A3);
+
 // Shared halo weight for every gel-bloom Xmark, checkmark, and right-chevron.
 // This is the established weight used by the search cancel button.
 const double kGelBloomIconWeight = 0.4;
@@ -801,7 +804,7 @@ const double kModalSheetButtonDiameter = 40.0;
 const double kModalSheetButtonEdgeGap = 16.0;
 const double kModalSheetCornerRadius =
     (kModalSheetButtonDiameter / 2) + kModalSheetButtonEdgeGap;
-const double kRoundedSheetSafeAreaGap = 10.0;
+const double kRoundedSheetSafeAreaGap = 5.0;
 
 // ── SF Pro Dynamic Tracking ───────────────────────────────────────────────────
 const kTracking10 = 0.12;
