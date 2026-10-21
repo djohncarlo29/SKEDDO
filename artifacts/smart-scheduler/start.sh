@@ -34,10 +34,11 @@ PYEOF
 sleep 1
 
 cd /home/runner/workspace/artifacts/smart-scheduler
-FLUTTER_BIN="/home/runner/workspace/.cache/flutter-3.35.7/bin/flutter"
+export PUB_CACHE="${PUB_CACHE:-/home/runner/workspace/.cache/pub-cache}"
+FLUTTER_BIN="/home/runner/workspace/.cache/flutter-3.44.2/bin/flutter"
 if [ ! -x "$FLUTTER_BIN" ]; then
-  echo "Flutter 3.35.7 SDK not found at $FLUTTER_BIN." >&2
-  echo "The app requires Dart 3.9.x; install the pinned workspace toolchain." >&2
+  echo "Flutter 3.44.2 SDK not found at $FLUTTER_BIN." >&2
+  echo "The app requires Flutter 3.44.2 or newer; install the pinned workspace toolchain." >&2
   exit 1
 fi
 export PATH="$(dirname "$FLUTTER_BIN"):$PATH"

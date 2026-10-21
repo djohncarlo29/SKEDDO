@@ -5,10 +5,9 @@ publish_to: 'none'
 version: 1.0.0+55
 
 environment:
-  # Support both the workspace Flutter toolchain and Shorebird's newer Dart
-  # releases without blocking dependency resolution.
-  sdk: '>=3.9.0 <4.0.0'
-  flutter: '>=3.35.0'
+  # Flutter 3.44.2 provides Dart 3.12.2 required by a package dependency.
+  sdk: '>=3.12.2 <4.0.0'
+  flutter: '>=3.44.2'
 
 dependencies:
   flutter:
@@ -30,6 +29,7 @@ dependencies:
   flutter_onnxruntime: ^1.8.3
   tflite_flutter: ^0.12.1
   path_provider: ^2.1.0
+  flutter_liquid_glass_widgets: ^0.0.1
 
 dev_dependencies:
   flutter_test:

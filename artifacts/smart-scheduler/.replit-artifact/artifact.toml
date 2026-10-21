@@ -18,7 +18,7 @@ kind = "mobile"
     run = "sh /home/runner/workspace/artifacts/smart-scheduler/start.sh"
 
     [services.production]
-    build = [ "sh", "-c", "cd /home/runner/workspace/artifacts/smart-scheduler && /home/runner/workspace/.cache/flutter-3.35.7/bin/flutter build web --release" ]
+    build = [ "sh", "-c", "export PUB_CACHE=/home/runner/workspace/.cache/pub-cache && cd /home/runner/workspace/artifacts/smart-scheduler && /home/runner/workspace/.cache/flutter-3.44.2/bin/flutter build web --release" ]
     run = [ "sh", "-c", "cd /home/runner/workspace/artifacts/smart-scheduler && python3 -m http.server 24355 --directory build/web" ]
 
     [services.env]

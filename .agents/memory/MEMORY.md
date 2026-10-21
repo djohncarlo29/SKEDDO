@@ -58,6 +58,7 @@
 - [Static Liquid Glass controls](static-liquid-glass-action-buttons.md) — fixed-color action circles and simple cards use bounded static glass; dynamic controls keep live optics.
 - [Replit home partition quota](replit-home-quota.md) — /home/runner has a per-user quota well below its 32GB size; move caches to /home/runner/workspace/.cache and symlink back.
 - [Liquid Glass platform compatibility](liquid-glass-platform-compatibility.md) — preserve the app fork, check toolchain compatibility, and route native iOS controls separately.
+- [Glass navigation package compatibility](liquid-glass-widgets-compatibility.md) — the title package's transitive dependency requires Dart 3.12.2; keep SDK pins aligned.
 - [flutter_onnxruntime Android crash](onnxruntime-android-crash.md) — ONNX session.run() causes an unrecoverable JNI SIGSEGV on Android; also covers the earlier UnsatisfiedLinkError fix and plugin registration patch.
 - [TFLite Android embedding](tflite-android-embedding.md) — all-MiniLM-L6-v2 TFLite model tensor layout, source URL, and KGP 2.1 Gradle fix (kotlin.jvm.target.validation.mode=WARNING).
 - [Event creation save architecture](event-creation-save-architecture.md) — all ScheduledEvent fields, picker constraints, recurrence storage rule, alert timing logic, and normalisation decisions.

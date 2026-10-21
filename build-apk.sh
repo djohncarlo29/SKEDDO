@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PUB_CACHE="${PUB_CACHE:-$ROOT_DIR/.cache/pub-cache}"
 
 # ── Self-configure JDK and Android SDK if not already set ─────────────────────
 source "$ROOT_DIR/scripts/resolve-java-home.sh"
@@ -16,7 +17,7 @@ fi
 
 APP_DIR="$ROOT_DIR/artifacts/smart-scheduler"
 OUTPUT_APK="$ROOT_DIR/SKEDDO.apk"
-FLUTTER_BIN="${FLUTTER_BIN:-$ROOT_DIR/.cache/flutter-3.35.7/bin/flutter}"
+FLUTTER_BIN="${FLUTTER_BIN:-$ROOT_DIR/.cache/flutter-3.44.2/bin/flutter}"
 export GRADLE_USER_HOME="${GRADLE_USER_HOME:-$ROOT_DIR/.cache/gradle}"
 KEYSTORE_FILE="$APP_DIR/android/app/smart-scheduler-release.jks"
 KEY_PROPERTIES_FILE="$APP_DIR/android/key.properties"
@@ -26,8 +27,8 @@ KEY_PASSWORD="${SMART_SCHEDULER_KEY_PASSWORD:-smart-scheduler-local-release}"
 KEY_ALIAS="${SMART_SCHEDULER_KEY_ALIAS:-smart-scheduler}"
 
 if [[ ! -x "$FLUTTER_BIN" ]]; then
-  echo "ERROR: Flutter 3.35.7 SDK not found at $FLUTTER_BIN." >&2
-  echo "SKEDDO requires Dart 3.9.x; refusing to fall back to another Flutter installation." >&2
+  echo "ERROR: Flutter 3.44.2 SDK not found at $FLUTTER_BIN." >&2
+  echo "SKEDDO requires Flutter 3.44.2 or newer; refusing to fall back to another Flutter installation." >&2
   exit 1
 fi
 

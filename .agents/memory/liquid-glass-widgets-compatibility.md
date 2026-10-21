@@ -1,10 +1,10 @@
 ---
 name: Liquid Glass Widgets compatibility
-description: The current Smart Scheduler Flutter toolchain can use liquid_glass_widgets 0.5.0, while newer releases require newer SDK APIs.
+description: Flutter SDK requirements and package-name distinctions for Smart Scheduler's glass navigation widgets.
 ---
 
-Use `liquid_glass_widgets` 0.5.0 for the current Smart Scheduler toolchain. The requested 0.29.x releases require Flutter 3.41+, 0.18.4 fails web compilation on the current SDK, and 0.18.0–0.18.2 conflict with Flutter's pinned `meta` version.
+`flutter_liquid_glass_widgets` 0.0.1 contains `GlassLargeTitle` and `GlassAppBar`. Its transitive `flutter_a11y_lens` dependency requires Dart 3.12.2, so Smart Scheduler uses Flutter 3.44.2 (Dart 3.12.2). The similarly named `liquid_glass_widgets` is a different package; its SDK-compatible 0.5.0 release does not include the large-title API.
 
-**Why:** The preview workflow uses Flutter 3.35.7; newer package releases either fail pub resolution or call framework APIs unavailable to its web compiler.
+**Why:** The project uses the Flutter-rendered large-to-compact title behavior from `flutter_liquid_glass_widgets`; its transitive minimum is stricter than the package's own declared SDK floor.
 
-**How to apply:** If the Flutter workflow is upgraded to 3.41 or later, reevaluate the pin and move to the requested 0.29.x release. Keep shared switches as bare `GlassSwitch` widgets and pass caller-provided accent/category color through `activeColor`. For the current switch, preserve visual parity with the web preview by forcing its capture-based renderer instead of the device-dependent Impeller live-backdrop path; keep that override scoped to the switch because it trades GPU efficiency for consistency.
+**How to apply:** Keep the package constraint, `pubspec.yaml` Dart/Flutter minimums, managed preview SDK, and CI SDK versions compatible. Verify the title behavior on each claimed target platform before asserting parity. If the separate `liquid_glass_widgets` package is considered again, do not assume its older 0.5.0 API includes the newer title widgets.
