@@ -51,4 +51,127 @@ void main() {
       expect(find.byType(SingleChildScrollView), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'calendar-style title fades only after a horizontal user drag',
+    (tester) async {
+      Widget buildScroller({required bool fadeAfterUserScroll}) {
+        return CupertinoApp(
+          home: Center(
+            child: SizedBox(
+              width: 180,
+              height: 56,
+              child: HeaderTitleScroller(
+                title: 'September 2026',
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+                fadeColor: CupertinoColors.white,
+                leading: const SizedBox(width: 40, height: 32),
+                leadingContentWidth: 40,
+                leadingGap: 0,
+                trailing: const SizedBox(width: 64, height: 32),
+                trailingContentWidth: 64,
+                trailingGap: 4,
+                showTrailingFade: true,
+                fadeAfterUserScroll: fadeAfterUserScroll,
+                centerWhenContentFits: true,
+              ),
+            ),
+          ),
+        );
+      }
+
+      int fadeCount() {
+        final decorations = find.descendant(
+          of: find.byType(HeaderTitleScroller),
+          matching: find.byType(DecoratedBox),
+        );
+        return tester
+            .widgetList<DecoratedBox>(decorations)
+            .where(
+              (widget) =>
+                  widget.decoration is BoxDecoration &&
+                  (widget.decoration as BoxDecoration).gradient != null,
+            )
+            .length;
+      }
+
+      await tester.pumpWidget(buildScroller(fadeAfterUserScroll: true));
+      await tester.pumpAndSettle();
+      expect(fadeCount(), 0);
+
+      await tester.drag(
+        find.byType(SingleChildScrollView),
+        const Offset(-40, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(fadeCount(), greaterThan(0));
+
+      // Scrollers that do not opt into Calendar's interaction-gated fades
+      // retain their existing initial overflow indicator.
+      await tester.pumpWidget(buildScroller(fadeAfterUserScroll: false));
+      await tester.pumpAndSettle();
+      expect(fadeCount(), greaterThan(0));
+    },
+  );
+
+  testWidgets(
+    'calendar-style title can show an edge fade during rubberbanding',
+    (tester) async {
+      await tester.pumpWidget(
+        const CupertinoApp(
+          home: Center(
+            child: SizedBox(
+              width: 320,
+              height: 56,
+              child: HeaderTitleScroller(
+                title: 'May',
+                style: TextStyle(fontSize: 17),
+                fadeColor: CupertinoColors.white,
+                leading: SizedBox(width: 40, height: 32),
+                leadingContentWidth: 40,
+                leadingGap: 0,
+                trailing: SizedBox(width: 64, height: 32),
+                trailingContentWidth: 64,
+                trailingGap: 4,
+                showTrailingFade: true,
+                fadeAfterUserScroll: true,
+                centerWhenContentFits: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      int fadeCount() {
+        final decorations = find.descendant(
+          of: find.byType(HeaderTitleScroller),
+          matching: find.byType(DecoratedBox),
+        );
+        return tester
+            .widgetList<DecoratedBox>(decorations)
+            .where(
+              (widget) =>
+                  widget.decoration is BoxDecoration &&
+                  (widget.decoration as BoxDecoration).gradient != null,
+            )
+            .length;
+      }
+
+      expect(fadeCount(), 0);
+
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(SingleChildScrollView)),
+      );
+      await gesture.moveBy(const Offset(24, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(fadeCount(), greaterThan(0));
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+    },
+  );
 }

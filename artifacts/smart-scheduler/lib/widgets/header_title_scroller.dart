@@ -101,6 +101,9 @@ class HeaderTitleScroller extends StatefulWidget {
   /// [centerWhenContentFits] to center the complete title-and-controls group.
   final double? trailingContentWidth;
   final bool showTrailingFade;
+  /// Keep edge fades hidden until the user has moved this title horizontally.
+  /// This preserves a clean, centered resting state for selected scrollers.
+  final bool fadeAfterUserScroll;
   final bool centerWhenContentFits;
   final Alignment contentAlignment;
   final VoidCallback? onTap;
@@ -121,6 +124,7 @@ class HeaderTitleScroller extends StatefulWidget {
     this.trailingGap = 4,
     this.trailingContentWidth,
     this.showTrailingFade = true,
+    this.fadeAfterUserScroll = false,
     this.centerWhenContentFits = false,
     this.contentAlignment = Alignment.bottomLeft,
     this.onTap,
@@ -137,6 +141,7 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
   // rubberband gesture when the user pulls it.
   bool _canScroll = false;
   bool _resettingTitle = false;
+  bool _hasUserScrolledTitle = false;
   bool _showLeadingFade = false;
   bool _showTrailingFade = false;
 
@@ -157,6 +162,7 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
       // title's fade can paint for one frame before the post-layout reset.
       _resettingTitle = true;
       _canScroll = false;
+      _hasUserScrolledTitle = false;
       // Reset the actual scroll offset synchronously as well. Waiting for the
       // post-layout callback lets a newly mounted short title inherit the old
       // screen's offset and appear clipped before its state is corrected.
@@ -199,11 +205,14 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
 
   void _syncScrollEdgeFades(ScrollMetrics metrics) {
     final canScroll = metrics.maxScrollExtent > 1.0;
+    final showFades =
+        !widget.fadeAfterUserScroll || _hasUserScrolledTitle;
     // Do not gate these on [canScroll]. A short title has maxScrollExtent == 0
     // but can still rubberband past either edge; the clipped pixels need the
     // same fade treatment as a long title.
-    final showLeading = metrics.pixels > 1.0;
+    final showLeading = showFades && metrics.pixels > 1.0;
     final showTrailing =
+        showFades &&
         widget.showTrailingFade &&
         metrics.pixels < metrics.maxScrollExtent - 1.0;
 
@@ -222,6 +231,16 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
 
   bool _handleScrollNotification(ScrollNotification notification) {
     if (notification.metrics.axis != Axis.horizontal) return false;
+    if (widget.fadeAfterUserScroll && !_hasUserScrolledTitle) {
+      final movedByUserDrag =
+          (notification is ScrollUpdateNotification &&
+              notification.dragDetails != null &&
+              (notification.scrollDelta?.abs() ?? 0) > 0) ||
+          (notification is OverscrollNotification &&
+              notification.dragDetails != null &&
+              notification.overscroll.abs() > 0);
+      if (movedByUserDrag) _hasUserScrolledTitle = true;
+    }
     _syncScrollEdgeFades(notification.metrics);
     return false;
   }
@@ -317,6 +336,8 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                                 : textWidth) >
                             constraints.maxWidth + 1.0;
                     final initialTrailingFade =
+                        (!widget.fadeAfterUserScroll ||
+                            _hasUserScrolledTitle) &&
                         !_canScroll &&
                         overflowBeforeLayout &&
                         widget.showTrailingFade &&

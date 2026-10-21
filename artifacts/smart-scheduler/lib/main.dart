@@ -2367,6 +2367,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             }
           : null,
       showTrailingFade: true,
+      fadeAfterUserScroll: true,
       leadingContentWidth: compact ? compactArrowWidth : null,
       leadingGap: 0,
       trailingContentWidth: compact ? compactTrailingControlsWidth : null,
