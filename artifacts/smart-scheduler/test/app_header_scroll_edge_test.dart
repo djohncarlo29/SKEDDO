@@ -35,10 +35,12 @@ void main() {
     );
   });
 
-  test('large and compact title fades are sequential and end at content edge', () {
+  test('compact title is ready before the title slot fully collapses', () {
     const titleBottomInset = 10.0;
     final titleBottom = kAppHeaderTitleHeight - titleBottomInset;
-    final handoffSplit = (titleBottom + kAppHeaderTitleHeight) / 2;
+    final compactTitleReadyOffset =
+        kAppHeaderTitleHeight * kAppHeaderCompactTitleReadyFraction;
+    final handoffSplit = (titleBottom + compactTitleReadyOffset) / 2;
 
     expect(
       AppHeaderScrollBehavior.largeTitleFadeProgress(
@@ -70,14 +72,14 @@ void main() {
     );
     expect(
       AppHeaderScrollBehavior.compactTitleFadeProgress(
-        (handoffSplit + kAppHeaderTitleHeight) / 2,
+        (handoffSplit + compactTitleReadyOffset) / 2,
         titleBottomInset: titleBottomInset,
       ),
       closeTo(0.5, 1e-9),
     );
     expect(
       AppHeaderScrollBehavior.compactTitleFadeProgress(
-        kAppHeaderTitleHeight,
+        compactTitleReadyOffset,
         titleBottomInset: titleBottomInset,
       ),
       1,
@@ -102,7 +104,7 @@ void main() {
     }
   });
 
-  testWidgets('large title disappears before compact title appears', (
+  testWidgets('compact title is fully visible before the title slot ends', (
     tester,
   ) async {
     const largeTitleKey = ValueKey('large-title-handoff');
@@ -159,18 +161,25 @@ void main() {
         )
         .opacity;
 
-    await tester.pumpWidget(buildApp(49));
-    expect(opacityFor(largeTitleKey), closeTo(0.6, 1e-9));
+    final titleBottom = kAppHeaderTitleHeight - titleBottomInset;
+    final compactTitleReadyOffset =
+        kAppHeaderTitleHeight * kAppHeaderCompactTitleReadyFraction;
+    final handoffSplit = (titleBottom + compactTitleReadyOffset) / 2;
+
+    final largeTitleFadeSample =
+        titleBottom + (handoffSplit - titleBottom) / 4;
+    await tester.pumpWidget(buildApp(largeTitleFadeSample));
+    expect(opacityFor(largeTitleKey), closeTo(0.75, 1e-9));
     expect(opacityFor(compactTitleKey), 0);
     expect(ignoresPointer(largeTitleKey), isFalse);
     expect(ignoresPointer(compactTitleKey), isTrue);
 
-    await tester.pumpWidget(buildApp(52));
+    await tester.pumpWidget(buildApp(handoffSplit));
     expect(opacityFor(largeTitleKey), 0);
     expect(opacityFor(compactTitleKey), 0);
     expect(ignoresPointer(largeTitleKey), isTrue);
 
-    await tester.pumpWidget(buildApp(kAppHeaderTitleHeight));
+    await tester.pumpWidget(buildApp(compactTitleReadyOffset));
     expect(opacityFor(largeTitleKey), 0);
     expect(opacityFor(compactTitleKey), 1);
     expect(ignoresPointer(compactTitleKey), isFalse);

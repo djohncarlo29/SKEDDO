@@ -7,6 +7,7 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 
 const double kAppHeaderToolbarHeight = 44;
 const double kAppHeaderTitleHeight = 57;
+const double kAppHeaderCompactTitleReadyFraction = 0.9;
 const double kAppHeaderScrollEdgeHeaderBottomExtension = 16;
 const double kAppHeaderScrollCollapsedOffset =
     kAppHeaderTitleHeight + kAppHeaderToolbarHeight;
@@ -60,7 +61,9 @@ abstract final class AppHeaderScrollBehavior {
         (kAppHeaderTitleHeight - titleBottomInset)
             .clamp(0.0, kAppHeaderTitleHeight)
             .toDouble();
-    final handoffSplit = (titleBottom + kAppHeaderTitleHeight) / 2.0;
+    final compactTitleReadyOffset =
+        kAppHeaderTitleHeight * kAppHeaderCompactTitleReadyFraction;
+    final handoffSplit = (titleBottom + compactTitleReadyOffset) / 2.0;
     if (contentOffset <= titleBottom) return 0.0;
     if (contentOffset >= handoffSplit) return 1.0;
     final fadeDistance = handoffSplit - titleBottom;
@@ -71,8 +74,8 @@ abstract final class AppHeaderScrollBehavior {
   }
 
   /// Fades the compact title in only after the large title has fully
-  /// disappeared. It is fully opaque when the content edge reaches the bottom
-  /// of the second-level title slot.
+  /// disappeared. It is fully opaque just before the content edge reaches the
+  /// bottom of the second-level title slot.
   static double compactTitleFadeProgress(
     double contentOffset, {
     required double titleBottomInset,
@@ -86,9 +89,11 @@ abstract final class AppHeaderScrollBehavior {
         (kAppHeaderTitleHeight - titleBottomInset)
             .clamp(0.0, kAppHeaderTitleHeight)
             .toDouble();
-    final handoffSplit = (titleBottom + kAppHeaderTitleHeight) / 2.0;
+    final compactTitleReadyOffset =
+        kAppHeaderTitleHeight * kAppHeaderCompactTitleReadyFraction;
+    final handoffSplit = (titleBottom + compactTitleReadyOffset) / 2.0;
     if (contentOffset <= handoffSplit) return 0.0;
-    final fadeDistance = kAppHeaderTitleHeight - handoffSplit;
+    final fadeDistance = compactTitleReadyOffset - handoffSplit;
     if (fadeDistance <= 0.0) return 1.0;
     return ((contentOffset - handoffSplit) / fadeDistance)
         .clamp(0.0, 1.0)
