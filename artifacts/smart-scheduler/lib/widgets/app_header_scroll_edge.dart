@@ -5,7 +5,6 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 
 const double kAppHeaderToolbarHeight = 44;
 const double kAppHeaderTitleHeight = 57;
-const double kAppHeaderScrollEdgeTitleCapExtension = 10;
 const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;
 const double _kAppHeaderScrollEdgeMaxBlurSigma = 4;
 
@@ -25,10 +24,32 @@ abstract final class AppHeaderScrollBehavior {
     return offset;
   }
 
-  /// Progress for handing a large title off to its compact toolbar version.
+  /// Progress for fading the title-region surface during its collapse.
   static double titleCollapseProgress(double contentOffset) {
     if (!contentOffset.isFinite || contentOffset <= 0.0) return 0.0;
     return (contentOffset / kAppHeaderTitleHeight).clamp(0.0, 1.0).toDouble();
+  }
+
+  /// Starts the large-to-compact title crossfade after the large title's
+  /// descenders pass the lower edge of the pinned toolbar, then completes it
+  /// as the title travels through the toolbar.
+  static double titleHandoffProgress(
+    double contentOffset, {
+    required double titleBottomInset,
+  }) {
+    if (!contentOffset.isFinite ||
+        contentOffset <= 0.0 ||
+        !titleBottomInset.isFinite) {
+      return 0.0;
+    }
+    final handoffStart =
+        (kAppHeaderTitleHeight - titleBottomInset)
+            .clamp(0.0, kAppHeaderTitleHeight)
+            .toDouble();
+    if (contentOffset <= handoffStart) return 0.0;
+    return ((contentOffset - handoffStart) / kAppHeaderToolbarHeight)
+        .clamp(0.0, 1.0)
+        .toDouble();
   }
 
   /// Builds the glass edge while the large title passes through the pinned
@@ -393,9 +414,34 @@ class AppHeaderCompactTitle extends StatelessWidget {
   }
 }
 
-/// The shared Liquid Glass treatment used beneath the first, pinned header
-/// level. A persistent background gradient keeps the physical top edge covered
-/// while the scroll-driven glass treatment remains tied to page progress. This
+/// Fades the large title out in sync with [AppHeaderCompactTitle] and hands
+/// pointer interaction to the compact title at the midpoint of the crossfade.
+class AppHeaderLargeTitleHandoff extends StatelessWidget {
+  const AppHeaderLargeTitleHandoff({
+    super.key,
+    required this.progress,
+    required this.child,
+  });
+
+  final double progress;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleProgress = progress.isFinite
+        ? progress.clamp(0.0, 1.0).toDouble()
+        : 0.0;
+    return IgnorePointer(
+      ignoring: visibleProgress >= 0.5,
+      child: Opacity(opacity: 1.0 - visibleProgress, child: child),
+    );
+  }
+}
+
+/// The shared Liquid Glass treatment for the first, pinned header level only.
+/// Its height is the physical top inset plus the toolbar; title and page
+/// content are blurred only while they pass through that bounded region. A
+/// persistent background gradient keeps the physical top edge covered. This
 /// is a visual sibling overlay: its local filter clip bounds only the glass
 /// effect, never the scrollable content.
 class AppHeaderScrollEdge extends StatelessWidget {

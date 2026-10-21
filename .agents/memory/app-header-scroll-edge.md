@@ -49,13 +49,13 @@ In portrait, the normal AppShell header surface is transparent so page content c
 
 **How to apply:** Keep normal header transparency unchanged, but use the current theme's opaque search surface whenever search mode is active; don't fade the surface's alpha.
 
-## App-page title capline reach
+## First-level header glass bounds
 
-Extend the shared app-page Liquid Glass scroll edge through the full second-level title travel region, plus its existing 10-point extension. Place it after the moving title and before fixed toolbar controls, so the title itself is included in the backdrop while the controls stay sharp. Collapse the full extent with the AppShell transition. Keep modal-sheet edge extents independent.
+Limit the shared app-page Liquid Glass blur band to the first-level header area: physical top inset plus pinned toolbar only. Keep the background gradient in the same area. The large title and page content blur only while physically crossing that band; do not extend the filter into the title's full travel region. Keep modal-sheet edge extents independent.
 
-**Why:** The user wants second-level title text to blur as it passes through the glass, not just the page content behind it. A band ending just below the toolbar leaves most of the title near the soft-fade boundary. Modal sheets remain out of scope.
+**Why:** The user wants content outside the first-level header area to remain unblurred, while the large title still blurs as it crosses the header.
 
-**How to apply:** Keep the scroll edge overlay as a visual sibling after the moving title and before pinned controls. Extend its height to cover the title's full scroll path plus the capline extension, and preserve the physical viewport as the final clip.
+**How to apply:** Keep the scroll edge overlay as a visual sibling after moving title content and before fixed toolbar controls. Bound its height to top inset plus toolbar height and preserve the physical viewport as the final clip.
 
 ## Persistent top-to-header background fade
 
@@ -67,8 +67,8 @@ Keep a theme-matched background gradient independent of scroll progress: fully o
 
 ## Large-title glass handoff
 
-Keep the large title in the scrolling title region and fade in its compact counterpart in the pinned first-level toolbar as the title collapses. Apply this to the Settings list and every Settings subscreen as well as the app tabs. The Liquid Glass scroll edge must build while the large title passes through the first-level header, then continue building as content passes beneath the pinned toolbar. Keep compact-title progress independent from the glass-edge progress.
+Keep the large title in the scrolling title region and begin a synchronized large-title-out/compact-title-in crossfade only after the large title's descenders cross the lower edge of the pinned first-level toolbar. Complete the crossfade over the title's travel through the toolbar. Apply this to the Settings list and every Settings subscreen as well as the app tabs. Keep title handoff progress independent from glass-edge progress. Blur is clipped to the first-level header area only.
 
-**Why:** The user wants Settings to retain both title sizes during scrolling and wants the large title itself to blur as it crosses the first-level header.
+**Why:** The user wants the large title itself to blur as it crosses the first-level header and wants compact-title visibility delayed until the large title has fully entered the toolbar, then crossfaded at the same time.
 
-**How to apply:** Derive title handoff from the non-negative scroll offset over the title slot. Derive glass-edge progress independently across the title and toolbar travel interval. Preserve the persistent top-to-header background gradient and keep landscape and modal-sheet behavior separate.
+**How to apply:** Derive handoff progress from the non-negative scroll offset, the shared title bottom inset, and toolbar height. Use complementary opacity for the two title layers and hand pointer interaction off at the midpoint. Derive glass-edge progress independently across the title and toolbar travel interval, but constrain the filter's bounds to the physical top inset plus toolbar height. Preserve the persistent top-to-header background gradient and keep landscape and modal-sheet behavior separate.

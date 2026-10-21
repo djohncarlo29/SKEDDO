@@ -1552,6 +1552,12 @@ class _SettingsHeader extends StatelessWidget {
     final titleCollapseProgress = isLandscape
         ? 0.0
         : AppHeaderScrollBehavior.titleCollapseProgress(scrollOffset);
+    final titleHandoffProgress = isLandscape
+        ? 0.0
+        : AppHeaderScrollBehavior.titleHandoffProgress(
+            scrollOffset,
+            titleBottomInset: kHeaderTitleBottomInset,
+          );
     final edgeProgress = isLandscape
         ? 0.0
         : AppHeaderScrollBehavior.scrollEdgeProgress(scrollOffset);
@@ -1643,50 +1649,49 @@ class _SettingsHeader extends StatelessWidget {
               height: kAppHeaderTitleHeight,
               child: Transform.translate(
                 offset: Offset(0, -scrollOffset),
-                 child: Container(
-                   color: headerSurfaceColor.withValues(
-                      alpha:
-                          (1 - titleCollapseProgress) * headerSurfaceColor.a,
-                  ),
-                  child: AppWindowContentPadding(
-                    child: Padding(
-                      padding: const EdgeInsets.only(
-                        left: 16,
-                        right: 16,
-                        bottom: kHeaderTitleBottomInset,
+                  child: AppHeaderLargeTitleHandoff(
+                    progress: titleHandoffProgress,
+                    child: Container(
+                      color: headerSurfaceColor.withValues(
+                        alpha:
+                            (1 - titleCollapseProgress) * headerSurfaceColor.a,
                       ),
-                      child: Align(
-                        alignment: Alignment.bottomLeft,
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: HeaderTitleScroller(
-                            title: title,
-                            fadeColor: backgroundColor,
-                            style: TextStyle(
-                              fontFamily: kSFProText,
-                              fontSize: 34,
-                              fontWeight: FontWeight.bold,
-                              fontStyle: FontStyle.normal,
-                              color: primaryLabel,
-                              letterSpacing: -1.2,
+                      child: AppWindowContentPadding(
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                            left: 16,
+                            right: 16,
+                            bottom: kHeaderTitleBottomInset,
+                          ),
+                          child: Align(
+                            alignment: Alignment.bottomLeft,
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: HeaderTitleScroller(
+                                title: title,
+                                fadeColor: backgroundColor,
+                                style: TextStyle(
+                                  fontFamily: kSFProText,
+                                  fontSize: 34,
+                                  fontWeight: FontWeight.bold,
+                                  fontStyle: FontStyle.normal,
+                                  color: primaryLabel,
+                                  letterSpacing: -1.2,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
+                  ),
                   ),
                 ),
-              ),
             ),
           if (!isLandscape)
             AppHeaderScrollEdge(
               progress: edgeProgress,
               surfaceColor: backgroundColor,
-              height:
-                  topInset +
-                  toolbarHeight +
-                  kAppHeaderTitleHeight +
-                  kAppHeaderScrollEdgeTitleCapExtension,
+              height: topInset + toolbarHeight,
               backgroundGradientHeight: topInset + toolbarHeight,
             ),
           if (!isLandscape)
@@ -1699,7 +1704,7 @@ class _SettingsHeader extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 84),
                   child: AppHeaderCompactTitle(
-                    progress: titleCollapseProgress,
+                    progress: titleHandoffProgress,
                     isLandscape: false,
                     child: SizedBox.expand(
                       child: HeaderTitleScroller(

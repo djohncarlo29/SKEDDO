@@ -8,6 +8,91 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 
 void main() {
+  test('title handoff waits for descenders, then crossfades through toolbar', () {
+    const titleBottomInset = 10.0;
+    final handoffStart = kAppHeaderTitleHeight - titleBottomInset;
+
+    expect(
+      AppHeaderScrollBehavior.titleHandoffProgress(
+        handoffStart - 1,
+        titleBottomInset: titleBottomInset,
+      ),
+      0,
+    );
+    expect(
+      AppHeaderScrollBehavior.titleHandoffProgress(
+        handoffStart,
+        titleBottomInset: titleBottomInset,
+      ),
+      0,
+    );
+    expect(
+      AppHeaderScrollBehavior.titleHandoffProgress(
+        handoffStart + kAppHeaderToolbarHeight / 2,
+        titleBottomInset: titleBottomInset,
+      ),
+      closeTo(0.5, 1e-9),
+    );
+    expect(
+      AppHeaderScrollBehavior.titleHandoffProgress(
+        handoffStart + kAppHeaderToolbarHeight,
+        titleBottomInset: titleBottomInset,
+      ),
+      1,
+    );
+  });
+
+  testWidgets('large and compact titles crossfade together', (tester) async {
+    const largeTitleKey = ValueKey('large-title-handoff');
+    const compactTitleKey = ValueKey('compact-title-handoff');
+
+    Widget buildApp(double progress) {
+      return CupertinoApp(
+        home: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppHeaderLargeTitleHandoff(
+                progress: progress,
+                child: const Text('Large title', key: largeTitleKey),
+              ),
+              AppHeaderCompactTitle(
+                progress: progress,
+                isLandscape: false,
+                child: const Text('Compact title', key: compactTitleKey),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    bool ignoresPointer(Key key) {
+      final pointerGate = tester.widget<IgnorePointer>(
+        find
+            .ancestor(
+              of: find.byKey(key),
+              matching: find.byType(IgnorePointer),
+            )
+            .first,
+      );
+      return pointerGate.ignoring;
+    }
+
+    await tester.pumpWidget(buildApp(0.25));
+    final opacityValues = tester
+        .widgetList<Opacity>(find.byType(Opacity))
+        .map((opacity) => opacity.opacity)
+        .toList();
+    expect(opacityValues, [0.75, 0.25]);
+    expect(ignoresPointer(largeTitleKey), isFalse);
+    expect(ignoresPointer(compactTitleKey), isTrue);
+
+    await tester.pumpWidget(buildApp(0.75));
+    expect(ignoresPointer(largeTitleKey), isTrue);
+    expect(ignoresPointer(compactTitleKey), isFalse);
+  });
+
   test('scroll edge progresses through the large-title and toolbar travel', () {
     final totalTravel = kAppHeaderTitleHeight + kAppHeaderToolbarHeight;
 
@@ -22,6 +107,38 @@ void main() {
     );
     expect(AppHeaderScrollBehavior.scrollEdgeProgress(totalTravel + 20), 1);
     expect(AppHeaderScrollBehavior.scrollEdgeProgress(double.nan), 0);
+  });
+
+  testWidgets('glass filter is bounded to the first-level header area', (
+    tester,
+  ) async {
+    const headerAreaHeight = 92.0;
+    const surfaceSize = Size(320, 240);
+
+    await tester.pumpWidget(
+      const CupertinoApp(
+        home: SizedBox(
+          width: 320,
+          height: 240,
+          child: Stack(
+            children: [
+              AppHeaderScrollEdge(
+                progress: 1,
+                surfaceColor: Color(0xFFFFFFFF),
+                height: headerAreaHeight,
+                backgroundGradientHeight: headerAreaHeight,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final blurRect = tester.getRect(find.byType(LiquidGlassScrollEdge));
+    expect(blurRect.top, 0);
+    expect(blurRect.height, headerAreaHeight);
+    expect(blurRect.bottom, lessThan(surfaceSize.height));
   });
 
   testWidgets(

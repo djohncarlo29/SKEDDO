@@ -3116,6 +3116,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                               _headerTitleScrollOffset.value,
                                             ) *
                                     (1 - t);
+                                final titleHandoffProgress =
+                                    AppHeaderScrollBehavior.titleHandoffProgress(
+                                          _headerTitleScrollOffset.value,
+                                          titleBottomInset:
+                                              kHeaderTitleBottomInset,
+                                        ) *
+                                    (1 - t);
                                 final edgeProgress =
                                     AppHeaderScrollBehavior.scrollEdgeProgress(
                                           _headerTitleScrollOffset.value,
@@ -3225,7 +3232,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                 titleCollapseProgress) *
                                                         headerSurfaceColor.a,
                                                   ),
-                                              child: largeHeaderTitleLayout,
+                                              child: AppHeaderLargeTitleHandoff(
+                                                progress: titleHandoffProgress,
+                                                child: largeHeaderTitleLayout,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -3234,12 +3244,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                        AppHeaderScrollEdge(
                                          progress: edgeProgress,
                                          surfaceColor: backgroundColor,
-                                         height:
-                                             topInset +
-                                              (headerToolbarHeight +
-                                                      kAppHeaderTitleHeight +
-                                                      kAppHeaderScrollEdgeTitleCapExtension) *
-                                                  (1 - t),
+                                         height: headerBaseHeight,
                                          backgroundGradientHeight:
                                              topInset +
                                              headerToolbarHeight * (1 - t),
@@ -3595,7 +3600,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                         ),
                                                         child: AppHeaderCompactTitle(
                                                           progress:
-                                                              titleCollapseProgress,
+                                                              titleHandoffProgress,
                                                           isLandscape:
                                                               isLandscape,
                                                           child:
