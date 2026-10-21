@@ -81,6 +81,10 @@ void main() {
         0,
       );
       expect(_fadeMasks(), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('modal-sheet-title-fade-boundary')),
+        findsOneWidget,
+      );
 
       final gesture = await tester.startGesture(
         tester.getCenter(find.text('New Event')),
