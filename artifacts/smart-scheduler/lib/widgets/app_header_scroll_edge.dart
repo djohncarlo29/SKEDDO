@@ -36,6 +36,15 @@ abstract final class AppHeaderScrollBehavior {
     return (contentOffset / kAppHeaderTitleHeight).clamp(0.0, 1.0).toDouble();
   }
 
+  /// The shell-owned large title must move with both the scrollable content
+  /// and the title slot as that slot collapses. Otherwise the content gains
+  /// an extra upward displacement and closes the gap beneath the title.
+  static double shellLargeTitleTravelOffset(double contentOffset) {
+    if (!contentOffset.isFinite || contentOffset <= 0.0) return 0.0;
+    return contentOffset +
+        kAppHeaderTitleHeight * titleCollapseProgress(contentOffset);
+  }
+
   /// Fades the outgoing title after its descenders enter the pinned toolbar.
   /// It is fully hidden before the compact title begins to appear.
   static double largeTitleFadeProgress(

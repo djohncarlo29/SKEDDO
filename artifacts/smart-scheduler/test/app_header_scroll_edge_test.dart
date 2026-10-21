@@ -8,6 +8,33 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 
 void main() {
+  test('shell large title tracks scroll and collapsing-slot travel together', () {
+    expect(
+      AppHeaderScrollBehavior.shellLargeTitleTravelOffset(0),
+      0,
+    );
+    expect(
+      AppHeaderScrollBehavior.shellLargeTitleTravelOffset(
+        kAppHeaderTitleHeight / 2,
+      ),
+      closeTo(kAppHeaderTitleHeight, 1e-9),
+    );
+    expect(
+      AppHeaderScrollBehavior.shellLargeTitleTravelOffset(
+        kAppHeaderTitleHeight,
+      ),
+      closeTo(kAppHeaderTitleHeight * 2, 1e-9),
+    );
+    expect(
+      AppHeaderScrollBehavior.shellLargeTitleTravelOffset(double.nan),
+      0,
+    );
+    expect(
+      AppHeaderScrollBehavior.shellLargeTitleTravelOffset(-12),
+      0,
+    );
+  });
+
   test('large and compact title fades are sequential and end at content edge', () {
     const titleBottomInset = 10.0;
     final titleBottom = kAppHeaderTitleHeight - titleBottomInset;

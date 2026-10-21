@@ -3187,17 +3187,22 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                               _headerTitleScrollOffset.value,
                                             ) *
                                     (1 - t);
+                                final titleScrollOffset =
+                                    AppHeaderScrollBehavior
+                                        .shellLargeTitleTravelOffset(
+                                          _headerTitleScrollOffset.value,
+                                        );
                                 final largeTitleFadeProgress =
                                     AppHeaderScrollBehavior
                                         .largeTitleFadeProgress(
-                                          _headerTitleScrollOffset.value,
+                                          titleScrollOffset,
                                           titleBottomInset:
                                               kHeaderTitleBottomInset,
                                         );
                                 final compactTitleFadeProgress =
                                     AppHeaderScrollBehavior
                                         .compactTitleFadeProgress(
-                                          _headerTitleScrollOffset.value,
+                                          titleScrollOffset,
                                           titleBottomInset:
                                               kHeaderTitleBottomInset,
                                         );
@@ -3206,8 +3211,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                           _headerTitleScrollOffset.value,
                                         ) *
                                     (1 - t);
-                                final titleScrollOffset =
-                                    _headerTitleScrollOffset.value;
                               final calendarTitleInContent =
                                   !isDCVVisual &&
                                   _selectedIndex == 1 &&
