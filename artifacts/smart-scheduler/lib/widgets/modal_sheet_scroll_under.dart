@@ -350,12 +350,19 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder>
   }
 
   bool _onScrollNotification(ScrollNotification notification) {
-    if (notification.depth == 0) _syncScrollMetrics(notification.metrics);
+    // The fixed header contains its own horizontal title scroller. Its
+    // notifications also arrive at depth zero, but must never drive the
+    // vertical sheet's scroll-edge progress.
+    if (notification.depth == 0 && notification.metrics.axis == Axis.vertical) {
+      _syncScrollMetrics(notification.metrics);
+    }
     return false;
   }
 
   bool _onMetricsNotification(ScrollMetricsNotification notification) {
-    if (notification.depth == 0) _syncScrollMetrics(notification.metrics);
+    if (notification.depth == 0 && notification.metrics.axis == Axis.vertical) {
+      _syncScrollMetrics(notification.metrics);
+    }
     return false;
   }
 

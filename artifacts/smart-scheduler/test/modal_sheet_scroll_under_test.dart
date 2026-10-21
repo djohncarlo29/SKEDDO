@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart'
     show LiquidGlassEdge, LiquidGlassScrollEdge;
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
+import 'package:smart_scheduler/widgets/modal_sheet_title_scroller.dart';
 import 'package:smart_scheduler/widgets/modal_sheet_scroll_under.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
@@ -85,6 +86,134 @@ void main() {
       expect(find.byType(LiquidGlassScrollEdge), findsNothing);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+
+  testWidgets(
+    'horizontal title rubberband does not change the sheet scroll-edge blur',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(400, 700));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final sheetController = ScrollController();
+      addTearDown(sheetController.dispose);
+      const title =
+          'A very long modal title that overflows the sheet header controls';
+      final titleScroller = find.descendant(
+        of: find.byType(ModalSheetTitleScroller),
+        matching: find.byType(Scrollable),
+      );
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          builder: (context, child) => AppWindowContentBoundary(
+            child: child ?? const SizedBox.shrink(),
+          ),
+          home: CupertinoPageScaffold(
+            child: SizedBox.expand(
+              child: ModalSheetScrollUnder(
+                scrollController: sheetController,
+                headerTopInset: 8,
+                headerHeight: 40,
+                headerGap: 6,
+                baseScrollPadding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                surfaceColor: const Color(0xFFF2F2F7),
+                header: SizedBox(
+                  height: 40,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: ModalSheetTitleScroller(
+                          title: title,
+                          style: const TextStyle(
+                            color: Color(0xFF1D1D1F),
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          fadeColor: const Color(0xFFF2F2F7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                scrollBuilder: (context, padding) => ListView(
+                  controller: sheetController,
+                  primary: false,
+                  padding: padding,
+                  children: List.generate(
+                    24,
+                    (index) => SizedBox(
+                      height: 40,
+                      child: Text('Sheet row $index'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      sheetController.jumpTo(50);
+      await tester.pump();
+      final edgeFinder = find.byType(LiquidGlassScrollEdge);
+      expect(edgeFinder, findsOneWidget);
+      final expectedBlur = tester.widget<LiquidGlassScrollEdge>(edgeFinder).blur;
+      expect(expectedBlur, closeTo(12 * 0.85, 0.001));
+
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(ModalSheetTitleScroller)),
+      );
+      await gesture.moveBy(const Offset(50, 0));
+      await tester.pump();
+
+      expect(
+        tester.state<ScrollableState>(titleScroller).position.pixels,
+        lessThan(0),
+        reason: 'The title must be actively rubberbanded at its leading edge.',
+      );
+      expect(
+        edgeFinder,
+        findsOneWidget,
+        reason: 'Horizontal title motion must not hide the sheet edge effect.',
+      );
+      expect(
+        tester.widget<LiquidGlassScrollEdge>(edgeFinder).blur,
+        closeTo(expectedBlur, 0.001),
+      );
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<LiquidGlassScrollEdge>(edgeFinder).blur,
+        closeTo(expectedBlur, 0.001),
+        reason: 'Releasing the title must not clear the sheet edge effect.',
+      );
+
+      final reverseGesture = await tester.startGesture(
+        tester.getCenter(find.byType(ModalSheetTitleScroller)),
+      );
+      await reverseGesture.moveBy(const Offset(-60, 0));
+      await tester.pump();
+
+      expect(
+        tester.state<ScrollableState>(titleScroller).position.pixels,
+        greaterThan(0),
+        reason: 'The title must also scroll away from its leading edge.',
+      );
+      expect(edgeFinder, findsOneWidget);
+      expect(
+        tester.widget<LiquidGlassScrollEdge>(edgeFinder).blur,
+        closeTo(expectedBlur, 0.001),
+      );
+
+      await reverseGesture.up();
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<LiquidGlassScrollEdge>(edgeFinder).blur,
+        closeTo(expectedBlur, 0.001),
+      );
+    },
   );
 
   testWidgets('tracks the sheet scroll controller through nested viewports', (

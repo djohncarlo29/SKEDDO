@@ -31,18 +31,12 @@ class ModalSheetTitleScroller extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: _titleSideInset),
-      child: RepaintBoundary(
-        key: const ValueKey<String>('modal-sheet-title-fade-boundary'),
-        // Keep the title's live alpha-fade layer separate from the modal
-        // sheet's sibling BackdropFilter. Otherwise horizontal title
-        // rubberbanding can change how the scroll-edge blur is composited.
-        child: HeaderTitleScroller(
-          title: title,
-          style: style,
-          fadeColor: fadeColor,
-          centerWhenContentFits: true,
-          contentAlignment: Alignment.centerLeft,
-        ),
+      child: HeaderTitleScroller(
+        title: title,
+        style: style,
+        fadeColor: fadeColor,
+        centerWhenContentFits: true,
+        contentAlignment: Alignment.centerLeft,
       ),
     );
   }
