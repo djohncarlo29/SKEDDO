@@ -3576,31 +3576,39 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                     left: 84,
                                                     right: 84,
                                                     child: Center(
-                                                      child:
-                                                          AppHeaderCompactTitle(
-                                                            progress:
-                                                                edgeProgress,
-                                                            isLandscape:
-                                                                isLandscape,
-                                                            child:
-                                                                !isDCVVisual &&
-                                                                    _selectedIndex ==
-                                                                        1
-                                                                ? _buildCalendarTitleRow(
-                                                                    compact:
-                                                                        true,
-                                                                    compactFadeColor:
-                                                                        backgroundColor,
-                                                                  )
-                                                                : _buildCompactHeaderTitle(
-                                                                    isDCVVisual:
-                                                                        isDCVVisual,
-                                                                    headerColor:
-                                                                        backgroundColor,
-                                                                    primaryLabel:
-                                                                        primaryLabel,
-                                                                  ),
-                                                          ),
+                                                      child: Transform.translate(
+                                                        // Portrait action icons
+                                                        // sit 3px below the
+                                                        // center of the 44px
+                                                        // toolbar slot.
+                                                        offset: Offset(
+                                                          0,
+                                                          isLandscape ? 0 : 3,
+                                                        ),
+                                                        child: AppHeaderCompactTitle(
+                                                          progress:
+                                                              edgeProgress,
+                                                          isLandscape:
+                                                              isLandscape,
+                                                          child:
+                                                              !isDCVVisual &&
+                                                                  _selectedIndex ==
+                                                                      1
+                                                              ? _buildCalendarTitleRow(
+                                                                  compact: true,
+                                                                  compactFadeColor:
+                                                                      backgroundColor,
+                                                                )
+                                                              : _buildCompactHeaderTitle(
+                                                                  isDCVVisual:
+                                                                      isDCVVisual,
+                                                                  headerColor:
+                                                                      backgroundColor,
+                                                                  primaryLabel:
+                                                                      primaryLabel,
+                                                                ),
+                                                        ),
+                                                      ),
                                                     ),
                                                   ),
                                                  ],
@@ -4126,22 +4134,33 @@ class _CalendarNavChevron extends StatelessWidget {
     if (compact) {
       final compactIconScale = max(1.0, scale * 2.0);
       final compactIconSize = 12.0 * compactIconScale;
-      // Match the portrait chevron centers: each sits 60% of a half-title
-      // height from the shared center while retaining the landscape tap zones.
-      final compactIconOffset = 13.0 - safeTitleFontSize * 0.3;
-
-      const compactControlHeight = 52.0;
+      // Match landscape's two-arrow spacing in both toolbar heights. The
+      // arrows sit at the same fixed distance from the shared title center;
+      // only the transparent tap zones change height with the toolbar.
+      final compactControlHeight =
+          MediaQuery.orientationOf(context) == Orientation.landscape
+          ? 52.0
+          : kAppHeaderToolbarHeight;
+      final compactHalfHeight = compactControlHeight / 2;
+      final compactIconCenterOffset = safeTitleFontSize * 0.3;
+      final compactIconOffset =
+          compactHalfHeight / 2 - compactIconCenterOffset;
 
       Widget compactHalf({
         required _ChevronDir direction,
         required Color color,
         required VoidCallback? onTap,
       }) {
-        return Expanded(
+        final isUp = direction == _ChevronDir.up;
+        return Positioned(
+          left: 0,
+          right: 0,
+          top: isUp ? 0 : compactHalfHeight,
+          height: compactHalfHeight,
           child: Semantics(
             button: true,
             enabled: onTap != null,
-            label: direction == _ChevronDir.up
+            label: isUp
                 ? 'Go to more detail'
                 : 'Return to calendar overview',
             onTap: onTap,
@@ -4150,9 +4169,7 @@ class _CalendarNavChevron extends StatelessWidget {
                 child: Transform.translate(
                   offset: Offset(
                     0,
-                    direction == _ChevronDir.up
-                        ? compactIconOffset
-                        : -compactIconOffset,
+                    isUp ? compactIconOffset : -compactIconOffset,
                   ),
                   child: _ChevronIcon(
                     direction: direction,
@@ -4173,10 +4190,11 @@ class _CalendarNavChevron extends StatelessWidget {
         child: _CalendarNavTapTarget(
           onTapAt: (position) {
             final tappedUpperHalf =
-                position.dy < compactControlHeight / 2;
+                position.dy < compactHalfHeight;
             (tappedUpperHalf ? onUp : onDown)?.call();
           },
-          child: Column(
+          child: Stack(
+            fit: StackFit.expand,
             children: [
               compactHalf(
                 direction: _ChevronDir.up,
