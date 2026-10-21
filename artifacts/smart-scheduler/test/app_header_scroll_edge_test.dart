@@ -8,6 +8,22 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 
 void main() {
+  test('scroll edge progresses through the large-title and toolbar travel', () {
+    final totalTravel = kAppHeaderTitleHeight + kAppHeaderToolbarHeight;
+
+    expect(AppHeaderScrollBehavior.scrollEdgeProgress(0), 0);
+    expect(
+      AppHeaderScrollBehavior.scrollEdgeProgress(kAppHeaderTitleHeight),
+      closeTo(kAppHeaderTitleHeight / totalTravel, 1e-9),
+    );
+    expect(
+      AppHeaderScrollBehavior.scrollEdgeProgress(totalTravel),
+      1,
+    );
+    expect(AppHeaderScrollBehavior.scrollEdgeProgress(totalTravel + 20), 1);
+    expect(AppHeaderScrollBehavior.scrollEdgeProgress(double.nan), 0);
+  });
+
   testWidgets(
     'portrait compact title fades in with scroll progress and accepts taps once visible',
     (tester) async {
@@ -114,6 +130,7 @@ void main() {
                     progress: 1,
                     surfaceColor: Color(0xFFFFFFFF),
                     height: 100,
+                    backgroundGradientHeight: 0,
                   ),
                 ],
               ),
@@ -244,6 +261,7 @@ void main() {
                   progress: 1,
                   surfaceColor: Color(0xFFFFFFFF),
                   height: 100,
+                  backgroundGradientHeight: 0,
                 ),
               ],
             ),

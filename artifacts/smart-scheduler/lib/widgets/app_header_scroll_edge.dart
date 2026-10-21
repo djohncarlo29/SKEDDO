@@ -31,15 +31,12 @@ abstract final class AppHeaderScrollBehavior {
     return (contentOffset / kAppHeaderTitleHeight).clamp(0.0, 1.0).toDouble();
   }
 
-  /// Starts the glass edge only after the large title has fully collapsed,
-  /// then lets it build as content passes beneath the pinned toolbar.
+  /// Builds the glass edge while the large title passes through the pinned
+  /// header, then continues as content passes beneath the toolbar.
   static double scrollEdgeProgress(double contentOffset) {
-    if (!contentOffset.isFinite ||
-        contentOffset <= kAppHeaderTitleHeight) {
-      return 0.0;
-    }
-    return ((contentOffset - kAppHeaderTitleHeight) /
-            kAppHeaderToolbarHeight)
+    if (!contentOffset.isFinite || contentOffset <= 0.0) return 0.0;
+    return (contentOffset /
+            (kAppHeaderTitleHeight + kAppHeaderToolbarHeight))
         .clamp(0.0, 1.0)
         .toDouble();
   }

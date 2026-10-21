@@ -65,10 +65,10 @@ Keep a theme-matched background gradient independent of scroll progress: fully o
 
 **How to apply:** Use the currently resolved background color with alpha 1→0 over the safe-area inset plus the first-level toolbar height. Keep this layer separate from the independently tuned blur and tint.
 
-## Compact title and delayed glass handoff
+## Large-title glass handoff
 
-Keep the large title in the scrolling title region and fade in its compact counterpart in the pinned first-level toolbar as the title collapses. Apply this to the Settings list and every Settings subscreen as well as the app tabs. The Liquid Glass scroll edge must remain inactive until the large title has fully collapsed; only then should it build as content begins to pass beneath the pinned toolbar. Keep the compact-title progress independent from the later glass-edge progress.
+Keep the large title in the scrolling title region and fade in its compact counterpart in the pinned first-level toolbar as the title collapses. Apply this to the Settings list and every Settings subscreen as well as the app tabs. The Liquid Glass scroll edge must build while the large title passes through the first-level header, then continue building as content passes beneath the pinned toolbar. Keep compact-title progress independent from the glass-edge progress.
 
-**Why:** The user wants Settings to retain both title sizes during scrolling, and does not want the glass effect to blur a large title or content before it reaches the first-level header.
+**Why:** The user wants Settings to retain both title sizes during scrolling and wants the large title itself to blur as it crosses the first-level header.
 
-**How to apply:** Derive title handoff from the non-negative scroll offset over the title slot. Derive glass-edge progress separately, starting after that slot and progressing over the toolbar. Preserve the persistent top-to-header background gradient and keep landscape and modal-sheet behavior separate.
+**How to apply:** Derive title handoff from the non-negative scroll offset over the title slot. Derive glass-edge progress independently across the title and toolbar travel interval. Preserve the persistent top-to-header background gradient and keep landscape and modal-sheet behavior separate.
