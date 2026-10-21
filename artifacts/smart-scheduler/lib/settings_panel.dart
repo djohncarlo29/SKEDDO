@@ -253,8 +253,13 @@ class _SettingsPanelState extends State<SettingsPanel>
   );
   final ScrollController _mainScrollController = ScrollController();
   final ValueNotifier<double> _headerTitleScrollOffset = ValueNotifier(0.0);
+  final ValueNotifier<bool> _headerIsScrolled = ValueNotifier(false);
+  final ValueNotifier<bool> _headerScrollIsActive = ValueNotifier(false);
   final Map<String, double> _headerTitleScrollOffsets = {};
+  final Map<String, bool> _headerScrolledStates = {};
   bool _headerUserScrollActive = false;
+  bool _headerSawUserScrollDirection = false;
+  ScrollDirection _headerLastUserScrollDirection = ScrollDirection.idle;
   final GlobalKey _mainSettingsContentKey = GlobalKey();
   final Map<String, GlobalKey> _settingsRowAnchorKeys = {
     for (final title in [
@@ -283,6 +288,11 @@ class _SettingsPanelState extends State<SettingsPanel>
     if (notification is UserScrollNotification) {
       _headerUserScrollActive =
           notification.direction != ScrollDirection.idle;
+      if (_headerUserScrollActive) {
+        _headerSawUserScrollDirection = true;
+        _headerLastUserScrollDirection = notification.direction;
+        _headerScrollIsActive.value = true;
+      }
       return false;
     }
 
@@ -299,13 +309,36 @@ class _SettingsPanelState extends State<SettingsPanel>
         _headerTitleScrollOffset.value = next;
       }
     }
+
+    if (notification is ScrollEndNotification &&
+        _headerSawUserScrollDirection) {
+      final settledOffset = AppHeaderScrollBehavior.settledHeaderOffset(
+        _headerLastUserScrollDirection,
+      );
+      final isScrolled =
+          _headerLastUserScrollDirection == ScrollDirection.reverse;
+      _headerTitleScrollOffsets[_headerScrollScope] = settledOffset;
+      _headerScrolledStates[_headerScrollScope] = isScrolled;
+      _headerIsScrolled.value = isScrolled;
+      _headerTitleScrollOffset.value = settledOffset;
+      _headerUserScrollActive = false;
+      _headerSawUserScrollDirection = false;
+      _headerLastUserScrollDirection = ScrollDirection.idle;
+      _headerScrollIsActive.value = false;
+    }
     return false;
   }
 
   void _restoreHeaderScrollOffset() {
     _headerUserScrollActive = false;
-    _headerTitleScrollOffset.value =
-        _headerTitleScrollOffsets[_headerScrollScope] ?? 0.0;
+    _headerSawUserScrollDirection = false;
+    _headerLastUserScrollDirection = ScrollDirection.idle;
+    _headerScrollIsActive.value = false;
+    final scope = _headerScrollScope;
+    final offset = _headerTitleScrollOffsets[scope] ?? 0.0;
+    _headerTitleScrollOffset.value = offset;
+    _headerIsScrolled.value =
+        _headerScrolledStates[scope] ?? offset >= kAppHeaderTitleHeight;
   }
 
   // Listener added to _navCtrl when a push starts; fires the hard-snap of the
@@ -544,6 +577,8 @@ class _SettingsPanelState extends State<SettingsPanel>
     _splitDetailController.removeStatusListener(_onSplitDetailStatus);
     _mainScrollController.dispose();
     _headerTitleScrollOffset.dispose();
+    _headerIsScrolled.dispose();
+    _headerScrollIsActive.dispose();
     _paneTransitionController.dispose();
     _splitDetailController.dispose();
     _navCtrl.dispose();
@@ -680,6 +715,8 @@ class _SettingsPanelState extends State<SettingsPanel>
                     top: headerHeight,
                     child: AppHeaderScrollInsetScope(
                       leadingInset: headerHeight,
+                      headerIsScrolled: _headerIsScrolled,
+                      headerScrollIsActive: _headerScrollIsActive,
                       child: showLandscapeSplit
                           ? AppHeaderScrollClip(child: splitBody)
                           : AppWindowPhysicalWidth(
@@ -699,6 +736,8 @@ class _SettingsPanelState extends State<SettingsPanel>
                       top: headerHeight,
                       child: AppHeaderScrollInsetScope(
                         leadingInset: headerHeight,
+                        headerIsScrolled: _headerIsScrolled,
+                        headerScrollIsActive: _headerScrollIsActive,
                         child: AppWindowPhysicalWidth(
                           child: SlideTransition(
                             position: _subSlide,

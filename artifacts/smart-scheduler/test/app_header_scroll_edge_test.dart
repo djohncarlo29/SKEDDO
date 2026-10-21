@@ -155,30 +155,39 @@ void main() {
     const titleBottomInset = 10.0;
     const titleKey = ValueKey('scroll-owned-large-title');
     final controller = ScrollController();
+    final isScrolled = ValueNotifier<bool>(false);
+    final isScrollActive = ValueNotifier<bool>(false);
     addTearDown(controller.dispose);
+    addTearDown(isScrolled.dispose);
+    addTearDown(isScrollActive.dispose);
 
     await tester.pumpWidget(
       CupertinoApp(
-        home: SizedBox(
-          height: 600,
-          child: CustomScrollView(
-            controller: controller,
-            slivers: [
-              const SliverToBoxAdapter(
-                child: SizedBox(height: kAppHeaderTitleHeight),
-              ),
-              SliverToBoxAdapter(
-                child: AppHeaderScrollTitle(
-                  controller: controller,
-                  titleBottomInset: titleBottomInset,
-                  child: const SizedBox(
-                    height: kAppHeaderTitleHeight,
-                    child: Text('Calendar', key: titleKey),
+        home: AppHeaderScrollInsetScope(
+          leadingInset: 0,
+          headerIsScrolled: isScrolled,
+          headerScrollIsActive: isScrollActive,
+          child: SizedBox(
+            height: 600,
+            child: CustomScrollView(
+              controller: controller,
+              slivers: [
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: kAppHeaderTitleHeight),
+                ),
+                SliverToBoxAdapter(
+                  child: AppHeaderScrollTitle(
+                    controller: controller,
+                    titleBottomInset: titleBottomInset,
+                    child: const SizedBox(
+                      height: kAppHeaderTitleHeight,
+                      child: Text('Calendar', key: titleKey),
+                    ),
                   ),
                 ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 1000)),
-            ],
+                const SliverToBoxAdapter(child: SizedBox(height: 1000)),
+              ],
+            ),
           ),
         ),
       ),
@@ -195,6 +204,7 @@ void main() {
         )
         .opacity;
 
+    isScrollActive.value = true;
     controller.jumpTo(52);
     await tester.pump();
     expect(titleOpacity(), 0);
@@ -202,6 +212,58 @@ void main() {
     controller.jumpTo(kAppHeaderTitleHeight);
     await tester.pump();
     expect(titleOpacity(), 0);
+
+    controller.jumpTo(0);
+    await tester.pump();
+    isScrolled.value = true;
+    isScrollActive.value = false;
+    await tester.pump();
+    expect(titleOpacity(), 0);
+
+    isScrolled.value = false;
+    await tester.pump();
+    expect(titleOpacity(), 1);
+  });
+
+  testWidgets('settled header state collapses and restores the content slot', (
+    tester,
+  ) async {
+    const contentKey = ValueKey('latched-title-slot-content');
+    final isScrolled = ValueNotifier<bool>(false);
+    addTearDown(isScrolled.dispose);
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: AppHeaderScrollInsetScope(
+          leadingInset: 0,
+          headerIsScrolled: isScrolled,
+          child: SizedBox(
+            height: 600,
+            child: Column(
+              children: [
+                const AppHeaderScrollInset(),
+                const SizedBox(
+                  key: contentKey,
+                  height: 1,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    double contentTop() => tester.getTopLeft(find.byKey(contentKey)).dy;
+    expect(contentTop(), kAppHeaderTitleHeight);
+
+    isScrolled.value = true;
+    await tester.pump();
+    expect(contentTop(), 0);
+
+    isScrolled.value = false;
+    await tester.pump();
+    expect(contentTop(), kAppHeaderTitleHeight);
   });
 
   test('scroll edge progresses through the large-title and toolbar travel', () {
@@ -218,6 +280,17 @@ void main() {
     );
     expect(AppHeaderScrollBehavior.scrollEdgeProgress(totalTravel + 20), 1);
     expect(AppHeaderScrollBehavior.scrollEdgeProgress(double.nan), 0);
+  });
+
+  test('header settle preserves two direction-driven states', () {
+    expect(
+      AppHeaderScrollBehavior.settledHeaderOffset(ScrollDirection.reverse),
+      kAppHeaderScrollCollapsedOffset,
+    );
+    expect(
+      AppHeaderScrollBehavior.settledHeaderOffset(ScrollDirection.forward),
+      0,
+    );
   });
 
   testWidgets(
@@ -285,7 +358,7 @@ void main() {
     },
   );
 
-  testWidgets('glass filter is bounded to the first-level header area', (
+  testWidgets('glass filter extends 16pt into the content area', (
     tester,
   ) async {
     const headerAreaHeight = 92.0;
@@ -313,7 +386,10 @@ void main() {
 
     final blurRect = tester.getRect(find.byType(LiquidGlassScrollEdge));
     expect(blurRect.top, 0);
-    expect(blurRect.height, headerAreaHeight);
+    expect(
+      blurRect.height,
+      headerAreaHeight + kAppHeaderScrollEdgeContentInset,
+    );
     expect(blurRect.bottom, lessThan(surfaceSize.height));
   });
 
