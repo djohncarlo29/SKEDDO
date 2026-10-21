@@ -7,11 +7,12 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 
 const double kAppHeaderToolbarHeight = 44;
 const double kAppHeaderTitleHeight = 57;
-const double kAppHeaderScrollEdgeContentInset = 16;
+const double kAppHeaderScrollEdgeHeaderBottomExtension = 16;
 const double kAppHeaderScrollCollapsedOffset =
     kAppHeaderTitleHeight + kAppHeaderToolbarHeight;
 const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;
 const double _kAppHeaderScrollEdgeMaxBlurSigma = 4;
+const Duration _kAppHeaderScrollSettleDuration = Duration(milliseconds: 260);
 
 /// Shared scroll rules for second-level app headers.
 ///
@@ -116,6 +117,68 @@ abstract final class AppHeaderScrollBehavior {
   }
 }
 
+/// Animates the shell-owned header from its live scroll position into the
+/// settled expanded or collapsed state. The same easing is used in both
+/// directions so returning to the top reverses the collapse motion.
+class AppHeaderScrollSettler {
+  AppHeaderScrollSettler({
+    required TickerProvider vsync,
+    required this.offset,
+    required this.onSettled,
+  }) : _controller = AnimationController(
+         vsync: vsync,
+         duration: _kAppHeaderScrollSettleDuration,
+       ) {
+    _controller
+      ..addListener(_updateOffset)
+      ..addStatusListener(_handleStatus);
+  }
+
+  final ValueNotifier<double> offset;
+  final VoidCallback onSettled;
+  final AnimationController _controller;
+  double _from = 0.0;
+  double _to = 0.0;
+
+  bool get isAnimating => _controller.isAnimating;
+
+  void animateTo(double target) {
+    _controller.stop(canceled: false);
+    _from = offset.value;
+    _to = target;
+    final distance = (_to - _from).abs();
+    if (!distance.isFinite || distance < 0.01) {
+      offset.value = target;
+      onSettled();
+      return;
+    }
+
+    final durationFraction =
+        (distance / kAppHeaderScrollCollapsedOffset).clamp(0.18, 1.0);
+    _controller.duration = Duration(
+      milliseconds:
+          (_kAppHeaderScrollSettleDuration.inMilliseconds * durationFraction)
+              .round(),
+    );
+    _controller.forward(from: 0.0);
+  }
+
+  void stop() => _controller.stop(canceled: false);
+
+  void _updateOffset() {
+    final progress = Curves.easeInOutCubic.transform(_controller.value);
+    offset.value = _from + (_to - _from) * progress;
+  }
+
+  void _handleStatus(AnimationStatus status) {
+    if (status != AnimationStatus.completed) return;
+    offset.value = _to;
+    onSettled();
+  }
+
+  void dispose() => _controller.dispose();
+}
+
 /// Keeps centered placeholders aligned with the center of the usable content
 /// area as the large-title slot collapses.
 ///
@@ -187,6 +250,9 @@ class AppHeaderScrollTitle extends StatelessWidget {
     final userScrollActive = AppHeaderScrollInsetScope.maybeUserScrollActive(
       context,
     );
+    final sharedScrollOffset = AppHeaderScrollInsetScope.maybeScrollOffset(
+      context,
+    );
 
     // Resolve the Scrollable that actually contains this title. Some calendar
     // modes intentionally share one controller with an embedded list, so the
@@ -198,6 +264,7 @@ class AppHeaderScrollTitle extends StatelessWidget {
       positionListenable,
       if (settledScrollState != null) settledScrollState,
       if (userScrollActive != null) userScrollActive,
+      if (sharedScrollOffset != null) sharedScrollOffset,
     ];
     return AnimatedBuilder(
       animation: Listenable.merge(listenables),
@@ -208,10 +275,14 @@ class AppHeaderScrollTitle extends StatelessWidget {
             (positions.length == 1 ? positions.single : null);
         if (position == null) return child;
         if (!position.hasContentDimensions) return child;
-        final contentOffset = AppHeaderScrollBehavior.contentOffset(position);
+        final positionOffset = AppHeaderScrollBehavior.contentOffset(position);
         final isUserScrolling =
             userScrollActive?.value ??
             position.userScrollDirection != ScrollDirection.idle;
+        final contentOffset =
+            isUserScrolling && sharedScrollOffset != null
+            ? sharedScrollOffset.value
+            : positionOffset;
         final fadeProgress =
             settledScrollState != null && !isUserScrolling
             ? (settledScrollState.value ? 1.0 : 0.0)
@@ -248,12 +319,14 @@ class AppHeaderScrollInsetScope extends InheritedWidget {
     required this.leadingInset,
     this.headerIsScrolled,
     this.headerScrollIsActive,
+    this.headerTitleScrollOffset,
     required super.child,
   });
 
   final double leadingInset;
   final ValueListenable<bool>? headerIsScrolled;
   final ValueListenable<bool>? headerScrollIsActive;
+  final ValueListenable<double>? headerTitleScrollOffset;
 
   static double maybeOf(BuildContext context) =>
       context
@@ -271,11 +344,17 @@ class AppHeaderScrollInsetScope extends InheritedWidget {
           .dependOnInheritedWidgetOfExactType<AppHeaderScrollInsetScope>()
           ?.headerScrollIsActive;
 
+  static ValueListenable<double>? maybeScrollOffset(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<AppHeaderScrollInsetScope>()
+          ?.headerTitleScrollOffset;
+
   @override
   bool updateShouldNotify(AppHeaderScrollInsetScope oldWidget) =>
       leadingInset != oldWidget.leadingInset ||
       !identical(headerIsScrolled, oldWidget.headerIsScrolled) ||
-      !identical(headerScrollIsActive, oldWidget.headerScrollIsActive);
+      !identical(headerScrollIsActive, oldWidget.headerScrollIsActive) ||
+      !identical(headerTitleScrollOffset, oldWidget.headerTitleScrollOffset);
 }
 
 /// Extends a page scroll viewport upward by the shell inset without moving its
@@ -507,22 +586,36 @@ class AppHeaderScrollInset extends StatelessWidget {
     final headerIsScrolled = AppHeaderScrollInsetScope.maybeHeaderScrolled(
       context,
     );
-    if (animation == null && headerIsScrolled == null) {
+    final headerScrollOffset = AppHeaderScrollInsetScope.maybeScrollOffset(
+      context,
+    );
+    if (animation == null &&
+        headerIsScrolled == null &&
+        headerScrollOffset == null) {
       return const SizedBox(height: kAppHeaderTitleHeight);
     }
 
     final listenables = <Listenable>[
       if (animation != null) animation,
       if (headerIsScrolled != null) headerIsScrolled,
+      if (headerScrollOffset != null) headerScrollOffset,
     ];
     return AnimatedBuilder(
       animation: Listenable.merge(listenables),
       builder: (context, _) {
-        final expanded = headerIsScrolled?.value == true
+        var expanded = headerScrollOffset != null
+            ? 1.0 -
+                  AppHeaderScrollBehavior.titleCollapseProgress(
+                    headerScrollOffset.value,
+                  )
+            : headerIsScrolled?.value == true
             ? 0.0
-            : animation == null
-            ? 1.0
-            : (1 - animation.value.clamp(0.0, 1.0)).toDouble();
+            : 1.0;
+        if (animation != null) {
+          final searchExpanded =
+              (1 - animation.value.clamp(0.0, 1.0)).toDouble();
+          if (searchExpanded < expanded) expanded = searchExpanded;
+        }
         return SizedBox(height: kAppHeaderTitleHeight * expanded);
       },
     );
@@ -593,33 +686,33 @@ class AppHeaderScrollEdge extends StatelessWidget {
     super.key,
     required this.progress,
     required this.surfaceColor,
-    required this.height,
+    required this.headerHeight,
     required this.backgroundGradientHeight,
   });
 
   final double progress;
   final Color surfaceColor;
-  final double height;
+  final double headerHeight;
   final double backgroundGradientHeight;
 
   @override
   Widget build(BuildContext context) {
     final normalizedProgress = progress.clamp(0.0, 1.0).toDouble();
     final effectProgress = Curves.easeOutCubic.transform(normalizedProgress);
-    if (height <= 0) {
+    if (headerHeight <= 0) {
       return const SizedBox.shrink();
     }
 
     final gradientHeight =
-        backgroundGradientHeight.clamp(0.0, height).toDouble();
+        backgroundGradientHeight.clamp(0.0, headerHeight).toDouble();
 
     return Positioned(
       top: 0,
       left: 0,
       right: 0,
-      // Extend through the content area's 16pt top padding. Content below this
-      // boundary stays outside the glass filter.
-      height: height + kAppHeaderScrollEdgeContentInset,
+      // Start at the physical top of the screen and extend 16pt past the
+      // bottom of the complete first-level header.
+      height: headerHeight + kAppHeaderScrollEdgeHeaderBottomExtension,
       child: Stack(
         fit: StackFit.expand,
         children: [

@@ -257,9 +257,11 @@ class _SettingsPanelState extends State<SettingsPanel>
   final ValueNotifier<bool> _headerScrollIsActive = ValueNotifier(false);
   final Map<String, double> _headerTitleScrollOffsets = {};
   final Map<String, bool> _headerScrolledStates = {};
+  late final AppHeaderScrollSettler _headerScrollSettler;
   bool _headerUserScrollActive = false;
   bool _headerSawUserScrollDirection = false;
   ScrollDirection _headerLastUserScrollDirection = ScrollDirection.idle;
+  double _headerScrollOffsetAdjustment = 0.0;
   final GlobalKey _mainSettingsContentKey = GlobalKey();
   final Map<String, GlobalKey> _settingsRowAnchorKeys = {
     for (final title in [
@@ -289,6 +291,10 @@ class _SettingsPanelState extends State<SettingsPanel>
       _headerUserScrollActive =
           notification.direction != ScrollDirection.idle;
       if (_headerUserScrollActive) {
+        _headerScrollSettler.stop();
+        _headerScrollOffsetAdjustment =
+            _headerTitleScrollOffset.value -
+            AppHeaderScrollBehavior.contentOffset(notification.metrics);
         _headerSawUserScrollDirection = true;
         _headerLastUserScrollDirection = notification.direction;
         _headerScrollIsActive.value = true;
@@ -301,8 +307,10 @@ class _SettingsPanelState extends State<SettingsPanel>
       final current = _headerTitleScrollOffset.value;
       // Mirror the real scroll position so the title keeps moving after it
       // passes beneath the pinned toolbar and out of view.
-      final next = AppHeaderScrollBehavior.contentOffset(
-        notification.metrics,
+      final next = max(
+        0.0,
+        AppHeaderScrollBehavior.contentOffset(notification.metrics) +
+            _headerScrollOffsetAdjustment,
       );
       if ((next - current).abs() >= 0.01) {
         _headerTitleScrollOffsets[_headerScrollScope] = next;
@@ -320,16 +328,16 @@ class _SettingsPanelState extends State<SettingsPanel>
       _headerTitleScrollOffsets[_headerScrollScope] = settledOffset;
       _headerScrolledStates[_headerScrollScope] = isScrolled;
       _headerIsScrolled.value = isScrolled;
-      _headerTitleScrollOffset.value = settledOffset;
+      _headerScrollSettler.animateTo(settledOffset);
       _headerUserScrollActive = false;
       _headerSawUserScrollDirection = false;
       _headerLastUserScrollDirection = ScrollDirection.idle;
-      _headerScrollIsActive.value = false;
     }
     return false;
   }
 
   void _restoreHeaderScrollOffset() {
+    _headerScrollSettler.stop();
     _headerUserScrollActive = false;
     _headerSawUserScrollDirection = false;
     _headerLastUserScrollDirection = ScrollDirection.idle;
@@ -348,6 +356,11 @@ class _SettingsPanelState extends State<SettingsPanel>
   @override
   void initState() {
     super.initState();
+    _headerScrollSettler = AppHeaderScrollSettler(
+      vsync: this,
+      offset: _headerTitleScrollOffset,
+      onSettled: () => _headerScrollIsActive.value = false,
+    );
     _splitDetailController.addStatusListener(_onSplitDetailStatus);
   }
 
@@ -576,6 +589,7 @@ class _SettingsPanelState extends State<SettingsPanel>
     if (_snapListener != null) _navCtrl.removeListener(_snapListener!);
     _splitDetailController.removeStatusListener(_onSplitDetailStatus);
     _mainScrollController.dispose();
+    _headerScrollSettler.dispose();
     _headerTitleScrollOffset.dispose();
     _headerIsScrolled.dispose();
     _headerScrollIsActive.dispose();
@@ -717,6 +731,7 @@ class _SettingsPanelState extends State<SettingsPanel>
                       leadingInset: headerHeight,
                       headerIsScrolled: _headerIsScrolled,
                       headerScrollIsActive: _headerScrollIsActive,
+                      headerTitleScrollOffset: _headerTitleScrollOffset,
                       child: showLandscapeSplit
                           ? AppHeaderScrollClip(child: splitBody)
                           : AppWindowPhysicalWidth(
@@ -738,6 +753,7 @@ class _SettingsPanelState extends State<SettingsPanel>
                         leadingInset: headerHeight,
                         headerIsScrolled: _headerIsScrolled,
                         headerScrollIsActive: _headerScrollIsActive,
+                        headerTitleScrollOffset: _headerTitleScrollOffset,
                         child: AppWindowPhysicalWidth(
                           child: SlideTransition(
                             position: _subSlide,
@@ -1736,7 +1752,7 @@ class _SettingsHeader extends StatelessWidget {
             AppHeaderScrollEdge(
               progress: edgeProgress,
               surfaceColor: backgroundColor,
-              height: topInset + toolbarHeight,
+              headerHeight: topInset + toolbarHeight,
               backgroundGradientHeight: topInset + toolbarHeight,
             ),
           if (!isLandscape)

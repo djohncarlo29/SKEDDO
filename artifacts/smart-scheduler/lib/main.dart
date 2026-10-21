@@ -866,9 +866,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   final ValueNotifier<bool> _headerScrollIsActive = ValueNotifier(false);
   final Map<String, double> _headerTitleScrollOffsets = {};
   final Map<String, bool> _headerScrolledStates = {};
+  late final AppHeaderScrollSettler _headerScrollSettler;
   bool _headerUserScrollActive = false;
   bool _headerSawUserScrollDirection = false;
   ScrollDirection _headerLastUserScrollDirection = ScrollDirection.idle;
+  double _headerScrollOffsetAdjustment = 0.0;
   static const _nativeTabBarChannel = MethodChannel(
     'com.smartscheduler/native_tab_bar',
   );
@@ -978,6 +980,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
 
     if (_searchModeController.value > 0.01) {
+      _headerScrollSettler.stop();
       _headerUserScrollActive = false;
       _headerSawUserScrollDirection = false;
       _headerLastUserScrollDirection = ScrollDirection.idle;
@@ -987,6 +990,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
     if (notification is UserScrollNotification) {
       if (notification.direction != ScrollDirection.idle) {
+        _headerScrollSettler.stop();
+        _headerScrollOffsetAdjustment =
+            _headerTitleScrollOffset.value -
+            AppHeaderScrollBehavior.contentOffset(notification.metrics);
         _headerUserScrollActive = true;
         _headerScrollIsActive.value = true;
         _headerSawUserScrollDirection = true;
@@ -1004,8 +1011,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       // restored offsets, and calendar panels that share their own controllers.
       // Bouncing physics can report a temporary position below minScrollExtent.
       // Do not let that rubber-band pull the title back down behind the toolbar.
-      final next = AppHeaderScrollBehavior.contentOffset(
-        notification.metrics,
+      final next = max(
+        0.0,
+        AppHeaderScrollBehavior.contentOffset(notification.metrics) +
+            _headerScrollOffsetAdjustment,
       );
       if ((next - current).abs() >= 0.01) {
         _headerTitleScrollOffsets[scope] = next;
@@ -1024,16 +1033,16 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       _headerTitleScrollOffsets[scope] = settledOffset;
       _headerScrolledStates[scope] = isScrolled;
       _headerIsScrolled.value = isScrolled;
-      _headerTitleScrollOffset.value = settledOffset;
+      _headerScrollSettler.animateTo(settledOffset);
       _headerUserScrollActive = false;
       _headerSawUserScrollDirection = false;
       _headerLastUserScrollDirection = ScrollDirection.idle;
-      _headerScrollIsActive.value = false;
     }
     return false;
   }
 
   void _restoreHeaderScrollOffset() {
+    _headerScrollSettler.stop();
     _headerUserScrollActive = false;
     _headerSawUserScrollDirection = false;
     _headerLastUserScrollDirection = ScrollDirection.idle;
@@ -1056,6 +1065,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }
 
   void _settleShellTransitionsForSearch() {
+    _headerScrollSettler.stop();
     _headerUserScrollActive = false;
     _headerSawUserScrollDirection = false;
     _headerLastUserScrollDirection = ScrollDirection.idle;
@@ -1095,6 +1105,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     };
     if (offset == null) return;
 
+    _headerScrollSettler.stop();
     _headerUserScrollActive = false;
     _headerSawUserScrollDirection = false;
     _headerLastUserScrollDirection = ScrollDirection.idle;
@@ -1128,6 +1139,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       return;
     }
 
+    _headerScrollSettler.stop();
     _headerTitleScrollOffsets['2:dcv:$label'] = 0.0;
     _headerScrolledStates['2:dcv:$label'] = false;
     _headerIsScrolled.value = false;
@@ -1809,6 +1821,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _headerScrollSettler = AppHeaderScrollSettler(
+      vsync: this,
+      offset: _headerTitleScrollOffset,
+      onSettled: () => _headerScrollIsActive.value = false,
+    );
     _nativeTabBarChannel.setMethodCallHandler(_handleNativeTabBarCall);
     unawaited(_configureNativeTabBar());
 
@@ -1902,6 +1919,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _searchModeController.dispose();
     _settingsController.dispose();
     _calendarStripSlide.dispose();
+    _headerScrollSettler.dispose();
     _headerTitleScrollOffset.dispose();
     _headerIsScrolled.dispose();
     _headerScrollIsActive.dispose();
@@ -3097,6 +3115,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               leadingInset: leadingInset,
                               headerIsScrolled: _headerIsScrolled,
                               headerScrollIsActive: _headerScrollIsActive,
+                              headerTitleScrollOffset:
+                                  _headerTitleScrollOffset,
                               child: Padding(
                                 padding: EdgeInsets.only(
                                   top: leadingInset,
@@ -3303,7 +3323,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                        AppHeaderScrollEdge(
                                          progress: edgeProgress,
                                          surfaceColor: backgroundColor,
-                                         height: headerBaseHeight,
+                                         headerHeight: headerBaseHeight,
                                          backgroundGradientHeight:
                                              topInset +
                                              headerToolbarHeight * (1 - t),

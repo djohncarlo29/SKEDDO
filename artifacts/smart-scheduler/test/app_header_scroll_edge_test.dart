@@ -358,7 +358,7 @@ void main() {
     },
   );
 
-  testWidgets('glass filter extends 16pt into the content area', (
+  testWidgets('glass filter starts at screen top and extends 16pt below header', (
     tester,
   ) async {
     const headerAreaHeight = 92.0;
@@ -374,7 +374,7 @@ void main() {
               AppHeaderScrollEdge(
                 progress: 1,
                 surfaceColor: Color(0xFFFFFFFF),
-                height: headerAreaHeight,
+                headerHeight: headerAreaHeight,
                 backgroundGradientHeight: headerAreaHeight,
               ),
             ],
@@ -388,9 +388,85 @@ void main() {
     expect(blurRect.top, 0);
     expect(
       blurRect.height,
-      headerAreaHeight + kAppHeaderScrollEdgeContentInset,
+      headerAreaHeight + kAppHeaderScrollEdgeHeaderBottomExtension,
     );
     expect(blurRect.bottom, lessThan(surfaceSize.height));
+  });
+
+  testWidgets('header content slot follows the animated scroll offset', (
+    tester,
+  ) async {
+    final scrollOffset = ValueNotifier<double>(0.0);
+    addTearDown(scrollOffset.dispose);
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: AppHeaderScrollInsetScope(
+          leadingInset: 0,
+          headerTitleScrollOffset: scrollOffset,
+          child: SizedBox(
+            height: 600,
+            child: Column(
+              children: const [
+                AppHeaderScrollInset(),
+                SizedBox(key: ValueKey('animated-header-content'), height: 1),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    double contentTop() => tester
+        .getTopLeft(find.byKey(const ValueKey('animated-header-content')))
+        .dy;
+
+    expect(contentTop(), kAppHeaderTitleHeight);
+    scrollOffset.value = kAppHeaderTitleHeight / 2;
+    await tester.pump();
+    expect(contentTop(), kAppHeaderTitleHeight / 2);
+    scrollOffset.value = kAppHeaderTitleHeight;
+    await tester.pump();
+    expect(contentTop(), 0);
+  });
+
+  testWidgets('settle animation uses the same path in both directions', (
+    tester,
+  ) async {
+    final offset = ValueNotifier<double>(0.0);
+    addTearDown(offset.dispose);
+    late AppHeaderScrollSettler settler;
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: _HeaderSettleHarness(
+          offset: offset,
+          onSettlerCreated: (value) => settler = value,
+        ),
+      ),
+    );
+
+    settler.animateTo(kAppHeaderScrollCollapsedOffset);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 130));
+    final halfwayCollapsed = offset.value;
+    expect(
+      halfwayCollapsed,
+      inExclusiveRange(0, kAppHeaderScrollCollapsedOffset),
+    );
+
+    await tester.pump(const Duration(milliseconds: 130));
+    expect(offset.value, kAppHeaderScrollCollapsedOffset);
+
+    settler.animateTo(0);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 130));
+    expect(
+      offset.value,
+      closeTo(kAppHeaderScrollCollapsedOffset - halfwayCollapsed, 2.5),
+    );
+    await tester.pump(const Duration(milliseconds: 130));
+    expect(offset.value, 0);
   });
 
   testWidgets(
@@ -498,7 +574,7 @@ void main() {
                   const AppHeaderScrollEdge(
                     progress: 1,
                     surfaceColor: Color(0xFFFFFFFF),
-                    height: 100,
+                    headerHeight: 100,
                     backgroundGradientHeight: 0,
                   ),
                 ],
@@ -629,7 +705,7 @@ void main() {
                 const AppHeaderScrollEdge(
                   progress: 1,
                   surfaceColor: Color(0xFFFFFFFF),
-                  height: 100,
+                  headerHeight: 100,
                   backgroundGradientHeight: 0,
                 ),
               ],
@@ -684,4 +760,42 @@ void main() {
       );
     },
   );
+}
+
+class _HeaderSettleHarness extends StatefulWidget {
+  const _HeaderSettleHarness({
+    required this.offset,
+    required this.onSettlerCreated,
+  });
+
+  final ValueNotifier<double> offset;
+  final ValueChanged<AppHeaderScrollSettler> onSettlerCreated;
+
+  @override
+  State<_HeaderSettleHarness> createState() => _HeaderSettleHarnessState();
+}
+
+class _HeaderSettleHarnessState extends State<_HeaderSettleHarness>
+    with SingleTickerProviderStateMixin {
+  late final AppHeaderScrollSettler _settler;
+
+  @override
+  void initState() {
+    super.initState();
+    _settler = AppHeaderScrollSettler(
+      vsync: this,
+      offset: widget.offset,
+      onSettled: () {},
+    );
+    widget.onSettlerCreated(_settler);
+  }
+
+  @override
+  void dispose() {
+    _settler.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
