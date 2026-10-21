@@ -71,6 +71,49 @@ abstract final class AppHeaderScrollBehavior {
   }
 }
 
+/// Keeps centered placeholders aligned with the center of the usable content
+/// area as the large-title slot collapses.
+///
+/// Lists retain their normal scroll behavior. This adjustment follows the
+/// owning scroll position continuously and ignores leading overscroll.
+class AppHeaderScrollCentered extends StatelessWidget {
+  const AppHeaderScrollCentered({
+    super.key,
+    required this.child,
+    this.enabled = true,
+  });
+
+  final Widget child;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled ||
+        MediaQuery.orientationOf(context) != Orientation.portrait) {
+      return child;
+    }
+
+    final position = Scrollable.maybeOf(context)?.position;
+    if (position == null) return child;
+
+    return AnimatedBuilder(
+      animation: position,
+      builder: (context, _) {
+        if (!position.hasContentDimensions) return child;
+        final contentOffset = AppHeaderScrollBehavior.contentOffset(position);
+        final collapsedDistance = contentOffset
+            .clamp(0.0, kAppHeaderTitleHeight)
+            .toDouble();
+        if (collapsedDistance == 0.0) return child;
+        return Transform.translate(
+          offset: Offset(0.0, collapsedDistance * 0.5),
+          child: child,
+        );
+      },
+    );
+  }
+}
+
 /// Keeps a second-level title fixed during leading rubber-band overscroll while
 /// leaving its ordinary scroll-away motion unchanged.
 ///

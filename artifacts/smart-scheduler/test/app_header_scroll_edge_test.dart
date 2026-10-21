@@ -109,6 +109,71 @@ void main() {
     expect(AppHeaderScrollBehavior.scrollEdgeProgress(double.nan), 0);
   });
 
+  testWidgets(
+    'centered content follows the expanding area without list recentering',
+    (tester) async {
+      const surfaceSize = Size(320, 600);
+      const contentKey = ValueKey('centered-content-under-collapsing-title');
+      tester.view.physicalSize = surfaceSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final controller = ScrollController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: SizedBox(
+            width: surfaceSize.width,
+            height: surfaceSize.height,
+            child: AppHeaderScrollView(
+              controller: controller,
+              slivers: const [
+                SliverToBoxAdapter(
+                  child: SizedBox(height: kAppHeaderTitleHeight),
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 180,
+                    child: Center(
+                      child: AppHeaderScrollCentered(
+                        child: SizedBox(
+                          key: contentKey,
+                          width: 20,
+                          height: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(child: SizedBox(height: 500)),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final centerCorrection = () {
+        final transform = tester.widget<Transform>(
+          find.ancestor(
+            of: find.byKey(contentKey),
+            matching: find.byType(Transform),
+          ).first,
+        );
+        return transform.transform.getTranslation().y;
+      };
+
+      controller.jumpTo(30);
+      await tester.pump();
+      expect(centerCorrection(), closeTo(15, 1e-6));
+
+      controller.jumpTo(kAppHeaderTitleHeight + 40);
+      await tester.pump();
+      expect(centerCorrection(), closeTo(kAppHeaderTitleHeight / 2, 1e-6));
+    },
+  );
+
   testWidgets('glass filter is bounded to the first-level header area', (
     tester,
   ) async {

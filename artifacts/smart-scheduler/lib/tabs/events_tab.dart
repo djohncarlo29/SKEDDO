@@ -17486,53 +17486,55 @@ class _DcvEmptyState extends StatelessWidget {
 
     return Center(
       key: ValueKey('placeholder_$label'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RepaintBoundary(
-              child: _buildDcvEmptyStateIcon(
-                context,
-                label: label,
-                icon: icon,
-                categoryType: categoryType,
+      child: AppHeaderScrollCentered(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RepaintBoundary(
+                child: _buildDcvEmptyStateIcon(
+                  context,
+                  label: label,
+                  icon: icon,
+                  categoryType: categoryType,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _dcvEmptyStateTitle(categoryType: categoryType, label: label),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                inherit: false,
-                color: primaryLabel,
-                fontSize: 22,
-                fontFamily: kSFProText,
-                fontWeight: FontWeight.w700,
-                fontStyle: FontStyle.normal,
-                letterSpacing: -0.3,
-                height: 1.15,
+              const SizedBox(height: 16),
+              Text(
+                _dcvEmptyStateTitle(categoryType: categoryType, label: label),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  inherit: false,
+                  color: primaryLabel,
+                  fontSize: 22,
+                  fontFamily: kSFProText,
+                  fontWeight: FontWeight.w700,
+                  fontStyle: FontStyle.normal,
+                  letterSpacing: -0.3,
+                  height: 1.15,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _dcvEmptyStateSubtitle(
-                categoryType: categoryType,
-                label: label,
+              const SizedBox(height: 8),
+              Text(
+                _dcvEmptyStateSubtitle(
+                  categoryType: categoryType,
+                  label: label,
+                ),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  inherit: false,
+                  color: secondaryLabel,
+                  fontSize: 15,
+                  fontFamily: kSFProText,
+                  fontWeight: FontWeight.w400,
+                  fontStyle: FontStyle.normal,
+                  letterSpacing: kTracking16,
+                  height: kLineHeight,
+                ),
               ),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                inherit: false,
-                color: secondaryLabel,
-                fontSize: 15,
-                fontFamily: kSFProText,
-                fontWeight: FontWeight.w400,
-                fontStyle: FontStyle.normal,
-                letterSpacing: kTracking16,
-                height: kLineHeight,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

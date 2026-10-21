@@ -1777,17 +1777,19 @@ class _EmptyState extends StatelessWidget {
         SizedBox(
           height: height,
           child: Center(
-            child: Text(
-              'No Events',
-              style: TextStyle(
-                inherit: false,
-                color: resolveThemeColor(kSecondaryLabel, context),
-                fontSize: kEmptyStateLabelFontSize,
-                fontFamily: 'SFProText',
-                fontWeight: FontWeight.w400,
-                fontStyle: FontStyle.normal,
-                letterSpacing: kTracking16,
-                height: kLineHeight,
+            child: AppHeaderScrollCentered(
+              child: Text(
+                'No Events',
+                style: TextStyle(
+                  inherit: false,
+                  color: resolveThemeColor(kSecondaryLabel, context),
+                  fontSize: kEmptyStateLabelFontSize,
+                  fontFamily: 'SFProText',
+                  fontWeight: FontWeight.w400,
+                  fontStyle: FontStyle.normal,
+                  letterSpacing: kTracking16,
+                  height: kLineHeight,
+                ),
               ),
             ),
           ),

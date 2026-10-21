@@ -35,6 +35,13 @@ For targeted app pages, raise available content by extending the shared scroll v
 
 **How to apply:** Use a separate top-extension token at the viewport boundary, align custom positioned or morphing layers to it, and add the same amount to explicitly computed empty-state space.
 
+## Centered content during header collapse
+As the second-level title collapses, the usable content area grows upward by up to the title-slot height. Centered placeholders should move down relative to their normally scrolling content by half of that collapse distance, so their screen position follows the center of the expanding area. Ordinary lists keep normal scroll motion. Read only valid scroll metrics, clamp leading overscroll to zero, and apply this only in portrait to true viewport-centered content.
+
+**Why:** The user wants centered content to recenter continuously as the available area expands, without snapping or treating rubber-band movement as a collapsed state.
+
+**How to apply:** Wrap full-area empty states/placeholders in the shared scroll-aware centering widget. Do not apply it to ordinary rows, controls centered inside their own cards, or fixed Calendar day headers/timelines. Keep search and landscape-specific geometry separate.
+
 ## Search-mode and Calendar title alignment
 
 The 16pt content-area raise applies to ordinary page content, not active search headers. Scroll-based search mode viewports must omit that extension so their bar and results retain the prior coordinates. Calendar Year and Month title rows, including their controls, remain in the scroll content but receive the matching positive paint offset; the Day title remains shell-owned and must not be offset again. A fixed Detailed Category search overlay is already outside the raised scroll viewport, so do not add another correction to it.

@@ -6026,17 +6026,19 @@ class _MonthView extends StatelessWidget {
                                         )
                                       : 0.0,
                                   child: Center(
-                                    child: Text(
-                                      'No Events',
-                                      style: TextStyle(
-                                        inherit: false,
-                                        fontFamily: kSFProText,
-                                        fontWeight: FontWeight.w400,
-                                        fontStyle: FontStyle.normal,
-                                        letterSpacing: kTracking16,
-                                        height: kLineHeight,
-                                        fontSize: kEmptyStateLabelFontSize,
-                                        color: secondaryC,
+                                    child: AppHeaderScrollCentered(
+                                      child: Text(
+                                        'No Events',
+                                        style: TextStyle(
+                                          inherit: false,
+                                          fontFamily: kSFProText,
+                                          fontWeight: FontWeight.w400,
+                                          fontStyle: FontStyle.normal,
+                                          letterSpacing: kTracking16,
+                                          height: kLineHeight,
+                                          fontSize: kEmptyStateLabelFontSize,
+                                          color: secondaryC,
+                                        ),
                                       ),
                                     ),
                                   ),
