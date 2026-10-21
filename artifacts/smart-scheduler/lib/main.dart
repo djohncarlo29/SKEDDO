@@ -867,10 +867,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   final Map<String, double> _headerTitleScrollOffsets = {};
   final Map<String, bool> _headerScrolledStates = {};
   late final AppHeaderScrollSettler _headerScrollSettler;
-  bool _headerUserScrollActive = false;
-  bool _headerSawUserScrollDirection = false;
-  ScrollDirection _headerLastUserScrollDirection = ScrollDirection.idle;
-  double _headerScrollOffsetAdjustment = 0.0;
+  final AppHeaderScrollTracker _headerScrollTracker = AppHeaderScrollTracker();
   static const _nativeTabBarChannel = MethodChannel(
     'com.smartscheduler/native_tab_bar',
   );
@@ -981,9 +978,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
     if (_searchModeController.value > 0.01) {
       _headerScrollSettler.stop();
-      _headerUserScrollActive = false;
-      _headerSawUserScrollDirection = false;
-      _headerLastUserScrollDirection = ScrollDirection.idle;
+      _headerScrollTracker.reset();
       _headerScrollIsActive.value = false;
       return false;
     }
@@ -991,61 +986,64 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     if (notification is UserScrollNotification) {
       if (notification.direction != ScrollDirection.idle) {
         _headerScrollSettler.stop();
-        _headerScrollOffsetAdjustment =
-            _headerTitleScrollOffset.value -
-            AppHeaderScrollBehavior.contentOffset(notification.metrics);
-        _headerUserScrollActive = true;
+        _headerScrollTracker.beginUserScroll(
+          direction: notification.direction,
+          headerOffset: _headerTitleScrollOffset.value,
+          scrollOffset: AppHeaderScrollBehavior.scrollOffsetIncludingOverscroll(
+            notification.metrics,
+          ),
+        );
         _headerScrollIsActive.value = true;
-        _headerSawUserScrollDirection = true;
-        _headerLastUserScrollDirection = notification.direction;
       }
       return false;
     }
 
-    if (notification is ScrollUpdateNotification &&
-        _headerUserScrollActive) {
-      final scope = _headerScrollScope;
-      final current = _headerTitleScrollOffset.value;
-      // Follow the active Scrollable's actual position rather than summing
-      // gesture deltas. This keeps the title aligned with ballistic motion,
-      // restored offsets, and calendar panels that share their own controllers.
-      // Bouncing physics can report a temporary position below minScrollExtent.
-      // Do not let that rubber-band pull the title back down behind the toolbar.
-      final next = max(
-        0.0,
-        AppHeaderScrollBehavior.contentOffset(notification.metrics) +
-            _headerScrollOffsetAdjustment,
-      );
-      if ((next - current).abs() >= 0.01) {
-        _headerTitleScrollOffsets[scope] = next;
-        _headerTitleScrollOffset.value = next;
+    if (notification is ScrollUpdateNotification) {
+      if (_headerScrollTracker.shouldSettleBeforeScrollUpdate(
+        hasDragDetails: notification.dragDetails != null,
+      )) {
+        // A null dragDetails marks the first ballistic update after release.
+        // Settle before its bounce can be mirrored into the shell header.
+        _settleHeaderAfterUserScroll();
+      } else {
+        final scope = _headerScrollScope;
+        final current = _headerTitleScrollOffset.value;
+        final next = _headerScrollTracker.headerOffsetForUserScroll(
+          AppHeaderScrollBehavior.scrollOffsetIncludingOverscroll(
+            notification.metrics,
+          ),
+        );
+        if (next != null && (next - current).abs() >= 0.01) {
+          _headerTitleScrollOffsets[scope] = next;
+          _headerTitleScrollOffset.value = next;
+        }
       }
     }
 
-    if (notification is ScrollEndNotification &&
-        _headerSawUserScrollDirection) {
-      final scope = _headerScrollScope;
-      final settledOffset = AppHeaderScrollBehavior.settledHeaderOffset(
-        _headerLastUserScrollDirection,
-      );
-      final isScrolled =
-          _headerLastUserScrollDirection == ScrollDirection.reverse;
-      _headerTitleScrollOffsets[scope] = settledOffset;
-      _headerScrolledStates[scope] = isScrolled;
-      _headerIsScrolled.value = isScrolled;
-      _headerScrollSettler.animateTo(settledOffset);
-      _headerUserScrollActive = false;
-      _headerSawUserScrollDirection = false;
-      _headerLastUserScrollDirection = ScrollDirection.idle;
+    if (notification is ScrollEndNotification) {
+      _settleHeaderAfterUserScroll();
     }
     return false;
   }
 
+  void _settleHeaderAfterUserScroll() {
+    final direction = _headerScrollTracker.finishUserScroll();
+    if (direction == null) return;
+
+    final scope = _headerScrollScope;
+    final settledOffset = AppHeaderScrollBehavior.settledHeaderOffset(
+      direction,
+    );
+    final isScrolled = direction == ScrollDirection.reverse;
+    _headerTitleScrollOffsets[scope] = settledOffset;
+    _headerScrolledStates[scope] = isScrolled;
+    _headerIsScrolled.value = isScrolled;
+    _headerScrollSettler.animateTo(settledOffset);
+  }
+
   void _restoreHeaderScrollOffset() {
     _headerScrollSettler.stop();
-    _headerUserScrollActive = false;
-    _headerSawUserScrollDirection = false;
-    _headerLastUserScrollDirection = ScrollDirection.idle;
+    _headerScrollTracker.reset();
     _headerScrollIsActive.value = false;
     final scope = _headerScrollScope;
     final offset = _headerTitleScrollOffsets[scope] ?? 0.0;
@@ -1066,9 +1064,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   void _settleShellTransitionsForSearch() {
     _headerScrollSettler.stop();
-    _headerUserScrollActive = false;
-    _headerSawUserScrollDirection = false;
-    _headerLastUserScrollDirection = ScrollDirection.idle;
+    _headerScrollTracker.reset();
     _headerScrollIsActive.value = false;
 
     if (_dcvCategoryTransitionController.isAnimating) {
@@ -1106,9 +1102,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     if (offset == null) return;
 
     _headerScrollSettler.stop();
-    _headerUserScrollActive = false;
-    _headerSawUserScrollDirection = false;
-    _headerLastUserScrollDirection = ScrollDirection.idle;
+    _headerScrollTracker.reset();
     _headerScrollIsActive.value = false;
     _headerTitleScrollOffsets[_headerScrollScope] = offset;
     _headerTitleScrollOffset.value = offset;
@@ -1144,9 +1138,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _headerScrolledStates['2:dcv:$label'] = false;
     _headerIsScrolled.value = false;
     _headerTitleScrollOffset.value = 0.0;
-    _headerUserScrollActive = false;
-    _headerSawUserScrollDirection = false;
-    _headerLastUserScrollDirection = ScrollDirection.idle;
+    _headerScrollTracker.reset();
     _headerScrollIsActive.value = false;
 
     if (_canReplaceLandscapeDcvPage()) {

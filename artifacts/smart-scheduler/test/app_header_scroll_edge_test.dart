@@ -329,6 +329,51 @@ void main() {
     );
   });
 
+  test('released gesture keeps its direction and ignores ballistic bounce', () {
+    final tracker = AppHeaderScrollTracker();
+    tracker.beginUserScroll(
+      direction: ScrollDirection.reverse,
+      headerOffset: 0,
+      scrollOffset: 0,
+    );
+
+    expect(tracker.headerOffsetForUserScroll(28), 28);
+    expect(
+      tracker.shouldSettleBeforeScrollUpdate(hasDragDetails: true),
+      isFalse,
+    );
+    expect(
+      tracker.shouldSettleBeforeScrollUpdate(hasDragDetails: false),
+      isTrue,
+    );
+    expect(tracker.finishUserScroll(), ScrollDirection.reverse);
+    expect(tracker.isUserScrollActive, isFalse);
+    expect(
+      tracker.shouldSettleBeforeScrollUpdate(hasDragDetails: false),
+      isFalse,
+    );
+    expect(tracker.headerOffsetForUserScroll(3), isNull);
+  });
+
+  test('downward drag expands a collapsed header through leading overscroll', () {
+    final tracker = AppHeaderScrollTracker();
+    tracker.beginUserScroll(
+      direction: ScrollDirection.forward,
+      headerOffset: kAppHeaderScrollCollapsedOffset,
+      scrollOffset: 0,
+    );
+
+    expect(
+      tracker.headerOffsetForUserScroll(-24),
+      kAppHeaderScrollCollapsedOffset - 24,
+    );
+    expect(
+      tracker.headerOffsetForUserScroll(-kAppHeaderScrollCollapsedOffset),
+      0,
+    );
+    expect(tracker.finishUserScroll(), ScrollDirection.forward);
+  });
+
   testWidgets(
     'centered content follows the expanding area without list recentering',
     (tester) async {

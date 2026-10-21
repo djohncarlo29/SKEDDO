@@ -26,9 +26,19 @@ abstract final class AppHeaderScrollBehavior {
   /// Use this for shell-owned titles and the shared scroll-edge progress so
   /// leading rubber-band overscroll never pulls those titles downward.
   static double contentOffset(ScrollMetrics metrics) {
-    final offset = metrics.pixels - metrics.minScrollExtent;
+    final offset = scrollOffsetIncludingOverscroll(metrics);
     if (!offset.isFinite || offset <= 0.0) return 0.0;
     return offset;
+  }
+
+  /// Returns the signed scroll position, including leading overscroll.
+  ///
+  /// Only use this while translating an active user drag into header movement.
+  /// Clamping here would make a collapsed header immovable during a downward
+  /// drag when the underlying scroll position is already at its leading edge.
+  static double scrollOffsetIncludingOverscroll(ScrollMetrics metrics) {
+    final offset = metrics.pixels - metrics.minScrollExtent;
+    return offset.isFinite ? offset : 0.0;
   }
 
   /// Progress for fading the title-region surface during its collapse.
@@ -128,6 +138,65 @@ abstract final class AppHeaderScrollBehavior {
     final offset = metrics.pixels - metrics.minScrollExtent;
     if (!offset.isFinite || offset >= 0.0) return 0.0;
     return offset;
+  }
+}
+
+/// Tracks the direct-manipulation portion of a header scroll independently
+/// from the scroll view's ballistic bounce after the user's finger lifts.
+class AppHeaderScrollTracker {
+  bool _isUserScrollActive = false;
+  ScrollDirection _lastUserScrollDirection = ScrollDirection.idle;
+  double _offsetAdjustment = 0.0;
+
+  bool get isUserScrollActive => _isUserScrollActive;
+
+  /// Whether an update marks the transition from a direct drag to ballistic
+  /// motion. The first such update must trigger settling before it is applied.
+  bool shouldSettleBeforeScrollUpdate({required bool hasDragDetails}) =>
+      _isUserScrollActive && !hasDragDetails;
+
+  void beginUserScroll({
+    required ScrollDirection direction,
+    required double headerOffset,
+    required double scrollOffset,
+  }) {
+    if (direction == ScrollDirection.idle ||
+        !headerOffset.isFinite ||
+        !scrollOffset.isFinite) {
+      return;
+    }
+    _offsetAdjustment = headerOffset - scrollOffset;
+    _lastUserScrollDirection = direction;
+    _isUserScrollActive = true;
+  }
+
+  /// Returns a new header offset only while the finger-driven scroll is active.
+  ///
+  /// Signed scroll offsets let downward drags expand a settled collapsed header
+  /// even when the native scroll position has reached its leading edge.
+  double? headerOffsetForUserScroll(double scrollOffset) {
+    if (!_isUserScrollActive || !scrollOffset.isFinite) return null;
+    return (scrollOffset + _offsetAdjustment)
+        .clamp(0.0, double.infinity)
+        .toDouble();
+  }
+
+  /// Ends direct tracking and returns the last deliberate scroll direction.
+  ///
+  /// Call this at the drag-to-ballistic handoff, or on ScrollEnd when a drag
+  /// stops without a ballistic phase.
+  ScrollDirection? finishUserScroll() {
+    _isUserScrollActive = false;
+    final direction = _lastUserScrollDirection;
+    _lastUserScrollDirection = ScrollDirection.idle;
+    if (direction == ScrollDirection.idle) return null;
+    return direction;
+  }
+
+  void reset() {
+    _isUserScrollActive = false;
+    _lastUserScrollDirection = ScrollDirection.idle;
+    _offsetAdjustment = 0.0;
   }
 }
 

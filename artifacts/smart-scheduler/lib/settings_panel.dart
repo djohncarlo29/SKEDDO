@@ -258,10 +258,7 @@ class _SettingsPanelState extends State<SettingsPanel>
   final Map<String, double> _headerTitleScrollOffsets = {};
   final Map<String, bool> _headerScrolledStates = {};
   late final AppHeaderScrollSettler _headerScrollSettler;
-  bool _headerUserScrollActive = false;
-  bool _headerSawUserScrollDirection = false;
-  ScrollDirection _headerLastUserScrollDirection = ScrollDirection.idle;
-  double _headerScrollOffsetAdjustment = 0.0;
+  final AppHeaderScrollTracker _headerScrollTracker = AppHeaderScrollTracker();
   final GlobalKey _mainSettingsContentKey = GlobalKey();
   final Map<String, GlobalKey> _settingsRowAnchorKeys = {
     for (final title in [
@@ -288,59 +285,64 @@ class _SettingsPanelState extends State<SettingsPanel>
     }
 
     if (notification is UserScrollNotification) {
-      _headerUserScrollActive =
-          notification.direction != ScrollDirection.idle;
-      if (_headerUserScrollActive) {
+      if (notification.direction != ScrollDirection.idle) {
         _headerScrollSettler.stop();
-        _headerScrollOffsetAdjustment =
-            _headerTitleScrollOffset.value -
-            AppHeaderScrollBehavior.contentOffset(notification.metrics);
-        _headerSawUserScrollDirection = true;
-        _headerLastUserScrollDirection = notification.direction;
+        _headerScrollTracker.beginUserScroll(
+          direction: notification.direction,
+          headerOffset: _headerTitleScrollOffset.value,
+          scrollOffset: AppHeaderScrollBehavior.scrollOffsetIncludingOverscroll(
+            notification.metrics,
+          ),
+        );
         _headerScrollIsActive.value = true;
       }
       return false;
     }
 
-    if (notification is ScrollUpdateNotification &&
-        _headerUserScrollActive) {
-      final current = _headerTitleScrollOffset.value;
-      // Mirror the real scroll position so the title keeps moving after it
-      // passes beneath the pinned toolbar and out of view.
-      final next = max(
-        0.0,
-        AppHeaderScrollBehavior.contentOffset(notification.metrics) +
-            _headerScrollOffsetAdjustment,
-      );
-      if ((next - current).abs() >= 0.01) {
-        _headerTitleScrollOffsets[_headerScrollScope] = next;
-        _headerTitleScrollOffset.value = next;
+    if (notification is ScrollUpdateNotification) {
+      if (_headerScrollTracker.shouldSettleBeforeScrollUpdate(
+        hasDragDetails: notification.dragDetails != null,
+      )) {
+        // A null dragDetails marks the first ballistic update after release.
+        // Settle before its bounce can be mirrored into the panel header.
+        _settleHeaderAfterUserScroll();
+      } else {
+        final current = _headerTitleScrollOffset.value;
+        final next = _headerScrollTracker.headerOffsetForUserScroll(
+          AppHeaderScrollBehavior.scrollOffsetIncludingOverscroll(
+            notification.metrics,
+          ),
+        );
+        if (next != null && (next - current).abs() >= 0.01) {
+          _headerTitleScrollOffsets[_headerScrollScope] = next;
+          _headerTitleScrollOffset.value = next;
+        }
       }
     }
 
-    if (notification is ScrollEndNotification &&
-        _headerSawUserScrollDirection) {
-      final settledOffset = AppHeaderScrollBehavior.settledHeaderOffset(
-        _headerLastUserScrollDirection,
-      );
-      final isScrolled =
-          _headerLastUserScrollDirection == ScrollDirection.reverse;
-      _headerTitleScrollOffsets[_headerScrollScope] = settledOffset;
-      _headerScrolledStates[_headerScrollScope] = isScrolled;
-      _headerIsScrolled.value = isScrolled;
-      _headerScrollSettler.animateTo(settledOffset);
-      _headerUserScrollActive = false;
-      _headerSawUserScrollDirection = false;
-      _headerLastUserScrollDirection = ScrollDirection.idle;
+    if (notification is ScrollEndNotification) {
+      _settleHeaderAfterUserScroll();
     }
     return false;
   }
 
+  void _settleHeaderAfterUserScroll() {
+    final direction = _headerScrollTracker.finishUserScroll();
+    if (direction == null) return;
+
+    final settledOffset = AppHeaderScrollBehavior.settledHeaderOffset(
+      direction,
+    );
+    final isScrolled = direction == ScrollDirection.reverse;
+    _headerTitleScrollOffsets[_headerScrollScope] = settledOffset;
+    _headerScrolledStates[_headerScrollScope] = isScrolled;
+    _headerIsScrolled.value = isScrolled;
+    _headerScrollSettler.animateTo(settledOffset);
+  }
+
   void _restoreHeaderScrollOffset() {
     _headerScrollSettler.stop();
-    _headerUserScrollActive = false;
-    _headerSawUserScrollDirection = false;
-    _headerLastUserScrollDirection = ScrollDirection.idle;
+    _headerScrollTracker.reset();
     _headerScrollIsActive.value = false;
     final scope = _headerScrollScope;
     final offset = _headerTitleScrollOffsets[scope] ?? 0.0;
