@@ -9,6 +9,50 @@ import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 
 void main() {
   testWidgets(
+    'portrait compact title fades in with scroll progress and accepts taps once visible',
+    (tester) async {
+      var tapCount = 0;
+      const titleKey = ValueKey('compact-header-title');
+
+      Widget buildApp({
+        required double progress,
+        bool isLandscape = false,
+      }) {
+        return CupertinoApp(
+          home: Center(
+            child: AppHeaderCompactTitle(
+              progress: progress,
+              isLandscape: isLandscape,
+              child: GestureDetector(
+                key: titleKey,
+                onTap: () => tapCount++,
+                child: const Text('Calendar title'),
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildApp(progress: 0.25));
+      expect(tester.widget<Opacity>(find.byType(Opacity)).opacity, 0.25);
+      await tester.tap(find.byKey(titleKey));
+      expect(tapCount, 0);
+
+      await tester.pumpWidget(buildApp(progress: 0.75));
+      expect(tester.widget<Opacity>(find.byType(Opacity)).opacity, 0.75);
+      await tester.tap(find.byKey(titleKey));
+      expect(tapCount, 1);
+
+      await tester.pumpWidget(
+        buildApp(progress: 0.0, isLandscape: true),
+      );
+      expect(tester.widget<Opacity>(find.byType(Opacity)).opacity, 1.0);
+      await tester.tap(find.byKey(titleKey));
+      expect(tapCount, 2);
+    },
+  );
+
+  testWidgets(
     'scroll content remains visible through the app edge above its viewport',
     (tester) async {
       const surfaceSize = Size(320, 300);

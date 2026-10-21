@@ -3572,30 +3572,37 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                         ],
                                                       ),
                                                     ),
-                                                  if (isLandscape)
-                                                     Positioned.fill(
-                                                       left: 84,
-                                                       right: 84,
-                                                       child: Center(
-                                                         child:
-                                                             !isDCVVisual &&
-                                                                     _selectedIndex ==
-                                                                         1
-                                                                 ? _buildCalendarTitleRow(
-                                                                     compact: true,
-                                                                      compactFadeColor:
-                                                                          headerColor,
-                                                                   )
-                                                                 : _buildCompactHeaderTitle(
-                                                                     isDCVVisual:
-                                                                         isDCVVisual,
-                                                                     headerColor:
-                                                                         headerColor,
-                                                                     primaryLabel:
-                                                                         primaryLabel,
-                                                                   ),
-                                                       ),
-                                                     ),
+                                                  Positioned.fill(
+                                                    left: 84,
+                                                    right: 84,
+                                                    child: Center(
+                                                      child:
+                                                          AppHeaderCompactTitle(
+                                                            progress:
+                                                                edgeProgress,
+                                                            isLandscape:
+                                                                isLandscape,
+                                                            child:
+                                                                !isDCVVisual &&
+                                                                    _selectedIndex ==
+                                                                        1
+                                                                ? _buildCalendarTitleRow(
+                                                                    compact:
+                                                                        true,
+                                                                    compactFadeColor:
+                                                                        backgroundColor,
+                                                                  )
+                                                                : _buildCompactHeaderTitle(
+                                                                    isDCVVisual:
+                                                                        isDCVVisual,
+                                                                    headerColor:
+                                                                        backgroundColor,
+                                                                    primaryLabel:
+                                                                        primaryLabel,
+                                                                  ),
+                                                          ),
+                                                    ),
+                                                  ),
                                                  ],
                                                ),
                                              ),

@@ -349,6 +349,34 @@ class AppHeaderScrollInset extends StatelessWidget {
   }
 }
 
+/// Keeps the landscape-style compact title in the first-level toolbar, fading
+/// it in as a portrait page's large second-level title scrolls beneath it.
+class AppHeaderCompactTitle extends StatelessWidget {
+  const AppHeaderCompactTitle({
+    super.key,
+    required this.progress,
+    required this.isLandscape,
+    required this.child,
+  });
+
+  final double progress;
+  final bool isLandscape;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleProgress = isLandscape
+        ? 1.0
+        : (progress.isFinite ? progress.clamp(0.0, 1.0).toDouble() : 0.0);
+    return IgnorePointer(
+      // Keep the compact title's controls from intercepting taps while they
+      // are still mostly transparent during the scroll handoff.
+      ignoring: !isLandscape && visibleProgress < 0.5,
+      child: Opacity(opacity: visibleProgress, child: child),
+    );
+  }
+}
+
 /// The shared Liquid Glass treatment used beneath the first, pinned header
 /// level. A persistent background gradient keeps the physical top edge covered
 /// while the scroll-driven glass treatment remains tied to page progress. This
