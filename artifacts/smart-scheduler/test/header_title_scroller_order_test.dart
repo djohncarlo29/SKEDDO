@@ -53,7 +53,7 @@ void main() {
   );
 
   testWidgets(
-    'calendar-style title fades only after a horizontal user drag',
+    'calendar-style title keeps scrolling as its edge mask changes',
     (tester) async {
       Widget buildScroller({required bool fadeAfterUserScroll}) {
         return CupertinoApp(
@@ -83,37 +83,39 @@ void main() {
         );
       }
 
-      int fadeCount() {
-        final decorations = find.descendant(
+      final titleScrollable = find.descendant(
+        of: find.byType(HeaderTitleScroller),
+        matching: find.byType(Scrollable),
+      );
+
+      int fadeMaskCount() {
+        final masks = find.descendant(
           of: find.byType(HeaderTitleScroller),
-          matching: find.byType(DecoratedBox),
+          matching: find.byType(ShaderMask),
         );
-        return tester
-            .widgetList<DecoratedBox>(decorations)
-            .where(
-              (widget) =>
-                  widget.decoration is BoxDecoration &&
-                  (widget.decoration as BoxDecoration).gradient != null,
-            )
-            .length;
+        return masks.evaluate().length;
       }
 
       await tester.pumpWidget(buildScroller(fadeAfterUserScroll: true));
       await tester.pumpAndSettle();
-      expect(fadeCount(), 0);
+      expect(fadeMaskCount(), 1);
 
       await tester.drag(
         find.byType(SingleChildScrollView),
         const Offset(-40, 0),
       );
       await tester.pumpAndSettle();
-      expect(fadeCount(), greaterThan(0));
+      expect(
+        tester.state<ScrollableState>(titleScrollable).position.pixels,
+        greaterThan(0),
+      );
+      expect(fadeMaskCount(), 1);
 
       // Scrollers that do not opt into Calendar's interaction-gated fades
       // retain their existing initial overflow indicator.
       await tester.pumpWidget(buildScroller(fadeAfterUserScroll: false));
       await tester.pumpAndSettle();
-      expect(fadeCount(), greaterThan(0));
+      expect(fadeMaskCount(), 1);
     },
   );
 
@@ -146,29 +148,30 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      int fadeCount() {
-        final decorations = find.descendant(
+      int fadeMaskCount() {
+        final masks = find.descendant(
           of: find.byType(HeaderTitleScroller),
-          matching: find.byType(DecoratedBox),
+          matching: find.byType(ShaderMask),
         );
-        return tester
-            .widgetList<DecoratedBox>(decorations)
-            .where(
-              (widget) =>
-                  widget.decoration is BoxDecoration &&
-                  (widget.decoration as BoxDecoration).gradient != null,
-            )
-            .length;
+        return masks.evaluate().length;
       }
 
-      expect(fadeCount(), 0);
+      expect(fadeMaskCount(), 1);
 
       final gesture = await tester.startGesture(
         tester.getCenter(find.byType(SingleChildScrollView)),
       );
       await gesture.moveBy(const Offset(24, 0));
       await tester.pump(const Duration(milliseconds: 16));
-      expect(fadeCount(), greaterThan(0));
+      final titleScrollable = find.descendant(
+        of: find.byType(HeaderTitleScroller),
+        matching: find.byType(Scrollable),
+      );
+      expect(
+        tester.state<ScrollableState>(titleScrollable).position.pixels,
+        lessThan(0),
+      );
+      expect(fadeMaskCount(), 1);
 
       await gesture.up();
       await tester.pumpAndSettle();

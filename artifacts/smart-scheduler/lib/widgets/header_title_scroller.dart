@@ -87,6 +87,8 @@ class HeaderTitleScroller extends StatefulWidget {
   final String title;
   final GlobalKey? titleTextKey;
   final TextStyle style;
+  /// Retained for compatibility with existing callers. Edge fades now mask
+  /// title pixels by opacity and do not paint this surface color.
   final Color fadeColor;
   final double fadeWidth;
   final Widget? leading;
@@ -252,23 +254,66 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
     return false;
   }
 
-  Widget _buildFade({required bool visible, required bool opaqueAtStart}) {
-    if (!visible) return const SizedBox.shrink();
-    return IgnorePointer(
-      child: SizedBox(
-        width: widget.fadeWidth,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: opaqueAtStart
-                  ? [widget.fadeColor, widget.fadeColor.withValues(alpha: 0)]
-                  : [widget.fadeColor.withValues(alpha: 0), widget.fadeColor],
-            ),
-          ),
-        ),
-      ),
+  Widget _applyFadeMask({
+    required Widget child,
+    required bool showLeading,
+    required bool showTrailing,
+  }) {
+    return ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (bounds) {
+        // dstIn uses only the shader's alpha. Transparent portions reveal the
+        // real content behind the header instead of painting a surface tint.
+        //
+        // Keep this mask mounted even when no edge is faded. Inserting it only
+        // after a drag would remount the ScrollView and cancel rubberbanding.
+        final width = bounds.width;
+        if ((!showLeading && !showTrailing) ||
+            widget.fadeWidth <= 0 ||
+            !width.isFinite ||
+            width <= 0) {
+          return const LinearGradient(
+            colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
+          ).createShader(bounds);
+        }
+
+        final maxFadeWidth =
+            width / (showLeading && showTrailing ? 2.0 : 1.0);
+        final fadeWidth = widget.fadeWidth
+            .clamp(0.0, maxFadeWidth)
+            .toDouble();
+        final leadingStop = fadeWidth / width;
+        final trailingStart = 1.0 - leadingStop;
+
+        if (showLeading && showTrailing) {
+          return LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: const [
+              Color(0x00000000),
+              Color(0xFFFFFFFF),
+              Color(0xFFFFFFFF),
+              Color(0x00000000),
+            ],
+            stops: [0.0, leadingStop, trailingStart, 1.0],
+          ).createShader(bounds);
+        }
+        if (showLeading) {
+          return LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: const [Color(0x00000000), Color(0xFFFFFFFF)],
+            stops: [0.0, leadingStop],
+          ).createShader(bounds);
+        }
+        return LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: const [Color(0xFFFFFFFF), Color(0x00000000)],
+          stops: [trailingStart, 1.0],
+        ).createShader(bounds);
+      },
+      child: child,
     );
   }
 
@@ -343,6 +388,9 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                         widget.showTrailingFade &&
                         (!_scrollController.hasClients ||
                             _scrollController.position.pixels <= 1.0);
+                    final showLeadingFade = _showLeadingFade;
+                    final showTrailingFade =
+                        _showTrailingFade || initialTrailingFade;
                     final centeredInset =
                         widget.centerWhenContentFits &&
                             constraints.maxWidth.isFinite &&
@@ -361,73 +409,58 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                           alignment: widget.contentAlignment,
                           child: SizedBox(
                             width: double.infinity,
-                         child: GestureDetector(
-                           behavior: HitTestBehavior.opaque,
-                           onTap: widget.onTap,
-                           child: SingleChildScrollView(
-                             controller: _scrollController,
-                             primary: false,
-                             scrollDirection: Axis.horizontal,
-                             // Headers always accept the native rubberband gesture,
-                             // including titles that fit completely.  _canScroll
-                             // remains only an overflow/fade decision; it must not
-                             // disable the gesture for short titles.
-                             physics: const BouncingScrollPhysics(
-                               parent: AlwaysScrollableScrollPhysics(),
-                             ),
-                             padding: EdgeInsets.zero,
-                             child: Row(
-                               mainAxisSize: MainAxisSize.min,
-                               crossAxisAlignment: CrossAxisAlignment.center,
-                               children: [
-                                  if (centeredInset > 0)
-                                    SizedBox(width: centeredInset),
-                                  if (leading != null) ...[
-                                    leading,
-                                    if (widget.leadingGap > 0)
-                                      SizedBox(width: widget.leadingGap),
-                                  ],
-                                  Text(
-                                    key: widget.titleTextKey,
-                                    widget.title,
-                                    maxLines: 1,
-                                    softWrap: false,
-                                    overflow: TextOverflow.visible,
-                                    // Large Header titles are intentionally fixed-height. The
-                                    // rest of the app continues to follow the bounded
-                                    // header scale above instead of the ambient scaler.
-                                    textScaler: TextScaler.noScaling,
-                                    style: effectiveStyle,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: widget.onTap,
+                              child: _applyFadeMask(
+                                showLeading: showLeadingFade,
+                                showTrailing: showTrailingFade,
+                                child: SingleChildScrollView(
+                                  controller: _scrollController,
+                                  primary: false,
+                                  scrollDirection: Axis.horizontal,
+                                  // Headers always accept the native rubberband
+                                  // gesture, including titles that fit completely.
+                                  // _canScroll remains an overflow/fade decision;
+                                  // it must not disable short-title gestures.
+                                  physics: const BouncingScrollPhysics(
+                                    parent: AlwaysScrollableScrollPhysics(),
                                   ),
-                                  if (trailing != null) ...[
-                                   SizedBox(width: widget.trailingGap),
-                                    trailing,
-                                 ],
-                                  if (centeredInset > 0)
-                                    SizedBox(width: centeredInset),
-                               ],
-                             ),
+                                  padding: EdgeInsets.zero,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      if (centeredInset > 0)
+                                        SizedBox(width: centeredInset),
+                                      if (leading != null) ...[
+                                        leading,
+                                        if (widget.leadingGap > 0)
+                                          SizedBox(width: widget.leadingGap),
+                                      ],
+                                      Text(
+                                        key: widget.titleTextKey,
+                                        widget.title,
+                                        maxLines: 1,
+                                        softWrap: false,
+                                        overflow: TextOverflow.visible,
+                                        // Large Header titles are intentionally
+                                        // fixed-height and use the bounded scale.
+                                        textScaler: TextScaler.noScaling,
+                                        style: effectiveStyle,
+                                      ),
+                                      if (trailing != null) ...[
+                                        SizedBox(width: widget.trailingGap),
+                                        trailing,
+                                      ],
+                                      if (centeredInset > 0)
+                                        SizedBox(width: centeredInset),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                        Positioned(
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          child: _buildFade(
-                            visible: _showLeadingFade,
-                            opaqueAtStart: true,
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          bottom: 0,
-                          child: _buildFade(
-                            visible:
-                                _showTrailingFade || initialTrailingFade,
-                            opaqueAtStart: false,
                           ),
                         ),
                       ],

@@ -40,11 +40,10 @@ Widget _harness(String title, {double width = 320}) {
   );
 }
 
-Finder _gradientFades() => find.byWidgetPredicate((widget) {
-  if (widget is! DecoratedBox) return false;
-  final decoration = widget.decoration;
-  return decoration is BoxDecoration && decoration.gradient is LinearGradient;
-});
+Finder _fadeMasks() => find.descendant(
+  of: find.byType(HeaderTitleScroller),
+  matching: find.byType(ShaderMask),
+);
 
 Finder _titleScrollable() => find.descendant(
   of: find.byType(HeaderTitleScroller),
@@ -81,7 +80,7 @@ void main() {
             .maxScrollExtent,
         0,
       );
-      expect(_gradientFades(), findsNothing);
+      expect(_fadeMasks(), findsOneWidget);
 
       final gesture = await tester.startGesture(
         tester.getCenter(find.text('New Event')),
@@ -93,7 +92,7 @@ void main() {
         tester.state<ScrollableState>(_titleScrollable()).position.pixels,
         lessThan(0),
       );
-      expect(_gradientFades(), findsOneWidget);
+      expect(_fadeMasks(), findsOneWidget);
       await gesture.up();
       await tester.pumpAndSettle();
     },
@@ -117,6 +116,42 @@ void main() {
           .maxScrollExtent,
       greaterThan(1),
     );
-    expect(_gradientFades(), findsOneWidget);
+    expect(_fadeMasks(), findsOneWidget);
+  });
+
+  testWidgets('modal title fades use alpha compositing, not a tint overlay', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const CupertinoApp(
+        home: Center(
+          child: SizedBox(
+            width: 260,
+            height: 64,
+            child: ModalSheetTitleScroller(
+              title: 'A very long modal title that overflows its viewport',
+              style: _titleStyle,
+              fadeColor: _fadeColor,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final mask = tester.widget<ShaderMask>(_fadeMasks());
+    expect(mask.blendMode, BlendMode.dstIn);
+    expect(
+      find.descendant(
+        of: find.byType(HeaderTitleScroller),
+        matching: find.byWidgetPredicate((widget) {
+          if (widget is! DecoratedBox) return false;
+          final decoration = widget.decoration;
+          return decoration is BoxDecoration &&
+              decoration.gradient is LinearGradient;
+        }),
+      ),
+      findsNothing,
+    );
   });
 }
