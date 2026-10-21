@@ -47,13 +47,13 @@ abstract final class AppHeaderScrollBehavior {
     return (contentOffset / kAppHeaderTitleHeight).clamp(0.0, 1.0).toDouble();
   }
 
-  /// The shell-owned large title must move with both the scrollable content
-  /// and the title slot as that slot collapses. Otherwise the content gains
-  /// an extra upward displacement and closes the gap beneath the title.
+  /// The shell-owned large title follows the actual scroll position. The title
+  /// slot remains in the scroll extent while it passes beneath the pinned
+  /// toolbar, so adding a second slot-collapse distance would move the title
+  /// twice as fast as the content.
   static double shellLargeTitleTravelOffset(double contentOffset) {
     if (!contentOffset.isFinite || contentOffset <= 0.0) return 0.0;
-    return contentOffset +
-        kAppHeaderTitleHeight * titleCollapseProgress(contentOffset);
+    return contentOffset;
   }
 
   /// Fades the outgoing title after its descenders enter the pinned toolbar.
@@ -67,10 +67,9 @@ abstract final class AppHeaderScrollBehavior {
         !titleBottomInset.isFinite) {
       return 0.0;
     }
-    final titleBottom =
-        (kAppHeaderTitleHeight - titleBottomInset)
-            .clamp(0.0, kAppHeaderTitleHeight)
-            .toDouble();
+    final titleBottom = (kAppHeaderTitleHeight - titleBottomInset)
+        .clamp(0.0, kAppHeaderTitleHeight)
+        .toDouble();
     final compactTitleReadyOffset =
         kAppHeaderTitleHeight * kAppHeaderCompactTitleReadyFraction;
     final handoffSplit = (titleBottom + compactTitleReadyOffset) / 2.0;
@@ -95,10 +94,9 @@ abstract final class AppHeaderScrollBehavior {
         !titleBottomInset.isFinite) {
       return 0.0;
     }
-    final titleBottom =
-        (kAppHeaderTitleHeight - titleBottomInset)
-            .clamp(0.0, kAppHeaderTitleHeight)
-            .toDouble();
+    final titleBottom = (kAppHeaderTitleHeight - titleBottomInset)
+        .clamp(0.0, kAppHeaderTitleHeight)
+        .toDouble();
     final compactTitleReadyOffset =
         kAppHeaderTitleHeight * kAppHeaderCompactTitleReadyFraction;
     final handoffSplit = (titleBottom + compactTitleReadyOffset) / 2.0;
@@ -114,20 +112,34 @@ abstract final class AppHeaderScrollBehavior {
   /// header, then continues as content passes beneath the toolbar.
   static double scrollEdgeProgress(double contentOffset) {
     if (!contentOffset.isFinite || contentOffset <= 0.0) return 0.0;
-    return (contentOffset /
-            (kAppHeaderTitleHeight + kAppHeaderToolbarHeight))
+    return (contentOffset / (kAppHeaderTitleHeight + kAppHeaderToolbarHeight))
         .clamp(0.0, 1.0)
         .toDouble();
   }
 
-  /// Settles the page header into one of its two persistent scroll states.
-  ///
-  /// ScrollDirection.reverse means the content is moving up; forward means the
-  /// user is moving back toward the top. The header does not follow any later
-  /// ballistic return unless the user starts scrolling in the opposite
-  /// direction.
-  static double settledHeaderOffset(ScrollDirection direction) {
-    return direction == ScrollDirection.reverse
+  /// The title-slot boundary is also the state threshold: only content that
+  /// has actually crossed it is considered scrolled.
+  static bool headerIsScrolledAt(double contentOffset) =>
+      contentOffset.isFinite && contentOffset >= kAppHeaderTitleHeight;
+
+  /// A downward drag can expand the shell header only after the scroll
+  /// position reaches the top-header region. This keeps small movements deeper
+  /// in the list from reintroducing the large title.
+  static bool shouldTrackHeaderScroll(
+    ScrollDirection direction,
+    double contentOffset,
+  ) {
+    if (!contentOffset.isFinite) return false;
+    if (direction == ScrollDirection.reverse) return true;
+    return direction == ScrollDirection.forward &&
+        contentOffset <= kAppHeaderScrollCollapsedOffset;
+  }
+
+  /// Returns the settled endpoint selected from the real scroll position,
+  /// rather than the last direction notification (which can be caused by a
+  /// ballistic return).
+  static double settledHeaderOffsetForScrollPosition(double contentOffset) {
+    return headerIsScrolledAt(contentOffset)
         ? kAppHeaderScrollCollapsedOffset
         : 0.0;
   }
@@ -236,8 +248,10 @@ class AppHeaderScrollSettler {
       return;
     }
 
-    final durationFraction =
-        (distance / kAppHeaderScrollCollapsedOffset).clamp(0.18, 1.0);
+    final durationFraction = (distance / kAppHeaderScrollCollapsedOffset).clamp(
+      0.18,
+      1.0,
+    );
     _controller.duration = Duration(
       milliseconds:
           (_kAppHeaderScrollSettleDuration.inMilliseconds * durationFraction)
@@ -279,8 +293,7 @@ class AppHeaderScrollCentered extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!enabled ||
-        MediaQuery.orientationOf(context) != Orientation.portrait) {
+    if (!enabled || MediaQuery.orientationOf(context) != Orientation.portrait) {
       return child;
     }
 
@@ -354,27 +367,25 @@ class AppHeaderScrollTitle extends StatelessWidget {
       builder: (context, _) {
         final positions = scrollController.positions;
         final position =
-            owningPosition ??
-            (positions.length == 1 ? positions.single : null);
+            owningPosition ?? (positions.length == 1 ? positions.single : null);
         if (position == null) return child;
         if (!position.hasContentDimensions) return child;
         final positionOffset = AppHeaderScrollBehavior.contentOffset(position);
         final isUserScrolling =
             userScrollActive?.value ??
             position.userScrollDirection != ScrollDirection.idle;
-        final contentOffset =
-            isUserScrolling && sharedScrollOffset != null
+        final contentOffset = isUserScrolling && sharedScrollOffset != null
             ? sharedScrollOffset.value
             : positionOffset;
-        final fadeProgress =
-            settledScrollState != null && !isUserScrolling
+        final fadeProgress = settledScrollState != null && !isUserScrolling
             ? (settledScrollState.value ? 1.0 : 0.0)
             : AppHeaderScrollBehavior.largeTitleFadeProgress(
                 contentOffset,
                 titleBottomInset: titleBottomInset,
               );
-        final correction =
-            AppHeaderScrollBehavior.leadingOverscrollCorrection(position);
+        final correction = AppHeaderScrollBehavior.leadingOverscrollCorrection(
+          position,
+        );
         final title = AppHeaderLargeTitleHandoff(
           progress: fadeProgress,
           child: child,
@@ -457,10 +468,12 @@ class AppHeaderScrollViewport extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final safeLeadingInset =
-        leadingInset.isFinite && leadingInset > 0.0 ? leadingInset : 0.0;
-    final safeTopExtension =
-        topExtension.isFinite && topExtension > 0.0 ? topExtension : 0.0;
+    final safeLeadingInset = leadingInset.isFinite && leadingInset > 0.0
+        ? leadingInset
+        : 0.0;
+    final safeTopExtension = topExtension.isFinite && topExtension > 0.0
+        ? topExtension
+        : 0.0;
     if (safeLeadingInset == 0.0 && safeTopExtension == 0.0) return child;
 
     return LayoutBuilder(
@@ -651,7 +664,9 @@ class AppHeaderScrollStack extends Stack {
 }
 
 /// Keeps a fixed large-title slot in the page's scroll extent while the title
-/// itself is painted in the AppShell header above the scrolling content.
+/// itself is painted in the AppShell header above the scrolling content. The
+/// content's own scroll position—not the shell title's settle animation—
+/// determines when that content moves behind the first-level header.
 class AppHeaderScrollInset extends StatelessWidget {
   const AppHeaderScrollInset({
     super.key,
@@ -666,40 +681,15 @@ class AppHeaderScrollInset extends StatelessWidget {
   Widget build(BuildContext context) {
     final animation = collapseAnimation;
     if (!enabled) return const SizedBox.shrink();
-    final headerIsScrolled = AppHeaderScrollInsetScope.maybeHeaderScrolled(
-      context,
-    );
-    final headerScrollOffset = AppHeaderScrollInsetScope.maybeScrollOffset(
-      context,
-    );
-    if (animation == null &&
-        headerIsScrolled == null &&
-        headerScrollOffset == null) {
+    if (animation == null) {
       return const SizedBox(height: kAppHeaderTitleHeight);
     }
 
-    final listenables = <Listenable>[
-      if (animation != null) animation,
-      if (headerIsScrolled != null) headerIsScrolled,
-      if (headerScrollOffset != null) headerScrollOffset,
-    ];
     return AnimatedBuilder(
-      animation: Listenable.merge(listenables),
+      animation: animation,
       builder: (context, _) {
-        var expanded = headerScrollOffset != null
-            ? 1.0 -
-                  AppHeaderScrollBehavior.titleCollapseProgress(
-                    headerScrollOffset.value,
-                  )
-            : headerIsScrolled?.value == true
-            ? 0.0
-            : 1.0;
-        if (animation != null) {
-          final searchExpanded =
-              (1 - animation.value.clamp(0.0, 1.0)).toDouble();
-          if (searchExpanded < expanded) expanded = searchExpanded;
-        }
-        return SizedBox(height: kAppHeaderTitleHeight * expanded);
+        final searchExpanded = (1 - animation.value.clamp(0.0, 1.0)).toDouble();
+        return SizedBox(height: kAppHeaderTitleHeight * searchExpanded);
       },
     );
   }
@@ -786,8 +776,9 @@ class AppHeaderScrollEdge extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final gradientHeight =
-        backgroundGradientHeight.clamp(0.0, headerHeight).toDouble();
+    final gradientHeight = backgroundGradientHeight
+        .clamp(0.0, headerHeight)
+        .toDouble();
 
     return Positioned(
       top: 0,
