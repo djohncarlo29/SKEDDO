@@ -177,4 +177,126 @@ void main() {
       await tester.pumpAndSettle();
     },
   );
+
+  testWidgets(
+    'Calendar title fade clears on release without resetting its scroll offset',
+    (tester) async {
+      await tester.pumpWidget(
+        const CupertinoApp(
+          home: Center(
+            child: SizedBox(
+              width: 180,
+              height: 56,
+              child: HeaderTitleScroller(
+                title: 'September 2026',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                fadeColor: CupertinoColors.white,
+                fadeOnlyDuringHorizontalDrag: true,
+                leading: SizedBox(width: 40, height: 32),
+                leadingContentWidth: 40,
+                leadingGap: 0,
+                trailing: SizedBox(width: 64, height: 32),
+                trailingContentWidth: 64,
+                trailingGap: 4,
+                centerWhenContentFits: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final maskFinder = find.descendant(
+        of: find.byType(HeaderTitleScroller),
+        matching: find.byType(ShaderMask),
+      );
+      final scrollableFinder = find.descendant(
+        of: find.byType(HeaderTitleScroller),
+        matching: find.byType(Scrollable),
+      );
+      expect(
+        tester.widget<ShaderMask>(maskFinder).blendMode,
+        BlendMode.dst,
+      );
+
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(SingleChildScrollView)),
+      );
+      await gesture.moveBy(const Offset(-40, 0));
+      await tester.pump();
+
+      final scrollPosition = tester
+          .state<ScrollableState>(scrollableFinder)
+          .position;
+      expect(scrollPosition.pixels, greaterThan(0));
+      expect(
+        tester.widget<ShaderMask>(maskFinder).blendMode,
+        BlendMode.dstIn,
+      );
+
+      await gesture.up();
+      await tester.pump();
+      expect(scrollPosition.pixels, greaterThan(0));
+      expect(
+        tester.widget<ShaderMask>(maskFinder).blendMode,
+        BlendMode.dst,
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<ShaderMask>(maskFinder).blendMode,
+        BlendMode.dst,
+      );
+    },
+  );
+
+  testWidgets('Calendar short-title rubberband fade also clears on release', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const CupertinoApp(
+        home: Center(
+          child: SizedBox(
+            width: 320,
+            height: 56,
+            child: HeaderTitleScroller(
+              title: 'May',
+              style: TextStyle(fontSize: 17),
+              fadeColor: CupertinoColors.white,
+              fadeOnlyDuringHorizontalDrag: true,
+              centerWhenContentFits: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final maskFinder = find.descendant(
+      of: find.byType(HeaderTitleScroller),
+      matching: find.byType(ShaderMask),
+    );
+    final scrollableFinder = find.descendant(
+      of: find.byType(HeaderTitleScroller),
+      matching: find.byType(Scrollable),
+    );
+    expect(tester.widget<ShaderMask>(maskFinder).blendMode, BlendMode.dst);
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(SingleChildScrollView)),
+    );
+    await gesture.moveBy(const Offset(32, 0));
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(
+      tester
+          .state<ScrollableState>(scrollableFinder)
+          .position
+          .pixels,
+      lessThan(0),
+    );
+    expect(tester.widget<ShaderMask>(maskFinder).blendMode, BlendMode.dstIn);
+
+    await gesture.up();
+    await tester.pump();
+    expect(tester.widget<ShaderMask>(maskFinder).blendMode, BlendMode.dst);
+  });
 }

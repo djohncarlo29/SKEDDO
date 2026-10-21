@@ -1,4 +1,6 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart'
+    show kTouchSlop, PointerDownEvent, PointerEvent, PointerMoveEvent;
 import '../app_settings.dart';
 
 const double kHeaderTitleBaseFontSize = 34;
@@ -106,6 +108,10 @@ class HeaderTitleScroller extends StatefulWidget {
   /// Keep edge fades hidden until the user has moved this title horizontally.
   /// This preserves a clean, centered resting state for selected scrollers.
   final bool fadeAfterUserScroll;
+  /// Show edge fades only during an active horizontal pointer drag. Unlike
+  /// [fadeAfterUserScroll], the fades disappear immediately when the pointer
+  /// is released, even if the title remains scrolled.
+  final bool fadeOnlyDuringHorizontalDrag;
   final bool centerWhenContentFits;
   final Alignment contentAlignment;
   final VoidCallback? onTap;
@@ -127,6 +133,7 @@ class HeaderTitleScroller extends StatefulWidget {
     this.trailingContentWidth,
     this.showTrailingFade = true,
     this.fadeAfterUserScroll = false,
+    this.fadeOnlyDuringHorizontalDrag = false,
     this.centerWhenContentFits = false,
     this.contentAlignment = Alignment.bottomLeft,
     this.onTap,
@@ -146,6 +153,9 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
   bool _hasUserScrolledTitle = false;
   bool _showLeadingFade = false;
   bool _showTrailingFade = false;
+  int? _titlePointerId;
+  Offset? _titlePointerDownPosition;
+  bool _isActiveHorizontalDrag = false;
 
   @override
   void initState() {
@@ -157,6 +167,12 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
   @override
   void didUpdateWidget(covariant HeaderTitleScroller oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.fadeOnlyDuringHorizontalDrag &&
+        !widget.fadeOnlyDuringHorizontalDrag) {
+      _titlePointerId = null;
+      _titlePointerDownPosition = null;
+      _isActiveHorizontalDrag = false;
+    }
     if (oldWidget.title != widget.title) {
       // Every newly displayed title starts at its logical beginning, including
       // titles arriving through the tab/DCV and Settings navigation animations.
@@ -205,10 +221,57 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
     _syncScrollEdgeFades(_scrollController.position);
   }
 
-  void _syncScrollEdgeFades(ScrollMetrics metrics) {
+  void _handleTitlePointerDown(PointerDownEvent event) {
+    if (!widget.fadeOnlyDuringHorizontalDrag || _titlePointerId != null) return;
+    _titlePointerId = event.pointer;
+    _titlePointerDownPosition = event.position;
+  }
+
+  void _handleTitlePointerMove(PointerMoveEvent event) {
+    if (!widget.fadeOnlyDuringHorizontalDrag ||
+        event.pointer != _titlePointerId ||
+        _isActiveHorizontalDrag) {
+      return;
+    }
+    final start = _titlePointerDownPosition;
+    if (start == null) return;
+    final movement = event.position - start;
+    if (movement.dx.abs() < kTouchSlop ||
+        movement.dx.abs() <= movement.dy.abs()) {
+      return;
+    }
+    _setActiveHorizontalDrag(true);
+  }
+
+  void _handleTitlePointerEnd(PointerEvent event) {
+    if (event.pointer != _titlePointerId) return;
+    _titlePointerId = null;
+    _titlePointerDownPosition = null;
+    _setActiveHorizontalDrag(false);
+  }
+
+  void _setActiveHorizontalDrag(bool isActive) {
+    if (_isActiveHorizontalDrag == isActive) return;
+    _isActiveHorizontalDrag = isActive;
+    if (!mounted) return;
+    if (_scrollController.hasClients) {
+      _syncScrollEdgeFades(
+        _scrollController.position,
+        forceRebuild: true,
+      );
+    } else {
+      setState(() {});
+    }
+  }
+
+  void _syncScrollEdgeFades(
+    ScrollMetrics metrics, {
+    bool forceRebuild = false,
+  }) {
     final canScroll = metrics.maxScrollExtent > 1.0;
-    final showFades =
-        !widget.fadeAfterUserScroll || _hasUserScrolledTitle;
+    final showFades = widget.fadeOnlyDuringHorizontalDrag
+        ? _isActiveHorizontalDrag
+        : !widget.fadeAfterUserScroll || _hasUserScrolledTitle;
     // Do not gate these on [canScroll]. A short title has maxScrollExtent == 0
     // but can still rubberband past either edge; the clipped pixels need the
     // same fade treatment as a long title.
@@ -220,7 +283,8 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
 
     if (_canScroll == canScroll &&
         showLeading == _showLeadingFade &&
-        showTrailing == _showTrailingFade) {
+        showTrailing == _showTrailingFade &&
+        !forceRebuild) {
       return;
     }
     if (!mounted) return;
@@ -233,7 +297,9 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
 
   bool _handleScrollNotification(ScrollNotification notification) {
     if (notification.metrics.axis != Axis.horizontal) return false;
-    if (widget.fadeAfterUserScroll && !_hasUserScrolledTitle) {
+    if (!widget.fadeOnlyDuringHorizontalDrag &&
+        widget.fadeAfterUserScroll &&
+        !_hasUserScrolledTitle) {
       final movedByUserDrag =
           (notification is ScrollUpdateNotification &&
               notification.dragDetails != null &&
@@ -260,7 +326,9 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
     required bool showTrailing,
   }) {
     return ShaderMask(
-      blendMode: BlendMode.dstIn,
+      blendMode: showLeading || showTrailing
+          ? BlendMode.dstIn
+          : BlendMode.dst,
       shaderCallback: (bounds) {
         // dstIn uses only the shader's alpha. Transparent portions reveal the
         // real content behind the header instead of painting a surface tint.
@@ -381,8 +449,10 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                                 : textWidth) >
                             constraints.maxWidth + 1.0;
                     final initialTrailingFade =
-                        (!widget.fadeAfterUserScroll ||
-                            _hasUserScrolledTitle) &&
+                        (widget.fadeOnlyDuringHorizontalDrag
+                                ? _isActiveHorizontalDrag
+                                : !widget.fadeAfterUserScroll ||
+                                      _hasUserScrolledTitle) &&
                         !_canScroll &&
                         overflowBeforeLayout &&
                         widget.showTrailingFade &&
@@ -415,48 +485,66 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                               child: _applyFadeMask(
                                 showLeading: showLeadingFade,
                                 showTrailing: showTrailingFade,
-                                child: SingleChildScrollView(
-                                  controller: _scrollController,
-                                  primary: false,
-                                  scrollDirection: Axis.horizontal,
-                                  // Headers always accept the native rubberband
-                                  // gesture, including titles that fit completely.
-                                  // _canScroll remains an overflow/fade decision;
-                                  // it must not disable short-title gestures.
-                                  physics: const BouncingScrollPhysics(
-                                    parent: AlwaysScrollableScrollPhysics(),
-                                  ),
-                                  padding: EdgeInsets.zero,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      if (centeredInset > 0)
-                                        SizedBox(width: centeredInset),
-                                      if (leading != null) ...[
-                                        leading,
-                                        if (widget.leadingGap > 0)
-                                          SizedBox(width: widget.leadingGap),
+                                child: Listener(
+                                  onPointerDown:
+                                      widget.fadeOnlyDuringHorizontalDrag
+                                      ? _handleTitlePointerDown
+                                      : null,
+                                  onPointerMove:
+                                      widget.fadeOnlyDuringHorizontalDrag
+                                      ? _handleTitlePointerMove
+                                      : null,
+                                  onPointerUp:
+                                      widget.fadeOnlyDuringHorizontalDrag
+                                      ? _handleTitlePointerEnd
+                                      : null,
+                                  onPointerCancel:
+                                      widget.fadeOnlyDuringHorizontalDrag
+                                      ? _handleTitlePointerEnd
+                                      : null,
+                                  child: SingleChildScrollView(
+                                    controller: _scrollController,
+                                    primary: false,
+                                    scrollDirection: Axis.horizontal,
+                                    // Headers always accept the native
+                                    // rubberband gesture, even when short.
+                                    // _canScroll only decides whether a fade is
+                                    // visible; it never disables the gesture.
+                                    physics: const BouncingScrollPhysics(
+                                      parent: AlwaysScrollableScrollPhysics(),
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        if (centeredInset > 0)
+                                          SizedBox(width: centeredInset),
+                                        if (leading != null) ...[
+                                          leading,
+                                          if (widget.leadingGap > 0)
+                                            SizedBox(width: widget.leadingGap),
+                                        ],
+                                        Text(
+                                          key: widget.titleTextKey,
+                                          widget.title,
+                                          maxLines: 1,
+                                          softWrap: false,
+                                          overflow: TextOverflow.visible,
+                                          // Large Header titles are fixed-height
+                                          // and use the bounded header scale.
+                                          textScaler: TextScaler.noScaling,
+                                          style: effectiveStyle,
+                                        ),
+                                        if (trailing != null) ...[
+                                          SizedBox(width: widget.trailingGap),
+                                          trailing,
+                                        ],
+                                        if (centeredInset > 0)
+                                          SizedBox(width: centeredInset),
                                       ],
-                                      Text(
-                                        key: widget.titleTextKey,
-                                        widget.title,
-                                        maxLines: 1,
-                                        softWrap: false,
-                                        overflow: TextOverflow.visible,
-                                        // Large Header titles are intentionally
-                                        // fixed-height and use the bounded scale.
-                                        textScaler: TextScaler.noScaling,
-                                        style: effectiveStyle,
-                                      ),
-                                      if (trailing != null) ...[
-                                        SizedBox(width: widget.trailingGap),
-                                        trailing,
-                                      ],
-                                      if (centeredInset > 0)
-                                        SizedBox(width: centeredInset),
-                                    ],
+                                    ),
                                   ),
                                 ),
                               ),
