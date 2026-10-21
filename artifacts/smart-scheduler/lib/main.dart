@@ -3914,6 +3914,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                           LiquidGlassButton.defaultStyle.appearance,
                     ),
                   );
+                  final buttonShadows = resolveThemeShadows(
+                    kLiquidGlassActionButtonShadow,
+                    context,
+                  );
                   final fadeOpacity = (1.0 - _searchModeAnim.value).clamp(
                     0.0,
                     1.0,
@@ -3933,32 +3937,38 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                           child: Stack(
                             clipBehavior: Clip.none,
                             children: [
-                              Theme(
-                                // The app-shell hamburger/X keeps the same
-                                // glass surface on press; only its action
-                                // changes, without Material's ink darkening.
-                                data: Theme.of(context).copyWith(
-                                  splashFactory: NoSplash.splashFactory,
-                                  splashColor: Colors.transparent,
-                                  highlightColor: Colors.transparent,
+                              DecoratedBox(
+                                decoration: ShapeDecoration(
+                                  shape: const CircleBorder(),
+                                  shadows: buttonShadows,
                                 ),
-                                child: LightModeLiquidGlassButtonContour(
-                                  child: LiquidGlassButton(
-                                    width: 40,
-                                    height: 40,
-                                    padding: EdgeInsets.zero,
-                                    style: buttonStyle,
-                                    onPressed: isDCVVisual
-                                        ? _exitDCV
-                                        : isSubScreen
-                                        ? backAction
-                                        : _settingsController.value > 0
-                                        ? _closeSettings
-                                        : _openSettings,
-                                    // Keep the animated glyph outside the lens so
-                                    // only the package-owned button samples and
-                                    // clips the glass surface.
-                                    child: const SizedBox.expand(),
+                                child: Theme(
+                                  // The app-shell hamburger/X keeps the same
+                                  // glass surface on press; only its action
+                                  // changes, without Material's ink darkening.
+                                  data: Theme.of(context).copyWith(
+                                    splashFactory: NoSplash.splashFactory,
+                                    splashColor: Colors.transparent,
+                                    highlightColor: Colors.transparent,
+                                  ),
+                                  child: LightModeLiquidGlassButtonContour(
+                                    child: LiquidGlassButton(
+                                      width: 40,
+                                      height: 40,
+                                      padding: EdgeInsets.zero,
+                                      style: buttonStyle,
+                                      onPressed: isDCVVisual
+                                          ? _exitDCV
+                                          : isSubScreen
+                                          ? backAction
+                                          : _settingsController.value > 0
+                                          ? _closeSettings
+                                          : _openSettings,
+                                      // Keep the animated glyph outside the lens so
+                                      // only the package-owned button samples and
+                                      // clips the glass surface.
+                                      child: const SizedBox.expand(),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -3971,16 +3981,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                     0,
                                   ),
                                   child: Transform.translate(
-                                    offset: Offset(
-                                      0,
-                                      isLandscape
-                                          ? (isDCVVisual
-                                                ? 1.0
-                                                : isSubScreen
-                                                ? 1.0
-                                                : 0.8)
-                                          : 0,
-                                    ),
+                                    // The icon is 26px tall and starts at 10px
+                                    // below the button's top edge; lift it 3px
+                                    // to align its center with the 40px button.
+                                    offset: const Offset(0, -3),
                                     child: _MorphingMenuIcon(
                                       // Show hamburger/X only when settings is open
                                       // but NOT in a sub-screen (sub-screen uses the
