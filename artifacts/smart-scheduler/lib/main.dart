@@ -3110,11 +3110,16 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                   : resolveAccentColor(context);
                                final innerHeight =
                                    headerToolbarHeight * (1 - t);
-                               final edgeProgress =
-                                    (_headerTitleScrollOffset.value /
-                                            kAppHeaderTitleHeight)
-                                        .clamp(0.0, 1.0)
-                                        .toDouble() *
+                                final titleCollapseProgress =
+                                    AppHeaderScrollBehavior
+                                            .titleCollapseProgress(
+                                              _headerTitleScrollOffset.value,
+                                            ) *
+                                    (1 - t);
+                                final edgeProgress =
+                                    AppHeaderScrollBehavior.scrollEdgeProgress(
+                                          _headerTitleScrollOffset.value,
+                                        ) *
                                     (1 - t);
                                 final titleScrollOffset =
                                     _headerTitleScrollOffset.value;
@@ -3141,7 +3146,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               final headerBackgroundColor = headerColor
                                   .withValues(
                                     alpha:
-                                        (1.0 - edgeProgress) * headerColor.a,
+                                         (1.0 - titleCollapseProgress) *
+                                         headerColor.a,
                                   );
                                final calendarShellTitle =
                                    !isDCVVisual && _selectedIndex == 1;
@@ -3215,7 +3221,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                               color: headerSurfaceColor
                                                   .withValues(
                                                     alpha:
-                                                        (1.0 - edgeProgress) *
+                                                            (1.0 -
+                                                                titleCollapseProgress) *
                                                         headerSurfaceColor.a,
                                                   ),
                                               child: largeHeaderTitleLayout,
@@ -3588,7 +3595,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                         ),
                                                         child: AppHeaderCompactTitle(
                                                           progress:
-                                                              edgeProgress,
+                                                              titleCollapseProgress,
                                                           isLandscape:
                                                               isLandscape,
                                                           child:

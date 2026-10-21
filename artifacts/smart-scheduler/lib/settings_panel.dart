@@ -1549,9 +1549,12 @@ class _SettingsHeader extends StatelessWidget {
     final toolbarHeight = isLandscape
         ? contentHeight
         : kAppHeaderToolbarHeight;
-    final collapseProgress = isLandscape
+    final titleCollapseProgress = isLandscape
         ? 0.0
-        : (scrollOffset / kAppHeaderTitleHeight).clamp(0.0, 1.0).toDouble();
+        : AppHeaderScrollBehavior.titleCollapseProgress(scrollOffset);
+    final edgeProgress = isLandscape
+        ? 0.0
+        : AppHeaderScrollBehavior.scrollEdgeProgress(scrollOffset);
     return SizedBox(
       width: double.infinity,
       height: topInset + contentHeight,
@@ -1565,7 +1568,7 @@ class _SettingsHeader extends StatelessWidget {
             height: topInset + toolbarHeight,
             child: ColoredBox(
               color: headerSurfaceColor.withValues(
-                alpha: (1 - collapseProgress) * headerSurfaceColor.a,
+                alpha: (1 - titleCollapseProgress) * headerSurfaceColor.a,
               ),
             ),
           ),
@@ -1642,7 +1645,8 @@ class _SettingsHeader extends StatelessWidget {
                 offset: Offset(0, -scrollOffset),
                  child: Container(
                    color: headerSurfaceColor.withValues(
-                     alpha: (1 - collapseProgress) * headerSurfaceColor.a,
+                      alpha:
+                          (1 - titleCollapseProgress) * headerSurfaceColor.a,
                   ),
                   child: AppWindowContentPadding(
                     child: Padding(
@@ -1676,7 +1680,7 @@ class _SettingsHeader extends StatelessWidget {
             ),
           if (!isLandscape)
             AppHeaderScrollEdge(
-              progress: collapseProgress,
+              progress: edgeProgress,
               surfaceColor: backgroundColor,
               height:
                   topInset +
@@ -1684,6 +1688,38 @@ class _SettingsHeader extends StatelessWidget {
                   kAppHeaderTitleHeight +
                   kAppHeaderScrollEdgeTitleCapExtension,
               backgroundGradientHeight: topInset + toolbarHeight,
+            ),
+          if (!isLandscape)
+            Positioned(
+              top: topInset,
+              left: 0,
+              right: 0,
+              height: toolbarHeight,
+              child: AppWindowContentPadding(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 84),
+                  child: AppHeaderCompactTitle(
+                    progress: titleCollapseProgress,
+                    isLandscape: false,
+                    child: SizedBox.expand(
+                      child: HeaderTitleScroller(
+                        title: title,
+                        fadeColor: backgroundColor,
+                        centerWhenContentFits: true,
+                        contentAlignment: Alignment.centerLeft,
+                        style: TextStyle(
+                          fontFamily: kSFProText,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          fontStyle: FontStyle.normal,
+                          color: primaryLabel,
+                          letterSpacing: -0.6,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
         ],
       ),

@@ -25,6 +25,25 @@ abstract final class AppHeaderScrollBehavior {
     return offset;
   }
 
+  /// Progress for handing a large title off to its compact toolbar version.
+  static double titleCollapseProgress(double contentOffset) {
+    if (!contentOffset.isFinite || contentOffset <= 0.0) return 0.0;
+    return (contentOffset / kAppHeaderTitleHeight).clamp(0.0, 1.0).toDouble();
+  }
+
+  /// Starts the glass edge only after the large title has fully collapsed,
+  /// then lets it build as content passes beneath the pinned toolbar.
+  static double scrollEdgeProgress(double contentOffset) {
+    if (!contentOffset.isFinite ||
+        contentOffset <= kAppHeaderTitleHeight) {
+      return 0.0;
+    }
+    return ((contentOffset - kAppHeaderTitleHeight) /
+            kAppHeaderToolbarHeight)
+        .clamp(0.0, 1.0)
+        .toDouble();
+  }
+
   /// Returns the translation that cancels leading overscroll for a title
   /// which is otherwise laid out inside the scrollable content.
   static double leadingOverscrollCorrection(ScrollMetrics metrics) {
