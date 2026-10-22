@@ -5,7 +5,6 @@ import 'dart:math' show max, min;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Colors, NoSplash, Theme;
-import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -854,15 +853,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   final _calendarStripSlide = ValueNotifier<double>(0.0);
 
   int _selectedIndex = 0;
-  final ValueNotifier<double> _headerTitleScrollOffset = ValueNotifier(0.0);
-  final ValueNotifier<bool> _headerIsScrolled = ValueNotifier(false);
-  final ValueNotifier<bool> _headerScrollIsActive = ValueNotifier(false);
-  bool _headerUserDragActive = false;
-  ScrollDirection _pendingHeaderScrollDirection = ScrollDirection.idle;
-  final Map<String, double> _headerTitleScrollOffsets = {};
-  final Map<String, bool> _headerScrolledStates = {};
-  late final AppHeaderScrollSettler _headerScrollSettler;
-  final AppHeaderScrollTracker _headerScrollTracker = AppHeaderScrollTracker();
+  final AppHeaderTitleTransition _headerTitleTransition =
+      AppHeaderTitleTransition();
   static const _nativeTabBarChannel = MethodChannel(
     'com.smartscheduler/native_tab_bar',
   );
@@ -924,33 +916,24 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // the header AnimatedBuilder, derived from _dcvSlideController.value.
   bool get _isDCV => _dcvCategory != null && _selectedIndex == 2;
 
-  String get _headerScrollScope {
-    if (_selectedIndex == 2 && _isDCV) {
-      return '2:dcv:$_dcvCategory';
-    }
-    if (_selectedIndex == 1) {
-      return '1:${_calendarView.name}:${_activeDaySubMode.name}';
-    }
-    return '$_selectedIndex';
-  }
-
-  bool _onHeaderScrollNotification(ScrollNotification notification) {
-    final viewportHeight = notification.metrics.viewportDimension;
-    if (notification.metrics.axis != Axis.vertical ||
-        notification.depth != 0 ||
+  bool _isHeaderScrollSource({
+    required ScrollMetrics metrics,
+    required int depth,
+    required BuildContext? notificationContext,
+  }) {
+    final viewportHeight = metrics.viewportDimension;
+    if (metrics.axis != Axis.vertical ||
+        depth != 0 ||
         viewportHeight < max(240, MediaQuery.sizeOf(context).height * 0.35)) {
       return false;
     }
 
-    // Year and Month views keep adjacent preview panels mounted beside the
-    // current panel. Their independent ScrollPositions can have different
-    // extents, so only the current panel is allowed to update the shared
-    // title/edge progress.
+    // Adjacent Year/Month previews have separate positions. Only the active
+    // calendar panel may drive the shared shell title.
     if (_selectedIndex == 1 &&
         (_calendarView == CalendarView.year ||
             _calendarView == CalendarView.month)) {
       final activePosition = _calendarTabKey.currentState?.headerScrollPosition;
-      final notificationContext = notification.context;
       final sourcePosition = notificationContext == null
           ? null
           : Scrollable.maybeOf(
@@ -963,151 +946,71 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       }
     }
 
-    // Day timelines are independent scroll surfaces inside the Calendar Tab.
-    // Their hourly content must not move the app's large title or its controls.
+    // Day timelines are independent scroll surfaces; the list mode remains
+    // part of the shell's normal header scroll hierarchy.
     if (_selectedIndex == 1 &&
         _calendarView == CalendarView.day &&
         _activeDaySubMode != DayViewSubMode.list) {
       return false;
     }
+    return true;
+  }
 
+  void _bindHeaderPositionFromContext(BuildContext? notificationContext) {
+    if (notificationContext == null) return;
+    final position = Scrollable.maybeOf(
+      notificationContext,
+      axis: Axis.vertical,
+    )?.position;
+    if (position != null) _headerTitleTransition.bindTo(position);
+  }
+
+  bool _onHeaderScrollNotification(ScrollNotification notification) {
     if (_searchModeController.value > 0.01) {
-      _headerScrollSettler.stop();
-      _headerScrollTracker.reset();
-      _headerUserDragActive = false;
-      _pendingHeaderScrollDirection = ScrollDirection.idle;
-      _headerScrollIsActive.value = false;
+      _headerTitleTransition.suspend();
       return false;
     }
-
-    if (notification is ScrollStartNotification) {
-      if (notification.dragDetails != null) {
-        _headerUserDragActive = true;
-        _pendingHeaderScrollDirection = ScrollDirection.idle;
-        _headerScrollTracker.reset();
-      }
+    if (!_isHeaderScrollSource(
+      metrics: notification.metrics,
+      depth: notification.depth,
+      notificationContext: notification.context,
+    )) {
       return false;
     }
-
-    if (notification is UserScrollNotification) {
-      if (_headerUserDragActive &&
-          notification.direction != ScrollDirection.idle) {
-        _pendingHeaderScrollDirection = notification.direction;
-        final scrollOffset =
-            AppHeaderScrollBehavior.scrollOffsetIncludingOverscroll(
-              notification.metrics,
-            );
-        if (!AppHeaderScrollBehavior.shouldTrackHeaderScroll(
-          notification.direction,
-          scrollOffset,
-        )) {
-          return false;
-        }
-        _headerScrollSettler.stop();
-        _headerScrollTracker.beginUserScroll(
-          direction: notification.direction,
-          headerOffset: _headerTitleScrollOffset.value,
-          scrollOffset: scrollOffset,
-        );
-        _headerScrollIsActive.value = true;
-      }
-      return false;
-    }
-
-    if (notification is ScrollUpdateNotification) {
-      if (_headerScrollTracker.shouldSettleBeforeScrollUpdate(
-        hasDragDetails: notification.dragDetails != null,
-      )) {
-        // A null dragDetails marks the first ballistic update after release.
-        // Settle before its bounce can be mirrored into the shell header.
-        _settleHeaderAfterUserScroll(notification.metrics);
-        _headerUserDragActive = false;
-        _pendingHeaderScrollDirection = ScrollDirection.idle;
-      } else if (_headerUserDragActive && notification.dragDetails != null) {
-        final scrollOffset =
-            AppHeaderScrollBehavior.scrollOffsetIncludingOverscroll(
-              notification.metrics,
-            );
-        if (!_headerScrollTracker.isUserScrollActive &&
-            AppHeaderScrollBehavior.shouldTrackHeaderScroll(
-              _pendingHeaderScrollDirection,
-              scrollOffset,
-            )) {
-          _headerScrollSettler.stop();
-          _headerScrollTracker.beginUserScroll(
-            direction: _pendingHeaderScrollDirection,
-            headerOffset: _headerTitleScrollOffset.value,
-            scrollOffset: scrollOffset,
-          );
-          _headerScrollIsActive.value = true;
-        }
-        final scope = _headerScrollScope;
-        final current = _headerTitleScrollOffset.value;
-        final next = _headerScrollTracker.headerOffsetForUserScroll(
-          scrollOffset,
-        );
-        if (next != null && (next - current).abs() >= 0.01) {
-          _headerTitleScrollOffsets[scope] = next;
-          _headerTitleScrollOffset.value = next;
-        }
-      }
-    }
-
-    if (notification is ScrollEndNotification) {
-      _settleHeaderAfterUserScroll(notification.metrics);
-      _headerUserDragActive = false;
-      _pendingHeaderScrollDirection = ScrollDirection.idle;
-    }
+    _bindHeaderPositionFromContext(notification.context);
     return false;
   }
 
-  void _settleHeaderAfterUserScroll(ScrollMetrics metrics) {
-    final direction = _headerScrollTracker.finishUserScroll();
-    if (direction == null) return;
-
-    final scope = _headerScrollScope;
-    final isScrolled = AppHeaderScrollBehavior.headerIsScrolledAt(
-      AppHeaderScrollBehavior.scrollOffsetIncludingOverscroll(metrics),
-    );
-    final settledOffset =
-        AppHeaderScrollBehavior.settledHeaderOffsetForScrollPosition(
-          AppHeaderScrollBehavior.scrollOffsetIncludingOverscroll(metrics),
-        );
-    _headerTitleScrollOffsets[scope] = settledOffset;
-    _headerScrolledStates[scope] = isScrolled;
-    _headerIsScrolled.value = isScrolled;
-    _headerScrollSettler.animateTo(settledOffset);
+  bool _onHeaderScrollMetricsNotification(
+    ScrollMetricsNotification notification,
+  ) {
+    if (_searchModeController.value > 0.01) {
+      _headerTitleTransition.suspend();
+      return false;
+    }
+    if (!_isHeaderScrollSource(
+      metrics: notification.metrics,
+      depth: notification.depth,
+      notificationContext: notification.context,
+    )) {
+      return false;
+    }
+    _bindHeaderPositionFromContext(notification.context);
+    return false;
   }
 
-  void _restoreHeaderScrollOffset() {
-    _headerScrollSettler.stop();
-    _headerScrollTracker.reset();
-    _headerUserDragActive = false;
-    _pendingHeaderScrollDirection = ScrollDirection.idle;
-    _headerScrollIsActive.value = false;
-    final scope = _headerScrollScope;
-    final offset = _headerTitleScrollOffsets[scope] ?? 0.0;
-    _headerTitleScrollOffset.value = offset;
-    _headerIsScrolled.value =
-        _headerScrolledStates[scope] ?? offset >= kAppHeaderTitleHeight;
-  }
-
-  double? _headerOffsetForController(ScrollController? controller) {
+  ScrollPosition? _headerPositionForController(ScrollController? controller) {
     if (controller == null || !controller.hasClients) return null;
     for (final position in controller.positions) {
-      if (position.hasContentDimensions) {
-        return AppHeaderScrollBehavior.contentOffset(position);
-      }
+      if (position.hasContentDimensions) return position;
     }
     return null;
   }
 
+  void _restoreHeaderScrollOffset() => _syncHeaderScrollOffsetToParent();
+
   void _settleShellTransitionsForSearch() {
-    _headerScrollSettler.stop();
-    _headerScrollTracker.reset();
-    _headerUserDragActive = false;
-    _pendingHeaderScrollDirection = ScrollDirection.idle;
-    _headerScrollIsActive.value = false;
+    _headerTitleTransition.suspend();
 
     if (_dcvCategoryTransitionController.isAnimating) {
       _dcvCategoryTransitionController.value = 1.0;
@@ -1129,23 +1032,17 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }
 
   void _syncHeaderScrollOffsetToParent() {
-    final double? offset = switch (_selectedIndex) {
-      0 => _headerOffsetForController(
+    final position = switch (_selectedIndex) {
+      0 => _headerPositionForController(
         _notesTabKey.currentState?.scrollController,
       ),
-      1 => _calendarTabKey.currentState?.searchParentHeaderScrollOffset,
-      2 => _headerOffsetForController(
+      1 => _calendarTabKey.currentState?.headerScrollPosition,
+      2 => _headerPositionForController(
         _eventsTabKey.currentState?.scrollController,
       ),
       _ => null,
     };
-    if (offset == null) return;
-
-    _headerScrollSettler.stop();
-    _headerScrollTracker.reset();
-    _headerScrollIsActive.value = false;
-    _headerTitleScrollOffsets[_headerScrollScope] = offset;
-    _headerTitleScrollOffset.value = offset;
+    _headerTitleTransition.bindTo(position);
   }
 
   bool _canReplaceLandscapeDcvPage() {
@@ -1172,13 +1069,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       return;
     }
 
-    _headerScrollSettler.stop();
-    _headerTitleScrollOffsets['2:dcv:$label'] = 0.0;
-    _headerScrolledStates['2:dcv:$label'] = false;
-    _headerIsScrolled.value = false;
-    _headerTitleScrollOffset.value = 0.0;
-    _headerScrollTracker.reset();
-    _headerScrollIsActive.value = false;
+    _headerTitleTransition.bindTo(null);
 
     if (_canReplaceLandscapeDcvPage()) {
       // Finish any in-flight replacement before starting the next one. The
@@ -1853,11 +1744,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _headerScrollSettler = AppHeaderScrollSettler(
-      vsync: this,
-      offset: _headerTitleScrollOffset,
-      onSettled: () => _headerScrollIsActive.value = false,
-    );
     _nativeTabBarChannel.setMethodCallHandler(_handleNativeTabBarCall);
     unawaited(_configureNativeTabBar());
 
@@ -1951,10 +1837,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _searchModeController.dispose();
     _settingsController.dispose();
     _calendarStripSlide.dispose();
-    _headerScrollSettler.dispose();
-    _headerTitleScrollOffset.dispose();
-    _headerIsScrolled.dispose();
-    _headerScrollIsActive.dispose();
+    _headerTitleTransition.dispose();
     super.dispose();
   }
 
@@ -2961,8 +2844,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                         // offset here: that translates the shell title while the
                         // shared elements are still moving. Carry the current
                         // header position into the new scope instead.
-                        _headerTitleScrollOffsets[_headerScrollScope] =
-                            _headerTitleScrollOffset.value;
+                        _syncHeaderScrollOffsetToParent();
                       } else {
                         _restoreHeaderScrollOffset();
                       }
@@ -3107,9 +2989,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   // (top) Stack child — guaranteeing the shadow/hairline are always
                   // rendered above whatever the scroll view draws.
                   Positioned.fill(
-                    child: NotificationListener<ScrollNotification>(
-                      onNotification: _onHeaderScrollNotification,
-                      child: Stack(
+                    child: NotificationListener<ScrollMetricsNotification>(
+                      onNotification: _onHeaderScrollMetricsNotification,
+                      child: NotificationListener<ScrollNotification>(
+                        onNotification: _onHeaderScrollNotification,
+                        child: Stack(
                         children: [
                           // Content — fills the full Stack area but gets an animated
                           // top-padding equal to the current header height so the
@@ -3123,10 +3007,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                   topInset + headerToolbarHeight * (1 - t);
                               return AppHeaderScrollInsetScope(
                                 leadingInset: leadingInset,
-                                headerIsScrolled: _headerIsScrolled,
-                                headerScrollIsActive: _headerScrollIsActive,
-                                headerTitleScrollOffset:
-                                    _headerTitleScrollOffset,
                                 child: Padding(
                                   padding: EdgeInsets.only(
                                     top: leadingInset,
@@ -3164,7 +3044,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                 _dcvSlideProgress,
                                 _dcvCategoryTransitionProgress,
                                 _settingsController,
-                                _headerTitleScrollOffset,
+                                _headerTitleTransition,
                               ]),
                               builder: (context, _) {
                                 final t = _searchModeAnim.value.clamp(0.0, 1.0);
@@ -3192,28 +3072,27 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                     : resolveAccentColor(context);
                                 final innerHeight =
                                     headerToolbarHeight * (1 - t);
+                                final scrollOffset =
+                                    _headerTitleTransition.contentOffset;
+                                final collapseProgress =
+                                    _headerTitleTransition.collapseProgress;
                                 final titleCollapseProgress =
-                                    AppHeaderScrollBehavior.titleCollapseProgress(
-                                      _headerTitleScrollOffset.value,
-                                    ) *
-                                    (1 - t);
+                                    collapseProgress * (1 - t);
                                 final titleScrollOffset =
                                     AppHeaderScrollBehavior.shellLargeTitleTravelOffset(
-                                      _headerTitleScrollOffset.value,
+                                      scrollOffset,
                                     );
                                 final largeTitleFadeProgress =
-                                    AppHeaderScrollBehavior.largeTitleFadeProgress(
-                                      titleScrollOffset,
-                                      titleBottomInset: kHeaderTitleBottomInset,
+                                    AppHeaderScrollBehavior.packageLargeTitleFadeProgress(
+                                      collapseProgress,
                                     );
                                 final compactTitleFadeProgress =
-                                    AppHeaderScrollBehavior.compactTitleFadeProgress(
-                                      titleScrollOffset,
-                                      titleBottomInset: kHeaderTitleBottomInset,
+                                    AppHeaderScrollBehavior.packageCompactTitleFadeProgress(
+                                      collapseProgress,
                                     );
                                 final edgeProgress =
                                     AppHeaderScrollBehavior.scrollEdgeProgress(
-                                      _headerTitleScrollOffset.value,
+                                      scrollOffset,
                                     ) *
                                     (1 - t);
                                 final calendarTitleInContent =
@@ -3702,10 +3581,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                     ],
                                                                   ),
                                                                 ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                                                       ),
                                                     ),
                                                   ),

@@ -1,7 +1,7 @@
 import 'package:flutter/gestures.dart' show DragStartBehavior;
-import 'package:flutter/foundation.dart' show ValueListenable;
-import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter/widgets.dart';
+import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
+    show GlassLargeTitleController;
 import 'package:liquid_glass_easy/liquid_glass_easy.dart'
     show LiquidGlassEdge, LiquidGlassScrollEdge;
 
@@ -9,11 +9,8 @@ const double kAppHeaderToolbarHeight = 44;
 const double kAppHeaderTitleHeight = 57;
 const double kAppHeaderCompactTitleReadyFraction = 0.9;
 const double kAppHeaderScrollEdgeHeaderBottomExtension = 16;
-const double kAppHeaderScrollCollapsedOffset =
-    kAppHeaderTitleHeight + kAppHeaderToolbarHeight;
 const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;
 const double _kAppHeaderScrollEdgeMaxBlurSigma = 4;
-const Duration _kAppHeaderScrollSettleDuration = Duration(milliseconds: 260);
 
 /// Shared scroll rules for second-level app headers.
 ///
@@ -41,10 +38,23 @@ abstract final class AppHeaderScrollBehavior {
     return offset.isFinite ? offset : 0.0;
   }
 
-  /// Progress for fading the title-region surface during its collapse.
-  static double titleCollapseProgress(double contentOffset) {
-    if (!contentOffset.isFinite || contentOffset <= 0.0) return 0.0;
-    return (contentOffset / kAppHeaderTitleHeight).clamp(0.0, 1.0).toDouble();
+  /// Converts the package controller's normalized collapse value into the
+  /// outgoing-title fade used by its GlassLargeTitle implementation.
+  static double packageLargeTitleFadeProgress(double collapseProgress) {
+    final progress = collapseProgress.isFinite
+        ? collapseProgress.clamp(0.0, 1.0).toDouble()
+        : 0.0;
+    return 1.0 - Curves.easeIn.transform(1.0 - progress);
+  }
+
+  /// Mirrors GlassAppBar's compact-title fade without replacing the app's
+  /// existing toolbar or Liquid Glass composition.
+  static double packageCompactTitleFadeProgress(double collapseProgress) {
+    final progress = collapseProgress.isFinite
+        ? collapseProgress.clamp(0.0, 1.0).toDouble()
+        : 0.0;
+    final barProgress = ((progress - 0.5) / 0.5).clamp(0.0, 1.0);
+    return Curves.easeOut.transform(barProgress);
   }
 
   /// The shell-owned large title follows the actual scroll position. The title
@@ -117,33 +127,6 @@ abstract final class AppHeaderScrollBehavior {
         .toDouble();
   }
 
-  /// The title-slot boundary is also the state threshold: only content that
-  /// has actually crossed it is considered scrolled.
-  static bool headerIsScrolledAt(double contentOffset) =>
-      contentOffset.isFinite && contentOffset >= kAppHeaderTitleHeight;
-
-  /// A downward drag can expand the shell header only after the scroll
-  /// position reaches the top-header region. This keeps small movements deeper
-  /// in the list from reintroducing the large title.
-  static bool shouldTrackHeaderScroll(
-    ScrollDirection direction,
-    double contentOffset,
-  ) {
-    if (!contentOffset.isFinite) return false;
-    if (direction == ScrollDirection.reverse) return true;
-    return direction == ScrollDirection.forward &&
-        contentOffset <= kAppHeaderScrollCollapsedOffset;
-  }
-
-  /// Returns the settled endpoint selected from the real scroll position,
-  /// rather than the last direction notification (which can be caused by a
-  /// ballistic return).
-  static double settledHeaderOffsetForScrollPosition(double contentOffset) {
-    return headerIsScrolledAt(contentOffset)
-        ? kAppHeaderScrollCollapsedOffset
-        : 0.0;
-  }
-
   /// Returns the translation that cancels leading overscroll for a title
   /// which is otherwise laid out inside the scrollable content.
   static double leadingOverscrollCorrection(ScrollMetrics metrics) {
@@ -153,127 +136,90 @@ abstract final class AppHeaderScrollBehavior {
   }
 }
 
-/// Tracks the direct-manipulation portion of a header scroll independently
-/// from the scroll view's ballistic bounce after the user's finger lifts.
-class AppHeaderScrollTracker {
-  bool _isUserScrollActive = false;
-  ScrollDirection _lastUserScrollDirection = ScrollDirection.idle;
-  double _offsetAdjustment = 0.0;
+/// Bridges the package's established large-title collapse controller to the
+/// app's existing ScrollPosition.
+///
+/// The package controller normally owns the ScrollController attached to its
+/// GlassLargeTitle sliver. SKEDDO already has persistent, screen-specific
+/// scrollables, so this adapter attaches the package's controller to the active
+/// existing position instead of introducing another scroll view or offset.
+class AppHeaderTitleTransition extends ChangeNotifier {
+  AppHeaderTitleTransition()
+    : _controller = GlassLargeTitleController() {
+    _controller.addListener(_forwardControllerChange);
+  }
 
-  bool get isUserScrollActive => _isUserScrollActive;
+  GlassLargeTitleController _controller;
+  ScrollPosition? _position;
+  double _cachedContentOffset = 0.0;
 
-  /// Whether an update marks the transition from a direct drag to ballistic
-  /// motion. The first such update must trigger settling before it is applied.
-  bool shouldSettleBeforeScrollUpdate({required bool hasDragDetails}) =>
-      _isUserScrollActive && !hasDragDetails;
+  ScrollPosition? get position => _position;
+  double get collapseProgress => _controller.collapseProgress;
+  double get rawScrollOffset => _controller.rawScrollOffset;
 
-  void beginUserScroll({
-    required ScrollDirection direction,
-    required double headerOffset,
-    required double scrollOffset,
-  }) {
-    if (direction == ScrollDirection.idle ||
-        !headerOffset.isFinite ||
-        !scrollOffset.isFinite) {
-      return;
+  double get contentOffset {
+    final currentPosition = _position;
+    if (currentPosition == null || !currentPosition.hasContentDimensions) {
+      return _cachedContentOffset;
     }
-    _offsetAdjustment = headerOffset - scrollOffset;
-    _lastUserScrollDirection = direction;
-    _isUserScrollActive = true;
+    _cachedContentOffset = AppHeaderScrollBehavior.contentOffset(
+      currentPosition,
+    );
+    return _cachedContentOffset;
   }
 
-  /// Returns a new header offset only while the finger-driven scroll is active.
-  ///
-  /// Signed scroll offsets let downward drags expand a settled collapsed header
-  /// even when the native scroll position has reached its leading edge.
-  double? headerOffsetForUserScroll(double scrollOffset) {
-    if (!_isUserScrollActive || !scrollOffset.isFinite) return null;
-    return (scrollOffset + _offsetAdjustment)
-        .clamp(0.0, double.infinity)
-        .toDouble();
-  }
+  /// Binds to the single active scroll position. Recreating the package
+  /// controller on handoff makes it recalculate from that position immediately.
+  void bindTo(ScrollPosition? position) {
+    if (identical(position, _position)) return;
 
-  /// Ends direct tracking and returns the last deliberate scroll direction.
-  ///
-  /// Call this at the drag-to-ballistic handoff, or on ScrollEnd when a drag
-  /// stops without a ballistic phase.
-  ScrollDirection? finishUserScroll() {
-    _isUserScrollActive = false;
-    final direction = _lastUserScrollDirection;
-    _lastUserScrollDirection = ScrollDirection.idle;
-    if (direction == ScrollDirection.idle) return null;
-    return direction;
-  }
-
-  void reset() {
-    _isUserScrollActive = false;
-    _lastUserScrollDirection = ScrollDirection.idle;
-    _offsetAdjustment = 0.0;
-  }
-}
-
-/// Animates the shell-owned header from its live scroll position into the
-/// settled expanded or collapsed state. The same easing is used in both
-/// directions so returning to the top reverses the collapse motion.
-class AppHeaderScrollSettler {
-  AppHeaderScrollSettler({
-    required TickerProvider vsync,
-    required this.offset,
-    required this.onSettled,
-  }) : _controller = AnimationController(
-         vsync: vsync,
-         duration: _kAppHeaderScrollSettleDuration,
-       ) {
+    if (_position != null) contentOffset;
+    final oldPosition = _position;
     _controller
-      ..addListener(_updateOffset)
-      ..addStatusListener(_handleStatus);
-  }
-
-  final ValueNotifier<double> offset;
-  final VoidCallback onSettled;
-  final AnimationController _controller;
-  double _from = 0.0;
-  double _to = 0.0;
-
-  bool get isAnimating => _controller.isAnimating;
-
-  void animateTo(double target) {
-    _controller.stop(canceled: false);
-    _from = offset.value;
-    _to = target;
-    final distance = (_to - _from).abs();
-    if (!distance.isFinite || distance < 0.01) {
-      offset.value = target;
-      onSettled();
-      return;
+      ..removeListener(_forwardControllerChange);
+    if (oldPosition != null) {
+      _controller.scrollController.detach(oldPosition);
     }
+    _controller.dispose();
 
-    final durationFraction = (distance / kAppHeaderScrollCollapsedOffset).clamp(
-      0.18,
-      1.0,
-    );
-    _controller.duration = Duration(
-      milliseconds:
-          (_kAppHeaderScrollSettleDuration.inMilliseconds * durationFraction)
-              .round(),
-    );
-    _controller.forward(from: 0.0);
+    _position = position;
+    if (position == null) _cachedContentOffset = 0.0;
+    _controller = GlassLargeTitleController()
+      ..addListener(_forwardControllerChange);
+    if (position != null) {
+      _controller.scrollController.attach(position);
+      // GlassLargeTitle reports the measured title row from layout. The
+      // existing shell reserves a fixed title slot, so use that exact geometry.
+      _controller.reportMeasuredHeight(kAppHeaderTitleHeight);
+    }
+    notifyListeners();
   }
 
-  void stop() => _controller.stop(canceled: false);
-
-  void _updateOffset() {
-    final progress = Curves.easeInOutCubic.transform(_controller.value);
-    offset.value = _from + (_to - _from) * progress;
+  /// Stops observing scroll changes while a search transition owns the header,
+  /// without changing the current visual state.
+  void suspend() {
+    final position = _position;
+    if (position == null) return;
+    contentOffset;
+    _controller.scrollController.detach(position);
+    _position = null;
   }
 
-  void _handleStatus(AnimationStatus status) {
-    if (status != AnimationStatus.completed) return;
-    offset.value = _to;
-    onSettled();
+  void _forwardControllerChange() {
+    contentOffset;
+    notifyListeners();
   }
 
-  void dispose() => _controller.dispose();
+  @override
+  void dispose() {
+    _controller.removeListener(_forwardControllerChange);
+    final position = _position;
+    if (position != null) {
+      _controller.scrollController.detach(position);
+    }
+    _controller.dispose();
+    super.dispose();
+  }
 }
 
 /// Keeps centered placeholders aligned with the center of the usable content
@@ -340,15 +286,6 @@ class AppHeaderScrollTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final scrollController = controller;
     if (scrollController == null) return child;
-    final settledScrollState = AppHeaderScrollInsetScope.maybeHeaderScrolled(
-      context,
-    );
-    final userScrollActive = AppHeaderScrollInsetScope.maybeUserScrollActive(
-      context,
-    );
-    final sharedScrollOffset = AppHeaderScrollInsetScope.maybeScrollOffset(
-      context,
-    );
 
     // Resolve the Scrollable that actually contains this title. Some calendar
     // modes intentionally share one controller with an embedded list, so the
@@ -356,14 +293,8 @@ class AppHeaderScrollTitle extends StatelessWidget {
     // exactly one of them.
     final owningPosition = Scrollable.maybeOf(context)?.position;
     final positionListenable = owningPosition ?? scrollController;
-    final listenables = <Listenable>[
-      positionListenable,
-      if (settledScrollState != null) settledScrollState,
-      if (userScrollActive != null) userScrollActive,
-      if (sharedScrollOffset != null) sharedScrollOffset,
-    ];
     return AnimatedBuilder(
-      animation: Listenable.merge(listenables),
+      animation: positionListenable,
       builder: (context, _) {
         final positions = scrollController.positions;
         final position =
@@ -371,18 +302,10 @@ class AppHeaderScrollTitle extends StatelessWidget {
         if (position == null) return child;
         if (!position.hasContentDimensions) return child;
         final positionOffset = AppHeaderScrollBehavior.contentOffset(position);
-        final isUserScrolling =
-            userScrollActive?.value ??
-            position.userScrollDirection != ScrollDirection.idle;
-        final contentOffset = isUserScrolling && sharedScrollOffset != null
-            ? sharedScrollOffset.value
-            : positionOffset;
-        final fadeProgress = settledScrollState != null && !isUserScrolling
-            ? (settledScrollState.value ? 1.0 : 0.0)
-            : AppHeaderScrollBehavior.largeTitleFadeProgress(
-                contentOffset,
-                titleBottomInset: titleBottomInset,
-              );
+        final fadeProgress = AppHeaderScrollBehavior.largeTitleFadeProgress(
+          positionOffset,
+          titleBottomInset: titleBottomInset,
+        );
         final correction = AppHeaderScrollBehavior.leadingOverscrollCorrection(
           position,
         );
@@ -411,16 +334,10 @@ class AppHeaderScrollInsetScope extends InheritedWidget {
   const AppHeaderScrollInsetScope({
     super.key,
     required this.leadingInset,
-    this.headerIsScrolled,
-    this.headerScrollIsActive,
-    this.headerTitleScrollOffset,
     required super.child,
   });
 
   final double leadingInset;
-  final ValueListenable<bool>? headerIsScrolled;
-  final ValueListenable<bool>? headerScrollIsActive;
-  final ValueListenable<double>? headerTitleScrollOffset;
 
   static double maybeOf(BuildContext context) =>
       context
@@ -428,27 +345,9 @@ class AppHeaderScrollInsetScope extends InheritedWidget {
           ?.leadingInset ??
       0.0;
 
-  static ValueListenable<bool>? maybeHeaderScrolled(BuildContext context) =>
-      context
-          .dependOnInheritedWidgetOfExactType<AppHeaderScrollInsetScope>()
-          ?.headerIsScrolled;
-
-  static ValueListenable<bool>? maybeUserScrollActive(BuildContext context) =>
-      context
-          .dependOnInheritedWidgetOfExactType<AppHeaderScrollInsetScope>()
-          ?.headerScrollIsActive;
-
-  static ValueListenable<double>? maybeScrollOffset(BuildContext context) =>
-      context
-          .dependOnInheritedWidgetOfExactType<AppHeaderScrollInsetScope>()
-          ?.headerTitleScrollOffset;
-
   @override
   bool updateShouldNotify(AppHeaderScrollInsetScope oldWidget) =>
-      leadingInset != oldWidget.leadingInset ||
-      !identical(headerIsScrolled, oldWidget.headerIsScrolled) ||
-      !identical(headerScrollIsActive, oldWidget.headerScrollIsActive) ||
-      !identical(headerTitleScrollOffset, oldWidget.headerTitleScrollOffset);
+      leadingInset != oldWidget.leadingInset;
 }
 
 /// Extends a page scroll viewport upward by the shell inset without moving its

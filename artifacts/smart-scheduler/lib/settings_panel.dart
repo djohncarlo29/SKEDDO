@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:math' show max;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -253,15 +252,8 @@ class _SettingsPanelState extends State<SettingsPanel>
     curve: Curves.easeInOutCubic,
   );
   final ScrollController _mainScrollController = ScrollController();
-  final ValueNotifier<double> _headerTitleScrollOffset = ValueNotifier(0.0);
-  final ValueNotifier<bool> _headerIsScrolled = ValueNotifier(false);
-  final ValueNotifier<bool> _headerScrollIsActive = ValueNotifier(false);
-  bool _headerUserDragActive = false;
-  ScrollDirection _pendingHeaderScrollDirection = ScrollDirection.idle;
-  final Map<String, double> _headerTitleScrollOffsets = {};
-  final Map<String, bool> _headerScrolledStates = {};
-  late final AppHeaderScrollSettler _headerScrollSettler;
-  final AppHeaderScrollTracker _headerScrollTracker = AppHeaderScrollTracker();
+  final AppHeaderTitleTransition _headerTitleTransition =
+      AppHeaderTitleTransition();
   final GlobalKey _mainSettingsContentKey = GlobalKey();
   final Map<String, GlobalKey> _settingsRowAnchorKeys = {
     for (final title in [
@@ -277,124 +269,49 @@ class _SettingsPanelState extends State<SettingsPanel>
   bool _isSplitActive = false;
   GlobalKey? _masterAnchorKey;
 
-  String get _headerScrollScope => _activeRoute?.title ?? 'main';
+  bool _isHeaderScrollSource(ScrollMetrics metrics, int depth) {
+    return metrics.axis == Axis.vertical &&
+        depth == 0 &&
+        metrics.viewportDimension >=
+            max(240, MediaQuery.sizeOf(context).height * 0.35);
+  }
+
+  void _bindHeaderPositionFromContext(BuildContext context) {
+    final position = Scrollable.maybeOf(
+      context,
+      axis: Axis.vertical,
+    )?.position;
+    if (position != null) _headerTitleTransition.bindTo(position);
+  }
 
   bool _onHeaderScrollNotification(ScrollNotification notification) {
-    if (notification.metrics.axis != Axis.vertical ||
-        notification.depth != 0 ||
-        notification.metrics.viewportDimension <
-            max(240, MediaQuery.sizeOf(context).height * 0.35)) {
+    if (!_isHeaderScrollSource(notification.metrics, notification.depth)) {
       return false;
     }
-
-    if (notification is ScrollStartNotification) {
-      if (notification.dragDetails != null) {
-        _headerUserDragActive = true;
-        _pendingHeaderScrollDirection = ScrollDirection.idle;
-        _headerScrollTracker.reset();
-      }
-      return false;
-    }
-
-    if (notification is UserScrollNotification) {
-      if (_headerUserDragActive &&
-          notification.direction != ScrollDirection.idle) {
-        _pendingHeaderScrollDirection = notification.direction;
-        final scrollOffset =
-            AppHeaderScrollBehavior.scrollOffsetIncludingOverscroll(
-              notification.metrics,
-            );
-        if (!AppHeaderScrollBehavior.shouldTrackHeaderScroll(
-          notification.direction,
-          scrollOffset,
-        )) {
-          return false;
-        }
-        _headerScrollSettler.stop();
-        _headerScrollTracker.beginUserScroll(
-          direction: notification.direction,
-          headerOffset: _headerTitleScrollOffset.value,
-          scrollOffset: scrollOffset,
-        );
-        _headerScrollIsActive.value = true;
-      }
-      return false;
-    }
-
-    if (notification is ScrollUpdateNotification) {
-      if (_headerScrollTracker.shouldSettleBeforeScrollUpdate(
-        hasDragDetails: notification.dragDetails != null,
-      )) {
-        // A null dragDetails marks the first ballistic update after release.
-        // Settle before its bounce can be mirrored into the panel header.
-        _settleHeaderAfterUserScroll(notification.metrics);
-        _headerUserDragActive = false;
-        _pendingHeaderScrollDirection = ScrollDirection.idle;
-      } else if (_headerUserDragActive && notification.dragDetails != null) {
-        final scrollOffset =
-            AppHeaderScrollBehavior.scrollOffsetIncludingOverscroll(
-              notification.metrics,
-            );
-        if (!_headerScrollTracker.isUserScrollActive &&
-            AppHeaderScrollBehavior.shouldTrackHeaderScroll(
-              _pendingHeaderScrollDirection,
-              scrollOffset,
-            )) {
-          _headerScrollSettler.stop();
-          _headerScrollTracker.beginUserScroll(
-            direction: _pendingHeaderScrollDirection,
-            headerOffset: _headerTitleScrollOffset.value,
-            scrollOffset: scrollOffset,
-          );
-          _headerScrollIsActive.value = true;
-        }
-        final current = _headerTitleScrollOffset.value;
-        final next = _headerScrollTracker.headerOffsetForUserScroll(
-          scrollOffset,
-        );
-        if (next != null && (next - current).abs() >= 0.01) {
-          _headerTitleScrollOffsets[_headerScrollScope] = next;
-          _headerTitleScrollOffset.value = next;
-        }
-      }
-    }
-
-    if (notification is ScrollEndNotification) {
-      _settleHeaderAfterUserScroll(notification.metrics);
-      _headerUserDragActive = false;
-      _pendingHeaderScrollDirection = ScrollDirection.idle;
+    final notificationContext = notification.context;
+    if (notificationContext != null) {
+      _bindHeaderPositionFromContext(notificationContext);
     }
     return false;
   }
 
-  void _settleHeaderAfterUserScroll(ScrollMetrics metrics) {
-    final direction = _headerScrollTracker.finishUserScroll();
-    if (direction == null) return;
-
-    final scrollOffset =
-        AppHeaderScrollBehavior.scrollOffsetIncludingOverscroll(metrics);
-    final isScrolled = AppHeaderScrollBehavior.headerIsScrolledAt(scrollOffset);
-    final settledOffset =
-        AppHeaderScrollBehavior.settledHeaderOffsetForScrollPosition(
-          scrollOffset,
-        );
-    _headerTitleScrollOffsets[_headerScrollScope] = settledOffset;
-    _headerScrolledStates[_headerScrollScope] = isScrolled;
-    _headerIsScrolled.value = isScrolled;
-    _headerScrollSettler.animateTo(settledOffset);
+  bool _onHeaderScrollMetricsNotification(
+    ScrollMetricsNotification notification,
+  ) {
+    if (!_isHeaderScrollSource(notification.metrics, notification.depth)) {
+      return false;
+    }
+    _bindHeaderPositionFromContext(notification.context);
+    return false;
   }
 
   void _restoreHeaderScrollOffset() {
-    _headerScrollSettler.stop();
-    _headerScrollTracker.reset();
-    _headerUserDragActive = false;
-    _pendingHeaderScrollDirection = ScrollDirection.idle;
-    _headerScrollIsActive.value = false;
-    final scope = _headerScrollScope;
-    final offset = _headerTitleScrollOffsets[scope] ?? 0.0;
-    _headerTitleScrollOffset.value = offset;
-    _headerIsScrolled.value =
-        _headerScrolledStates[scope] ?? offset >= kAppHeaderTitleHeight;
+    final position = !widget.isLandscapeTwoPane && _activeRoute == null
+        ? (_mainScrollController.hasClients
+              ? _mainScrollController.position
+              : null)
+        : null;
+    _headerTitleTransition.bindTo(position);
   }
 
   // Listener added to _navCtrl when a push starts; fires the hard-snap of the
@@ -404,11 +321,6 @@ class _SettingsPanelState extends State<SettingsPanel>
   @override
   void initState() {
     super.initState();
-    _headerScrollSettler = AppHeaderScrollSettler(
-      vsync: this,
-      offset: _headerTitleScrollOffset,
-      onSettled: () => _headerScrollIsActive.value = false,
-    );
     _splitDetailController.addStatusListener(_onSplitDetailStatus);
   }
 
@@ -639,10 +551,7 @@ class _SettingsPanelState extends State<SettingsPanel>
     if (_snapListener != null) _navCtrl.removeListener(_snapListener!);
     _splitDetailController.removeStatusListener(_onSplitDetailStatus);
     _mainScrollController.dispose();
-    _headerScrollSettler.dispose();
-    _headerTitleScrollOffset.dispose();
-    _headerIsScrolled.dispose();
-    _headerScrollIsActive.dispose();
+    _headerTitleTransition.dispose();
     _paneTransitionController.dispose();
     _splitDetailController.dispose();
     _navCtrl.dispose();
@@ -762,11 +671,15 @@ class _SettingsPanelState extends State<SettingsPanel>
               ),
             ),
           ),
+        ),
+      ),
         );
 
-        return NotificationListener<ScrollNotification>(
-          onNotification: _onHeaderScrollNotification,
-          child: ClipRect(
+        return NotificationListener<ScrollMetricsNotification>(
+          onNotification: _onHeaderScrollMetricsNotification,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _onHeaderScrollNotification,
+            child: ClipRect(
             child: ColoredBox(
               color: backgroundColor,
               child: SizedBox.expand(
@@ -778,9 +691,6 @@ class _SettingsPanelState extends State<SettingsPanel>
                       top: headerHeight,
                       child: AppHeaderScrollInsetScope(
                         leadingInset: headerHeight,
-                        headerIsScrolled: _headerIsScrolled,
-                        headerScrollIsActive: _headerScrollIsActive,
-                        headerTitleScrollOffset: _headerTitleScrollOffset,
                         child: showLandscapeSplit
                             ? AppHeaderScrollClip(child: splitBody)
                             : AppWindowPhysicalWidth(
@@ -800,9 +710,6 @@ class _SettingsPanelState extends State<SettingsPanel>
                         top: headerHeight,
                         child: AppHeaderScrollInsetScope(
                           leadingInset: headerHeight,
-                          headerIsScrolled: _headerIsScrolled,
-                          headerScrollIsActive: _headerScrollIsActive,
-                          headerTitleScrollOffset: _headerTitleScrollOffset,
                           child: AppWindowPhysicalWidth(
                             child: SlideTransition(
                               position: _subSlide,
@@ -851,7 +758,7 @@ class _SettingsPanelState extends State<SettingsPanel>
                           : AnimatedBuilder(
                               animation: Listenable.merge([
                                 _navCtrl,
-                                _headerTitleScrollOffset,
+                                _headerTitleTransition,
                               ]),
                               builder: (context, _) {
                                 final isSubScreen =
@@ -861,7 +768,10 @@ class _SettingsPanelState extends State<SettingsPanel>
                                   topInset: topInset,
                                   contentHeight: headerContentHeight,
                                   isLandscape: isLandscape,
-                                  scrollOffset: _headerTitleScrollOffset.value,
+                                  scrollOffset:
+                                      _headerTitleTransition.contentOffset,
+                                  collapseProgress:
+                                      _headerTitleTransition.collapseProgress,
                                   title: isSubScreen
                                       ? _activeRoute!.title
                                       : 'Settings',
@@ -1624,6 +1534,7 @@ class _SettingsHeader extends StatelessWidget {
   final double contentHeight;
   final bool isLandscape;
   final double scrollOffset;
+  final double collapseProgress;
   final String title;
 
   const _SettingsHeader({
@@ -1631,6 +1542,7 @@ class _SettingsHeader extends StatelessWidget {
     required this.contentHeight,
     required this.isLandscape,
     required this.scrollOffset,
+    required this.collapseProgress,
     required this.title,
   });
 
@@ -1644,18 +1556,16 @@ class _SettingsHeader extends StatelessWidget {
     final toolbarHeight = isLandscape ? contentHeight : kAppHeaderToolbarHeight;
     final titleCollapseProgress = isLandscape
         ? 0.0
-        : AppHeaderScrollBehavior.titleCollapseProgress(scrollOffset);
+        : collapseProgress.clamp(0.0, 1.0).toDouble();
     final largeTitleFadeProgress = isLandscape
         ? 0.0
-        : AppHeaderScrollBehavior.largeTitleFadeProgress(
-            scrollOffset,
-            titleBottomInset: kHeaderTitleBottomInset,
+        : AppHeaderScrollBehavior.packageLargeTitleFadeProgress(
+            collapseProgress,
           );
     final compactTitleFadeProgress = isLandscape
         ? 0.0
-        : AppHeaderScrollBehavior.compactTitleFadeProgress(
-            scrollOffset,
-            titleBottomInset: kHeaderTitleBottomInset,
+        : AppHeaderScrollBehavior.packageCompactTitleFadeProgress(
+            collapseProgress,
           );
     final edgeProgress = isLandscape
         ? 0.0

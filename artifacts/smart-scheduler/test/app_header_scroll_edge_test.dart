@@ -174,18 +174,12 @@ void main() {
     const titleBottomInset = 10.0;
     const titleKey = ValueKey('scroll-owned-large-title');
     final controller = ScrollController();
-    final isScrolled = ValueNotifier<bool>(false);
-    final isScrollActive = ValueNotifier<bool>(false);
     addTearDown(controller.dispose);
-    addTearDown(isScrolled.dispose);
-    addTearDown(isScrollActive.dispose);
 
     await tester.pumpWidget(
       CupertinoApp(
         home: AppHeaderScrollInsetScope(
           leadingInset: 0,
-          headerIsScrolled: isScrolled,
-          headerScrollIsActive: isScrollActive,
           child: SizedBox(
             height: 600,
             child: CustomScrollView(
@@ -223,7 +217,6 @@ void main() {
         )
         .opacity;
 
-    isScrollActive.value = true;
     controller.jumpTo(52);
     await tester.pump();
     expect(titleOpacity(), 0);
@@ -234,31 +227,18 @@ void main() {
 
     controller.jumpTo(0);
     await tester.pump();
-    isScrolled.value = true;
-    isScrollActive.value = false;
-    await tester.pump();
-    expect(titleOpacity(), 0);
-
-    isScrolled.value = false;
-    await tester.pump();
     expect(titleOpacity(), 1);
   });
 
-  testWidgets('settling the header never collapses the content slot', (
+  testWidgets('the fixed title slot remains in the scroll extent', (
     tester,
   ) async {
     const contentKey = ValueKey('latched-title-slot-content');
-    final isScrolled = ValueNotifier<bool>(false);
-    final scrollOffset = ValueNotifier<double>(0.0);
-    addTearDown(isScrolled.dispose);
-    addTearDown(scrollOffset.dispose);
 
     await tester.pumpWidget(
       CupertinoApp(
         home: AppHeaderScrollInsetScope(
           leadingInset: 0,
-          headerIsScrolled: isScrolled,
-          headerTitleScrollOffset: scrollOffset,
           child: SizedBox(
             height: 600,
             child: Column(
@@ -275,15 +255,7 @@ void main() {
 
     double contentTop() => tester.getTopLeft(find.byKey(contentKey)).dy;
     expect(contentTop(), kAppHeaderTitleHeight);
-
-    isScrolled.value = true;
-    scrollOffset.value = kAppHeaderScrollCollapsedOffset;
-    await tester.pump();
-    expect(contentTop(), kAppHeaderTitleHeight);
-
-    isScrolled.value = false;
-    scrollOffset.value = 0;
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(contentTop(), kAppHeaderTitleHeight);
   });
 
@@ -300,98 +272,101 @@ void main() {
     expect(AppHeaderScrollBehavior.scrollEdgeProgress(double.nan), 0);
   });
 
-  test('header settle uses the actual scroll-position threshold', () {
+  test('package title cross-fade follows its collapse progress', () {
+    expect(AppHeaderScrollBehavior.packageLargeTitleFadeProgress(0), 0);
     expect(
-      AppHeaderScrollBehavior.settledHeaderOffsetForScrollPosition(
-        kAppHeaderTitleHeight,
-      ),
-      kAppHeaderScrollCollapsedOffset,
+      AppHeaderScrollBehavior.packageLargeTitleFadeProgress(0.5),
+      closeTo(1 - Curves.easeIn.transform(0.5), 1e-9),
     );
+    expect(AppHeaderScrollBehavior.packageLargeTitleFadeProgress(1), 1);
+
+    expect(AppHeaderScrollBehavior.packageCompactTitleFadeProgress(0), 0);
+    expect(AppHeaderScrollBehavior.packageCompactTitleFadeProgress(0.5), 0);
     expect(
-      AppHeaderScrollBehavior.settledHeaderOffsetForScrollPosition(
-        kAppHeaderTitleHeight - 0.1,
-      ),
-      0,
+      AppHeaderScrollBehavior.packageCompactTitleFadeProgress(0.75),
+      closeTo(Curves.easeOut.transform(0.5), 1e-9),
     );
-    expect(
-      AppHeaderScrollBehavior.headerIsScrolledAt(kAppHeaderTitleHeight),
-      isTrue,
-    );
-    expect(
-      AppHeaderScrollBehavior.headerIsScrolledAt(kAppHeaderTitleHeight - 0.1),
-      isFalse,
-    );
+    expect(AppHeaderScrollBehavior.packageCompactTitleFadeProgress(1), 1);
   });
 
-  test('downward header tracking waits for the top-header region', () {
-    expect(
-      AppHeaderScrollBehavior.shouldTrackHeaderScroll(
-        ScrollDirection.forward,
-        kAppHeaderScrollCollapsedOffset + 1,
-      ),
-      isFalse,
-    );
-    expect(
-      AppHeaderScrollBehavior.shouldTrackHeaderScroll(
-        ScrollDirection.forward,
-        kAppHeaderScrollCollapsedOffset,
-      ),
-      isTrue,
-    );
-    expect(
-      AppHeaderScrollBehavior.shouldTrackHeaderScroll(
-        ScrollDirection.reverse,
-        kAppHeaderScrollCollapsedOffset + 1000,
-      ),
-      isTrue,
-    );
-  });
+  testWidgets(
+    'package collapse controller tracks the actual position through release-like changes',
+    (tester) async {
+      final scrollController = ScrollController();
+      final titleTransition = AppHeaderTitleTransition();
+      addTearDown(() {
+        titleTransition.dispose();
+        scrollController.dispose();
+      });
+      const contentKey = ValueKey('content-below-compact-header');
 
-  test('released gesture keeps its direction and ignores ballistic bounce', () {
-    final tracker = AppHeaderScrollTracker();
-    tracker.beginUserScroll(
-      direction: ScrollDirection.reverse,
-      headerOffset: 0,
-      scrollOffset: 0,
-    );
-
-    expect(tracker.headerOffsetForUserScroll(28), 28);
-    expect(
-      tracker.shouldSettleBeforeScrollUpdate(hasDragDetails: true),
-      isFalse,
-    );
-    expect(
-      tracker.shouldSettleBeforeScrollUpdate(hasDragDetails: false),
-      isTrue,
-    );
-    expect(tracker.finishUserScroll(), ScrollDirection.reverse);
-    expect(tracker.isUserScrollActive, isFalse);
-    expect(
-      tracker.shouldSettleBeforeScrollUpdate(hasDragDetails: false),
-      isFalse,
-    );
-    expect(tracker.headerOffsetForUserScroll(3), isNull);
-  });
-
-  test(
-    'downward drag expands a collapsed header through leading overscroll',
-    () {
-      final tracker = AppHeaderScrollTracker();
-      tracker.beginUserScroll(
-        direction: ScrollDirection.forward,
-        headerOffset: kAppHeaderScrollCollapsedOffset,
-        scrollOffset: 0,
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: AppHeaderScrollInsetScope(
+            leadingInset: kAppHeaderToolbarHeight,
+            child: SizedBox(
+              height: 320,
+              child: Padding(
+                padding: const EdgeInsets.only(top: kAppHeaderToolbarHeight),
+                child: AppHeaderScrollView(
+                  controller: scrollController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  slivers: const [
+                    SliverToBoxAdapter(
+                      child: SizedBox(height: kAppHeaderTitleHeight),
+                    ),
+                    SliverToBoxAdapter(
+                      child: SizedBox(key: contentKey, height: 40),
+                    ),
+                    SliverToBoxAdapter(child: SizedBox(height: 2400)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       );
+      await tester.pump();
 
+      final position = scrollController.position;
+      titleTransition.bindTo(position);
+      expect(titleTransition.collapseProgress, 0);
+
+      // Passing the title slot produces the compact state; a small downward
+      // move that remains beyond it cannot restore the large title.
+      scrollController.jumpTo(kAppHeaderTitleHeight + 20);
+      await tester.pump();
+      expect(titleTransition.collapseProgress, 1);
+      expect(titleTransition.contentOffset, kAppHeaderTitleHeight + 20);
+
+      scrollController.jumpTo(kAppHeaderTitleHeight);
+      await tester.pump();
       expect(
-        tracker.headerOffsetForUserScroll(-24),
-        kAppHeaderScrollCollapsedOffset - 24,
+        tester.getTopLeft(find.byKey(contentKey)).dy,
+        closeTo(kAppHeaderToolbarHeight, 1),
       );
-      expect(
-        tracker.headerOffsetForUserScroll(-kAppHeaderScrollCollapsedOffset),
-        0,
-      );
-      expect(tracker.finishUserScroll(), ScrollDirection.forward);
+
+      scrollController.jumpTo(kAppHeaderTitleHeight + 8);
+      await tester.pump();
+      expect(titleTransition.collapseProgress, 1);
+
+      // Expansion is continuous with the real position and remains there when
+      // motion stops; there is no independent settle animation to snap through.
+      scrollController.jumpTo(kAppHeaderTitleHeight / 2);
+      await tester.pump();
+      expect(titleTransition.collapseProgress, closeTo(0.5, 1e-9));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(titleTransition.collapseProgress, closeTo(0.5, 1e-9));
+
+      for (var cycle = 0; cycle < 3; cycle++) {
+        scrollController.jumpTo(kAppHeaderTitleHeight + 12);
+        await tester.pump();
+        expect(titleTransition.collapseProgress, 1);
+        scrollController.jumpTo(0);
+        await tester.pump();
+        expect(titleTransition.collapseProgress, 0);
+        expect(titleTransition.contentOffset, 0);
+      }
     },
   );
 
@@ -494,17 +469,13 @@ void main() {
     },
   );
 
-  testWidgets('header content slot stays fixed while the title animates', (
+  testWidgets('header content slot stays fixed during title collapse', (
     tester,
   ) async {
-    final scrollOffset = ValueNotifier<double>(0.0);
-    addTearDown(scrollOffset.dispose);
-
     await tester.pumpWidget(
       CupertinoApp(
         home: AppHeaderScrollInsetScope(
           leadingInset: 0,
-          headerTitleScrollOffset: scrollOffset,
           child: SizedBox(
             height: 600,
             child: Column(
@@ -523,51 +494,8 @@ void main() {
         .dy;
 
     expect(contentTop(), kAppHeaderTitleHeight);
-    scrollOffset.value = kAppHeaderTitleHeight / 2;
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(contentTop(), kAppHeaderTitleHeight);
-    scrollOffset.value = kAppHeaderTitleHeight;
-    await tester.pump();
-    expect(contentTop(), kAppHeaderTitleHeight);
-  });
-
-  testWidgets('settle animation uses the same path in both directions', (
-    tester,
-  ) async {
-    final offset = ValueNotifier<double>(0.0);
-    addTearDown(offset.dispose);
-    late AppHeaderScrollSettler settler;
-
-    await tester.pumpWidget(
-      CupertinoApp(
-        home: _HeaderSettleHarness(
-          offset: offset,
-          onSettlerCreated: (value) => settler = value,
-        ),
-      ),
-    );
-
-    settler.animateTo(kAppHeaderScrollCollapsedOffset);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 130));
-    final halfwayCollapsed = offset.value;
-    expect(
-      halfwayCollapsed,
-      inExclusiveRange(0, kAppHeaderScrollCollapsedOffset),
-    );
-
-    await tester.pump(const Duration(milliseconds: 130));
-    expect(offset.value, kAppHeaderScrollCollapsedOffset);
-
-    settler.animateTo(0);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 130));
-    expect(
-      offset.value,
-      closeTo(kAppHeaderScrollCollapsedOffset - halfwayCollapsed, 2.5),
-    );
-    await tester.pump(const Duration(milliseconds: 130));
-    expect(offset.value, 0);
   });
 
   testWidgets(
@@ -858,40 +786,3 @@ void main() {
   );
 }
 
-class _HeaderSettleHarness extends StatefulWidget {
-  const _HeaderSettleHarness({
-    required this.offset,
-    required this.onSettlerCreated,
-  });
-
-  final ValueNotifier<double> offset;
-  final ValueChanged<AppHeaderScrollSettler> onSettlerCreated;
-
-  @override
-  State<_HeaderSettleHarness> createState() => _HeaderSettleHarnessState();
-}
-
-class _HeaderSettleHarnessState extends State<_HeaderSettleHarness>
-    with SingleTickerProviderStateMixin {
-  late final AppHeaderScrollSettler _settler;
-
-  @override
-  void initState() {
-    super.initState();
-    _settler = AppHeaderScrollSettler(
-      vsync: this,
-      offset: widget.offset,
-      onSettled: () {},
-    );
-    widget.onSettlerCreated(_settler);
-  }
-
-  @override
-  void dispose() {
-    _settler.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => const SizedBox.shrink();
-}
