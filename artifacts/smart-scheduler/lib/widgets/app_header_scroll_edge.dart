@@ -508,6 +508,12 @@ class AppHeaderScrollView extends StatelessWidget {
       if (leadingInset > 0.0)
         SliverToBoxAdapter(child: SizedBox(height: leadingInset)),
       ...slivers,
+      if (leadingInset > 0.0 &&
+          scrollDirection == Axis.vertical &&
+          !reverse &&
+          !shrinkWrap &&
+          MediaQuery.orientationOf(context) == Orientation.portrait)
+        const _AppHeaderMinimumCollapseRange(),
     ];
     final scrollView = CustomScrollView(
       key: _scrollViewKey,
@@ -535,6 +541,34 @@ class AppHeaderScrollView extends StatelessWidget {
       leadingInset: leadingInset,
       topExtension: topExtension,
       child: scrollView,
+    );
+  }
+}
+
+/// Ensures a short page can scroll through the actual large-title region even
+/// when its ordinary content does not fill the viewport.
+///
+/// This is a minimum scroll-range contract, not a fixed padding value: the
+/// trailing extent is calculated from the measured viewport and all preceding
+/// slivers, and is zero whenever the page already has enough scroll range.
+/// The title slot remains the source of collapse progress; this sliver only
+/// makes that real collapse distance reachable on short pages.
+class _AppHeaderMinimumCollapseRange extends StatelessWidget {
+  const _AppHeaderMinimumCollapseRange();
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverLayoutBuilder(
+      builder: (context, constraints) {
+        final neededExtent =
+            constraints.viewportMainAxisExtent +
+            kAppHeaderTitleCollapseDistance -
+            constraints.precedingScrollExtent;
+        if (!neededExtent.isFinite || neededExtent <= 0.0) {
+          return const SliverToBoxAdapter(child: SizedBox.shrink());
+        }
+        return SliverToBoxAdapter(child: SizedBox(height: neededExtent));
+      },
     );
   }
 }

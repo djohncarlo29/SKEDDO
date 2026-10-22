@@ -474,6 +474,181 @@ void main() {
   );
 
   testWidgets(
+    'short content can collapse the title and stays compact at its end',
+    (tester) async {
+      const viewportKey = ValueKey('short-header-scroll-viewport');
+      const contentKey = ValueKey('short-header-first-content');
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final scrollController = ScrollController();
+      final titleTransition = AppHeaderTitleTransition();
+      addTearDown(() {
+        titleTransition.dispose();
+        scrollController.dispose();
+      });
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              final notificationContext = notification.context;
+              if (notificationContext != null) {
+                final position = Scrollable.maybeOf(
+                  notificationContext,
+                  axis: Axis.vertical,
+                )?.position;
+                if (position != null) titleTransition.bindTo(position);
+              }
+              return false;
+            },
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: AppHeaderScrollInsetScope(
+                    leadingInset: kAppHeaderToolbarHeight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        top: kAppHeaderToolbarHeight,
+                      ),
+                      child: AppHeaderScrollView(
+                        key: viewportKey,
+                        controller: scrollController,
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        slivers: const [
+                          SliverToBoxAdapter(
+                            child: SizedBox(height: kAppHeaderTitleHeight),
+                          ),
+                          SliverToBoxAdapter(
+                            child: SizedBox(key: contentKey, height: 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: kAppHeaderToolbarHeight,
+                  child: AnimatedBuilder(
+                    animation: titleTransition,
+                    builder: (context, _) => AppHeaderCompactTitle(
+                      progress:
+                          AppHeaderScrollBehavior.packageCompactTitleFadeProgress(
+                            titleTransition.collapseProgress,
+                          ),
+                      isLandscape: false,
+                      child: const Center(
+                        child: Text('Compact title', key: ValueKey('compact')),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      double contentTop() => tester.getTopLeft(find.byKey(contentKey)).dy;
+
+      expect(contentTop(), kAppHeaderToolbarHeight + kAppHeaderTitleHeight);
+      expect(
+        scrollController.position.maxScrollExtent,
+        closeTo(kAppHeaderTitleCollapseDistance, 1e-6),
+      );
+
+      await tester.drag(find.byKey(viewportKey), const Offset(0, -120));
+      await tester.pumpAndSettle();
+
+      expect(
+        scrollController.position.pixels,
+        closeTo(kAppHeaderTitleCollapseDistance, 1e-6),
+      );
+      expect(titleTransition.collapseProgress, 1);
+      expect(contentTop(), closeTo(kAppHeaderToolbarHeight, 1));
+      expect(
+        tester
+            .widget<Opacity>(
+              find
+                  .ancestor(
+                    of: find.byKey(const ValueKey('compact')),
+                    matching: find.byType(Opacity),
+                  )
+                  .first,
+            )
+            .opacity,
+        1,
+      );
+
+      // Ending the short list at its maximum extent must not infer expansion
+      // from the lack of additional ordinary content scroll range.
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(titleTransition.collapseProgress, 1);
+      expect(contentTop(), closeTo(kAppHeaderToolbarHeight, 1));
+
+      // Pulling farther past the compact boundary rubber-bands at the bottom,
+      // then returns to the same compact position when released.
+      await tester.timedDrag(
+        find.byKey(viewportKey),
+        const Offset(0, -32),
+        const Duration(milliseconds: 320),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        scrollController.position.pixels,
+        closeTo(kAppHeaderTitleCollapseDistance, 1e-6),
+      );
+      expect(titleTransition.collapseProgress, 1);
+
+      // The title returns only when the actual scroll position enters its
+      // expansion region. Releasing during that transition leaves the
+      // position-derived intermediate state in place instead of snapping.
+      const expansionTravel = 20.0;
+      await tester.timedDrag(
+        find.byKey(viewportKey),
+        const Offset(0, expansionTravel),
+        const Duration(milliseconds: 320),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        scrollController.position.pixels,
+        greaterThanOrEqualTo(0.0),
+      );
+      expect(
+        scrollController.position.pixels,
+        lessThan(kAppHeaderTitleCollapseDistance),
+      );
+      final expandedOffset = scrollController.position.pixels;
+      expect(
+        titleTransition.collapseProgress,
+        closeTo(expandedOffset / kAppHeaderTitleCollapseDistance, 1e-6),
+      );
+      expect(
+        contentTop(),
+        closeTo(
+          kAppHeaderToolbarHeight +
+              kAppHeaderTitleCollapseDistance -
+              expandedOffset,
+          1,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(scrollController.position.pixels, closeTo(expandedOffset, 1e-6));
+      expect(
+        titleTransition.collapseProgress,
+        closeTo(expandedOffset / kAppHeaderTitleCollapseDistance, 1e-6),
+      );
+    },
+  );
+
+  testWidgets(
     'centered content follows the expanding area without list recentering',
     (tester) async {
       const surfaceSize = Size(320, 600);
