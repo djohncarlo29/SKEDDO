@@ -144,14 +144,16 @@ abstract final class AppHeaderScrollBehavior {
 /// scrollables, so this adapter attaches the package's controller to the active
 /// existing position instead of introducing another scroll view or offset.
 class AppHeaderTitleTransition extends ChangeNotifier {
-  AppHeaderTitleTransition()
-    : _controller = GlassLargeTitleController() {
+  AppHeaderTitleTransition() : _controller = GlassLargeTitleController() {
     _controller.addListener(_forwardControllerChange);
   }
 
   GlassLargeTitleController _controller;
   ScrollPosition? _position;
   double _cachedContentOffset = 0.0;
+  double _lastNotifiedContentOffset = 0.0;
+  double _lastNotifiedCollapseProgress = 0.0;
+  bool _isBinding = false;
 
   ScrollPosition? get position => _position;
   double get collapseProgress => _controller.collapseProgress;
@@ -175,9 +177,10 @@ class AppHeaderTitleTransition extends ChangeNotifier {
 
     if (_position != null) contentOffset;
     final oldPosition = _position;
-    _controller
-      ..removeListener(_forwardControllerChange);
+    _isBinding = true;
+    _controller.removeListener(_forwardControllerChange);
     if (oldPosition != null) {
+      oldPosition.removeListener(_handlePositionChanged);
       _controller.scrollController.detach(oldPosition);
     }
     _controller.dispose();
@@ -188,10 +191,14 @@ class AppHeaderTitleTransition extends ChangeNotifier {
       ..addListener(_forwardControllerChange);
     if (position != null) {
       _controller.scrollController.attach(position);
+      position.addListener(_handlePositionChanged);
       // GlassLargeTitle reports the measured title row from layout. The
       // existing shell reserves a fixed title slot, so use that exact geometry.
       _controller.reportMeasuredHeight(kAppHeaderTitleHeight);
     }
+    _lastNotifiedContentOffset = contentOffset;
+    _lastNotifiedCollapseProgress = collapseProgress;
+    _isBinding = false;
     notifyListeners();
   }
 
@@ -201,12 +208,35 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     final position = _position;
     if (position == null) return;
     contentOffset;
+    position.removeListener(_handlePositionChanged);
     _controller.scrollController.detach(position);
     _position = null;
   }
 
   void _forwardControllerChange() {
-    contentOffset;
+    _notifyIfChanged();
+  }
+
+  /// The package controller intentionally stops notifying once its normalized
+  /// collapse progress reaches 1.0. The shell still needs the same position's
+  /// full offset for title travel and LiquidGlassScrollEdge progress, so listen
+  /// to the active ScrollPosition as well. This is not a second scroll source:
+  /// both values are read from the exact position attached to the package
+  /// controller.
+  void _handlePositionChanged() {
+    _notifyIfChanged();
+  }
+
+  void _notifyIfChanged() {
+    if (_isBinding) return;
+    final currentContentOffset = contentOffset;
+    final currentCollapseProgress = collapseProgress;
+    if (currentContentOffset == _lastNotifiedContentOffset &&
+        currentCollapseProgress == _lastNotifiedCollapseProgress) {
+      return;
+    }
+    _lastNotifiedContentOffset = currentContentOffset;
+    _lastNotifiedCollapseProgress = currentCollapseProgress;
     notifyListeners();
   }
 
@@ -215,6 +245,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     _controller.removeListener(_forwardControllerChange);
     final position = _position;
     if (position != null) {
+      position.removeListener(_handlePositionChanged);
       _controller.scrollController.detach(position);
     }
     _controller.dispose();

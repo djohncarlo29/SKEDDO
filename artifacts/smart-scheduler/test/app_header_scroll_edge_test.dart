@@ -339,6 +339,22 @@ void main() {
       expect(titleTransition.collapseProgress, 1);
       expect(titleTransition.contentOffset, kAppHeaderTitleHeight + 20);
 
+      // The package controller saturates collapseProgress at 1.0 and stops
+      // notifying for further positive movement. The shared shell must still
+      // follow this same ScrollPosition for title travel and glass-edge extent.
+      scrollController.jumpTo(400);
+      await tester.pump();
+      expect(titleTransition.collapseProgress, 1);
+      expect(titleTransition.contentOffset, 400);
+
+      // Moving back toward the top while still in the compact region must not
+      // restore the large title, but the shell's positional effects must keep
+      // tracking the actual scroll coordinate.
+      scrollController.jumpTo(120);
+      await tester.pump();
+      expect(titleTransition.collapseProgress, 1);
+      expect(titleTransition.contentOffset, 120);
+
       scrollController.jumpTo(kAppHeaderTitleHeight);
       await tester.pump();
       expect(
@@ -785,4 +801,3 @@ void main() {
     },
   );
 }
-
