@@ -35,6 +35,77 @@ import 'widgets/view_mode_icons.dart';
 import 'app_settings.dart';
 import 'settings_panel.dart';
 
+class _CupertinoTabContentScope extends InheritedWidget {
+  final List<Widget> tabContents;
+  final double bottomInset;
+  final Animation<double> searchModeAnimation;
+
+  const _CupertinoTabContentScope({
+    required this.tabContents,
+    required this.bottomInset,
+    required this.searchModeAnimation,
+    required super.child,
+  });
+
+  static _CupertinoTabContentScope of(BuildContext context) {
+    final scope = context
+        .dependOnInheritedWidgetOfExactType<_CupertinoTabContentScope>();
+    assert(scope != null, 'No _CupertinoTabContentScope found in context.');
+    return scope!;
+  }
+
+  @override
+  bool updateShouldNotify(_CupertinoTabContentScope oldWidget) =>
+      !identical(tabContents, oldWidget.tabContents) ||
+      bottomInset != oldWidget.bottomInset ||
+      !identical(searchModeAnimation, oldWidget.searchModeAnimation);
+}
+
+class _CupertinoTabRouteRoot extends StatelessWidget {
+  final int index;
+
+  const _CupertinoTabRouteRoot({required this.index});
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = _CupertinoTabContentScope.of(context);
+    return AnimatedBuilder(
+      animation: scope.searchModeAnimation,
+      builder: (context, child) {
+        final t = scope.searchModeAnimation.value.clamp(0.0, 1.0);
+        final topInset = MediaQuery.of(context).padding.top;
+        final isLandscape =
+            AppWindowMasterDetailGeometry.of(context).isLandscape;
+        final headerToolbarHeight = isLandscape
+            ? 52.0
+            : kAppHeaderToolbarHeight;
+        final leadingInset = topInset + headerToolbarHeight * (1 - t);
+
+        return AppHeaderScrollInsetScope(
+          leadingInset: leadingInset,
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: leadingInset,
+              bottom: scope.bottomInset,
+            ),
+            child: child,
+          ),
+        );
+      },
+      child: scope.tabContents[index],
+    );
+  }
+}
+
+Widget _buildNotesTabRoute(BuildContext context) =>
+    const _CupertinoTabRouteRoot(index: 0);
+
+Widget _buildCalendarTabRoute(BuildContext context) =>
+    const _CupertinoTabRouteRoot(index: 1);
+
+Widget _buildEventsTabRoute(BuildContext context) =>
+    const _CupertinoTabRouteRoot(index: 2);
+
 // ══════════════════════════════════════════════════════════════════════════════
 // _DcvMenuContent — stateful overlay widget for the DCV ellipsis menu.
 //
@@ -2794,28 +2865,17 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   Widget _buildContent({
     required bool landscapeMasterDetail,
     required double landscapeMasterWidth,
+    required double dcvKeyboardBottomInset,
   }) {
-    // RepaintBoundary around each tab isolates its repaint layer from its
-    // siblings. When the visible tab repaints (e.g. a search result changes)
-    // the engine skips the offstage tabs entirely, and vice-versa.
-    return IndexedStack(
-      index: _selectedIndex,
-      // Scroll views in these pages paint through their own viewport and this
-      // page stack into the full-screen AppShell, where the physical viewport
-      // is the only top clipping boundary.
-      clipBehavior: Clip.none,
-      children: [
-        RepaintBoundary(
-          child: NotesTab(
+    final tabContents = <Widget>[
+      NotesTab(
             key: _notesTabKey,
             onSearchFocusChanged: _setSearchFocused,
             searchModeAnimation: _searchModeAnim,
             onEditEvent: (event) => _calendarTabKey.currentState
                 ?.showEditEventSheet(context, event),
-          ),
-        ),
-        RepaintBoundary(
-          child: CalendarTab(
+      ),
+      CalendarTab(
             key: _calendarTabKey,
             daySubMode: _activeDaySubMode,
             onViewChanged:
@@ -2866,10 +2926,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   label,
                   sectionEventIds,
                 ),
-          ),
-        ),
-        RepaintBoundary(
-          child: EventsTab(
+      ),
+      EventsTab(
             key: _eventsTabKey,
             onSearchFocusChanged: _setSearchFocused,
             searchModeAnimation: _searchModeAnim,
@@ -2905,9 +2963,36 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             dcvCategoryTransitionProgress: _dcvCategoryTransitionProgress,
             onEditEvent: (event) => _calendarTabKey.currentState
                 ?.showEditEventSheet(context, event),
+      ),
+    ];
+
+    return _CupertinoTabContentScope(
+      tabContents: tabContents,
+      bottomInset: dcvKeyboardBottomInset,
+      searchModeAnimation: _searchModeAnim,
+      child: IndexedStack(
+        index: _selectedIndex,
+        // Keep each per-tab Navigator full-screen so its routes and modal
+        // overlays retain the AppShell's original geometry.
+        clipBehavior: Clip.none,
+        children: const [
+          RepaintBoundary(
+            child: CupertinoTabView(
+              builder: _buildNotesTabRoute,
+            ),
           ),
-        ),
-      ],
+          RepaintBoundary(
+            child: CupertinoTabView(
+              builder: _buildCalendarTabRoute,
+            ),
+          ),
+          RepaintBoundary(
+            child: CupertinoTabView(
+              builder: _buildEventsTabRoute,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -2999,28 +3084,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                           // top-padding equal to the current header height so the
                           // scroll view's content starts below the header, exactly
                           // as it did when the header was a Column sibling.
-                          AnimatedBuilder(
-                            animation: _searchModeAnim,
-                            builder: (context, child) {
-                              final t = _searchModeAnim.value.clamp(0.0, 1.0);
-                              final leadingInset =
-                                  topInset + headerToolbarHeight * (1 - t);
-                              return AppHeaderScrollInsetScope(
-                                leadingInset: leadingInset,
-                                child: Padding(
-                                  padding: EdgeInsets.only(
-                                    top: leadingInset,
-                                    bottom: dcvKeyboardBottomInset,
-                                  ),
-                                  child: child,
-                                ),
-                              );
-                            },
-                            child: _buildContent(
-                              landscapeMasterDetail:
-                                  landscapeDcvLayoutAvailable,
-                              landscapeMasterWidth: landscapeMasterWidth,
-                            ),
+                          _buildContent(
+                            landscapeMasterDetail: landscapeDcvLayoutAvailable,
+                            landscapeMasterWidth: landscapeMasterWidth,
+                            dcvKeyboardBottomInset: dcvKeyboardBottomInset,
                           ),
 
                           // Header — last Stack child so it paints above the content.
