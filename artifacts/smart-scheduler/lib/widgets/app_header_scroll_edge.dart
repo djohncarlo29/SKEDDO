@@ -8,7 +8,7 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 const double kAppHeaderToolbarHeight = 44;
 const double kAppHeaderTitleHeight = 57;
 const double kAppHeaderTitleCollapseDistance = kAppHeaderTitleHeight;
-const double kAppHeaderScrollEdgeHeaderBottomExtension = 16;
+const double kAppHeaderScrollEdgeHeaderBottomExtension = 12;
 const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;
 const double _kAppHeaderScrollEdgeMaxBlurSigma = 4;
 
@@ -709,8 +709,9 @@ class AppHeaderScrollEdge extends StatelessWidget {
       top: 0,
       left: 0,
       right: 0,
-      // Start at the physical top of the screen and extend 16pt past the
-      // bottom of the complete first-level header.
+      // Start at the physical top of the screen and extend 12pt past the
+      // bottom of the complete first-level header. This bounds the glass
+      // effect itself; it does not clip the scrolling content beneath it.
       height: headerHeight + kAppHeaderScrollEdgeHeaderBottomExtension,
       child: Stack(
         fit: StackFit.expand,

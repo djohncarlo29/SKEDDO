@@ -712,7 +712,7 @@ void main() {
   );
 
   testWidgets(
-    'glass filter starts at screen top and extends 16pt below header',
+    'glass effect starts at screen top and extends 12pt below header',
     (tester) async {
       const headerAreaHeight = 92.0;
       const surfaceSize = Size(320, 240);
@@ -739,9 +739,10 @@ void main() {
 
       final blurRect = tester.getRect(find.byType(LiquidGlassScrollEdge));
       expect(blurRect.top, 0);
+      expect(kAppHeaderScrollEdgeHeaderBottomExtension, 12.0);
       expect(
         blurRect.height,
-        headerAreaHeight + kAppHeaderScrollEdgeHeaderBottomExtension,
+        headerAreaHeight + 12.0,
       );
       expect(blurRect.bottom, lessThan(surfaceSize.height));
     },

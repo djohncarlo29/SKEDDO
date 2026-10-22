@@ -4390,9 +4390,10 @@ class _MonthListMorphContent extends StatelessWidget {
     );
     // _MorphOverlay owns the position. Keep the same origin here only to
     // calculate the empty-state height without using the full overlay height.
-    final availableListEmptyStateHeight = math.max(
-      0.0,
-      viewportHeight - contentTop - emptyStateFloatingClearance,
+    final availableListEmptyStateHeight = _calendarEmptyAreaHeight(
+      viewportHeight: viewportHeight,
+      contentTop: contentTop,
+      bottomClearance: emptyStateFloatingClearance,
     );
     final emptyStateLabelHeight = kEmptyStateLabelFontSize * kLineHeight;
     final emptyStateFallbackHeight = emptyStateLabelHeight + 32.0;
@@ -5613,6 +5614,12 @@ double _monthListEstimatedHeight(List<List<ScheduledEvent>> groups) {
       eventCount * eventRowHeight;
 }
 
+double _calendarEmptyAreaHeight({
+  required double viewportHeight,
+  required double contentTop,
+  required double bottomClearance,
+}) => math.max(0.0, viewportHeight - contentTop - bottomClearance);
+
 List<ScheduledEvent> _applyMonthListOrder(
   List<ScheduledEvent> events,
   List<String>? savedOrder,
@@ -5824,12 +5831,10 @@ class _MonthView extends StatelessWidget {
         // placeholder to move during a rubber-band overscroll.
         final expandedViewportHeight =
             constraints.maxHeight + kContentAreaTopRaise;
-        final availableListEmptyStateH = math.max(
-          0.0,
-          expandedViewportHeight -
-              listContentTitleSlotHeight -
-              gridH -
-              emptyStateFloatingClearance,
+        final listEmptyAreaH = _calendarEmptyAreaHeight(
+          viewportHeight: expandedViewportHeight,
+          contentTop: listContentTitleSlotHeight + gridH,
+          bottomClearance: emptyStateFloatingClearance,
         );
         final selectedDayIsEmpty =
             listDayGroups.isEmpty ||
@@ -5839,7 +5844,7 @@ class _MonthView extends StatelessWidget {
         final emptyStateFallbackH = emptyStateLabelH + 32.0;
         final emptyStateNeedsScrollableFallback =
             selectedDayIsEmpty &&
-            availableListEmptyStateH < emptyStateFallbackH;
+            listEmptyAreaH < emptyStateFallbackH;
         final selectedListIsEmpty =
             showMonthList &&
             selectedDayIsEmpty;
@@ -5847,9 +5852,9 @@ class _MonthView extends StatelessWidget {
             ? selectedListIsEmpty
                 ? emptyStateNeedsScrollableFallback
                     ? emptyStateFallbackH
-                    : availableListEmptyStateH
+                    : listEmptyAreaH
                 : estimatedListContentH
-            : 80.0;
+            : 0.0;
         // The embedded DCV already supplies a 16 pt trailing section gap
         // outside the collapsible event card. Account for the Floating Tab
         // Bar's height and bottom inset as well, then keep a separate 16 pt
@@ -5864,42 +5869,31 @@ class _MonthView extends StatelessWidget {
                     finalContentGap: _kMonthListFinalContentGap,
                   )
                 : floatingClearance;
-        final contentH = selectedDayIsEmpty
-            ? showMonthList
-                ? emptyStateNeedsScrollableFallback
-                    ? gridH +
-                        emptyStateFallbackH +
-                        emptyStateFloatingClearance
-                    : math.max(
-                        expandedViewportHeight,
-                        gridH +
-                            availableListEmptyStateH +
-                            emptyStateFloatingClearance,
-                      )
-                : // Compact, Stacked, and Details end at the grid. Keep only
-                  // enough scroll tail to place its final separator 16 pt
-                  // above the Floating Tab Bar.
-                  math.max(
-                    expandedViewportHeight,
-                    gridH + emptyStateFloatingClearance,
-                  )
-            : // Keep a short event list at zero positive scroll extent. The
-              // final-content clearance only contributes when the list is
-              // long enough to require scrolling; it must not be appended
-              // after a viewport-sized document.
-              math.max(
+        final contentH = showMonthList
+            ? selectedDayIsEmpty
+                  ? emptyStateNeedsScrollableFallback
+                        ? gridH +
+                              emptyStateFallbackH +
+                              emptyStateFloatingClearance
+                        : math.max(
+                            expandedViewportHeight,
+                            gridH +
+                                listEmptyAreaH +
+                                emptyStateFloatingClearance,
+                          )
+                  // Keep a short event list at zero positive scroll extent.
+                  // Its trailing clearance contributes only when needed.
+                  : math.max(
+                      expandedViewportHeight,
+                      gridH + listContentH + eventContentClearance,
+                    )
+            // Compact, Stacked, and Details have no content below the grid:
+            // retain only the genuinely blank viewport area and the normal
+            // Floating Tab Bar clearance, not a placeholder list height.
+            : math.max(
                 expandedViewportHeight,
-                gridH + listContentH + eventContentClearance,
+                gridH + emptyStateFloatingClearance,
               );
-        final emptyH =
-            selectedDayIsEmpty && showMonthList ? contentH - gridH : 0.0;
-        final emptyStateH = selectedDayIsEmpty
-            ? showMonthList
-                ? emptyStateNeedsScrollableFallback
-                    ? emptyStateFallbackH
-                    : availableListEmptyStateH
-                : 0.0
-            : math.max(0.0, emptyH - eventContentClearance);
         // A non-empty Month List must use the selected DCV's measured height.
         // A collapsed final section therefore measures as its header plus the
         // section wrapper's trailing 16 pt, rather than retaining an estimated
@@ -5989,7 +5983,7 @@ class _MonthView extends StatelessWidget {
                                         : listContentH,
                                     emptyStateHeight: selectedListIsEmpty
                                         ? listContentH
-                                        : availableListEmptyStateH,
+                                        : listEmptyAreaH,
                                     onEditEvent: onEditEvent,
                                     scrollController: scrollController,
                                     scrollViewportKey: scrollViewportKey,
@@ -6004,53 +5998,12 @@ class _MonthView extends StatelessWidget {
                         ],
                       ),
                     )
-                  else if (emptyH > 0)
-                    Transform.translate(
-                      offset: Offset(0, monthListStripOffsetY),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: monthContentInset,
-                        ),
-                        child: SizedBox(
-                          height: emptyH,
-                          child: Column(
-                            children: [
-                              SizedBox(
-                                height: emptyStateH,
-                                child: Opacity(
-                                  opacity:
-                                      collapseProgress <
-                                          _kMonthDayTransitionThreshold
-                                      ? (1.0 - collapseProgress * 4.0).clamp(
-                                          0.0,
-                                          1.0,
-                                        )
-                                      : 0.0,
-                                  child: Center(
-                                    child: AppHeaderScrollCentered(
-                                      child: Text(
-                                        'No Events',
-                                        style: TextStyle(
-                                          inherit: false,
-                                          fontFamily: kSFProText,
-                                          fontWeight: FontWeight.w400,
-                                          fontStyle: FontStyle.normal,
-                                          letterSpacing: kTracking16,
-                                          height: kLineHeight,
-                                          fontSize: kEmptyStateLabelFontSize,
-                                          color: secondaryC,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: emptyH - emptyStateH),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                  else
+                    // A real, paint-free area remains below the grid in
+                    // Compact, Stacked, and Details. Keeping its extent in
+                    // the scroll document preserves the unscrolled/scrolled
+                    // states without painting a placeholder into that space.
+                    SizedBox(height: math.max(0.0, contentH - gridH)),
                 ],
               ),
 
