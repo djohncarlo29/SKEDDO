@@ -8,3 +8,17 @@ type = "unspecified"
 title = "SKEDDO release APK"
 description = "Signed Android release APK with the missing bracket errors fixed. Build verified successfully."
 logical_id = "19aa1645-74e2-4e5b-9112-fa9bc1f2d6a9"
+
+[[outputs]]
+id = "-tC9CDkqpxAXLorNhoLX0"
+uri = "file://artifacts/smart-scheduler/build/smart-scheduler-mobile.jpg"
+type = "image"
+title = "Smart Scheduler — mobile preview"
+description = "Phone-sized 402 × 874 screenshot of the restarted web preview."
+logical_id = "7261fec4-edda-4ff5-ade3-e9667425eece"
+content_hash = "sha256:299e254b0daf6d769bc1306d68794773767d3be353a80c08c6d2a083a21dd484"
+size = 15426
+mtime_ms = 1792687436722
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:ccd3095f-3821-46e9-a09f-68f22dc304da/7261fec4-edda-4ff5-ade3-e9667425eece/38fefdd2-d204-4aea-b627-0f7944f8e28f"
+storage_version_token = "1792687446089226"
+content_type = "image/jpeg"
