@@ -32,19 +32,6 @@ slot, while the settled formula previously subtracted only the grid. That extra 
 made “No Events” settle lower than its transition position.
 
 **How to apply:** Keep the settled empty-state height aligned with
-`viewportHeight - measuredListContentTop - clearance`. Use the same remaining-area
-calculation for the settled Month List and its morph. Do not subtract the app-header
+`viewportHeight - measuredListContentTop - clearance`. Do not subtract the app-header
 leading inset again; `AppHeaderScrollViewport` and its matching content inset already
 cancel one another.
-
-## Blank area below non-List month grids
-
-Compact, Stacked, and Details keep a genuinely paint-free scroll extent below
-the month grid. Do not add an empty-state label or phantom list-height spacer
-there; preserve the viewport-sized area and ordinary scroll/bounce behavior.
-
-**Why:** The lower region is intentional empty space, not a hidden event list.
-Month List alone uses that remaining region to center its empty placeholder.
-
-**How to apply:** Size the non-List scroll document from the viewport, grid, and
-tab-bar clearance, then leave the remainder as a blank spacer.
