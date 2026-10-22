@@ -26,152 +26,52 @@ void main() {
     expect(AppHeaderScrollBehavior.shellLargeTitleTravelOffset(-12), 0);
   });
 
-  test('compact title is ready before the title slot fully collapses', () {
-    const titleBottomInset = 10.0;
-    final titleBottom = kAppHeaderTitleHeight - titleBottomInset;
-    final compactTitleReadyOffset =
-        kAppHeaderTitleHeight * kAppHeaderCompactTitleReadyFraction;
-    final handoffSplit = (titleBottom + compactTitleReadyOffset) / 2;
+  test('shell and in-scroll titles share one collapse distance and curve', () {
+    expect(AppHeaderScrollBehavior.titleCollapseProgress(0), 0);
+    expect(
+      AppHeaderScrollBehavior.titleCollapseProgress(
+        kAppHeaderTitleCollapseDistance / 2,
+      ),
+      0.5,
+    );
+    expect(
+      AppHeaderScrollBehavior.titleCollapseProgress(
+        kAppHeaderTitleCollapseDistance,
+      ),
+      1,
+    );
+    expect(
+      AppHeaderScrollBehavior.titleCollapseProgress(
+        kAppHeaderTitleCollapseDistance * 2,
+      ),
+      1,
+    );
+    expect(AppHeaderScrollBehavior.titleCollapseProgress(double.nan), 0);
+    expect(AppHeaderScrollBehavior.titleCollapseProgress(-12), 0);
 
-    expect(
-      AppHeaderScrollBehavior.largeTitleFadeProgress(
-        titleBottom - 1,
-        titleBottomInset: titleBottomInset,
-      ),
-      0,
-    );
-    expect(
-      AppHeaderScrollBehavior.largeTitleFadeProgress(
-        titleBottom,
-        titleBottomInset: titleBottomInset,
-      ),
-      0,
-    );
-    expect(
-      AppHeaderScrollBehavior.largeTitleFadeProgress(
-        handoffSplit,
-        titleBottomInset: titleBottomInset,
-      ),
-      1,
-    );
-    expect(
-      AppHeaderScrollBehavior.compactTitleFadeProgress(
-        handoffSplit,
-        titleBottomInset: titleBottomInset,
-      ),
-      0,
-    );
-    expect(
-      AppHeaderScrollBehavior.compactTitleFadeProgress(
-        (handoffSplit + compactTitleReadyOffset) / 2,
-        titleBottomInset: titleBottomInset,
-      ),
-      closeTo(0.5, 1e-9),
-    );
-    expect(
-      AppHeaderScrollBehavior.compactTitleFadeProgress(
-        compactTitleReadyOffset,
-        titleBottomInset: titleBottomInset,
-      ),
-      1,
-    );
-    for (var offset = 0.0; offset <= kAppHeaderTitleHeight; offset += 0.25) {
-      final largeOpacity =
-          1 -
-          AppHeaderScrollBehavior.largeTitleFadeProgress(
-            offset,
-            titleBottomInset: titleBottomInset,
-          );
-      final compactOpacity = AppHeaderScrollBehavior.compactTitleFadeProgress(
-        offset,
-        titleBottomInset: titleBottomInset,
+    for (var offset = 0.0; offset <= kAppHeaderTitleCollapseDistance; offset += 0.25) {
+      final collapseProgress =
+          AppHeaderScrollBehavior.titleCollapseProgress(offset);
+      expect(
+        AppHeaderScrollBehavior.packageLargeTitleFadeProgress(collapseProgress),
+        AppHeaderScrollBehavior.packageLargeTitleFadeProgress(
+          offset / kAppHeaderTitleCollapseDistance,
+        ),
       );
       expect(
-        largeOpacity == 0.0 || compactOpacity == 0.0,
-        isTrue,
-        reason: 'titles must not overlap at scroll offset $offset',
-      );
-    }
-  });
-
-  testWidgets('compact title is fully visible before the title slot ends', (
-    tester,
-  ) async {
-    const largeTitleKey = ValueKey('large-title-handoff');
-    const compactTitleKey = ValueKey('compact-title-handoff');
-    const titleBottomInset = 10.0;
-
-    Widget buildApp(double contentOffset) {
-      return CupertinoApp(
-        home: Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppHeaderLargeTitleHandoff(
-                progress: AppHeaderScrollBehavior.largeTitleFadeProgress(
-                  contentOffset,
-                  titleBottomInset: titleBottomInset,
-                ),
-                child: const Text('Large title', key: largeTitleKey),
-              ),
-              AppHeaderCompactTitle(
-                progress: AppHeaderScrollBehavior.compactTitleFadeProgress(
-                  contentOffset,
-                  titleBottomInset: titleBottomInset,
-                ),
-                isLandscape: false,
-                child: const Text('Compact title', key: compactTitleKey),
-              ),
-            ],
-          ),
+        AppHeaderScrollBehavior.packageCompactTitleFadeProgress(
+          collapseProgress,
+        ),
+        AppHeaderScrollBehavior.packageCompactTitleFadeProgress(
+          offset / kAppHeaderTitleCollapseDistance,
         ),
       );
     }
-
-    bool ignoresPointer(Key key) {
-      final pointerGate = tester.widget<IgnorePointer>(
-        find
-            .ancestor(of: find.byKey(key), matching: find.byType(IgnorePointer))
-            .first,
-      );
-      return pointerGate.ignoring;
-    }
-
-    double opacityFor(Key key) => tester
-        .widget<Opacity>(
-          find
-              .ancestor(of: find.byKey(key), matching: find.byType(Opacity))
-              .first,
-        )
-        .opacity;
-
-    final titleBottom = kAppHeaderTitleHeight - titleBottomInset;
-    final compactTitleReadyOffset =
-        kAppHeaderTitleHeight * kAppHeaderCompactTitleReadyFraction;
-    final handoffSplit = (titleBottom + compactTitleReadyOffset) / 2;
-
-    final largeTitleFadeSample = titleBottom + (handoffSplit - titleBottom) / 4;
-    await tester.pumpWidget(buildApp(largeTitleFadeSample));
-    expect(opacityFor(largeTitleKey), closeTo(0.75, 1e-9));
-    expect(opacityFor(compactTitleKey), 0);
-    expect(ignoresPointer(largeTitleKey), isFalse);
-    expect(ignoresPointer(compactTitleKey), isTrue);
-
-    await tester.pumpWidget(buildApp(handoffSplit));
-    expect(opacityFor(largeTitleKey), 0);
-    expect(opacityFor(compactTitleKey), 0);
-    expect(ignoresPointer(largeTitleKey), isTrue);
-
-    await tester.pumpWidget(buildApp(compactTitleReadyOffset));
-    expect(opacityFor(largeTitleKey), 0);
-    expect(opacityFor(compactTitleKey), 1);
-    expect(ignoresPointer(compactTitleKey), isFalse);
   });
 
-  testWidgets('scroll-owned calendar title obeys the sequential handoff', (
+  testWidgets('scroll-owned calendar title follows shared collapse progress', (
     tester,
   ) async {
-    const titleBottomInset = 10.0;
     const titleKey = ValueKey('scroll-owned-large-title');
     final controller = ScrollController();
     addTearDown(controller.dispose);
@@ -191,7 +91,6 @@ void main() {
                 SliverToBoxAdapter(
                   child: AppHeaderScrollTitle(
                     controller: controller,
-                    titleBottomInset: titleBottomInset,
                     child: const SizedBox(
                       height: kAppHeaderTitleHeight,
                       child: Text('Calendar', key: titleKey),
@@ -217,11 +116,23 @@ void main() {
         )
         .opacity;
 
-    controller.jumpTo(52);
+    controller.jumpTo(kAppHeaderTitleCollapseDistance / 2);
     await tester.pump();
-    expect(titleOpacity(), 0);
+    final collapseProgress = AppHeaderScrollBehavior.titleCollapseProgress(
+      kAppHeaderTitleCollapseDistance / 2,
+    );
+    expect(
+      titleOpacity(),
+      closeTo(
+        1 -
+            AppHeaderScrollBehavior.packageLargeTitleFadeProgress(
+              collapseProgress,
+            ),
+        1e-9,
+      ),
+    );
 
-    controller.jumpTo(kAppHeaderTitleHeight);
+    controller.jumpTo(kAppHeaderTitleCollapseDistance);
     await tester.pump();
     expect(titleOpacity(), 0);
 

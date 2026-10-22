@@ -7,7 +7,7 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 
 const double kAppHeaderToolbarHeight = 44;
 const double kAppHeaderTitleHeight = 57;
-const double kAppHeaderCompactTitleReadyFraction = 0.9;
+const double kAppHeaderTitleCollapseDistance = kAppHeaderTitleHeight;
 const double kAppHeaderScrollEdgeHeaderBottomExtension = 16;
 const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;
 const double _kAppHeaderScrollEdgeMaxBlurSigma = 4;
@@ -47,6 +47,18 @@ abstract final class AppHeaderScrollBehavior {
     return 1.0 - Curves.easeIn.transform(1.0 - progress);
   }
 
+  /// Converts the owning scroll position into the same normalized collapse
+  /// progress used by the shell's [GlassLargeTitleController].
+  ///
+  /// The shell and in-scroll Calendar titles must use one distance so the
+  /// outgoing large title and incoming compact title hand off in sync.
+  static double titleCollapseProgress(double contentOffset) {
+    if (!contentOffset.isFinite || contentOffset <= 0.0) return 0.0;
+    return (contentOffset / kAppHeaderTitleCollapseDistance)
+        .clamp(0.0, 1.0)
+        .toDouble();
+  }
+
   /// Mirrors GlassAppBar's compact-title fade without replacing the app's
   /// existing toolbar or Liquid Glass composition.
   static double packageCompactTitleFadeProgress(double collapseProgress) {
@@ -64,58 +76,6 @@ abstract final class AppHeaderScrollBehavior {
   static double shellLargeTitleTravelOffset(double contentOffset) {
     if (!contentOffset.isFinite || contentOffset <= 0.0) return 0.0;
     return contentOffset;
-  }
-
-  /// Fades the outgoing title after its descenders enter the pinned toolbar.
-  /// It is fully hidden before the compact title begins to appear.
-  static double largeTitleFadeProgress(
-    double contentOffset, {
-    required double titleBottomInset,
-  }) {
-    if (!contentOffset.isFinite ||
-        contentOffset <= 0.0 ||
-        !titleBottomInset.isFinite) {
-      return 0.0;
-    }
-    final titleBottom = (kAppHeaderTitleHeight - titleBottomInset)
-        .clamp(0.0, kAppHeaderTitleHeight)
-        .toDouble();
-    final compactTitleReadyOffset =
-        kAppHeaderTitleHeight * kAppHeaderCompactTitleReadyFraction;
-    final handoffSplit = (titleBottom + compactTitleReadyOffset) / 2.0;
-    if (contentOffset <= titleBottom) return 0.0;
-    if (contentOffset >= handoffSplit) return 1.0;
-    final fadeDistance = handoffSplit - titleBottom;
-    if (fadeDistance <= 0.0) return 1.0;
-    return ((contentOffset - titleBottom) / fadeDistance)
-        .clamp(0.0, 1.0)
-        .toDouble();
-  }
-
-  /// Fades the compact title in only after the large title has fully
-  /// disappeared. It is fully opaque just before the content edge reaches the
-  /// bottom of the second-level title slot.
-  static double compactTitleFadeProgress(
-    double contentOffset, {
-    required double titleBottomInset,
-  }) {
-    if (!contentOffset.isFinite ||
-        contentOffset <= 0.0 ||
-        !titleBottomInset.isFinite) {
-      return 0.0;
-    }
-    final titleBottom = (kAppHeaderTitleHeight - titleBottomInset)
-        .clamp(0.0, kAppHeaderTitleHeight)
-        .toDouble();
-    final compactTitleReadyOffset =
-        kAppHeaderTitleHeight * kAppHeaderCompactTitleReadyFraction;
-    final handoffSplit = (titleBottom + compactTitleReadyOffset) / 2.0;
-    if (contentOffset <= handoffSplit) return 0.0;
-    final fadeDistance = compactTitleReadyOffset - handoffSplit;
-    if (fadeDistance <= 0.0) return 1.0;
-    return ((contentOffset - handoffSplit) / fadeDistance)
-        .clamp(0.0, 1.0)
-        .toDouble();
   }
 
   /// Builds the glass edge while the large title passes through the pinned
@@ -194,7 +154,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
       position.addListener(_handlePositionChanged);
       // GlassLargeTitle reports the measured title row from layout. The
       // existing shell reserves a fixed title slot, so use that exact geometry.
-      _controller.reportMeasuredHeight(kAppHeaderTitleHeight);
+      _controller.reportMeasuredHeight(kAppHeaderTitleCollapseDistance);
     }
     _lastNotifiedContentOffset = contentOffset;
     _lastNotifiedCollapseProgress = collapseProgress;
@@ -305,12 +265,10 @@ class AppHeaderScrollTitle extends StatelessWidget {
   const AppHeaderScrollTitle({
     super.key,
     required this.controller,
-    required this.titleBottomInset,
     required this.child,
   });
 
   final ScrollController? controller;
-  final double titleBottomInset;
   final Widget child;
 
   @override
@@ -333,10 +291,13 @@ class AppHeaderScrollTitle extends StatelessWidget {
         if (position == null) return child;
         if (!position.hasContentDimensions) return child;
         final positionOffset = AppHeaderScrollBehavior.contentOffset(position);
-        final fadeProgress = AppHeaderScrollBehavior.largeTitleFadeProgress(
+        final collapseProgress = AppHeaderScrollBehavior.titleCollapseProgress(
           positionOffset,
-          titleBottomInset: titleBottomInset,
         );
+        final fadeProgress =
+            AppHeaderScrollBehavior.packageLargeTitleFadeProgress(
+              collapseProgress,
+            );
         final correction = AppHeaderScrollBehavior.leadingOverscrollCorrection(
           position,
         );
