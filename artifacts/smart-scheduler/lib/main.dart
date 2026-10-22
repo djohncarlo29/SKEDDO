@@ -3589,7 +3589,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                       ),
                                                     ),
                                                   ),
-                                                ),
                                                 if (landscapeDcvSplit)
                                                   SizedBox(
                                                     width: headerDividerWidth,
@@ -3660,6 +3659,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
+                ),
                 ],
               ),
 

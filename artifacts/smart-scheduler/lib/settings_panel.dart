@@ -671,8 +671,6 @@ class _SettingsPanelState extends State<SettingsPanel>
               ),
             ),
           ),
-        ),
-      ),
         );
 
         return NotificationListener<ScrollMetricsNotification>(
@@ -784,6 +782,7 @@ class _SettingsPanelState extends State<SettingsPanel>
               ),
             ),
           ),
+        ),
         );
       },
     );
