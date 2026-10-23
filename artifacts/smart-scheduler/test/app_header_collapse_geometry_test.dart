@@ -186,6 +186,81 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'active header state is handed off and updates the previous screen on return',
+    (tester) async {
+      tester.view.physicalSize = _viewportSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final firstController = ScrollController();
+      final secondController = ScrollController();
+      final titleTransition = AppHeaderTitleTransition();
+      addTearDown(() {
+        titleTransition.dispose();
+        firstController.dispose();
+        secondController.dispose();
+      });
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: SizedBox(
+            height: _viewportSize.height,
+            child: Padding(
+              padding: const EdgeInsets.only(top: kAppHeaderToolbarHeight),
+              child: AppHeaderScrollInsetScope(
+                leadingInset: kAppHeaderToolbarHeight,
+                titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildHeaderScrollView(
+                        controller: firstController,
+                        bodyHeight: 600,
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildHeaderScrollView(
+                        controller: secondController,
+                        bodyHeight: 600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final firstPosition = firstController.position;
+      final secondPosition = secondController.position;
+      titleTransition.bindTo(firstPosition);
+      firstController.jumpTo(kAppHeaderTitleCollapseDistance);
+      await tester.pump();
+      expect(titleTransition.collapseProgress, 1);
+
+      titleTransition.bindTo(secondPosition, preserveCollapseProgress: true);
+      await tester.pump();
+      expect(
+        secondController.offset,
+        closeTo(kAppHeaderTitleCollapseDistance, 1),
+      );
+      expect(titleTransition.collapseProgress, 1);
+
+      secondController.jumpTo(0);
+      await tester.pump();
+      expect(titleTransition.collapseProgress, 0);
+
+      titleTransition.bindTo(firstPosition, preserveCollapseProgress: true);
+      await tester.pump();
+      expect(firstController.offset, 0);
+      expect(titleTransition.collapseProgress, 0);
+    },
+  );
 }
 
 Widget _buildHeaderHarness({
@@ -217,5 +292,21 @@ Widget _buildHeaderHarness({
         ),
       ),
     ),
+  );
+}
+
+Widget _buildHeaderScrollView({
+  required ScrollController controller,
+  required double bodyHeight,
+}) {
+  return AppHeaderScrollView(
+    controller: controller,
+    physics: const AlwaysScrollableScrollPhysics(
+      parent: BouncingScrollPhysics(),
+    ),
+    slivers: [
+      const SliverToBoxAdapter(child: SizedBox(height: kAppHeaderTitleHeight)),
+      SliverToBoxAdapter(child: SizedBox(height: bodyHeight)),
+    ],
   );
 }

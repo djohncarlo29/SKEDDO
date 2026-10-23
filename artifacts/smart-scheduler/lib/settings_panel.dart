@@ -202,6 +202,7 @@ class SettingsPanel extends StatefulWidget {
   /// AppShell listens to this so the shared overlay button morphs into a
   /// back-chevron and calls _pop() — exactly matching the DCV back mechanic.
   final ValueNotifier<VoidCallback?> subScreenBackAction;
+  final AppHeaderTitleTransition headerTitleTransition;
 
   const SettingsPanel({
     super.key,
@@ -211,6 +212,7 @@ class SettingsPanel extends StatefulWidget {
     required this.isLandscapeTwoPane,
     required this.onClose,
     required this.subScreenBackAction,
+    required this.headerTitleTransition,
   });
 
   @override
@@ -252,8 +254,8 @@ class _SettingsPanelState extends State<SettingsPanel>
     curve: Curves.easeInOutCubic,
   );
   final ScrollController _mainScrollController = ScrollController();
-  final AppHeaderTitleTransition _headerTitleTransition =
-      AppHeaderTitleTransition();
+  AppHeaderTitleTransition get _headerTitleTransition =>
+      widget.headerTitleTransition;
   final GlobalKey _mainSettingsContentKey = GlobalKey();
   final Map<String, GlobalKey> _settingsRowAnchorKeys = {
     for (final title in [
@@ -285,6 +287,10 @@ class _SettingsPanelState extends State<SettingsPanel>
   }
 
   bool _onHeaderScrollNotification(ScrollNotification notification) {
+    if (!widget.isOpen ||
+        MediaQuery.orientationOf(context) != Orientation.portrait) {
+      return false;
+    }
     if (!_isHeaderScrollSource(notification.metrics, notification.depth)) {
       return false;
     }
@@ -298,6 +304,10 @@ class _SettingsPanelState extends State<SettingsPanel>
   bool _onHeaderScrollMetricsNotification(
     ScrollMetricsNotification notification,
   ) {
+    if (!widget.isOpen ||
+        MediaQuery.orientationOf(context) != Orientation.portrait) {
+      return false;
+    }
     if (!_isHeaderScrollSource(notification.metrics, notification.depth)) {
       return false;
     }
@@ -311,7 +321,10 @@ class _SettingsPanelState extends State<SettingsPanel>
               ? _mainScrollController.position
               : null)
         : null;
-    _headerTitleTransition.bindTo(position);
+    _headerTitleTransition.bindTo(
+      position,
+      preserveCollapseProgress: true,
+    );
   }
 
   // Listener added to _navCtrl when a push starts; fires the hard-snap of the
@@ -346,6 +359,7 @@ class _SettingsPanelState extends State<SettingsPanel>
       _navCtrl.stop();
       _paneTransitionController.stop();
       _splitDetailController.stop();
+      _headerTitleTransition.suspend();
       _isSplitActive = false;
       _paneTransitionController.value = 0.0;
       widget.subScreenBackAction.value = null;
@@ -551,7 +565,6 @@ class _SettingsPanelState extends State<SettingsPanel>
     if (_snapListener != null) _navCtrl.removeListener(_snapListener!);
     _splitDetailController.removeStatusListener(_onSplitDetailStatus);
     _mainScrollController.dispose();
-    _headerTitleTransition.dispose();
     _paneTransitionController.dispose();
     _splitDetailController.dispose();
     _navCtrl.dispose();

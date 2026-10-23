@@ -966,6 +966,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }
 
   bool _onHeaderScrollNotification(ScrollNotification notification) {
+    if (_settingsOpen || _settingsController.value > 0.01) {
+      return false;
+    }
     if (_searchModeController.value > 0.01) {
       _headerTitleTransition.suspend();
       return false;
@@ -984,6 +987,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   bool _onHeaderScrollMetricsNotification(
     ScrollMetricsNotification notification,
   ) {
+    if (_settingsOpen || _settingsController.value > 0.01) {
+      return false;
+    }
     if (_searchModeController.value > 0.01) {
       _headerTitleTransition.suspend();
       return false;
@@ -1007,7 +1013,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     return null;
   }
 
-  void _restoreHeaderScrollOffset() => _syncHeaderScrollOffsetToParent();
+  void _restoreHeaderScrollOffset() =>
+      _syncHeaderScrollOffsetToParent(preserveCollapseProgress: true);
 
   void _settleShellTransitionsForSearch() {
     _headerTitleTransition.suspend();
@@ -1031,18 +1038,25 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
   }
 
-  void _syncHeaderScrollOffsetToParent() {
-    final position = switch (_selectedIndex) {
-      0 => _headerPositionForController(
-        _notesTabKey.currentState?.scrollController,
-      ),
-      1 => _calendarTabKey.currentState?.headerScrollPosition,
-      2 => _headerPositionForController(
-        _eventsTabKey.currentState?.scrollController,
-      ),
-      _ => null,
-    };
-    _headerTitleTransition.bindTo(position);
+  void _syncHeaderScrollOffsetToParent({
+    bool preserveCollapseProgress = true,
+  }) {
+    final position = _selectedIndex == 2 && _dcvCategory != null
+        ? null
+        : switch (_selectedIndex) {
+            0 => _headerPositionForController(
+              _notesTabKey.currentState?.scrollController,
+            ),
+            1 => _calendarTabKey.currentState?.headerScrollPosition,
+            2 => _headerPositionForController(
+              _eventsTabKey.currentState?.scrollController,
+            ),
+            _ => null,
+          };
+    _headerTitleTransition.bindTo(
+      position,
+      preserveCollapseProgress: preserveCollapseProgress,
+    );
   }
 
   bool _canReplaceLandscapeDcvPage() {
@@ -1069,7 +1083,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       return;
     }
 
-    _headerTitleTransition.bindTo(null);
+    _headerTitleTransition.bindTo(
+      null,
+      preserveCollapseProgress: true,
+    );
 
     if (_canReplaceLandscapeDcvPage()) {
       // Finish any in-flight replacement before starting the next one. The
@@ -1125,7 +1142,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   void _closeSettings() {
     setState(() => _settingsOpen = false);
     _settingsBackAction.value = null; // clear any active sub-screen
-    _settingsController.reverse();
+    _settingsController.reverse().then((_) {
+      if (!mounted || _settingsOpen) return;
+      _restoreHeaderScrollOffset();
+    });
   }
 
   // ── Settings gesture handlers ────────────────────────────────────────────
@@ -3839,6 +3859,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                         isLandscapeTwoPane: landscapeSettingsTwoPane,
                         onClose: _closeSettings,
                         subScreenBackAction: _settingsBackAction,
+                        headerTitleTransition: _headerTitleTransition,
                       ),
                     ),
                   );

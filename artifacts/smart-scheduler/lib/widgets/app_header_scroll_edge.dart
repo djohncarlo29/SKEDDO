@@ -111,15 +111,25 @@ class AppHeaderTitleTransition extends ChangeNotifier {
   GlassLargeTitleController _controller;
   ScrollPosition? _position;
   double _cachedContentOffset = 0.0;
+  double _cachedCollapseProgress = 0.0;
+  double? _pendingHandoffCollapseProgress;
   double _lastNotifiedContentOffset = 0.0;
   double _lastNotifiedCollapseProgress = 0.0;
   bool _isBinding = false;
 
   ScrollPosition? get position => _position;
-  double get collapseProgress => _controller.collapseProgress;
+  double get collapseProgress =>
+      _pendingHandoffCollapseProgress ??
+      (_position == null
+          ? _cachedCollapseProgress
+          : _controller.collapseProgress);
   double get rawScrollOffset => _controller.rawScrollOffset;
 
   double get contentOffset {
+    final pendingProgress = _pendingHandoffCollapseProgress;
+    if (pendingProgress != null) {
+      return pendingProgress * kAppHeaderTitleCollapseDistance;
+    }
     final currentPosition = _position;
     if (currentPosition == null || !currentPosition.hasContentDimensions) {
       return _cachedContentOffset;
@@ -132,10 +142,35 @@ class AppHeaderTitleTransition extends ChangeNotifier {
 
   /// Binds to the single active scroll position. Recreating the package
   /// controller on handoff makes it recalculate from that position immediately.
-  void bindTo(ScrollPosition? position) {
-    if (identical(position, _position)) return;
+  /// When [preserveCollapseProgress] is true, the new destination is positioned
+  /// at the same shared header state before it becomes the active source.
+  void bindTo(
+    ScrollPosition? position, {
+    bool preserveCollapseProgress = false,
+  }) {
+    if (identical(position, _position)) {
+      if (_pendingHandoffCollapseProgress == null &&
+          (!preserveCollapseProgress || position != null)) {
+        return;
+      }
+      if (preserveCollapseProgress) {
+        _pendingHandoffCollapseProgress = collapseProgress;
+      }
+      _isBinding = true;
+      _applyPendingHandoff();
+      _isBinding = false;
+      _notifyIfChanged();
+      return;
+    }
 
+    final inheritedProgress = preserveCollapseProgress
+        ? collapseProgress
+        : _pendingHandoffCollapseProgress;
     if (_position != null) contentOffset;
+    if (preserveCollapseProgress) {
+      _pendingHandoffCollapseProgress = inheritedProgress;
+    }
+
     final oldPosition = _position;
     _isBinding = true;
     _controller.removeListener(_forwardControllerChange);
@@ -146,7 +181,10 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     _controller.dispose();
 
     _position = position;
-    if (position == null) _cachedContentOffset = 0.0;
+    if (position == null && _pendingHandoffCollapseProgress == null) {
+      _cachedContentOffset = 0.0;
+      _cachedCollapseProgress = 0.0;
+    }
     _controller = GlassLargeTitleController()
       ..addListener(_forwardControllerChange);
     if (position != null) {
@@ -155,6 +193,15 @@ class AppHeaderTitleTransition extends ChangeNotifier {
       // GlassLargeTitle reports the measured title row from layout. The
       // existing shell reserves a fixed title slot, so use that exact geometry.
       _controller.reportMeasuredHeight(kAppHeaderTitleCollapseDistance);
+      _applyPendingHandoff();
+    } else if (_pendingHandoffCollapseProgress != null) {
+      _cachedCollapseProgress = _pendingHandoffCollapseProgress!;
+      _cachedContentOffset =
+          _pendingHandoffCollapseProgress! * kAppHeaderTitleCollapseDistance;
+    }
+    if (_pendingHandoffCollapseProgress == null) {
+      _cachedContentOffset = contentOffset;
+      _cachedCollapseProgress = collapseProgress;
     }
     _lastNotifiedContentOffset = contentOffset;
     _lastNotifiedCollapseProgress = collapseProgress;
@@ -168,6 +215,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     final position = _position;
     if (position == null) return;
     contentOffset;
+    _cachedCollapseProgress = collapseProgress;
     position.removeListener(_handlePositionChanged);
     _controller.scrollController.detach(position);
     _position = null;
@@ -184,7 +232,35 @@ class AppHeaderTitleTransition extends ChangeNotifier {
   /// both values are read from the exact position attached to the package
   /// controller.
   void _handlePositionChanged() {
+    if (_pendingHandoffCollapseProgress != null) {
+      _isBinding = true;
+      _applyPendingHandoff();
+      _isBinding = false;
+    }
     _notifyIfChanged();
+  }
+
+  void _applyPendingHandoff() {
+    final progress = _pendingHandoffCollapseProgress;
+    final position = _position;
+    if (progress == null || position == null || !position.hasContentDimensions) {
+      return;
+    }
+
+    final minExtent = position.minScrollExtent;
+    final maxExtent = position.maxScrollExtent;
+    if (!minExtent.isFinite || !maxExtent.isFinite) return;
+
+    final targetOffset =
+        (minExtent + progress * kAppHeaderTitleCollapseDistance)
+            .clamp(minExtent, maxExtent)
+            .toDouble();
+    if ((position.pixels - targetOffset).abs() > 0.5) {
+      position.jumpTo(targetOffset);
+    }
+    _pendingHandoffCollapseProgress = null;
+    _cachedContentOffset = AppHeaderScrollBehavior.contentOffset(position);
+    _cachedCollapseProgress = _controller.collapseProgress;
   }
 
   void _notifyIfChanged() {
@@ -195,6 +271,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
         currentCollapseProgress == _lastNotifiedCollapseProgress) {
       return;
     }
+    _cachedCollapseProgress = currentCollapseProgress;
     _lastNotifiedContentOffset = currentContentOffset;
     _lastNotifiedCollapseProgress = currentCollapseProgress;
     notifyListeners();

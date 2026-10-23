@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/settings_panel.dart';
+import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 
 void main() {
@@ -13,6 +14,8 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       final backAction = ValueNotifier<VoidCallback?>(null);
+      final headerTitleTransition = AppHeaderTitleTransition();
+      addTearDown(headerTitleTransition.dispose);
 
       Widget buildApp({required bool isOpen}) {
         return CupertinoApp(
@@ -35,6 +38,7 @@ void main() {
                   isLandscapeTwoPane: true,
                   onClose: () {},
                   subScreenBackAction: backAction,
+                  headerTitleTransition: headerTitleTransition,
                 ),
               ),
             ),
