@@ -326,10 +326,14 @@ class AppHeaderScrollInsetScope extends InheritedWidget {
   const AppHeaderScrollInsetScope({
     super.key,
     required this.leadingInset,
+    this.titleCollapseExtent = 0.0,
     required super.child,
   });
 
   final double leadingInset;
+  /// The measured scroll distance needed to move the expanded title region
+  /// out of the usable viewport and reach the compact header.
+  final double titleCollapseExtent;
 
   static double maybeOf(BuildContext context) =>
       context
@@ -337,9 +341,16 @@ class AppHeaderScrollInsetScope extends InheritedWidget {
           ?.leadingInset ??
       0.0;
 
+  static double titleCollapseExtentOf(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<AppHeaderScrollInsetScope>()
+          ?.titleCollapseExtent ??
+      0.0;
+
   @override
   bool updateShouldNotify(AppHeaderScrollInsetScope oldWidget) =>
-      leadingInset != oldWidget.leadingInset;
+      leadingInset != oldWidget.leadingInset ||
+      titleCollapseExtent != oldWidget.titleCollapseExtent;
 }
 
 /// Extends a page scroll viewport upward by the shell inset without moving its
@@ -504,10 +515,42 @@ class AppHeaderScrollView extends StatelessWidget {
         scrollDirection == Axis.vertical && !reverse && !shrinkWrap
         ? AppHeaderScrollInsetScope.maybeOf(context)
         : 0.0;
+    final configuredTitleCollapseExtent =
+        scrollDirection == Axis.vertical &&
+            !reverse &&
+            !shrinkWrap &&
+            center == null
+        ? AppHeaderScrollInsetScope.titleCollapseExtentOf(context)
+        : 0.0;
+    final titleCollapseExtent =
+        configuredTitleCollapseExtent.isFinite &&
+            configuredTitleCollapseExtent > 0.0
+        ? configuredTitleCollapseExtent
+        : 0.0;
     final scrollSlivers = <Widget>[
       if (leadingInset > 0.0)
         SliverToBoxAdapter(child: SizedBox(height: leadingInset)),
       ...slivers,
+      if (titleCollapseExtent > 0.0)
+        // A short page still needs enough real scroll extent to move the
+        // expanded title slot out of the viewport. Fill only the measured
+        // deficit after laying out the page; long content receives no extra
+        // trailing space.
+        SliverLayoutBuilder(
+          builder: (context, constraints) {
+            final requiredScrollExtent =
+                constraints.viewportMainAxisExtent + titleCollapseExtent;
+            final missingExtent =
+                requiredScrollExtent - constraints.precedingScrollExtent;
+            final trailingExtent =
+                missingExtent.isFinite && missingExtent > 0.0
+                ? missingExtent
+                : 0.0;
+            return SliverToBoxAdapter(
+              child: SizedBox(height: trailingExtent),
+            );
+          },
+        ),
     ];
     final scrollView = CustomScrollView(
       key: _scrollViewKey,

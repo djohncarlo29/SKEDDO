@@ -3007,6 +3007,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                   topInset + headerToolbarHeight * (1 - t);
                               return AppHeaderScrollInsetScope(
                                 leadingInset: leadingInset,
+                                titleCollapseExtent: isLandscape
+                                    ? 0.0
+                                    : kAppHeaderTitleCollapseDistance,
                                 child: Padding(
                                   padding: EdgeInsets.only(
                                     top: leadingInset,

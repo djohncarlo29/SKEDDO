@@ -14,7 +14,7 @@
 - [Calendar month panel clipping](calendar-month-panel-clipping.md) — clip each horizontally positioned month panel before vertical strip transforms so off-screen week rows cannot bleed into the DOW boundary.
 - [ScrollController remount resync](calendar-scrollctrl-remount-resync.md) — a key-forced Scrollable remount resets to the controller's stale original initialScrollOffset, not the last jumpTo() value; recreate before remounting.
 - [Smart Scheduler theme constants](smart-scheduler-theme-constants.md) — sheet-stack background and search-bar clear icon each have their own dedicated constant; don't reuse kBackgroundColor for the former.
-- [App-header scroll-edge behavior](app-header-scroll-edge.md) — preserve page-level header bleed; locally clip positioned timelines that would paint over fixed headers.
+- [App-header scroll-edge behavior](app-header-scroll-edge.md) — keep title collapse in page scroll geometry and add only the measured missing range on short content.
 - [App-wide landscape content boundary](app-wide-landscape-content-boundary.md) — keep inset handling symmetric and wrapper ancestry stable so routes preserve state across orientation changes.
 - [Landscape master-detail transition](landscape-events-master-detail.md) — softly anchor the active source during pane reflow; after detail closes, the current master viewport—not history—owns orientation restoration.
 - [Dark-mode surface coverage](dark-mode-surface-coverage.md) — shared glass, attachment previews, import overlays, and action menus must resolve surfaces at build time.

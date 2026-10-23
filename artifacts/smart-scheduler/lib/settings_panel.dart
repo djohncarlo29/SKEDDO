@@ -689,6 +689,11 @@ class _SettingsPanelState extends State<SettingsPanel>
                       top: headerHeight,
                       child: AppHeaderScrollInsetScope(
                         leadingInset: headerHeight,
+                        titleCollapseExtent:
+                            MediaQuery.orientationOf(context) ==
+                                Orientation.portrait
+                            ? kAppHeaderTitleCollapseDistance
+                            : 0.0,
                         child: showLandscapeSplit
                             ? AppHeaderScrollClip(child: splitBody)
                             : AppWindowPhysicalWidth(
@@ -708,6 +713,11 @@ class _SettingsPanelState extends State<SettingsPanel>
                         top: headerHeight,
                         child: AppHeaderScrollInsetScope(
                           leadingInset: headerHeight,
+                          titleCollapseExtent:
+                              MediaQuery.orientationOf(context) ==
+                                  Orientation.portrait
+                              ? kAppHeaderTitleCollapseDistance
+                              : 0.0,
                           child: AppWindowPhysicalWidth(
                             child: SlideTransition(
                               position: _subSlide,
