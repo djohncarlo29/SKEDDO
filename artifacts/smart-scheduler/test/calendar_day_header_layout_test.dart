@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/tabs/calendar_tab.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
@@ -66,6 +67,77 @@ void main() {
     source.jumpTo(0);
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(dow).dy, closeTo(expandedTop, 0.5));
+  });
+
+  testWidgets('empty Month List re-centers below the grid as the title collapses', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'calendar_view_mode': 'list'});
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(402, 874);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final sourceController = ScrollController();
+    final transition = AppHeaderTitleTransition();
+    addTearDown(() {
+      transition.dispose();
+      sourceController.dispose();
+    });
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        builder: (context, child) => AppWindowContentBoundary(child: child!),
+        home: AppHeaderScrollInsetScope(
+          leadingInset: 0,
+          titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+          titleTransition: transition,
+          child: IndexedStack(
+            index: 1,
+            children: [
+              AppHeaderScrollView(
+                controller: sourceController,
+                slivers: const [
+                  SliverToBoxAdapter(child: AppHeaderScrollInset()),
+                  SliverToBoxAdapter(child: SizedBox(height: 100)),
+                ],
+              ),
+              CalendarTab(onViewChanged: (_, _, _, _, _, _) {}),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final calendar = tester.state<CalendarTabState>(find.byType(CalendarTab));
+    calendar.setViewMode(CalendarViewMode.list, persist: false);
+    await tester.pumpAndSettle();
+    expect(calendar.viewMode, CalendarViewMode.list);
+    final placeholder = find.text('No Events').hitTestable().first;
+    final expandedCenterY = tester.getCenter(placeholder).dy;
+
+    final source = AppHeaderScrollView.headerPositionFor(sourceController)!;
+    transition.bindTo(source);
+    source.jumpTo(kAppHeaderTitleCollapseDistance);
+    await tester.pumpAndSettle();
+    expect(transition.collapseProgress, 1);
+    final emptyStates = find.text('No Events');
+    for (var index = 0; index < emptyStates.evaluate().length; index++) {
+      debugPrint('month-empty-center[$index]=${tester.getCenter(emptyStates.at(index))}');
+    }
+
+    final compactCenterY = tester
+        .getCenter(find.text('No Events').hitTestable().first)
+        .dy;
+    expect(
+      compactCenterY,
+      closeTo(
+        expandedCenterY -
+            (kAppHeaderTitleHeight - kAppHeaderContentTopSpacing) / 2,
+        1,
+      ),
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(

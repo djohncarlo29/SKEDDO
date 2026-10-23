@@ -91,14 +91,21 @@ void main() {
       );
     }
 
-    // Settings and its pushed subscreen keep their existing expanded inset,
-    // and must not add a second copy when inheriting compact state.
+    // Settings keeps its authored expanded inset AND gains the same compact
+    // clearance as Notes; its baseline must not replace that clearance.
     await tester.tapAt(const Offset(36, 30));
     await tester.pumpAndSettle();
     final account = find.text('Account').hitTestable();
     expect(account, findsOneWidget);
     final settingsInset = AppHeaderScrollInsetScope.maybeOf(tester.element(account));
-    expect(tester.getTopLeft(account).dy, closeTo(settingsInset, 0.5));
+    expect(
+      tester.getTopLeft(account).dy,
+      closeTo(settingsInset + kAppHeaderContentTopSpacing, 0.5),
+    );
+    expect(
+      tester.getTopLeft(account).dy,
+      closeTo(tester.getTopLeft(firstNoteCard).dy, 0.5),
+    );
     transition.position!.jumpTo(0);
     await tester.pumpAndSettle();
     expect(
@@ -121,7 +128,40 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(transition.position!.pixels, kAppHeaderTitleCollapseDistance);
-    expect(tester.getTopLeft(firstOption).dy, closeTo(settingsInset, 0.5));
+    expect(
+      tester.getTopLeft(firstOption).dy,
+      closeTo(settingsInset + kAppHeaderContentTopSpacing, 0.5),
+    );
+    transition.position!.jumpTo(0);
+    await tester.pumpAndSettle();
+    expect(
+      tester.getTopLeft(firstOption).dy,
+      closeTo(settingsInset + kAppHeaderTitleHeight, 0.5),
+    );
+
+    await tester.tapAt(const Offset(36, 30));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Date Format'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Date Format').hitTestable());
+    await tester.pumpAndSettle();
+    transition.position!.jumpTo(0);
+    await tester.pumpAndSettle();
+    expect(
+      tester.getTopLeft(firstOption).dy,
+      closeTo(settingsInset + kAppHeaderTitleHeight, 0.5),
+    );
+    await tester.timedDragFrom(
+      const Offset(200, 450),
+      const Offset(0, -200),
+      const Duration(milliseconds: 300),
+    );
+    await tester.pumpAndSettle();
+    expect(transition.position!.pixels, kAppHeaderTitleCollapseDistance);
+    expect(
+      tester.getTopLeft(firstOption).dy,
+      closeTo(settingsInset + kAppHeaderContentTopSpacing, 0.5),
+    );
     expect(tester.takeException(), isNull);
   });
 }

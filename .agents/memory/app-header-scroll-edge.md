@@ -37,11 +37,12 @@ Keep the app-level scroll-edge treatment light enough that content passing throu
 
 ## Raised page content ceiling
 Compact-header content must retain breathing room across tabs, Detailed
-Category View, and Settings. Settings is the spacing reference, not a fixed
-content layout; the leading clearance must scroll away with the body.
+Category View, and Settings. DCV section labels and Notes cards are the compact
+spacing references for Settings section labels and subscreen cards respectively;
+the leading clearance must scroll away with the body.
 
-**Why:** The user reported that inheriting compact state pushed tab/DCV content
-against the toolbar, while Settings retained sufficient separation. The upward
+**Why:** The user clarified that Settings must match the corrected compact
+spacing of Notes/DCV, not merely preserve its old spacing. The upward
 paint-viewport extension must not silently cancel authored first-item spacing.
 
 **How to apply:** Account for the viewport raise once at the shared scrolling
@@ -49,13 +50,20 @@ content boundary, but do not add constant compensation in the expanded state.
 Preserve each screen's original expanded spacing, including the existing
 Settings/subscreen inset. Introduce only the missing clearance as the final
 collapsible region closes (search when present, title otherwise), using its
-actual package-controller position. Include that same state-dependent amount
+actual package-controller position. Settings' authored inset is its expanded
+baseline, NOT a replacement for the extra compact clearance: retain that
+baseline and add the same collapse-driven clearance as Notes/DCV.
+Include that same state-dependent amount
 in fixed Calendar day geometry and empty-area calculations. Do not turn it
 into pinned chrome or restore a hidden large-title slot.
 
 **Why both endpoints matter:** The user rejected a compact-only fix that added
 extra expanded padding. Always verify expanded and compact endpoints together,
 including Settings home and a pushed Settings subscreen, before delivery.
+The user then identified the opposite regression: preserving Settings' inset
+without adding the compact clearance left its section labels and subscreen
+cards too high. Compare actual first-element positions across screen types,
+not just whether each screen retained its previous inset.
 
 Shared header handoffs must not recursively realign themselves or notify
 sibling tabs during a destination's build.

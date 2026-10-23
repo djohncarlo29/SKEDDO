@@ -5824,12 +5824,12 @@ class _MonthView extends StatelessWidget {
                 controller: scrollController,
                 child: scrollTitleWidget,
               );
-        // The transition measures the List content below the shared
-        // second-level title slot. Subtract the same slot here so the settled
-        // empty-state viewport does not center "No Events" lower on handoff.
+        // Match the Notes tab's viewport-relative empty state. The expanded
+        // title slot disappears as the shared header collapses, so keep only
+        // its actual remaining height in this measurement.
         final listContentTitleSlotHeight =
             stationaryScrollTitleWidget != null || isPortrait
-            ? kAppHeaderTitleHeight
+            ? _calendarExpandedTitleHeight(context)
             : 0.0;
         final emptyStateFloatingClearance =
             floatingTabBarContentBottomClearance(
@@ -6051,8 +6051,6 @@ class _MonthView extends StatelessWidget {
                                         )
                                       : 0.0,
                                   child: Center(
-                                    child: AppHeaderScrollCentered(
-                                      fixedExpandedRegion: true,
                                       child: Text(
                                         'No Events',
                                         style: TextStyle(
@@ -6065,7 +6063,6 @@ class _MonthView extends StatelessWidget {
                                           fontSize: kEmptyStateLabelFontSize,
                                           color: secondaryC,
                                         ),
-                                      ),
                                     ),
                                   ),
                                 ),

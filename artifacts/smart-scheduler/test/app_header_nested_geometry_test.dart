@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 
 void main() {
-  testWidgets('raised viewport preserves a scrolling content gap without doubling Settings spacing', (
+  testWidgets('Settings and regular pages share compact clearance while preserving expanded spacing', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(402, 874);
@@ -25,9 +25,11 @@ void main() {
                 const SliverToBoxAdapter(child: AppHeaderScrollInset()),
                 if (declaresExistingSpacing)
                   const SliverToBoxAdapter(child: AppHeaderContentSpacing()),
-                const SliverPadding(
-                  padding: EdgeInsets.only(top: 16),
-                  sliver: SliverToBoxAdapter(
+                SliverPadding(
+                  padding: EdgeInsets.only(
+                    top: declaresExistingSpacing ? 0 : 16,
+                  ),
+                  sliver: const SliverToBoxAdapter(
                     child: SizedBox(key: ValueKey('first-card'), height: 2000),
                   ),
                 ),
@@ -39,8 +41,7 @@ void main() {
       await tester.pumpAndSettle();
       final outer = AppHeaderScrollView.headerPositionFor(controller)!;
       final expandedTop = kAppHeaderToolbarHeight +
-          kAppHeaderTitleHeight +
-          (declaresExistingSpacing ? 16.0 : 0.0);
+          kAppHeaderTitleHeight;
       expect(
         tester.getTopLeft(find.byKey(const ValueKey('first-card'))).dy,
         expandedTop,
@@ -51,7 +52,7 @@ void main() {
         tester.getTopLeft(find.byKey(const ValueKey('first-card'))).dy,
         expandedTop -
             kAppHeaderTitleHeight / 2 +
-            (declaresExistingSpacing ? 0.0 : 8.0),
+            8.0,
       );
       outer.jumpTo(outer.maxScrollExtent);
       await tester.pump();

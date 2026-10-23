@@ -869,8 +869,8 @@ class AppHeaderScrollView extends StatelessWidget {
         topExtension: topExtension,
       );
       var minimumContentTopSpacing = 0.0;
-      // Settings already declares this same leading inset. Move its
-      // declaration into the shared slot instead of adding it twice.
+      // Preserve Settings' authored expanded inset in the shared slot. This
+      // baseline is separate from the additional compact-state clearance.
       if (maxContentTopSpacing > 0 &&
           innerSlivers.isNotEmpty &&
           innerSlivers.first is SliverToBoxAdapter &&
@@ -912,9 +912,7 @@ class AppHeaderScrollView extends StatelessWidget {
                           : phaseController.collapseProgress;
                       return SizedBox(
                         height: minimumContentTopSpacing +
-                            (maxContentTopSpacing -
-                                    minimumContentTopSpacing) *
-                                progress,
+                            maxContentTopSpacing * progress,
                       );
                     },
                   ),
