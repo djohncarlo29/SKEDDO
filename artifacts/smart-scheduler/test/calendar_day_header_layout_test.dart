@@ -56,7 +56,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       tester.getTopLeft(dow).dy,
-      closeTo(expandedTop - kAppHeaderTitleCollapseDistance, 0.5),
+      closeTo(
+        expandedTop -
+            kAppHeaderTitleCollapseDistance +
+            kAppHeaderContentTopSpacing,
+        0.5,
+      ),
     );
     source.jumpTo(0);
     await tester.pumpAndSettle();

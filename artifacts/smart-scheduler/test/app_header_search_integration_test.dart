@@ -24,12 +24,23 @@ void main() {
     final transition = AppHeaderScrollInsetScope.titleTransitionOf(context)!;
     final searchExtent = searchBarHostRowHeight(context);
     final outer = AppHeaderScrollView.headerPositionFor(notes.scrollController)!;
+    final firstNoteCard = find.byWidgetPredicate(
+      (widget) => widget.runtimeType.toString() == '_NoteInputCard',
+    );
+    final expandedCardTop = AppHeaderScrollInsetScope.maybeOf(context) +
+        kAppHeaderTitleHeight +
+        searchExtent;
+    expect(tester.getTopLeft(firstNoteCard).dy, closeTo(expandedCardTop, 0.5));
     expect(outer.maxScrollExtent, kAppHeaderTitleHeight + searchExtent);
     expect(transition.position, same(outer));
     outer.jumpTo(kAppHeaderTitleHeight);
     await tester.pumpAndSettle();
     expect(transition.collapseProgress, 1);
     expect(transition.searchBarCollapseProgress, 0);
+    expect(
+      tester.getTopLeft(firstNoteCard).dy,
+      closeTo(expandedCardTop - kAppHeaderTitleHeight, 0.5),
+    );
     outer.jumpTo(outer.maxScrollExtent);
     await tester.pumpAndSettle();
     expect(transition.searchBarCollapseProgress, 1);
@@ -41,9 +52,6 @@ void main() {
       expect(transition.searchBarCollapseProgress, 1, reason: tab);
     }
     expect(outer.pixels, kAppHeaderTitleHeight + searchExtent);
-    final firstNoteCard = find.byWidgetPredicate(
-      (widget) => widget.runtimeType.toString() == '_NoteInputCard',
-    );
     expect(
       tester.getTopLeft(firstNoteCard).dy,
       closeTo(
@@ -68,7 +76,52 @@ void main() {
     await tester.pumpAndSettle();
     expect(transition.collapseProgress, 1);
     expect(transition.searchBarCollapseProgress, 1);
-    expect(outer.pixels, kAppHeaderTitleHeight + searchExtent);
+    final restoredOuter =
+        AppHeaderScrollView.headerPositionFor(notes.scrollController)!;
+    expect(restoredOuter.pixels, kAppHeaderTitleHeight + searchExtent);
+    for (var cycle = 0; cycle < 3; cycle++) {
+      restoredOuter.jumpTo(0);
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(firstNoteCard).dy, closeTo(expandedCardTop, 0.5));
+      restoredOuter.jumpTo(restoredOuter.maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(firstNoteCard).dy,
+        closeTo(AppHeaderScrollInsetScope.maybeOf(context) + 16, 0.5),
+      );
+    }
+
+    // Settings and its pushed subscreen keep their existing expanded inset,
+    // and must not add a second copy when inheriting compact state.
+    await tester.tapAt(const Offset(36, 30));
+    await tester.pumpAndSettle();
+    final account = find.text('Account').hitTestable();
+    expect(account, findsOneWidget);
+    final settingsInset = AppHeaderScrollInsetScope.maybeOf(tester.element(account));
+    expect(tester.getTopLeft(account).dy, closeTo(settingsInset, 0.5));
+    transition.position!.jumpTo(0);
+    await tester.pumpAndSettle();
+    expect(
+      tester.getTopLeft(account).dy,
+      closeTo(settingsInset + kAppHeaderTitleHeight, 0.5),
+    );
+    await tester.tap(find.text('Theme').hitTestable().first);
+    await tester.pumpAndSettle();
+    final firstOption = find.byWidgetPredicate(
+      (widget) => widget.runtimeType.toString() == '_OptionRow',
+    ).hitTestable().first;
+    expect(
+      tester.getTopLeft(firstOption).dy,
+      closeTo(settingsInset + kAppHeaderTitleHeight, 0.5),
+    );
+    await tester.timedDragFrom(
+      const Offset(200, 450),
+      const Offset(0, -200),
+      const Duration(milliseconds: 300),
+    );
+    await tester.pumpAndSettle();
+    expect(transition.position!.pixels, kAppHeaderTitleCollapseDistance);
+    expect(tester.getTopLeft(firstOption).dy, closeTo(settingsInset, 0.5));
     expect(tester.takeException(), isNull);
   });
 }

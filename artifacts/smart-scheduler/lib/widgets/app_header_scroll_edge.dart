@@ -122,6 +122,8 @@ class AppHeaderTitleTransition extends ChangeNotifier {
   double _lastNotifiedContentOffset = 0.0;
   double _lastNotifiedCollapseProgress = 0.0;
   bool _isBinding = false;
+  bool _notificationScheduled = false;
+  bool _disposed = false;
 
   ScrollPosition? get position => _position;
   double get collapseProgress =>
@@ -239,7 +241,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     _lastNotifiedCollapseProgress = collapseProgress;
     _cachedSearchCollapseProgress = searchBarCollapseProgress;
     _isBinding = false;
-    notifyListeners();
+    _publishChange();
   }
 
   /// Stops observing scroll changes while a search transition owns the header,
@@ -281,6 +283,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
   /// collapse value stops changing, so the existing glass edge keeps following
   /// content passing beneath the compact toolbar.
   void _handlePositionChanged() {
+    if (_isBinding) return;
     if (_pendingHandoffCollapseProgress != null) {
       _isBinding = true;
       _applyPendingHandoff();
@@ -329,11 +332,28 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     _cachedSearchCollapseProgress = searchBarCollapseProgress;
     _lastNotifiedContentOffset = currentContentOffset;
     _lastNotifiedCollapseProgress = currentCollapseProgress;
+    _publishChange();
+  }
+
+  void _publishChange() {
+    // Settings inherits the header in didUpdateWidget. Geometry must be
+    // aligned immediately, but sibling tabs cannot rebuild during that build.
+    if (WidgetsBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      if (_notificationScheduled) return;
+      _notificationScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _notificationScheduled = false;
+        if (!_disposed) notifyListeners();
+      });
+      return;
+    }
     notifyListeners();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     AppHeaderScrollView._positionRegistry.removeListener(
       _handleNestedRegistryChanged,
     );
@@ -679,9 +699,7 @@ class AppHeaderScrollView extends StatelessWidget {
   static bool isHeaderPosition(ScrollPosition? position) =>
       _bodyPositionsByOuterPosition.containsKey(position);
 
-  /// Preserve authored first-item spacing when the paint viewport extends
-  /// above the page. This is scrolling content clearance, not pinned chrome.
-  static double contentTopSpacingOf(
+  static double _maxContentTopSpacingOf(
     BuildContext context, {
     required double topExtension,
   }) =>
@@ -690,6 +708,16 @@ class AppHeaderScrollView extends StatelessWidget {
               topExtension > 0
           ? topExtension
           : 0.0;
+
+  /// Remaining clearance for fixed Calendar layouts without a search region.
+  /// It follows title collapse, rather than shifting the expanded layout.
+  static double contentTopSpacingOf(
+    BuildContext context, {
+    required double topExtension,
+  }) =>
+      _maxContentTopSpacingOf(context, topExtension: topExtension) *
+      (AppHeaderScrollInsetScope.titleTransitionOf(context)?.collapseProgress ??
+          0.0);
 
   static ScrollPosition? _outerPositionForBody(ScrollPosition bodyPosition) {
     for (final entry in _bodyPositionsByOuterPosition.entries) {
@@ -836,17 +864,19 @@ class AppHeaderScrollView extends StatelessWidget {
         center == null &&
         anchor == 0.0) {
       final innerSlivers = [...slivers]..removeAt(titleInsetIndex);
-      final contentTopSpacing = contentTopSpacingOf(
+      final maxContentTopSpacing = _maxContentTopSpacingOf(
         context,
         topExtension: topExtension,
       );
+      var minimumContentTopSpacing = 0.0;
       // Settings already declares this same leading inset. Move its
       // declaration into the shared slot instead of adding it twice.
-      if (contentTopSpacing > 0 &&
+      if (maxContentTopSpacing > 0 &&
           innerSlivers.isNotEmpty &&
           innerSlivers.first is SliverToBoxAdapter &&
           (innerSlivers.first as SliverToBoxAdapter).child
               is AppHeaderContentSpacing) {
+        minimumContentTopSpacing = kAppHeaderContentTopSpacing;
         innerSlivers.removeAt(0);
       }
       return AppHeaderScrollViewport(
@@ -856,7 +886,7 @@ class AppHeaderScrollView extends StatelessWidget {
           contentController: controller,
           physics: physics,
           scrollBehavior: scrollBehavior,
-          body: Builder(builder: (nestedContext) => CustomScrollView(
+          bodyBuilder: (nestedContext, phaseController) => CustomScrollView(
             key: _scrollViewKey,
             primary: true,
             physics: physics,
@@ -869,9 +899,25 @@ class AppHeaderScrollView extends StatelessWidget {
                   nestedContext,
                 ),
               ),
-              if (contentTopSpacing > 0)
+              if (maxContentTopSpacing > 0)
                 SliverToBoxAdapter(
-                  child: SizedBox(height: contentTopSpacing),
+                  child: ListenableBuilder(
+                    listenable: phaseController,
+                    builder: (context, _) {
+                      // Preserve the original expanded layout. Introduce the
+                      // compact clearance as the final collapsible region
+                      // closes: search when present, otherwise the title.
+                      final progress = titleInset.searchBarExtent > 0
+                          ? phaseController.searchBarCollapseProgress
+                          : phaseController.collapseProgress;
+                      return SizedBox(
+                        height: minimumContentTopSpacing +
+                            (maxContentTopSpacing -
+                                    minimumContentTopSpacing) *
+                                progress,
+                      );
+                    },
+                  ),
                 ),
               ...innerSlivers,
             ],
@@ -881,7 +927,7 @@ class AppHeaderScrollView extends StatelessWidget {
             restorationId: restorationId,
             hitTestBehavior: hitTestBehavior,
             clipBehavior: clipBehavior,
-          )),
+          ),
           leadingInset: leadingInset,
           titleCollapseExtent: titleCollapseExtent,
           titleInset: titleInset,
@@ -932,7 +978,7 @@ class _AppHeaderNestedScrollView extends StatefulWidget {
     required this.contentController,
     required this.physics,
     required this.scrollBehavior,
-    required this.body,
+    required this.bodyBuilder,
     required this.leadingInset,
     required this.titleCollapseExtent,
     required this.titleInset,
@@ -943,7 +989,7 @@ class _AppHeaderNestedScrollView extends StatefulWidget {
   final ScrollController? contentController;
   final ScrollPhysics? physics;
   final ScrollBehavior? scrollBehavior;
-  final Widget body;
+  final Widget Function(BuildContext, GlassLargeTitleController) bodyBuilder;
   final double leadingInset;
   final double titleCollapseExtent;
   final AppHeaderScrollInset titleInset;
@@ -1132,7 +1178,9 @@ class _AppHeaderNestedScrollViewState
           ),
         ),
       ],
-      body: widget.body,
+      body: Builder(
+        builder: (context) => widget.bodyBuilder(context, _searchPhaseController),
+      ),
     );
     final behavior = widget.scrollBehavior;
     return behavior == null

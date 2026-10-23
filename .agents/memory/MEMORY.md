@@ -156,3 +156,4 @@
 - [Calendar hierarchy morph layout](calendar-midpoint-view-handoff.md) — keep the scroll-title slot mounted offstage and carry header offset through Year↔Month handoff; don't restore the destination scope mid-morph.
 - [Search-mode parent restoration](search-mode-parent-restoration.md) — closing search returns to the same settled parent screen, never a rubberbanded or partially swiped state.
 - [Top-level modal sheet behavior](top-level-modal-sheet-behavior.md) — top-level sheets leave AppShell stationary; only nested sheets scale and stack the parent sheet, with enough top clearance for its glass control.
+- [Flutter browser touch verification](flutter-browser-touch-gestures.md) — use timed, incremental touch moves; a one-move swipe can falsely suggest a short page cannot collapse.

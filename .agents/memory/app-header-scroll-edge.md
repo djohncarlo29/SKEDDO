@@ -45,9 +45,27 @@ against the toolbar, while Settings retained sufficient separation. The upward
 paint-viewport extension must not silently cancel authored first-item spacing.
 
 **How to apply:** Account for the viewport raise once at the shared scrolling
-content boundary, reuse any already-declared Settings inset, and include the
-clearance in fixed Calendar day geometry and empty-area calculations. Do not
-turn it into pinned chrome or restore a hidden large-title slot.
+content boundary, but do not add constant compensation in the expanded state.
+Preserve each screen's original expanded spacing, including the existing
+Settings/subscreen inset. Introduce only the missing clearance as the final
+collapsible region closes (search when present, title otherwise), using its
+actual package-controller position. Include that same state-dependent amount
+in fixed Calendar day geometry and empty-area calculations. Do not turn it
+into pinned chrome or restore a hidden large-title slot.
+
+**Why both endpoints matter:** The user rejected a compact-only fix that added
+extra expanded padding. Always verify expanded and compact endpoints together,
+including Settings home and a pushed Settings subscreen, before delivery.
+
+Shared header handoffs must not recursively realign themselves or notify
+sibling tabs during a destination's build.
+
+**Why:** Settings can inherit the active position while building, but shared
+header observers also belong to kept-alive sibling screens.
+
+**How to apply:** Align authoritative geometry immediately; coalesce listener
+notifications until after the build when necessary, rather than delaying the
+geometry or allowing a reentrant handoff.
 
 For targeted app pages, raise available content by extending the shared scroll viewport at the top; do not reduce authored first-item padding or reuse `kFixedVerticalPadding` for this separate viewport adjustment. Explicit empty-state calculations based on an outer layout constraint must include the extension once; calculations based on the expanded scroll viewport already receive it.
 

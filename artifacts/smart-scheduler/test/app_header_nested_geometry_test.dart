@@ -38,6 +38,21 @@ void main() {
       ));
       await tester.pumpAndSettle();
       final outer = AppHeaderScrollView.headerPositionFor(controller)!;
+      final expandedTop = kAppHeaderToolbarHeight +
+          kAppHeaderTitleHeight +
+          (declaresExistingSpacing ? 16.0 : 0.0);
+      expect(
+        tester.getTopLeft(find.byKey(const ValueKey('first-card'))).dy,
+        expandedTop,
+      );
+      outer.jumpTo(kAppHeaderTitleHeight / 2);
+      await tester.pump();
+      expect(
+        tester.getTopLeft(find.byKey(const ValueKey('first-card'))).dy,
+        expandedTop -
+            kAppHeaderTitleHeight / 2 +
+            (declaresExistingSpacing ? 0.0 : 8.0),
+      );
       outer.jumpTo(outer.maxScrollExtent);
       await tester.pump();
       expect(outer.maxScrollExtent, kAppHeaderTitleHeight);
@@ -150,7 +165,10 @@ void main() {
     expect(bodyController.position.maxScrollExtent, 0);
     expect(
       tester.getTopLeft(find.byKey(const ValueKey('body'))).dy,
-      expandedTop - titleExtent - searchExtent,
+      expandedTop -
+          titleExtent -
+          searchExtent +
+          kAppHeaderContentTopSpacing,
     );
     for (var cycle = 0; cycle < 5; cycle++) {
       outer.jumpTo(0);
