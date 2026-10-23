@@ -51,6 +51,18 @@ As the second-level title collapses, the actual body viewport grows by the relea
 
 ## Search-mode and Calendar title alignment
 
+For the search-collapse reference, keep the package's built-in order: large
+title first, search region second. Do not silently reverse it to search-first.
+Keep SKEDDO's existing search control and Liquid Glass rendering.
+
+**Why:** The user explicitly asked to try what the package provides before
+judging whether that sequence matches the desired iOS behavior.
+
+**How to apply:** Use the package controller's separate title/search progress
+with real header extents, and inherit the active header phases on navigation.
+Inactive kept-alive tabs must never become the shared state source just because
+their viewport metrics change.
+
 The 16pt content-area raise applies to ordinary page content, not active search headers. Scroll-based search mode viewports must omit that extension so their bar and results retain the prior coordinates. Calendar Year and Month title rows, including their controls, remain in the scroll content but receive the matching positive paint offset; the Day title remains shell-owned and must not be offset again. A fixed Detailed Category search overlay is already outside the raised scroll viewport, so do not add another correction to it.
 
 **Why:** The user requires search bars to keep their pre-raise position and all Calendar second-level headers to align with the shared header slot. Applying the page raise indiscriminately lifts search bars and Calendar Year/Month titles.

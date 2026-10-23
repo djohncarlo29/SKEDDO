@@ -8246,6 +8246,8 @@ class EventsTabState extends State<EventsTab>
           ),
     ];
 
+    final collapsibleSearch = !isLandscape &&
+        (!_searchFocused || _activatedFromOffScreen || _restoringSearchParent);
     // Shared search-bar row — used by both layout paths below.
     final searchBarRow = Padding(
       padding: const EdgeInsets.fromLTRB(16, kSearchBarHostTopPadding, 16, 0),
@@ -8319,25 +8321,25 @@ class EventsTabState extends State<EventsTab>
             collapseAnimation: widget.searchModeAnimation,
             enabled:
                 MediaQuery.orientationOf(context) == Orientation.portrait,
+            searchBar: collapsibleSearch
+                ? (_activatedFromOffScreen || _restoringSearchParent
+                    ? const SizedBox.shrink()
+                    : searchBarRow)
+                : null,
+            searchBarExtent:
+                collapsibleSearch ? searchBarHostRowHeight(context) : 0,
           ),
         ),
-        // ── Search bar sliver ─────────────────────────────────────────────
-        // Off-screen active : _searchBarKey lives in the Stack overlay;
-        //   height placeholder keeps all content in position.
-        // Inline search     : SliverPersistentHeader (pinned) locks bar.
-        // Normal            : SliverToBoxAdapter scrolls with content.
-        if (_activatedFromOffScreen || _restoringSearchParent)
-          SliverToBoxAdapter(
-            child: SizedBox(height: searchBarHostRowHeight(context)),
-          )
-        else if (_searchFocused)
+        // The normal bar collapses in the outer header. Active search still
+        // uses its existing sibling overlay and results-layout reservation.
+        if (_searchFocused &&
+            !_activatedFromOffScreen &&
+            !_restoringSearchParent)
           // Reserve the header's normal layout slot, but keep the actual
           // search chrome as a sibling overlay outside the scroll hierarchy.
           SliverToBoxAdapter(
             child: SizedBox(height: searchBarHeaderExtent(context)),
-          )
-        else if (!isLandscape)
-          SliverToBoxAdapter(child: searchBarRow),
+          ),
 
         // ── Inline search results ─────────────────────────────────────────
         if (showResults && !_activatedFromOffScreen) ...[

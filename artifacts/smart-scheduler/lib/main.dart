@@ -927,6 +927,21 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         viewportHeight < max(240, MediaQuery.sizeOf(context).height * 0.35)) {
       return false;
     }
+    // Kept-alive tabs also emit viewport metrics when the shared header
+    // changes. They must not replace the visible tab's owning position.
+    if (notificationContext != null) {
+      if ((_selectedIndex != 0 &&
+              notificationContext.findAncestorStateOfType<NotesTabState>() !=
+                  null) ||
+          (_selectedIndex != 1 &&
+              notificationContext.findAncestorStateOfType<CalendarTabState>() !=
+                  null) ||
+          (_selectedIndex != 2 &&
+              notificationContext.findAncestorStateOfType<EventsTabState>() !=
+                  null)) {
+        return false;
+      }
+    }
 
     // Adjacent Year/Month previews have separate positions. Only the active
     // calendar panel may drive the shared shell title.
@@ -2008,12 +2023,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     // hidden — always force the off-screen animation path so the slide plays.
     final bool isLandscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
+    final headerPosition = AppHeaderScrollView.headerPositionFor(scrollCtrl);
     final bool visible =
         !isLandscape &&
         !_isDCV &&
-        (scrollCtrl == null ||
+        (headerPosition != null
+            ? _headerTitleTransition.searchBarCollapseProgress < 1.0
+            : (scrollCtrl == null ||
             !scrollCtrl.hasClients ||
-            scrollCtrl.offset < searchBarHostRowHeight(context));
+            scrollCtrl.offset < searchBarHostRowHeight(context)));
 
     if (!visible) {
       // Search bar is off-screen. Collapse the header immediately, then let

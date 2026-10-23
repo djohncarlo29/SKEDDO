@@ -587,6 +587,8 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     final bool showResults = _searchFocused && _searchText.isNotEmpty;
     final bool isLandscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
+    final collapsibleSearch = !isLandscape &&
+        (!_searchFocused || _activatedFromOffScreen || _restoringSearchParent);
 
     // Search bar row — carries _searchBarKey.
     // When off-screen search is active (_activatedFromOffScreen) this widget
@@ -635,25 +637,23 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
               child: AppHeaderScrollInset(
                 collapseAnimation: widget.searchModeAnimation,
                 enabled: !isLandscape,
+                searchBar: collapsibleSearch
+                    ? (_activatedFromOffScreen || _restoringSearchParent
+                        ? const SizedBox.shrink()
+                        : searchBarRow)
+                    : null,
+                searchBarExtent:
+                    collapsibleSearch ? searchBarHostRowHeight(context) : 0,
               ),
             ),
-            // ── Search bar sliver ─────────────────────────────────────────
-            // Off-screen active : _searchBarKey lives in the overlay Stack;
-            //   a same-height SizedBox placeholder occupies this slot so
-            //   the content below doesn't shift.
-            // Inline search     : SliverPersistentHeader (pinned) locks the
-            //   bar at the viewport top while the user types.
-            // Normal            : SliverToBoxAdapter scrolls with content.
-            if (_activatedFromOffScreen || _restoringSearchParent)
-              SliverToBoxAdapter(
-                child: SizedBox(height: searchBarHostRowHeight(context)),
-              )
-            else if (_searchFocused)
+            // Normal search belongs to the outer header's second collapse
+            // phase. Active search keeps its existing separate overlay.
+            if (_searchFocused &&
+                !_activatedFromOffScreen &&
+                !_restoringSearchParent)
               SliverToBoxAdapter(
                 child: SizedBox(height: searchBarHeaderExtent(context)),
-              )
-            else if (!isLandscape)
-              SliverToBoxAdapter(child: searchBarRow),
+              ),
 
             // ── Content ───────────────────────────────────────────────────
             // Inline search results use the same shared renderer as the

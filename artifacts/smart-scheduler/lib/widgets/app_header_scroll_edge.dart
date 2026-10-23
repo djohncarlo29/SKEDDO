@@ -115,7 +115,9 @@ class AppHeaderTitleTransition extends ChangeNotifier {
   ScrollPosition? _nestedBodyPosition;
   double _cachedContentOffset = 0.0;
   double _cachedCollapseProgress = 0.0;
+  double _cachedSearchCollapseProgress = 0.0;
   double? _pendingHandoffCollapseProgress;
+  double? _pendingHandoffSearchProgress;
   double _lastNotifiedContentOffset = 0.0;
   double _lastNotifiedCollapseProgress = 0.0;
   bool _isBinding = false;
@@ -127,6 +129,17 @@ class AppHeaderTitleTransition extends ChangeNotifier {
           ? _cachedCollapseProgress
           : _controller.collapseProgress);
   double get rawScrollOffset => _controller.rawScrollOffset;
+  double get searchBarCollapseProgress {
+    final pending = _pendingHandoffSearchProgress;
+    if (pending != null) return pending;
+    if (_position == null) return _cachedSearchCollapseProgress;
+    final extent = AppHeaderScrollView._searchExtentsByOuterPosition[_position];
+    if (extent == null) return _cachedSearchCollapseProgress;
+    // A screen with only the compact toolbar must not reopen a third header
+    // level merely because the destination has a search bar.
+    if (extent == 0) return collapseProgress >= 1 ? 1.0 : 0.0;
+    return _controller.searchBarCollapseProgress;
+  }
 
   double get contentOffset {
     final pendingProgress = _pendingHandoffCollapseProgress;
@@ -160,6 +173,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
         return;
       }
       if (preserveCollapseProgress) {
+        _pendingHandoffSearchProgress = searchBarCollapseProgress;
         _pendingHandoffCollapseProgress = collapseProgress;
       }
       _isBinding = true;
@@ -172,9 +186,13 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     final inheritedProgress = preserveCollapseProgress
         ? collapseProgress
         : _pendingHandoffCollapseProgress;
+    final inheritedSearchProgress = preserveCollapseProgress
+        ? searchBarCollapseProgress
+        : _pendingHandoffSearchProgress;
     if (_position != null) contentOffset;
     if (preserveCollapseProgress) {
       _pendingHandoffCollapseProgress = inheritedProgress;
+      _pendingHandoffSearchProgress = inheritedSearchProgress;
     }
 
     final oldPosition = _position;
@@ -193,8 +211,12 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     if (position == null && _pendingHandoffCollapseProgress == null) {
       _cachedContentOffset = 0.0;
       _cachedCollapseProgress = 0.0;
+      _cachedSearchCollapseProgress = 0.0;
     }
-    _controller = GlassLargeTitleController()
+    _controller = GlassLargeTitleController(
+      searchBarHeight:
+          AppHeaderScrollView._searchExtentsByOuterPosition[position] ?? 0.0,
+    )
       ..addListener(_forwardControllerChange);
     if (position != null) {
       _controller.scrollController.attach(position);
@@ -214,6 +236,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     }
     _lastNotifiedContentOffset = contentOffset;
     _lastNotifiedCollapseProgress = collapseProgress;
+    _cachedSearchCollapseProgress = searchBarCollapseProgress;
     _isBinding = false;
     notifyListeners();
   }
@@ -225,6 +248,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     if (position == null) return;
     contentOffset;
     _cachedCollapseProgress = collapseProgress;
+    _cachedSearchCollapseProgress = searchBarCollapseProgress;
     position.removeListener(_handlePositionChanged);
     _nestedBodyPosition?.removeListener(_handlePositionChanged);
     _nestedBodyPosition = null;
@@ -246,6 +270,9 @@ class AppHeaderTitleTransition extends ChangeNotifier {
 
   void _handleNestedRegistryChanged() {
     _syncNestedBodyPosition();
+    final searchExtent =
+        AppHeaderScrollView._searchExtentsByOuterPosition[_position] ?? 0.0;
+    if (searchExtent > 0) _controller.reportSearchBarHeight(searchExtent);
     _notifyIfChanged();
   }
 
@@ -273,13 +300,18 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     if (!minExtent.isFinite || !maxExtent.isFinite) return;
 
     final targetOffset =
-        (minExtent + progress * kAppHeaderTitleCollapseDistance)
+        (minExtent +
+            progress * kAppHeaderTitleCollapseDistance +
+            (_pendingHandoffSearchProgress ?? 0.0) *
+                (AppHeaderScrollView._searchExtentsByOuterPosition[position] ??
+                    0.0))
             .clamp(minExtent, maxExtent)
             .toDouble();
     if ((position.pixels - targetOffset).abs() > 0.5) {
       position.jumpTo(targetOffset);
     }
     _pendingHandoffCollapseProgress = null;
+    _pendingHandoffSearchProgress = null;
     _cachedContentOffset = AppHeaderScrollBehavior.contentOffset(position);
     _cachedCollapseProgress = _controller.collapseProgress;
   }
@@ -293,6 +325,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
       return;
     }
     _cachedCollapseProgress = currentCollapseProgress;
+    _cachedSearchCollapseProgress = searchBarCollapseProgress;
     _lastNotifiedContentOffset = currentContentOffset;
     _lastNotifiedCollapseProgress = currentCollapseProgress;
     notifyListeners();
@@ -638,6 +671,7 @@ class AppHeaderScrollView extends StatelessWidget {
       _outerPositionsByContentController = {};
   static final Map<ScrollPosition, ScrollPosition>
       _bodyPositionsByOuterPosition = {};
+  static final Map<ScrollPosition, double> _searchExtentsByOuterPosition = {};
   static final _AppHeaderPositionRegistry _positionRegistry =
       _AppHeaderPositionRegistry();
 
@@ -691,10 +725,13 @@ class AppHeaderScrollView extends StatelessWidget {
     ScrollController? contentController,
     ScrollPosition position, {
     required ScrollPosition bodyPosition,
+    double searchBarExtent = 0,
   }
   ) {
-    var changed = _bodyPositionsByOuterPosition[position] != bodyPosition;
+    var changed = _bodyPositionsByOuterPosition[position] != bodyPosition ||
+        _searchExtentsByOuterPosition[position] != searchBarExtent;
     _bodyPositionsByOuterPosition[position] = bodyPosition;
+    _searchExtentsByOuterPosition[position] = searchBarExtent;
     if (contentController != null) {
       final positions = _outerPositionsByContentController.putIfAbsent(
         contentController,
@@ -714,6 +751,7 @@ class AppHeaderScrollView extends StatelessWidget {
   ) {
     if (position == null) return;
     final changed = _bodyPositionsByOuterPosition.remove(position) != null;
+    _searchExtentsByOuterPosition.remove(position);
     final positions = _outerPositionsByContentController[contentController];
     positions?.remove(position);
     if (positions?.isEmpty ?? false) {
@@ -822,6 +860,11 @@ class AppHeaderScrollView extends StatelessWidget {
                       ?.collapseProgress ??
                   0.0) *
               titleCollapseExtent,
+          initialSearchOffset:
+              (AppHeaderScrollInsetScope.titleTransitionOf(context)
+                      ?.searchBarCollapseProgress ??
+                  0.0) *
+              titleInset.searchBarExtent,
         ),
       );
     }
@@ -864,6 +907,7 @@ class _AppHeaderNestedScrollView extends StatefulWidget {
     required this.titleCollapseExtent,
     required this.titleInset,
     required this.initialHeaderOffset,
+    required this.initialSearchOffset,
   });
 
   final ScrollController? contentController;
@@ -874,6 +918,7 @@ class _AppHeaderNestedScrollView extends StatefulWidget {
   final double titleCollapseExtent;
   final AppHeaderScrollInset titleInset;
   final double initialHeaderOffset;
+  final double initialSearchOffset;
 
   @override
   State<_AppHeaderNestedScrollView> createState() =>
@@ -883,6 +928,7 @@ class _AppHeaderNestedScrollView extends StatefulWidget {
 class _AppHeaderNestedScrollViewState
     extends State<_AppHeaderNestedScrollView> {
   late final ScrollController _outerController;
+  late final GlassLargeTitleController _searchPhaseController;
   final GlobalKey<NestedScrollViewState> _nestedKey = GlobalKey();
   ScrollPosition? _registeredPosition;
   final Set<ScrollPosition> _observedBodyPositions = {};
@@ -897,8 +943,22 @@ class _AppHeaderNestedScrollViewState
   @override
   void initState() {
     super.initState();
+    _searchPhaseController = GlassLargeTitleController();
     _outerController = ScrollController(
-      initialScrollOffset: widget.initialHeaderOffset,
+      initialScrollOffset:
+          widget.initialHeaderOffset + widget.initialSearchOffset,
+      onAttach: (position) {
+        _searchPhaseController.scrollController.attach(position);
+        _searchPhaseController.reportSearchBarHeight(
+          widget.titleInset.searchBarExtent,
+        );
+        _searchPhaseController.reportMeasuredHeight(widget.titleCollapseExtent);
+      },
+      onDetach: (position) {
+        if (_searchPhaseController.scrollController.positions.contains(position)) {
+          _searchPhaseController.scrollController.detach(position);
+        }
+      },
     );
     widget.titleInset.collapseAnimation?.addListener(_handleTitleAnimation);
     _outerController.addListener(_syncRegisteredPosition);
@@ -910,6 +970,9 @@ class _AppHeaderNestedScrollViewState
   @override
   void didUpdateWidget(_AppHeaderNestedScrollView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _searchPhaseController.reportSearchBarHeight(
+      widget.titleInset.searchBarExtent,
+    );
     if (oldWidget.contentController != widget.contentController) {
       _detachBodyObserver(oldWidget.contentController);
       AppHeaderScrollView._unregisterOuterPosition(
@@ -965,6 +1028,7 @@ class _AppHeaderNestedScrollViewState
         widget.contentController,
         position,
         bodyPosition: nested.innerController.position,
+        searchBarExtent: widget.titleInset.searchBarExtent,
       );
       if (!_initialBodyOffsetApplied) {
         _initialBodyOffsetApplied = true;
@@ -1003,6 +1067,11 @@ class _AppHeaderNestedScrollViewState
     );
     _detachBodyObserver(widget.contentController);
     _outerController.removeListener(_syncRegisteredPosition);
+    for (final position
+        in _searchPhaseController.scrollController.positions.toList()) {
+      _searchPhaseController.scrollController.detach(position);
+    }
+    _searchPhaseController.dispose();
     _outerController.dispose();
     super.dispose();
   }
@@ -1020,9 +1089,15 @@ class _AppHeaderNestedScrollViewState
           sliver: SliverPersistentHeader(
             pinned: true,
             delegate: _AppHeaderCollapseSliverDelegate(
-              extent: widget.leadingInset + extent,
+              extent: widget.leadingInset +
+                  extent +
+                  widget.titleInset.searchBarExtent,
               collapsedExtent: widget.leadingInset,
               largeTitle: widget.titleInset.child,
+              titleExtent: extent,
+              searchBar: widget.titleInset.searchBar,
+              searchBarExtent: widget.titleInset.searchBarExtent,
+              controller: _searchPhaseController,
             ),
           ),
         ),
@@ -1041,11 +1116,19 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
     required this.extent,
     this.collapsedExtent = 0,
     this.largeTitle,
+    required this.titleExtent,
+    required this.controller,
+    this.searchBar,
+    this.searchBarExtent = 0,
   });
 
   final double extent;
   final double collapsedExtent;
   final Widget? largeTitle;
+  final double titleExtent;
+  final GlassLargeTitleController controller;
+  final Widget? searchBar;
+  final double searchBarExtent;
 
   @override
   double get minExtent => collapsedExtent;
@@ -1058,27 +1141,54 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
     BuildContext context,
     double shrinkOffset,
     bool overlapsContent,
-  ) => largeTitle == null
-      ? const SizedBox.expand()
-      : Stack(
+  ) => ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) => Stack(
           clipBehavior: Clip.none,
           children: [
-            Positioned(
+            if (largeTitle != null) Positioned(
               top: collapsedExtent -
-                  shrinkOffset.clamp(0.0, extent - collapsedExtent),
+                  shrinkOffset.clamp(0.0, titleExtent),
               left: 0,
               right: 0,
-              height: extent - collapsedExtent,
+              height: titleExtent,
               child: largeTitle!,
             ),
+            if (searchBar != null) Positioned(
+              top: collapsedExtent +
+                  (titleExtent - shrinkOffset).clamp(0.0, titleExtent),
+              left: 0,
+              right: 0,
+              child: ClipRect(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  // Use GlassLargeTitle's package-controlled second phase.
+                  heightFactor: 1.0 - controller.searchBarCollapseProgress,
+                  child: Opacity(
+                    opacity: Curves.easeIn.transform(
+                      1.0 - controller.searchBarCollapseProgress,
+                    ),
+                    child: SizedBox(
+                      height: searchBarExtent,
+                      child: searchBar,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
-        );
+        ),
+      );
 
   @override
   bool shouldRebuild(_AppHeaderCollapseSliverDelegate oldDelegate) =>
       extent != oldDelegate.extent ||
       collapsedExtent != oldDelegate.collapsedExtent ||
-      largeTitle != oldDelegate.largeTitle;
+      largeTitle != oldDelegate.largeTitle ||
+      titleExtent != oldDelegate.titleExtent ||
+      searchBar != oldDelegate.searchBar ||
+      searchBarExtent != oldDelegate.searchBarExtent ||
+      controller != oldDelegate.controller;
 }
 
 /// A page-level stack that lets scroll content paint up behind the app header.
@@ -1107,28 +1217,42 @@ class AppHeaderScrollInset extends StatelessWidget {
     this.collapseAnimation,
     this.enabled = true,
     this.child,
-  });
+    this.searchBar,
+    this.searchBarExtent = 0,
+  }) : assert(searchBarExtent >= 0),
+       assert(searchBar != null || searchBarExtent == 0);
 
   final Animation<double>? collapseAnimation;
   final bool enabled;
   final Widget? child;
+  /// Optional third header level; the package collapses it after the title.
+  final Widget? searchBar;
+  final double searchBarExtent;
 
   @override
   Widget build(BuildContext context) {
     final animation = collapseAnimation;
     if (!enabled) return const SizedBox.shrink();
     if (animation == null) {
-      return SizedBox(height: kAppHeaderTitleHeight, child: child);
+      return Column(mainAxisSize: MainAxisSize.min, children: [
+        SizedBox(height: kAppHeaderTitleHeight, child: child),
+        if (searchBar != null)
+          SizedBox(height: searchBarExtent, child: searchBar),
+      ]);
     }
 
     return AnimatedBuilder(
       animation: animation,
       builder: (context, _) {
         final searchExpanded = (1 - animation.value.clamp(0.0, 1.0)).toDouble();
-        return SizedBox(
-          height: kAppHeaderTitleHeight * searchExpanded,
-          child: child,
-        );
+        return Column(mainAxisSize: MainAxisSize.min, children: [
+          SizedBox(
+            height: kAppHeaderTitleHeight * searchExpanded,
+            child: child,
+          ),
+          if (searchBar != null)
+            SizedBox(height: searchBarExtent, child: searchBar),
+        ]);
       },
     );
   }
