@@ -2933,10 +2933,15 @@ class CalendarTabState extends State<CalendarTab>
                 AppHeaderScrollInsetScope.maybeOf(context);
             final expandedTitleHeight =
                 _calendarExpandedTitleHeight(context);
+            final contentTopSpacing = AppHeaderScrollView.contentTopSpacingOf(
+              context,
+              topExtension: kContentAreaTopRaise,
+            );
             final double dayHeaderGroupSlideY =
                 -listModeT *
                     (appHeaderLeadingInset +
                         expandedTitleHeight +
+                         contentTopSpacing +
                         _kCalendarHeaderToDowGap +
                         _kDayLabelHeight +
                         dayWeekStripHeight +
@@ -2951,7 +2956,8 @@ class CalendarTabState extends State<CalendarTab>
                 _kCalendarHeaderToDowGap +
                 _kDayLabelHeight +
                 dayWeekStripHeight -
-                kContentAreaTopRaise;
+                kContentAreaTopRaise +
+                contentTopSpacing;
             final showDayHeaderChrome =
                 colT > 0.01 &&
                 (widget.daySubMode != DayViewSubMode.list ||
@@ -3604,7 +3610,9 @@ class CalendarTabState extends State<CalendarTab>
                         // its first-level toolbar. Align the pinned DOW cover
                         // after that title, where the Month View's DOW row
                         // naturally sits, instead of over the week strip.
-                        top: expandedTitleHeight - kContentAreaTopRaise,
+                        top: expandedTitleHeight -
+                            kContentAreaTopRaise +
+                            contentTopSpacing,
                         left: 0,
                         right: 0,
                         height: _kCalendarHeaderToDowGap + _kDayLabelHeight,
@@ -5834,7 +5842,12 @@ class _MonthView extends StatelessWidget {
         // while AlwaysScrollable+BouncingScrollPhysics still permits the
         // placeholder to move during a rubber-band overscroll.
         final expandedViewportHeight =
-            constraints.maxHeight + kContentAreaTopRaise;
+            constraints.maxHeight +
+            kContentAreaTopRaise -
+            AppHeaderScrollView.contentTopSpacingOf(
+              context,
+              topExtension: kContentAreaTopRaise,
+            );
         final availableListEmptyStateH = math.max(
           0.0,
           expandedViewportHeight -

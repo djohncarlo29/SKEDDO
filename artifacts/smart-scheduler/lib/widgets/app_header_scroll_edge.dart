@@ -9,6 +9,7 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 const double kAppHeaderToolbarHeight = 44;
 const double kAppHeaderTitleHeight = 57;
 const double kAppHeaderTitleCollapseDistance = kAppHeaderTitleHeight;
+const double kAppHeaderContentTopSpacing = 16;
 const double kAppHeaderScrollEdgeHeaderBottomExtension = 16;
 const double _kAppHeaderScrollEdgeMaxTintOpacity = 0.24;
 const double _kAppHeaderScrollEdgeMaxBlurSigma = 4;
@@ -678,6 +679,18 @@ class AppHeaderScrollView extends StatelessWidget {
   static bool isHeaderPosition(ScrollPosition? position) =>
       _bodyPositionsByOuterPosition.containsKey(position);
 
+  /// Preserve authored first-item spacing when the paint viewport extends
+  /// above the page. This is scrolling content clearance, not pinned chrome.
+  static double contentTopSpacingOf(
+    BuildContext context, {
+    required double topExtension,
+  }) =>
+      AppHeaderScrollInsetScope.titleCollapseExtentOf(context) > 0 &&
+              topExtension.isFinite &&
+              topExtension > 0
+          ? topExtension
+          : 0.0;
+
   static ScrollPosition? _outerPositionForBody(ScrollPosition bodyPosition) {
     for (final entry in _bodyPositionsByOuterPosition.entries) {
       if (identical(entry.value, bodyPosition)) return entry.key;
@@ -823,6 +836,19 @@ class AppHeaderScrollView extends StatelessWidget {
         center == null &&
         anchor == 0.0) {
       final innerSlivers = [...slivers]..removeAt(titleInsetIndex);
+      final contentTopSpacing = contentTopSpacingOf(
+        context,
+        topExtension: topExtension,
+      );
+      // Settings already declares this same leading inset. Move its
+      // declaration into the shared slot instead of adding it twice.
+      if (contentTopSpacing > 0 &&
+          innerSlivers.isNotEmpty &&
+          innerSlivers.first is SliverToBoxAdapter &&
+          (innerSlivers.first as SliverToBoxAdapter).child
+              is AppHeaderContentSpacing) {
+        innerSlivers.removeAt(0);
+      }
       return AppHeaderScrollViewport(
         leadingInset: leadingInset,
         topExtension: topExtension,
@@ -843,6 +869,10 @@ class AppHeaderScrollView extends StatelessWidget {
                   nestedContext,
                 ),
               ),
+              if (contentTopSpacing > 0)
+                SliverToBoxAdapter(
+                  child: SizedBox(height: contentTopSpacing),
+                ),
               ...innerSlivers,
             ],
             semanticChildCount: semanticChildCount,
@@ -1204,6 +1234,16 @@ class AppHeaderScrollStack extends Stack {
     super.fit = StackFit.loose,
     super.children,
   }) : super(clipBehavior: Clip.none);
+}
+
+/// Declares existing leading content spacing, reused by the shared boundary.
+/// Outside that boundary (for example landscape), retain the authored inset.
+class AppHeaderContentSpacing extends StatelessWidget {
+  const AppHeaderContentSpacing({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      const SizedBox(height: kAppHeaderContentTopSpacing);
 }
 
 /// Declares the page's collapsible title region.

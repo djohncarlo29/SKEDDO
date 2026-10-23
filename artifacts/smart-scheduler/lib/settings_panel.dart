@@ -886,8 +886,8 @@ class _MainSettingsContent extends StatelessWidget {
             enabled: MediaQuery.orientationOf(context) == Orientation.portrait,
           ),
         ),
-        // Keep the settings rhythm on the 8 pt grid.
-        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+        // Already supplied by the shared portrait header/body boundary.
+        const SliverToBoxAdapter(child: AppHeaderContentSpacing()),
 
         // ── Account ─────────────────────────────────────────────────────────
         _SettingsSection(
@@ -1152,8 +1152,8 @@ class _SubScreenState extends State<_SubScreen> {
             enabled: MediaQuery.orientationOf(context) == Orientation.portrait,
           ),
         ),
-        // Keep the settings rhythm on the 8 pt grid.
-        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+        // Already supplied by the shared portrait header/body boundary.
+        const SliverToBoxAdapter(child: AppHeaderContentSpacing()),
 
         // Branch: accent-color picker vs. standard option list.
         if (widget.route.isAccentColor)

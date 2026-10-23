@@ -41,6 +41,16 @@ void main() {
       expect(transition.searchBarCollapseProgress, 1, reason: tab);
     }
     expect(outer.pixels, kAppHeaderTitleHeight + searchExtent);
+    final firstNoteCard = find.byWidgetPredicate(
+      (widget) => widget.runtimeType.toString() == '_NoteInputCard',
+    );
+    expect(
+      tester.getTopLeft(firstNoteCard).dy,
+      closeTo(
+        AppHeaderScrollInsetScope.maybeOf(tester.element(notesFinder)) + 16,
+        0.5,
+      ),
+    );
 
     // Opening and cancelling search must not reopen its collapsed parent bar.
     final headerSearch = tester

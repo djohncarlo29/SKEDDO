@@ -3,6 +3,60 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 
 void main() {
+  testWidgets('raised viewport preserves a scrolling content gap without doubling Settings spacing', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    for (final declaresExistingSpacing in [false, true]) {
+      final controller = ScrollController();
+      await tester.pumpWidget(CupertinoApp(
+        home: AppHeaderScrollInsetScope(
+          leadingInset: kAppHeaderToolbarHeight,
+          titleCollapseExtent: kAppHeaderTitleHeight,
+          child: Padding(
+            padding: const EdgeInsets.only(top: kAppHeaderToolbarHeight),
+            child: AppHeaderScrollView(
+              controller: controller,
+              topExtension: kAppHeaderContentTopSpacing,
+              slivers: [
+                const SliverToBoxAdapter(child: AppHeaderScrollInset()),
+                if (declaresExistingSpacing)
+                  const SliverToBoxAdapter(child: AppHeaderContentSpacing()),
+                const SliverPadding(
+                  padding: EdgeInsets.only(top: 16),
+                  sliver: SliverToBoxAdapter(
+                    child: SizedBox(key: ValueKey('first-card'), height: 2000),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      final outer = AppHeaderScrollView.headerPositionFor(controller)!;
+      outer.jumpTo(outer.maxScrollExtent);
+      await tester.pump();
+      expect(outer.maxScrollExtent, kAppHeaderTitleHeight);
+      expect(
+        tester.getTopLeft(find.byKey(const ValueKey('first-card'))).dy,
+        kAppHeaderToolbarHeight + 16,
+      );
+      controller.jumpTo(16);
+      await tester.pump();
+      expect(
+        tester.getTopLeft(find.byKey(const ValueKey('first-card'))).dy,
+        kAppHeaderToolbarHeight,
+      );
+      expect(outer.pixels, kAppHeaderTitleHeight);
+      await tester.pumpWidget(const SizedBox.shrink());
+      controller.dispose();
+    }
+  });
+
   testWidgets('package phases collapse title before search and release both extents', (
     tester,
   ) async {
@@ -27,6 +81,7 @@ void main() {
           padding: const EdgeInsets.only(top: kAppHeaderToolbarHeight),
           child: AppHeaderScrollView(
             controller: bodyController,
+            topExtension: kAppHeaderContentTopSpacing,
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
             ),

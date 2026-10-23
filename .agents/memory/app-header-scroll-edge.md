@@ -36,6 +36,19 @@ Keep the app-level scroll-edge treatment light enough that content passing throu
 **How to apply:** Keep Month/Year titles within the coordinated header/content scroll hierarchy, preserve measured title endpoints when the shell owns transition painting, and let page-level stacks paint through the edge band. Do not clip shell titles at the safe-area inset. Keep the AppShell's full-device viewport as the final app clipping boundary; do not change modal-sheet clips. Derive title translation from the actual header-collapse position and glass travel from the coordinated content position. Filter notifications to scrollables that actually own the header, and use distinct scopes for calendar views and day submodes. Keep the glass surface color matched to the content background and leave landscape fills unchanged.
 
 ## Raised page content ceiling
+Compact-header content must retain breathing room across tabs, Detailed
+Category View, and Settings. Settings is the spacing reference, not a fixed
+content layout; the leading clearance must scroll away with the body.
+
+**Why:** The user reported that inheriting compact state pushed tab/DCV content
+against the toolbar, while Settings retained sufficient separation. The upward
+paint-viewport extension must not silently cancel authored first-item spacing.
+
+**How to apply:** Account for the viewport raise once at the shared scrolling
+content boundary, reuse any already-declared Settings inset, and include the
+clearance in fixed Calendar day geometry and empty-area calculations. Do not
+turn it into pinned chrome or restore a hidden large-title slot.
+
 For targeted app pages, raise available content by extending the shared scroll viewport at the top; do not reduce authored first-item padding or reuse `kFixedVerticalPadding` for this separate viewport adjustment. Explicit empty-state calculations based on an outer layout constraint must include the extension once; calculations based on the expanded scroll viewport already receive it.
 
 **Why:** Raising the ceiling should preserve existing spacing before the first element while increasing the area used to center empty states. Changing that spacing too would shift content twice, and omitting manual height calculations leaves placeholders centered in the old area.
