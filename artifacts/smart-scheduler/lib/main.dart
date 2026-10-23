@@ -962,7 +962,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       notificationContext,
       axis: Axis.vertical,
     )?.position;
-    if (position != null) _headerTitleTransition.bindTo(position);
+    if (position != null) {
+      _headerTitleTransition.bindTo(
+        position,
+        preserveCollapseProgress: true,
+      );
+    }
   }
 
   bool _onHeaderScrollNotification(ScrollNotification notification) {
@@ -1058,7 +1063,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           };
     _headerTitleTransition.bindTo(
       position,
-      preserveCollapseProgress: preserveCollapseProgress,
+      preserveCollapseProgress: preserveCollapseProgress ||
+          AppHeaderScrollView.isHeaderPosition(position),
     );
   }
 
@@ -3030,6 +3036,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                   topInset + headerToolbarHeight * (1 - t);
                               return AppHeaderScrollInsetScope(
                                 leadingInset: leadingInset,
+                                titleTransition: _headerTitleTransition,
                                 titleCollapseExtent: isLandscape
                                     ? 0.0
                                     : kAppHeaderTitleCollapseDistance,

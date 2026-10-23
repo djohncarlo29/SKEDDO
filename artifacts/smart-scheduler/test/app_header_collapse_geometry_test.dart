@@ -26,7 +26,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final position = scrollController.position;
+      final position = AppHeaderScrollView.headerPositionFor(scrollController)!;
       titleTransition.bindTo(position);
       expect(
         position.maxScrollExtent,
@@ -41,7 +41,7 @@ void main() {
         closeTo(kAppHeaderToolbarHeight + kAppHeaderTitleCollapseDistance, 1),
       );
 
-      scrollController.jumpTo(position.maxScrollExtent);
+      position.jumpTo(position.maxScrollExtent);
       await tester.pump();
       expect(titleTransition.collapseProgress, 1);
       expect(bodyTop(), closeTo(kAppHeaderToolbarHeight, 1));
@@ -50,7 +50,7 @@ void main() {
       // compact because the scroll position—not maxScrollExtent—owns the state.
       await tester.pump(const Duration(milliseconds: 500));
       expect(
-        scrollController.offset,
+        position.pixels,
         closeTo(kAppHeaderTitleCollapseDistance, 1),
       );
       expect(titleTransition.collapseProgress, 1);
@@ -77,27 +77,28 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final position = scrollController.position;
+      final position = AppHeaderScrollView.headerPositionFor(scrollController)!;
       titleTransition.bindTo(position);
-      final naturalMaxScrollExtent =
-          kAppHeaderToolbarHeight +
-          kAppHeaderTitleHeight +
-          2000 -
-          position.viewportDimension;
-      expect(position.maxScrollExtent, closeTo(naturalMaxScrollExtent, 1));
+      expect(position.maxScrollExtent, kAppHeaderTitleCollapseDistance);
+      expect(scrollController.position.maxScrollExtent, greaterThan(1000));
 
-      scrollController.jumpTo(kAppHeaderTitleCollapseDistance * 3);
+      scrollController.jumpTo(200);
       await tester.pump();
       expect(titleTransition.collapseProgress, 1);
+      expect(scrollController.offset, 200);
+      expect(
+        titleTransition.contentOffset,
+        kAppHeaderTitleCollapseDistance + 200,
+      );
 
       // Moving back down within the content does not expand the title.
-      scrollController.jumpTo(kAppHeaderTitleCollapseDistance * 1.5);
+      scrollController.jumpTo(100);
       await tester.pump();
       expect(titleTransition.collapseProgress, 1);
 
       // The large title returns only as the real position enters its measured
       // expansion range, and there is no independent release-time snap.
-      scrollController.jumpTo(kAppHeaderTitleCollapseDistance / 2);
+      position.jumpTo(kAppHeaderTitleCollapseDistance / 2);
       await tester.pump();
       expect(titleTransition.collapseProgress, closeTo(0.5, 1e-9));
       await tester.pump(const Duration(milliseconds: 500));
@@ -124,7 +125,8 @@ void main() {
         _buildHeaderHarness(controller: scrollController, bodyHeight: 1),
       );
       await tester.pumpAndSettle();
-      titleTransition.bindTo(scrollController.position);
+      final position = AppHeaderScrollView.headerPositionFor(scrollController)!;
+      titleTransition.bindTo(position);
 
       var compactReached = false;
       var expandedAfterCompact = false;
@@ -135,11 +137,11 @@ void main() {
         }
       });
 
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
+      await tester.drag(find.byType(NestedScrollView), const Offset(0, -120));
       await tester.pumpAndSettle();
 
       expect(
-        scrollController.offset,
+        position.pixels,
         closeTo(kAppHeaderTitleCollapseDistance, 1),
       );
       expect(titleTransition.collapseProgress, 1);
@@ -150,7 +152,7 @@ void main() {
       // A slow downward release partway through the title region remains at
       // the actual intermediate geometry instead of rubber-banding or snapping.
       final gesture = await tester.startGesture(
-        tester.getCenter(find.byType(CustomScrollView)),
+        tester.getCenter(find.byType(NestedScrollView)),
       );
       for (var step = 1; step <= 10; step++) {
         await gesture.moveBy(
@@ -162,7 +164,7 @@ void main() {
       await gesture.up(timeStamp: const Duration(milliseconds: 1100));
       await tester.pumpAndSettle();
 
-      final expandedOffset = scrollController.offset;
+      final expandedOffset = position.pixels;
       expect(expandedOffset, greaterThan(0));
       expect(expandedOffset, lessThan(kAppHeaderTitleCollapseDistance));
       expect(
@@ -179,11 +181,64 @@ void main() {
         ),
       );
       await tester.pump(const Duration(milliseconds: 500));
-      expect(scrollController.offset, closeTo(expandedOffset, 1));
+      expect(position.pixels, closeTo(expandedOffset, 1));
       expect(
         titleTransition.collapseProgress,
         closeTo(expandedOffset / kAppHeaderTitleCollapseDistance, 1e-9),
       );
+    },
+  );
+
+  testWidgets(
+    'new page starts with shared geometry before its first scroll gesture',
+    (tester) async {
+      tester.view.physicalSize = _viewportSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final first = ScrollController();
+      final second = ScrollController();
+      final transition = AppHeaderTitleTransition();
+      addTearDown(() {
+        transition.dispose();
+        first.dispose();
+        second.dispose();
+      });
+      await tester.pumpWidget(_buildHeaderHarness(
+        controller: first,
+        bodyHeight: 120,
+        titleTransition: transition,
+        pageName: 'first',
+      ));
+      await tester.pumpAndSettle();
+      final source = AppHeaderScrollView.headerPositionFor(first)!;
+      transition.bindTo(source);
+      source.jumpTo(kAppHeaderTitleCollapseDistance);
+      await tester.pump();
+      transition.suspend();
+      await tester.pumpWidget(_buildHeaderHarness(
+        controller: second,
+        bodyHeight: 1,
+        titleTransition: transition,
+        pageName: 'second',
+      ));
+      await tester.pumpAndSettle();
+      final destination = AppHeaderScrollView.headerPositionFor(second)!;
+      expect(destination.pixels, kAppHeaderTitleCollapseDistance);
+      expect(tester.getTopLeft(find.byKey(_bodyKey)).dy,
+          kAppHeaderToolbarHeight);
+      transition.bindTo(destination, preserveCollapseProgress: true);
+      destination.jumpTo(0);
+      await tester.pump();
+      transition.suspend();
+      await tester.pumpWidget(_buildHeaderHarness(
+        controller: first,
+        bodyHeight: 120,
+        titleTransition: transition,
+        pageName: 'return',
+      ));
+      await tester.pumpAndSettle();
+      expect(AppHeaderScrollView.headerPositionFor(first)!.pixels, 0);
     },
   );
 
@@ -236,28 +291,32 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final firstPosition = firstController.position;
-      final secondPosition = secondController.position;
+      final firstPosition = AppHeaderScrollView.headerPositionFor(
+        firstController,
+      )!;
+      final secondPosition = AppHeaderScrollView.headerPositionFor(
+        secondController,
+      )!;
       titleTransition.bindTo(firstPosition);
-      firstController.jumpTo(kAppHeaderTitleCollapseDistance);
+      firstPosition.jumpTo(kAppHeaderTitleCollapseDistance);
       await tester.pump();
       expect(titleTransition.collapseProgress, 1);
 
       titleTransition.bindTo(secondPosition, preserveCollapseProgress: true);
       await tester.pump();
       expect(
-        secondController.offset,
+        secondPosition.pixels,
         closeTo(kAppHeaderTitleCollapseDistance, 1),
       );
       expect(titleTransition.collapseProgress, 1);
 
-      secondController.jumpTo(0);
+      secondPosition.jumpTo(0);
       await tester.pump();
       expect(titleTransition.collapseProgress, 0);
 
       titleTransition.bindTo(firstPosition, preserveCollapseProgress: true);
       await tester.pump();
-      expect(firstController.offset, 0);
+      expect(firstPosition.pixels, 0);
       expect(titleTransition.collapseProgress, 0);
     },
   );
@@ -266,13 +325,17 @@ void main() {
 Widget _buildHeaderHarness({
   required ScrollController controller,
   required double bodyHeight,
+  AppHeaderTitleTransition? titleTransition,
+  String pageName = 'page',
 }) {
   return CupertinoApp(
     home: SizedBox(
+      key: ValueKey(pageName),
       height: _viewportSize.height,
       child: AppHeaderScrollInsetScope(
         leadingInset: kAppHeaderToolbarHeight,
         titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+        titleTransition: titleTransition,
         child: Padding(
           padding: const EdgeInsets.only(top: kAppHeaderToolbarHeight),
           child: AppHeaderScrollView(
@@ -282,7 +345,7 @@ Widget _buildHeaderHarness({
             ),
             slivers: [
               const SliverToBoxAdapter(
-                child: SizedBox(height: kAppHeaderTitleHeight),
+                child: AppHeaderScrollInset(),
               ),
               SliverToBoxAdapter(
                 child: SizedBox(key: _bodyKey, height: bodyHeight),
@@ -305,7 +368,7 @@ Widget _buildHeaderScrollView({
       parent: BouncingScrollPhysics(),
     ),
     slivers: [
-      const SliverToBoxAdapter(child: SizedBox(height: kAppHeaderTitleHeight)),
+      const SliverToBoxAdapter(child: AppHeaderScrollInset()),
       SliverToBoxAdapter(child: SizedBox(height: bodyHeight)),
     ],
   );

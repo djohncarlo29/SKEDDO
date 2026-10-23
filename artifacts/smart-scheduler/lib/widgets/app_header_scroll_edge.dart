@@ -1,4 +1,5 @@
 import 'package:flutter/gestures.dart' show DragStartBehavior;
+import 'package:flutter/scheduler.dart' show SchedulerPhase;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show GlassLargeTitleController;
@@ -96,20 +97,22 @@ abstract final class AppHeaderScrollBehavior {
   }
 }
 
-/// Bridges the package's established large-title collapse controller to the
-/// app's existing ScrollPosition.
+/// Binds the package controller to the active outer header position.
 ///
-/// The package controller normally owns the ScrollController attached to its
-/// GlassLargeTitle sliver. SKEDDO already has persistent, screen-specific
-/// scrollables, so this adapter attaches the package's controller to the active
-/// existing position instead of introducing another scroll view or offset.
+/// Header collapse comes only from that real sliver position. The coordinated
+/// inner body's offset contributes to glass-edge progress, not collapse state.
+/// Legacy non-collapsing scroll surfaces can still bind their own position.
 class AppHeaderTitleTransition extends ChangeNotifier {
   AppHeaderTitleTransition() : _controller = GlassLargeTitleController() {
     _controller.addListener(_forwardControllerChange);
+    AppHeaderScrollView._positionRegistry.addListener(
+      _handleNestedRegistryChanged,
+    );
   }
 
   GlassLargeTitleController _controller;
   ScrollPosition? _position;
+  ScrollPosition? _nestedBodyPosition;
   double _cachedContentOffset = 0.0;
   double _cachedCollapseProgress = 0.0;
   double? _pendingHandoffCollapseProgress;
@@ -136,7 +139,9 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     }
     _cachedContentOffset = AppHeaderScrollBehavior.contentOffset(
       currentPosition,
-    );
+    ) + (_nestedBodyPosition == null
+        ? 0.0
+        : AppHeaderScrollBehavior.contentOffset(_nestedBodyPosition!));
     return _cachedContentOffset;
   }
 
@@ -149,6 +154,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     bool preserveCollapseProgress = false,
   }) {
     if (identical(position, _position)) {
+      _syncNestedBodyPosition();
       if (_pendingHandoffCollapseProgress == null &&
           (!preserveCollapseProgress || position != null)) {
         return;
@@ -173,6 +179,8 @@ class AppHeaderTitleTransition extends ChangeNotifier {
 
     final oldPosition = _position;
     _isBinding = true;
+    _nestedBodyPosition?.removeListener(_handlePositionChanged);
+    _nestedBodyPosition = null;
     _controller.removeListener(_forwardControllerChange);
     if (oldPosition != null) {
       oldPosition.removeListener(_handlePositionChanged);
@@ -181,6 +189,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     _controller.dispose();
 
     _position = position;
+    _syncNestedBodyPosition();
     if (position == null && _pendingHandoffCollapseProgress == null) {
       _cachedContentOffset = 0.0;
       _cachedCollapseProgress = 0.0;
@@ -217,6 +226,8 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     contentOffset;
     _cachedCollapseProgress = collapseProgress;
     position.removeListener(_handlePositionChanged);
+    _nestedBodyPosition?.removeListener(_handlePositionChanged);
+    _nestedBodyPosition = null;
     _controller.scrollController.detach(position);
     _position = null;
   }
@@ -225,12 +236,22 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     _notifyIfChanged();
   }
 
-  /// The package controller intentionally stops notifying once its normalized
-  /// collapse progress reaches 1.0. The shell still needs the same position's
-  /// full offset for title travel and LiquidGlassScrollEdge progress, so listen
-  /// to the active ScrollPosition as well. This is not a second scroll source:
-  /// both values are read from the exact position attached to the package
-  /// controller.
+  void _syncNestedBodyPosition() {
+    final next = AppHeaderScrollView._bodyPositionsByOuterPosition[_position];
+    if (identical(next, _nestedBodyPosition)) return;
+    _nestedBodyPosition?.removeListener(_handlePositionChanged);
+    _nestedBodyPosition = next;
+    next?.addListener(_handlePositionChanged);
+  }
+
+  void _handleNestedRegistryChanged() {
+    _syncNestedBodyPosition();
+    _notifyIfChanged();
+  }
+
+  /// Observe real outer/body positions even after the package's normalized
+  /// collapse value stops changing, so the existing glass edge keeps following
+  /// content passing beneath the compact toolbar.
   void _handlePositionChanged() {
     if (_pendingHandoffCollapseProgress != null) {
       _isBinding = true;
@@ -279,6 +300,10 @@ class AppHeaderTitleTransition extends ChangeNotifier {
 
   @override
   void dispose() {
+    AppHeaderScrollView._positionRegistry.removeListener(
+      _handleNestedRegistryChanged,
+    );
+    _nestedBodyPosition?.removeListener(_handlePositionChanged);
     _controller.removeListener(_forwardControllerChange);
     final position = _position;
     if (position != null) {
@@ -300,10 +325,15 @@ class AppHeaderScrollCentered extends StatelessWidget {
     super.key,
     required this.child,
     this.enabled = true,
+    this.fixedExpandedRegion = false,
   });
 
   final Widget child;
   final bool enabled;
+  /// A fixed Calendar grid document does not relayout its empty region when
+  /// the outer header releases viewport space. Its center gains half that
+  /// released height. SliverFillRemaining content already relayouts itself.
+  final bool fixedExpandedRegion;
 
   @override
   Widget build(BuildContext context) {
@@ -315,17 +345,27 @@ class AppHeaderScrollCentered extends StatelessWidget {
     if (position == null) return child;
 
     return AnimatedBuilder(
-      animation: position,
+      animation: AppHeaderScrollView._positionRegistry,
       builder: (context, _) {
-        if (!position.hasContentDimensions) return child;
-        final contentOffset = AppHeaderScrollBehavior.contentOffset(position);
-        final collapsedDistance = contentOffset
-            .clamp(0.0, kAppHeaderTitleHeight)
-            .toDouble();
-        if (collapsedDistance == 0.0) return child;
-        return Transform.translate(
-          offset: Offset(0.0, collapsedDistance * 0.5),
-          child: child,
+        final outer = AppHeaderScrollView._outerPositionForBody(position);
+        if (outer != null && !fixedExpandedRegion) return child;
+        final collapsePosition = outer ?? position;
+        return AnimatedBuilder(
+          animation: collapsePosition,
+          builder: (context, _) {
+            if (!collapsePosition.hasContentDimensions) return child;
+            final contentOffset = AppHeaderScrollBehavior.contentOffset(
+              collapsePosition,
+            );
+            final collapsedDistance = contentOffset
+                .clamp(0.0, kAppHeaderTitleHeight)
+                .toDouble();
+            if (collapsedDistance == 0.0) return child;
+            return Transform.translate(
+              offset: Offset(0.0, collapsedDistance * 0.5),
+              child: child,
+            );
+          },
         );
       },
     );
@@ -404,6 +444,7 @@ class AppHeaderScrollInsetScope extends InheritedWidget {
     super.key,
     required this.leadingInset,
     this.titleCollapseExtent = 0.0,
+    this.titleTransition,
     required super.child,
   });
 
@@ -411,6 +452,12 @@ class AppHeaderScrollInsetScope extends InheritedWidget {
   /// The measured scroll distance needed to move the expanded title region
   /// out of the usable viewport and reach the compact header.
   final double titleCollapseExtent;
+  final AppHeaderTitleTransition? titleTransition;
+
+  static AppHeaderTitleTransition? titleTransitionOf(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<AppHeaderScrollInsetScope>()
+          ?.titleTransition;
 
   static double maybeOf(BuildContext context) =>
       context
@@ -427,7 +474,8 @@ class AppHeaderScrollInsetScope extends InheritedWidget {
   @override
   bool updateShouldNotify(AppHeaderScrollInsetScope oldWidget) =>
       leadingInset != oldWidget.leadingInset ||
-      titleCollapseExtent != oldWidget.titleCollapseExtent;
+      titleCollapseExtent != oldWidget.titleCollapseExtent ||
+      titleTransition != oldWidget.titleTransition;
 }
 
 /// Extends a page scroll viewport upward by the shell inset without moving its
@@ -588,6 +636,20 @@ class AppHeaderScrollView extends StatelessWidget {
 
   static final Map<ScrollController, List<ScrollPosition>>
       _outerPositionsByContentController = {};
+  static final Map<ScrollPosition, ScrollPosition>
+      _bodyPositionsByOuterPosition = {};
+  static final _AppHeaderPositionRegistry _positionRegistry =
+      _AppHeaderPositionRegistry();
+
+  static bool isHeaderPosition(ScrollPosition? position) =>
+      _bodyPositionsByOuterPosition.containsKey(position);
+
+  static ScrollPosition? _outerPositionForBody(ScrollPosition bodyPosition) {
+    for (final entry in _bodyPositionsByOuterPosition.entries) {
+      if (identical(entry.value, bodyPosition)) return entry.key;
+    }
+    return null;
+  }
 
   /// Returns the outer header position paired with an existing page controller.
   ///
@@ -605,28 +667,59 @@ class AppHeaderScrollView extends StatelessWidget {
     return null;
   }
 
+  /// Moves the body in body coordinates without turning a zero-offset
+  /// restoration into a request to collapse the outer header.
+  ///
+  /// NestedScrollView interprets innerPosition.jumpTo(0) as "header fully
+  /// collapsed, body at zero". Existing search/layout restorations mean only
+  /// "keep this body at zero", so preserve the actual outer geometry there.
+  static void jumpBodyTo(ScrollController controller, double offset) {
+    for (final position in controller.positions.toList()) {
+      final outer = _outerPositionForBody(position);
+      if (outer != null &&
+          outer.hasContentDimensions &&
+          offset == position.minScrollExtent &&
+          outer.pixels < outer.maxScrollExtent) {
+        outer.jumpTo(outer.pixels);
+      } else {
+        position.jumpTo(offset);
+      }
+    }
+  }
+
   static void _registerOuterPosition(
     ScrollController? contentController,
-    ScrollPosition position,
+    ScrollPosition position, {
+    required ScrollPosition bodyPosition,
+  }
   ) {
-    if (contentController == null) return;
-    final positions = _outerPositionsByContentController.putIfAbsent(
-      contentController,
-      () => <ScrollPosition>[],
-    );
-    if (!positions.contains(position)) positions.add(position);
+    var changed = _bodyPositionsByOuterPosition[position] != bodyPosition;
+    _bodyPositionsByOuterPosition[position] = bodyPosition;
+    if (contentController != null) {
+      final positions = _outerPositionsByContentController.putIfAbsent(
+        contentController,
+        () => <ScrollPosition>[],
+      );
+      if (!positions.contains(position)) {
+        positions.add(position);
+        changed = true;
+      }
+    }
+    if (changed) _positionRegistry.changed();
   }
 
   static void _unregisterOuterPosition(
     ScrollController? contentController,
     ScrollPosition? position,
   ) {
-    if (contentController == null || position == null) return;
+    if (position == null) return;
+    final changed = _bodyPositionsByOuterPosition.remove(position) != null;
     final positions = _outerPositionsByContentController[contentController];
     positions?.remove(position);
     if (positions?.isEmpty ?? false) {
       _outerPositionsByContentController.remove(contentController);
     }
+    if (changed) _positionRegistry.changed();
   }
 
   @override
@@ -651,26 +744,6 @@ class AppHeaderScrollView extends StatelessWidget {
       if (leadingInset > 0.0)
         SliverToBoxAdapter(child: SizedBox(height: leadingInset)),
       ...slivers,
-      if (titleCollapseExtent > 0.0)
-        // A short page still needs enough real scroll extent to move the
-        // expanded title slot out of the viewport. Fill only the measured
-        // deficit after laying out the page; long content receives no extra
-        // trailing space.
-        SliverLayoutBuilder(
-          builder: (context, constraints) {
-            final requiredScrollExtent =
-                constraints.viewportMainAxisExtent + titleCollapseExtent;
-            final missingExtent =
-                requiredScrollExtent - constraints.precedingScrollExtent;
-            final trailingExtent =
-                missingExtent.isFinite && missingExtent > 0.0
-                ? missingExtent
-                : 0.0;
-            return SliverToBoxAdapter(
-              child: SizedBox(height: trailingExtent),
-            );
-          },
-        ),
     ];
     final scrollView = CustomScrollView(
       key: _scrollViewKey,
@@ -719,10 +792,36 @@ class AppHeaderScrollView extends StatelessWidget {
           contentController: controller,
           physics: physics,
           scrollBehavior: scrollBehavior,
-          slivers: innerSlivers,
+          body: Builder(builder: (nestedContext) => CustomScrollView(
+            key: _scrollViewKey,
+            primary: true,
+            physics: physics,
+            scrollBehavior: scrollBehavior,
+            cacheExtent: cacheExtent,
+            paintOrder: paintOrder,
+            slivers: [
+              SliverOverlapInjector(
+                handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
+                  nestedContext,
+                ),
+              ),
+              ...innerSlivers,
+            ],
+            semanticChildCount: semanticChildCount,
+            dragStartBehavior: dragStartBehavior,
+            keyboardDismissBehavior: keyboardDismissBehavior,
+            restorationId: restorationId,
+            hitTestBehavior: hitTestBehavior,
+            clipBehavior: clipBehavior,
+          )),
           leadingInset: leadingInset,
           titleCollapseExtent: titleCollapseExtent,
           titleInset: titleInset,
+          initialHeaderOffset:
+              (AppHeaderScrollInsetScope.titleTransitionOf(context)
+                      ?.collapseProgress ??
+                  0.0) *
+              titleCollapseExtent,
         ),
       );
     }
@@ -735,24 +834,46 @@ class AppHeaderScrollView extends StatelessWidget {
   }
 }
 
+class _AppHeaderPositionRegistry extends ChangeNotifier {
+  bool _notificationScheduled = false;
+
+  void changed() {
+    // Scroll positions can disappear during a Calendar morph's element
+    // teardown. Publish the new registry after that locked layout phase.
+    if (WidgetsBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      if (_notificationScheduled) return;
+      _notificationScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _notificationScheduled = false;
+        notifyListeners();
+      });
+      return;
+    }
+    notifyListeners();
+  }
+}
+
 class _AppHeaderNestedScrollView extends StatefulWidget {
   const _AppHeaderNestedScrollView({
     required this.contentController,
     required this.physics,
     required this.scrollBehavior,
-    required this.slivers,
+    required this.body,
     required this.leadingInset,
     required this.titleCollapseExtent,
     required this.titleInset,
+    required this.initialHeaderOffset,
   });
 
   final ScrollController? contentController;
   final ScrollPhysics? physics;
   final ScrollBehavior? scrollBehavior;
-  final List<Widget> slivers;
+  final Widget body;
   final double leadingInset;
   final double titleCollapseExtent;
   final AppHeaderScrollInset titleInset;
+  final double initialHeaderOffset;
 
   @override
   State<_AppHeaderNestedScrollView> createState() =>
@@ -761,8 +882,11 @@ class _AppHeaderNestedScrollView extends StatefulWidget {
 
 class _AppHeaderNestedScrollViewState
     extends State<_AppHeaderNestedScrollView> {
-  final ScrollController _outerController = ScrollController();
+  late final ScrollController _outerController;
+  final GlobalKey<NestedScrollViewState> _nestedKey = GlobalKey();
   ScrollPosition? _registeredPosition;
+  final Set<ScrollPosition> _observedBodyPositions = {};
+  bool _initialBodyOffsetApplied = false;
 
   double get _titleExtent {
     final animation = widget.titleInset.collapseAnimation;
@@ -773,6 +897,9 @@ class _AppHeaderNestedScrollViewState
   @override
   void initState() {
     super.initState();
+    _outerController = ScrollController(
+      initialScrollOffset: widget.initialHeaderOffset,
+    );
     widget.titleInset.collapseAnimation?.addListener(_handleTitleAnimation);
     _outerController.addListener(_syncRegisteredPosition);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -783,6 +910,14 @@ class _AppHeaderNestedScrollViewState
   @override
   void didUpdateWidget(_AppHeaderNestedScrollView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.contentController != widget.contentController) {
+      _detachBodyObserver(oldWidget.contentController);
+      AppHeaderScrollView._unregisterOuterPosition(
+        oldWidget.contentController,
+        _registeredPosition,
+      );
+      _registeredPosition = null;
+    }
     if (oldWidget.titleInset.collapseAnimation !=
         widget.titleInset.collapseAnimation) {
       oldWidget.titleInset.collapseAnimation?.removeListener(
@@ -803,17 +938,58 @@ class _AppHeaderNestedScrollViewState
 
   void _syncRegisteredPosition() {
     if (!_outerController.hasClients) return;
+    final bodyController = widget.contentController;
+    final nested = _nestedKey.currentState;
+    if (bodyController != null && nested != null) {
+      final livePositions = nested.innerController.positions.toSet();
+      for (final position in _observedBodyPositions.difference(livePositions)) {
+        bodyController.detach(position);
+      }
+      for (final position in livePositions.difference(_observedBodyPositions)) {
+        bodyController.attach(position);
+      }
+      _observedBodyPositions
+        ..clear()
+        ..addAll(livePositions);
+    }
     final position = _outerController.position;
-    if (identical(position, _registeredPosition)) return;
-    AppHeaderScrollView._unregisterOuterPosition(
-      widget.contentController,
-      _registeredPosition,
-    );
+    if (!identical(position, _registeredPosition)) {
+      AppHeaderScrollView._unregisterOuterPosition(
+        widget.contentController,
+        _registeredPosition,
+      );
+    }
     _registeredPosition = position;
-    AppHeaderScrollView._registerOuterPosition(
-      widget.contentController,
-      position,
-    );
+    if (nested != null && nested.innerController.hasClients) {
+      AppHeaderScrollView._registerOuterPosition(
+        widget.contentController,
+        position,
+        bodyPosition: nested.innerController.position,
+      );
+      if (!_initialBodyOffsetApplied) {
+        _initialBodyOffsetApplied = true;
+        final savedOffset = widget.contentController?.initialScrollOffset ?? 0;
+        final body = nested.innerController.position;
+        if (widget.initialHeaderOffset >= widget.titleCollapseExtent &&
+            savedOffset > 0 &&
+            body.hasContentDimensions &&
+            body.pixels == body.minScrollExtent) {
+          body.jumpTo(savedOffset.clamp(
+            body.minScrollExtent,
+            body.maxScrollExtent,
+          ).toDouble());
+        }
+      }
+    }
+  }
+
+  void _detachBodyObserver(ScrollController? controller) {
+    if (controller != null) {
+      for (final position in _observedBodyPositions) {
+        controller.detach(position);
+      }
+    }
+    _observedBodyPositions.clear();
   }
 
   @override
@@ -825,6 +1001,7 @@ class _AppHeaderNestedScrollViewState
       widget.contentController,
       _registeredPosition,
     );
+    _detachBodyObserver(widget.contentController);
     _outerController.removeListener(_syncRegisteredPosition);
     _outerController.dispose();
     super.dispose();
@@ -833,40 +1010,45 @@ class _AppHeaderNestedScrollViewState
   @override
   Widget build(BuildContext context) {
     final extent = _titleExtent;
-    return NestedScrollView(
+    final nestedView = NestedScrollView(
+      key: _nestedKey,
       controller: _outerController,
       physics: widget.physics,
       headerSliverBuilder: (context, innerBoxIsScrolled) => [
-        if (widget.leadingInset > 0.0)
-          SliverToBoxAdapter(
-            child: SizedBox(height: widget.leadingInset),
-          ),
-        if (extent > 0.0)
-          SliverPersistentHeader(
-            pinned: false,
+        SliverOverlapAbsorber(
+          handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+          sliver: SliverPersistentHeader(
+            pinned: true,
             delegate: _AppHeaderCollapseSliverDelegate(
-              extent: extent,
+              extent: widget.leadingInset + extent,
+              collapsedExtent: widget.leadingInset,
+              largeTitle: widget.titleInset.child,
             ),
           ),
+        ),
       ],
-      body: CustomScrollView(
-        controller: widget.contentController,
-        primary: false,
-        physics: widget.physics,
-        scrollBehavior: widget.scrollBehavior,
-        slivers: widget.slivers,
-      ),
+      body: widget.body,
     );
+    final behavior = widget.scrollBehavior;
+    return behavior == null
+        ? nestedView
+        : ScrollConfiguration(behavior: behavior, child: nestedView);
   }
 }
 
 class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
-  const _AppHeaderCollapseSliverDelegate({required this.extent});
+  const _AppHeaderCollapseSliverDelegate({
+    required this.extent,
+    this.collapsedExtent = 0,
+    this.largeTitle,
+  });
 
   final double extent;
+  final double collapsedExtent;
+  final Widget? largeTitle;
 
   @override
-  double get minExtent => 0.0;
+  double get minExtent => collapsedExtent;
 
   @override
   double get maxExtent => extent;
@@ -876,11 +1058,27 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
     BuildContext context,
     double shrinkOffset,
     bool overlapsContent,
-  ) => const SizedBox.expand();
+  ) => largeTitle == null
+      ? const SizedBox.expand()
+      : Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              top: collapsedExtent -
+                  shrinkOffset.clamp(0.0, extent - collapsedExtent),
+              left: 0,
+              right: 0,
+              height: extent - collapsedExtent,
+              child: largeTitle!,
+            ),
+          ],
+        );
 
   @override
   bool shouldRebuild(_AppHeaderCollapseSliverDelegate oldDelegate) =>
-      extent != oldDelegate.extent;
+      extent != oldDelegate.extent ||
+      collapsedExtent != oldDelegate.collapsedExtent ||
+      largeTitle != oldDelegate.largeTitle;
 }
 
 /// A page-level stack that lets scroll content paint up behind the app header.
@@ -898,33 +1096,39 @@ class AppHeaderScrollStack extends Stack {
   }) : super(clipBehavior: Clip.none);
 }
 
-/// Keeps a fixed large-title slot in the page's scroll extent while the title
-/// itself is painted in the AppShell header above the scrolling content. The
-/// content's own scroll position—not the shell title's settle animation—
-/// determines when that content moves behind the first-level header.
+/// Declares the page's collapsible title region.
+///
+/// AppHeaderScrollView lifts this declaration into its outer persistent-header
+/// sliver. It is not retained as hidden body padding after collapse. A plain
+/// scroll view without the shared header scope can still lay out this widget.
 class AppHeaderScrollInset extends StatelessWidget {
   const AppHeaderScrollInset({
     super.key,
     this.collapseAnimation,
     this.enabled = true,
+    this.child,
   });
 
   final Animation<double>? collapseAnimation;
   final bool enabled;
+  final Widget? child;
 
   @override
   Widget build(BuildContext context) {
     final animation = collapseAnimation;
     if (!enabled) return const SizedBox.shrink();
     if (animation == null) {
-      return const SizedBox(height: kAppHeaderTitleHeight);
+      return SizedBox(height: kAppHeaderTitleHeight, child: child);
     }
 
     return AnimatedBuilder(
       animation: animation,
       builder: (context, _) {
         final searchExpanded = (1 - animation.value.clamp(0.0, 1.0)).toDouble();
-        return SizedBox(height: kAppHeaderTitleHeight * searchExpanded);
+        return SizedBox(
+          height: kAppHeaderTitleHeight * searchExpanded,
+          child: child,
+        );
       },
     );
   }

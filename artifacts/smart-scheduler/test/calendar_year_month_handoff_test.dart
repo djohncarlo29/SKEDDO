@@ -208,18 +208,16 @@ ScrollPosition _positionForViewport(WidgetTester tester, String view) {
   final viewport = _scrollViewForViewport(view);
   expect(viewportKey, findsOneWidget);
   expect(viewport, findsOneWidget);
-  final scrollView = tester.widget<SingleChildScrollView>(viewport);
-  final controller = scrollView.controller;
-  expect(controller, isNotNull);
-  expect(controller!.hasClients, isTrue);
-  return controller.position;
+  final state = tester.state<NestedScrollViewState>(viewport);
+  expect(state.outerController.hasClients, isTrue);
+  return state.outerController.position;
 }
 
 Finder _scrollViewForViewport(String view) {
   final viewportKey = find.byKey(ValueKey('calendar-$view-scroll-viewport'));
   return find.descendant(
     of: viewportKey,
-    matching: find.byType(SingleChildScrollView),
+    matching: find.byType(NestedScrollView),
   ).first;
 }
 

@@ -153,7 +153,7 @@ void main() {
         );
       }
 
-      final yearViewports = find.byType(SingleChildScrollView);
+      final yearViewports = find.byType(CustomScrollView);
       var foundFullWidthYearViewport = false;
       for (var index = 0; index < yearViewports.evaluate().length; index++) {
         final rect = tester.getRect(yearViewports.at(index));

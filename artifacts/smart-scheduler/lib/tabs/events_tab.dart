@@ -6927,7 +6927,7 @@ class EventsTabState extends State<EventsTab>
     final current = _scrollController.offset;
     if (current == _savedScrollOffset) return;
     _lockingScrollDrift = true;
-    _scrollController.jumpTo(_savedScrollOffset);
+    AppHeaderScrollView.jumpBodyTo(_scrollController, _savedScrollOffset);
     _lockingScrollDrift = false;
   }
 
@@ -6935,13 +6935,13 @@ class EventsTabState extends State<EventsTab>
     if (!_scrollController.hasClients) return 0.0;
     final position = _scrollController.position;
     if (!position.hasContentDimensions) {
-      position.jumpTo(position.pixels);
+      AppHeaderScrollView.jumpBodyTo(_scrollController, position.pixels);
       return position.pixels;
     }
     final settledOffset = position.pixels
         .clamp(position.minScrollExtent, position.maxScrollExtent)
         .toDouble();
-    position.jumpTo(settledOffset);
+    AppHeaderScrollView.jumpBodyTo(_scrollController, settledOffset);
     return _scrollController.offset;
   }
 
@@ -6953,7 +6953,7 @@ class EventsTabState extends State<EventsTab>
       final restoredOffset = _savedScrollOffset
           .clamp(position.minScrollExtent, position.maxScrollExtent)
           .toDouble();
-      position.jumpTo(restoredOffset);
+      AppHeaderScrollView.jumpBodyTo(_scrollController, restoredOffset);
     });
   }
 
@@ -8022,7 +8022,7 @@ class EventsTabState extends State<EventsTab>
       // Snap BEFORE removing the overlay — overlay still covers scroll view
       // so the jump is invisible, and any keyboard-induced drift is gone.
       if (_scrollController.hasClients) {
-        _scrollController.jumpTo(_savedScrollOffset);
+        AppHeaderScrollView.jumpBodyTo(_scrollController, _savedScrollOffset);
       }
       // Remove the overlay but intentionally keep _activatedFromOffScreen=true
       // so the _enforceScrollLock listener stays active throughout the 250 ms

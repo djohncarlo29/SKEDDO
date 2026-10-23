@@ -239,7 +239,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     final current = _scrollController.offset;
     if (current == _savedScrollOffset) return;
     _lockingScrollDrift = true;
-    _scrollController.jumpTo(_savedScrollOffset);
+    AppHeaderScrollView.jumpBodyTo(_scrollController, _savedScrollOffset);
     _lockingScrollDrift = false;
   }
 
@@ -247,13 +247,13 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
     if (!_scrollController.hasClients) return 0.0;
     final position = _scrollController.position;
     if (!position.hasContentDimensions) {
-      position.jumpTo(position.pixels);
+      AppHeaderScrollView.jumpBodyTo(_scrollController, position.pixels);
       return position.pixels;
     }
     final settledOffset = position.pixels
         .clamp(position.minScrollExtent, position.maxScrollExtent)
         .toDouble();
-    position.jumpTo(settledOffset);
+    AppHeaderScrollView.jumpBodyTo(_scrollController, settledOffset);
     return _scrollController.offset;
   }
 
@@ -265,7 +265,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
       final restoredOffset = _savedScrollOffset
           .clamp(position.minScrollExtent, position.maxScrollExtent)
           .toDouble();
-      position.jumpTo(restoredOffset);
+      AppHeaderScrollView.jumpBodyTo(_scrollController, restoredOffset);
     });
   }
 
@@ -526,7 +526,7 @@ class NotesTabState extends State<NotesTab> with WidgetsBindingObserver {
       // Snap BEFORE removing the overlay — overlay still covers scroll view
       // so the jump is invisible, and any keyboard-induced drift is gone.
       if (_scrollController.hasClients) {
-        _scrollController.jumpTo(_savedScrollOffset);
+        AppHeaderScrollView.jumpBodyTo(_scrollController, _savedScrollOffset);
       }
       // Remove the overlay but intentionally keep _activatedFromOffScreen=true
       // so the _enforceScrollLock listener stays active throughout the 250 ms

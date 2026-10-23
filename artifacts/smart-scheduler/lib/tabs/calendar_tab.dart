@@ -207,10 +207,13 @@ void _scheduleDayTimelinePosition({
 // vertical padding token.
 const double _kCalendarHeaderToDowGap = 8.0;
 
-double _calendarExpandedTitleHeight(BuildContext context) =>
-    MediaQuery.orientationOf(context) == Orientation.portrait
-        ? kAppHeaderTitleHeight
-        : 0.0;
+double _calendarExpandedTitleHeight(BuildContext context) {
+  if (MediaQuery.orientationOf(context) != Orientation.portrait) return 0.0;
+  final collapseProgress =
+      AppHeaderScrollInsetScope.titleTransitionOf(context)?.collapseProgress ??
+      0.0;
+  return kAppHeaderTitleHeight * (1.0 - collapseProgress);
+}
 
 // The Day View circle slot is the same bounded slot that prevents the
 // row-level swipe copy from resolving to a larger Dynamic-Type diameter than
@@ -2847,6 +2850,8 @@ class CalendarTabState extends State<CalendarTab>
             _viewModeCtrl,
             _listModeCtrl,
             _dragFrameTick,
+            if (AppHeaderScrollInsetScope.titleTransitionOf(context) != null)
+              AppHeaderScrollInsetScope.titleTransitionOf(context)!,
           ]),
           builder: (context, _) {
             final zoomT = _zoomAnim.value;
@@ -3788,44 +3793,47 @@ class _YearView extends StatelessWidget {
           ),
         );
 
-        final leadingInset = AppHeaderScrollInsetScope.maybeOf(context);
-        return AppHeaderScrollViewport(
-          leadingInset: leadingInset,
-          topExtension: kContentAreaTopRaise,
-          child: KeyedSubtree(
+        return KeyedSubtree(
             key: scrollViewportKey == null
                 ? null
                 : const ValueKey('calendar-year-scroll-viewport'),
-            child: SingleChildScrollView(
+            child: AppHeaderScrollView(
               key: scrollViewportKey,
+              topExtension: kContentAreaTopRaise,
               controller: controller,
               physics: const AlwaysScrollableScrollPhysics(
                 parent: BouncingScrollPhysics(),
               ),
               clipBehavior: Clip.none,
-              padding: EdgeInsets.only(
-                top: leadingInset,
-                bottom: 14.5 + floatingTabBarContentBottomClearance(context),
-              ),
-              child: Column(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: AppHeaderScrollInset(
+                    enabled: isPortrait,
+                    child: stationaryScrollTitle == null
+                        ? null
+                        : Transform.translate(
+                            offset: const Offset(0.0, kContentAreaTopRaise),
+                            child: stationaryScrollTitle,
+                          ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      bottom: 14.5 +
+                          floatingTabBarContentBottomClearance(context),
+                    ),
+                    child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (stationaryScrollTitle != null)
-                    Transform.translate(
-                      // The content viewport is raised for calendar content,
-                      // but the Year View's second-level title and controls stay
-                      // aligned with the shared AppShell title slot.
-                      offset: const Offset(0.0, kContentAreaTopRaise),
-                      child: stationaryScrollTitle,
-                    )
-                  else if (isPortrait)
-                    const SizedBox(height: kAppHeaderTitleHeight),
                   const SizedBox(height: 17.5),
                   monthGrid,
                 ],
+                    ),
+                  ),
+                ),
+              ],
               ),
-            ),
-          ),
         );
       },
     );
@@ -6031,6 +6039,7 @@ class _MonthView extends StatelessWidget {
                                       : 0.0,
                                   child: Center(
                                     child: AppHeaderScrollCentered(
+                                      fixedExpandedRegion: true,
                                       child: Text(
                                         'No Events',
                                         style: TextStyle(
@@ -6123,55 +6132,43 @@ class _MonthView extends StatelessWidget {
           ),
         );
 
-        final leadingInset = AppHeaderScrollInsetScope.maybeOf(context);
-        return AppHeaderScrollViewport(
-          leadingInset: leadingInset,
-          topExtension: kContentAreaTopRaise,
-          child: KeyedSubtree(
+        return KeyedSubtree(
             key: scrollViewportKey == null
                 ? null
                 : const ValueKey('calendar-month-scroll-viewport'),
-            child: SingleChildScrollView(
+            child: AppHeaderScrollView(
               key: scrollViewportKey,
+              topExtension: kContentAreaTopRaise,
               controller: scrollController,
               physics: collapseProgress < _kMonthDayTransitionThreshold
                   ? const AlwaysScrollableScrollPhysics(
                       parent: BouncingScrollPhysics(),
                     )
                   : const NeverScrollableScrollPhysics(),
-              padding: EdgeInsets.only(
-                top:
-                    leadingInset +
-                    (stationaryScrollTitleWidget == null && isPortrait
-                        ? kAppHeaderTitleHeight
-                        : 0),
-              ),
               clipBehavior: Clip.none,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (stationaryScrollTitleWidget != null)
-                    Transform.translate(
-                      // The page viewport is raised to give calendar content
-                      // extra room, but its second-level title must stay aligned
-                      // with the shell-owned title used by the other tabs.
-                      offset: const Offset(0.0, kContentAreaTopRaise),
-                      child: stationaryScrollTitleWidget,
-                    ),
-                  if (monthListUsesNaturalHeight)
-                    ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: expandedViewportHeight,
-                      ),
-                      child: document,
-                    )
-                  else
-                    SizedBox(height: contentH, child: document),
-                ],
-              ),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: AppHeaderScrollInset(
+                    enabled: isPortrait,
+                    child: stationaryScrollTitleWidget == null
+                        ? null
+                        : Transform.translate(
+                            offset: const Offset(0.0, kContentAreaTopRaise),
+                            child: stationaryScrollTitleWidget,
+                          ),
+                  ),
+                ),
+                if (monthListUsesNaturalHeight)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: document,
+                  )
+                else
+                  SliverToBoxAdapter(
+                    child: SizedBox(height: contentH, child: document),
+                  ),
+              ],
             ),
-          ),
         );
           },
         );

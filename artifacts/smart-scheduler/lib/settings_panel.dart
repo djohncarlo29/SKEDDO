@@ -283,7 +283,12 @@ class _SettingsPanelState extends State<SettingsPanel>
       context,
       axis: Axis.vertical,
     )?.position;
-    if (position != null) _headerTitleTransition.bindTo(position);
+    if (position != null) {
+      _headerTitleTransition.bindTo(
+        position,
+        preserveCollapseProgress: true,
+      );
+    }
   }
 
   bool _onHeaderScrollNotification(ScrollNotification notification) {
@@ -702,6 +707,7 @@ class _SettingsPanelState extends State<SettingsPanel>
                     Positioned.fill(
                       top: headerHeight,
                       child: AppHeaderScrollInsetScope(
+                        titleTransition: _headerTitleTransition,
                         leadingInset: headerHeight,
                         titleCollapseExtent:
                             MediaQuery.orientationOf(context) ==
@@ -726,6 +732,7 @@ class _SettingsPanelState extends State<SettingsPanel>
                       Positioned.fill(
                         top: headerHeight,
                         child: AppHeaderScrollInsetScope(
+                          titleTransition: _headerTitleTransition,
                           leadingInset: headerHeight,
                           titleCollapseExtent:
                               MediaQuery.orientationOf(context) ==

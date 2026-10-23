@@ -7,6 +7,62 @@ import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
 import 'package:smart_scheduler/widgets/view_mode_icons.dart';
 
 void main() {
+  testWidgets('Day chrome uses the inherited remaining large-title extent', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(402, 874);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final sourceController = ScrollController();
+    final transition = AppHeaderTitleTransition();
+    addTearDown(() {
+      transition.dispose();
+      sourceController.dispose();
+    });
+    await tester.pumpWidget(CupertinoApp(
+      builder: (context, child) => AppWindowContentBoundary(child: child!),
+      home: AppHeaderScrollInsetScope(
+        leadingInset: 0,
+        titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+        titleTransition: transition,
+        child: IndexedStack(
+          index: 1,
+          children: [
+            AppHeaderScrollView(
+              controller: sourceController,
+              slivers: const [
+                SliverToBoxAdapter(child: AppHeaderScrollInset()),
+                SliverToBoxAdapter(child: SizedBox(height: 1)),
+              ],
+            ),
+            CalendarTab(onViewChanged: (_, __, ___, ____, _____, ______) {}),
+          ],
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    final source = AppHeaderScrollView.headerPositionFor(sourceController)!;
+    transition.bindTo(source);
+    final calendar = tester.state<CalendarTabState>(find.byType(CalendarTab));
+    calendar.advanceCurrentHeader();
+    await tester.pumpAndSettle();
+    final dow = find.byWidgetPredicate(
+      (widget) => widget.runtimeType.toString() == '_DayViewDowMask',
+    );
+    expect(dow, findsOneWidget);
+    final expandedTop = tester.getTopLeft(dow).dy;
+    source.jumpTo(kAppHeaderTitleCollapseDistance);
+    await tester.pumpAndSettle();
+    expect(
+      tester.getTopLeft(dow).dy,
+      closeTo(expandedTop - kAppHeaderTitleCollapseDistance, 0.5),
+    );
+    source.jumpTo(0);
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(dow).dy, closeTo(expandedTop, 0.5));
+  });
+
   testWidgets(
     'portrait Day View places DOW, week strip, banner, and timeline in order',
     (tester) async {
