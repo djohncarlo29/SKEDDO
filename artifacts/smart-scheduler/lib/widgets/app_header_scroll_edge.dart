@@ -586,6 +586,49 @@ class AppHeaderScrollView extends StatelessWidget {
   final Clip clipBehavior;
   final double topExtension;
 
+  static final Map<ScrollController, List<ScrollPosition>>
+      _outerPositionsByContentController = {};
+
+  /// Returns the outer header position paired with an existing page controller.
+  ///
+  /// Each page retains its own body controller; NestedScrollView supplies the
+  /// independent collapse range for the large-title sliver.
+  static ScrollPosition? headerPositionFor(
+    ScrollController? contentController,
+  ) {
+    if (contentController == null) return null;
+    final positions = _outerPositionsByContentController[contentController];
+    if (positions == null) return null;
+    for (final position in positions.reversed) {
+      if (position.hasContentDimensions) return position;
+    }
+    return null;
+  }
+
+  static void _registerOuterPosition(
+    ScrollController? contentController,
+    ScrollPosition position,
+  ) {
+    if (contentController == null) return;
+    final positions = _outerPositionsByContentController.putIfAbsent(
+      contentController,
+      () => <ScrollPosition>[],
+    );
+    if (!positions.contains(position)) positions.add(position);
+  }
+
+  static void _unregisterOuterPosition(
+    ScrollController? contentController,
+    ScrollPosition? position,
+  ) {
+    if (contentController == null || position == null) return;
+    final positions = _outerPositionsByContentController[contentController];
+    positions?.remove(position);
+    if (positions?.isEmpty ?? false) {
+      _outerPositionsByContentController.remove(contentController);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final leadingInset =
@@ -651,12 +694,193 @@ class AppHeaderScrollView extends StatelessWidget {
       clipBehavior: clipBehavior,
     );
 
+    final titleInsetIndex = slivers.indexWhere(
+      (sliver) =>
+          sliver is SliverToBoxAdapter &&
+          sliver.child is AppHeaderScrollInset,
+    );
+    final titleInset = titleInsetIndex < 0
+        ? null
+        : (slivers[titleInsetIndex] as SliverToBoxAdapter).child
+              as AppHeaderScrollInset;
+    if (titleInset != null &&
+        titleInset.enabled &&
+        titleCollapseExtent > 0.0 &&
+        scrollDirection == Axis.vertical &&
+        !reverse &&
+        !shrinkWrap &&
+        center == null &&
+        anchor == 0.0) {
+      final innerSlivers = [...slivers]..removeAt(titleInsetIndex);
+      return AppHeaderScrollViewport(
+        leadingInset: leadingInset,
+        topExtension: topExtension,
+        child: _AppHeaderNestedScrollView(
+          contentController: controller,
+          physics: physics,
+          scrollBehavior: scrollBehavior,
+          slivers: innerSlivers,
+          leadingInset: leadingInset,
+          titleCollapseExtent: titleCollapseExtent,
+          titleInset: titleInset,
+        ),
+      );
+    }
+
     return AppHeaderScrollViewport(
       leadingInset: leadingInset,
       topExtension: topExtension,
       child: scrollView,
     );
   }
+}
+
+class _AppHeaderNestedScrollView extends StatefulWidget {
+  const _AppHeaderNestedScrollView({
+    required this.contentController,
+    required this.physics,
+    required this.scrollBehavior,
+    required this.slivers,
+    required this.leadingInset,
+    required this.titleCollapseExtent,
+    required this.titleInset,
+  });
+
+  final ScrollController? contentController;
+  final ScrollPhysics? physics;
+  final ScrollBehavior? scrollBehavior;
+  final List<Widget> slivers;
+  final double leadingInset;
+  final double titleCollapseExtent;
+  final AppHeaderScrollInset titleInset;
+
+  @override
+  State<_AppHeaderNestedScrollView> createState() =>
+      _AppHeaderNestedScrollViewState();
+}
+
+class _AppHeaderNestedScrollViewState
+    extends State<_AppHeaderNestedScrollView> {
+  final ScrollController _outerController = ScrollController();
+  ScrollPosition? _registeredPosition;
+
+  double get _titleExtent {
+    final animation = widget.titleInset.collapseAnimation;
+    final progress = animation?.value.clamp(0.0, 1.0) ?? 0.0;
+    return widget.titleCollapseExtent * (1.0 - progress);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    widget.titleInset.collapseAnimation?.addListener(_handleTitleAnimation);
+    _outerController.addListener(_syncRegisteredPosition);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncRegisteredPosition();
+    });
+  }
+
+  @override
+  void didUpdateWidget(_AppHeaderNestedScrollView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.titleInset.collapseAnimation !=
+        widget.titleInset.collapseAnimation) {
+      oldWidget.titleInset.collapseAnimation?.removeListener(
+        _handleTitleAnimation,
+      );
+      widget.titleInset.collapseAnimation?.addListener(
+        _handleTitleAnimation,
+      );
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncRegisteredPosition();
+    });
+  }
+
+  void _handleTitleAnimation() {
+    if (mounted) setState(() {});
+  }
+
+  void _syncRegisteredPosition() {
+    if (!_outerController.hasClients) return;
+    final position = _outerController.position;
+    if (identical(position, _registeredPosition)) return;
+    AppHeaderScrollView._unregisterOuterPosition(
+      widget.contentController,
+      _registeredPosition,
+    );
+    _registeredPosition = position;
+    AppHeaderScrollView._registerOuterPosition(
+      widget.contentController,
+      position,
+    );
+  }
+
+  @override
+  void dispose() {
+    widget.titleInset.collapseAnimation?.removeListener(
+      _handleTitleAnimation,
+    );
+    AppHeaderScrollView._unregisterOuterPosition(
+      widget.contentController,
+      _registeredPosition,
+    );
+    _outerController.removeListener(_syncRegisteredPosition);
+    _outerController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final extent = _titleExtent;
+    return NestedScrollView(
+      controller: _outerController,
+      physics: widget.physics,
+      headerSliverBuilder: (context, innerBoxIsScrolled) => [
+        if (widget.leadingInset > 0.0)
+          SliverToBoxAdapter(
+            child: SizedBox(height: widget.leadingInset),
+          ),
+        if (extent > 0.0)
+          SliverPersistentHeader(
+            pinned: false,
+            delegate: _AppHeaderCollapseSliverDelegate(
+              extent: extent,
+            ),
+          ),
+      ],
+      body: CustomScrollView(
+        controller: widget.contentController,
+        primary: false,
+        physics: widget.physics,
+        scrollBehavior: widget.scrollBehavior,
+        slivers: widget.slivers,
+      ),
+    );
+  }
+}
+
+class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
+  const _AppHeaderCollapseSliverDelegate({required this.extent});
+
+  final double extent;
+
+  @override
+  double get minExtent => 0.0;
+
+  @override
+  double get maxExtent => extent;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) => const SizedBox.expand();
+
+  @override
+  bool shouldRebuild(_AppHeaderCollapseSliverDelegate oldDelegate) =>
+      extent != oldDelegate.extent;
 }
 
 /// A page-level stack that lets scroll content paint up behind the app header.

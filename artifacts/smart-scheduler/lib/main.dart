@@ -1006,7 +1006,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }
 
   ScrollPosition? _headerPositionForController(ScrollController? controller) {
-    if (controller == null || !controller.hasClients) return null;
+    if (controller == null) return null;
+    final outerPosition = AppHeaderScrollView.headerPositionFor(controller);
+    if (outerPosition != null) return outerPosition;
+    if (!controller.hasClients) return null;
     for (final position in controller.positions) {
       if (position.hasContentDimensions) return position;
     }

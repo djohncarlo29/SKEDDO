@@ -909,7 +909,10 @@ class CalendarTabState extends State<CalendarTab>
       CalendarView.month => _monthViewScrollCtrl,
       CalendarView.day => null,
     };
-    if (controller == null || !controller.hasClients) return null;
+    if (controller == null) return null;
+    final outerPosition = AppHeaderScrollView.headerPositionFor(controller);
+    if (outerPosition != null) return outerPosition;
+    if (!controller.hasClients) return null;
     for (final position in controller.positions) {
       if (position.hasContentDimensions) return position;
     }

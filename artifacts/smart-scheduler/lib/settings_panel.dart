@@ -317,9 +317,10 @@ class _SettingsPanelState extends State<SettingsPanel>
 
   void _restoreHeaderScrollOffset() {
     final position = !widget.isLandscapeTwoPane && _activeRoute == null
-        ? (_mainScrollController.hasClients
-              ? _mainScrollController.position
-              : null)
+        ? (AppHeaderScrollView.headerPositionFor(_mainScrollController) ??
+              (_mainScrollController.hasClients
+                  ? _mainScrollController.position
+                  : null))
         : null;
     _headerTitleTransition.bindTo(
       position,
