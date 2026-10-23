@@ -1039,7 +1039,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }
 
   void _syncHeaderScrollOffsetToParent({
-    bool preserveCollapseProgress = true,
+    bool preserveCollapseProgress = false,
   }) {
     final position = _selectedIndex == 2 && _dcvCategory != null
         ? null
