@@ -74,7 +74,7 @@ class SmartRuleParser {
         }
       }
     } catch (_) {
-      // Corrupt preferences should not block local rule parsing.
+      // A corrupt local cache should not block rule parsing.
     }
   }
 

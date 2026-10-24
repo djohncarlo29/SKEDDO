@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -57,7 +58,9 @@ class LocalStorage {
   ];
 
   static const List<String> _allLegacyKeys = [
-    ..._legacyEventCollections.keys,
+    _kEventsKey,
+    _kArchivedEventsKey,
+    _kDeletedEventsKey,
     ..._legacyContentKeys,
   ];
 
@@ -73,20 +76,14 @@ class LocalStorage {
 
   @visibleForTesting
   Future<void> useDatabaseForTesting(AppDatabase database) async {
-    final previous = _databaseOverride;
     _databaseOverride = database;
     _initializing = null;
-    if (previous != null && !identical(previous, database)) {
-      await previous.close();
-    }
   }
 
   @visibleForTesting
   Future<void> resetDatabaseForTesting() async {
-    final previous = _databaseOverride;
     _databaseOverride = null;
     _initializing = null;
-    if (previous != null) await previous.close();
   }
 
   Future<void> _ensureInitialized() async {
@@ -197,12 +194,11 @@ class LocalStorage {
         'version': 1,
         'preserveLegacyKeys': preserveLegacyKeys.toList(),
       });
-      await db.into(db.storedContent).insert(
-        StoredContentCompanion.insert(
-          key: _kMigrationKey,
-          value: metadata,
-        ),
-      );
+      await db
+          .into(db.storedContent)
+          .insert(
+            StoredContentCompanion.insert(key: _kMigrationKey, value: metadata),
+          );
     });
 
     // The transaction and row-count check succeeded. Remove only migrated
@@ -250,19 +246,15 @@ class LocalStorage {
   }
 
   /// Read multiple serialized user-content values in one database query.
-  Future<Map<String, Object?>> loadContentValues(
-    Iterable<String> keys,
-  ) async {
+  Future<Map<String, Object?>> loadContentValues(Iterable<String> keys) async {
+    final db = _database;
     await _ensureInitialized();
     final requestedKeys = keys.toSet();
     if (requestedKeys.isEmpty) return {};
-    final rows =
-        await (_database.select(_database.storedContent)
-              ..where((row) => row.key.isIn(requestedKeys)))
-            .get();
-    return {
-      for (final row in rows) row.key: _decodeContentValue(row.value),
-    };
+    final rows = await (db.select(
+      db.storedContent,
+    )..where((row) => row.key.isIn(requestedKeys))).get();
+    return {for (final row in rows) row.key: _decodeContentValue(row.value)};
   }
 
   Future<String?> loadContentString(String key) async {
@@ -277,6 +269,7 @@ class LocalStorage {
 
   /// Persist one or more domain-content values atomically.
   Future<bool> saveContentValues(Map<String, Object?> values) async {
+    final db = _database;
     try {
       await _ensureInitialized();
       final rows = <StoredContentCompanion>[
@@ -288,9 +281,9 @@ class LocalStorage {
             ),
       ];
       if (rows.isEmpty) return true;
-      await _database.batch(
+      await db.batch(
         (batch) => batch.insertAll(
-          _database.storedContent,
+          db.storedContent,
           rows,
           mode: InsertMode.insertOrReplace,
         ),
@@ -306,10 +299,11 @@ class LocalStorage {
       saveContentValues({key: value});
 
   Future<List<ScheduledEvent>> _loadEventCollection(String collection) async {
+    final db = _database;
     try {
       await _ensureInitialized();
       final rows =
-          await (_database.select(_database.storedEvents)
+          await (db.select(db.storedEvents)
                 ..where((row) => row.collection.equals(collection))
                 ..orderBy([(row) => OrderingTerm.asc(row.position)]))
               .get();
@@ -329,26 +323,24 @@ class LocalStorage {
     String collection,
     List<ScheduledEvent> events,
   ) async {
+    final db = _database;
     try {
       await _ensureInitialized();
-      await _database.transaction(() async {
-        await (_database.delete(_database.storedEvents)
-              ..where((row) => row.collection.equals(collection)))
-            .go();
+      await db.transaction(() async {
+        await (db.delete(
+          db.storedEvents,
+        )..where((row) => row.collection.equals(collection))).go();
         if (events.isEmpty) return;
-        await _database.batch(
-          (batch) => batch.insertAll(
-            _database.storedEvents,
-            [
-              for (var position = 0; position < events.length; position++)
-                StoredEventsCompanion.insert(
-                  collection: collection,
-                  id: events[position].id,
-                  position: position,
-                  payload: jsonEncode(events[position].toJson()),
-                ),
-            ],
-          ),
+        await db.batch(
+          (batch) => batch.insertAll(db.storedEvents, [
+            for (var position = 0; position < events.length; position++)
+              StoredEventsCompanion.insert(
+                collection: collection,
+                id: events[position].id,
+                position: position,
+                payload: jsonEncode(events[position].toJson()),
+              ),
+          ]),
         );
       });
       return true;
@@ -362,8 +354,7 @@ class LocalStorage {
   Future<bool> saveEvents(List<ScheduledEvent> events) =>
       _replaceEventCollection(_kActive, events);
 
-  Future<List<ScheduledEvent>> loadEvents() =>
-      _loadEventCollection(_kActive);
+  Future<List<ScheduledEvent>> loadEvents() => _loadEventCollection(_kActive);
 
   Future<bool> saveArchivedEvents(List<ScheduledEvent> events) =>
       _replaceEventCollection(_kArchived, events);
@@ -387,7 +378,9 @@ class LocalStorage {
       if (raw == null) return {};
       final decoded = jsonDecode(raw);
       if (decoded is! Map) return {};
-      return decoded.map((key, value) => MapEntry(key.toString(), value as String));
+      return decoded.map(
+        (key, value) => MapEntry(key.toString(), value as String),
+      );
     } catch (_) {
       return {};
     }
@@ -417,7 +410,9 @@ class LocalStorage {
         final decoded = jsonDecode(raw);
         if (decoded is! Map) return {};
         return Map<String, String>.from(
-          decoded.map((key, value) => MapEntry(key.toString(), value.toString())),
+          decoded.map(
+            (key, value) => MapEntry(key.toString(), value.toString()),
+          ),
         );
       }
 

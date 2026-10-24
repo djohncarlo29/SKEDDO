@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_scheduler/app_settings.dart';
@@ -7,6 +8,7 @@ import 'package:smart_scheduler/services/local_storage.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
@@ -24,10 +26,7 @@ void main() {
   test('Liquid Glass defaults to 80% when no value is stored', () async {
     await loadAppSettings();
 
-    expect(
-      appLiquidGlassOpacityNotifier.value,
-      kLiquidGlassMaximumOpacity,
-    );
+    expect(appLiquidGlassOpacityNotifier.value, kLiquidGlassMaximumOpacity);
   });
 
   test('Liquid Glass restores the exact saved value after reload', () async {

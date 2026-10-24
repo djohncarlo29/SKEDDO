@@ -10082,7 +10082,7 @@ class _CalModalCircleButton extends StatelessWidget {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Lightweight category model used only inside _NewEventSheetState.
-// Parsed from the same SharedPreferences JSON that EventsTabState writes.
+// Parsed from the same SQLite category JSON that EventsTabState writes.
 // ══════════════════════════════════════════════════════════════════════════════
 class _NewEventCategory {
   final String id;
@@ -12242,7 +12242,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     // The Events tab owns the built-in category definitions, but a clean
     // install has no persisted category records yet.  Keep those permanent
     // system categories available to the New Event picker independently of
-    // SharedPreferences so the first-launch sheet has the same choices as
+    // persisted category records so the first-launch sheet has the same choices as
     // the rest of the app.
     if (!parsed.any((cat) => cat.name == 'Unnamed')) {
       parsed.insert(

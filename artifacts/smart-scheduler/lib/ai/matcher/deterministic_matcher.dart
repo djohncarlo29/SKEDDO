@@ -14,6 +14,9 @@ import '../../services/event_model.dart';
 // while keeping the date-range signal unchanged.
 // ─────────────────────────────────────────────────────────────────────────────
 class DeterministicMatcher implements SmartCategoryMatcher {
+  @override
+  int get revision => 0;
+
   // Words too common to be useful as keywords.
   static const _stopWords = {
     'a',

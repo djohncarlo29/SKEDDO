@@ -10,7 +10,7 @@ import '../../services/local_storage.dart';
 //   • Probabilistic multi-layer structure (M neighbours per node per layer).
 //   • Greedy best-first search from the top layer downwards.
 //   • Falls back to brute-force for < 500 entries (always correct, fast).
-//   • Persisted to SharedPreferences as a JSON blob; deserialized on startup.
+//   • Persisted to the local SQLite store as a JSON document; deserialized on startup.
 //
 // Parameters tuned for all-MiniLM-L6-v2 (384-d embeddings):
 //   M = 16, efConstruction = 100, ef = 50
@@ -327,7 +327,7 @@ class HnswVectorIndex implements VectorIndex {
     } catch (_) {}
   }
 
-  /// Load state from SharedPreferences. Call once at startup.
+  /// Load state from local SQLite. Call once at startup.
   Future<void> load() async {
     try {
       final raw = await LocalStorage.instance.loadContentString(_kPrefsKey);

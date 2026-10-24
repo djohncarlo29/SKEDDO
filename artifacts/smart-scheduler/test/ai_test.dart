@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
@@ -61,6 +62,13 @@ class _ThrowingReadPrefsStore extends InMemorySharedPreferencesStore {
       throw Exception('Storage unavailable');
 }
 
+Future<AppDatabase> _closedAppDatabase() async {
+  final database = AppDatabase(NativeDatabase.memory());
+  await database.customSelect('SELECT 1').get();
+  await database.close();
+  return database;
+}
+
 class _FixedEmbeddingService implements EmbeddingService {
   final List<double> vector;
 
@@ -116,14 +124,12 @@ class _FixedVectorIndex implements VectorIndex {
 void main() {
   // Needed for SharedPreferences platform channel in loadFromStorage tests.
   TestWidgetsFlutterBinding.ensureInitialized();
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     await LocalStorage.instance.useDatabaseForTesting(
       AppDatabase(NativeDatabase.memory()),
     );
-  });
-  tearDown(() async {
-    await LocalStorage.instance.resetDatabaseForTesting();
   });
 
   // ── Fixed reference date: Wednesday 2025-06-11 ────────────────────────────
@@ -1378,12 +1384,9 @@ void main() {
         EventStore.instance.events.value = [];
         await EventStore.instance.loadFromStorage();
 
-        // Verify the persisted JSON now contains 12-hour strings by reading
-        // directly from SharedPreferences (bypassing EventStore).
-        final prefs = await SharedPreferences.getInstance();
-        final rawList = prefs.getStringList(kEventsKey) ?? [];
-        final decoded = rawList
-            .map((s) => jsonDecode(s) as Map<String, dynamic>)
+        // Verify the persisted JSON now contains 12-hour strings in SQLite.
+        final decoded = (await LocalStorage.instance.loadEvents())
+            .map((event) => event.toJson())
             .toList();
 
         final legacy = decoded.firstWhere((m) => m['id'] == '901');
@@ -1435,30 +1438,28 @@ void main() {
       SharedPreferences.setMockInitialValues({});
     });
 
-    test('returns true when SharedPreferences write succeeds', () async {
+    test('returns true when SQLite write succeeds', () async {
       final result = await LocalStorage.instance.saveEvents([event]);
       expect(result, isTrue, reason: 'successful write must return true');
     });
 
     test(
-      'returns false when SharedPreferences returns false for the write',
+      'SharedPreferences write failures do not affect SQLite event writes',
       () async {
         SharedPreferencesStorePlatform.instance = _FalseWritePrefsStore();
-        // Clear the cached SharedPreferences instance so the next call
-        // picks up our custom store rather than the cached one.
         SharedPreferences.resetStatic();
 
         final result = await LocalStorage.instance.saveEvents([event]);
         expect(
           result,
-          isFalse,
-          reason: 'a store that returns false must propagate false',
+          isTrue,
+          reason: 'event persistence now belongs to SQLite, not preferences',
         );
       },
     );
 
     test(
-      'returns false when SharedPreferences throws during the write',
+      'SharedPreferences write exceptions do not affect SQLite event writes',
       () async {
         SharedPreferencesStorePlatform.instance = _ThrowingWritePrefsStore();
         SharedPreferences.resetStatic();
@@ -1466,8 +1467,8 @@ void main() {
         final result = await LocalStorage.instance.saveEvents([event]);
         expect(
           result,
-          isFalse,
-          reason: 'an exception during save must be caught and return false',
+          isTrue,
+          reason: 'event persistence now belongs to SQLite, not preferences',
         );
       },
     );
@@ -1493,8 +1494,8 @@ void main() {
       expect(result, isTrue, reason: 'successful write must return true');
     });
 
-    test('saveEmbeddingVersions returns false when the store returns false '
-        '(e.g. storage quota exceeded)', () async {
+    test('SharedPreferences write failures do not affect SQLite version writes',
+        () async {
       SharedPreferencesStorePlatform.instance = _FalseWritePrefsStore();
       SharedPreferences.resetStatic();
 
@@ -1503,15 +1504,14 @@ void main() {
       });
       expect(
         result,
-        isFalse,
+        isTrue,
         reason:
-            'a store that returns false must propagate false — '
-            'callers rely on this to know the version map was not persisted',
+            'embedding-version persistence now belongs to SQLite',
       );
     });
 
-    test('saveEmbeddingVersions returns false when the store throws '
-        '(e.g. permission error)', () async {
+    test('SharedPreferences write exceptions do not affect SQLite version writes',
+        () async {
       SharedPreferencesStorePlatform.instance = _ThrowingWritePrefsStore();
       SharedPreferences.resetStatic();
 
@@ -1520,8 +1520,8 @@ void main() {
       });
       expect(
         result,
-        isFalse,
-        reason: 'an exception during save must be caught and return false',
+        isTrue,
+        reason: 'embedding-version persistence now belongs to SQLite',
       );
     });
 
@@ -1598,9 +1598,10 @@ void main() {
         // Wire the real EventPipeline hooks so _onAdded runs on EventStore.create.
         EventPipeline.instance.init();
 
-        // Install the failing store AFTER init() (which only wires hooks, not I/O).
-        SharedPreferencesStorePlatform.instance = _FalseWritePrefsStore();
-        SharedPreferences.resetStatic();
+        // Install a closed SQLite connection after init() so the persistence
+        // path fails for the same reason an unavailable local database would.
+        final failedDatabase = await _closedAppDatabase();
+        await LocalStorage.instance.useDatabaseForTesting(failedDatabase);
 
         // Capture debugPrint output.
         final logs = <String>[];
@@ -1657,9 +1658,10 @@ void main() {
         // Wire the real EventPipeline hooks so _onAdded runs on EventStore.create.
         EventPipeline.instance.init();
 
-        // Install the failing store AFTER init() (which only wires hooks, not I/O).
-        SharedPreferencesStorePlatform.instance = _FalseWritePrefsStore();
-        SharedPreferences.resetStatic();
+        // Install a closed SQLite connection after init() so the persistence
+        // path fails for the same reason an unavailable local database would.
+        final failedDatabase = await _closedAppDatabase();
+        await LocalStorage.instance.useDatabaseForTesting(failedDatabase);
 
         // Capture debugPrint output.
         final logs = <String>[];
@@ -1965,6 +1967,9 @@ void main() {
         'Scenario A: after mid-session write failure + simulated restart, '
         'events and categories reflect the last successfully persisted snapshot',
         () async {
+          final persistedDatabase = AppDatabase(NativeDatabase.memory());
+          await LocalStorage.instance.useDatabaseForTesting(persistedDatabase);
+
           // ① Install a normal store pre-seeded with the pre-session data.
           //   (setMockInitialValues also calls resetStatic internally.)
           SharedPreferences.setMockInitialValues({
@@ -1982,11 +1987,10 @@ void main() {
           expect(EventStore.instance.events.value.length, 1);
           expect(EventStore.instance.events.value.first.id, '701');
 
-          // ② Mid-session: device fills up — swap to a store that allows reads
-          //   (still returns the pre-session data) but throws on every write.
-          SharedPreferencesStorePlatform.instance =
-              _ThrowingWritePrefsStore.withData(preSessionData());
-          SharedPreferences.resetStatic();
+          // ② Mid-session: the database becomes unavailable. The last
+          // successful snapshot remains in the original database.
+          final failedDatabase = await _closedAppDatabase();
+          await LocalStorage.instance.useDatabaseForTesting(failedDatabase);
 
           // Attempt to persist a new event created mid-session — write fails.
           final evtWriteOk = await LocalStorage.instance.saveEvents([
@@ -2010,10 +2014,8 @@ void main() {
           );
 
           // Attempt to persist a new category mid-session — write also fails.
-          final prefs = await SharedPreferences.getInstance();
-          bool catWriteOk = true;
-          try {
-            catWriteOk = await prefs.setStringList(kUserCats, [
+          final catWriteOk = await LocalStorage.instance.saveContentValues({
+            kUserCats: [
               preSessionCatJson,
               jsonEncode({
                 'id': 'cat-personal',
@@ -2024,10 +2026,8 @@ void main() {
                 'isSmartCategory': false,
                 'archived': false,
               }),
-            ]);
-          } catch (_) {
-            catWriteOk = false;
-          }
+            ],
+          });
           expect(
             catWriteOk,
             isFalse,
@@ -2045,6 +2045,7 @@ void main() {
             'flutter.$kArchivedSmart': <String>[],
             'flutter.$kSmartOrder': <String>[],
           });
+          await LocalStorage.instance.useDatabaseForTesting(persistedDatabase);
 
           // Re-load events exactly as app startup does.
           EventStore.instance.events.value = [];
@@ -2063,9 +2064,10 @@ void main() {
           expect(events.first.title, 'Pre-session meeting');
           expect(events.first.time, '10:00 AM');
 
-          // ④ Assert categories: read exactly as _loadCategories() would.
-          final restartPrefs = await SharedPreferences.getInstance();
-          final rawUser = restartPrefs.getStringList(kUserCats);
+          // ④ Assert categories from SQLite as the app now loads them.
+          final rawUser = await LocalStorage.instance.loadContentStringList(
+            kUserCats,
+          );
 
           expect(
             rawUser,
@@ -2108,19 +2110,13 @@ void main() {
         'restart sees empty events and _loadCategories keeps system defaults',
         () async {
           // Brand-new install: storage is empty and immediately starts throwing.
-          SharedPreferencesStorePlatform.instance = _ThrowingWritePrefsStore();
-          SharedPreferences.resetStatic();
+          final failedDatabase = await _closedAppDatabase();
+          await LocalStorage.instance.useDatabaseForTesting(failedDatabase);
 
-          // _saveCategories() fires during first launch — write throws.
-          final firstPrefs = await SharedPreferences.getInstance();
-          bool firstCatWrite = true;
-          try {
-            firstCatWrite = await firstPrefs.setStringList(kUserCats, [
-              preSessionCatJson,
-            ]);
-          } catch (_) {
-            firstCatWrite = false;
-          }
+          // Category writes also fail while the local database is unavailable.
+          final firstCatWrite = await LocalStorage.instance.saveContentValues({
+            kUserCats: [preSessionCatJson],
+          });
           expect(
             firstCatWrite,
             isFalse,
@@ -2144,6 +2140,9 @@ void main() {
 
           // Simulate restart: empty store (nothing was ever persisted).
           SharedPreferences.setMockInitialValues({});
+          await LocalStorage.instance.useDatabaseForTesting(
+            AppDatabase(NativeDatabase.memory()),
+          );
           EventStore.instance.events.value = [];
           await EventStore.instance.loadFromStorage();
 
@@ -2157,12 +2156,18 @@ void main() {
           );
 
           // Categories: all keys absent → _loadCategories() early-exit fires.
-          final restartPrefs = await SharedPreferences.getInstance();
-          final rawUser2 = restartPrefs.getStringList(kUserCats);
-          final rawPinned2 = restartPrefs.getStringList(kPinnedCats);
-          final rawSmartColors2 = restartPrefs.getString(kSmartColors);
-          final rawArchivedSmart2 = restartPrefs.getStringList(kArchivedSmart);
-          final rawSmartOrder2 = restartPrefs.getStringList(kSmartOrder);
+          final restartValues = await LocalStorage.instance.loadContentValues([
+            kUserCats,
+            kPinnedCats,
+            kSmartColors,
+            kArchivedSmart,
+            kSmartOrder,
+          ]);
+          final rawUser2 = restartValues[kUserCats];
+          final rawPinned2 = restartValues[kPinnedCats];
+          final rawSmartColors2 = restartValues[kSmartColors];
+          final rawArchivedSmart2 = restartValues[kArchivedSmart];
+          final rawSmartOrder2 = restartValues[kSmartOrder];
 
           final allNull =
               rawUser2 == null &&

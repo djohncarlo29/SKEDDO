@@ -9,6 +9,19 @@ class $StoredEventsTable extends StoredEvents
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $StoredEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _rowIdMeta = const VerificationMeta('rowId');
+  @override
+  late final GeneratedColumn<int> rowId = GeneratedColumn<int>(
+    'row_id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
   static const VerificationMeta _collectionMeta = const VerificationMeta(
     'collection',
   );
@@ -52,7 +65,13 @@ class $StoredEventsTable extends StoredEvents
     requiredDuringInsert: true,
   );
   @override
-  List<GeneratedColumn> get $columns => [collection, id, position, payload];
+  List<GeneratedColumn> get $columns => [
+    rowId,
+    collection,
+    id,
+    position,
+    payload,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -65,6 +84,12 @@ class $StoredEventsTable extends StoredEvents
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('row_id')) {
+      context.handle(
+        _rowIdMeta,
+        rowId.isAcceptableOrUnknown(data['row_id']!, _rowIdMeta),
+      );
+    }
     if (data.containsKey('collection')) {
       context.handle(
         _collectionMeta,
@@ -98,11 +123,15 @@ class $StoredEventsTable extends StoredEvents
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {collection, id};
+  Set<GeneratedColumn> get $primaryKey => {rowId};
   @override
   StoredEvent map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return StoredEvent(
+      rowId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}row_id'],
+      )!,
       collection: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}collection'],
@@ -129,11 +158,13 @@ class $StoredEventsTable extends StoredEvents
 }
 
 class StoredEvent extends DataClass implements Insertable<StoredEvent> {
+  final int rowId;
   final String collection;
   final String id;
   final int position;
   final String payload;
   const StoredEvent({
+    required this.rowId,
     required this.collection,
     required this.id,
     required this.position,
@@ -142,6 +173,7 @@ class StoredEvent extends DataClass implements Insertable<StoredEvent> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    map['row_id'] = Variable<int>(rowId);
     map['collection'] = Variable<String>(collection);
     map['id'] = Variable<String>(id);
     map['position'] = Variable<int>(position);
@@ -151,6 +183,7 @@ class StoredEvent extends DataClass implements Insertable<StoredEvent> {
 
   StoredEventsCompanion toCompanion(bool nullToAbsent) {
     return StoredEventsCompanion(
+      rowId: Value(rowId),
       collection: Value(collection),
       id: Value(id),
       position: Value(position),
@@ -164,6 +197,7 @@ class StoredEvent extends DataClass implements Insertable<StoredEvent> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return StoredEvent(
+      rowId: serializer.fromJson<int>(json['rowId']),
       collection: serializer.fromJson<String>(json['collection']),
       id: serializer.fromJson<String>(json['id']),
       position: serializer.fromJson<int>(json['position']),
@@ -174,6 +208,7 @@ class StoredEvent extends DataClass implements Insertable<StoredEvent> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
+      'rowId': serializer.toJson<int>(rowId),
       'collection': serializer.toJson<String>(collection),
       'id': serializer.toJson<String>(id),
       'position': serializer.toJson<int>(position),
@@ -182,11 +217,13 @@ class StoredEvent extends DataClass implements Insertable<StoredEvent> {
   }
 
   StoredEvent copyWith({
+    int? rowId,
     String? collection,
     String? id,
     int? position,
     String? payload,
   }) => StoredEvent(
+    rowId: rowId ?? this.rowId,
     collection: collection ?? this.collection,
     id: id ?? this.id,
     position: position ?? this.position,
@@ -194,6 +231,7 @@ class StoredEvent extends DataClass implements Insertable<StoredEvent> {
   );
   StoredEvent copyWithCompanion(StoredEventsCompanion data) {
     return StoredEvent(
+      rowId: data.rowId.present ? data.rowId.value : this.rowId,
       collection: data.collection.present
           ? data.collection.value
           : this.collection,
@@ -206,6 +244,7 @@ class StoredEvent extends DataClass implements Insertable<StoredEvent> {
   @override
   String toString() {
     return (StringBuffer('StoredEvent(')
+          ..write('rowId: $rowId, ')
           ..write('collection: $collection, ')
           ..write('id: $id, ')
           ..write('position: $position, ')
@@ -215,11 +254,12 @@ class StoredEvent extends DataClass implements Insertable<StoredEvent> {
   }
 
   @override
-  int get hashCode => Object.hash(collection, id, position, payload);
+  int get hashCode => Object.hash(rowId, collection, id, position, payload);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is StoredEvent &&
+          other.rowId == this.rowId &&
           other.collection == this.collection &&
           other.id == this.id &&
           other.position == this.position &&
@@ -227,63 +267,66 @@ class StoredEvent extends DataClass implements Insertable<StoredEvent> {
 }
 
 class StoredEventsCompanion extends UpdateCompanion<StoredEvent> {
+  final Value<int> rowId;
   final Value<String> collection;
   final Value<String> id;
   final Value<int> position;
   final Value<String> payload;
-  final Value<int> rowid;
   const StoredEventsCompanion({
+    this.rowId = const Value.absent(),
     this.collection = const Value.absent(),
     this.id = const Value.absent(),
     this.position = const Value.absent(),
     this.payload = const Value.absent(),
-    this.rowid = const Value.absent(),
   });
   StoredEventsCompanion.insert({
+    this.rowId = const Value.absent(),
     required String collection,
     required String id,
     required int position,
     required String payload,
-    this.rowid = const Value.absent(),
   }) : collection = Value(collection),
        id = Value(id),
        position = Value(position),
        payload = Value(payload);
   static Insertable<StoredEvent> custom({
+    Expression<int>? rowId,
     Expression<String>? collection,
     Expression<String>? id,
     Expression<int>? position,
     Expression<String>? payload,
-    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
+      if (rowId != null) 'row_id': rowId,
       if (collection != null) 'collection': collection,
       if (id != null) 'id': id,
       if (position != null) 'position': position,
       if (payload != null) 'payload': payload,
-      if (rowid != null) 'rowid': rowid,
     });
   }
 
   StoredEventsCompanion copyWith({
+    Value<int>? rowId,
     Value<String>? collection,
     Value<String>? id,
     Value<int>? position,
     Value<String>? payload,
-    Value<int>? rowid,
   }) {
     return StoredEventsCompanion(
+      rowId: rowId ?? this.rowId,
       collection: collection ?? this.collection,
       id: id ?? this.id,
       position: position ?? this.position,
       payload: payload ?? this.payload,
-      rowid: rowid ?? this.rowid,
     );
   }
 
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (rowId.present) {
+      map['row_id'] = Variable<int>(rowId.value);
+    }
     if (collection.present) {
       map['collection'] = Variable<String>(collection.value);
     }
@@ -296,20 +339,17 @@ class StoredEventsCompanion extends UpdateCompanion<StoredEvent> {
     if (payload.present) {
       map['payload'] = Variable<String>(payload.value);
     }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
     return map;
   }
 
   @override
   String toString() {
     return (StringBuffer('StoredEventsCompanion(')
+          ..write('rowId: $rowId, ')
           ..write('collection: $collection, ')
           ..write('id: $id, ')
           ..write('position: $position, ')
-          ..write('payload: $payload, ')
-          ..write('rowid: $rowid')
+          ..write('payload: $payload')
           ..write(')'))
         .toString();
   }
@@ -541,19 +581,19 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 
 typedef $$StoredEventsTableCreateCompanionBuilder =
     StoredEventsCompanion Function({
+      Value<int> rowId,
       required String collection,
       required String id,
       required int position,
       required String payload,
-      Value<int> rowid,
     });
 typedef $$StoredEventsTableUpdateCompanionBuilder =
     StoredEventsCompanion Function({
+      Value<int> rowId,
       Value<String> collection,
       Value<String> id,
       Value<int> position,
       Value<String> payload,
-      Value<int> rowid,
     });
 
 class $$StoredEventsTableFilterComposer
@@ -565,6 +605,11 @@ class $$StoredEventsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<int> get rowId => $composableBuilder(
+    column: $table.rowId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get collection => $composableBuilder(
     column: $table.collection,
     builder: (column) => ColumnFilters(column),
@@ -595,6 +640,11 @@ class $$StoredEventsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<int> get rowId => $composableBuilder(
+    column: $table.rowId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get collection => $composableBuilder(
     column: $table.collection,
     builder: (column) => ColumnOrderings(column),
@@ -625,6 +675,9 @@ class $$StoredEventsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<int> get rowId =>
+      $composableBuilder(column: $table.rowId, builder: (column) => column);
+
   GeneratedColumn<String> get collection => $composableBuilder(
     column: $table.collection,
     builder: (column) => column,
@@ -671,31 +724,31 @@ class $$StoredEventsTableTableManager
               $$StoredEventsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
+                Value<int> rowId = const Value.absent(),
                 Value<String> collection = const Value.absent(),
                 Value<String> id = const Value.absent(),
                 Value<int> position = const Value.absent(),
                 Value<String> payload = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
               }) => StoredEventsCompanion(
+                rowId: rowId,
                 collection: collection,
                 id: id,
                 position: position,
                 payload: payload,
-                rowid: rowid,
               ),
           createCompanionCallback:
               ({
+                Value<int> rowId = const Value.absent(),
                 required String collection,
                 required String id,
                 required int position,
                 required String payload,
-                Value<int> rowid = const Value.absent(),
               }) => StoredEventsCompanion.insert(
+                rowId: rowId,
                 collection: collection,
                 id: id,
                 position: position,
                 payload: payload,
-                rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(
