@@ -3,8 +3,8 @@ name: GlassPopover dismissal lifecycle
 description: The package's GlassPopover close callback signals the start of its morph, not animation completion.
 ---
 
-**Rule:** `GlassPopover.onClose` runs when closing starts, not when the morph has settled. If a host `OverlayEntry` is removed there, the close transition is cut short. Keep the host mounted through the package's close animation, and route outside-tap, back, and action dismissal through one close handler.
+**Rule:** `GlassPopover.onClose` runs when closing starts, not when the morph has settled. Keep the trigger/host mounted through the close animation, and route outside-tap, back, and action dismissal through one close handler. If the same popover must reopen, reset its package state only after that settle delay.
 
-**Why:** The popover owns its morph controller but exposes neither that controller nor a completion callback.
+**Why:** The popover owns its morph and overlay controllers but exposes neither the controller nor a completion callback; reusing it before its overlay finishes can make the next toggle close again instead of opening.
 
-**How to apply:** When hosting a `GlassPopover` in a root overlay, delay entry cleanup until the close spring settles and account for reduced-motion settings.
+**How to apply:** Delay host cleanup or state reset until the close spring settles, account for reduced-motion settings, and cover dismiss-then-reopen in tests.

@@ -15,6 +15,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     late BuildContext pageContext;
+    final anchorKey = GlobalKey<DiscardChangesPopoverAnchorState>();
     await tester.pumpWidget(
       CupertinoApp(
         builder: (context, child) => AppWindowContentScope(
@@ -25,7 +26,15 @@ void main() {
         home: Builder(
           builder: (context) {
             pageContext = context;
-            return const SizedBox.shrink();
+            return Center(
+              child: DiscardChangesPopoverAnchor(
+                key: anchorKey,
+                child: CupertinoButton(
+                  onPressed: () {},
+                  child: const Icon(CupertinoIcons.xmark),
+                ),
+              ),
+            );
           },
         ),
       ),
@@ -33,6 +42,7 @@ void main() {
 
     final confirmation = showDiscardChangesConfirmationSheet(
       pageContext,
+      anchorKey: anchorKey,
       entityLabel: 'event',
       isNew: true,
     );
@@ -40,6 +50,7 @@ void main() {
 
     final message = find.text('Are you sure you want to discard this new event?');
     expect(message, findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.xmark), findsOneWidget);
     final popoverFinder = find.byType(GlassPopover);
     expect(popoverFinder, findsOneWidget);
     final popover = tester.widget<GlassPopover>(popoverFinder);
@@ -60,6 +71,7 @@ void main() {
 
     final acceptedConfirmation = showDiscardChangesConfirmationSheet(
       pageContext,
+      anchorKey: anchorKey,
       entityLabel: 'event',
       isNew: false,
     );

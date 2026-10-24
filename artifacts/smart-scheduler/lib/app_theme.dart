@@ -54,7 +54,7 @@ const Color kFloatingTabBarLightIndicatorColor =
     Color.fromRGBO(114, 114, 122, 0.12);
 const Color kFloatingTabBarDarkIndicatorColor =
     Color.fromRGBO(255, 255, 255, 0.10);
-// This value only tunes the separate liquid_glass_easy Settings preview.
+// This value only tunes the separate package-rendered Settings preview.
 // The live GlassTabBar has its own renderer-specific settings.
 const double kFloatingTabBarChromaticAberration = 0.002;
 // Shared visual gap used between the last content edge and the floating pill.

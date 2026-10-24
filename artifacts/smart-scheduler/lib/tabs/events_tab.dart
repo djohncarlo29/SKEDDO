@@ -13392,6 +13392,8 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
   bool get _canSave =>
       _nameCtrl.text.trim().isNotEmpty && _selectedIds.length >= 2;
   bool _discarding = false;
+  final GlobalKey<DiscardChangesPopoverAnchorState> _discardPopoverKey =
+      GlobalKey<DiscardChangesPopoverAnchorState>();
 
   bool get _hasUnsavedChanges {
     final initialIds = widget.initialMemberIds.toSet();
@@ -13414,6 +13416,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
     }
     final discard = await showDiscardChangesConfirmationSheet(
       context,
+      anchorKey: _discardPopoverKey,
       entityLabel: 'group',
       isNew: widget.initial == null,
     );
@@ -13622,12 +13625,15 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
                       ),
                       Positioned(
                         left: _kHeaderEdge,
-                        child: _ModalCircleButton(
-                          icon: CupertinoIcons.xmark,
-                          iconColor: resolveThemeColor(kPrimaryLabel, context),
-                          tapDelay: const Duration(milliseconds: 130),
-                            onTap: _requestDismiss,
-                        ),
+                         child: DiscardChangesPopoverAnchor(
+                           key: _discardPopoverKey,
+                           child: _ModalCircleButton(
+                             icon: CupertinoIcons.xmark,
+                             iconColor: resolveThemeColor(kPrimaryLabel, context),
+                             tapDelay: const Duration(milliseconds: 130),
+                             onTap: _requestDismiss,
+                           ),
+                         ),
                       ),
                       Positioned(
                         right: _kHeaderEdge,
@@ -13986,6 +13992,8 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
   late final TintedCupertinoTextSelectionControls _selectionControls;
   String? _initialDraftSignature;
   bool _discarding = false;
+  final GlobalKey<DiscardChangesPopoverAnchorState> _discardPopoverKey =
+      GlobalKey<DiscardChangesPopoverAnchorState>();
 
   // ── Location field focus nodes (drive placeholder slide animation) ────────
   final _startLocFocus = FocusNode();
@@ -14340,6 +14348,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
     }
     final discard = await showDiscardChangesConfirmationSheet(
       context,
+      anchorKey: _discardPopoverKey,
       entityLabel: 'category',
       isNew: widget.initial == null && !_isSmart,
     );
@@ -16932,12 +16941,15 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
                       ),
                       Positioned(
                         left: _kHeaderEdge,
-                        child: _ModalCircleButton(
-                          icon: CupertinoIcons.xmark,
-                          iconColor: resolveThemeColor(kPrimaryLabel, context),
-                          tapDelay: const Duration(milliseconds: 130),
-                            onTap: _requestDismiss,
-                        ),
+                         child: DiscardChangesPopoverAnchor(
+                           key: _discardPopoverKey,
+                           child: _ModalCircleButton(
+                             icon: CupertinoIcons.xmark,
+                             iconColor: resolveThemeColor(kPrimaryLabel, context),
+                             tapDelay: const Duration(milliseconds: 130),
+                             onTap: _requestDismiss,
+                           ),
+                         ),
                       ),
                       Positioned(
                         right: _kHeaderEdge,
@@ -18157,6 +18169,8 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
   bool _dragAutoScrollTicking = false;
   bool _didDragAutoScroll = false;
   bool _discarding = false;
+  final GlobalKey<DiscardChangesPopoverAnchorState> _discardPopoverKey =
+      GlobalKey<DiscardChangesPopoverAnchorState>();
 
   static const double _kHeaderEdge = kModalSheetButtonEdgeGap;
   static const double _kHeaderButtonSize = kModalSheetButtonDiameter;
@@ -18214,6 +18228,7 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
     }
     final discard = await showDiscardChangesConfirmationSheet(
       context,
+      anchorKey: _discardPopoverKey,
       entityLabel: 'section',
       isNew: false,
     );
@@ -18544,12 +18559,15 @@ class _EditDcvSectionsSheetState extends State<_EditDcvSectionsSheet>
                     ),
                     Positioned(
                       left: _kHeaderEdge,
-                      child: _ModalCircleButton(
-                        icon: CupertinoIcons.xmark,
-                        iconColor: primaryLabel,
-                        tapDelay: const Duration(milliseconds: 130),
-                        onTap: _requestDismiss,
-                      ),
+                       child: DiscardChangesPopoverAnchor(
+                         key: _discardPopoverKey,
+                         child: _ModalCircleButton(
+                           icon: CupertinoIcons.xmark,
+                           iconColor: primaryLabel,
+                           tapDelay: const Duration(milliseconds: 130),
+                           onTap: _requestDismiss,
+                         ),
+                       ),
                     ),
                     Positioned(
                       right: _kHeaderEdge,

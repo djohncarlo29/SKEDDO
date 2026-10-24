@@ -4,12 +4,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show
+        GlassContainer,
         GlassExtraButtonPlacement,
         GlassTab,
         GlassTabBar,
-        GlassTabBarExtraButton;
+        GlassTabBarExtraButton,
+        LiquidRoundedRectangle;
 import 'package:flutter_sficon/flutter_sficon.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
 import '../app_theme.dart';
 import '../app_settings.dart';
@@ -25,11 +26,72 @@ const RoundedRectangleBorder kLiquidGlassPreviewCardShape =
     Radius.circular(kSquircleStadiumRadius),
   ),
 );
-const LiquidGlassShape kLiquidGlassPreviewGlassShape =
-    LiquidGlassShape.roundedRectangle(
-  cornerRadius: kSquircleStadiumRadius,
-  clipQuality: LiquidGlassClipQuality.exact,
-);
+
+/// Preserves smaller text settings while limiting the tab bar to one native
+/// accessibility-size stop above the platform's normal size.
+TextScaler skeddoTabBarTextScalerFor(TextScaler source) {
+  final nativeStops = appNativeTextScaleProfileNotifier.value?.stops;
+  late final TextScaler maximum;
+
+  if (nativeStops != null && nativeStops.isNotEmpty) {
+    var normalIndex = 0;
+    var normalDistance = double.infinity;
+    for (var index = 0; index < nativeStops.length; index++) {
+      final distance = (nativeStops[index].scale - 1.0).abs();
+      if (distance < normalDistance) {
+        normalDistance = distance;
+        normalIndex = index;
+      }
+    }
+    final maximumIndex =
+        math.min(normalIndex + 1, nativeStops.length - 1).toInt();
+    final stop = nativeStops[maximumIndex];
+    maximum = stop.scaler ?? TextScaler.linear(stop.scale);
+  } else {
+    final fallbackStops = appSkeddoTextScaleStopsNotifier.value;
+    if (fallbackStops.isEmpty) return source;
+    var normalIndex = 0;
+    var normalDistance = double.infinity;
+    for (var index = 0; index < fallbackStops.length; index++) {
+      final distance = (fallbackStops[index] - 1.0).abs();
+      if (distance < normalDistance) {
+        normalDistance = distance;
+        normalIndex = index;
+      }
+    }
+    final maximumIndex =
+        math.min(normalIndex + 1, fallbackStops.length - 1).toInt();
+    maximum = TextScaler.linear(fallbackStops[maximumIndex]);
+  }
+
+  return _UpperBoundedTextScaler(source, maximum);
+}
+
+class _UpperBoundedTextScaler extends TextScaler {
+  const _UpperBoundedTextScaler(this.source, this.maximum);
+
+  final TextScaler source;
+  final TextScaler maximum;
+
+  @override
+  double scale(double fontSize) {
+    final scaled = source.scale(fontSize);
+    final maximumScaled = maximum.scale(fontSize);
+    return scaled <= maximumScaled ? scaled : maximumScaled;
+  }
+
+  @override
+  double get textScaleFactor => scale(16) / 16;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _UpperBoundedTextScaler &&
+      other.source == source &&
+      other.maximum == maximum;
+
+  @override
+  int get hashCode => Object.hash(source, maximum);
+}
 
 /// The AppShell's platform-neutral floating tab control.
 ///
@@ -74,27 +136,34 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       context,
     );
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
+    final tabTextScaler = skeddoTabBarTextScalerFor(
+      MediaQuery.textScalerOf(context),
+    );
+    final tabIconSize = tabTextScaler.scale(20);
     final bottomOffset = floatingTabBarBottomOffset(context);
     final tabBar = GlassTabBar.bottom(
-      tabs: const [
+      tabs: [
         GlassTab(
-          icon: FixedSFIcon(SFIcons.sf_house, fontSize: 20),
-          activeIcon: FixedSFIcon(SFIcons.sf_house_fill, fontSize: 20),
+          icon: FixedSFIcon(SFIcons.sf_house, fontSize: tabIconSize),
+          activeIcon: FixedSFIcon(SFIcons.sf_house_fill, fontSize: tabIconSize),
           label: 'Home',
         ),
         GlassTab(
-          icon: FixedSFIcon(SFIcons.sf_calendar, fontSize: 20),
+          icon: FixedSFIcon(SFIcons.sf_calendar, fontSize: tabIconSize),
           label: 'Calendar',
         ),
         GlassTab(
-          icon: FixedSFIcon(SFIcons.sf_list_bullet, fontSize: 20),
+          icon: FixedSFIcon(SFIcons.sf_list_bullet, fontSize: tabIconSize),
           label: 'Events',
         ),
         GlassTab(
-          icon: FixedSFIcon(SFIcons.sf_person_crop_circle, fontSize: 20),
+          icon: FixedSFIcon(
+            SFIcons.sf_person_crop_circle,
+            fontSize: tabIconSize,
+          ),
           activeIcon: FixedSFIcon(
             SFIcons.sf_person_crop_circle_fill,
-            fontSize: 20,
+            fontSize: tabIconSize,
           ),
           label: 'You',
         ),
@@ -164,10 +233,17 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
                 right: barSideInset - widget.horizontalOffset,
                 bottom: bottomOffset - tabBar.verticalPadding,
                 height: tabBar.preferredSize.height,
-                child: MediaQuery.removePadding(
-                  context: context,
-                  removeBottom: true,
-                  child: tabBar,
+                child: MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(textScaler: tabTextScaler),
+                  child: Builder(
+                    builder: (scaledContext) => MediaQuery.removePadding(
+                      context: scaledContext,
+                      removeBottom: true,
+                      child: tabBar,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -178,10 +254,10 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
   }
 }
 
-/// A static `liquid_glass_easy` sample for the Settings opacity control.
+/// A package-rendered glass sample for the Settings opacity control.
 ///
 /// The live Flutter navigation bar uses `GlassTabBar.bottom`; this sample is
-/// intentionally separate from that control and its package renderer.
+/// intentionally separate from that control but reuses its shared glass settings.
 class FloatingTabBarGlassPreview extends StatefulWidget {
   const FloatingTabBarGlassPreview({super.key});
 
@@ -210,7 +286,9 @@ class _FloatingTabBarGlassPreviewState
   Widget build(BuildContext context) {
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
     final width = MediaQuery.sizeOf(context).width;
-    final textScaler = MediaQuery.textScalerOf(context);
+    final textScaler = skeddoTabBarTextScalerFor(
+      MediaQuery.textScalerOf(context),
+    );
     final scaledIconSlot = textScaler.scale(_previewIconReferenceSize);
     final standardBarWidth =
         (width - (kFloatingTabBarHorizontalMargin * 2)).clamp(
@@ -335,15 +413,28 @@ class _FloatingTabBarGlassPreviewState
                       alignment: Alignment.center,
                       children: [
                         IgnorePointer(
-                          child: LiquidGlassShadow(
-                            blur: 16,
-                            opacity: isDark ? 0 : 0.18,
-                            offset: const Offset(0, 5),
-                            cornerRadius: kSquircleStadiumRadius,
-                            child: SizedBox(
-                              width: barWidth,
-                              height: pillHeight,
+                           child: DecoratedBox(
+                             decoration: BoxDecoration(
+                               color: const Color(0x00000000),
+                               borderRadius: BorderRadius.circular(
+                                 kSquircleStadiumRadius,
+                               ),
+                               boxShadow: isDark
+                                   ? const <BoxShadow>[]
+                                   : [
+                                       BoxShadow(
+                                          color: CupertinoColors.black.withValues(
+                                           alpha: 0.18,
+                                         ),
+                                         blurRadius: 16,
+                                         offset: const Offset(0, 5),
+                                       ),
+                                     ],
                             ),
+                             child: SizedBox(
+                               width: barWidth,
+                               height: pillHeight,
+                             ),
                            ),
                          ),
                         // The Settings preview is a visual sample, not a
@@ -352,63 +443,54 @@ class _FloatingTabBarGlassPreviewState
                         // and double-tap behavior.
                        ValueListenableBuilder<double>(
                          valueListenable: appLiquidGlassOpacityNotifier,
-                         builder: (context, _, __) {
-                           // Re-resolve the glass appearance on every slider
-                           // update while this preview remains mounted.
-                           final style = _liquidGlassSettingsPreviewStyle(
-                             context,
-                             exactClip: true,
+                          builder: (context, glassOpacity, _) {
+                            final sharedSettings =
+                                skeddoBottomBarGlassSettingsFor(
+                                  isDark ? Brightness.dark : Brightness.light,
+                                );
+                            final previewSettings = sharedSettings.copyWith(
+                              glassColor: sharedSettings.glassColor.withValues(
+                                alpha: glassOpacity,
+                              ),
                            );
+                            final iconColor = resolveThemeColor(
+                              kSecondaryLabel,
+                              context,
+                            );
                             return IgnorePointer(
-                              child: LiquidGlassTabBar(
-                                items: [
-                                  _previewItem(
-                                    SFIcons.sf_trash,
-                                    size: 21,
-                                    opticalScale: 1.0,
-                                  ),
-                                  _previewItem(
-                                    SFIcons.sf_folder,
-                                    size: 27,
-                                    opticalScale: 0.775,
-                                  ),
-                                  _previewItem(
-                                    SFIcons.sf_arrowshape_turn_up_left,
-                                    size: 25.5,
-                                    opticalScale: 0.825,
-                                  ),
-                                ],
-                                selectedIndex: 0,
-                                onChanged: (_) {},
+                              child: GlassContainer(
                                 width: barWidth,
                                 height: pillHeight,
-                                itemPadding: _previewItemPadding,
-                                itemStyle: LiquidGlassTabItemStyle(
-                                  selectedColor: resolveThemeColor(
-                                    kSecondaryLabel,
-                                    context,
-                                  ),
-                                  unselectedColor: resolveThemeColor(
-                                    kSecondaryLabel,
-                                    context,
-                                  ),
-                                  iconSize: _previewIconReferenceSize,
-                                  selectedFontWeight: FontWeight.w500,
-                                  unselectedFontWeight: FontWeight.w500,
+                                shape: const LiquidRoundedRectangle(
+                                  borderRadius: kSquircleStadiumRadius,
                                 ),
-                                style: style,
-                                pillStyle: LiquidGlassTabPillStyle(
-                                  mode: LiquidGlassPillMode.none,
-                                  show: false,
-                                  animated: false,
-                                  shape: kLiquidGlassPreviewGlassShape,
-                                  glassStyle: LiquidGlassStyle(
-                                    shape: kLiquidGlassPreviewGlassShape,
-                                  ),
-                                  rest: LiquidGlassStyle(
-                                    shape: kLiquidGlassPreviewGlassShape,
-                                  ),
-                                ),
+                                settings: previewSettings,
+                                useOwnLayer: true,
+                                child: Row(
+                                  children: [
+                                    _previewItem(
+                                      SFIcons.sf_trash,
+                                      size: 21,
+                                      opticalScale: 1.0,
+                                      color: iconColor,
+                                      textScaler: textScaler,
+                                    ),
+                                    _previewItem(
+                                      SFIcons.sf_folder,
+                                      size: 27,
+                                      opticalScale: 0.775,
+                                      color: iconColor,
+                                      textScaler: textScaler,
+                                    ),
+                                    _previewItem(
+                                      SFIcons.sf_arrowshape_turn_up_left,
+                                      size: 25.5,
+                                      opticalScale: 0.825,
+                                      color: iconColor,
+                                      textScaler: textScaler,
+                                    ),
+                                  ],
+                              ),
                               ),
                             );
                           },
@@ -437,17 +519,20 @@ class _FloatingTabBarGlassPreviewState
     );
   }
 
-  LiquidGlassTabBarItem _previewItem(
+  Widget _previewItem(
     IconData icon, {
     required double size,
     required double opticalScale,
+    required Color color,
+    required TextScaler textScaler,
   }) {
-    return LiquidGlassTabBarItem(
-      iconBuilder: (context, glyph) {
-        final textScaler = MediaQuery.textScalerOf(context);
-        return SizedBox(
-          width: textScaler.scale(_previewIconReferenceSize),
-          height: textScaler.scale(_previewIconReferenceSize),
+    final iconSlot = textScaler.scale(_previewIconReferenceSize);
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.all(_previewItemPadding),
+        child: SizedBox(
+          width: iconSlot,
+          height: iconSlot,
           child: Center(
             child: UnconstrainedBox(
               clipBehavior: Clip.none,
@@ -457,13 +542,13 @@ class _FloatingTabBarGlassPreviewState
                   icon,
                   fontSize: textScaler.scale(size),
                   fontWeight: FontWeight.normal,
-                  color: glyph.color,
+                  color: color,
                 ),
               ),
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
@@ -486,68 +571,6 @@ class LiquidGlassPreviewClipper extends CustomClipper<Path> {
 
   @override
   bool shouldReclip(covariant LiquidGlassPreviewClipper oldClipper) => false;
-}
-
-/// Applies the app's Liquid Glass opacity setting to `liquid_glass_easy`
-/// surfaces that participate in that setting.
-LiquidGlassAppearance liquidGlassOpacitySettingAppearance(
-  BuildContext context, {
-  required LiquidGlassAppearance baseAppearance,
-}) {
-  final headerColor = resolveThemeColor(kFloatingTabBarSurfaceColor, context);
-  final setting = appLiquidGlassOpacityNotifier.value;
-  final defaultBlur = baseAppearance.blur;
-  final blurProgress =
-      _normalizedLiquidGlassOpacity(setting);
-  final blurScale = blurProgress < 0.9
-      ? (0.3 + blurProgress * 3) / 2
-      : blurProgress < 1.0
-      ? (3.0 + (blurProgress - 0.9) * 10) / 2
-      : 2.0;
-
-  return baseAppearance.copyWith(
-    color: headerColor.withValues(alpha: setting),
-    blur: LiquidGlassBlur(
-      sigmaX: defaultBlur.sigmaX * blurScale,
-      sigmaY: defaultBlur.sigmaY * blurScale,
-    ),
-  );
-}
-
-LiquidGlassStyle _liquidGlassSettingsPreviewStyle(
-  BuildContext context, {
-  bool exactClip = false,
-}) {
-  final defaultAppearance = LiquidGlassTabBar.defaultStyle.appearance;
-
-  return LiquidGlassTabBar.defaultStyle.copyWith(
-    appearance: liquidGlassOpacitySettingAppearance(
-      context,
-      baseAppearance: defaultAppearance,
-    ),
-    shape: exactClip
-        ? kLiquidGlassPreviewGlassShape
-        : LiquidGlassShape.squircle(
-            cornerRadius: kSquircleStadiumRadius,
-            // Keep the 0.5px hairline inside the capsule lens. The active
-            // lifted pill captures this optical rim as part of the bar, so its
-            // smaller moving envelope can refract it instead of leaving a
-            // fixed sibling outline behind the glass.
-            borderWidth: 0.5,
-            borderColor: Color(0x26FFFFFF),
-            lightIntensity: 0.46,
-            lightDirection: 62,
-            borderType: OpticalBorder(
-              borderSaturation: 1.0,
-              ambientIntensity: 0.55,
-              borderSolidity: 0.35,
-              lightSpread: 0.12,
-            ),
-          ),
-    refraction: LiquidGlassTabBar.defaultStyle.refraction.copyWith(
-      chromaticAberration: kFloatingTabBarChromaticAberration,
-    ),
-  );
 }
 
 double _normalizedLiquidGlassOpacity(double materialOpacity) {

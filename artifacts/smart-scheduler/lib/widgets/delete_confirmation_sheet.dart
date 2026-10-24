@@ -14,18 +14,16 @@ import '../services/event_store.dart';
 import 'action_panel.dart';
 import 'app_window_content_boundary.dart';
 import 'device_screen_size.dart' as device_screen_size;
-import 'modal_toolbar_glass_button.dart';
 import 'rounded_cupertino_sheet.dart';
 
 VoidCallback? _activeDiscardChangesSheetDismiss;
 bool _discardChangesBackConsumed = false;
 
-/// Closes the active discard confirmation when a back event is delivered.
+/// Closes the active discard popover when a back event is delivered.
 ///
-/// The confirmation is an OverlayEntry layered above an editor route, so both
-/// the overlay's PopScope and the editor's PopScope can observe the same
-/// system-back event. The short-lived consumed flag prevents the second
-/// callback from immediately opening another confirmation sheet.
+/// The GlassPopover is hosted by the editor route, so the editor's PopScope
+/// receives the back event that dismisses it. The short-lived consumed flag
+/// prevents a duplicate callback from reopening the confirmation immediately.
 bool dismissActiveDiscardChangesConfirmationSheet() {
   if (_discardChangesBackConsumed) return true;
 
@@ -122,49 +120,18 @@ Future<bool?> showArchiveConfirmationSheet(
 /// a system navigation action, or a sheet gesture.
 Future<bool?> showDiscardChangesConfirmationSheet(
   BuildContext context, {
+  required GlobalKey<DiscardChangesPopoverAnchorState> anchorKey,
   required String entityLabel,
   required bool isNew,
-}) async {
-  final completer = Completer<bool?>();
-  final popoverController = _DiscardPopoverController();
-  final VoidCallback dismissPopover = popoverController.dismiss;
-  late OverlayEntry entry;
-  var overlayRemoved = false;
-  final overlay = Overlay.of(context, rootOverlay: true);
-  final isPresentedOverModalSheet =
-      RoundedCupertinoSheetRoute.hasParentSheet(context);
-
-  void complete(bool? result) {
-    if (completer.isCompleted) return;
-    completer.complete(result);
+}) {
+  if (!context.mounted) return Future<bool?>.value(null);
+  final anchor = anchorKey.currentState;
+  if (anchor == null) {
+    throw StateError(
+      'The discard confirmation must be anchored to its visible close button.',
+    );
   }
-
-  void removeOverlay() {
-    if (overlayRemoved) return;
-    overlayRemoved = true;
-    if (identical(
-      _activeDiscardChangesSheetDismiss,
-      dismissPopover,
-    )) {
-      _activeDiscardChangesSheetDismiss = null;
-    }
-    if (entry.mounted) entry.remove();
-  }
-
-  entry = OverlayEntry(
-    builder:
-        (_) => _DiscardChangesSheetOverlay(
-          entityLabel: entityLabel,
-          isNew: isNew,
-          isPresentedOverModalSheet: isPresentedOverModalSheet,
-          controller: popoverController,
-          onResult: complete,
-          onCloseAnimationComplete: removeOverlay,
-        ),
-  );
-  _activeDiscardChangesSheetDismiss = dismissPopover;
-  overlay.insert(entry);
-  return completer.future;
+  return anchor.show(entityLabel: entityLabel, isNew: isNew);
 }
 
 /// Runs a two-step confirmation. Cancelling the second step returns to the
@@ -276,79 +243,43 @@ Future<bool?> confirmDeleteSection(
   );
 }
 
-class _DiscardPopoverController {
-  VoidCallback? _onDismiss;
-  bool _dismissRequestedBeforeAttach = false;
-
-  void attach(VoidCallback onDismiss) {
-    _onDismiss = onDismiss;
-    if (_dismissRequestedBeforeAttach) {
-      _dismissRequestedBeforeAttach = false;
-      onDismiss();
-    }
-  }
-
-  void detach(VoidCallback onDismiss) {
-    if (identical(_onDismiss, onDismiss)) _onDismiss = null;
-  }
-
-  void dismiss() {
-    final callback = _onDismiss;
-    if (callback == null) {
-      _dismissRequestedBeforeAttach = true;
-      return;
-    }
-    callback();
-  }
-}
-
-class _DiscardChangesSheetOverlay extends StatefulWidget {
-  final String entityLabel;
-  final bool isNew;
-  final bool isPresentedOverModalSheet;
-  final _DiscardPopoverController controller;
-  final void Function(bool?) onResult;
-  final VoidCallback onCloseAnimationComplete;
-
-  const _DiscardChangesSheetOverlay({
-    required this.entityLabel,
-    required this.isNew,
-    required this.isPresentedOverModalSheet,
-    required this.controller,
-    required this.onResult,
-    required this.onCloseAnimationComplete,
+/// Wraps the editor's actual leading close button in a GlassPopover. The button
+/// remains the popover trigger, so its glass lens morphs into the confirmation
+/// instead of rendering a second X above the editor.
+class DiscardChangesPopoverAnchor extends StatefulWidget {
+  const DiscardChangesPopoverAnchor({
+    super.key,
+    required this.child,
   });
 
+  final Widget child;
+
   @override
-  State<_DiscardChangesSheetOverlay> createState() =>
-      _DiscardChangesSheetOverlayState();
+  State<DiscardChangesPopoverAnchor> createState() =>
+      DiscardChangesPopoverAnchorState();
 }
 
-class _DiscardChangesSheetOverlayState
-    extends State<_DiscardChangesSheetOverlay> {
-  static const _popoverTriggerSize = 40.0;
+class DiscardChangesPopoverAnchorState
+    extends State<DiscardChangesPopoverAnchor> {
   static const _popoverCloseSettleDelay = Duration(milliseconds: 850);
 
-  VoidCallback? _togglePopover;
   late final VoidCallback _dismissCallback;
-  Timer? _removeTimer;
-  bool _initialOpenScheduled = false;
+  VoidCallback? _togglePopover;
+  Key _popoverKey = UniqueKey();
+  final OverlayPortalController _scrimController = OverlayPortalController();
+  Timer? _closeTimer;
+  Completer<bool?>? _confirmationCompleter;
+  String _entityLabel = 'item';
+  bool _isNew = false;
   bool _popoverIsOpen = false;
   bool _isClosing = false;
   bool _reduceMotion = false;
+  bool? _pendingResult;
 
   @override
   void initState() {
     super.initState();
     _dismissCallback = _dismissActivePopover;
-    widget.controller.attach(_dismissCallback);
-  }
-
-  @override
-  void dispose() {
-    _removeTimer?.cancel();
-    widget.controller.detach(_dismissCallback);
-    super.dispose();
   }
 
   @override
@@ -357,29 +288,78 @@ class _DiscardChangesSheetOverlayState
     _reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
   }
 
-  void _schedulePopoverOpen(VoidCallback togglePopover) {
-    _togglePopover = togglePopover;
-    if (_initialOpenScheduled) return;
-    _initialOpenScheduled = true;
+  @override
+  void dispose() {
+    _closeTimer?.cancel();
+    _removeScrim();
+    if (identical(
+      _activeDiscardChangesSheetDismiss,
+      _dismissCallback,
+    )) {
+      _activeDiscardChangesSheetDismiss = null;
+    }
+    final completer = _confirmationCompleter;
+    if (completer != null && !completer.isCompleted) {
+      completer.complete(null);
+    }
+    super.dispose();
+  }
+
+  Future<bool?> show({
+    required String entityLabel,
+    required bool isNew,
+  }) {
+    final existing = _confirmationCompleter;
+    if (existing != null) return existing.future;
+
+    final completer = Completer<bool?>();
+    _confirmationCompleter = completer;
+    _entityLabel = entityLabel;
+    _isNew = isNew;
+    _pendingResult = null;
+    _popoverIsOpen = false;
+    _isClosing = false;
+    _closeTimer?.cancel();
+    _closeTimer = null;
+    _activeDiscardChangesSheetDismiss = _dismissCallback;
+    _insertScrim();
+    setState(() {});
+
+    // Let the updated message build before asking GlassPopover to measure its
+    // content. Its triggerBuilder also refreshes the toggle callback each build.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (_isClosing) {
-        _scheduleOverlayRemoval();
+      if (!mounted || !identical(_confirmationCompleter, completer)) return;
+      if (_isClosing) return;
+      final togglePopover = _togglePopover;
+      if (togglePopover == null) {
+        _isClosing = true;
+        _finishClose();
         return;
       }
       _popoverIsOpen = true;
       togglePopover();
     });
+
+    return completer.future;
+  }
+
+  void _insertScrim() {
+    if (_scrimController.isShowing) return;
+    _scrimController.show();
+  }
+
+  void _removeScrim() {
+    if (_scrimController.isShowing) _scrimController.hide();
   }
 
   void _dismissActivePopover() {
     if (_isClosing) return;
     _isClosing = true;
-    widget.onResult(null);
+    _pendingResult = null;
     if (_popoverIsOpen) {
       _togglePopover?.call();
     } else {
-      _scheduleOverlayRemoval();
+      _finishClose();
     }
     if (mounted) setState(() {});
   }
@@ -388,24 +368,49 @@ class _DiscardChangesSheetOverlayState
     _popoverIsOpen = false;
     if (!_isClosing) {
       _isClosing = true;
-      widget.onResult(null);
+      _pendingResult = null;
     }
-    _scheduleOverlayRemoval();
+    _scheduleCloseFinish();
     if (mounted) setState(() {});
   }
 
-  void _scheduleOverlayRemoval() {
-    if (_removeTimer != null) return;
-    _removeTimer = Timer(
+  void _scheduleCloseFinish() {
+    if (_closeTimer != null) return;
+    _closeTimer = Timer(
       _reduceMotion ? Duration.zero : _popoverCloseSettleDelay,
-      widget.onCloseAnimationComplete,
+      _finishClose,
     );
+  }
+
+  void _finishClose() {
+    _closeTimer = null;
+    _popoverIsOpen = false;
+    _removeScrim();
+    if (identical(
+      _activeDiscardChangesSheetDismiss,
+      _dismissCallback,
+    )) {
+      _activeDiscardChangesSheetDismiss = null;
+    }
+
+    final completer = _confirmationCompleter;
+    final result = _pendingResult;
+    _confirmationCompleter = null;
+    _pendingResult = null;
+    _entityLabel = 'item';
+    _isNew = false;
+    _isClosing = false;
+    _popoverKey = UniqueKey();
+    if (mounted) setState(() {});
+    if (completer != null && !completer.isCompleted) {
+      completer.complete(result);
+    }
   }
 
   void _acceptDiscard(VoidCallback closePopover) {
     if (_isClosing) return;
+    _pendingResult = true;
     _isClosing = true;
-    widget.onResult(true);
     closePopover();
     if (mounted) setState(() {});
   }
@@ -414,9 +419,10 @@ class _DiscardChangesSheetOverlayState
     BuildContext context,
     VoidCallback closePopover,
   ) {
+    if (_confirmationCompleter == null) return const SizedBox.shrink();
     final primary = resolveThemeColor(kPrimaryLabel, context);
-    final message = widget.isNew
-        ? 'Are you sure you want to discard this new ${widget.entityLabel}?'
+    final message = _isNew
+        ? 'Are you sure you want to discard this new $_entityLabel?'
         : 'Are you sure you want to discard your changes?';
 
     return ActionPanelScrollView(
@@ -486,59 +492,39 @@ class _DiscardChangesSheetOverlayState
     final viewportSize = MediaQuery.sizeOf(context);
     final screenSize =
         device_screen_size.getDeviceScreenSize(context) ?? viewportSize;
-    final popoverWidth =
-        screenSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction;
     final horizontalInset =
         AppWindowContentScope.of(context).horizontalInset;
+    final isPresentedOverModalSheet =
+        RoundedCupertinoSheetRoute.hasParentSheet(context);
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (_, __) {
-        dismissActiveDiscardChangesConfirmationSheet();
-      },
-      child: Stack(
-        fit: StackFit.expand,
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _dismissActivePopover,
-              child: const ColoredBox(color: Color(0x44000000)),
-            ),
-          ),
-          Positioned(
-            left: horizontalInset + kDiscardConfirmationTopLeftEdgeGap,
-            top:
-                MediaQuery.viewPaddingOf(context).top +
-                kRoundedSheetSafeAreaGap +
-                kDiscardConfirmationTopLeftEdgeGap,
-            child: GlassPopover(
-              triggerBuilder: (popoverContext, togglePopover) {
-                _schedulePopoverOpen(togglePopover);
-                return IgnorePointer(
-                  ignoring: _isClosing,
-                  child: ModalToolbarGlassButton(
-                    icon: CupertinoIcons.xmark,
-                    iconColor: resolveThemeColor(kPrimaryLabel, context),
-                    surfaceColor: kModalCard,
-                    size: _popoverTriggerSize,
-                    iconSize: 20,
-                    semanticLabel: 'Close discard confirmation',
-                    onTap: togglePopover,
-                  ),
-                );
-              },
-              contentBuilder: _buildPopoverContent,
-              popoverWidth: popoverWidth,
-              popoverBorderRadius: widget.isPresentedOverModalSheet
-                  ? kModalConfirmationSheetCornerRadius
-                  : kConfirmationSheetCornerRadius,
-              alignment: GlassMenuAlignment.topLeft,
-              onClose: _onPopoverClosing,
-            ),
-          ),
-        ],
+    return OverlayPortal(
+      controller: _scrimController,
+      overlayLocation: OverlayChildLocation.rootOverlay,
+      overlayChildBuilder: (_) => const Positioned.fill(
+        child: IgnorePointer(
+          child: ColoredBox(color: Color(0x44000000)),
+        ),
+      ),
+      child: GlassPopover(
+        key: _popoverKey,
+        triggerBuilder: (_, togglePopover) {
+          _togglePopover = togglePopover;
+          return widget.child;
+        },
+        contentBuilder: _buildPopoverContent,
+        popoverWidth:
+            screenSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction,
+        popoverBorderRadius: isPresentedOverModalSheet
+            ? kModalConfirmationSheetCornerRadius
+            : kConfirmationSheetCornerRadius,
+        alignment: GlassMenuAlignment.topLeft,
+        screenPadding: EdgeInsets.fromLTRB(
+          horizontalInset + 12,
+          12,
+          horizontalInset + 12,
+          12,
+        ),
+        onClose: _onPopoverClosing,
       ),
     );
   }

@@ -10466,6 +10466,8 @@ class _NewEventSheetState extends State<_NewEventSheet>
   int _selectedSectionIndex = 0;
   String? _initialDraftSignature;
   bool _discarding = false;
+  final GlobalKey<DiscardChangesPopoverAnchorState> _discardPopoverKey =
+      GlobalKey<DiscardChangesPopoverAnchorState>();
   // Keep the outgoing row's content mounted while its SizeTransition
   // collapses. Without this, changing to a category with no sections replaces
   // the row with a zero-height child before the dismissal animation can run.
@@ -10701,6 +10703,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     }
     final discard = await showDiscardChangesConfirmationSheet(
       context,
+      anchorKey: _discardPopoverKey,
       entityLabel: 'event',
       isNew: !widget.isEditing,
     );
@@ -15300,14 +15303,17 @@ class _NewEventSheetState extends State<_NewEventSheet>
                         ),
                         Positioned(
                           left: _kHeaderEdge,
-                          child: _CalModalCircleButton(
-                            icon: CupertinoIcons.xmark,
-                            iconColor: resolveThemeColor(
-                              kPrimaryLabel,
-                              context,
+                          child: DiscardChangesPopoverAnchor(
+                            key: _discardPopoverKey,
+                            child: _CalModalCircleButton(
+                              icon: CupertinoIcons.xmark,
+                              iconColor: resolveThemeColor(
+                                kPrimaryLabel,
+                                context,
+                              ),
+                              tapDelay: const Duration(milliseconds: 130),
+                              onTap: _requestDismiss,
                             ),
-                            tapDelay: const Duration(milliseconds: 130),
-                            onTap: _requestDismiss,
                           ),
                         ),
                         Positioned(
