@@ -134,7 +134,7 @@ void main() {
     expect(createEventCalls, 1);
   });
 
-  testWidgets('dark tab uses the package default GlassTheme variant', (
+  testWidgets('dark tab keeps package optics with SKEDDO charcoal tint', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -169,16 +169,8 @@ void main() {
       ),
     );
     expect(
-      tabBar.settings!.glassColor.r,
-      0,
-    );
-    expect(
-      tabBar.settings!.glassColor.g,
-      0,
-    );
-    expect(
-      tabBar.settings!.glassColor.b,
-      0,
+      tabBar.settings!.glassColor.value & 0x00FFFFFF,
+      0x001C1C1E,
     );
     expect(
       tabBar.settings!.lightIntensity,

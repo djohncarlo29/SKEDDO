@@ -53,9 +53,9 @@ Color _increaseGlassOpacity(Color color) => color.withValues(
 );
 
 Color _increaseDarkGlassOpacity(Color packageTint) => Color.fromRGBO(
-  0,
-  0,
-  0,
+  0x1C,
+  0x1C,
+  0x1E,
   (packageTint.a + kSkeddoBottomBarOpacityIncrease).clamp(0.0, 1.0),
 );
 
