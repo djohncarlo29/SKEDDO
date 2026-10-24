@@ -19,7 +19,7 @@ import 'vertical_edge_fade.dart';
 // Emoji category data
 // ─────────────────────────────────────────────────────────────────────────────
 
-typedef _EmojiCat = ({String icon, String name, List<String> emojis});
+typedef _EmojiCat = ({String name, List<String> emojis});
 
 const _emojiCategoryLightSvg = 'assets/custom_icons/emoji.svg';
 const _emojiCategoryDarkSvg = 'assets/custom_icons/emoji_fill.svg';
@@ -43,9 +43,8 @@ class _EmojiGridLayout {
   int get columns => geometry.columns;
 }
 
-const List<_EmojiCat> kEmojiCategories = [
+const List<_EmojiCat> _kEmojiCategories = [
   (
-    icon: '😀',
     name: 'Smileys',
     emojis: [
       '😀',
@@ -162,7 +161,6 @@ const List<_EmojiCat> kEmojiCategories = [
     ],
   ),
   (
-    icon: '👋🏻',
     name: 'People',
     emojis: [
       '👋🏻',
@@ -242,7 +240,6 @@ const List<_EmojiCat> kEmojiCategories = [
     ],
   ),
   (
-    icon: '🐶',
     name: 'Animals',
     emojis: [
       '🐶',
@@ -378,7 +375,6 @@ const List<_EmojiCat> kEmojiCategories = [
     ],
   ),
   (
-    icon: '🍎',
     name: 'Food',
     emojis: [
       '🍏',
@@ -476,7 +472,6 @@ const List<_EmojiCat> kEmojiCategories = [
     ],
   ),
   (
-    icon: '⚽',
     name: 'Activities',
     emojis: [
       '⚽',
@@ -567,7 +562,6 @@ const List<_EmojiCat> kEmojiCategories = [
     ],
   ),
   (
-    icon: '✈️',
     name: 'Travel',
     emojis: [
       '🚗',
@@ -658,7 +652,6 @@ const List<_EmojiCat> kEmojiCategories = [
     ],
   ),
   (
-    icon: '💡',
     name: 'Objects',
     emojis: [
       '⌚',
@@ -798,7 +791,6 @@ const List<_EmojiCat> kEmojiCategories = [
     ],
   ),
   (
-    icon: '❤️',
     name: 'Symbols',
     emojis: [
       '❤️',
@@ -941,10 +933,8 @@ Widget _buildCategoryTabIcon(
     case 4:
       // Match the parent category icon picker: the ball is two-tone, with a
       // contrasting outer ring, rather than a platform-rendered emoji.
-      final detailColor =
-          brightness == Brightness.dark ? color : pillColor;
-      final ballColor =
-          brightness == Brightness.dark ? pillColor : color;
+      final detailColor = brightness == Brightness.dark ? color : pillColor;
+      final ballColor = brightness == Brightness.dark ? pillColor : color;
       return SizedBox(
         width: size,
         height: size,
@@ -1028,7 +1018,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   final _scrollCtrl = ScrollController();
   final _categoryScrollCtrl = ScrollController();
   final List<GlobalKey> _categoryTabKeys = List<GlobalKey>.generate(
-    kEmojiCategories.length,
+    _kEmojiCategories.length,
     (_) => GlobalKey(),
   );
   int _categoryTabVisibilityRequest = 0;
@@ -1067,7 +1057,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     final selectedEmoji = widget.selectedEmoji;
     if (selectedEmoji == null) return;
 
-    final selectedCategory = kEmojiCategories.indexWhere(
+    final selectedCategory = _kEmojiCategories.indexWhere(
       (category) => category.emojis.contains(selectedEmoji),
     );
     if (selectedCategory >= 0) _catIndex = selectedCategory;
@@ -1096,7 +1086,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
 
   void _warmEmojiGlyphs(TextDirection textDirection) {
     final emojis = <String>{
-      for (final category in kEmojiCategories) ...[
+      for (final category in _kEmojiCategories) ...[
         ...category.emojis,
       ],
     };
@@ -1144,7 +1134,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   }
 
   void _switchCategory(int i) {
-    if (i < 0 || i >= kEmojiCategories.length) return;
+    if (i < 0 || i >= _kEmojiCategories.length) return;
     // A prior swipe may still be animating the tab strip, and its queued
     // ensureVisible callback can otherwise overwrite this newer selection.
     _categoryTabVisibilityRequest++;
@@ -1201,7 +1191,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
         delta.dx.abs() > delta.dy.abs() + _emojiAxisBias;
     final pullingPastLeadingEdge = _catIndex == 0 && delta.dx > 0;
     final pullingPastTrailingEdge =
-        _catIndex == kEmojiCategories.length - 1 && delta.dx < 0;
+        _catIndex == _kEmojiCategories.length - 1 && delta.dx < 0;
 
     if (isHorizontal &&
         _emojiHorizontalGesture == _EmojiHorizontalGesture.undecided) {
@@ -1302,7 +1292,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
 
       final pullingPastLeadingEdge = _catIndex == 0 && deltaFromStart.dx > 0;
       final pullingPastTrailingEdge =
-          _catIndex == kEmojiCategories.length - 1 && deltaFromStart.dx < 0;
+          _catIndex == _kEmojiCategories.length - 1 && deltaFromStart.dx < 0;
       _emojiHorizontalGesture =
           pullingPastLeadingEdge || pullingPastTrailingEdge
               ? _EmojiHorizontalGesture.rubberband
@@ -1348,10 +1338,10 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
         pageOffset.abs() >= flickDistanceThreshold;
     final outwardAtEdge =
         (_catIndex == 0 && pageOffset > 0) ||
-        (_catIndex == kEmojiCategories.length - 1 && pageOffset < 0);
+        (_catIndex == _kEmojiCategories.length - 1 && pageOffset < 0);
     final goNext =
         !outwardAtEdge &&
-        _catIndex < kEmojiCategories.length - 1 &&
+        _catIndex < _kEmojiCategories.length - 1 &&
         (pageOffset <= -distanceThreshold ||
             (vel <= -_emojiPageVelocity && hasEnoughFlickDistance));
     final goPrevious =
@@ -1401,7 +1391,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     final attemptedPixels = _emojiScrollRubberbandOffset + deltaX;
     final atLeadingEdge = _catIndex == 0 && attemptedPixels < 0;
     final atTrailingEdge =
-        _catIndex == kEmojiCategories.length - 1 && attemptedPixels > 0;
+        _catIndex == _kEmojiCategories.length - 1 && attemptedPixels > 0;
     if (!atLeadingEdge &&
         !atTrailingEdge &&
         _emojiScrollRubberbandOffset == 0) {
@@ -1480,7 +1470,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   }
 
   Widget _buildGrid(int idx, {bool active = false}) {
-    final emojis = kEmojiCategories[idx].emojis;
+    final emojis = _kEmojiCategories[idx].emojis;
     final textScaler = MediaQuery.textScalerOf(context);
     final selectedEmoji = widget.selectedEmoji;
     final accentColor = resolveAccentColor(context);
@@ -1506,7 +1496,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
             height: layout.gridHeight,
             child: Stack(
               children: List.generate(emojis.length, (i) {
-                final isSelected = emojis[i] == selectedEmoji;
+                final isSelected = active && emojis[i] == selectedEmoji;
                 final emoji = Text(
                   emojis[i],
                   style: TextStyle(
@@ -1722,9 +1712,16 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                   padding: EdgeInsets.zero,
                   sliver: SliverFillRemaining(
                     hasScrollBody: false,
-                    child: Padding(
-                      padding: scrollPadding,
-                      child: Container(
+                    // SliverFillRemaining probes its child's intrinsic height
+                    // when the content is short. The zero-height sizing shell
+                    // lets it expand to the remaining viewport without asking
+                    // the LayoutBuilders inside this responsive card for
+                    // unsupported intrinsic dimensions.
+                    child: SizedBox(
+                      height: 0,
+                      child: Padding(
+                        padding: scrollPadding,
+                        child: Container(
                         decoration: ShapeDecoration(
                           color: kModalCard.resolveFrom(context),
                           shape: const BoundedSquircleStadiumBorder(),
@@ -1742,7 +1739,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                   final w = constraints.maxWidth;
                                   final activeGridLayout =
                                       _resolveEmojiGridLayoutFromCheckpoint(
-                                        kEmojiCategories[_catIndex]
+                                        _kEmojiCategories[_catIndex]
                                             .emojis
                                             .length,
                                         w,
@@ -1814,7 +1811,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                               ),
                                             ),
                                             if (_catIndex <
-                                                kEmojiCategories.length - 1)
+                                                _kEmojiCategories.length - 1)
                                               _positionEmojiPage(
                                                 key: ValueKey(
                                                   'emoji-grid-${_catIndex + 1}',
@@ -1908,7 +1905,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                   spacing:
                                                       _emojiCategoryMinimumGap,
                                                   children: List.generate(
-                                                    kEmojiCategories.length,
+                                                    _kEmojiCategories.length,
                                                     (i) {
                                                       final sel =
                                                           i == _catIndex;
@@ -1936,7 +1933,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                               button: true,
                                                               selected: sel,
                                                               label:
-                                                                  '${kEmojiCategories[i].name} category',
+                                                                  '${_kEmojiCategories[i].name} category',
                                                               child: Center(
                                                                 child: KeyedSubtree(
                                                                   key: ValueKey(
@@ -1981,6 +1978,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                               ),
                             ),
                           ],
+                        ),
                         ),
                       ),
                     ),

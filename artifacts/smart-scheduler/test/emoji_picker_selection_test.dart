@@ -15,18 +15,15 @@ void main() {
       CupertinoApp(
         navigatorKey: navigatorKey,
         theme: const CupertinoThemeData(brightness: Brightness.light),
-        builder: (context, child) => AppWindowContentBoundary(
-          child: child ?? const SizedBox.shrink(),
-        ),
+        builder: (context, child) =>
+            AppWindowContentBoundary(child: child ?? const SizedBox.shrink()),
         home: const SizedBox.shrink(),
       ),
     );
     navigatorKey.currentState!.push<void>(
       RoundedCupertinoSheetRoute<void>(
-        builder: (_) => EmojiPickerSheet(
-          selectedEmoji: '🐶',
-          onEmojiSelected: (_) {},
-        ),
+        builder: (_) =>
+            EmojiPickerSheet(selectedEmoji: '🐶', onEmojiSelected: (_) {}),
       ),
     );
     await tester.pumpAndSettle();
@@ -43,11 +40,27 @@ void main() {
     );
     expect(
       find.byWidgetPredicate(
-        (widget) =>
-            widget is FixedSFIcon && widget.icon == SFIcons.sf_dog,
+        (widget) => widget is FixedSFIcon && widget.icon == SFIcons.sf_dog,
       ),
       findsOneWidget,
     );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is FixedSFIcon && widget.icon == SFIcons.sf_hand_wave,
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is FixedSFIcon && widget.icon == SFIcons.sf_apple_logo,
+      ),
+      findsOneWidget,
+    );
+    expect(find.byIcon(CupertinoIcons.airplane), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.lightbulb_fill), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.suit_heart_fill), findsOneWidget);
   });
 
   testWidgets('uses the filled dog and hand-wave symbols in Dark Mode', (
@@ -58,9 +71,8 @@ void main() {
       CupertinoApp(
         navigatorKey: navigatorKey,
         theme: const CupertinoThemeData(brightness: Brightness.dark),
-        builder: (context, child) => AppWindowContentBoundary(
-          child: child ?? const SizedBox.shrink(),
-        ),
+        builder: (context, child) =>
+            AppWindowContentBoundary(child: child ?? const SizedBox.shrink()),
         home: const SizedBox.shrink(),
       ),
     );
@@ -73,8 +85,7 @@ void main() {
 
     expect(
       find.byWidgetPredicate(
-        (widget) =>
-            widget is FixedSFIcon && widget.icon == SFIcons.sf_dog_fill,
+        (widget) => widget is FixedSFIcon && widget.icon == SFIcons.sf_dog_fill,
       ),
       findsOneWidget,
     );
