@@ -40,11 +40,20 @@ void main() {
       expect(button.useOwnLayer, isTrue);
       expect(
         button.settings,
-        skeddoTintedActionGlassSettingsFor(brightness, actionColor),
+        skeddoActiveCheckmarkGlassSettingsFor(brightness),
       );
+      expect(button.settings!.glassColor.a, 0);
+      expect(button.settings!.saturation, 1);
       expect(
-        button.settings!.glassColor,
-        actionColor.withValues(alpha: kSkeddoTintedActionGlassOpacity),
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is ColoredBox &&
+              widget.color.toARGB32() ==
+                  actionColor
+                      .withValues(alpha: kSkeddoTintedActionGlassOpacity)
+                      .toARGB32(),
+        ),
+        findsOneWidget,
       );
       expect(
         icon.color!.toARGB32(),

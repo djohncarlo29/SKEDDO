@@ -9,8 +9,8 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
 ///
 /// These retain flutter_liquid_glass_widgets' bottom-bar optics while using
 /// SKEDDO's explicit, mode-specific tint colors and opacities.
-const double kSkeddoLightBottomBarOpacity = 0.20;
-const double kSkeddoDarkBottomBarOpacity = 0.30;
+const double kSkeddoLightBottomBarOpacity = 0.30;
+const double kSkeddoDarkBottomBarOpacity = 0.40;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 
 const LiquidGlassSettings _packageBottomBarGlassDefaults = LiquidGlassSettings(
@@ -65,4 +65,17 @@ LiquidGlassSettings skeddoTintedActionGlassSettingsFor(
   Color tint,
 ) => skeddoBottomBarGlassSettingsFor(brightness).copyWith(
   glassColor: tint.withValues(alpha: kSkeddoTintedActionGlassOpacity),
+);
+
+/// Keeps active accent colors true while retaining the package's glass optics.
+///
+/// The package's premium shader preserves backdrop luminance when tinting
+/// chromatic glass. On a bright background, that operation can shift a blue
+/// accent toward cyan, so active checkmarks put the 85% accent beneath a clear
+/// glass surface and let the package refract that tinted scene.
+LiquidGlassSettings skeddoActiveCheckmarkGlassSettingsFor(
+  Brightness brightness,
+) => skeddoBottomBarGlassSettingsFor(brightness).copyWith(
+  glassColor: const Color(0x00FFFFFF),
+  saturation: 1,
 );

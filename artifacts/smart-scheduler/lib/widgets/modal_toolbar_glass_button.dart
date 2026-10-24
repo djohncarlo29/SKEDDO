@@ -86,6 +86,7 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
     final followsActionColor =
         checkmark &&
         !neutralSurfaces.contains(resolvedSurface.toARGB32());
+    final activeTintedCheckmark = followsActionColor && _canTap;
     final iconColor = followsActionColor
         ? CupertinoColors.white
         : resolveThemeColor(widget.iconColor, context);
@@ -101,7 +102,9 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
     }
 
     final brightness = CupertinoTheme.brightnessOf(context);
-    final glassSettings = followsActionColor
+    final glassSettings = activeTintedCheckmark
+        ? skeddoActiveCheckmarkGlassSettingsFor(brightness)
+        : followsActionColor
         ? skeddoTintedActionGlassSettingsFor(brightness, resolvedSurface)
         : skeddoBottomBarGlassSettingsFor(brightness);
     final positionedIcon = widget.iconOffset == Offset.zero
@@ -132,15 +135,34 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
       interactionScale: widget.peakScale,
       semanticLabel: widget.semanticLabel ?? fallbackLabel,
     );
+    final renderedButton = activeTintedCheckmark
+        ? SizedBox(
+            width: widget.size,
+            height: widget.size,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ClipOval(
+                  child: ColoredBox(
+                    color: resolvedSurface.withValues(
+                      alpha: kSkeddoTintedActionGlassOpacity,
+                    ),
+                  ),
+                ),
+                button,
+              ],
+            ),
+          )
+        : button;
     if (checkmark && !_canTap) {
       return Semantics(
         container: true,
         button: true,
         enabled: false,
         label: widget.semanticLabel ?? fallbackLabel,
-        child: ExcludeSemantics(child: button),
+        child: ExcludeSemantics(child: renderedButton),
       );
     }
-    return button;
+    return renderedButton;
   }
 }
