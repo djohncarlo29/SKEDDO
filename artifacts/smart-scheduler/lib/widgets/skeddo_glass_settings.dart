@@ -72,10 +72,18 @@ LiquidGlassSettings skeddoTintedActionGlassSettingsFor(
 /// The package's premium shader preserves backdrop luminance when tinting
 /// chromatic glass. On a bright background, that operation can shift a blue
 /// accent toward cyan, so active checkmarks put the 85% accent beneath a clear
-/// glass surface and let the package refract that tinted scene.
+/// glass surface and let the package refract that tinted scene. The tab bar's
+/// chromatic fringes and full-perimeter highlight are also too strong at this
+/// small size, so keep refraction but remove those edge effects here.
 LiquidGlassSettings skeddoActiveCheckmarkGlassSettingsFor(
   Brightness brightness,
 ) => skeddoBottomBarGlassSettingsFor(brightness).copyWith(
   glassColor: const Color(0x00FFFFFF),
   saturation: 1,
+  chromaticAberration: 0,
+  lightIntensity: 0.15,
+  ambientStrength: 0,
+  fresnelStrength: 0,
+  ambientRim: 0,
+  shadowElevation: 0,
 );

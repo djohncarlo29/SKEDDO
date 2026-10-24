@@ -44,6 +44,12 @@ void main() {
       );
       expect(button.settings!.glassColor.a, 0);
       expect(button.settings!.saturation, 1);
+      expect(button.settings!.chromaticAberration, 0);
+      expect(button.settings!.fresnelStrength, 0);
+      expect(button.settings!.ambientRim, 0);
+      expect(button.settings!.lightIntensity, 0.15);
+      expect(button.settings!.ambientStrength, 0);
+      expect(button.settings!.shadowElevation, 0);
       expect(
         find.byWidgetPredicate(
           (widget) =>
@@ -107,6 +113,7 @@ void main() {
           button.settings!.glassColor,
           inactiveTint.withValues(alpha: kSkeddoTintedActionGlassOpacity),
         );
+        expect(button.settings!.chromaticAberration, 0.3);
         expect(button.settings!.glassColor.a, closeTo(0.85, 0.001));
         expect(icon.color!.toARGB32(), CupertinoColors.white.toARGB32());
 

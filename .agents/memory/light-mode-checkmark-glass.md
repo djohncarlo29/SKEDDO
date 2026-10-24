@@ -21,5 +21,8 @@ chromatic tints, which can shift blue toward cyan over a bright surface.
 shared wrapper with the shared bar settings, `GlassQuality.premium`, and
 `useOwnLayer: true`. For active chromatic checkmarks, place the tint underneath
 the package glass rather than passing it as `glassColor`; inactive grey tints can
-still use `glassColor` directly. Keep inactive controls disabled and preserve
-the package renderer. Non-Impeller renderers still use the package's lighter path.
+still use `glassColor` directly. Active checkmarks should disable chromatic
+aberration, Fresnel rim, and shadows while keeping subtle directional lighting;
+the tab-bar edge effects create violet fringes and a contrasting outline at
+this smaller size. Keep inactive controls disabled and preserve the package
+renderer. Non-Impeller renderers still use the package's lighter path.
