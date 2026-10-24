@@ -1,10 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cupertino_native/cupertino_native.dart';
-import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassSwitch;
 
 import '../app_theme.dart';
+import 'skeddo_glass_switch.dart';
 
 /// The app-wide switch.
 ///
@@ -49,7 +48,7 @@ class AppSwitch extends StatelessWidget {
                     height: height,
                     color: activeColor,
                   )
-                : GlassSwitch(
+                : SkeddoGlassSwitch(
                     value: value,
                     onChanged: onChanged,
                     width: 70.0,

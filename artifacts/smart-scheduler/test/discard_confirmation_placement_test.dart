@@ -65,6 +65,11 @@ void main() {
       popover.settings!.refractiveIndex,
       skeddoBottomBarGlassSettingsFor(Brightness.light).refractiveIndex,
     );
+    expect(popover.settings!.glassColor.a, 0.70);
+    expect(
+      skeddoPopoverGlassSettingsFor(Brightness.dark).glassColor.a,
+      0.70,
+    );
     expect(
       find.byWidgetPredicate(
         (widget) =>
@@ -80,6 +85,12 @@ void main() {
     );
     expect(discardButtonFinder, findsOneWidget);
     expect(tester.getSize(discardButtonFinder).width, greaterThan(300));
+    final discardButton = tester.widget<GlassButton>(discardButtonFinder);
+    expect(discardButton.settings!.glassColor.a, closeTo(0.28, 0.001));
+    expect(
+      skeddoPopoverButtonGlassSettingsFor(Brightness.dark).glassColor.a,
+      closeTo(0.28, 0.001),
+    );
 
     await tester.tapAt(const Offset(700, 500));
     await tester.pumpAndSettle();

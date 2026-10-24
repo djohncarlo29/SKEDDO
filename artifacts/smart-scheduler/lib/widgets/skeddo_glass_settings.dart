@@ -11,6 +11,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
 /// SKEDDO's explicit, mode-specific tint colors and opacities.
 const double kSkeddoLightBottomBarOpacity = 0.40;
 const double kSkeddoDarkBottomBarOpacity = 0.50;
+const double kSkeddoPopoverGlassOpacity = 0.70;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
@@ -59,6 +60,42 @@ LiquidGlassSettings skeddoBottomBarGlassSettingsFor(Brightness brightness) =>
     brightness == Brightness.dark
     ? kSkeddoDarkBottomBarGlassSettings
     : kSkeddoBottomBarGlassSettings;
+
+/// Popovers use the shared glass optics with their own, stronger tint level.
+LiquidGlassSettings skeddoPopoverGlassSettingsFor(Brightness brightness) {
+  final shared = skeddoBottomBarGlassSettingsFor(brightness);
+  return shared.copyWith(
+    glassColor: shared.glassColor.withValues(
+      alpha: kSkeddoPopoverGlassOpacity,
+    ),
+  );
+}
+
+/// GlassButtonStyle.prominent multiplies its input tint alpha by 2.5.
+/// Supplying 0.28 therefore keeps this one popover action at 70% after the
+/// package applies its prominent-button treatment.
+LiquidGlassSettings skeddoPopoverButtonGlassSettingsFor(
+  Brightness brightness,
+) {
+  final popover = skeddoPopoverGlassSettingsFor(brightness);
+  return popover.copyWith(
+    glassColor: popover.glassColor.withValues(
+      alpha: kSkeddoPopoverGlassOpacity / 2.5,
+    ),
+  );
+}
+
+/// Shared optics for the lifted switch thumb, preserving the package thumb's
+/// existing glass-tint alpha in each appearance.
+LiquidGlassSettings skeddoSwitchThumbGlassSettingsFor(
+  Brightness brightness,
+) {
+  final shared = skeddoBottomBarGlassSettingsFor(brightness);
+  final existingThumbOpacity = brightness == Brightness.dark ? 0.08 : 0.12;
+  return shared.copyWith(
+    glassColor: shared.glassColor.withValues(alpha: existingThumbOpacity),
+  );
+}
 
 /// Preserves the shared renderer's optics while tinting an enabled action
 /// button's glass with its accent/category color.

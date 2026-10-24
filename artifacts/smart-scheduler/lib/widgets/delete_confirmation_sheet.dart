@@ -535,6 +535,9 @@ class DiscardChangesPopoverAnchorState
               shape: const LiquidRoundedSuperellipse(
                 borderRadius: kDiscardConfirmationButtonCornerRadius,
               ),
+              settings: skeddoPopoverButtonGlassSettingsFor(
+                CupertinoTheme.brightnessOf(context),
+              ),
               style: GlassButtonStyle.prominent,
               interactionScale: 1.06,
               label: 'Discard Changes',
@@ -589,7 +592,7 @@ class DiscardChangesPopoverAnchorState
         horizontalInset + 12,
         12,
       ),
-      settings: skeddoBottomBarGlassSettingsFor(
+      settings: skeddoPopoverGlassSettingsFor(
         CupertinoTheme.brightnessOf(context),
       ),
       quality: GlassQuality.premium,
