@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
+    show GlassTab, GlassTabBar;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
@@ -57,29 +59,36 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
   @override
   Widget build(BuildContext context) {
     final selectedIndex = widget.selectedIndex;
-    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
     final selectedColor = selectedIndex == 2
         ? CupertinoDynamicColor.resolve(widget.eventsAccent, context)
         : resolveAccentColor(context);
-    // Keep the animated pill's rest endpoint in lock-step with the static
-    // active-pill surface. If this is omitted, liquid_glass_easy falls back to
-    // its shipped translucent gray during both the lift handoff and settle.
-    final selectedPillColor = resolveThemeColor(
-      kFloatingTabBarSelectedPillColor,
-      context,
-    );
-    // The settled selection uses a lighter tint. The moving glass eases
-    // through that same tint, then becomes clear at its fully lifted endpoint.
-    final settledPillColor = selectedPillColor.withValues(alpha: 0.60);
-    final transitionPillColor = selectedPillColor.withValues(alpha: 0.60);
     final unselectedColor = CupertinoDynamicColor.resolve(
       kTabBarInactiveColor,
       context,
     );
     final bottomOffset = floatingTabBarBottomOffset(context);
-    final barStyle = _floatingTabBarStyle(context);
-    final glassOpacityProgress =
-        _normalizedLiquidGlassOpacity(appLiquidGlassOpacityNotifier.value);
+    final tabBar = GlassTabBar.bottom(
+      tabs: const [
+        GlassTab(
+          icon: FixedSFIcon(SFIcons.sf_text_document),
+          label: 'Notes',
+        ),
+        GlassTab(
+          icon: FixedSFIcon(SFIcons.sf_calendar),
+          label: 'Calendar',
+        ),
+        GlassTab(
+          icon: FixedSFIcon(SFIcons.sf_list_bullet),
+          label: 'Events',
+        ),
+      ],
+      selectedIndex: selectedIndex,
+      onTabSelected: widget.onTabSelected,
+      selectedIconColor: selectedColor,
+      unselectedIconColor: unselectedColor,
+      selectedLabelColor: selectedColor,
+      unselectedLabelColor: unselectedColor,
+    );
 
     return Semantics(
       container: true,
@@ -96,140 +105,29 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
           final barWidth = (isPortrait
                   ? availableBarWidth
                   : math.min(availableBarWidth, portraitWidth))
-              .clamp(0.0, double.infinity);
+              .clamp(0.0, double.infinity)
+              .toDouble();
           if (isPortrait) _portraitBarWidth = barWidth;
-          final barSideInset = (constraints.maxWidth - barWidth) / 2;
-          final barLeft = barSideInset + widget.horizontalOffset;
-          final barRight = barSideInset - widget.horizontalOffset;
-          Widget positioned({
-            required Widget child,
-            double? top,
-            double? bottom,
-            double? height,
-          }) =>
+          final frameWidth = (barWidth + tabBar.horizontalPadding * 2)
+              .clamp(0.0, constraints.maxWidth)
+              .toDouble();
+          final barSideInset = (constraints.maxWidth - frameWidth) / 2;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
               AnimatedPositioned(
                 duration: widget.animateHorizontalOffset
                     ? kDcvPaneTransitionDuration
                     : Duration.zero,
                 curve: Curves.easeInOutCubic,
-              left: barLeft,
-              right: barRight,
-              top: top,
-              bottom: bottom,
-              height: height,
-              child: child,
-            );
-          final tabBar = LiquidGlassTabBar.withImpeller(
-            items: [
-              _tabItem(SFIcons.sf_text_document, 'Notes'),
-              _tabItem(SFIcons.sf_calendar, 'Calendar'),
-              _tabItem(SFIcons.sf_list_bullet, 'Events'),
-            ],
-            selectedIndex: selectedIndex,
-            onChanged: widget.onTabSelected,
-            width: barWidth,
-            height: kFloatingTabBarHeight,
-            margin: EdgeInsets.only(bottom: bottomOffset),
-            itemPadding: 4,
-            itemStyle: LiquidGlassTabItemStyle(
-              selectedColor: selectedColor,
-              unselectedColor: unselectedColor,
-              iconSize: 22,
-              labelFontSize: 12,
-              underGlassLabelFontSize: 12,
-              iconLabelGap: 2,
-              selectedFontWeight: FontWeight.w600,
-              unselectedFontWeight: FontWeight.w500,
-            ),
-            style: barStyle,
-            barOverlay: LightModeLiquidGlassPillContour(
-              whiteOutlineOpacity: glassOpacityProgress,
-              child: const SizedBox.expand(),
-            ),
-            // The environmental shadows above own elevation. Keep the glass
-            // material itself shadow-free so its refraction remains clean.
-            pillStyle: LiquidGlassTabPillStyle(
-              mode: LiquidGlassPillMode.impellerOnly,
-              animated: true,
-              color: const Color(0x00000000),
-              transitionColor: transitionPillColor,
-              shape: LiquidGlassShape.squircle(
-                cornerRadius: kSquircleStadiumRadius,
-              ),
-              glassStyle: LiquidGlassStyle(
-                shape: LiquidGlassShape.squircle(
-                  cornerRadius: kSquircleStadiumRadius,
-                ),
-                appearance: LiquidGlassAppearance(
-                  shadow: LiquidGlassShadow(
-                    blur: 6,
-                    opacity: isDark ? 0 : 0.22,
-                    offset: const Offset(0, 3),
-                    cornerRadius: kSquircleStadiumRadius,
-                    inset: 1,
-                  ),
-                ),
-                refraction: LiquidGlassRefraction(
-                  distortion: 0.04,
-                  distortionWidth: 12,
-                  magnification: 1,
-                  chromaticAberration: kFloatingTabBarChromaticAberration,
-                ),
-              ),
-              rest: LiquidGlassStyle(
-                shape: LiquidGlassShape.squircle(
-                  cornerRadius: kSquircleStadiumRadius,
-                ),
-                appearance: LiquidGlassAppearance(
-                  color: settledPillColor,
-                ),
-                refraction: const LiquidGlassRefraction(
-                  distortion: 0,
-                  distortionWidth: 0,
-                  magnification: 1,
-                  chromaticAberration: kFloatingTabBarChromaticAberration,
-                ),
-              ),
-            ),
-          );
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              // This layer is deliberately outside the glass capture. It paints
-              // onto the page first, then the translucent bar composites above it.
-              // Nothing in the shadow can therefore darken or refract through the
-              // bar's material.
-              positioned(
-                bottom: bottomOffset,
-                height: kFloatingTabBarHeight,
-                child: IgnorePointer(
-                  child: LiquidGlassShadow(
-                    // The bar itself stays at the earlier, softer level. Its
-                    // shadow is separate from the glass, but never competes with
-                    // the transient raised selection lens below.
-                    blur: 16,
-                    opacity: isDark ? 0 : 0.18,
-                    offset: const Offset(0, 5),
-                    cornerRadius: kSquircleStadiumRadius,
-                    child: const SizedBox.expand(),
-                  ),
-                ),
-              ),
-              // Constrain the glass widget to the same explicit side margins
-              // as its shadow. StackFit.expand alone used to give it the whole
-              // host width, so its physical hit/render bounds could reach the
-              // landscape system area even though the authored width was smaller.
-              positioned(
-                top: 0,
-                bottom: 0,
+                left: barSideInset + widget.horizontalOffset,
+                right: barSideInset - widget.horizontalOffset,
+                bottom: bottomOffset - tabBar.verticalPadding,
+                height: tabBar.preferredSize.height,
                 child: MediaQuery.removePadding(
                   context: context,
                   removeBottom: true,
-                  child: MediaQuery.withClampedTextScaling(
-                    minScaleFactor: kFloatingTabBarMinimumTextScale,
-                    maxScaleFactor: kFloatingTabBarMaximumTextScale,
-                    child: tabBar,
-                  ),
+                  child: tabBar,
                 ),
               ),
             ],
@@ -238,32 +136,12 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       ),
     );
   }
-
-  LiquidGlassTabBarItem _tabItem(IconData icon, String label) {
-    return LiquidGlassTabBarItem(
-      label: label,
-      iconBuilder: (context, glyph) => FixedSFIcon(
-        icon,
-        fontSize: glyph.size,
-        fontWeight: glyph.selected ? FontWeight.w500 : FontWeight.normal,
-        color: glyph.color,
-      ),
-      labelBuilder: (context, tabLabel) => Text(
-        tabLabel.text ?? label,
-        style: tabLabel.textStyle.copyWith(
-          fontFamily: kSFProText,
-          letterSpacing: kTracking10,
-          height: kLineHeight,
-        ),
-      ),
-    );
-  }
 }
 
-/// A static, icon-only example of the same glass surface used by the
-/// Floating Tab Bar. This is used in Settings so the Liquid Glass opacity
-/// control previews the real navigation surface rather than a separate
-/// approximation.
+/// A static `liquid_glass_easy` sample for the Settings opacity control.
+///
+/// The live Flutter navigation bar uses `GlassTabBar.bottom` and its package
+/// defaults, so this sample is intentionally separate from that control.
 class FloatingTabBarGlassPreview extends StatefulWidget {
   const FloatingTabBarGlassPreview({super.key});
 
@@ -437,7 +315,7 @@ class _FloatingTabBarGlassPreviewState
                          builder: (context, _, __) {
                            // Re-resolve the glass appearance on every slider
                            // update while this preview remains mounted.
-                           final style = _floatingTabBarStyle(
+                           final style = _liquidGlassSettingsPreviewStyle(
                              context,
                              exactClip: true,
                            );
@@ -570,10 +448,8 @@ class LiquidGlassPreviewClipper extends CustomClipper<Path> {
   bool shouldReclip(covariant LiquidGlassPreviewClipper oldClipper) => false;
 }
 
-/// Resolves the material appearance controlled by the Liquid Glass setting.
-///
-/// Keep other Liquid Glass controls on the same opacity and blur response as
-/// the floating tab bar by supplying their own base appearance.
+/// Applies the app's Liquid Glass opacity setting to `liquid_glass_easy`
+/// surfaces that participate in that setting.
 LiquidGlassAppearance liquidGlassOpacitySettingAppearance(
   BuildContext context, {
   required LiquidGlassAppearance baseAppearance,
@@ -598,7 +474,7 @@ LiquidGlassAppearance liquidGlassOpacitySettingAppearance(
   );
 }
 
-LiquidGlassStyle _floatingTabBarStyle(
+LiquidGlassStyle _liquidGlassSettingsPreviewStyle(
   BuildContext context, {
   bool exactClip = false,
 }) {

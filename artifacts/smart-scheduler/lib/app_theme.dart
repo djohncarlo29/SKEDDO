@@ -30,14 +30,12 @@ const kCardColor = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFFDFDFD),
   darkColor: Color(0xFF1C1C1E),
 );
-// Floating AppShell tab pill geometry.  Keep these values in the shared theme
-// so its position and the content clearance stay in lock-step.
-// iOS 26's floating tab bar keeps a deliberate side inset rather than
-// stretching edge-to-edge. Keep the same inset for the bar, shadow, and
-// hairline.
+// Floating AppShell tab bar geometry. Keep its position and content clearance
+// aligned with GlassTabBar.bottom's default 64px pill and 20px vertical padding.
+// The layout wrapper constrains the package bar to the same portrait width.
 const double kFloatingTabBarHorizontalMargin = 24.0;
 const double kFloatingTabBarBottomSpacing = 16.0;
-const double kFloatingTabBarHeight = 50.0;
+const double kFloatingTabBarHeight = 64.0;
 const Duration kDcvPaneTransitionDuration = Duration(milliseconds: 380);
 const double kClassicNativeTabBarHeight = 49.0;
 const double kClassicNativeTabBarMinimumContentGap = 16.0;
@@ -46,24 +44,12 @@ const kTabBarInactiveColor = CupertinoDynamicColor.withBrightness(
   color: Color(0xFF737373),
   darkColor: Color(0xFF8E8E93),
 );
-// The floating bar is a deliberately compact navigation control. Keep its
-// content on a bounded scaler so extreme OS text sizes cannot change the
-// geometry that the glass pill, reveal clip, and gesture region share. The
-// rest of the app continues to use the full OS scaler.
-const double kFloatingTabBarMinimumTextScale = 0.85;
-const double kFloatingTabBarMaximumTextScale = 1.15;
-const kFloatingTabBarSelectedPillColor = CupertinoDynamicColor.withBrightness(
-  color: Color(0xFFFFFFFF),
-  darkColor: Color(0xFF2C2C2E),
-);
 const kFloatingTabBarSurfaceColor = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFFAFAFC),
   darkColor: Color(0xFF1C1C1E),
 );
-// Keep the tab bar and its active glass pill on the package's authored optical
-// color-separation setting.
-// Keep the navigation pill on the liquid_glass_easy package's authored
-// chromatic-aberration value in both its lifted and settled material states.
+// This value only tunes the separate liquid_glass_easy Settings preview.
+// The live GlassTabBar uses flutter_liquid_glass_widgets defaults.
 const double kFloatingTabBarChromaticAberration = 0.002;
 // Shared visual gap used between the last content edge and the floating pill.
 const double kFloatingTabBarVisualGap = 16.0;

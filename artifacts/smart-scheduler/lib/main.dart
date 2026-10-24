@@ -6,6 +6,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Colors, NoSplash, Theme;
 import 'package:flutter_sficon/flutter_sficon.dart';
+import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
+    show LiquidGlassWidgets;
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
@@ -503,6 +505,9 @@ void _writeCrashReport(String message) {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (kIsWeb || defaultTargetPlatform == TargetPlatform.android) {
+    await LiquidGlassWidgets.initialize();
+  }
   // Set the system-bar layout before startup awaits so Android can draw the
   // first frame edge-to-edge, including when the app launches in a freeform
   // window. The header separately uses MediaQuery.padding.top for safe layout.
@@ -3850,7 +3855,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               AnimatedBuilder(
                 animation: Listenable.merge([
                   _dcvSlideController,
-                  appLiquidGlassOpacityNotifier,
                   appAccentNotifier,
                 ]),
                 builder: (context, _) {
