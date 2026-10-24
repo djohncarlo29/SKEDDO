@@ -8,6 +8,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassButtonStyle,
         GlassMenuAlignment,
         GlassPopover,
+        GlassQuality,
         LiquidRoundedSuperellipse;
 
 import '../app_theme.dart';
@@ -16,6 +17,7 @@ import 'action_panel.dart';
 import 'app_window_content_boundary.dart';
 import 'device_screen_size.dart' as device_screen_size;
 import 'rounded_cupertino_sheet.dart';
+import 'skeddo_glass_settings.dart';
 
 VoidCallback? _activeDiscardChangesSheetDismiss;
 bool _discardChangesBackConsumed = false;
@@ -276,7 +278,6 @@ class DiscardChangesPopoverAnchorState
   final GlobalKey _triggerKey = GlobalKey();
   VoidCallback? _togglePopover;
   Key _popoverKey = UniqueKey();
-  final OverlayPortalController _scrimController = OverlayPortalController();
   Timer? _closePollTimer;
   Completer<bool?>? _confirmationCompleter;
   Offset? _triggerOrigin;
@@ -297,7 +298,6 @@ class DiscardChangesPopoverAnchorState
   @override
   void dispose() {
     _closePollTimer?.cancel();
-    _removeScrim();
     if (identical(
       _activeDiscardChangesSheetDismiss,
       _dismissCallback,
@@ -331,7 +331,6 @@ class DiscardChangesPopoverAnchorState
     _closePollTimer?.cancel();
     _closePollTimer = null;
     _activeDiscardChangesSheetDismiss = _dismissCallback;
-    _insertScrim();
     setState(() {});
 
     // Let the updated message build before asking GlassPopover to measure its
@@ -350,15 +349,6 @@ class DiscardChangesPopoverAnchorState
     });
 
     return completer.future;
-  }
-
-  void _insertScrim() {
-    if (_scrimController.isShowing) return;
-    _scrimController.show();
-  }
-
-  void _removeScrim() {
-    if (_scrimController.isShowing) _scrimController.hide();
   }
 
   void _dismissActivePopover() {
@@ -469,7 +459,6 @@ class DiscardChangesPopoverAnchorState
     _closePollTimer?.cancel();
     _closePollTimer = null;
     _popoverIsOpen = false;
-    _removeScrim();
     if (identical(
       _activeDiscardChangesSheetDismiss,
       _dismissCallback,
@@ -581,36 +570,32 @@ class DiscardChangesPopoverAnchorState
     final isPresentedOverModalSheet =
         RoundedCupertinoSheetRoute.hasParentSheet(context);
 
-    return OverlayPortal(
-      controller: _scrimController,
-      overlayLocation: OverlayChildLocation.rootOverlay,
-      overlayChildBuilder: (_) => const Positioned.fill(
-        child: IgnorePointer(
-          child: ColoredBox(color: Color(0x44000000)),
-        ),
+    return GlassPopover(
+      key: _popoverKey,
+      triggerBuilder: (_, togglePopover) {
+        _togglePopover = togglePopover;
+        return KeyedSubtree(key: _triggerKey, child: widget.child);
+      },
+      contentBuilder: _buildPopoverContent,
+      popoverWidth:
+          screenSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction,
+      popoverBorderRadius: isPresentedOverModalSheet
+          ? kModalConfirmationSheetCornerRadius
+          : kConfirmationSheetCornerRadius,
+      alignment: GlassMenuAlignment.topLeft,
+      screenPadding: EdgeInsets.fromLTRB(
+        horizontalInset + 12,
+        12,
+        horizontalInset + 12,
+        12,
       ),
-      child: GlassPopover(
-        key: _popoverKey,
-        triggerBuilder: (_, togglePopover) {
-          _togglePopover = togglePopover;
-          return KeyedSubtree(key: _triggerKey, child: widget.child);
-        },
-        contentBuilder: _buildPopoverContent,
-        popoverWidth:
-            screenSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction,
-        popoverBorderRadius: isPresentedOverModalSheet
-            ? kModalConfirmationSheetCornerRadius
-            : kConfirmationSheetCornerRadius,
-        alignment: GlassMenuAlignment.topLeft,
-        screenPadding: EdgeInsets.fromLTRB(
-          horizontalInset + 12,
-          12,
-          horizontalInset + 12,
-          12,
-        ),
-        onClose: _onPopoverClosing,
-        onOpen: _onPopoverOpened,
+      settings: skeddoBottomBarGlassSettingsFor(
+        CupertinoTheme.brightnessOf(context),
       ),
+      quality: GlassQuality.premium,
+      barrierDismissible: true,
+      onClose: _onPopoverClosing,
+      onOpen: _onPopoverOpened,
     );
   }
 }

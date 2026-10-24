@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/delete_confirmation_sheet.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
+import 'package:smart_scheduler/widgets/skeddo_glass_settings.dart';
 
 void main() {
   testWidgets('discard confirmation always uses the top-left placement', (
@@ -59,6 +60,19 @@ void main() {
     final popover = tester.widget<GlassPopover>(popoverFinder);
     expect(popover.alignment, GlassMenuAlignment.topLeft);
     expect(popover.popoverWidth, 400);
+    expect(popover.barrierDismissible, isTrue);
+    expect(
+      popover.settings!.refractiveIndex,
+      skeddoBottomBarGlassSettingsFor(Brightness.light).refractiveIndex,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is ColoredBox &&
+            widget.color == const Color(0x44000000),
+      ),
+      findsNothing,
+    );
 
     final discardButtonFinder = find.ancestor(
       of: find.text('Discard Changes'),

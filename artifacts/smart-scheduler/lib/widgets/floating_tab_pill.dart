@@ -284,7 +284,6 @@ class _FloatingTabBarGlassPreviewState
 
   @override
   Widget build(BuildContext context) {
-    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
     final width = MediaQuery.sizeOf(context).width;
     final textScaler = skeddoTabBarTextScalerFor(
       MediaQuery.textScalerOf(context),
@@ -312,17 +311,13 @@ class _FloatingTabBarGlassPreviewState
               : kLiquidGlassPreviewHeight,
         );
         final pillSize = Size(barWidth, pillHeight);
-        // Reserve the contour's small outward extension inside the preview
-        // clip so its edge remains visible at every drag limit.
         final maxX = math.max(
           0.0,
-          (previewSize.width - pillSize.width) / 2 -
-              kLiquidGlassPillContourOutset,
+          (previewSize.width - pillSize.width) / 2,
         );
         final maxY = math.max(
           0.0,
-          (previewSize.height - pillSize.height) / 2 -
-              kLiquidGlassPillContourOutset,
+          (previewSize.height - pillSize.height) / 2,
         );
         final boundedOffset = Offset(
           _offset.dx.clamp(-maxX, maxX),
@@ -412,47 +407,23 @@ class _FloatingTabBarGlassPreviewState
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        IgnorePointer(
-                           child: DecoratedBox(
-                             decoration: BoxDecoration(
-                               color: const Color(0x00000000),
-                               borderRadius: BorderRadius.circular(
-                                 kSquircleStadiumRadius,
-                               ),
-                               boxShadow: isDark
-                                   ? const <BoxShadow>[]
-                                   : [
-                                       BoxShadow(
-                                          color: CupertinoColors.black.withValues(
-                                           alpha: 0.18,
-                                         ),
-                                         blurRadius: 16,
-                                         offset: const Offset(0, 5),
-                                       ),
-                                     ],
-                            ),
-                             child: SizedBox(
-                               width: barWidth,
-                               height: pillHeight,
-                             ),
-                           ),
-                         ),
                         // The Settings preview is a visual sample, not a
                         // second navigation control. Ignore the tab bar's own
                         // hit testing; the preview pointer handlers own drag
                         // and double-tap behavior.
-                       ValueListenableBuilder<double>(
-                         valueListenable: appLiquidGlassOpacityNotifier,
+                        ValueListenableBuilder<double>(
+                          valueListenable: appLiquidGlassOpacityNotifier,
                           builder: (context, glassOpacity, _) {
+                            final brightness = CupertinoTheme.brightnessOf(
+                              context,
+                            );
                             final sharedSettings =
-                                skeddoBottomBarGlassSettingsFor(
-                                  isDark ? Brightness.dark : Brightness.light,
-                                );
+                                skeddoBottomBarGlassSettingsFor(brightness);
                             final previewSettings = sharedSettings.copyWith(
                               glassColor: sharedSettings.glassColor.withValues(
                                 alpha: glassOpacity,
                               ),
-                           );
+                            );
                             final iconColor = resolveThemeColor(
                               kSecondaryLabel,
                               context,
@@ -490,22 +461,10 @@ class _FloatingTabBarGlassPreviewState
                                       textScaler: textScaler,
                                     ),
                                   ],
-                              ),
+                                ),
                               ),
                             );
                           },
-                        ),
-                        ValueListenableBuilder<double>(
-                          valueListenable: appLiquidGlassOpacityNotifier,
-                          builder: (context, glassOpacity, _) =>
-                              LightModeLiquidGlassPillContour(
-                            whiteOutlineOpacity:
-                                _normalizedLiquidGlassOpacity(glassOpacity),
-                            child: SizedBox(
-                              width: barWidth,
-                              height: pillHeight,
-                            ),
-                          ),
                         ),
                      ],
                    ),
@@ -571,11 +530,4 @@ class LiquidGlassPreviewClipper extends CustomClipper<Path> {
 
   @override
   bool shouldReclip(covariant LiquidGlassPreviewClipper oldClipper) => false;
-}
-
-double _normalizedLiquidGlassOpacity(double materialOpacity) {
-  final range = kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity;
-  return ((materialOpacity - kLiquidGlassMinimumOpacity) / range)
-      .clamp(0.0, 1.0)
-      .toDouble();
 }
