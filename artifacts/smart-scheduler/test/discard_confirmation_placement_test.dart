@@ -1,4 +1,6 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
+    show GlassButton, GlassMenuAlignment, GlassPopover;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/delete_confirmation_sheet.dart';
@@ -38,15 +40,15 @@ void main() {
 
     final message = find.text('Are you sure you want to discard this new event?');
     expect(message, findsOneWidget);
-    expect(
-      find.ancestor(
-        of: message,
-        matching: find.byWidgetPredicate(
-          (widget) => widget is Align && widget.alignment == Alignment.topLeft,
-        ),
-      ),
-      findsOneWidget,
-    );
+    final popoverFinder = find.byType(GlassPopover);
+    expect(popoverFinder, findsOneWidget);
+    final popover = tester.widget<GlassPopover>(popoverFinder);
+    expect(popover.alignment, GlassMenuAlignment.topLeft);
+    expect(popover.popoverWidth, 400);
+
+    final discardButtonFinder = find.byType(GlassButton);
+    expect(discardButtonFinder, findsOneWidget);
+    expect(tester.getSize(discardButtonFinder).width, greaterThan(300));
 
     await tester.tapAt(const Offset(700, 500));
     await tester.pumpAndSettle();

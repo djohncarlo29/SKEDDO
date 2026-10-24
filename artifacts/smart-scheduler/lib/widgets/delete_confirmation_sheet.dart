@@ -1,12 +1,20 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
+    show
+        GlassButton,
+        GlassButtonStyle,
+        GlassMenuAlignment,
+        GlassPopover,
+        LiquidRoundedSuperellipse;
 
 import '../app_theme.dart';
 import '../services/event_store.dart';
 import 'action_panel.dart';
 import 'app_window_content_boundary.dart';
 import 'device_screen_size.dart' as device_screen_size;
+import 'modal_toolbar_glass_button.dart';
 import 'rounded_cupertino_sheet.dart';
 
 VoidCallback? _activeDiscardChangesSheetDismiss;
@@ -118,19 +126,29 @@ Future<bool?> showDiscardChangesConfirmationSheet(
   required bool isNew,
 }) async {
   final completer = Completer<bool?>();
+  final popoverController = _DiscardPopoverController();
+  final VoidCallback dismissPopover = popoverController.dismiss;
   late OverlayEntry entry;
+  var overlayRemoved = false;
   final overlay = Overlay.of(context, rootOverlay: true);
   final isPresentedOverModalSheet =
       RoundedCupertinoSheetRoute.hasParentSheet(context);
-  VoidCallback? dismissActive;
 
-  void close(bool? result) {
+  void complete(bool? result) {
     if (completer.isCompleted) return;
-    if (identical(_activeDiscardChangesSheetDismiss, dismissActive)) {
+    completer.complete(result);
+  }
+
+  void removeOverlay() {
+    if (overlayRemoved) return;
+    overlayRemoved = true;
+    if (identical(
+      _activeDiscardChangesSheetDismiss,
+      dismissPopover,
+    )) {
       _activeDiscardChangesSheetDismiss = null;
     }
-    entry.remove();
-    completer.complete(result);
+    if (entry.mounted) entry.remove();
   }
 
   entry = OverlayEntry(
@@ -139,11 +157,12 @@ Future<bool?> showDiscardChangesConfirmationSheet(
           entityLabel: entityLabel,
           isNew: isNew,
           isPresentedOverModalSheet: isPresentedOverModalSheet,
-          onResult: close,
+          controller: popoverController,
+          onResult: complete,
+          onCloseAnimationComplete: removeOverlay,
         ),
   );
-  dismissActive = () => close(null);
-  _activeDiscardChangesSheetDismiss = dismissActive;
+  _activeDiscardChangesSheetDismiss = dismissPopover;
   overlay.insert(entry);
   return completer.future;
 }
@@ -257,126 +276,220 @@ Future<bool?> confirmDeleteSection(
   );
 }
 
-class _DiscardChangesSheetOverlay extends StatelessWidget {
+class _DiscardPopoverController {
+  VoidCallback? _onDismiss;
+  bool _dismissRequestedBeforeAttach = false;
+
+  void attach(VoidCallback onDismiss) {
+    _onDismiss = onDismiss;
+    if (_dismissRequestedBeforeAttach) {
+      _dismissRequestedBeforeAttach = false;
+      onDismiss();
+    }
+  }
+
+  void detach(VoidCallback onDismiss) {
+    if (identical(_onDismiss, onDismiss)) _onDismiss = null;
+  }
+
+  void dismiss() {
+    final callback = _onDismiss;
+    if (callback == null) {
+      _dismissRequestedBeforeAttach = true;
+      return;
+    }
+    callback();
+  }
+}
+
+class _DiscardChangesSheetOverlay extends StatefulWidget {
   final String entityLabel;
   final bool isNew;
   final bool isPresentedOverModalSheet;
+  final _DiscardPopoverController controller;
   final void Function(bool?) onResult;
+  final VoidCallback onCloseAnimationComplete;
 
   const _DiscardChangesSheetOverlay({
     required this.entityLabel,
     required this.isNew,
     required this.isPresentedOverModalSheet,
+    required this.controller,
     required this.onResult,
+    required this.onCloseAnimationComplete,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final primary = resolveThemeColor(kPrimaryLabel, context);
-    final sheetBorder =
-        CupertinoTheme.brightnessOf(context) == Brightness.dark
-            ? BorderSide(
-              color: resolveThemeColor(kTertiaryLabel, context),
-              width: 0.5,
-            )
-            : null;
-    final buttonDecor = ShapeDecoration(
-      color: resolveThemeColor(kModalButtonBackground, context),
-      shape: const BoundedSquircleStadiumBorder(
-        radius: kDiscardConfirmationButtonCornerRadius,
-      ),
-      shadows: resolveThemeShadows(kCardShadow, context),
+  State<_DiscardChangesSheetOverlay> createState() =>
+      _DiscardChangesSheetOverlayState();
+}
+
+class _DiscardChangesSheetOverlayState
+    extends State<_DiscardChangesSheetOverlay> {
+  static const _popoverTriggerSize = 40.0;
+  static const _popoverCloseSettleDelay = Duration(milliseconds: 850);
+
+  VoidCallback? _togglePopover;
+  late final VoidCallback _dismissCallback;
+  Timer? _removeTimer;
+  bool _initialOpenScheduled = false;
+  bool _popoverIsOpen = false;
+  bool _isClosing = false;
+  bool _reduceMotion = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _dismissCallback = _dismissActivePopover;
+    widget.controller.attach(_dismissCallback);
+  }
+
+  @override
+  void dispose() {
+    _removeTimer?.cancel();
+    widget.controller.detach(_dismissCallback);
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+  }
+
+  void _schedulePopoverOpen(VoidCallback togglePopover) {
+    _togglePopover = togglePopover;
+    if (_initialOpenScheduled) return;
+    _initialOpenScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_isClosing) {
+        _scheduleOverlayRemoval();
+        return;
+      }
+      _popoverIsOpen = true;
+      togglePopover();
+    });
+  }
+
+  void _dismissActivePopover() {
+    if (_isClosing) return;
+    _isClosing = true;
+    widget.onResult(null);
+    if (_popoverIsOpen) {
+      _togglePopover?.call();
+    } else {
+      _scheduleOverlayRemoval();
+    }
+    if (mounted) setState(() {});
+  }
+
+  void _onPopoverClosing() {
+    _popoverIsOpen = false;
+    if (!_isClosing) {
+      _isClosing = true;
+      widget.onResult(null);
+    }
+    _scheduleOverlayRemoval();
+    if (mounted) setState(() {});
+  }
+
+  void _scheduleOverlayRemoval() {
+    if (_removeTimer != null) return;
+    _removeTimer = Timer(
+      _reduceMotion ? Duration.zero : _popoverCloseSettleDelay,
+      widget.onCloseAnimationComplete,
     );
-    final viewportSize = MediaQuery.sizeOf(context);
-    // The browser's usable viewport can lose different amounts of height to
-    // browser chrome between orientations. Use the full display dimensions
-    // when available so the confirmation card keeps its portrait width.
-    final screenSize =
-        device_screen_size.getDeviceScreenSize(context) ?? viewportSize;
-    final sheetWidth =
-        screenSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction;
-    final message = isNew
-        ? 'Are you sure you want to discard this new $entityLabel?'
+  }
+
+  void _acceptDiscard(VoidCallback closePopover) {
+    if (_isClosing) return;
+    _isClosing = true;
+    widget.onResult(true);
+    closePopover();
+    if (mounted) setState(() {});
+  }
+
+  Widget _buildPopoverContent(
+    BuildContext context,
+    VoidCallback closePopover,
+  ) {
+    final primary = resolveThemeColor(kPrimaryLabel, context);
+    final message = widget.isNew
+        ? 'Are you sure you want to discard this new ${widget.entityLabel}?'
         : 'Are you sure you want to discard your changes?';
 
-    final card = SizedBox(
-      width: sheetWidth,
-      child: GelBloomCard(
-        scaleOrigin: Alignment.topLeft,
-        fillOpacity: 0.82,
-        shadowOpacity: 0.26,
-        border: sheetBorder,
-        shape: BoundedSquircleStadiumBorder(
-          radius: isPresentedOverModalSheet
-              ? kModalConfirmationSheetCornerRadius
-              : kConfirmationSheetCornerRadius,
-          side: sheetBorder ?? BorderSide.none,
+    return ActionPanelScrollView(
+      maxHeight: MediaQuery.sizeOf(context).height,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          kDiscardConfirmationButtonEdgeGap,
+          kDiscardConfirmationSheetTopInset,
+          kDiscardConfirmationButtonEdgeGap,
+          kDiscardConfirmationButtonEdgeGap,
         ),
-        child: ActionPanelScrollView(
-          maxHeight: MediaQuery.sizeOf(context).height,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              kDiscardConfirmationButtonEdgeGap,
-              kDiscardConfirmationSheetTopInset,
-              kDiscardConfirmationButtonEdgeGap,
-              kDiscardConfirmationButtonEdgeGap,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: kDiscardConfirmationMessageHorizontalInset,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: kDiscardConfirmationMessageHorizontalInset,
+              ),
+              child: Text(
+                message,
+                style: TextStyle(
+                  inherit: false,
+                  fontSize: 16,
+                  fontFamily: kSFProText,
+                  fontWeight: FontWeight.w400,
+                  color: primary,
+                  letterSpacing: kTracking16,
+                  height: 1.5,
                 ),
+              ),
+            ),
+            const SizedBox(height: kDiscardConfirmationMessageButtonGap),
+            GlassButton.custom(
+              onTap: () => _acceptDiscard(closePopover),
+              height: 57,
+              shape: const LiquidRoundedSuperellipse(
+                borderRadius: kDiscardConfirmationButtonCornerRadius,
+              ),
+              style: GlassButtonStyle.prominent,
+              interactionScale: 1.06,
+              label: 'Discard Changes',
+              child: Center(
                 child: Text(
-                  message,
+                  'Discard Changes',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     inherit: false,
-                    fontSize: 16,
+                    fontSize: 17,
                     fontFamily: kSFProText,
-                    fontWeight: FontWeight.w400,
-                    color: primary,
-                    letterSpacing: kTracking16,
-                    height: 1.5,
+                    fontWeight: FontWeight.w500,
+                    color: CupertinoColors.destructiveRed,
+                    letterSpacing: kTracking17,
+                    height: kLineHeight,
                   ),
                 ),
               ),
-              const SizedBox(height: kDiscardConfirmationMessageButtonGap),
-              GelBloomButton(
-                peakScale: 1.06,
-                tapDelay: const Duration(milliseconds: 120),
-                onTap: () => onResult(true),
-                child: Container(
-                  width: double.infinity,
-                  decoration: buttonDecor,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 16,
-                  ),
-                  child: Center(
-                    child: Text(
-                      'Discard Changes',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        inherit: false,
-                        fontSize: 17,
-                        fontFamily: kSFProText,
-                        fontWeight: FontWeight.w500,
-                        color: CupertinoColors.destructiveRed,
-                        letterSpacing: kTracking17,
-                        height: kLineHeight,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              ],
             ),
-          ),
+          ],
         ),
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewportSize = MediaQuery.sizeOf(context);
+    final screenSize =
+        device_screen_size.getDeviceScreenSize(context) ?? viewportSize;
+    final popoverWidth =
+        screenSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction;
+    final horizontalInset =
+        AppWindowContentScope.of(context).horizontalInset;
 
     return PopScope(
       canPop: false,
@@ -384,28 +497,45 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
         dismissActiveDiscardChangesConfirmationSheet();
       },
       child: Stack(
+        fit: StackFit.expand,
+        clipBehavior: Clip.none,
         children: [
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => onResult(null),
-            child: const ColoredBox(
-              color: Color(0x44000000),
-              child: SizedBox.expand(),
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _dismissActivePopover,
+              child: const ColoredBox(color: Color(0x44000000)),
             ),
           ),
-          Align(
-            alignment: Alignment.topLeft,
-            child: Padding(
-              padding: EdgeInsets.only(
-                left:
-                    AppWindowContentScope.of(context).horizontalInset +
-                    kDiscardConfirmationTopLeftEdgeGap,
-                top:
-                    MediaQuery.viewPaddingOf(context).top +
-                    kRoundedSheetSafeAreaGap +
-                    kDiscardConfirmationTopLeftEdgeGap,
-              ),
-              child: card,
+          Positioned(
+            left: horizontalInset + kDiscardConfirmationTopLeftEdgeGap,
+            top:
+                MediaQuery.viewPaddingOf(context).top +
+                kRoundedSheetSafeAreaGap +
+                kDiscardConfirmationTopLeftEdgeGap,
+            child: GlassPopover(
+              triggerBuilder: (popoverContext, togglePopover) {
+                _schedulePopoverOpen(togglePopover);
+                return IgnorePointer(
+                  ignoring: _isClosing,
+                  child: ModalToolbarGlassButton(
+                    icon: CupertinoIcons.xmark,
+                    iconColor: resolveThemeColor(kPrimaryLabel, context),
+                    surfaceColor: kModalCard,
+                    size: _popoverTriggerSize,
+                    iconSize: 20,
+                    semanticLabel: 'Close discard confirmation',
+                    onTap: togglePopover,
+                  ),
+                );
+              },
+              contentBuilder: _buildPopoverContent,
+              popoverWidth: popoverWidth,
+              popoverBorderRadius: widget.isPresentedOverModalSheet
+                  ? kModalConfirmationSheetCornerRadius
+                  : kConfirmationSheetCornerRadius,
+              alignment: GlassMenuAlignment.topLeft,
+              onClose: _onPopoverClosing,
             ),
           ),
         ],
