@@ -1006,6 +1006,7 @@ class _AppHeaderNestedScrollViewState
   final GlobalKey<NestedScrollViewState> _nestedKey = GlobalKey();
   ScrollPosition? _registeredPosition;
   final Set<ScrollPosition> _observedBodyPositions = {};
+  final ValueNotifier<double> _bodyLeadingOverscroll = ValueNotifier(0.0);
   bool _initialBodyOffsetApplied = false;
 
   double get _titleExtent {
@@ -1077,17 +1078,22 @@ class _AppHeaderNestedScrollViewState
     if (!_outerController.hasClients) return;
     final bodyController = widget.contentController;
     final nested = _nestedKey.currentState;
-    if (bodyController != null && nested != null) {
+    if (nested != null) {
       final livePositions = nested.innerController.positions.toSet();
       for (final position in _observedBodyPositions.difference(livePositions)) {
-        bodyController.detach(position);
+        position.removeListener(_syncBodyLeadingOverscroll);
+        if (bodyController?.positions.contains(position) ?? false) {
+          bodyController!.detach(position);
+        }
       }
       for (final position in livePositions.difference(_observedBodyPositions)) {
-        bodyController.attach(position);
+        bodyController?.attach(position);
+        position.addListener(_syncBodyLeadingOverscroll);
       }
       _observedBodyPositions
         ..clear()
         ..addAll(livePositions);
+      _syncBodyLeadingOverscroll();
     }
     final position = _outerController.position;
     if (!identical(position, _registeredPosition)) {
@@ -1122,12 +1128,28 @@ class _AppHeaderNestedScrollViewState
   }
 
   void _detachBodyObserver(ScrollController? controller) {
-    if (controller != null) {
-      for (final position in _observedBodyPositions) {
-        controller.detach(position);
+    for (final position in _observedBodyPositions) {
+      position.removeListener(_syncBodyLeadingOverscroll);
+      if (controller?.positions.contains(position) ?? false) {
+        controller!.detach(position);
       }
     }
     _observedBodyPositions.clear();
+    _bodyLeadingOverscroll.value = 0.0;
+  }
+
+  void _syncBodyLeadingOverscroll() {
+    var overscroll = 0.0;
+    for (final position in _observedBodyPositions) {
+      if (!position.hasContentDimensions) continue;
+      final leadingOffset = position.pixels - position.minScrollExtent;
+      if (leadingOffset < 0.0 && -leadingOffset > overscroll) {
+        overscroll = -leadingOffset;
+      }
+    }
+    if (_bodyLeadingOverscroll.value != overscroll) {
+      _bodyLeadingOverscroll.value = overscroll;
+    }
   }
 
   @override
@@ -1147,6 +1169,7 @@ class _AppHeaderNestedScrollViewState
     }
     _searchPhaseController.dispose();
     _outerController.dispose();
+    _bodyLeadingOverscroll.dispose();
     super.dispose();
   }
 
@@ -1171,6 +1194,7 @@ class _AppHeaderNestedScrollViewState
               titleExtent: extent,
               searchBar: widget.titleInset.searchBar,
               searchBarExtent: widget.titleInset.searchBarExtent,
+              bodyLeadingOverscroll: _bodyLeadingOverscroll,
               controller: _searchPhaseController,
             ),
           ),
@@ -1194,6 +1218,7 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
     this.largeTitle,
     required this.titleExtent,
     required this.controller,
+    required this.bodyLeadingOverscroll,
     this.searchBar,
     this.searchBarExtent = 0,
   });
@@ -1203,6 +1228,7 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
   final Widget? largeTitle;
   final double titleExtent;
   final GlassLargeTitleController controller;
+  final ValueListenable<double> bodyLeadingOverscroll;
   final Widget? searchBar;
   final double searchBarExtent;
 
@@ -1218,8 +1244,17 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) => ListenableBuilder(
-      listenable: controller,
-      builder: (context, _) => Stack(
+      listenable: Listenable.merge([controller, bodyLeadingOverscroll]),
+      builder: (context, _) {
+        final rawOffset = controller.rawScrollOffset;
+        final outerOverscroll = rawOffset.isFinite && rawOffset < 0.0
+            ? -rawOffset
+            : 0.0;
+        final bodyOverscroll = bodyLeadingOverscroll.value;
+        final searchBarStretchOffset = bodyOverscroll > outerOverscroll
+            ? bodyOverscroll
+            : outerOverscroll;
+        return Stack(
           clipBehavior: Clip.none,
           children: [
             if (largeTitle != null) Positioned(
@@ -1235,26 +1270,34 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
                   (titleExtent - shrinkOffset).clamp(0.0, titleExtent),
               left: 0,
               right: 0,
-              child: ClipRect(
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  // Use GlassLargeTitle's package-controlled second phase.
-                  heightFactor: 1.0 - controller.searchBarCollapseProgress,
-                  child: Opacity(
-                    opacity: Curves.easeIn.transform(
-                      1.0 - controller.searchBarCollapseProgress,
-                    ),
-                    child: SizedBox(
-                      height: searchBarExtent,
-                      child: searchBar,
+              child: Transform.translate(
+                // The search bar is painted in the pinned outer header, while
+                // the content below rubber-bands with the inner body scroll
+                // position. Follow that top pull (or the package controller's
+                // outer pull) without changing any collapse geometry.
+                offset: Offset(0.0, searchBarStretchOffset),
+                child: ClipRect(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    // Use GlassLargeTitle's package-controlled second phase.
+                    heightFactor: 1.0 - controller.searchBarCollapseProgress,
+                    child: Opacity(
+                      opacity: Curves.easeIn.transform(
+                        1.0 - controller.searchBarCollapseProgress,
+                      ),
+                      child: SizedBox(
+                        height: searchBarExtent,
+                        child: searchBar,
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ],
-        ),
-      );
+        );
+      },
+    );
 
   @override
   bool shouldRebuild(_AppHeaderCollapseSliverDelegate oldDelegate) =>

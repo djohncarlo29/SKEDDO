@@ -123,8 +123,29 @@ void main() {
     transition.bindTo(outer);
     final expandedViewport = bodyController.position.viewportDimension;
     final expandedTop = tester.getTopLeft(find.byKey(const ValueKey('body'))).dy;
+    final expandedSearchTop =
+        tester.getTopLeft(find.byKey(const ValueKey('search'))).dy;
     expect(outer.maxScrollExtent, titleExtent + searchExtent);
     expect(bodyController.position.maxScrollExtent, 0);
+
+    final overscrollGesture = await tester.startGesture(
+      tester.getCenter(find.byType(NestedScrollView)),
+    );
+    await overscrollGesture.moveBy(const Offset(0, 24));
+    await tester.pump();
+    expect(bodyController.position.pixels, -24);
+    expect(
+      tester.getTopLeft(find.byKey(const ValueKey('search'))).dy,
+      expandedSearchTop + 24,
+    );
+    expect(transition.collapseProgress, 0);
+    expect(transition.searchBarCollapseProgress, 0);
+    await overscrollGesture.up();
+    await tester.pumpAndSettle();
+    expect(
+      tester.getTopLeft(find.byKey(const ValueKey('search'))).dy,
+      expandedSearchTop,
+    );
 
     for (final offset in [titleExtent / 2, titleExtent]) {
       outer.jumpTo(offset);
