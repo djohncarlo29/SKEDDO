@@ -30,12 +30,12 @@ const kCardColor = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFFDFDFD),
   darkColor: Color(0xFF1C1C1E),
 );
-// Floating AppShell tab bar geometry. Keep its position and content clearance
-// aligned with GlassTabBar.bottom's default 64px pill and 20px vertical padding.
-// The layout wrapper constrains the package bar to the same portrait width.
+// Floating AppShell tab bar geometry. The pill matches the 49px native iOS
+// tab-bar height. The layout wrapper constrains the package bar to the same
+// portrait width.
 const double kFloatingTabBarHorizontalMargin = 24.0;
 const double kFloatingTabBarBottomSpacing = 16.0;
-const double kFloatingTabBarHeight = 64.0;
+const double kFloatingTabBarHeight = 49.0;
 const Duration kDcvPaneTransitionDuration = Duration(milliseconds: 380);
 const double kClassicNativeTabBarHeight = 49.0;
 const double kClassicNativeTabBarMinimumContentGap = 16.0;
@@ -48,6 +48,15 @@ const kFloatingTabBarSurfaceColor = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFFAFAFC),
   darkColor: Color(0xFF1C1C1E),
 );
+// Dark tab-bar glass tint: a neutral charcoal overlay keeps the package's
+// refractive surface visible without the pale, washed-out default appearance.
+const Color kFloatingTabBarDarkGlassTint = Color.fromRGBO(58, 58, 60, 0.72);
+// The resting selection lens is a neutral translucent surface, while its icon
+// and label continue to use the selected accent color.
+const Color kFloatingTabBarLightIndicatorColor =
+    Color.fromRGBO(114, 114, 122, 0.12);
+const Color kFloatingTabBarDarkIndicatorColor =
+    Color.fromRGBO(255, 255, 255, 0.10);
 // This value only tunes the separate liquid_glass_easy Settings preview.
 // The live GlassTabBar uses flutter_liquid_glass_widgets defaults.
 const double kFloatingTabBarChromaticAberration = 0.002;

@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassExtraButtonPlacement, GlassTabBar;
+    show GlassExtraButtonPlacement, GlassTabBar, GlassTheme;
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/widgets/floating_tab_pill.dart';
 
@@ -32,7 +32,7 @@ void main() {
     }
   });
 
-  testWidgets('Flutter tab pill uses GlassTabBar with only color overrides', (
+  testWidgets('Flutter tab bar matches native height and keeps action routing', (
     tester,
   ) async {
     const eventsAccent = Color(0xFFDB5500);
@@ -57,6 +57,7 @@ void main() {
 
     final context = tester.element(find.byType(FloatingTabPill));
     final tabBar = tester.widget<GlassTabBar>(find.byType(GlassTabBar));
+    final glassTheme = tester.widget<GlassTheme>(find.byType(GlassTheme));
     final inactiveColor = CupertinoDynamicColor.resolve(
       kTabBarInactiveColor,
       context,
@@ -78,12 +79,48 @@ void main() {
       tabBar.extraButton!.placement,
       GlassExtraButtonPlacement.right,
     );
-    expect(tabBar.barHeight, 64.0);
+    expect(tabBar.extraButton!.size, 49.0);
+    expect(tabBar.barHeight, 49.0);
+    expect(tabBar.preferredSize.height, 49.0);
     expect(tabBar.horizontalPadding, 20.0);
-    expect(tabBar.verticalPadding, 20.0);
+    expect(tabBar.verticalPadding, 0.0);
+    expect(
+      tabBar.indicatorColor!.value,
+      kFloatingTabBarLightIndicatorColor.value,
+    );
+    expect(
+      glassTheme.data.dark.settings!.glassColor!.value,
+      kFloatingTabBarDarkGlassTint.value,
+    );
 
     await tester.tap(find.bySemanticsLabel('New Event'));
     await tester.pump();
     expect(createEventCalls, 1);
+  });
+
+  testWidgets('dark tab selection uses a stronger resting tint', (tester) async {
+    await tester.pumpWidget(
+      CupertinoApp(
+        theme: const CupertinoThemeData(brightness: Brightness.dark),
+        home: Stack(
+          children: [
+            Positioned.fill(
+              child: FloatingTabPill(
+                selectedIndex: 0,
+                eventsAccent: const Color(0xFF007AFF),
+                onTabSelected: (_) {},
+                onCreateEvent: () {},
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final tabBar = tester.widget<GlassTabBar>(find.byType(GlassTabBar));
+    expect(
+      tabBar.indicatorColor!.value,
+      kFloatingTabBarDarkIndicatorColor.value,
+    );
   });
 }

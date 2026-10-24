@@ -7,7 +7,10 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassExtraButtonPlacement,
         GlassTab,
         GlassTabBar,
-        GlassTabBarExtraButton;
+        GlassTabBarExtraButton,
+        GlassTheme,
+        GlassThemeData,
+        GlassThemeVariant;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
@@ -28,6 +31,16 @@ const LiquidGlassShape kLiquidGlassPreviewGlassShape =
     LiquidGlassShape.roundedRectangle(
   cornerRadius: kSquircleStadiumRadius,
   clipQuality: LiquidGlassClipQuality.exact,
+);
+
+final GlassThemeData _floatingTabBarGlassTheme = GlassThemeData(
+  light: GlassThemeVariant.light,
+  dark: GlassThemeVariant.dark.copyWith(
+    settings: GlassThemeVariant.dark.settings!.copyWith(
+      glassColor: kFloatingTabBarDarkGlassTint,
+      lightIntensity: 0.38,
+    ),
+  ),
 );
 
 /// The AppShell's platform-neutral floating tab control.
@@ -72,6 +85,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       kTabBarInactiveColor,
       context,
     );
+    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
     final bottomOffset = floatingTabBarBottomOffset(context);
     final tabBar = GlassTabBar.bottom(
       tabs: const [
@@ -96,11 +110,21 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
         label: 'New Event',
         iconColor: selectedColor,
         placement: GlassExtraButtonPlacement.right,
+        size: kFloatingTabBarHeight,
       ),
+      barHeight: kFloatingTabBarHeight,
+      verticalPadding: 0,
+      indicatorColor: isDark
+          ? kFloatingTabBarDarkIndicatorColor
+          : kFloatingTabBarLightIndicatorColor,
       selectedIconColor: selectedColor,
       unselectedIconColor: unselectedColor,
       selectedLabelColor: selectedColor,
       unselectedLabelColor: unselectedColor,
+    );
+    final themedTabBar = GlassTheme(
+      data: _floatingTabBarGlassTheme,
+      child: tabBar,
     );
 
     return Semantics(
@@ -140,7 +164,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
                 child: MediaQuery.removePadding(
                   context: context,
                   removeBottom: true,
-                  child: tabBar,
+                  child: themedTabBar,
                 ),
               ),
             ],
