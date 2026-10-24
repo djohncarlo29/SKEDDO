@@ -127,6 +127,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       verticalPadding: 0,
       iconSize: 20,
       labelFontSize: 9,
+      iconLabelSpacing: 1,
       magnification: 1,
       settings: isDark ? _floatingTabBarDarkSettings : null,
       indicatorColor: isDark

@@ -91,6 +91,7 @@ void main() {
       20.0,
     ]);
     expect(tabBar.labelFontSize, 9.0);
+    expect(tabBar.iconLabelSpacing, 1.0);
     expect(tabBar.magnification, 1.0);
     expect(tabBar.settings, isNull);
     expect(tabBar.indicatorSettings, isNull);
