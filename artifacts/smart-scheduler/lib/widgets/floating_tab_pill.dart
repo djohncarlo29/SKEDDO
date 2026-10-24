@@ -412,25 +412,13 @@ class _FloatingTabBarGlassPreviewState
                         // second navigation control. Ignore the tab bar's own
                         // hit testing; the preview pointer handlers own drag
                         // and double-tap behavior.
-                        ValueListenableBuilder<double>(
-                          valueListenable: appLiquidGlassOpacityNotifier,
-                          builder: (context, glassOpacity, _) {
+                        Builder(
+                          builder: (context) {
                             final brightness = CupertinoTheme.brightnessOf(
                               context,
                             );
                             final sharedSettings =
                                 skeddoBottomBarGlassSettingsFor(brightness);
-                            final previewSettings = sharedSettings.copyWith(
-                              glassColor: sharedSettings.glassColor.withValues(
-                                alpha: glassOpacity,
-                              ),
-                              // The premium renderer's native full-perimeter
-                              // rim supplies the requested white glass edge in
-                              // Dark Mode; this is lighting, not a drawn border.
-                              ambientRim: brightness == Brightness.dark
-                                  ? 0.18
-                                  : sharedSettings.ambientRim,
-                            );
                             final iconColor = resolveThemeColor(
                               kSecondaryLabel,
                               context,
@@ -442,7 +430,7 @@ class _FloatingTabBarGlassPreviewState
                                 shape: const LiquidRoundedRectangle(
                                   borderRadius: kSquircleStadiumRadius,
                                 ),
-                                settings: previewSettings,
+                                settings: sharedSettings,
                                 quality: GlassQuality.premium,
                                 useOwnLayer: true,
                                 child: Row(

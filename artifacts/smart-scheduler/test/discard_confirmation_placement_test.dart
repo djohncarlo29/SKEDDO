@@ -66,7 +66,7 @@ void main() {
       popover.settings!.refractiveIndex,
       skeddoBottomBarGlassSettingsFor(Brightness.light).refractiveIndex,
     );
-    expect(popover.settings!.glassColor.a, 0.70);
+    expect(popover.settings!.glassColor.a, kSkeddoPopoverGlassOpacity);
     final lightCardTint = resolveThemeColor(kModalCard, pageContext);
     expect(
       popover.settings!.glassColor.toARGB32() & 0x00FFFFFF,
@@ -77,7 +77,7 @@ void main() {
         Brightness.dark,
         const Color(0xFF2C2C2E),
       ).glassColor.a,
-      0.70,
+      kSkeddoPopoverGlassOpacity,
     );
     expect(
       skeddoPopoverGlassSettingsFor(
@@ -103,7 +103,10 @@ void main() {
     expect(discardButtonFinder, findsOneWidget);
     expect(tester.getSize(discardButtonFinder).width, greaterThan(300));
     final discardButton = tester.widget<GlassButton>(discardButtonFinder);
-    expect(discardButton.settings!.glassColor.a, closeTo(0.28, 0.001));
+    expect(
+      discardButton.settings!.glassColor.a,
+      closeTo(kSkeddoPopoverGlassOpacity / 2.5, 0.001),
+    );
     final lightButtonTint = resolveThemeColor(
       kModalButtonBackground,
       pageContext,
@@ -121,7 +124,7 @@ void main() {
         Brightness.dark,
         const Color(0xFF3A3A3C),
       ).glassColor.a,
-      closeTo(0.28, 0.001),
+      closeTo(kSkeddoPopoverGlassOpacity / 2.5, 0.001),
     );
     expect(
       skeddoPopoverButtonGlassSettingsFor(

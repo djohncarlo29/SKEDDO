@@ -11,7 +11,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
 /// SKEDDO's explicit, mode-specific tint colors and opacities.
 const double kSkeddoLightBottomBarOpacity = 0.40;
 const double kSkeddoDarkBottomBarOpacity = 0.50;
-const double kSkeddoPopoverGlassOpacity = 0.70;
+const double kSkeddoPopoverGlassOpacity = 0.85;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
@@ -73,9 +73,9 @@ LiquidGlassSettings skeddoPopoverGlassSettingsFor(
 }
 
 /// GlassButtonStyle.prominent multiplies its input tint alpha by 2.5.
-/// Supplying 0.28 therefore keeps this one popover action at 70% after the
-/// package applies its prominent-button treatment. The hue comes from the
-/// original modal button surface rather than the shared renderer's neutral tint.
+/// Dividing the requested opacity by that factor keeps this popover action at
+/// the same effective 85% as its card. Its hue comes from the original modal
+/// button surface rather than the shared renderer's neutral tint.
 LiquidGlassSettings skeddoPopoverButtonGlassSettingsFor(
   Brightness brightness,
   Color buttonTint,

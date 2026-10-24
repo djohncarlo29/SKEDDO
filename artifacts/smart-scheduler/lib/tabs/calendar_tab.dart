@@ -5823,6 +5823,14 @@ class _MonthView extends StatelessWidget {
         final floatingClearance = floatingTabBarContentBottomClearance(context);
         final isPortrait =
             MediaQuery.orientationOf(context) == Orientation.portrait;
+        final dayHeaderSharedOffset = isPortrait
+            ? _calendarExpandedTitleHeight(context) +
+                  AppHeaderScrollView.contentTopSpacingOf(
+                    context,
+                    topExtension: kContentAreaTopRaise,
+                  ) -
+                  kAppHeaderTitleHeight
+            : 0.0;
         final scrollTitleWidget = scrollTitle == null
             ? null
             : scrollableTitleBuilder?.call(
@@ -5981,6 +5989,9 @@ class _MonthView extends StatelessWidget {
                             collapseWeekRow: collapseWeekRow,
                             viewModeRowHeight: rowHeight,
                             screenHeight: constraints.maxHeight,
+                            sharedHeaderOffset: row <= collapseWeekRow
+                                ? dayHeaderSharedOffset
+                                : 0.0,
                     contentInset: monthContentInset,
                             scrollOffset: collapseScrollOffset,
                             eventsByDay: orderedEventsByDay,
@@ -6215,6 +6226,7 @@ class _AnimatedWeekRow extends StatelessWidget {
     required this.collapseWeekRow,
     required this.viewModeRowHeight,
     required this.screenHeight,
+    this.sharedHeaderOffset = 0.0,
     required this.onDayTap,
     this.onDayLongPress,
     this.circleSlideX = 0.0,
@@ -6239,6 +6251,7 @@ class _AnimatedWeekRow extends StatelessWidget {
   // The mode-switch target height (before collapse interpolation).
   final double viewModeRowHeight;
   final double screenHeight;
+  final double sharedHeaderOffset;
   final void Function(DateTime) onDayTap;
   final void Function(DateTime)? onDayLongPress;
   final double circleSlideX;
@@ -6289,7 +6302,8 @@ class _AnimatedWeekRow extends StatelessWidget {
       // compensation is zero and the Month position is unchanged.
       translateY =
           -(collapseWeekRow * currentRowHeight * collapseProgress) +
-          scrollOffset * collapseProgress;
+          scrollOffset * collapseProgress +
+          sharedHeaderOffset * collapseProgress;
     } else {
       // All rows BELOW the selected row move as one solid block downward.
       // Every row in the block gets the same large delta so they stay together
