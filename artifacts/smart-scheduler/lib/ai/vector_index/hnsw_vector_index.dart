@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../interfaces.dart';
+import '../../services/local_storage.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HnswVectorIndex — Phase 2 approximate-nearest-neighbor index.
@@ -315,8 +315,7 @@ class HnswVectorIndex implements VectorIndex {
 
   Future<void> _persist() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
+      await LocalStorage.instance.saveContentString(
         _kPrefsKey,
         jsonEncode({
           'vectors': _vectors,
@@ -331,8 +330,7 @@ class HnswVectorIndex implements VectorIndex {
   /// Load state from SharedPreferences. Call once at startup.
   Future<void> load() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_kPrefsKey);
+      final raw = await LocalStorage.instance.loadContentString(_kPrefsKey);
       if (raw == null) return;
       final j = jsonDecode(raw) as Map<String, dynamic>;
 

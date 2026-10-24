@@ -9,13 +9,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart'
     show ReorderableDragStartListener, ReorderableListView;
 import 'package:flutter/scheduler.dart' show Ticker;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../app_theme.dart';
 import '../app_settings.dart';
+import '../services/local_storage.dart';
 import '../ai/ai_services.dart';
 import '../services/event_store.dart';
 import '../services/alert_sequence.dart';
@@ -7149,7 +7149,7 @@ class EventsTabState extends State<EventsTab>
     super.dispose();
   }
 
-  // ── SharedPreferences persistence ─────────────────────────────────────────
+  // ── SQLite persistence ─────────────────────────────────────────────────────
 
   static const _kPrefsUserCats = 'events_user_categories';
   static const _kPrefsPinnedCats = 'events_pinned_categories';
@@ -7184,7 +7184,7 @@ class EventsTabState extends State<EventsTab>
   // while storage is still full.
   bool _saveBannerVisible = false;
 
-  // SharedPreferences writes are asynchronous. Queue them so a later section
+  // SQLite writes are asynchronous. Queue them so a later section
   // edit cannot be overtaken by an earlier save that started from stale state.
   Future<void> _categorySaveQueue = Future<void>.value();
 
@@ -7197,7 +7197,7 @@ class EventsTabState extends State<EventsTab>
       return;
     }
 
-    // Snapshot every value before waiting for SharedPreferences. This keeps a
+    // Snapshot every value before waiting for SQLite. This keeps a
     // save tied to the state that caused it, while the queue preserves the
     // order in which those state changes happened.
     final userCats = _userCategories.map((c) => jsonEncode(c.toJson())).toList();
@@ -7241,26 +7241,22 @@ class EventsTabState extends State<EventsTab>
 
     _categorySaveQueue = _categorySaveQueue.then((_) async {
       try {
-        final prefs = await SharedPreferences.getInstance();
-        final results = await Future.wait<bool>([
-          prefs.setStringList(_kPrefsUserCats, userCats),
-          prefs.setStringList(_kPrefsPinnedCats, pinnedCats),
-          prefs.setStringList(_kPrefsDeletedCats, deletedCats),
-          prefs.setStringList(_kPrefsDeletedSmart, deletedSmart),
-          prefs.setString(_kPrefsSmartColors, smartColors),
-          prefs.setStringList(_kPrefsArchivedSmart, archivedSmart),
-          prefs.setStringList(_kPrefsSmartOrder, smartOrder),
-          prefs.setStringList(_kPrefsGridCombinedOrder, gridCombinedOrder),
-          prefs.setStringList(_kPrefsCategoryGroups, categoryGroups),
-          prefs.setStringList(_kPrefsListTopOrder, listTopOrder),
-          prefs.setString(_kPrefsDcvCustomSections, dcvSectionNames),
-          prefs.setString(
-            _kPrefsDcvCustomSectionEventIds,
-            dcvSectionEventIds,
-          ),
-          prefs.setString(_kPrefsUtilityItemDates, utilityItemDates),
-        ]);
-        if (results.any((ok) => !ok) && mounted) {
+        final saved = await LocalStorage.instance.saveContentValues({
+          _kPrefsUserCats: userCats,
+          _kPrefsPinnedCats: pinnedCats,
+          _kPrefsDeletedCats: deletedCats,
+          _kPrefsDeletedSmart: deletedSmart,
+          _kPrefsSmartColors: smartColors,
+          _kPrefsArchivedSmart: archivedSmart,
+          _kPrefsSmartOrder: smartOrder,
+          _kPrefsGridCombinedOrder: gridCombinedOrder,
+          _kPrefsCategoryGroups: categoryGroups,
+          _kPrefsListTopOrder: listTopOrder,
+          _kPrefsDcvCustomSections: dcvSectionNames,
+          _kPrefsDcvCustomSectionEventIds: dcvSectionEventIds,
+          _kPrefsUtilityItemDates: utilityItemDates,
+        });
+        if (!saved && mounted) {
           _showCategorySaveError();
         }
       } catch (_) {
@@ -7298,23 +7294,51 @@ class EventsTabState extends State<EventsTab>
   }
 
   void _loadCategories() {
-    SharedPreferences.getInstance().then((prefs) {
+    LocalStorage.instance
+        .loadContentValues([
+          _kPrefsUserCats,
+          _kPrefsPinnedCats,
+          _kPrefsDeletedCats,
+          _kPrefsDeletedSmart,
+          _kPrefsSmartColors,
+          _kPrefsArchivedSmart,
+          _kPrefsSmartOrder,
+          _kPrefsGridCombinedOrder,
+          _kPrefsCategoryGroups,
+          _kPrefsListTopOrder,
+          _kPrefsDcvCustomSections,
+          _kPrefsDcvCustomSectionEventIds,
+          _kPrefsUtilityItemDates,
+        ])
+        .then((values) {
       if (!mounted) return;
-      final rawUser = prefs.getStringList(_kPrefsUserCats);
-      final rawPinned = prefs.getStringList(_kPrefsPinnedCats);
-      final rawDeleted = prefs.getStringList(_kPrefsDeletedCats);
-      final rawDeletedSmart = prefs.getStringList(_kPrefsDeletedSmart);
-      final rawSmartColors = prefs.getString(_kPrefsSmartColors);
-      final rawArchivedSmart = prefs.getStringList(_kPrefsArchivedSmart);
-      final rawSmartOrder = prefs.getStringList(_kPrefsSmartOrder);
-      final rawGridCombined = prefs.getStringList(_kPrefsGridCombinedOrder);
-      final rawGroups = prefs.getStringList(_kPrefsCategoryGroups);
-      final rawListOrder = prefs.getStringList(_kPrefsListTopOrder);
-      final rawDcvSections = prefs.getString(_kPrefsDcvCustomSections);
-      final rawDcvSectionEventIds = prefs.getString(
+      List<String>? stringList(String key) {
+        final value = values[key];
+        return value is List
+            ? value.map((item) => item.toString()).toList()
+            : null;
+      }
+
+      String? stringValue(String key) {
+        final value = values[key];
+        return value is String ? value : null;
+      }
+
+      final rawUser = stringList(_kPrefsUserCats);
+      final rawPinned = stringList(_kPrefsPinnedCats);
+      final rawDeleted = stringList(_kPrefsDeletedCats);
+      final rawDeletedSmart = stringList(_kPrefsDeletedSmart);
+      final rawSmartColors = stringValue(_kPrefsSmartColors);
+      final rawArchivedSmart = stringList(_kPrefsArchivedSmart);
+      final rawSmartOrder = stringList(_kPrefsSmartOrder);
+      final rawGridCombined = stringList(_kPrefsGridCombinedOrder);
+      final rawGroups = stringList(_kPrefsCategoryGroups);
+      final rawListOrder = stringList(_kPrefsListTopOrder);
+      final rawDcvSections = stringValue(_kPrefsDcvCustomSections);
+      final rawDcvSectionEventIds = stringValue(
         _kPrefsDcvCustomSectionEventIds,
       );
-      final rawUtilityItemDates = prefs.getString(_kPrefsUtilityItemDates);
+      final rawUtilityItemDates = stringValue(_kPrefsUtilityItemDates);
       if (rawUser == null &&
           rawPinned == null &&
           rawDeleted == null &&

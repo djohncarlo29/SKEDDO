@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/local_storage.dart';
 
 abstract final class ParsedRuleSource {
   static const String offline = 'offline';
@@ -63,8 +63,7 @@ class SmartRuleParser {
   static Future<void> _loadPersisted() async {
     _persistedLoaded = true;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_kPrefsKey);
+      final raw = await LocalStorage.instance.loadContentString(_kPrefsKey);
       if (raw == null) return;
       final map = jsonDecode(raw) as Map<String, dynamic>;
       for (final entry in map.entries) {
@@ -81,8 +80,7 @@ class SmartRuleParser {
 
   static Future<void> _persistAll() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
+      await LocalStorage.instance.saveContentString(
         _kPrefsKey,
         jsonEncode({
           for (final entry in _cache.entries) entry.key: _toJson(entry.value),

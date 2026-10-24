@@ -40,6 +40,7 @@ import '../widgets/app_switch.dart';
 import '../widgets/wheel_option_text.dart';
 import '../widgets/stadium_cupertino_picker_selection_overlay.dart';
 import '../services/event_store.dart';
+import '../services/local_storage.dart';
 import '../services/category_registry.dart';
 import '../services/alert_sequence.dart';
 import '../services/recurrence_expander.dart';
@@ -11968,8 +11969,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     } else {
       // Keep a safe fallback for callers that create the sheet without the
       // AppShell-owned live section bridge.
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
+      await LocalStorage.instance.saveContentString(
         _kPrefsDcvCustomSectionEventIds,
         jsonEncode(_dcvCustomSectionEventIds),
       );
@@ -12109,12 +12109,19 @@ class _NewEventSheetState extends State<_NewEventSheet>
   // ── Category loading ──────────────────────────────────────────────────────
 
   Future<void> _loadCategories() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList('events_user_categories') ?? [];
-    final rawDcvSections = prefs.getString(_kPrefsDcvCustomSections);
-    final rawDcvSectionEventIds = prefs.getString(
+    final values = await LocalStorage.instance.loadContentValues([
+      'events_user_categories',
+      _kPrefsDcvCustomSections,
       _kPrefsDcvCustomSectionEventIds,
-    );
+    ]);
+    final storedCategories = values['events_user_categories'];
+    final raw = storedCategories is List
+        ? storedCategories.map((value) => value.toString()).toList()
+        : <String>[];
+    final rawDcvSections =
+        values[_kPrefsDcvCustomSections] as String?;
+    final rawDcvSectionEventIds =
+        values[_kPrefsDcvCustomSectionEventIds] as String?;
     final loadedSectionNames = <String, List<String>>{};
     final loadedSectionEventIds = <String, List<List<String>>>{};
     try {

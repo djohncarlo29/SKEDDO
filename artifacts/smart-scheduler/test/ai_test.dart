@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/native.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 import 'package:smart_scheduler/ai/date_parser/rule_based_date_parser.dart';
@@ -18,6 +19,7 @@ import 'package:smart_scheduler/services/recurrence_expander.dart';
 import 'package:smart_scheduler/services/event_model.dart';
 import 'package:smart_scheduler/services/event_store.dart';
 import 'package:smart_scheduler/services/local_storage.dart';
+import 'package:smart_scheduler/services/app_database.dart';
 import 'package:smart_scheduler/app_settings.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -114,6 +116,15 @@ class _FixedVectorIndex implements VectorIndex {
 void main() {
   // Needed for SharedPreferences platform channel in loadFromStorage tests.
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    await LocalStorage.instance.useDatabaseForTesting(
+      AppDatabase(NativeDatabase.memory()),
+    );
+  });
+  tearDown(() async {
+    await LocalStorage.instance.resetDatabaseForTesting();
+  });
 
   // ── Fixed reference date: Wednesday 2025-06-11 ────────────────────────────
   final ref = DateTime(2025, 6, 11); // Wednesday

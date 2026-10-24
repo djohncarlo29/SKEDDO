@@ -5,12 +5,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'ai/ai_services.dart';
 import 'ai/parsed_date.dart';
 import 'app_settings.dart';
+import 'services/local_storage.dart';
 import 'app_theme.dart';
 import 'widgets/app_switch.dart';
 import 'widgets/accent_tinted_image.dart';
@@ -1226,12 +1226,17 @@ class _DefaultCategorySectionState extends State<_DefaultCategorySection> {
   }
 
   Future<void> _loadCategories() async {
-    final prefs = await SharedPreferences.getInstance();
     final records = <_DefaultCategoryOption>[];
     final seen = <String>{};
+    final userCategories = await LocalStorage.instance.loadContentStringList(
+      'events_user_categories',
+    );
+    final pinnedCategories = await LocalStorage.instance.loadContentStringList(
+      'events_pinned_categories',
+    );
     final raw = [
-      ...?prefs.getStringList('events_user_categories'),
-      ...?prefs.getStringList('events_pinned_categories'),
+      ...?userCategories,
+      ...?pinnedCategories,
     ];
 
     void addRecord(Object? value) {

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'ai/ai_services.dart';
 import 'ai/parsed_date.dart';
+import 'services/local_storage.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // App-level appearance settings — module-level notifiers that are written by
@@ -487,6 +488,7 @@ const _kPersistedPinnedCategoriesKey = 'events_pinned_categories';
 /// Call this once at startup (before [runApp]) so the first build reflects the
 /// saved state.
 Future<void> loadAppSettings() async {
+  await LocalStorage.instance.initialize();
   final prefs = await SharedPreferences.getInstance();
 
   // Theme
@@ -553,9 +555,13 @@ Future<void> loadAppSettings() async {
   }
   // Resolve the cached label before the first Settings build. Category records
   // are owned by EventsTab, but their lightweight persisted JSON is shared.
+  final savedUserCategories = await LocalStorage.instance
+      .loadContentStringList(_kPersistedUserCategoriesKey);
+  final savedPinnedCategories = await LocalStorage.instance
+      .loadContentStringList(_kPersistedPinnedCategoriesKey);
   final savedCategories = [
-    ...?prefs.getStringList(_kPersistedUserCategoriesKey),
-    ...?prefs.getStringList(_kPersistedPinnedCategoriesKey),
+    ...?savedUserCategories,
+    ...?savedPinnedCategories,
   ];
   for (final raw in savedCategories) {
       try {
