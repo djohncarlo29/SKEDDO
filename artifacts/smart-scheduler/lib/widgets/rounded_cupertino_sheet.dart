@@ -242,9 +242,55 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
   /// dismissal.
   final bool isNestedSheet;
 
+  Future<void>? _restoreToOpenFuture;
+
   @override
   DelegatedTransitionBuilder? get delegatedTransition =>
       isNestedSheet ? null : _RoundedSheetTransition.delegateTransition;
+
+  /// Restores this sheet to its fully-open position and shares the in-flight
+  /// animation with other callers.
+  ///
+  /// A vetoed downward dismissal starts this same restoration from the drag
+  /// recognizer. Discard confirmation can await it before measuring the close
+  /// button, so its GlassPopover opens from the button's settled position.
+  Future<void> restoreToOpen() {
+    final pending = _restoreToOpenFuture;
+    if (pending != null) return pending;
+
+    // ignore: invalid_use_of_protected_member
+    final routeController = controller;
+    if (routeController == null ||
+        (!routeController.isAnimating && routeController.value >= 1.0)) {
+      return Future<void>.value();
+    }
+
+    late final Future<void> restoration;
+    restoration = routeController
+        .animateTo(
+          1.0,
+          duration: _kDroppedSheetDragAnimationDuration,
+          curve: Curves.easeOut,
+        )
+        .orCancel
+        .then<void>((_) {})
+        .whenComplete(() {
+          if (identical(_restoreToOpenFuture, restoration)) {
+            _restoreToOpenFuture = null;
+          }
+        });
+    _restoreToOpenFuture = restoration;
+    return restoration;
+  }
+
+  /// Waits for the current rounded sheet to settle fully open, if present.
+  static Future<void> restoreCurrentSheetToOpen(BuildContext context) {
+    final route = ModalRoute.of(context);
+    if (route is RoundedCupertinoSheetRoute) {
+      return route.restoreToOpen();
+    }
+    return Future<void>.value();
+  }
 
   @override
   Widget buildContent(BuildContext context) {
@@ -431,12 +477,23 @@ mixin _RoundedSheetRouteTransitionMixin<T> on PageRoute<T> {
   static _RoundedDownGestureController<T> _startPopGesture<T>(
     ModalRoute<T> route,
   ) {
+    // ignore: invalid_use_of_protected_member
+    final routeController = route.controller!;
     return _RoundedDownGestureController<T>(
       navigator: route.navigator!,
       getIsCurrent: () => route.isCurrent,
       getIsActive: () => route.isActive,
-      // ignore: invalid_use_of_protected_member
-      controller: route.controller!,
+      controller: routeController,
+      restoreToOpen: route is RoundedCupertinoSheetRoute<T>
+          ? route.restoreToOpen
+          : () => routeController
+                .animateTo(
+                  1.0,
+                  duration: _kDroppedSheetDragAnimationDuration,
+                  curve: Curves.easeOut,
+                )
+                .orCancel
+                .then<void>((_) {}),
     );
   }
 
@@ -795,6 +852,7 @@ class _RoundedDownGestureController<T> {
   _RoundedDownGestureController({
     required this.navigator,
     required this.controller,
+    required this.restoreToOpen,
     required this.getIsActive,
     required this.getIsCurrent,
   }) {
@@ -802,6 +860,7 @@ class _RoundedDownGestureController<T> {
   }
 
   final AnimationController controller;
+  final Future<void> Function() restoreToOpen;
   final NavigatorState navigator;
   final ValueGetter<bool> getIsActive;
   final ValueGetter<bool> getIsCurrent;
@@ -848,11 +907,7 @@ class _RoundedDownGestureController<T> {
       // sheet. If the route was actually popped, isCurrent becomes false and
       // the normal dismissal animation remains untouched.
       if (getIsCurrent() && controller.value < 1.0) {
-        controller.animateTo(
-          1.0,
-          duration: _kDroppedSheetDragAnimationDuration,
-          curve: animationCurve,
-        );
+        restoreToOpen();
       }
     }
 

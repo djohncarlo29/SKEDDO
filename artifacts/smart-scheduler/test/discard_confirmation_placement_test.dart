@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show GlassButton, GlassMenuAlignment, GlassPopover;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/delete_confirmation_sheet.dart';
+import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
 void main() {
   testWidgets('discard confirmation always uses the top-left placement', (
@@ -65,24 +68,118 @@ void main() {
     expect(tester.getSize(discardButtonFinder).width, greaterThan(300));
 
     await tester.tapAt(const Offset(700, 500));
-    await tester.pump(const Duration(milliseconds: 900));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(await confirmation, isNull);
 
-    final acceptedConfirmation = showDiscardChangesConfirmationSheet(
-      pageContext,
-      anchorKey: anchorKey,
-      entityLabel: 'event',
-      isNew: false,
-    );
+    var acceptedConfirmationFinished = false;
+    final acceptedConfirmation =
+        showDiscardChangesConfirmationSheet(
+          pageContext,
+          anchorKey: anchorKey,
+          entityLabel: 'event',
+          isNew: false,
+        ).then((result) {
+          acceptedConfirmationFinished = true;
+          return result;
+        });
     await tester.pumpAndSettle();
     expect(
       find.text('Are you sure you want to discard your changes?'),
       findsOneWidget,
     );
     await tester.tap(find.text('Discard Changes'));
-    await tester.pump(const Duration(milliseconds: 900));
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(acceptedConfirmationFinished, isFalse);
+    await tester.pumpAndSettle();
     expect(await acceptedConfirmation, isTrue);
   });
+
+  testWidgets(
+    'a vetoed sheet swipe restores the X before opening its discard popover',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final navigatorKey = GlobalKey<NavigatorState>();
+      final anchorKey = GlobalKey<DiscardChangesPopoverAnchorState>();
+      late BuildContext sheetContext;
+      var requestedConfirmation = false;
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          navigatorKey: navigatorKey,
+          builder: (context, child) => AppWindowContentScope(
+            horizontalInset: 0,
+            physicalWidth: 800,
+            child: child ?? const SizedBox.shrink(),
+          ),
+          home: const CupertinoPageScaffold(child: SizedBox.expand()),
+        ),
+      );
+
+      final sheetFuture = navigatorKey.currentState!.push<void>(
+        RoundedCupertinoSheetRoute<void>(
+          builder: (_) => Builder(
+            builder: (context) {
+              sheetContext = context;
+              return PopScope<void>(
+                canPop: false,
+                onPopInvokedWithResult: (didPop, result) {
+                  if (didPop || requestedConfirmation) return;
+                  requestedConfirmation = true;
+                  unawaited(
+                    showDiscardChangesConfirmationSheet(
+                      sheetContext,
+                      anchorKey: anchorKey,
+                      entityLabel: 'event',
+                      isNew: true,
+                    ),
+                  );
+                },
+                child: CupertinoPageScaffold(
+                  child: Column(
+                    children: [
+                      RoundedCupertinoSheetHeader(
+                        child: DiscardChangesPopoverAnchor(
+                          key: anchorKey,
+                          child: const SizedBox(
+                            width: 44,
+                            height: 44,
+                            child: Icon(CupertinoIcons.xmark),
+                          ),
+                        ),
+                      ),
+                      const Expanded(child: SizedBox.expand()),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final trigger = find.byType(GlassPopover);
+      final originalTriggerPosition = tester.getTopLeft(trigger);
+      await tester.dragFrom(
+        tester.getRect(trigger).center,
+        const Offset(0, 380),
+      );
+      await tester.pumpAndSettle();
+
+      expect(requestedConfirmation, isTrue);
+      expect(
+        find.text('Are you sure you want to discard this new event?'),
+        findsOneWidget,
+      );
+      expect(tester.getTopLeft(trigger), originalTriggerPosition);
+
+      navigatorKey.currentState!.pop();
+      await tester.pumpAndSettle();
+      await sheetFuture;
+    },
+  );
 }

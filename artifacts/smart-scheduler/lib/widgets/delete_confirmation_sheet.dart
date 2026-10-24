@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show
         GlassButton,
@@ -123,8 +124,15 @@ Future<bool?> showDiscardChangesConfirmationSheet(
   required GlobalKey<DiscardChangesPopoverAnchorState> anchorKey,
   required String entityLabel,
   required bool isNew,
-}) {
-  if (!context.mounted) return Future<bool?>.value(null);
+}) async {
+  if (!context.mounted) return null;
+
+  // A downward drag can veto route dismissal while the sheet is still partway
+  // through its gesture. Restore the route before GlassPopover measures its
+  // trigger, so its morph starts at the X's actual settled position.
+  await RoundedCupertinoSheetRoute.restoreCurrentSheetToOpen(context);
+  if (!context.mounted) return null;
+
   final anchor = anchorKey.currentState;
   if (anchor == null) {
     throw StateError(
@@ -261,19 +269,23 @@ class DiscardChangesPopoverAnchor extends StatefulWidget {
 
 class DiscardChangesPopoverAnchorState
     extends State<DiscardChangesPopoverAnchor> {
-  static const _popoverCloseSettleDelay = Duration(milliseconds: 850);
+  static const _triggerReturnTolerance = 0.5;
+  static const _stableTriggerFramesRequired = 3;
 
   late final VoidCallback _dismissCallback;
+  final GlobalKey _triggerKey = GlobalKey();
   VoidCallback? _togglePopover;
   Key _popoverKey = UniqueKey();
   final OverlayPortalController _scrimController = OverlayPortalController();
-  Timer? _closeTimer;
+  Timer? _closePollTimer;
   Completer<bool?>? _confirmationCompleter;
+  Offset? _triggerOrigin;
+  Offset? _previousTriggerPosition;
+  int _stableTriggerFrames = 0;
   String _entityLabel = 'item';
   bool _isNew = false;
   bool _popoverIsOpen = false;
   bool _isClosing = false;
-  bool _reduceMotion = false;
   bool? _pendingResult;
 
   @override
@@ -283,14 +295,8 @@ class DiscardChangesPopoverAnchorState
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-  }
-
-  @override
   void dispose() {
-    _closeTimer?.cancel();
+    _closePollTimer?.cancel();
     _removeScrim();
     if (identical(
       _activeDiscardChangesSheetDismiss,
@@ -319,8 +325,11 @@ class DiscardChangesPopoverAnchorState
     _pendingResult = null;
     _popoverIsOpen = false;
     _isClosing = false;
-    _closeTimer?.cancel();
-    _closeTimer = null;
+    _triggerOrigin = null;
+    _previousTriggerPosition = null;
+    _stableTriggerFrames = 0;
+    _closePollTimer?.cancel();
+    _closePollTimer = null;
     _activeDiscardChangesSheetDismiss = _dismissCallback;
     _insertScrim();
     setState(() {});
@@ -374,16 +383,91 @@ class DiscardChangesPopoverAnchorState
     if (mounted) setState(() {});
   }
 
+  void _onPopoverOpened() {
+    final renderObject =
+        _triggerKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderBox ||
+        !renderObject.attached ||
+        !renderObject.hasSize) {
+      _triggerOrigin = null;
+      return;
+    }
+    _triggerOrigin = renderObject.localToGlobal(Offset.zero);
+    _previousTriggerPosition = null;
+    _stableTriggerFrames = 0;
+  }
+
   void _scheduleCloseFinish() {
-    if (_closeTimer != null) return;
-    _closeTimer = Timer(
-      _reduceMotion ? Duration.zero : _popoverCloseSettleDelay,
-      _finishClose,
-    );
+    if (_closePollTimer != null || !mounted) return;
+    _closePollTimer = Timer.periodic(const Duration(milliseconds: 16), (
+      timer,
+    ) {
+      if (!mounted || !_isClosing) {
+        timer.cancel();
+        _closePollTimer = null;
+        return;
+      }
+      if (_popoverTriggerHasReturned()) {
+        timer.cancel();
+        _closePollTimer = null;
+        _finishClose();
+      } else {
+        // Keep frame timing aligned with the package's spring. Once its own
+        // overlay has hidden, a final few stable samples still confirm that
+        // the real trigger has finished its recoil before completing discard.
+        WidgetsBinding.instance.scheduleFrame();
+      }
+    });
+  }
+
+  bool _popoverTriggerHasReturned() {
+    final origin = _triggerOrigin;
+    final renderObject = _triggerKey.currentContext?.findRenderObject();
+    if (origin == null ||
+        renderObject is! RenderBox ||
+        !renderObject.attached ||
+        !renderObject.hasSize) {
+      _stableTriggerFrames = 0;
+      _previousTriggerPosition = null;
+      return false;
+    }
+
+    // GlassPopover hides the real trigger while its morph is open, then hands
+    // visibility back at the zero-crossing. Do not treat that first handoff as
+    // completion: the spring still carries the trigger through its closing
+    // recoil. Wait until the actual trigger is visible and back at rest.
+    RenderObject? ancestor = renderObject;
+    while (ancestor != null) {
+      if (ancestor is RenderOpacity && ancestor.opacity < 0.999) {
+        _stableTriggerFrames = 0;
+        _previousTriggerPosition = null;
+        return false;
+      }
+      ancestor = ancestor.parent;
+    }
+
+    final position = renderObject.localToGlobal(Offset.zero);
+    final isAtOrigin =
+        (position.dx - origin.dx).abs() <= _triggerReturnTolerance &&
+        (position.dy - origin.dy).abs() <= _triggerReturnTolerance;
+    if (!isAtOrigin) {
+      _stableTriggerFrames = 0;
+      _previousTriggerPosition = position;
+      return false;
+    }
+
+    final previous = _previousTriggerPosition;
+    final isStable = previous != null &&
+        (position.dx - previous.dx).abs() <= _triggerReturnTolerance &&
+        (position.dy - previous.dy).abs() <= _triggerReturnTolerance;
+    _stableTriggerFrames = isStable ? _stableTriggerFrames + 1 : 0;
+    _previousTriggerPosition = position;
+    return _stableTriggerFrames >= _stableTriggerFramesRequired;
   }
 
   void _finishClose() {
-    _closeTimer = null;
+    _closePollTimer?.cancel();
+    _closePollTimer = null;
     _popoverIsOpen = false;
     _removeScrim();
     if (identical(
@@ -509,7 +593,7 @@ class DiscardChangesPopoverAnchorState
         key: _popoverKey,
         triggerBuilder: (_, togglePopover) {
           _togglePopover = togglePopover;
-          return widget.child;
+          return KeyedSubtree(key: _triggerKey, child: widget.child);
         },
         contentBuilder: _buildPopoverContent,
         popoverWidth:
@@ -525,6 +609,7 @@ class DiscardChangesPopoverAnchorState
           12,
         ),
         onClose: _onPopoverClosing,
+        onOpen: _onPopoverOpened,
       ),
     );
   }
