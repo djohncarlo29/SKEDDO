@@ -1228,7 +1228,7 @@ class _AppHeaderCollapseSliverDelegate extends SliverPersistentHeaderDelegate {
   final Widget? largeTitle;
   final double titleExtent;
   final GlassLargeTitleController controller;
-  final ValueListenable<double> bodyLeadingOverscroll;
+  final ValueNotifier<double> bodyLeadingOverscroll;
   final Widget? searchBar;
   final double searchBarExtent;
 
