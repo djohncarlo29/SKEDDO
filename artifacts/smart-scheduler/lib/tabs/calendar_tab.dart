@@ -25,6 +25,7 @@ import '../widgets/native_text_input.dart';
 import '../widgets/text_editing_helpers.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/modal_sheet_scroll_under.dart';
+import '../widgets/modal_toolbar_glass_button.dart';
 import '../widgets/app_header_scroll_edge.dart';
 import '../widgets/modal_sheet_title_scroller.dart';
 import '../widgets/search_bar_widget.dart';
@@ -10030,52 +10031,14 @@ class _CalModalCircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fontFamily = icon.fontPackage != null
-        ? 'packages/${icon.fontPackage}/${icon.fontFamily}'
-        : (icon.fontFamily ?? '');
-
-    final resolvedContainerColor = resolveThemeColor(containerColor, context);
-    final resolvedIconColor = resolveThemeColor(iconColor, context);
-
-    return StaticLiquidGlassActionButton(
-      color: resolvedContainerColor,
+    return ModalToolbarGlassButton(
+      icon: icon,
+      iconColor: iconColor,
+      surfaceColor: containerColor,
       isCheckmark: icon == CupertinoIcons.checkmark,
-      peakScale: 1.15,
-      tapDelay: tapDelay,
       onTap: onTap,
-      child: Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: Center(
-              child: Transform.translate(
-                offset: iconOffset,
-                child: RichText(
-                  textHeightBehavior: const TextHeightBehavior(
-                    applyHeightToFirstAscent: false,
-                    applyHeightToLastDescent: false,
-                  ),
-                  text: TextSpan(
-                    text: String.fromCharCode(icon.codePoint),
-                    style: TextStyle(
-                      inherit: false,
-                      color: resolvedIconColor,
-                      fontSize: 20,
-                      fontFamily: fontFamily,
-                      fontStyle: FontStyle.normal,
-                      shadows: resolveThemeTextShadows([
-                        Shadow(
-                          color: resolvedIconColor,
-                          blurRadius: kGelBloomIconWeight,
-                        ),
-                      ], context),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ),
+      tapDelay: tapDelay,
+      iconOffset: iconOffset,
     );
   }
 }

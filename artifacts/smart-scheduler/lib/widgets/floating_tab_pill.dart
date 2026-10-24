@@ -56,7 +56,7 @@ final LiquidGlassSettings _floatingTabBarDarkSettings =
 
 /// The AppShell's platform-neutral floating tab control.
 ///
-/// This widget owns the package bar, its three navigation tabs, and its
+/// This widget owns the package bar, its four navigation tabs, and its
 /// separate trailing action. AppShell remains responsible for navigation,
 /// opening the event sheet, safe-area positioning, and overlay ordering.
 class FloatingTabPill extends StatefulWidget {
@@ -101,8 +101,9 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
     final tabBar = GlassTabBar.bottom(
       tabs: const [
         GlassTab(
-          icon: FixedSFIcon(SFIcons.sf_text_document, fontSize: 20),
-          label: 'Notes',
+          icon: FixedSFIcon(SFIcons.sf_house, fontSize: 20),
+          activeIcon: FixedSFIcon(SFIcons.sf_house_fill, fontSize: 20),
+          label: 'Home',
         ),
         GlassTab(
           icon: FixedSFIcon(SFIcons.sf_calendar, fontSize: 20),
@@ -111,6 +112,14 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
         GlassTab(
           icon: FixedSFIcon(SFIcons.sf_list_bullet, fontSize: 20),
           label: 'Events',
+        ),
+        GlassTab(
+          icon: FixedSFIcon(SFIcons.sf_person_crop_circle, fontSize: 20),
+          activeIcon: FixedSFIcon(
+            SFIcons.sf_person_crop_circle_fill,
+            fontSize: 20,
+          ),
+          label: 'You',
         ),
       ],
       selectedIndex: selectedIndex,
@@ -127,7 +136,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       verticalPadding: 0,
       iconSize: 20,
       labelFontSize: 9,
-      iconLabelSpacing: 1,
+      iconLabelSpacing: 2,
       magnification: 1,
       settings: isDark ? _floatingTabBarDarkSettings : null,
       indicatorColor: isDark

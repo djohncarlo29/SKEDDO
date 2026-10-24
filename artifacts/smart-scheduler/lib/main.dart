@@ -1071,6 +1071,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   void _syncHeaderScrollOffsetToParent({
     bool preserveCollapseProgress = false,
   }) {
+    // The blank You destination has no scroll position of its own. Keep the
+    // shared header state while it is selected instead of binding to null and
+    // resetting the title to its expanded position.
+    if (_selectedIndex == 3) return;
     final position = _selectedIndex == 2 && _dcvCategory != null
         ? null
         : switch (_selectedIndex) {
@@ -1999,7 +2003,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   /// active, and either animates or snaps the header depending on whether the
   /// search bar is currently visible in the viewport.
   void _activateTabSearch() {
-    if (_searchFocused) return;
+    if (_selectedIndex == 3 || _searchFocused) return;
 
     _settleShellTransitionsForSearch();
     switch (_selectedIndex) {
@@ -2070,6 +2074,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   //      temporary subtree reparent during layout must preserve the draft.
   //   2. Dismiss the keyboard and any active text-input focus.
   void _switchTab(int index) {
+    if (index < 0 || index > 3) return;
     if (_selectedIndex == index) return;
 
     // Cleanly cancel search on whichever tab we're leaving.
@@ -2094,7 +2099,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       // tabs and is restored when the user returns to Events tab.
     });
     _searchModeController.value = 0;
-    _restoreHeaderScrollOffset();
+    if (index == 3) {
+      _headerTitleTransition.suspend();
+    } else {
+      _restoreHeaderScrollOffset();
+    }
     if (_usesNativeTabBar) {
       unawaited(
         _nativeTabBarChannel.invokeMethod<void>(
@@ -2108,7 +2117,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   Future<void> _handleNativeTabBarCall(MethodCall call) async {
     if (call.method != 'tabSelected') return;
     final index = call.arguments is int ? call.arguments as int : null;
-    if (index == null || index < 0 || index > 2 || !mounted) return;
+    if (index == null || index < 0 || index > 3 || !mounted) return;
     _switchTab(index);
   }
 
@@ -2210,6 +2219,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             : _formattedCalendarMonthTitle(_calendarTitle);
       case 2:
         return 'All Events';
+      case 3:
+        return 'You';
       default:
         return '';
     }
@@ -2233,6 +2244,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             : _formattedCalendarMonthTitle(_calendarTitle);
       case 2:
         return 'All Events';
+      case 3:
+        return 'You';
       default:
         return '';
     }
@@ -2607,19 +2620,20 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        AnimatedTapIcon(
-          padding: EdgeInsets.fromLTRB(18, 10, 4, isLandscape ? 10 : 0),
-          onTap: _activateTabSearch,
-          child: Transform.translate(
-            offset: const Offset(5, 0),
-            child: SvgPicture.asset(
-              'assets/icons/search.svg',
-              width: 26,
-              height: 26,
-              colorFilter: ColorFilter.mode(accent, BlendMode.srcIn),
+        if (_selectedIndex != 3)
+          AnimatedTapIcon(
+            padding: EdgeInsets.fromLTRB(18, 10, 4, isLandscape ? 10 : 0),
+            onTap: _activateTabSearch,
+            child: Transform.translate(
+              offset: const Offset(5, 0),
+              child: SvgPicture.asset(
+                'assets/icons/search.svg',
+                width: 26,
+                height: 26,
+                colorFilter: ColorFilter.mode(accent, BlendMode.srcIn),
+              ),
             ),
           ),
-        ),
         AnimatedTapIcon(
           padding: EdgeInsets.fromLTRB(10, 10, 0, isLandscape ? 10 : 0),
           onTap: () => _calendarTabKey.currentState?.showNewEventSheet(
@@ -3007,6 +3021,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 ?.showEditEventSheet(context, event),
           ),
         ),
+        const RepaintBoundary(child: SizedBox.expand()),
       ],
     );
   }

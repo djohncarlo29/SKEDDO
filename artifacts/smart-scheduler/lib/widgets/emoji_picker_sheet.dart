@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import '../app_theme.dart';
+import 'modal_toolbar_glass_button.dart';
 import 'horizontal_edge_fade.dart';
 import 'header_title_scroller.dart';
 import 'picker_grid_geometry.dart';
@@ -1473,49 +1474,14 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
 
     // Back chevron — replaces xmark in sub-sheets to indicate navigation back.
     // Uses chevron_left to match the DCV header back indicator.
-    const _xIcon = CupertinoIcons.chevron_left;
-    final _xFamily = _xIcon.fontPackage != null
-        ? 'packages/${_xIcon.fontPackage}/${_xIcon.fontFamily}'
-        : (_xIcon.fontFamily ?? '');
-    final xBtn = StaticLiquidGlassActionButton(
-      color: cardColor,
-      peakScale: 1.15,
+    final xBtn = ModalToolbarGlassButton(
+      icon: CupertinoIcons.chevron_left,
+      iconColor: labelColor,
+      surfaceColor: cardColor,
+      semanticLabel: 'Back',
+      iconOffset: const Offset(-1.5, 0),
       tapDelay: const Duration(milliseconds: 130),
       onTap: _close,
-      child: Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: Center(
-              child: Transform.translate(
-                offset: const Offset(-1.5, 0),
-                child: RichText(
-                  textHeightBehavior: const TextHeightBehavior(
-                    applyHeightToFirstAscent: false,
-                    applyHeightToLastDescent: false,
-                  ),
-                  text: TextSpan(
-                    text: String.fromCharCode(_xIcon.codePoint),
-                    style: TextStyle(
-                      inherit: false,
-                      color: labelColor,
-                      fontSize: 20,
-                      fontFamily: _xFamily,
-                      fontStyle: FontStyle.normal,
-                      shadows: resolveThemeTextShadows([
-                        Shadow(
-                          color: labelColor,
-                          blurRadius: kGelBloomIconWeight,
-                        ),
-                      ], context),
-                    ),
-                  ),
-                  textScaler: TextScaler.noScaling,
-                ),
-              ),
-            ),
-          ),
-      ),
     );
 
     return CupertinoPageScaffold(

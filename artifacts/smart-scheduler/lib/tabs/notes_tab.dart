@@ -13,6 +13,7 @@ import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pdfx/pdfx.dart';
 import '../app_theme.dart';
+import '../widgets/modal_toolbar_glass_button.dart';
 import '../widgets/fixed_size_icon.dart';
 import '../services/event_extractor.dart';
 import '../services/event_store.dart';
@@ -3908,8 +3909,10 @@ class _PreviewCircleButton extends StatelessWidget {
 
     final resolvedContainerColor = resolveThemeColor(containerColor, context);
     final resolvedIconColor = resolveThemeColor(iconColor, context);
-    return StaticLiquidGlassActionButton(
-      color: resolvedContainerColor,
+    return ModalToolbarGlassButton(
+      icon: icon,
+      iconColor: resolvedIconColor,
+      surfaceColor: resolvedContainerColor,
       isCheckmark: isCheckmark,
       peakScale: 1.15,
       tapDelay: tapDelay,

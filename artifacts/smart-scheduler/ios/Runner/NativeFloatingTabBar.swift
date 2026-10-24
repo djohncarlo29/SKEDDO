@@ -37,9 +37,26 @@ final class NativeSystemTabBarController: UITabBarController,
         super.viewDidLoad()
 
         let tabs = [
-            makeTab(title: "Notes", imageName: "doc.text"),
-            makeTab(title: "Calendar", imageName: "calendar"),
-            makeTab(title: "Events", imageName: "list.bullet"),
+            makeTab(
+                title: "Home",
+                imageName: "house",
+                selectedImageName: "house.fill"
+            ),
+            makeTab(
+                title: "Calendar",
+                imageName: "calendar",
+                selectedImageName: "calendar"
+            ),
+            makeTab(
+                title: "Events",
+                imageName: "list.bullet",
+                selectedImageName: "list.bullet"
+            ),
+            makeTab(
+                title: "You",
+                imageName: "person.crop.circle",
+                selectedImageName: "person.crop.circle.fill"
+            ),
         ]
         viewControllers = tabs
 
@@ -70,12 +87,16 @@ final class NativeSystemTabBarController: UITabBarController,
         (view as? NativeTabBarPassthroughView)?.interactiveView = tabBar
     }
 
-    private func makeTab(title: String, imageName: String) -> UIViewController {
+    private func makeTab(
+        title: String,
+        imageName: String,
+        selectedImageName: String
+    ) -> UIViewController {
         let controller = NativeTabPlaceholderViewController()
         controller.tabBarItem = UITabBarItem(
             title: title,
             image: UIImage(systemName: imageName),
-            selectedImage: UIImage(systemName: imageName)
+            selectedImage: UIImage(systemName: selectedImageName)
         )
         controller.tabBarItem.accessibilityIdentifier =
             "native-tab-\(title.lowercased())"

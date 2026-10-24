@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show GlassExtraButtonPlacement, GlassTabBar, GlassThemeVariant;
+import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/widgets/fixed_size_icon.dart';
 import 'package:smart_scheduler/widgets/floating_tab_pill.dart';
@@ -64,10 +65,24 @@ void main() {
     );
 
     expect(tabBar.tabs.map((tab) => tab.label), [
-      'Notes',
+      'Home',
       'Calendar',
       'Events',
+      'You',
     ]);
+    expect((tabBar.tabs[0].icon as FixedSFIcon).icon, SFIcons.sf_house);
+    expect(
+      (tabBar.tabs[0].activeIcon as FixedSFIcon).icon,
+      SFIcons.sf_house_fill,
+    );
+    expect(
+      (tabBar.tabs[3].icon as FixedSFIcon).icon,
+      SFIcons.sf_person_crop_circle,
+    );
+    expect(
+      (tabBar.tabs[3].activeIcon as FixedSFIcon).icon,
+      SFIcons.sf_person_crop_circle_fill,
+    );
     expect(tabBar.selectedIconColor!.value, eventsAccent.value);
     expect(tabBar.selectedLabelColor!.value, eventsAccent.value);
     expect(tabBar.unselectedIconColor!.value, inactiveColor.value);
@@ -89,9 +104,10 @@ void main() {
       20.0,
       20.0,
       20.0,
+      20.0,
     ]);
     expect(tabBar.labelFontSize, 9.0);
-    expect(tabBar.iconLabelSpacing, 1.0);
+    expect(tabBar.iconLabelSpacing, 2.0);
     expect(tabBar.magnification, 1.0);
     expect(tabBar.settings, isNull);
     expect(tabBar.indicatorSettings, isNull);
@@ -154,14 +170,11 @@ void main() {
       20.0,
       20.0,
       20.0,
+      20.0,
     ]);
     expect(tabBar.extraButton!.icon as FixedSFIcon, isNotNull);
-    expect(
-      (tabBar.extraButton!.icon as FixedSFIcon).fontSize,
-      24.0,
-    );
+    expect((tabBar.extraButton!.icon as FixedSFIcon).fontSize, 24.0);
     expect(tabBar.labelFontSize, 9.0);
     expect(tabBar.magnification, 1.0);
-
   });
 }
