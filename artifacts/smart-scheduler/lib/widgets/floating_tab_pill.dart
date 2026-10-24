@@ -32,8 +32,10 @@ const LiquidGlassShape kLiquidGlassPreviewGlassShape =
   clipQuality: LiquidGlassClipQuality.exact,
 );
 
-// Mirrors the package's private bottom-bar preset, allowing its public
-// GlassThemeVariant.dark settings to be applied without adding a charcoal veil.
+// Mirrors the package's private bottom-bar preset. Keep its optical values
+// (thickness, refraction, blur, saturation, and dispersion) intact in Dark Mode;
+// only use the package dark theme's tint and lighting to avoid turning the bar
+// into a frosted blur overlay.
 const LiquidGlassSettings _floatingTabBarBaseSettings = LiquidGlassSettings(
   thickness: 30,
   blur: 3,
@@ -45,8 +47,31 @@ const LiquidGlassSettings _floatingTabBarBaseSettings = LiquidGlassSettings(
   lightAngle: 0.75 * math.pi,
   glassColor: Color(0x3DFFFFFF),
 );
-final LiquidGlassSettings _floatingTabBarDarkSettings =
-    GlassThemeVariant.dark.settings!.applyTo(_floatingTabBarBaseSettings);
+LiquidGlassSettings _floatingTabBarSettings({
+  required double sliderPosition,
+  required bool isDark,
+}) {
+  final position = sliderPosition.clamp(0.0, 1.0).toDouble();
+  final darkSettings = GlassThemeVariant.dark.settings!;
+  final safetyUnderlayOpacity = position * (isDark ? 0.20 : 0.35);
+  return _floatingTabBarBaseSettings.copyWith(
+    glassColor: Color.fromRGBO(255, 255, 255, 0.15 + 0.70 * position),
+    blur: 30 + 10 * position,
+    saturation: 1.4 + (isDark ? 0.20 : 0.40) * position,
+    backerColor: Color.fromRGBO(
+      isDark ? 255 : 0,
+      isDark ? 255 : 0,
+      isDark ? 255 : 0,
+      safetyUnderlayOpacity,
+    ),
+    lightIntensity: isDark
+        ? darkSettings.lightIntensity
+        : _floatingTabBarBaseSettings.lightIntensity,
+    ambientStrength: isDark
+        ? darkSettings.ambientStrength
+        : _floatingTabBarBaseSettings.ambientStrength,
+  );
+}
 
 /// The AppShell's platform-neutral floating tab control.
 ///
@@ -82,6 +107,14 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
 
   @override
   Widget build(BuildContext context) {
+    return ValueListenableBuilder<double>(
+      valueListenable: appLiquidGlassOpacityNotifier,
+      builder: (context, storedValue, _) =>
+          _buildForGlassPosition(context, storedValue),
+    );
+  }
+
+  Widget _buildForGlassPosition(BuildContext context, double storedValue) {
     final selectedIndex = widget.selectedIndex;
     final selectedColor = selectedIndex == 2
         ? CupertinoDynamicColor.resolve(widget.eventsAccent, context)
@@ -91,6 +124,11 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       context,
     );
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
+    final sliderPosition =
+        ((storedValue - kLiquidGlassMinimumOpacity) /
+                (kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity))
+            .clamp(0.0, 1.0)
+            .toDouble();
     final bottomOffset = floatingTabBarBottomOffset(context);
     final tabBar = GlassTabBar.bottom(
       tabs: const [
@@ -122,7 +160,10 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       iconSize: 20,
       labelFontSize: 9,
       magnification: 1,
-      settings: isDark ? _floatingTabBarDarkSettings : null,
+      settings: _floatingTabBarSettings(
+        sliderPosition: sliderPosition,
+        isDark: isDark,
+      ),
       indicatorColor: isDark
           ? kFloatingTabBarDarkIndicatorColor
           : kFloatingTabBarLightIndicatorColor,

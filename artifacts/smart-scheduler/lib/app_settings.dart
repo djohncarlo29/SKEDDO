@@ -454,19 +454,22 @@ String get appDefaultCategoryId {
 final ValueNotifier<DateLocalePreference> appDateLocaleNotifier =
     ValueNotifier<DateLocalePreference>(DateLocalePreference.monthFirst);
 
-/// Minimum material opacity used by the Liquid Glass control.
+/// Minimum stored slider value for the Liquid Glass appearance control.
 ///
-/// The Appearance slider maps its user-facing 0–100% range to 0.2–0.8
-/// material opacity so both extremes remain translucent and glass-like.
+/// The user-facing 0–100% range maps to this normalized 0.2–0.8 range; the
+/// actual tab-bar tint, blur, saturation, and underlay come from its lookup.
 const double kLiquidGlassMinimumOpacity = 0.2;
 
-/// Maximum material opacity used by the Liquid Glass control.
+/// Maximum stored slider value for the Liquid Glass appearance control.
 const double kLiquidGlassMaximumOpacity = 0.8;
 
-/// Opacity of the floating Liquid Glass tab bar material.
-/// The setting is quantized to tenths by the Appearance subscreen.
+/// Stored value corresponding to the slider's 50% default position.
+const double kLiquidGlassDefaultOpacity = 0.5;
+
+/// Slider value driving the floating Liquid Glass tab-bar appearance profile.
+/// The saved position is quantized to tenths by the Appearance subscreen.
 final ValueNotifier<double> appLiquidGlassOpacityNotifier =
-    ValueNotifier<double>(kLiquidGlassMaximumOpacity);
+    ValueNotifier<double>(kLiquidGlassDefaultOpacity);
 
 // ── SharedPreferences keys ────────────────────────────────────────────────────
 const _kThemeKey = 'app_theme';
