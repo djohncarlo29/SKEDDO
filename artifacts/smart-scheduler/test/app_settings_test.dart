@@ -13,7 +13,7 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     SharedPreferences.resetStatic();
-    appLiquidGlassOpacityNotifier.value = kLiquidGlassDefaultOpacity;
+    appLiquidGlassOpacityNotifier.value = kLiquidGlassMaximumOpacity;
     await LocalStorage.instance.useDatabaseForTesting(
       AppDatabase(NativeDatabase.memory()),
     );
@@ -23,10 +23,10 @@ void main() {
     await LocalStorage.instance.resetDatabaseForTesting();
   });
 
-  test('Liquid Glass defaults to 50% when no value is stored', () async {
+  test('Liquid Glass defaults to 80% when no value is stored', () async {
     await loadAppSettings();
 
-    expect(appLiquidGlassOpacityNotifier.value, kLiquidGlassDefaultOpacity);
+    expect(appLiquidGlassOpacityNotifier.value, kLiquidGlassMaximumOpacity);
   });
 
   test('Liquid Glass restores the exact saved value after reload', () async {
