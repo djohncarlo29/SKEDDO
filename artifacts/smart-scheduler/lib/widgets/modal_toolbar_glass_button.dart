@@ -1,13 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
+    show GlassIconButton, GlassIconButtonShape, GlassQuality;
 
 import '../app_theme.dart';
 
-/// SKEDDO's captured Liquid Glass control for modal sheet toolbars.
-///
-/// The package GlassButton falls back to a frosted surface on renderers without
-/// its premium shader. This wrapper keeps the app's established optical glass
-/// renderer and shares action-state behavior across sheet toolbars.
-class ModalToolbarGlassButton extends StatelessWidget {
+/// Shared package GlassIconButton for modal sheet toolbar actions.
+class ModalToolbarGlassButton extends StatefulWidget {
   const ModalToolbarGlassButton({
     super.key,
     required this.icon,
@@ -28,10 +28,6 @@ class ModalToolbarGlassButton extends StatelessWidget {
 
   final IconData icon;
   final Color iconColor;
-
-  /// The former button surface is retained as an action-state signal.
-  /// Active checkmarks use its accent/category color for the glyph; disabled
-  /// actions are made non-interactive while retaining the glass surface.
   final Color surfaceColor;
   final VoidCallback onTap;
   final Widget? child;
@@ -46,66 +42,88 @@ class ModalToolbarGlassButton extends StatelessWidget {
   final String? semanticLabel;
 
   @override
+  State<ModalToolbarGlassButton> createState() =>
+      _ModalToolbarGlassButtonState();
+}
+
+class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
+  Timer? _tapTimer;
+  bool _canTap = true;
+
+  void _handleTap() {
+    if (!_canTap) return;
+    _tapTimer?.cancel();
+    if (widget.tapDelay == Duration.zero) {
+      widget.onTap();
+      return;
+    }
+    _tapTimer = Timer(widget.tapDelay, () {
+      if (mounted && _canTap) widget.onTap();
+    });
+  }
+
+  @override
+  void dispose() {
+    _tapTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final resolvedSurface = resolveThemeColor(surfaceColor, context);
+    final resolvedSurface = resolveThemeColor(widget.surfaceColor, context);
     final disabledSurface = resolveThemeColor(kDisabledActionSurface, context);
+    final checkmark =
+        widget.isCheckmark || widget.icon == CupertinoIcons.checkmark;
+    final disabledBySurface =
+        checkmark && resolvedSurface.toARGB32() == disabledSurface.toARGB32();
+    _canTap = widget.enabled && !disabledBySurface;
+
     final neutralSurfaces = [
       resolveThemeColor(kModalCard, context).toARGB32(),
       resolveThemeColor(kCardColor, context).toARGB32(),
     ];
-    final checkmark = isCheckmark || icon == CupertinoIcons.checkmark;
-    final disabledBySurface =
-        checkmark && resolvedSurface.toARGB32() == disabledSurface.toARGB32();
-    final canTap = enabled && !disabledBySurface;
     final followsActionColor =
         checkmark &&
         !disabledBySurface &&
         !neutralSurfaces.contains(resolvedSurface.toARGB32());
-    final resolvedIconColor = followsActionColor
+    final iconColor = followsActionColor
         ? resolvedSurface
-        : resolveThemeColor(iconColor, context);
+        : resolveThemeColor(widget.iconColor, context);
 
     Widget iconWidget =
-        child ?? Icon(icon, color: resolvedIconColor, size: iconSize);
-    if (followsActionColor && child != null) {
+        widget.child ??
+        Icon(widget.icon, color: iconColor, size: widget.iconSize);
+    if (followsActionColor && widget.child != null) {
       iconWidget = ColorFiltered(
-        colorFilter: ColorFilter.mode(resolvedIconColor, BlendMode.srcIn),
+        colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
         child: iconWidget,
       );
     }
 
-    final positionedIcon = iconOffset == Offset.zero
+    final positionedIcon = widget.iconOffset == Offset.zero
         ? iconWidget
-        : Transform.translate(offset: iconOffset, child: iconWidget);
-    final transformedIcon = flipHorizontal
+        : Transform.translate(offset: widget.iconOffset, child: iconWidget);
+    final transformedIcon = widget.flipHorizontal
         ? Transform.scale(scaleX: -1, child: positionedIcon)
         : positionedIcon;
     final fallbackLabel = checkmark
         ? 'Confirm'
-        : icon == CupertinoIcons.chevron_left
+        : widget.icon == CupertinoIcons.chevron_left
         ? 'Back'
-        : icon == CupertinoIcons.xmark
+        : widget.icon == CupertinoIcons.xmark
         ? 'Close'
         : 'Action';
 
-    return Semantics(
-      label: semanticLabel ?? fallbackLabel,
-      button: true,
-      enabled: canTap,
-      child: IgnorePointer(
-        ignoring: !canTap,
-        child: StaticLiquidGlassActionButton(
-          // Keep checkmark actions on the same neutral translucent glass as
-          // the other toolbar controls; the action color belongs on the glyph.
-          color: checkmark ? kModalCard : surfaceColor,
-          size: size,
-          isCheckmark: false,
-          peakScale: peakScale,
-          tapDelay: tapDelay,
-          onTap: onTap,
-          child: Center(child: transformedIcon),
-        ),
-      ),
+    return GlassIconButton(
+      icon: transformedIcon,
+      onPressed: _canTap ? _handleTap : null,
+      size: widget.size,
+      iconSize: widget.iconSize,
+      shape: GlassIconButtonShape.circle,
+      quality: GlassQuality.premium,
+      useOwnLayer: true,
+      interactionScale: widget.peakScale,
+      semanticLabel: widget.semanticLabel ?? fallbackLabel,
     );
   }
 }

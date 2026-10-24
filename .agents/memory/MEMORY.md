@@ -47,7 +47,7 @@
 - [Split Cupertino picker chevrons](split-chevron-clipping.md) — clip upper/lower halves separately; translate the lower source by -half + offset to move only the lower chevron.
 - [Fixed Squircle Stadium radius](fixed-stadium-radius.md) — shared stadium controls use 24px corners; the 40px search bar explicitly remains 20px.
 - [Dark-mode ghost and sheet outlines](dark-mode-ghost-and-sheet-outlines.md) — overlay/lifted-card hairlines are Dark Mode-only; grouping snap glow bypasses shadow suppression.
-- [Modal toolbar glass fidelity](light-mode-checkmark-glass.md) — use SKEDDO's captured lens with action-tinted checks; avoid package fallbacks that flatten into blur overlays.
+- [Modal toolbar package glass](light-mode-checkmark-glass.md) — use the package GlassIconButton with action-tinted checks and disabled confirmation state.
 - [Subscreen checkmark layout](subscreen-checkmark-layout.md) — selectable rows share an OS-scaled checkmark slot with fixed 16px label and edge gaps.
 - [Flutter APK Gradle stability](flutter-apk-gradle-stability.md) — SIGBUS fix requires DEFAULT_JVM_OPTS in gradlew (not just gradle.properties); daemon=false runs in wrapper JVM which ignores org.gradle.jvmargs.
 - [Shorebird patch and release workflow](shorebird-workflow.md) — use `--platforms`; preserve JDK, preflight, SDK, temp-storage, native-baseline, and release checks.
@@ -55,7 +55,7 @@
 - [liquid_glass_widgets Android crash](liquid-glass-android-crash.md) — liquid_glass shaders are SkSL-incompatible; app crashes on Android when any GlassSwitch is rendered. Use _SlidingSwitch (pure Flutter) on non-iOS.
 - [Android performance visual fidelity](android-performance-visual-fidelity.md) — preserve designed glass effects; require physical-device confirmation before claiming renderer-dependent Android blur is verified.
 - [Android Freeform/Recents window band](android-recents-preview-theme.md) — distinguish system caption and Recents layers before changing inset behavior; preserve floating-window controls.
-- [Static Liquid Glass controls](static-liquid-glass-action-buttons.md) — preserve SKEDDO's captured optics for fixed actions and modal toolbars; package fallbacks can look like blur.
+- [Static Liquid Glass controls](static-liquid-glass-action-buttons.md) — preserve SKEDDO's captured optics for fixed actions; modal toolbars use the package GlassIconButton.
 - [Replit home partition quota](replit-home-quota.md) — /home/runner has a per-user quota well below its 32GB size; move caches to /home/runner/workspace/.cache and symlink back.
 - [Liquid Glass platform compatibility](liquid-glass-platform-compatibility.md) — preserve the app fork, check toolchain compatibility, and route native iOS controls separately.
 - [Glass navigation package compatibility](liquid-glass-widgets-compatibility.md) — the title package's transitive dependency requires Dart 3.12.2; keep SDK pins aligned.

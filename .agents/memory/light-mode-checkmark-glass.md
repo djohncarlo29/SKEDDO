@@ -1,18 +1,16 @@
 ---
-name: Modal toolbar glass fidelity
-description: Modal sheet and attachment-preview confirmations use SKEDDO's captured glass, with accent tint and disabled state.
+name: Modal toolbar package glass
+description: Modal toolbar actions use flutter_liquid_glass_widgets GlassIconButton with accent-tinted or disabled checkmarks.
 ---
 
-Modal sheet and Notes attachment-preview toolbar controls use the shared
-SKEDDO `StaticLiquidGlassActionButton` rendering path. Active checkmarks keep a
-neutral translucent glass surface and use the action's accent/category color as
-the glyph tint. A checkmark whose action surface is `kDisabledActionSurface`
-remains glass but is disabled.
+Modal sheet and Notes attachment-preview toolbar controls use the package's
+`GlassIconButton`, which is designed for toolbar icon actions. Active checkmarks
+use the action's accent/category color for the glyph. A checkmark whose action
+surface is `kDisabledActionSurface` remains a glass button but is disabled.
 
-**Why:** The package `GlassButton` selects a lightweight frosted fallback when
-its premium shader is unavailable, which can look like a blur overlay. SKEDDO's
-captured lens is the established optical renderer for these controls.
+**Why:** The user explicitly wants the package's toolbar glass buttons here;
+using SKEDDO's custom action renderer does not meet that product requirement.
 
 **How to apply:** Route sheet and attachment-preview toolbar actions through the
-shared wrapper. Keep checkmark tint separate from its glass surface and preserve
-the app-owned renderer's capture, contour, and tap behavior.
+shared wrapper with `GlassQuality.premium` and `useOwnLayer: true`; keep action
+tint and disabled state on the glyph/button without replacing package rendering.
