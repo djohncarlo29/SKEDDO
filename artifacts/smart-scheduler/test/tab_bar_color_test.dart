@@ -171,7 +171,7 @@ void main() {
     );
     expect(
       tabBar.settings!.glassColor.toARGB32() & 0x00FFFFFF,
-      0x002C2C2E,
+      0x003E3E40,
     );
     expect(
       tabBar.settings!.lightIntensity,

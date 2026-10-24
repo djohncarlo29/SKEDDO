@@ -93,9 +93,7 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         checkmark && !neutralSurfaces.contains(resolvedSurface.toARGB32());
     final activeTintedCheckmark = followsActionColor && _canTap;
     final iconColor = followsActionColor
-        ? _canTap
-              ? CupertinoColors.white
-              : CupertinoColors.label.resolveFrom(context)
+        ? CupertinoColors.white
         : resolveThemeColor(widget.iconColor, context);
 
     Widget iconWidget =
@@ -229,6 +227,11 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         child: ExcludeSemantics(child: renderedButton),
       );
     }
-    return renderedButton;
+    return activeTintedCheckmark
+        ? Opacity(
+            opacity: kSkeddoActiveCheckmarkButtonOpacity,
+            child: renderedButton,
+          )
+        : renderedButton;
   }
 }

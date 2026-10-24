@@ -13,6 +13,7 @@ const double kSkeddoLightBottomBarOpacity = 0.30;
 const double kSkeddoDarkBottomBarOpacity = 0.40;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 1.0;
+const double kSkeddoActiveCheckmarkButtonOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
 
 const LiquidGlassSettings _packageBottomBarGlassDefaults = LiquidGlassSettings(
@@ -40,9 +41,9 @@ final LiquidGlassSettings kSkeddoBottomBarGlassSettings =
 final LiquidGlassSettings kSkeddoDarkBottomBarGlassSettings =
     kSkeddoBottomBarGlassSettings.copyWith(
       glassColor: const Color.fromRGBO(
-        0x2C,
-        0x2C,
-        0x2E,
+        0x3E,
+        0x3E,
+        0x40,
         kSkeddoDarkBottomBarOpacity,
       ),
       lightAngle: GlassThemeVariant.dark.settings!.lightAngle,

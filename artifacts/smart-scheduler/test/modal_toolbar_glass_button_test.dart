@@ -48,6 +48,11 @@ void main() {
       );
       final stretchShell = tester.widget<GlassButton>(stretchShellFinder);
       final icon = tester.widget<Icon>(find.byIcon(CupertinoIcons.checkmark));
+      final activeOpacityFinder = find.byWidgetPredicate(
+        (widget) =>
+            widget is Opacity &&
+            widget.opacity == kSkeddoActiveCheckmarkButtonOpacity,
+      );
       expect(stretchShell.width, 40);
       expect(stretchShell.height, 40);
       expect(stretchShell.interactionScale, 1.15);
@@ -65,6 +70,14 @@ void main() {
         find.descendant(
           of: stretchShellFinder,
           matching: find.byIcon(CupertinoIcons.checkmark),
+        ),
+        findsOneWidget,
+      );
+      expect(activeOpacityFinder, findsOneWidget);
+      expect(
+        find.descendant(
+          of: activeOpacityFinder,
+          matching: stretchShellFinder,
         ),
         findsOneWidget,
       );
@@ -176,10 +189,10 @@ void main() {
         );
         expect(button.settings!.chromaticAberration, 0.3);
         expect(button.settings!.glassColor.a, closeTo(0.85, 0.001));
-        final expectedGlyphColor = entry.$1 == Brightness.light
-            ? CupertinoColors.label.resolveFrom(context)
-            : CupertinoColors.white;
-        expect(icon.color!.toARGB32(), expectedGlyphColor.toARGB32());
+        expect(
+          icon.color!.toARGB32(),
+          CupertinoColors.white.toARGB32(),
+        );
 
         await tester.tap(find.byIcon(CupertinoIcons.checkmark));
         await tester.pump();
