@@ -7,10 +7,12 @@ Modal sheet and Notes attachment-preview toolbar controls use the package's
 `GlassIconButton`, which is designed for toolbar icon actions. Pass the shared
 floating-tab-bar `LiquidGlassSettings` to these standalone buttons. Active
 checkmarks use a fully opaque accent/category base, a 30% refraction-only
-package layer, a clear full-strength Fresnel/lighting layer, and an opaque white
-glyph. Inactive checkmarks use 85% glass tint with a white glyph,
-tinted `#CECDD3` in Light Mode or `#474749` in Dark Mode, while remaining
-semantically and functionally disabled.
+package layer, and a clear full-strength Fresnel/lighting layer. Their visual
+layers must sit inside one transparent `GlassButton.custom` stretch shell so
+the fill, optical layers, and white glyph deform together. Inactive checkmarks
+use 85% glass tint with a contrast-resolved glyph, tinted `#CECDD3` in Light
+Mode or `#474749` in Dark Mode, while remaining semantically and functionally
+disabled.
 
 **Why:** Without explicit settings, `GlassIconButton` uses the package's general
 theme defaults (lower thickness/refraction, more blur) instead of the tab bar's
@@ -24,5 +26,6 @@ the package glass rather than passing it as `glassColor`; inactive grey tints ca
 still use `glassColor` directly. Active checkmarks need a fully opaque color
 base, a translucent refraction-only package layer, and a clear, full-strength
 Fresnel/lighting overlay with zero chromatic aberration. Keep inactive controls
-disabled and preserve the package renderer. Non-Impeller renderers still use
-the package's lighter path.
+disabled and preserve the package renderer. Light-mode inactive glyphs need a
+dark contrast color to remain visible against their pale glass tint. Non-Impeller
+renderers still use the package's lighter path.

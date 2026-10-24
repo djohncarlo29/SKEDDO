@@ -2,7 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassIconButton, GlassIconButtonShape, GlassQuality;
+    show
+        GlassButton,
+        GlassButtonStyle,
+        GlassIconButton,
+        GlassIconButtonShape,
+        GlassQuality,
+        LiquidOval;
 
 import '../app_theme.dart';
 import 'skeddo_glass_settings.dart';
@@ -84,11 +90,12 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
       resolveThemeColor(kCardColor, context).toARGB32(),
     ];
     final followsActionColor =
-        checkmark &&
-        !neutralSurfaces.contains(resolvedSurface.toARGB32());
+        checkmark && !neutralSurfaces.contains(resolvedSurface.toARGB32());
     final activeTintedCheckmark = followsActionColor && _canTap;
     final iconColor = followsActionColor
-        ? CupertinoColors.white
+        ? _canTap
+              ? CupertinoColors.white
+              : CupertinoColors.label.resolveFrom(context)
         : resolveThemeColor(widget.iconColor, context);
 
     Widget iconWidget =
@@ -121,62 +128,98 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         ? 'Close'
         : 'Action';
 
-    final button = GlassIconButton(
-      icon: transformedIcon,
-      // Keep checkmark glass fully styled even when its action is unavailable;
-      // _handleTap still blocks the action while the package renders it active.
-      onPressed: checkmark ? _handleTap : (_canTap ? _handleTap : null),
-      size: widget.size,
-      iconSize: widget.iconSize,
-      shape: GlassIconButtonShape.circle,
-      settings: glassSettings,
-      quality: GlassQuality.premium,
-      useOwnLayer: true,
-      interactionScale: widget.peakScale,
-      semanticLabel: widget.semanticLabel ?? fallbackLabel,
-    );
-    final renderedButton = activeTintedCheckmark
-        ? SizedBox(
-            width: widget.size,
-            height: widget.size,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ClipOval(
-                  child: ColoredBox(
-                    color: resolvedSurface.withValues(
-                      alpha: kSkeddoActiveCheckmarkFillOpacity,
-                    ),
-                  ),
-                ),
-                IgnorePointer(
-                  child: ExcludeSemantics(
-                    child: Opacity(
-                      opacity:
-                          kSkeddoActiveCheckmarkRefractionOverlayOpacity,
-                      child: GlassIconButton(
-                        icon: const SizedBox.shrink(),
-                        onPressed: () {},
-                        size: widget.size,
-                        iconSize: widget.iconSize,
-                        shape: GlassIconButtonShape.circle,
-                        settings:
-                            skeddoActiveCheckmarkRefractionSettingsFor(
-                              brightness,
-                            ),
-                        quality: GlassQuality.premium,
-                        useOwnLayer: true,
-                        interactionScale: 1,
-                        semanticLabel: '',
-                      ),
-                    ),
-                  ),
-                ),
-                button,
-              ],
+    final Widget renderedButton;
+    if (activeTintedCheckmark) {
+      // The package's GlassIconButton stretches only its own layer. Keep all
+      // visual layers inside one transparent GlassButton so its LiquidStretch
+      // transforms the color fill, refraction, lighting, and glyph together.
+      final composite = Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipOval(
+            child: ColoredBox(
+              color: resolvedSurface.withValues(
+                alpha: kSkeddoActiveCheckmarkFillOpacity,
+              ),
             ),
-          )
-        : button;
+          ),
+          IgnorePointer(
+            child: ExcludeSemantics(
+              child: Opacity(
+                opacity: kSkeddoActiveCheckmarkRefractionOverlayOpacity,
+                child: GlassIconButton(
+                  icon: const SizedBox.shrink(),
+                  onPressed: () {},
+                  size: widget.size,
+                  iconSize: widget.iconSize,
+                  shape: GlassIconButtonShape.circle,
+                  settings: skeddoActiveCheckmarkRefractionSettingsFor(
+                    brightness,
+                  ),
+                  quality: GlassQuality.premium,
+                  useOwnLayer: true,
+                  interactionScale: 1,
+                  semanticLabel: '',
+                ),
+              ),
+            ),
+          ),
+          IgnorePointer(
+            child: ExcludeSemantics(
+              child: GlassIconButton(
+                icon: const SizedBox.shrink(),
+                onPressed: () {},
+                size: widget.size,
+                iconSize: widget.iconSize,
+                shape: GlassIconButtonShape.circle,
+                settings: glassSettings,
+                quality: GlassQuality.premium,
+                useOwnLayer: true,
+                interactionScale: 1,
+                semanticLabel: '',
+              ),
+            ),
+          ),
+          IgnorePointer(
+            child: ExcludeSemantics(child: Center(child: transformedIcon)),
+          ),
+        ],
+      );
+
+      renderedButton = GlassButton.custom(
+        onTap: _handleTap,
+        width: widget.size,
+        height: widget.size,
+        shape: const LiquidOval(),
+        quality: GlassQuality.premium,
+        interactionScale: widget.peakScale,
+        stretch: 0.5,
+        resistance: 0.01,
+        enabled: _canTap,
+        style: GlassButtonStyle.transparent,
+        glowOpacity: 0,
+        glowBlurRadius: 0,
+        glowSpreadRadius: 0,
+        ambientBaseLight: 0,
+        label: widget.semanticLabel ?? fallbackLabel,
+        child: composite,
+      );
+    } else {
+      renderedButton = GlassIconButton(
+        icon: transformedIcon,
+        // Keep checkmark glass fully styled even when its action is unavailable;
+        // _handleTap still blocks the action while the package renders it active.
+        onPressed: checkmark ? _handleTap : (_canTap ? _handleTap : null),
+        size: widget.size,
+        iconSize: widget.iconSize,
+        shape: GlassIconButtonShape.circle,
+        settings: glassSettings,
+        quality: GlassQuality.premium,
+        useOwnLayer: true,
+        interactionScale: widget.peakScale,
+        semanticLabel: widget.semanticLabel ?? fallbackLabel,
+      );
+    }
     if (checkmark && !_canTap) {
       return Semantics(
         container: true,
