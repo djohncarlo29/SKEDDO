@@ -89,6 +89,10 @@ class _ReleaseResetInteractiveViewerState
       minScale: widget.minScale,
       maxScale: widget.maxScale,
       boundaryMargin: widget.boundaryMargin,
+      // Let the transformed child bounds grow beyond the initial viewport.
+      // Any silhouette clipping belongs inside `child`, so it scales with the
+      // image instead of acting as a stationary zoom window.
+      clipBehavior: Clip.none,
       // The viewer owns the return-to-fit animation; suppress its independent
       // fling so two animations never compete for the same transform matrix.
       interactionEndFrictionCoefficient: 1e-50,

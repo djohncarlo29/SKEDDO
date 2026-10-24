@@ -14,7 +14,14 @@ void main() {
             width: 300,
             height: 300,
             child: ReleaseResetInteractiveViewer(
-              child: ColoredBox(color: CupertinoColors.activeBlue),
+              child: ClipRect(
+                key: ValueKey('zoomed-bounds'),
+                child: SizedBox(
+                  width: 100,
+                  height: 120,
+                  child: ColoredBox(color: CupertinoColors.activeBlue),
+                ),
+              ),
             ),
           ),
         ),
@@ -23,8 +30,11 @@ void main() {
 
     final viewerFinder = find.byType(InteractiveViewer);
     final viewer = tester.widget<InteractiveViewer>(viewerFinder);
+    expect(viewer.clipBehavior, Clip.none);
     final transform = viewer.transformationController!;
     final rect = tester.getRect(viewerFinder);
+    final boundsFinder = find.byKey(const ValueKey('zoomed-bounds'));
+    final initialBounds = tester.getRect(boundsFinder);
     final firstTouch = await tester.startGesture(
       Offset(rect.center.dx - 50, rect.center.dy),
       pointer: 1,
@@ -41,6 +51,7 @@ void main() {
     await secondTouch.moveTo(Offset(rect.center.dx + 100, rect.center.dy));
     await tester.pump(const Duration(milliseconds: 80));
     expect(transform.value.getMaxScaleOnAxis(), greaterThan(1.4));
+    expect(tester.getRect(boundsFinder).width, greaterThan(initialBounds.width));
 
     await firstTouch.up();
     await secondTouch.up();

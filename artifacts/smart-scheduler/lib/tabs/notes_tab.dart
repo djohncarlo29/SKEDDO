@@ -3328,9 +3328,9 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
             displayW = c.maxWidth;
             displayH = c.maxHeight.isFinite ? c.maxHeight : c.maxWidth;
           }
-          return ClipPath(
-            clipper: _PreviewSquircleClipper(),
-            child: ReleaseResetInteractiveViewer(
+          return ReleaseResetInteractiveViewer(
+            child: ClipPath(
+              clipper: _PreviewSquircleClipper(),
               child: SizedBox(
                 width: displayW,
                 height: displayH,
