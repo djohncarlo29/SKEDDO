@@ -13,7 +13,8 @@ Put every visual layer inside one transparent `GlassButton.custom` stretch shell
 so fill, optical layers, and white glyph deform together. Inactive checkmarks
 use 85% glass tint and a white glyph in both themes, tinted `#CECDD3` in Light
 Mode or `#474749` in Dark Mode, while remaining semantically and functionally
-disabled.
+disabled. Set `GlassIconButton.glowColor` to transparent on these inactive
+checkmarks to remove the touch halo without changing their resting glass tint.
 
 **Why:** Without explicit settings, `GlassIconButton` uses the package's general
 theme defaults (lower thickness/refraction, more blur) instead of the tab bar's
@@ -30,5 +31,6 @@ shared wrapper with the shared bar settings, `GlassQuality.premium`, and
 the package glass rather than passing it as `glassColor`; apply 85% opacity to
 the category fill only and keep the glass layers at their configured strengths.
 Inactive grey tints use `glassColor` directly, with a white glyph in both themes.
-Keep inactive controls disabled and preserve the package renderer.
+Keep inactive controls disabled, suppress their glow with transparent
+`glowColor`, and preserve the package renderer.
 Non-Impeller renderers still use the package's lighter path.

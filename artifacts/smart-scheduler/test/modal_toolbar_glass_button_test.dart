@@ -185,6 +185,7 @@ void main() {
         );
         expect(button.settings!.chromaticAberration, 0.3);
         expect(button.settings!.glassColor.a, closeTo(0.85, 0.001));
+        expect(button.glowColor, const Color(0x00000000));
         expect(
           icon.color!.toARGB32(),
           CupertinoColors.white.toARGB32(),

@@ -215,6 +215,9 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         quality: GlassQuality.premium,
         useOwnLayer: true,
         interactionScale: widget.peakScale,
+        glowColor: checkmark && !_canTap
+            ? const Color(0x00000000)
+            : null,
         semanticLabel: widget.semanticLabel ?? fallbackLabel,
       );
     }
