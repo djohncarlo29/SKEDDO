@@ -151,3 +151,4 @@
 - [Search-mode parent restoration](search-mode-parent-restoration.md) — closing search returns to the same settled parent screen, never a rubberbanded or partially swiped state.
 - [Top-level modal sheet behavior](top-level-modal-sheet-behavior.md) — top-level sheets leave AppShell stationary; only nested sheets scale and stack the parent sheet, with enough top clearance for its glass control.
 - [Flutter browser touch verification](flutter-browser-touch-gestures.md) — use timed, incremental touch moves; a one-move swipe can falsely suggest a short page cannot collapse.
+- [GlassPopover dismissal lifecycle](glass-popover-dismissal-lifecycle.md) — onClose starts the morph; keep its host mounted through spring settle before removing the root overlay.

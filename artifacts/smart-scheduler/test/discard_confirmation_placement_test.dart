@@ -46,12 +46,31 @@ void main() {
     expect(popover.alignment, GlassMenuAlignment.topLeft);
     expect(popover.popoverWidth, 400);
 
-    final discardButtonFinder = find.byType(GlassButton);
+    final discardButtonFinder = find.ancestor(
+      of: find.text('Discard Changes'),
+      matching: find.byType(GlassButton),
+    );
     expect(discardButtonFinder, findsOneWidget);
     expect(tester.getSize(discardButtonFinder).width, greaterThan(300));
 
     await tester.tapAt(const Offset(700, 500));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 900));
+    await tester.pump();
     expect(await confirmation, isNull);
+
+    final acceptedConfirmation = showDiscardChangesConfirmationSheet(
+      pageContext,
+      entityLabel: 'event',
+      isNew: false,
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Are you sure you want to discard your changes?'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Discard Changes'));
+    await tester.pump(const Duration(milliseconds: 900));
+    await tester.pump();
+    expect(await acceptedConfirmation, isTrue);
   });
 }
