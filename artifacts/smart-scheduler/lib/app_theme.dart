@@ -384,12 +384,12 @@ const kTertiaryLabel = CupertinoDynamicColor.withBrightness(
   darkColor: Color(0x66EBEBF5), // 40% dark-mode opacity
 );
 
-// Explicit disabled action surface. Do not derive this by multiplying the
-// tertiary label alpha: the unavailable checkmark buttons are intentionally a
-// fixed 25% surface in both appearances.
+// Explicit inactive checkmark tint. Do not derive these colors from the
+// tertiary label: inactive checkmarks use the same 85% glass treatment as
+// active ones, with only the tint color changing by appearance.
 const kDisabledActionSurface = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFCECDD3),
-  darkColor: Color(0xFF474747),
+  darkColor: Color(0xFF474749),
 );
 
 // ── Empty-state placeholder icon colour ───────────────────────────────────────

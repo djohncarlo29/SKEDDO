@@ -53,26 +53,58 @@ void main() {
     }
   });
 
-  testWidgets('unavailable checkmark disables the package glass button', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      const CupertinoApp(
-        home: Center(
-          child: ModalToolbarGlassButton(
-            icon: CupertinoIcons.checkmark,
-            iconColor: CupertinoColors.white,
-            surfaceColor: kDisabledActionSurface,
-            isCheckmark: true,
-            onTap: _noOp,
-          ),
+  testWidgets(
+    'inactive checkmarks retain active glass treatment and ignore taps',
+    (tester) async {
+      for (final entry in [
+        (
+          Brightness.light,
+          const Color(0xFFCECDD3),
         ),
-      ),
-    );
+        (
+          Brightness.dark,
+          const Color(0xFF474749),
+        ),
+      ]) {
+        var taps = 0;
+        await tester.pumpWidget(
+          CupertinoApp(
+            theme: CupertinoThemeData(brightness: entry.$1),
+            home: Center(
+              child: ModalToolbarGlassButton(
+                icon: CupertinoIcons.checkmark,
+                iconColor: CupertinoColors.white,
+                surfaceColor: kDisabledActionSurface,
+                isCheckmark: true,
+                semanticLabel: 'Save',
+                onTap: () => taps++,
+              ),
+            ),
+          ),
+        );
 
-    final button = tester.widget<GlassIconButton>(find.byType(GlassIconButton));
-    expect(button.onPressed, isNull);
-  });
+        final context = tester.element(
+          find.byType(ModalToolbarGlassButton),
+        );
+        final inactiveTint = resolveThemeColor(kDisabledActionSurface, context);
+        expect(inactiveTint.toARGB32(), entry.$2.toARGB32());
+
+        final button = tester.widget<GlassIconButton>(
+          find.byType(GlassIconButton),
+        );
+        final icon = tester.widget<Icon>(find.byIcon(CupertinoIcons.checkmark));
+        expect(button.onPressed, isNotNull);
+        expect(
+          button.settings!.glassColor,
+          inactiveTint.withValues(alpha: kSkeddoTintedActionGlassOpacity),
+        );
+        expect(button.settings!.glassColor.a, closeTo(0.85, 0.001));
+        expect(icon.color!.toARGB32(), CupertinoColors.white.toARGB32());
+
+        await tester.tap(find.byIcon(CupertinoIcons.checkmark));
+        await tester.pump();
+        expect(taps, 0);
+      }
+    },
+  );
 }
-
-void _noOp() {}

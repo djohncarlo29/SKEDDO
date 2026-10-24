@@ -85,7 +85,6 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
     ];
     final followsActionColor =
         checkmark &&
-        !disabledBySurface &&
         !neutralSurfaces.contains(resolvedSurface.toARGB32());
     final iconColor = followsActionColor
         ? CupertinoColors.white
@@ -119,9 +118,11 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         ? 'Close'
         : 'Action';
 
-    return GlassIconButton(
+    final button = GlassIconButton(
       icon: transformedIcon,
-      onPressed: _canTap ? _handleTap : null,
+      // Keep checkmark glass fully styled even when its action is unavailable;
+      // _handleTap still blocks the action while the package renders it active.
+      onPressed: checkmark ? _handleTap : (_canTap ? _handleTap : null),
       size: widget.size,
       iconSize: widget.iconSize,
       shape: GlassIconButtonShape.circle,
@@ -131,5 +132,15 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
       interactionScale: widget.peakScale,
       semanticLabel: widget.semanticLabel ?? fallbackLabel,
     );
+    if (checkmark && !_canTap) {
+      return Semantics(
+        container: true,
+        button: true,
+        enabled: false,
+        label: widget.semanticLabel ?? fallbackLabel,
+        child: ExcludeSemantics(child: button),
+      );
+    }
+    return button;
   }
 }

@@ -11,7 +11,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
 /// SKEDDO's explicit, mode-specific tint colors and opacities.
 const double kSkeddoLightBottomBarOpacity = 0.20;
 const double kSkeddoDarkBottomBarOpacity = 0.30;
-const double kSkeddoTintedActionGlassOpacity = 0.24;
+const double kSkeddoTintedActionGlassOpacity = 0.85;
 
 const LiquidGlassSettings _packageBottomBarGlassDefaults = LiquidGlassSettings(
   thickness: 30,
