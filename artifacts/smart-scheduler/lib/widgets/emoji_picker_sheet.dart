@@ -3,7 +3,10 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter_sficon/flutter_sficon.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../app_theme.dart';
+import 'fixed_size_icon.dart';
 import 'modal_toolbar_glass_button.dart';
 import 'horizontal_edge_fade.dart';
 import 'header_title_scroller.dart';
@@ -17,6 +20,10 @@ import 'vertical_edge_fade.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 typedef _EmojiCat = ({String icon, String name, List<String> emojis});
+
+const _emojiCategoryLightSvg = 'assets/custom_icons/emoji.svg';
+const _emojiCategoryDarkSvg = 'assets/custom_icons/emoji_fill.svg';
+const _emojiCategorySoccerBallSvg = 'assets/custom_icons/SoccerBall.svg';
 
 class _EmojiGridLayout {
   final PickerGridGeometry geometry;
@@ -891,6 +898,109 @@ const List<_EmojiCat> kEmojiCategories = [
   ),
 ];
 
+Widget _buildCategoryTabIcon(
+  int index,
+  double size,
+  Color color,
+  Color pillColor,
+  Brightness brightness,
+) {
+  switch (index) {
+    case 0:
+      return SvgPicture.asset(
+        brightness == Brightness.dark
+            ? _emojiCategoryDarkSvg
+            : _emojiCategoryLightSvg,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      );
+    case 1:
+      return FixedSFIcon(
+        brightness == Brightness.dark
+            ? SFIcons.sf_hand_wave_fill
+            : SFIcons.sf_hand_wave,
+        fontSize: size,
+        color: color,
+      );
+    case 2:
+      return FixedSFIcon(
+        brightness == Brightness.dark ? SFIcons.sf_dog_fill : SFIcons.sf_dog,
+        fontSize: size,
+        color: color,
+      );
+    case 3:
+      // SF Symbols has a filled Apple logo rather than a fruit-specific
+      // apple glyph; use its silhouette in both appearances.
+      return FixedSFIcon(
+        SFIcons.sf_apple_logo,
+        fontSize: size,
+        color: color,
+      );
+    case 4:
+      // Match the parent category icon picker: the ball is two-tone, with a
+      // contrasting outer ring, rather than a platform-rendered emoji.
+      final detailColor =
+          brightness == Brightness.dark ? color : pillColor;
+      final ballColor =
+          brightness == Brightness.dark ? pillColor : color;
+      return SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: detailColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            SvgPicture.asset(
+              _emojiCategorySoccerBallSvg,
+              fit: BoxFit.contain,
+              colorFilter: ColorFilter.mode(ballColor, BlendMode.srcIn),
+            ),
+            CustomPaint(painter: _CategoryBallRingPainter(detailColor)),
+          ],
+        ),
+      );
+    case 5:
+      return Icon(CupertinoIcons.airplane, size: size, color: color);
+    case 6:
+      return Icon(CupertinoIcons.lightbulb_fill, size: size, color: color);
+    case 7:
+      return Icon(CupertinoIcons.suit_heart_fill, size: size, color: color);
+    default:
+      return Icon(CupertinoIcons.circle, size: size, color: color);
+  }
+}
+
+class _CategoryBallRingPainter extends CustomPainter {
+  final Color color;
+
+  const _CategoryBallRingPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strokeWidth = math.max(0.55, math.min(1.8, size.shortestSide / 36));
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+    canvas.drawCircle(
+      Offset(size.width / 2, size.height / 2),
+      math.min(size.width, size.height) / 2 - strokeWidth / 2,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_CategoryBallRingPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // EmojiPickerSheet — full-page sheet content for showRoundedCupertinoSheet
 // ─────────────────────────────────────────────────────────────────────────────
@@ -899,7 +1009,13 @@ enum _EmojiHorizontalGesture { undecided, paging, rubberband }
 
 class EmojiPickerSheet extends StatefulWidget {
   final ValueChanged<String> onEmojiSelected;
-  const EmojiPickerSheet({super.key, required this.onEmojiSelected});
+  final String? selectedEmoji;
+
+  const EmojiPickerSheet({
+    super.key,
+    required this.onEmojiSelected,
+    this.selectedEmoji,
+  });
 
   @override
   State<EmojiPickerSheet> createState() => _EmojiPickerSheetState();
@@ -907,6 +1023,7 @@ class EmojiPickerSheet extends StatefulWidget {
 
 class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   int _catIndex = 0;
+  final GlobalKey _selectedEmojiCellKey = GlobalKey();
   double _dragOffset = 0.0;
   final _scrollCtrl = ScrollController();
   final _categoryScrollCtrl = ScrollController();
@@ -945,6 +1062,31 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    final selectedEmoji = widget.selectedEmoji;
+    if (selectedEmoji == null) return;
+
+    final selectedCategory = kEmojiCategories.indexWhere(
+      (category) => category.emojis.contains(selectedEmoji),
+    );
+    if (selectedCategory >= 0) _catIndex = selectedCategory;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _ensureCategoryTabVisible(_catIndex, animate: false);
+      final selectedContext = _selectedEmojiCellKey.currentContext;
+      if (selectedContext == null) return;
+      Scrollable.ensureVisible(
+        selectedContext,
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_emojiGlyphsWarmed) return;
@@ -955,7 +1097,6 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   void _warmEmojiGlyphs(TextDirection textDirection) {
     final emojis = <String>{
       for (final category in kEmojiCategories) ...[
-        category.icon,
         ...category.emojis,
       ],
     };
@@ -1341,6 +1482,8 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
   Widget _buildGrid(int idx, {bool active = false}) {
     final emojis = kEmojiCategories[idx].emojis;
     final textScaler = MediaQuery.textScalerOf(context);
+    final selectedEmoji = widget.selectedEmoji;
+    final accentColor = resolveAccentColor(context);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1363,6 +1506,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
             height: layout.gridHeight,
             child: Stack(
               children: List.generate(emojis.length, (i) {
+                final isSelected = emojis[i] == selectedEmoji;
                 final emoji = Text(
                   emojis[i],
                   style: TextStyle(
@@ -1371,22 +1515,50 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                   ),
                   textScaler: TextScaler.noScaling,
                 );
-                final child =
-                    active
-                        ? CupertinoButton(
-                          padding: EdgeInsets.zero,
-                          onPressed: () {
-                            _close();
-                            widget.onEmojiSelected(emojis[i]);
-                          },
-                          child: emoji,
-                        )
-                        : Center(child: emoji);
+                final cellContents = Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (isSelected)
+                      Container(
+                        key: const ValueKey('emoji-selected-marker'),
+                        width: layout.geometry.itemSize * 0.88,
+                        height: layout.geometry.itemSize * 0.88,
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.14),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: accentColor.withValues(alpha: 0.72),
+                            width: 1.25,
+                          ),
+                        ),
+                      ),
+                    emoji,
+                  ],
+                );
+                final Widget child;
+                if (active) {
+                  child = CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () {
+                      _close();
+                      widget.onEmojiSelected(emojis[i]);
+                    },
+                    child: cellContents,
+                  );
+                } else {
+                  child = Center(child: cellContents);
+                }
+                final keyedChild = isSelected
+                    ? KeyedSubtree(
+                        key: _selectedEmojiCellKey,
+                        child: child,
+                      )
+                    : child;
 
                 return Positioned.fromRect(
                   key: ValueKey(i),
                   rect: layout.geometry.itemRects[i],
-                  child: child,
+                  child: keyedChild,
                 );
               }),
             ),
@@ -1744,6 +1916,11 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                           textScaler.scale(
                                                         sel ? 24.0 : 20.0,
                                                       );
+                                                        final brightness =
+                                                            CupertinoTheme
+                                                                .brightnessOf(
+                                                                  context,
+                                                                );
                                                       return SizedBox(
                                                         key:
                                                             _categoryTabKeys[i],
@@ -1755,30 +1932,39 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                                                           behavior:
                                                               HitTestBehavior
                                                                   .opaque,
-                                                          child: Center(
-                                                            child: KeyedSubtree(
-                                                              key: ValueKey(
-                                                                'emoji-category-$i-${sel ? 'selected' : 'idle'}',
-                                                              ),
-                                                              child: Opacity(
-                                                                opacity:
-                                                                    sel ? 1.0 : 0.42,
-                                                                child: Text(
-                                                                  kEmojiCategories[i]
-                                                                      .icon,
-                                                                  style: TextStyle(
-                                                                    inherit: false,
-                                                                    fontSize:
-                                                                        fontSize,
-                                                                    color:
-                                                                        labelColor,
+                                                            child: Semantics(
+                                                              button: true,
+                                                              selected: sel,
+                                                              label:
+                                                                  '${kEmojiCategories[i].name} category',
+                                                              child: Center(
+                                                                child: KeyedSubtree(
+                                                                  key: ValueKey(
+                                                                    'emoji-category-$i-${sel ? 'selected' : 'idle'}',
                                                                   ),
-                                                                  textScaler:
-                                                                      TextScaler
-                                                                          .noScaling,
+                                                                  child: Opacity(
+                                                                    opacity:
+                                                                        sel
+                                                                            ? 1.0
+                                                                            : 0.42,
+                                                                    child: KeyedSubtree(
+                                                                      key: ValueKey(
+                                                                        'emoji-category-icon-$i',
+                                                                      ),
+                                                                      child: _buildCategoryTabIcon(
+                                                                        i,
+                                                                        fontSize,
+                                                                        labelColor,
+                                                                        resolveThemeColor(
+                                                                          kPillColor,
+                                                                          context,
+                                                                        ),
+                                                                        brightness,
+                                                                      ),
+                                                                    ),
+                                                                  ),
                                                                 ),
                                                               ),
-                                                            ),
                                                           ),
                                                         ),
                                                       );

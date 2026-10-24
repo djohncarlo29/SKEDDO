@@ -16877,6 +16877,9 @@ class _AddCategorySheetState extends State<_AddCategorySheet>
       context: context,
       pageBuilder:
           (_) => EmojiPickerSheet(
+            selectedEmoji: _isEmojiIcon(_selectedIcon)
+                ? _selectedIcon as String
+                : null,
             onEmojiSelected: (emoji) => setState(() => _selectedIcon = emoji),
           ),
     );
