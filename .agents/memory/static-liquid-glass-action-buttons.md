@@ -11,8 +11,8 @@ Fixed-color action circles retain the historical app-owned LiquidGlassView + Liq
 
 **Why:** The modal-card-matched shadow was too blurred and spread out, and the earlier 18% / 12 px revision still needed to be tighter; the user wants a lighter, more defined but still soft shadow across all Light Mode circular actions, with no Dark Mode shadow.
 
-Modal sheet and attachment-preview toolbar buttons are an explicit exception: use the package-backed `GlassButton`, keep active confirmation glyphs tinted to the action accent/category color, and keep unavailable confirmations glass but disabled.
+Modal sheet and attachment-preview toolbar controls use this same app-owned renderer via the shared wrapper. Active confirmation glyphs are tinted to the action accent/category color over neutral glass; unavailable confirmations remain glass but disabled.
 
-**Why:** The user requested the `flutter_liquid_glass_widgets` button for modal toolbars while preserving app-owned glass elsewhere.
+**Why:** `flutter_liquid_glass_widgets` uses a lightweight frosted fallback when its premium shader is unavailable, which appeared as a blur overlay instead of SKEDDO's established optical glass.
 
-**How to apply:** Scope this exception to modal toolbar controls; do not replace unrelated fixed-color app actions or the full dynamic glass pipeline.
+**How to apply:** Keep modal toolbar controls on the shared app-owned glass wrapper unless the package's full optical renderer has been confirmed on the target renderer. Do not replace unrelated fixed-color app actions or the full dynamic glass pipeline.

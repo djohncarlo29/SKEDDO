@@ -1,14 +1,13 @@
-import 'dart:async';
-
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassButton, GlassButtonStyle, GlassQuality, LiquidOval;
 
 import '../app_theme.dart';
 
-/// Glass-package equivalent for the circular leading/trailing controls used
-/// in modal sheet toolbars.
-class ModalToolbarGlassButton extends StatefulWidget {
+/// SKEDDO's captured Liquid Glass control for modal sheet toolbars.
+///
+/// The package GlassButton falls back to a frosted surface on renderers without
+/// its premium shader. This wrapper keeps the app's established optical glass
+/// renderer and shares action-state behavior across sheet toolbars.
+class ModalToolbarGlassButton extends StatelessWidget {
   const ModalToolbarGlassButton({
     super.key,
     required this.icon,
@@ -30,9 +29,9 @@ class ModalToolbarGlassButton extends StatefulWidget {
   final IconData icon;
   final Color iconColor;
 
-  /// The old button surface color is retained as an action-state signal.
-  /// Checkmarks use an accent/category surface as their glyph tint, while a
-  /// disabled-action surface disables the glass button without removing it.
+  /// The former button surface is retained as an action-state signal.
+  /// Active checkmarks use its accent/category color for the glyph; disabled
+  /// actions are made non-interactive while retaining the glass surface.
   final Color surfaceColor;
   final VoidCallback onTap;
   final Widget? child;
@@ -47,88 +46,66 @@ class ModalToolbarGlassButton extends StatefulWidget {
   final String? semanticLabel;
 
   @override
-  State<ModalToolbarGlassButton> createState() =>
-      _ModalToolbarGlassButtonState();
-}
-
-class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
-  Timer? _tapTimer;
-  bool _canTap = true;
-
-  void _handleTap() {
-    if (!_canTap) return;
-    _tapTimer?.cancel();
-    if (widget.tapDelay == Duration.zero) {
-      widget.onTap();
-      return;
-    }
-    _tapTimer = Timer(widget.tapDelay, () {
-      if (mounted && _canTap) widget.onTap();
-    });
-  }
-
-  @override
-  void dispose() {
-    _tapTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final resolvedSurface = resolveThemeColor(widget.surfaceColor, context);
+    final resolvedSurface = resolveThemeColor(surfaceColor, context);
     final disabledSurface = resolveThemeColor(kDisabledActionSurface, context);
-    final defaultSurfaces = [
+    final neutralSurfaces = [
       resolveThemeColor(kModalCard, context).toARGB32(),
       resolveThemeColor(kCardColor, context).toARGB32(),
     ];
-    final isCheckmark =
-        widget.isCheckmark || widget.icon == CupertinoIcons.checkmark;
+    final checkmark = isCheckmark || icon == CupertinoIcons.checkmark;
     final disabledBySurface =
-        isCheckmark && resolvedSurface.toARGB32() == disabledSurface.toARGB32();
-    _canTap = widget.enabled && !disabledBySurface;
-
+        checkmark && resolvedSurface.toARGB32() == disabledSurface.toARGB32();
+    final canTap = enabled && !disabledBySurface;
     final followsActionColor =
-        isCheckmark &&
+        checkmark &&
         !disabledBySurface &&
-        !defaultSurfaces.contains(resolvedSurface.toARGB32());
-    final iconColor = followsActionColor
+        !neutralSurfaces.contains(resolvedSurface.toARGB32());
+    final resolvedIconColor = followsActionColor
         ? resolvedSurface
-        : resolveThemeColor(widget.iconColor, context);
-    Widget icon =
-        widget.child ??
-        Icon(widget.icon, color: iconColor, size: widget.iconSize);
-    if (followsActionColor && widget.child != null) {
-      icon = ColorFiltered(
-        colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
-        child: icon,
+        : resolveThemeColor(iconColor, context);
+
+    Widget iconWidget =
+        child ?? Icon(icon, color: resolvedIconColor, size: iconSize);
+    if (followsActionColor && child != null) {
+      iconWidget = ColorFiltered(
+        colorFilter: ColorFilter.mode(resolvedIconColor, BlendMode.srcIn),
+        child: iconWidget,
       );
     }
-    final positionedIcon = widget.iconOffset == Offset.zero
-        ? icon
-        : Transform.translate(offset: widget.iconOffset, child: icon);
-    final transformedIcon = widget.flipHorizontal
+
+    final positionedIcon = iconOffset == Offset.zero
+        ? iconWidget
+        : Transform.translate(offset: iconOffset, child: iconWidget);
+    final transformedIcon = flipHorizontal
         ? Transform.scale(scaleX: -1, child: positionedIcon)
         : positionedIcon;
-    final fallbackLabel = isCheckmark
+    final fallbackLabel = checkmark
         ? 'Confirm'
-        : widget.icon == CupertinoIcons.chevron_left
+        : icon == CupertinoIcons.chevron_left
         ? 'Back'
-        : widget.icon == CupertinoIcons.xmark
+        : icon == CupertinoIcons.xmark
         ? 'Close'
         : 'Action';
-    return GlassButton.custom(
-      label: widget.semanticLabel ?? fallbackLabel,
-      onTap: _handleTap,
-      width: widget.size,
-      height: widget.size,
-      shape: const LiquidOval(),
-      quality: GlassQuality.premium,
-      useOwnLayer: true,
-      interactionScale: widget.peakScale,
-      stretch: 0.15,
-      enabled: _canTap,
-      style: GlassButtonStyle.filled,
-      child: Center(child: transformedIcon),
+
+    return Semantics(
+      label: semanticLabel ?? fallbackLabel,
+      button: true,
+      enabled: canTap,
+      child: IgnorePointer(
+        ignoring: !canTap,
+        child: StaticLiquidGlassActionButton(
+          // Keep checkmark actions on the same neutral translucent glass as
+          // the other toolbar controls; the action color belongs on the glyph.
+          color: checkmark ? kModalCard : surfaceColor,
+          size: size,
+          isCheckmark: false,
+          peakScale: peakScale,
+          tapDelay: tapDelay,
+          onTap: onTap,
+          child: Center(child: transformedIcon),
+        ),
+      ),
     );
   }
 }
