@@ -109,23 +109,19 @@ Future<bool?> showArchiveConfirmationSheet(
   );
 }
 
-/// Shows the confirmation used when an editor with unsaved changes is
-/// dismissed. The X-mark entry point uses the sheet-attached placement; system
-/// back and sheet drag use the centered placement.
+/// Shows the shared top-left confirmation used when an editor with unsaved
+/// changes is dismissed, regardless of whether dismissal came from the X-mark,
+/// a system navigation action, or a sheet gesture.
 Future<bool?> showDiscardChangesConfirmationSheet(
   BuildContext context, {
   required String entityLabel,
   required bool isNew,
-  bool fromXmark = false,
 }) async {
   final completer = Completer<bool?>();
   late OverlayEntry entry;
   final overlay = Overlay.of(context, rootOverlay: true);
   final isPresentedOverModalSheet =
       RoundedCupertinoSheetRoute.hasParentSheet(context);
-  final horizontalInset =
-      AppWindowContentScope.of(context).horizontalInset +
-      (isPresentedOverModalSheet ? kModalConfirmationHorizontalInset : 16.0);
   VoidCallback? dismissActive;
 
   void close(bool? result) {
@@ -142,8 +138,6 @@ Future<bool?> showDiscardChangesConfirmationSheet(
         (_) => _DiscardChangesSheetOverlay(
           entityLabel: entityLabel,
           isNew: isNew,
-          fromXmark: fromXmark,
-          horizontalInset: horizontalInset,
           isPresentedOverModalSheet: isPresentedOverModalSheet,
           onResult: close,
         ),
@@ -266,24 +260,18 @@ Future<bool?> confirmDeleteSection(
 class _DiscardChangesSheetOverlay extends StatelessWidget {
   final String entityLabel;
   final bool isNew;
-  final bool fromXmark;
-  final double horizontalInset;
   final bool isPresentedOverModalSheet;
   final void Function(bool?) onResult;
 
   const _DiscardChangesSheetOverlay({
     required this.entityLabel,
     required this.isNew,
-    required this.fromXmark,
-    required this.horizontalInset,
     required this.isPresentedOverModalSheet,
     required this.onResult,
   });
 
   @override
   Widget build(BuildContext context) {
-    final hasLandscapeInset =
-        AppWindowContentScope.of(context).horizontalInset > 0.0;
     final primary = resolveThemeColor(kPrimaryLabel, context);
     final sheetBorder =
         CupertinoTheme.brightnessOf(context) == Brightness.dark
@@ -302,12 +290,11 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
     final viewportSize = MediaQuery.sizeOf(context);
     // The browser's usable viewport can lose different amounts of height to
     // browser chrome between orientations. Use the full display dimensions
-    // when available so the Xmark card keeps its portrait width after rotation.
+    // when available so the confirmation card keeps its portrait width.
     final screenSize =
         device_screen_size.getDeviceScreenSize(context) ?? viewportSize;
-    final sheetWidth = fromXmark
-        ? screenSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction
-        : double.infinity;
+    final sheetWidth =
+        screenSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction;
     final message = isNew
         ? 'Are you sure you want to discard this new $entityLabel?'
         : 'Are you sure you want to discard your changes?';
@@ -315,7 +302,7 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
     final card = SizedBox(
       width: sheetWidth,
       child: GelBloomCard(
-        scaleOrigin: fromXmark ? Alignment.topLeft : Alignment.center,
+        scaleOrigin: Alignment.topLeft,
         fillOpacity: 0.82,
         shadowOpacity: 0.26,
         border: sheetBorder,
@@ -335,9 +322,9 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
               kDiscardConfirmationButtonEdgeGap,
             ),
             child: Column(
-                       mainAxisSize: MainAxisSize.min,
-                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                       children: [
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: kDiscardConfirmationMessageHorizontalInset,
@@ -406,37 +393,21 @@ class _DiscardChangesSheetOverlay extends StatelessWidget {
               child: SizedBox.expand(),
             ),
           ),
-          if (fromXmark)
-            Align(
-              alignment: Alignment.topLeft,
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left:
-                      AppWindowContentScope.of(context).horizontalInset +
-                      kDiscardConfirmationTopLeftEdgeGap,
-                  top:
-                      MediaQuery.viewPaddingOf(context).top +
-                      kRoundedSheetSafeAreaGap +
-                      kDiscardConfirmationTopLeftEdgeGap,
-                ),
-                child: card,
+          Align(
+            alignment: Alignment.topLeft,
+            child: Padding(
+              padding: EdgeInsets.only(
+                left:
+                    AppWindowContentScope.of(context).horizontalInset +
+                    kDiscardConfirmationTopLeftEdgeGap,
+                top:
+                    MediaQuery.viewPaddingOf(context).top +
+                    kRoundedSheetSafeAreaGap +
+                    kDiscardConfirmationTopLeftEdgeGap,
               ),
-            )
-          else
-            Align(
-              alignment: Alignment.center,
-              child: SafeArea(
-                left: !hasLandscapeInset,
-                right: !hasLandscapeInset,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: horizontalInset,
-                    vertical: 16,
-                  ),
-                  child: card,
-                ),
-              ),
+              child: card,
             ),
+          ),
         ],
       ),
     );
