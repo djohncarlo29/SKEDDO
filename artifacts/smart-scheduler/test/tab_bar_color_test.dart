@@ -13,8 +13,8 @@ void main() {
     tester,
   ) async {
     for (final entry in [
-      (Brightness.light, const Color.fromRGBO(0, 0, 0, 0.90)),
-      (Brightness.dark, const Color.fromRGBO(253, 253, 253, 0.90)),
+      (Brightness.light, const Color.fromRGBO(0, 0, 0, 0.85)),
+      (Brightness.dark, const Color.fromRGBO(253, 253, 253, 0.85)),
     ]) {
       Color? resolvedColor;
       await tester.pumpWidget(
@@ -32,7 +32,7 @@ void main() {
         ),
       );
       expect(resolvedColor!.toARGB32(), entry.$2.toARGB32());
-      expect(resolvedColor!.a, closeTo(0.90, 0.01));
+      expect(resolvedColor!.a, closeTo(0.85, 0.01));
     }
   });
 
@@ -109,7 +109,7 @@ void main() {
       20.0,
     ]);
     expect(tabBar.labelFontSize, 9.0);
-    expect(tabBar.iconLabelSpacing, 2.0);
+    expect(tabBar.iconLabelSpacing, 1.5);
     expect(tabBar.magnification, 1.0);
     expect(tabBar.settings, kSkeddoBottomBarGlassSettings);
     expect(
@@ -123,6 +123,10 @@ void main() {
     expect(
       tabBar.indicatorSettings,
       kSkeddoLightLiftedTabIndicatorSettings,
+    );
+    expect(
+      tabBar.indicatorSettings!.glassColor,
+      const Color.fromRGBO(0, 0, 0, 0.04),
     );
 
     await tester.tap(find.bySemanticsLabel('New Event'));
@@ -163,6 +167,18 @@ void main() {
         GlassThemeVariant.dark.settings!.glassColor!.a + 0.10,
         0.001,
       ),
+    );
+    expect(
+      tabBar.settings!.glassColor.r,
+      0,
+    );
+    expect(
+      tabBar.settings!.glassColor.g,
+      0,
+    );
+    expect(
+      tabBar.settings!.glassColor.b,
+      0,
     );
     expect(
       tabBar.settings!.lightIntensity,

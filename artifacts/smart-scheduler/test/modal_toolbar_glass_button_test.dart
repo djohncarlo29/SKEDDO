@@ -38,8 +38,18 @@ void main() {
       expect(button.shape, GlassIconButtonShape.circle);
       expect(button.quality, GlassQuality.premium);
       expect(button.useOwnLayer, isTrue);
-      expect(button.settings, skeddoBottomBarGlassSettingsFor(brightness));
-      expect(icon.color!.toARGB32(), actionColor.toARGB32());
+      expect(
+        button.settings,
+        skeddoTintedActionGlassSettingsFor(brightness, actionColor),
+      );
+      expect(
+        button.settings!.glassColor,
+        actionColor.withValues(alpha: kSkeddoTintedActionGlassOpacity),
+      );
+      expect(
+        icon.color!.toARGB32(),
+        CupertinoColors.white.toARGB32(),
+      );
     }
   });
 

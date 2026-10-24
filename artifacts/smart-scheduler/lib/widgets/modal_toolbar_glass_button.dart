@@ -88,19 +88,23 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         !disabledBySurface &&
         !neutralSurfaces.contains(resolvedSurface.toARGB32());
     final iconColor = followsActionColor
-        ? resolvedSurface
+        ? CupertinoColors.white
         : resolveThemeColor(widget.iconColor, context);
 
     Widget iconWidget =
         widget.child ??
         Icon(widget.icon, color: iconColor, size: widget.iconSize);
-    if (followsActionColor && widget.child != null) {
+    if (checkmark && widget.child != null) {
       iconWidget = ColorFiltered(
         colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
         child: iconWidget,
       );
     }
 
+    final brightness = CupertinoTheme.brightnessOf(context);
+    final glassSettings = followsActionColor
+        ? skeddoTintedActionGlassSettingsFor(brightness, resolvedSurface)
+        : skeddoBottomBarGlassSettingsFor(brightness);
     final positionedIcon = widget.iconOffset == Offset.zero
         ? iconWidget
         : Transform.translate(offset: widget.iconOffset, child: iconWidget);
@@ -121,9 +125,7 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
       size: widget.size,
       iconSize: widget.iconSize,
       shape: GlassIconButtonShape.circle,
-      settings: skeddoBottomBarGlassSettingsFor(
-        CupertinoTheme.brightnessOf(context),
-      ),
+      settings: glassSettings,
       quality: GlassQuality.premium,
       useOwnLayer: true,
       interactionScale: widget.peakScale,
