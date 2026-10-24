@@ -8,9 +8,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassTab,
         GlassTabBar,
         GlassTabBarExtraButton,
-        GlassTheme,
-        GlassThemeData,
-        GlassThemeVariant;
+        LiquidGlassSettings;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
@@ -33,15 +31,24 @@ const LiquidGlassShape kLiquidGlassPreviewGlassShape =
   clipQuality: LiquidGlassClipQuality.exact,
 );
 
-final GlassThemeData _floatingTabBarGlassTheme = GlassThemeData(
-  light: GlassThemeVariant.light,
-  dark: GlassThemeVariant.dark.copyWith(
-    settings: GlassThemeVariant.dark.settings!.copyWith(
-      glassColor: kFloatingTabBarDarkGlassTint,
-      lightIntensity: 0.38,
-    ),
-  ),
+const LiquidGlassSettings _floatingTabBarDarkSettings = LiquidGlassSettings(
+  thickness: 30,
+  blur: 3,
+  chromaticAberration: 0.04,
+  lightIntensity: 0.08,
+  refractiveIndex: 1.59,
+  saturation: 0.7,
+  ambientStrength: 0.03,
+  lightAngle: 0.75 * math.pi,
+  glassColor: kFloatingTabBarDarkGlassTint,
 );
+
+const LiquidGlassSettings _floatingTabBarDarkIndicatorSettings =
+    LiquidGlassSettings(
+      chromaticAberration: 0,
+      lightIntensity: 0.12,
+      ambientStrength: 0,
+    );
 
 /// The AppShell's platform-neutral floating tab control.
 ///
@@ -114,6 +121,12 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       ),
       barHeight: kFloatingTabBarHeight,
       verticalPadding: 0,
+      iconSize: 20,
+      labelFontSize: 10,
+      magnification: 1,
+      settings: isDark ? _floatingTabBarDarkSettings : null,
+      indicatorSettings:
+          isDark ? _floatingTabBarDarkIndicatorSettings : null,
       indicatorColor: isDark
           ? kFloatingTabBarDarkIndicatorColor
           : kFloatingTabBarLightIndicatorColor,
@@ -121,10 +134,6 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       unselectedIconColor: unselectedColor,
       selectedLabelColor: selectedColor,
       unselectedLabelColor: unselectedColor,
-    );
-    final themedTabBar = GlassTheme(
-      data: _floatingTabBarGlassTheme,
-      child: tabBar,
     );
 
     return Semantics(
@@ -164,7 +173,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
                 child: MediaQuery.removePadding(
                   context: context,
                   removeBottom: true,
-                  child: themedTabBar,
+                  child: tabBar,
                 ),
               ),
             ],
@@ -177,8 +186,8 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
 
 /// A static `liquid_glass_easy` sample for the Settings opacity control.
 ///
-/// The live Flutter navigation bar uses `GlassTabBar.bottom` and its package
-/// defaults, so this sample is intentionally separate from that control.
+/// The live Flutter navigation bar uses `GlassTabBar.bottom`; this sample is
+/// intentionally separate from that control and its package renderer.
 class FloatingTabBarGlassPreview extends StatefulWidget {
   const FloatingTabBarGlassPreview({super.key});
 

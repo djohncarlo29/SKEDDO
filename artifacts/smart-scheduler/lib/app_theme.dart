@@ -48,9 +48,10 @@ const kFloatingTabBarSurfaceColor = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFFAFAFC),
   darkColor: Color(0xFF1C1C1E),
 );
-// Dark tab-bar glass tint: a neutral charcoal overlay keeps the package's
-// refractive surface visible without the pale, washed-out default appearance.
-const Color kFloatingTabBarDarkGlassTint = Color.fromRGBO(58, 58, 60, 0.72);
+// Dark tab-bar glass tint: use the native charcoal surface instead of the
+// package's bright bottom-bar preset. This value is passed directly to the
+// bar's settings because that preset takes precedence over GlassTheme.
+const Color kFloatingTabBarDarkGlassTint = Color.fromRGBO(28, 28, 30, 0.88);
 // The resting selection lens is a neutral translucent surface, while its icon
 // and label continue to use the selected accent color.
 const Color kFloatingTabBarLightIndicatorColor =
@@ -58,7 +59,7 @@ const Color kFloatingTabBarLightIndicatorColor =
 const Color kFloatingTabBarDarkIndicatorColor =
     Color.fromRGBO(255, 255, 255, 0.10);
 // This value only tunes the separate liquid_glass_easy Settings preview.
-// The live GlassTabBar uses flutter_liquid_glass_widgets defaults.
+// The live GlassTabBar has its own renderer-specific settings.
 const double kFloatingTabBarChromaticAberration = 0.002;
 // Shared visual gap used between the last content edge and the floating pill.
 const double kFloatingTabBarVisualGap = 16.0;

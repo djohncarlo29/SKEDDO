@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassExtraButtonPlacement, GlassTabBar, GlassTheme;
+    show GlassExtraButtonPlacement, GlassTabBar;
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/widgets/floating_tab_pill.dart';
 
@@ -57,7 +57,6 @@ void main() {
 
     final context = tester.element(find.byType(FloatingTabPill));
     final tabBar = tester.widget<GlassTabBar>(find.byType(GlassTabBar));
-    final glassTheme = tester.widget<GlassTheme>(find.byType(GlassTheme));
     final inactiveColor = CupertinoDynamicColor.resolve(
       kTabBarInactiveColor,
       context,
@@ -84,13 +83,14 @@ void main() {
     expect(tabBar.preferredSize.height, 49.0);
     expect(tabBar.horizontalPadding, 20.0);
     expect(tabBar.verticalPadding, 0.0);
+    expect(tabBar.iconSize, 20.0);
+    expect(tabBar.labelFontSize, 10.0);
+    expect(tabBar.magnification, 1.0);
+    expect(tabBar.settings, isNull);
+    expect(tabBar.indicatorSettings, isNull);
     expect(
       tabBar.indicatorColor!.value,
       kFloatingTabBarLightIndicatorColor.value,
-    );
-    expect(
-      glassTheme.data.dark.settings!.glassColor!.value,
-      kFloatingTabBarDarkGlassTint.value,
     );
 
     await tester.tap(find.bySemanticsLabel('New Event'));
@@ -122,5 +122,16 @@ void main() {
       tabBar.indicatorColor!.value,
       kFloatingTabBarDarkIndicatorColor.value,
     );
+    expect(
+      tabBar.settings!.glassColor.value,
+      kFloatingTabBarDarkGlassTint.value,
+    );
+    expect(tabBar.settings!.lightIntensity, 0.08);
+    expect(tabBar.settings!.ambientStrength, 0.03);
+    expect(tabBar.indicatorSettings!.lightIntensity, 0.12);
+    expect(tabBar.indicatorSettings!.ambientStrength, 0.0);
+    expect(tabBar.iconSize, 20.0);
+    expect(tabBar.labelFontSize, 10.0);
+    expect(tabBar.magnification, 1.0);
   });
 }
