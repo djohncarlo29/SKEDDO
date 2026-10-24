@@ -5,6 +5,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show GlassIconButton, GlassIconButtonShape, GlassQuality;
 
 import '../app_theme.dart';
+import 'skeddo_glass_settings.dart';
 
 /// Shared package GlassIconButton for modal sheet toolbar actions.
 class ModalToolbarGlassButton extends StatefulWidget {
@@ -120,6 +121,9 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
       size: widget.size,
       iconSize: widget.iconSize,
       shape: GlassIconButtonShape.circle,
+      settings: skeddoBottomBarGlassSettingsFor(
+        CupertinoTheme.brightnessOf(context),
+      ),
       quality: GlassQuality.premium,
       useOwnLayer: true,
       interactionScale: widget.peakScale,

@@ -7,15 +7,14 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassExtraButtonPlacement,
         GlassTab,
         GlassTabBar,
-        GlassTabBarExtraButton,
-        GlassThemeVariant,
-        LiquidGlassSettings;
+        GlassTabBarExtraButton;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
 import '../app_theme.dart';
 import '../app_settings.dart';
 import 'fixed_size_icon.dart';
+import 'skeddo_glass_settings.dart';
 
 /// Geometry shared by the Liquid Glass settings preview card and its
 /// shape-aware movement boundary.
@@ -31,28 +30,6 @@ const LiquidGlassShape kLiquidGlassPreviewGlassShape =
   cornerRadius: kSquircleStadiumRadius,
   clipQuality: LiquidGlassClipQuality.exact,
 );
-
-// Mirrors the package's private bottom-bar preset. The package's general dark
-// preset changes optical values as well as tint, so merge only its tint and
-// lighting while keeping the bottom bar's stronger refraction settings.
-const LiquidGlassSettings _floatingTabBarBaseSettings = LiquidGlassSettings(
-  thickness: 30,
-  blur: 3,
-  chromaticAberration: 0.3,
-  lightIntensity: 0.6,
-  refractiveIndex: 1.59,
-  saturation: 0.7,
-  ambientStrength: 1,
-  lightAngle: 0.75 * math.pi,
-  glassColor: Color(0x3DFFFFFF),
-);
-final LiquidGlassSettings _floatingTabBarDarkSettings =
-    _floatingTabBarBaseSettings.copyWith(
-      glassColor: GlassThemeVariant.dark.settings!.glassColor,
-      lightAngle: GlassThemeVariant.dark.settings!.lightAngle,
-      lightIntensity: GlassThemeVariant.dark.settings!.lightIntensity,
-      ambientStrength: GlassThemeVariant.dark.settings!.ambientStrength,
-    );
 
 /// The AppShell's platform-neutral floating tab control.
 ///
@@ -138,7 +115,12 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       labelFontSize: 9,
       iconLabelSpacing: 2,
       magnification: 1,
-      settings: isDark ? _floatingTabBarDarkSettings : null,
+      settings: skeddoBottomBarGlassSettingsFor(
+        isDark ? Brightness.dark : Brightness.light,
+      ),
+      indicatorSettings: isDark
+          ? null
+          : kSkeddoLightLiftedTabIndicatorSettings,
       indicatorColor: isDark
           ? kFloatingTabBarDarkIndicatorColor
           : kFloatingTabBarLightIndicatorColor,

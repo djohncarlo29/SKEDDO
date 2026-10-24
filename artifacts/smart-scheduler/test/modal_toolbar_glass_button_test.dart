@@ -5,6 +5,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
 
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/widgets/modal_toolbar_glass_button.dart';
+import 'package:smart_scheduler/widgets/skeddo_glass_settings.dart';
 
 void main() {
   testWidgets('modal toolbar uses package glass icon button in both themes', (
@@ -37,6 +38,7 @@ void main() {
       expect(button.shape, GlassIconButtonShape.circle);
       expect(button.quality, GlassQuality.premium);
       expect(button.useOwnLayer, isTrue);
+      expect(button.settings, skeddoBottomBarGlassSettingsFor(brightness));
       expect(icon.color!.toARGB32(), actionColor.toARGB32());
     }
   });

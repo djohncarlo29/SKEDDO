@@ -8,10 +8,6 @@
 - [Calendar Day View dual-axis swipe isolation](calendar-swipe-isolation.md) — week-strip drags and timeline drags must use separate slideX variables; header sync via ValueNotifier + onStripSlide callback.
 - [Multi-Day current-time indicator](calendar-multiday-current-time-indicator.md) — cap the line at today’s active column boundary and keep that endpoint aligned as columns move.
 - [Multi-Day separator reverse morph](calendar-multiday-reverse-separator.md) — keep the timeline mounted until its left divider reverses with the Day Banner; then hand off to Single Day.
-- [Calendar year↔month shared-element morph](calendar-year-zoom-transform.md) — freeze measured endpoints through the spring; selected and unselected month titles share the early fade.
-- [Calendar morph week-strip surfaces](calendar-morph-week-strip-surfaces.md) — keep the selected Month week row visible beneath Day content, landing below the pinned DOW mask.
-- [Calendar 3-panel swipe ±2 bug](calendar-3panel-plusminus2-bug.md) — early doThen remaps panel slots mid-animation, carrying header one extra step; fix is doThen at 100% only.
-- [Calendar month panel clipping](calendar-month-panel-clipping.md) — clip each horizontally positioned month panel before vertical strip transforms so off-screen week rows cannot bleed into the DOW boundary.
 - [ScrollController remount resync](calendar-scrollctrl-remount-resync.md) — a key-forced Scrollable remount resets to the controller's stale original initialScrollOffset, not the last jumpTo() value; recreate before remounting.
 - [Smart Scheduler theme constants](smart-scheduler-theme-constants.md) — sheet-stack background and search-bar clear icon each have their own dedicated constant; don't reuse kBackgroundColor for the former.
 - [App-header scroll-edge behavior](app-header-scroll-edge.md) — share the active header state across tabs, DCV and Settings; do not restore a destination's stale state.
@@ -47,7 +43,8 @@
 - [Split Cupertino picker chevrons](split-chevron-clipping.md) — clip upper/lower halves separately; translate the lower source by -half + offset to move only the lower chevron.
 - [Fixed Squircle Stadium radius](fixed-stadium-radius.md) — shared stadium controls use 24px corners; the 40px search bar explicitly remains 20px.
 - [Dark-mode ghost and sheet outlines](dark-mode-ghost-and-sheet-outlines.md) — overlay/lifted-card hairlines are Dark Mode-only; grouping snap glow bypasses shadow suppression.
-- [Modal toolbar package glass](light-mode-checkmark-glass.md) — use the package GlassIconButton with action-tinted checks and disabled confirmation state.
+- [Modal toolbar package glass](light-mode-checkmark-glass.md) — use GlassIconButton with shared tab-bar optics, action-tinted checks, and disabled confirmation state.
+- [Package glass default-first rule](package-glass-default-first.md) — start new package glass widgets with defaults; reuse shared SKEDDO optics after the user reports a mismatch.
 - [Subscreen checkmark layout](subscreen-checkmark-layout.md) — selectable rows share an OS-scaled checkmark slot with fixed 16px label and edge gaps.
 - [Flutter APK Gradle stability](flutter-apk-gradle-stability.md) — SIGBUS fix requires DEFAULT_JVM_OPTS in gradlew (not just gradle.properties); daemon=false runs in wrapper JVM which ignores org.gradle.jvmargs.
 - [Shorebird patch and release workflow](shorebird-workflow.md) — use `--platforms`; preserve JDK, preflight, SDK, temp-storage, native-baseline, and release checks.
@@ -136,12 +133,9 @@
 - [Calendar month dot ordering](calendar-month-dot-order.md) — month-grid dots follow the first event in displayed list order, with all-day events first.
 - [Liquid Glass SF glyph normalization](liquid-glass-sf-glyph-normalization.md) — custom SF font glyphs need one shared slot and unconstrained rendering; per-glyph FittedBox sizing distorts optical comparisons.
 - [Date-picker weekday headers](date-picker-weekday-headers.md) — all calendar and modal date-picker weekday rows use single letters, `M T W T F S S`.
-- [Calendar swipe indicator geometry](calendar-swipe-indicator-geometry.md) — cap bloom overshoot globally and keep the selected swipe overlay blob-wrapped so fixed-height circles still deform horizontally.
-- [Day banner swipe height](day-banner-swipe-height.md) — interpolate banner height toward incoming Single Day labels or Multi Day pairs during horizontal navigation.
 - [Smart Category semantic threshold](smart-category-semantic-threshold.md) — shared date/time text makes low cosine floors admit unrelated scheduled events; keep semantic matching conservative and normalize plural rules.
 - [Native iOS tab bar bridge](native-ios-tab-bar-bridge.md) — keep UIKit tab chrome across iOS versions; UIKit selects classic or floating styling and Flutter content clearance follows.
-- [Calendar morph transition notes](calendar-morph-transition-index.md) — consult view-specific handoff, bounds, veil, Day List, and destination-scroll geometry constraints before hierarchy animation edits.
-- [Calendar morph content bounds](calendar-morph-content-bounds.md) — size List content below the grid and subtract the title slot when centering an empty-day placeholder.
+- [Calendar morph transition notes](calendar-morph-transition-index.md) — use the grouped index for hierarchy, panel handoff, clipping, swipe, and content-bound notes.
 - [Picker and live rotation geometry](picker-rotation-index.md) — use the focused geometry notes for landscape picker sizing and live window-metric transitions.
 - [Smart Category count cache invalidation](smart-category-count-cache-invalidation.md) — matcher embeddings can change results asynchronously without changing the event list, so derived counts need matcher revisions.
 - [Live slider persistence](live-slider-persistence.md) — persist on gesture completion even when live preview state already equals the snapped value.
@@ -152,8 +146,6 @@
 - [Nested modal header alignment](nested-modal-header-alignment.md) — nested titles and controls stay at the same screen coordinates as their parent sheet.
 - [Landscape pill contour sampling](landscape-pill-contour-sampling.md) — offset on local normals so flat edges stay 1px; preserve slider alpha and denser landscape sampling.
 - [Impeller screen-space glass geometry](impeller-screen-space-glass-geometry.md) — shader resolution must use the full FlutterView size, not narrowed landscape content MediaQuery dimensions.
-- [Calendar header chevron continuity](calendar-header-chevron-continuity.md) — keep inactive panels non-interactive; compact chevrons must block the enclosing title tap.
-- [Calendar hierarchy morph layout](calendar-midpoint-view-handoff.md) — keep the scroll-title slot mounted offstage and carry header offset through Year↔Month handoff; don't restore the destination scope mid-morph.
 - [Search-mode parent restoration](search-mode-parent-restoration.md) — closing search returns to the same settled parent screen, never a rubberbanded or partially swiped state.
 - [Top-level modal sheet behavior](top-level-modal-sheet-behavior.md) — top-level sheets leave AppShell stationary; only nested sheets scale and stack the parent sheet, with enough top clearance for its glass control.
 - [Flutter browser touch verification](flutter-browser-touch-gestures.md) — use timed, incremental touch moves; a one-move swipe can falsely suggest a short page cannot collapse.

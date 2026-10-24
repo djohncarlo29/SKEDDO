@@ -6,14 +6,15 @@ import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/widgets/fixed_size_icon.dart';
 import 'package:smart_scheduler/widgets/floating_tab_pill.dart';
+import 'package:smart_scheduler/widgets/skeddo_glass_settings.dart';
 
 void main() {
   testWidgets('inactive tab tint uses the specified light and dark colors', (
     tester,
   ) async {
     for (final entry in [
-      (Brightness.light, const Color.fromRGBO(0, 0, 0, 0.95)),
-      (Brightness.dark, const Color.fromRGBO(253, 253, 253, 0.95)),
+      (Brightness.light, const Color.fromRGBO(0, 0, 0, 0.90)),
+      (Brightness.dark, const Color.fromRGBO(253, 253, 253, 0.90)),
     ]) {
       Color? resolvedColor;
       await tester.pumpWidget(
@@ -30,8 +31,8 @@ void main() {
           ),
         ),
       );
-      expect(resolvedColor!.value, entry.$2.value);
-      expect(resolvedColor!.opacity, closeTo(0.95, 0.01));
+      expect(resolvedColor!.toARGB32(), entry.$2.toARGB32());
+      expect(resolvedColor!.a, closeTo(0.90, 0.01));
     }
   });
 
@@ -110,11 +111,18 @@ void main() {
     expect(tabBar.labelFontSize, 9.0);
     expect(tabBar.iconLabelSpacing, 2.0);
     expect(tabBar.magnification, 1.0);
-    expect(tabBar.settings, isNull);
-    expect(tabBar.indicatorSettings, isNull);
+    expect(tabBar.settings, kSkeddoBottomBarGlassSettings);
+    expect(
+      tabBar.settings!.glassColor.a,
+      closeTo(const Color(0x3DFFFFFF).a + 0.10, 0.001),
+    );
     expect(
       tabBar.indicatorColor!.value,
       kFloatingTabBarLightIndicatorColor.value,
+    );
+    expect(
+      tabBar.indicatorSettings,
+      kSkeddoLightLiftedTabIndicatorSettings,
     );
 
     await tester.tap(find.bySemanticsLabel('New Event'));
@@ -144,13 +152,17 @@ void main() {
     );
 
     final tabBar = tester.widget<GlassTabBar>(find.byType(GlassTabBar));
+    expect(tabBar.settings, kSkeddoDarkBottomBarGlassSettings);
     expect(
       tabBar.indicatorColor!.value,
       kFloatingTabBarDarkIndicatorColor.value,
     );
     expect(
-      tabBar.settings!.glassColor,
-      GlassThemeVariant.dark.settings!.glassColor,
+      tabBar.settings!.glassColor.a,
+      closeTo(
+        GlassThemeVariant.dark.settings!.glassColor!.a + 0.10,
+        0.001,
+      ),
     );
     expect(
       tabBar.settings!.lightIntensity,
