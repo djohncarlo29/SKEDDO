@@ -163,14 +163,11 @@ void main() {
     );
     expect(
       tabBar.settings!.glassColor.a,
-      closeTo(
-        GlassThemeVariant.dark.settings!.glassColor!.a + 0.10,
-        0.001,
-      ),
+      closeTo(kSkeddoDarkBottomBarOpacity, 0.001),
     );
     expect(
-      tabBar.settings!.glassColor.value & 0x00FFFFFF,
-      0x001C1C1E,
+      tabBar.settings!.glassColor.toARGB32() & 0x00FFFFFF,
+      0x002C2C2E,
     );
     expect(
       tabBar.settings!.lightIntensity,

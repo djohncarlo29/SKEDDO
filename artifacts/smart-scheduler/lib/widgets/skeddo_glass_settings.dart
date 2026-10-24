@@ -12,6 +12,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
 /// prevents standalone package buttons from falling back to weaker general
 /// GlassTheme defaults.
 const double kSkeddoBottomBarOpacityIncrease = 0.10;
+const double kSkeddoDarkBottomBarOpacity = 0.25;
 const double kSkeddoTintedActionGlassOpacity = 0.24;
 
 const LiquidGlassSettings _packageBottomBarGlassDefaults = LiquidGlassSettings(
@@ -35,8 +36,11 @@ final LiquidGlassSettings kSkeddoBottomBarGlassSettings =
 
 final LiquidGlassSettings kSkeddoDarkBottomBarGlassSettings =
     kSkeddoBottomBarGlassSettings.copyWith(
-      glassColor: _increaseDarkGlassOpacity(
-        GlassThemeVariant.dark.settings!.glassColor!,
+      glassColor: const Color.fromRGBO(
+        0x2C,
+        0x2C,
+        0x2E,
+        kSkeddoDarkBottomBarOpacity,
       ),
       lightAngle: GlassThemeVariant.dark.settings!.lightAngle,
       lightIntensity: GlassThemeVariant.dark.settings!.lightIntensity,
@@ -50,13 +54,6 @@ const LiquidGlassSettings kSkeddoLightLiftedTabIndicatorSettings =
 
 Color _increaseGlassOpacity(Color color) => color.withValues(
   alpha: (color.a + kSkeddoBottomBarOpacityIncrease).clamp(0.0, 1.0),
-);
-
-Color _increaseDarkGlassOpacity(Color packageTint) => Color.fromRGBO(
-  0x1C,
-  0x1C,
-  0x1E,
-  (packageTint.a + kSkeddoBottomBarOpacityIncrease).clamp(0.0, 1.0),
 );
 
 LiquidGlassSettings skeddoBottomBarGlassSettingsFor(Brightness brightness) =>
