@@ -72,7 +72,10 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
     // through that same tint, then becomes clear at its fully lifted endpoint.
     final settledPillColor = selectedPillColor.withValues(alpha: 0.60);
     final transitionPillColor = selectedPillColor.withValues(alpha: 0.60);
-    final unselectedColor = resolveThemeColor(kSecondaryLabel, context);
+    final unselectedColor = CupertinoDynamicColor.resolve(
+      kTabBarInactiveColor,
+      context,
+    );
     final bottomOffset = floatingTabBarBottomOffset(context);
     final barStyle = _floatingTabBarStyle(context);
     final glassOpacityProgress =

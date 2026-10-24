@@ -42,6 +42,10 @@ const Duration kDcvPaneTransitionDuration = Duration(milliseconds: 380);
 const double kClassicNativeTabBarHeight = 49.0;
 const double kClassicNativeTabBarMinimumContentGap = 16.0;
 const double kFloatingTabBarTouchTargetHeight = 44.0;
+const kTabBarInactiveColor = CupertinoDynamicColor.withBrightness(
+  color: Color(0xFF737373),
+  darkColor: Color(0xFF8E8E93),
+);
 // The floating bar is a deliberately compact navigation control. Keep its
 // content on a bounded scaler so extreme OS text sizes cannot change the
 // geometry that the glass pill, reveal clip, and gesture region share. The

@@ -859,6 +859,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     'com.smartscheduler/native_tab_bar',
   );
   bool _usesNativeTabBar = false;
+  int? _lastNativeActiveTabBarColorArgb;
+  int? _lastNativeInactiveTabBarColorArgb;
   bool _menuOpen = false;
   String? _dcvCategory;
   String? _previousDcvCategory;
@@ -2135,11 +2137,57 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           'setSelectedIndex',
           _selectedIndex,
         );
+        final isDcvAccentActive =
+            _selectedIndex == 2 &&
+            _dcvSlideController.value >= _dcvColorSnapThreshold;
+        _syncNativeTabBarColors(
+          isDcvAccentActive && _dcvColor != null
+              ? _dcvColor!
+              : resolveAccentColor(context),
+          CupertinoDynamicColor.resolve(kTabBarInactiveColor, context),
+        );
       }
     } on MissingPluginException {
       // Older app builds can still fall back to the Flutter tab pill.
     } on PlatformException {
       // Keep the Flutter tab bar if the native bridge is unavailable.
+    }
+  }
+
+  void _syncNativeTabBarColors(Color activeColor, Color inactiveColor) {
+    if (!_usesNativeTabBar) return;
+    final activeArgb = activeColor.toARGB32();
+    final inactiveArgb = inactiveColor.toARGB32();
+    if (_lastNativeActiveTabBarColorArgb == activeArgb &&
+        _lastNativeInactiveTabBarColorArgb == inactiveArgb) {
+      return;
+    }
+    _lastNativeActiveTabBarColorArgb = activeArgb;
+    _lastNativeInactiveTabBarColorArgb = inactiveArgb;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          !_usesNativeTabBar ||
+          _lastNativeActiveTabBarColorArgb != activeArgb ||
+          _lastNativeInactiveTabBarColorArgb != inactiveArgb) {
+        return;
+      }
+      unawaited(_sendNativeTabBarColors(activeArgb, inactiveArgb));
+    });
+  }
+
+  Future<void> _sendNativeTabBarColors(
+    int activeArgb,
+    int inactiveArgb,
+  ) async {
+    try {
+      await _nativeTabBarChannel.invokeMethod<void>('setTabBarColors', {
+        'active': activeArgb,
+        'inactive': inactiveArgb,
+      });
+    } on MissingPluginException {
+      // Older installed native shells can keep their system-default tint.
+    } on PlatformException {
+      // Native tab styling must not prevent the Flutter app from working.
     }
   }
 
@@ -3803,6 +3851,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 animation: Listenable.merge([
                   _dcvSlideController,
                   appLiquidGlassOpacityNotifier,
+                  appAccentNotifier,
                 ]),
                 builder: (context, _) {
                   final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
@@ -3819,6 +3868,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   final eventsAccent = isDCVVisual
                       ? (_dcvColor ?? resolveAccentColor(context))
                       : resolveAccentColor(context);
+                  _syncNativeTabBarColors(
+                    _selectedIndex == 2
+                        ? eventsAccent
+                        : resolveAccentColor(context),
+                    CupertinoDynamicColor.resolve(
+                      kTabBarInactiveColor,
+                      context,
+                    ),
+                  );
                   return Positioned.fill(
                     child: AppWindowContentPadding(
                       child: _usesNativeTabBar

@@ -45,8 +45,22 @@ final class NativeSystemTabBarController: UITabBarController,
 
         // Do not replace the system appearance with a custom background. On
         // iOS 26 this is what lets UIKit provide the native floating glass.
-        tabBar.tintColor = .systemBlue
-        tabBar.unselectedItemTintColor = .secondaryLabel
+        tabBar.unselectedItemTintColor = UIColor { traits in
+            if traits.userInterfaceStyle == .dark {
+                return UIColor(
+                    red: 142.0 / 255.0,
+                    green: 142.0 / 255.0,
+                    blue: 147.0 / 255.0,
+                    alpha: 1.0
+                )
+            }
+            return UIColor(
+                red: 115.0 / 255.0,
+                green: 115.0 / 255.0,
+                blue: 115.0 / 255.0,
+                alpha: 1.0
+            )
+        }
         tabBar.isTranslucent = true
         selectedIndex = 0
     }
@@ -75,6 +89,33 @@ final class NativeSystemTabBarController: UITabBarController,
         switch call.method {
         case "isAvailable":
             result(true)
+        case "setTabBarColors":
+            guard let colors = call.arguments as? [String: Any],
+                  let activeArgb = colors["active"] as? Int,
+                  let inactiveArgb = colors["inactive"] as? Int
+            else {
+                result(
+                    FlutterError(
+                        code: "INVALID_TAB_BAR_COLORS",
+                        message: "Native tab-bar colors must be ARGB integers.",
+                        details: nil
+                    )
+                )
+                return
+            }
+            tabBar.tintColor = UIColor(
+                red: CGFloat((activeArgb >> 16) & 0xFF) / 255.0,
+                green: CGFloat((activeArgb >> 8) & 0xFF) / 255.0,
+                blue: CGFloat(activeArgb & 0xFF) / 255.0,
+                alpha: CGFloat((activeArgb >> 24) & 0xFF) / 255.0
+            )
+            tabBar.unselectedItemTintColor = UIColor(
+                red: CGFloat((inactiveArgb >> 16) & 0xFF) / 255.0,
+                green: CGFloat((inactiveArgb >> 8) & 0xFF) / 255.0,
+                blue: CGFloat(inactiveArgb & 0xFF) / 255.0,
+                alpha: CGFloat((inactiveArgb >> 24) & 0xFF) / 255.0
+            )
+            result(nil)
         case "isFloating":
             if #available(iOS 26.0, *) {
                 result(true)
