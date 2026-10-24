@@ -44,6 +44,8 @@
 - [Fixed Squircle Stadium radius](fixed-stadium-radius.md) — shared stadium controls use 24px corners; the 40px search bar explicitly remains 20px.
 - [Dark-mode ghost and sheet outlines](dark-mode-ghost-and-sheet-outlines.md) — overlay/lifted-card hairlines are Dark Mode-only; grouping snap glow bypasses shadow suppression.
 - [Modal toolbar package glass](light-mode-checkmark-glass.md) — use GlassIconButton with shared tab-bar optics, action-tinted checks, and disabled confirmation state.
+- [Package-rendered navigation buttons](static-liquid-glass-action-buttons.md) — app-shell navigation and search-cancel actions share ModalToolbarGlassButton with modal toolbars.
+- [Release-reset image zoom](release-reset-image-zoom.md) — attachment zoom is transient; the shared viewer animates to identity after release without competing fling.
 - [Package glass default-first rule](package-glass-default-first.md) — start new package glass widgets with defaults; reuse shared SKEDDO optics after the user reports a mismatch.
 - [Subscreen checkmark layout](subscreen-checkmark-layout.md) — selectable rows share an OS-scaled checkmark slot with fixed 16px label and edge gaps.
 - [Flutter APK Gradle stability](flutter-apk-gradle-stability.md) — SIGBUS fix requires DEFAULT_JVM_OPTS in gradlew (not just gradle.properties); daemon=false runs in wrapper JVM which ignores org.gradle.jvmargs.

@@ -5,6 +5,7 @@ import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/main.dart';
 import 'package:smart_scheduler/tabs/notes_tab.dart';
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
+import 'package:smart_scheduler/widgets/modal_toolbar_glass_button.dart';
 import 'package:smart_scheduler/widgets/search_bar_widget.dart';
 
 void main() {
@@ -45,7 +46,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(transition.searchBarCollapseProgress, 1);
 
-    for (final tab in ['Events', 'Calendar', 'Notes']) {
+    for (final tab in ['Events', 'Calendar', 'Home']) {
       await tester.tapAt(tester.getCenter(find.text(tab).last));
       await tester.pumpAndSettle();
       expect(transition.collapseProgress, 1, reason: tab);
@@ -70,6 +71,7 @@ void main() {
     final cancel = tester
         .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))
         .firstWhere((widget) => widget.searchFocused);
+    expect(find.byType(ModalToolbarGlassButton), findsWidgets);
     cancel.onTap();
     await tester.pumpAndSettle();
     await tester.pump(const Duration(milliseconds: 500));

@@ -24,6 +24,7 @@ import '../widgets/native_text_input.dart';
 import '../widgets/rounded_cupertino_sheet.dart';
 import '../widgets/modal_sheet_scroll_under.dart';
 import '../widgets/app_header_scroll_edge.dart';
+import '../widgets/release_reset_interactive_viewer.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/app_window_content_boundary.dart';
 import '../widgets/vertical_edge_fade.dart';
@@ -3329,10 +3330,12 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
           }
           return ClipPath(
             clipper: _PreviewSquircleClipper(),
-            child: SizedBox(
-              width: displayW,
-              height: displayH,
-              child: Image.memory(widget.imageBytes!, fit: BoxFit.fill),
+            child: ReleaseResetInteractiveViewer(
+              child: SizedBox(
+                width: displayW,
+                height: displayH,
+                child: Image.memory(widget.imageBytes!, fit: BoxFit.fill),
+              ),
             ),
           );
         },

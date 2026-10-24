@@ -12,6 +12,7 @@ import 'native_text_input.dart';
 import 'selection_handle_haptics.dart';
 import 'fixed_size_icon.dart';
 import 'horizontal_edge_fade.dart';
+import 'modal_toolbar_glass_button.dart';
 
 // ── Shared constants ──────────────────────────────────────────────────────────
 // kSbCornerRadius is the shared 24 px card/section radius. The search bar's
@@ -741,9 +742,13 @@ class _SearchCancelButtonState extends State<SearchCancelButton> {
     final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
     return TapRegion(
       groupId: kSbGroupId,
-      child: StaticLiquidGlassActionButton(
-        color: surfaceColor,
+      child: ModalToolbarGlassButton(
+        icon: CupertinoIcons.xmark,
+        iconColor: primaryLabel,
+        surfaceColor: surfaceColor,
         size: circleSize,
+        iconSize: circleSize * (_kDefaultXmarkSize / _kDefaultCircleSize),
+        semanticLabel: 'Cancel search',
         peakScale: 1.15,
         tapDelay: _kTapDelay,
         onTap: widget.onTap,

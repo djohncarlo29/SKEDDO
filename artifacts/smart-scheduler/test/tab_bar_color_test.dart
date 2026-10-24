@@ -13,8 +13,8 @@ void main() {
     tester,
   ) async {
     for (final entry in [
-      (Brightness.light, const Color.fromRGBO(0, 0, 0, 0.85)),
-      (Brightness.dark, const Color.fromRGBO(253, 253, 253, 0.85)),
+      (Brightness.light, const Color.fromRGBO(0, 0, 0, 0.75)),
+      (Brightness.dark, const Color.fromRGBO(253, 253, 253, 0.75)),
     ]) {
       Color? resolvedColor;
       await tester.pumpWidget(
@@ -32,7 +32,7 @@ void main() {
         ),
       );
       expect(resolvedColor!.toARGB32(), entry.$2.toARGB32());
-      expect(resolvedColor!.a, closeTo(0.85, 0.01));
+      expect(resolvedColor!.a, closeTo(0.75, 0.01));
     }
   });
 

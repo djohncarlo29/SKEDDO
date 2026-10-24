@@ -4,11 +4,9 @@ import 'dart:math' show max, min;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Colors, NoSplash, Theme;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show LiquidGlassWidgets;
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -31,6 +29,7 @@ import 'widgets/fixed_size_icon.dart';
 import 'widgets/floating_tab_pill.dart';
 import 'widgets/header_title_scroller.dart';
 import 'widgets/live_rotation_geometry.dart';
+import 'widgets/modal_toolbar_glass_button.dart';
 import 'widgets/native_text_input.dart';
 import 'widgets/search_bar_widget.dart';
 import 'widgets/view_mode_icons.dart';
@@ -3990,7 +3989,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   _dcvSlideController,
                   _searchModeAnim,
                   _settingsBackAction,
-                  appLiquidGlassOpacityNotifier,
                 ]),
                 builder: (context, _) {
                   final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
@@ -4004,16 +4002,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                   final accent = (isDCVVisual && _dcvColor != null)
                       ? _dcvColor!
                       : resolveAccentColor(context);
-                  final buttonStyle = LiquidGlassButton.defaultStyle.copyWith(
-                    appearance: liquidGlassOpacitySettingAppearance(
-                      context,
-                      baseAppearance: LiquidGlassButton.defaultStyle.appearance,
-                    ),
-                  );
-                  final buttonShadows = resolveThemeShadows(
-                    kLiquidGlassActionButtonShadow,
-                    context,
-                  );
                   final fadeOpacity = (1.0 - _searchModeAnim.value).clamp(
                     0.0,
                     1.0,
@@ -4033,40 +4021,30 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                           child: Stack(
                             clipBehavior: Clip.none,
                             children: [
-                              DecoratedBox(
-                                decoration: ShapeDecoration(
-                                  shape: const CircleBorder(),
-                                  shadows: buttonShadows,
-                                ),
-                                child: Theme(
-                                  // The app-shell hamburger/X keeps the same
-                                  // glass surface on press; only its action
-                                  // changes, without Material's ink darkening.
-                                  data: Theme.of(context).copyWith(
-                                    splashFactory: NoSplash.splashFactory,
-                                    splashColor: Colors.transparent,
-                                    highlightColor: Colors.transparent,
-                                  ),
-                                  child: LightModeLiquidGlassButtonContour(
-                                    child: LiquidGlassButton(
-                                      width: 40,
-                                      height: 40,
-                                      padding: EdgeInsets.zero,
-                                      style: buttonStyle,
-                                      onPressed: isDCVVisual
-                                          ? _exitDCV
-                                          : isSubScreen
-                                          ? backAction
-                                          : _settingsController.value > 0
-                                          ? _closeSettings
-                                          : _openSettings,
-                                      // Keep the animated glyph outside the lens so
-                                      // only the package-owned button samples and
-                                      // clips the glass surface.
-                                      child: const SizedBox.expand(),
-                                    ),
-                                  ),
-                                ),
+                              ModalToolbarGlassButton(
+                                icon: CupertinoIcons.line_horizontal_3,
+                                iconColor: accent,
+                                surfaceColor: kCardColor,
+                                size: 40,
+                                iconSize: 20,
+                                peakScale: 0.95,
+                                semanticLabel: isDCVVisual || isSubScreen
+                                    ? 'Back'
+                                    : _settingsOpen
+                                    ? 'Close settings'
+                                    : 'Open settings',
+                                onTap: isDCVVisual
+                                    ? _exitDCV
+                                    : isSubScreen
+                                    ? backAction
+                                    : _settingsController.value > 0
+                                    ? _closeSettings
+                                    : _openSettings,
+                                // Keep the animated glyph in its existing
+                                // overlay so its morph, alignment, and color
+                                // remain unchanged while GlassIconButton owns
+                                // the shared glass surface and hit target.
+                                child: const SizedBox.expand(),
                               ),
                               IgnorePointer(
                                 child: Padding(
