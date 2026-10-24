@@ -22,16 +22,20 @@ the same second-half alpha for List dots and the embedded selected-day content.
 
 ## Empty Month List landing alignment
 
-For an empty selected day, compute the settled placeholder height from the viewport
-remaining below both the shared 57px second-level title slot and the month grid, then
-subtract the floating-tab-bar clearance. The title slot is present either as the
-scrollable title widget or as portrait top padding.
+For an empty Month List day, compute the settled placeholder height from the
+viewport remaining below the actually remaining shared large-title extent and
+month grid, then subtract the floating-tab-bar clearance. The title extent must
+collapse with the shared header; a portrait-only constant 57px slot leaves the
+empty placeholder too high in compact state. Do not retain a fixed-expanded-region
+centering correction after making the placeholder region respond to that extent.
 
-**Why:** The Year→Month morph measures the List content's actual top after the title
-slot, while the settled formula previously subtracted only the grid. That extra space
-made “No Events” settle lower than its transition position.
+**Why:** The grid scrolls as the shared title collapses, and the available
+placeholder area grows. Keeping the expanded title slot subtracted after collapse
+made the placeholder remain above the center of that newly available area.
 
 **How to apply:** Keep the settled empty-state height aligned with
-`viewportHeight - measuredListContentTop - clearance`. Do not subtract the app-header
-leading inset again; `AppHeaderScrollViewport` and its matching content inset already
-cancel one another.
+`viewportHeight - remainingTitleExtent - gridHeight - clearance`, using the shared
+collapse position for `remainingTitleExtent`. Preserve the expanded measurement and
+let the collapse-aware empty region account for its own centering. Do not subtract
+the app-header leading inset again; `AppHeaderScrollViewport` and its matching
+content inset already cancel one another.

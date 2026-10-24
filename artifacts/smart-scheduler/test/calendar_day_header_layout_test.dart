@@ -113,30 +113,26 @@ void main() {
     calendar.setViewMode(CalendarViewMode.list, persist: false);
     await tester.pumpAndSettle();
     expect(calendar.viewMode, CalendarViewMode.list);
-    final placeholder = find.text('No Events').hitTestable().first;
-    final expandedCenterY = tester.getCenter(placeholder).dy;
+    final selectedEmptyState = find.text('No Events').at(1);
+    final expandedCenterY = tester.getCenter(selectedEmptyState).dy;
 
     final source = AppHeaderScrollView.headerPositionFor(sourceController)!;
     transition.bindTo(source);
     source.jumpTo(kAppHeaderTitleCollapseDistance);
     await tester.pumpAndSettle();
     expect(transition.collapseProgress, 1);
-    final emptyStates = find.text('No Events');
-    for (var index = 0; index < emptyStates.evaluate().length; index++) {
-      debugPrint('month-empty-center[$index]=${tester.getCenter(emptyStates.at(index))}');
-    }
-
-    final compactCenterY = tester
-        .getCenter(find.text('No Events').hitTestable().first)
-        .dy;
+    final compactCenterY = tester.getCenter(selectedEmptyState).dy;
     expect(
       compactCenterY,
       closeTo(
-        expandedCenterY -
+        expandedCenterY +
             (kAppHeaderTitleHeight - kAppHeaderContentTopSpacing) / 2,
         1,
       ),
     );
+    source.jumpTo(0);
+    await tester.pumpAndSettle();
+    expect(tester.getCenter(selectedEmptyState).dy, closeTo(expandedCenterY, 1));
     expect(tester.takeException(), isNull);
   });
 
