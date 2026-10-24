@@ -3,7 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassTab, GlassTabBar;
+    show
+        GlassExtraButtonPlacement,
+        GlassTab,
+        GlassTabBar,
+        GlassTabBarExtraButton;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
@@ -28,14 +32,15 @@ const LiquidGlassShape kLiquidGlassPreviewGlassShape =
 
 /// The AppShell's platform-neutral floating tab control.
 ///
-/// This widget owns the pill's presentation and tab-item interaction only.
-/// AppShell remains responsible for the selected index, navigation callbacks,
-/// safe-area positioning, and overlay ordering.
+/// This widget owns the package bar, its three navigation tabs, and its
+/// separate trailing action. AppShell remains responsible for navigation,
+/// opening the event sheet, safe-area positioning, and overlay ordering.
 class FloatingTabPill extends StatefulWidget {
   const FloatingTabPill({
     super.key,
     required this.selectedIndex,
     required this.onTabSelected,
+    required this.onCreateEvent,
     required this.eventsAccent,
     this.horizontalOffset = 0,
     this.animateHorizontalOffset = true,
@@ -43,6 +48,7 @@ class FloatingTabPill extends StatefulWidget {
 
   final int selectedIndex;
   final ValueChanged<int> onTabSelected;
+  final VoidCallback onCreateEvent;
   final Color eventsAccent;
   /// Horizontal movement from the normal centered position, in logical pixels.
   final double horizontalOffset;
@@ -84,6 +90,13 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       ],
       selectedIndex: selectedIndex,
       onTabSelected: widget.onTabSelected,
+      extraButton: GlassTabBarExtraButton(
+        icon: const FixedSFIcon(SFIcons.sf_plus),
+        onTap: widget.onCreateEvent,
+        label: 'New Event',
+        iconColor: selectedColor,
+        placement: GlassExtraButtonPlacement.right,
+      ),
       selectedIconColor: selectedColor,
       unselectedIconColor: unselectedColor,
       selectedLabelColor: selectedColor,

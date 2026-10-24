@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassTabBar;
+    show GlassExtraButtonPlacement, GlassTabBar;
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/widgets/floating_tab_pill.dart';
 
@@ -36,6 +36,7 @@ void main() {
     tester,
   ) async {
     const eventsAccent = Color(0xFFDB5500);
+    var createEventCalls = 0;
     await tester.pumpWidget(
       CupertinoApp(
         theme: const CupertinoThemeData(brightness: Brightness.light),
@@ -46,6 +47,7 @@ void main() {
                 selectedIndex: 2,
                 eventsAccent: eventsAccent,
                 onTabSelected: (_) {},
+                onCreateEvent: () => createEventCalls++,
               ),
             ),
           ],
@@ -69,8 +71,19 @@ void main() {
     expect(tabBar.selectedLabelColor!.value, eventsAccent.value);
     expect(tabBar.unselectedIconColor!.value, inactiveColor.value);
     expect(tabBar.unselectedLabelColor!.value, inactiveColor.value);
+    expect(tabBar.extraButton, isNotNull);
+    expect(tabBar.extraButton!.label, 'New Event');
+    expect(tabBar.extraButton!.iconColor!.value, eventsAccent.value);
+    expect(
+      tabBar.extraButton!.placement,
+      GlassExtraButtonPlacement.right,
+    );
     expect(tabBar.barHeight, 64.0);
     expect(tabBar.horizontalPadding, 20.0);
     expect(tabBar.verticalPadding, 20.0);
+
+    await tester.tap(find.bySemanticsLabel('New Event'));
+    await tester.pump();
+    expect(createEventCalls, 1);
   });
 }

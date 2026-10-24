@@ -15,8 +15,8 @@ Keep tab colors synchronized from Flutter by sending both the resolved active ac
 
 **How to apply:** Resolve both colors from the same Cupertino theme context used by the Flutter tab pill, send them together, and verify the light and dark pairs.
 
-On web and Android, use `flutter_liquid_glass_widgets`' `GlassTabBar.bottom` for the Flutter-rendered floating bar. Pass only the selected and unselected icon/label colors; keep the package's glass styling and dimensions at their defaults, and align content clearance with its 64 px pill. The app's Liquid Glass opacity setting does not alter this bar.
+On web and Android, use `flutter_liquid_glass_widgets`' `GlassTabBar.bottom` for the Flutter-rendered floating bar. Pass only the selected and unselected icon/label colors; keep the package's glass styling and dimensions at their defaults, and align content clearance with its 64 px pill. Use its `extraButton` for separate trailing actions; this is a Flutter button with an accessibility label, not UIKit's `.search` tab role. The app's Liquid Glass opacity setting does not alter this bar.
 
 **Why:** The user chose the package's native floating-bar implementation while retaining SKEDDO's accent and inactive tints; custom `liquid_glass_easy` styling would duplicate the package's own behavior.
 
-**How to apply:** Keep the UIKit overlay on native iOS. For web/Android, preserve AppShell positioning and navigation state around `GlassTabBar.bottom`, but do not reintroduce custom material, shadow, indicator, or text-scale overrides.
+**How to apply:** Keep the UIKit overlay on native iOS. For web/Android, preserve AppShell positioning and navigation state around `GlassTabBar.bottom`, use `extraButton` when a trailing action is requested, and do not reintroduce custom material, shadow, indicator, or text-scale overrides.

@@ -3891,6 +3891,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                               horizontalOffset: tabBarHorizontalOffset,
                               animateHorizontalOffset: !followsDcvPaneAnimation,
                               onTabSelected: _switchTab,
+                              onCreateEvent: () => _calendarTabKey.currentState
+                                  ?.showNewEventSheet(
+                                    context,
+                                    initialCategoryId: _selectedIndex == 2
+                                        ? _eventsTabKey.currentState
+                                              ?.activeStandardDcvCategoryId
+                                        : null,
+                                  ),
                             ),
                     ),
                   );
