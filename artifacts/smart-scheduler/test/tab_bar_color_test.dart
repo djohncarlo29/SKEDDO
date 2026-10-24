@@ -142,6 +142,11 @@ void main() {
       tabBar.settings!.ambientStrength,
       GlassThemeVariant.dark.settings!.ambientStrength,
     );
+    expect(tabBar.settings!.thickness, 30.0);
+    expect(tabBar.settings!.blur, 3.0);
+    expect(tabBar.settings!.chromaticAberration, 0.3);
+    expect(tabBar.settings!.refractiveIndex, 1.59);
+    expect(tabBar.settings!.saturation, 0.7);
     expect(tabBar.indicatorSettings, isNull);
     expect(tabBar.iconSize, 20.0);
     expect(tabBar.tabs.map((tab) => (tab.icon! as FixedSFIcon).fontSize), [

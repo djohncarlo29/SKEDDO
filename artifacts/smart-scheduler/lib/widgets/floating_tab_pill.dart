@@ -32,8 +32,9 @@ const LiquidGlassShape kLiquidGlassPreviewGlassShape =
   clipQuality: LiquidGlassClipQuality.exact,
 );
 
-// Mirrors the package's private bottom-bar preset, allowing its public
-// GlassThemeVariant.dark settings to be applied without adding a charcoal veil.
+// Mirrors the package's private bottom-bar preset. The package's general dark
+// preset changes optical values as well as tint, so merge only its tint and
+// lighting while keeping the bottom bar's stronger refraction settings.
 const LiquidGlassSettings _floatingTabBarBaseSettings = LiquidGlassSettings(
   thickness: 30,
   blur: 3,
@@ -46,7 +47,12 @@ const LiquidGlassSettings _floatingTabBarBaseSettings = LiquidGlassSettings(
   glassColor: Color(0x3DFFFFFF),
 );
 final LiquidGlassSettings _floatingTabBarDarkSettings =
-    GlassThemeVariant.dark.settings!.applyTo(_floatingTabBarBaseSettings);
+    _floatingTabBarBaseSettings.copyWith(
+      glassColor: GlassThemeVariant.dark.settings!.glassColor,
+      lightAngle: GlassThemeVariant.dark.settings!.lightAngle,
+      lightIntensity: GlassThemeVariant.dark.settings!.lightIntensity,
+      ambientStrength: GlassThemeVariant.dark.settings!.ambientStrength,
+    );
 
 /// The AppShell's platform-neutral floating tab control.
 ///
