@@ -145,7 +145,30 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
                 ClipOval(
                   child: ColoredBox(
                     color: resolvedSurface.withValues(
-                      alpha: kSkeddoTintedActionGlassOpacity,
+                      alpha: kSkeddoActiveCheckmarkFillOpacity,
+                    ),
+                  ),
+                ),
+                IgnorePointer(
+                  child: ExcludeSemantics(
+                    child: Opacity(
+                      opacity:
+                          kSkeddoActiveCheckmarkRefractionOverlayOpacity,
+                      child: GlassIconButton(
+                        icon: const SizedBox.shrink(),
+                        onPressed: () {},
+                        size: widget.size,
+                        iconSize: widget.iconSize,
+                        shape: GlassIconButtonShape.circle,
+                        settings:
+                            skeddoActiveCheckmarkRefractionSettingsFor(
+                              brightness,
+                            ),
+                        quality: GlassQuality.premium,
+                        useOwnLayer: true,
+                        interactionScale: 1,
+                        semanticLabel: '',
+                      ),
                     ),
                   ),
                 ),

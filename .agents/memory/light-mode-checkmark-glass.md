@@ -6,9 +6,9 @@ description: Modal toolbar actions use flutter_liquid_glass_widgets GlassIconBut
 Modal sheet and Notes attachment-preview toolbar controls use the package's
 `GlassIconButton`, which is designed for toolbar icon actions. Pass the shared
 floating-tab-bar `LiquidGlassSettings` to these standalone buttons. Active
-checkmarks use an 85% accent/category underlay beneath a clear package glass
-surface and an opaque white glyph; set the glass saturation to 1.0 to preserve
-the accent hue. Inactive checkmarks keep the same 85% treatment and white glyph,
+checkmarks use a fully opaque accent/category base, a 30% refraction-only
+package layer, a clear full-strength Fresnel/lighting layer, and an opaque white
+glyph. Inactive checkmarks use 85% glass tint with a white glyph,
 tinted `#CECDD3` in Light Mode or `#474749` in Dark Mode, while remaining
 semantically and functionally disabled.
 
@@ -21,8 +21,8 @@ chromatic tints, which can shift blue toward cyan over a bright surface.
 shared wrapper with the shared bar settings, `GlassQuality.premium`, and
 `useOwnLayer: true`. For active chromatic checkmarks, place the tint underneath
 the package glass rather than passing it as `glassColor`; inactive grey tints can
-still use `glassColor` directly. Active checkmarks should disable chromatic
-aberration, Fresnel rim, and shadows while keeping subtle directional lighting;
-the tab-bar edge effects create violet fringes and a contrasting outline at
-this smaller size. Keep inactive controls disabled and preserve the package
-renderer. Non-Impeller renderers still use the package's lighter path.
+still use `glassColor` directly. Active checkmarks need a fully opaque color
+base, a translucent refraction-only package layer, and a clear, full-strength
+Fresnel/lighting overlay with zero chromatic aberration. Keep inactive controls
+disabled and preserve the package renderer. Non-Impeller renderers still use
+the package's lighter path.

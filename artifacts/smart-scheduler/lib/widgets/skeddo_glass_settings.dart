@@ -12,6 +12,8 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
 const double kSkeddoLightBottomBarOpacity = 0.30;
 const double kSkeddoDarkBottomBarOpacity = 0.40;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
+const double kSkeddoActiveCheckmarkFillOpacity = 1.0;
+const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
 
 const LiquidGlassSettings _packageBottomBarGlassDefaults = LiquidGlassSettings(
   thickness: 30,
@@ -67,23 +69,34 @@ LiquidGlassSettings skeddoTintedActionGlassSettingsFor(
   glassColor: tint.withValues(alpha: kSkeddoTintedActionGlassOpacity),
 );
 
-/// Keeps active accent colors true while retaining the package's glass optics.
+/// Settings for the full-strength lighting/rim layer above an active fill.
 ///
 /// The package's premium shader preserves backdrop luminance when tinting
 /// chromatic glass. On a bright background, that operation can shift a blue
-/// accent toward cyan, so active checkmarks put the 85% accent beneath a clear
-/// glass surface and let the package refract that tinted scene. The tab bar's
-/// chromatic fringes and full-perimeter highlight are also too strong at this
-/// small size, so keep refraction but remove those edge effects here.
+/// accent toward cyan. Active checkmarks therefore use a clear glass layer
+/// over an opaque accent base. This top layer keeps the shared Fresnel rim and
+/// lighting, but does not displace the base color.
 LiquidGlassSettings skeddoActiveCheckmarkGlassSettingsFor(
   Brightness brightness,
 ) => skeddoBottomBarGlassSettingsFor(brightness).copyWith(
   glassColor: const Color(0x00FFFFFF),
   saturation: 1,
+  refractiveIndex: 1,
   chromaticAberration: 0,
-  lightIntensity: 0.15,
-  ambientStrength: 0,
+  shadowElevation: 0,
+);
+
+/// Refraction is rendered separately so its sampled edge colors are blended
+/// over the solid category fill rather than replacing it.
+LiquidGlassSettings skeddoActiveCheckmarkRefractionSettingsFor(
+  Brightness brightness,
+) => skeddoBottomBarGlassSettingsFor(brightness).copyWith(
+  glassColor: const Color(0x00FFFFFF),
+  saturation: 1,
+  chromaticAberration: 0,
   fresnelStrength: 0,
   ambientRim: 0,
+  lightIntensity: 0,
+  ambientStrength: 0,
   shadowElevation: 0,
 );

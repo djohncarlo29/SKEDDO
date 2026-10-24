@@ -29,9 +29,12 @@ void main() {
         ),
       );
 
-      final button = tester.widget<GlassIconButton>(
-        find.byType(GlassIconButton),
-      );
+      final buttons = tester
+          .widgetList<GlassIconButton>(find.byType(GlassIconButton))
+          .toList();
+      expect(buttons, hasLength(2));
+      final refractionLayer = buttons.first;
+      final button = buttons.last;
       final icon = tester.widget<Icon>(find.byIcon(CupertinoIcons.checkmark));
       expect(button.size, 40);
       expect(button.iconSize, 20);
@@ -44,19 +47,49 @@ void main() {
       );
       expect(button.settings!.glassColor.a, 0);
       expect(button.settings!.saturation, 1);
+      expect(button.settings!.refractiveIndex, 1);
       expect(button.settings!.chromaticAberration, 0);
-      expect(button.settings!.fresnelStrength, 0);
-      expect(button.settings!.ambientRim, 0);
-      expect(button.settings!.lightIntensity, 0.15);
-      expect(button.settings!.ambientStrength, 0);
+      final sharedSettings = skeddoBottomBarGlassSettingsFor(brightness);
+      expect(button.settings!.fresnelStrength, sharedSettings.fresnelStrength);
+      expect(button.settings!.lightIntensity, sharedSettings.lightIntensity);
+      expect(button.settings!.ambientStrength, sharedSettings.ambientStrength);
       expect(button.settings!.shadowElevation, 0);
+      expect(
+        refractionLayer.settings,
+        skeddoActiveCheckmarkRefractionSettingsFor(brightness),
+      );
+      expect(
+        refractionLayer.settings!.refractiveIndex,
+        sharedSettings.refractiveIndex,
+      );
+      expect(
+        refractionLayer.settings!.fresnelStrength,
+        0,
+      );
+      expect(
+        refractionLayer.onPressed,
+        isNotNull,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Opacity &&
+              widget.opacity ==
+                  kSkeddoActiveCheckmarkRefractionOverlayOpacity,
+        ),
+        findsOneWidget,
+      );
+      expect(
+        button.settings!.glassColor,
+        const Color(0x00FFFFFF),
+      );
       expect(
         find.byWidgetPredicate(
           (widget) =>
               widget is ColoredBox &&
               widget.color.toARGB32() ==
                   actionColor
-                      .withValues(alpha: kSkeddoTintedActionGlassOpacity)
+                      .withValues(alpha: kSkeddoActiveCheckmarkFillOpacity)
                       .toARGB32(),
         ),
         findsOneWidget,
@@ -107,6 +140,7 @@ void main() {
         final button = tester.widget<GlassIconButton>(
           find.byType(GlassIconButton),
         );
+        expect(find.byType(GlassIconButton), findsOneWidget);
         final icon = tester.widget<Icon>(find.byIcon(CupertinoIcons.checkmark));
         expect(button.onPressed, isNotNull);
         expect(
