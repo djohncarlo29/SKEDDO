@@ -48,11 +48,6 @@ void main() {
       );
       final stretchShell = tester.widget<GlassButton>(stretchShellFinder);
       final icon = tester.widget<Icon>(find.byIcon(CupertinoIcons.checkmark));
-      final activeOpacityFinder = find.byWidgetPredicate(
-        (widget) =>
-            widget is Opacity &&
-            widget.opacity == kSkeddoActiveCheckmarkButtonOpacity,
-      );
       expect(stretchShell.width, 40);
       expect(stretchShell.height, 40);
       expect(stretchShell.interactionScale, 1.15);
@@ -73,13 +68,14 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(activeOpacityFinder, findsOneWidget);
       expect(
-        find.descendant(
-          of: activeOpacityFinder,
-          matching: stretchShellFinder,
+        find.ancestor(
+          of: stretchShellFinder,
+          matching: find.byWidgetPredicate(
+            (widget) => widget is Opacity && widget.opacity == 0.85,
+          ),
         ),
-        findsOneWidget,
+        findsNothing,
       );
       expect(
         lightingLayer.settings,

@@ -227,11 +227,6 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         child: ExcludeSemantics(child: renderedButton),
       );
     }
-    return activeTintedCheckmark
-        ? Opacity(
-            opacity: kSkeddoActiveCheckmarkButtonOpacity,
-            child: renderedButton,
-          )
-        : renderedButton;
+    return renderedButton;
   }
 }
