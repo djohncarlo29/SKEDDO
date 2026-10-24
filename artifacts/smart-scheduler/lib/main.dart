@@ -1086,9 +1086,15 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             ),
             _ => null,
           };
+    // Calendar Day View intentionally has no header-owning scroll position:
+    // its timeline scrolls independently. Keep the shell's last shared title
+    // state instead of treating the missing position as an expanded header.
+    final preserveCalendarDayHeader =
+        _selectedIndex == 1 && position == null;
     _headerTitleTransition.bindTo(
       position,
       preserveCollapseProgress: preserveCollapseProgress ||
+          preserveCalendarDayHeader ||
           AppHeaderScrollView.isHeaderPosition(position),
     );
   }

@@ -13,6 +13,12 @@ One app-wide header-collapse state is authoritative across tabs, Detailed Catego
 
 **How to apply:** Preserve the active state on destination handoff and seed newly created header geometry before Calendar morph endpoints are measured. Do not reapply alignment to the same position. Keep header collapse driven by the outer position and glass-edge travel informed by the coordinated body as well. Short pages should have only the real header collapse travel, not fabricated body scroll extent. Calendar Day timelines remain independent scroll sources, but their fixed chrome must inherit the remaining shared title height rather than always reserving the expanded slot. Preserve search restoration and existing edge bounds. Nested inner-position jumps use body coordinates and can collapse the outer header even at body offset zero; body-only restoration must preserve the actual outer position.
 
+Calendar Day View deliberately exposes no header-owning scroll position. When the active Calendar destination has no position, preserve the shared collapse progress instead of binding null as an expanded state. The Day View's DOW row, week strip, and day banner must all use that shared progress; its timeline remains an independent scroll source.
+
+**Why:** Resetting the shared transition to null/expanded made fixed Day View chrome use expanded-title geometry even when the shell was compact.
+
+**How to apply:** In AppShell header handoff logic, treat a null Calendar header position as “retain current shared state.” In Day View geometry, derive the remaining title slot from the shared `AppHeaderTitleTransition`, not the timeline offset or Month↔Day animation.
+
 ## Second-level header overscroll behavior
 During normal scrolling away from the top, a second-level header travels with its content beneath the shared Liquid Glass edge. When content rubber-bands past the top, the header stays at its resting screen position while only the content moves. Keep this as one reusable app-wide behavior; screens with titles inside a scrollable need to cancel only the negative leading overscroll, while shell-owned titles use a non-negative scroll offset. Calendar Day View Single Day and Multi Day timelines remain outside the shell-title behavior.
 

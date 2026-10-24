@@ -61,39 +61,30 @@ LiquidGlassSettings skeddoBottomBarGlassSettingsFor(Brightness brightness) =>
     ? kSkeddoDarkBottomBarGlassSettings
     : kSkeddoBottomBarGlassSettings;
 
-/// Popovers use the shared glass optics with their own, stronger tint level.
-LiquidGlassSettings skeddoPopoverGlassSettingsFor(Brightness brightness) {
+/// Popovers use the shared glass optics with the original modal card tint.
+LiquidGlassSettings skeddoPopoverGlassSettingsFor(
+  Brightness brightness,
+  Color cardTint,
+) {
   final shared = skeddoBottomBarGlassSettingsFor(brightness);
   return shared.copyWith(
-    glassColor: shared.glassColor.withValues(
-      alpha: kSkeddoPopoverGlassOpacity,
-    ),
+    glassColor: cardTint.withValues(alpha: kSkeddoPopoverGlassOpacity),
   );
 }
 
 /// GlassButtonStyle.prominent multiplies its input tint alpha by 2.5.
 /// Supplying 0.28 therefore keeps this one popover action at 70% after the
-/// package applies its prominent-button treatment.
+/// package applies its prominent-button treatment. The hue comes from the
+/// original modal button surface rather than the shared renderer's neutral tint.
 LiquidGlassSettings skeddoPopoverButtonGlassSettingsFor(
   Brightness brightness,
+  Color buttonTint,
 ) {
-  final popover = skeddoPopoverGlassSettingsFor(brightness);
+  final popover = skeddoBottomBarGlassSettingsFor(brightness);
   return popover.copyWith(
-    glassColor: popover.glassColor.withValues(
+    glassColor: buttonTint.withValues(
       alpha: kSkeddoPopoverGlassOpacity / 2.5,
     ),
-  );
-}
-
-/// Shared optics for the lifted switch thumb, preserving the package thumb's
-/// existing glass-tint alpha in each appearance.
-LiquidGlassSettings skeddoSwitchThumbGlassSettingsFor(
-  Brightness brightness,
-) {
-  final shared = skeddoBottomBarGlassSettingsFor(brightness);
-  final existingThumbOpacity = brightness == Brightness.dark ? 0.08 : 0.12;
-  return shared.copyWith(
-    glassColor: shared.glassColor.withValues(alpha: existingThumbOpacity),
   );
 }
 

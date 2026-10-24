@@ -6,6 +6,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show
         GlassContainer,
         GlassExtraButtonPlacement,
+        GlassQuality,
         GlassTab,
         GlassTabBar,
         GlassTabBarExtraButton,
@@ -423,6 +424,12 @@ class _FloatingTabBarGlassPreviewState
                               glassColor: sharedSettings.glassColor.withValues(
                                 alpha: glassOpacity,
                               ),
+                              // The premium renderer's native full-perimeter
+                              // rim supplies the requested white glass edge in
+                              // Dark Mode; this is lighting, not a drawn border.
+                              ambientRim: brightness == Brightness.dark
+                                  ? 0.18
+                                  : sharedSettings.ambientRim,
                             );
                             final iconColor = resolveThemeColor(
                               kSecondaryLabel,
@@ -436,6 +443,7 @@ class _FloatingTabBarGlassPreviewState
                                   borderRadius: kSquircleStadiumRadius,
                                 ),
                                 settings: previewSettings,
+                                quality: GlassQuality.premium,
                                 useOwnLayer: true,
                                 child: Row(
                                   children: [

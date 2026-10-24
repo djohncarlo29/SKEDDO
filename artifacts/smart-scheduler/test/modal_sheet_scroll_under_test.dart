@@ -25,6 +25,11 @@ void main() {
 
       await tester.pumpWidget(
         CupertinoApp(
+          builder: (context, child) => AppWindowContentScope(
+            horizontalInset: 0,
+            physicalWidth: 400,
+            child: child ?? const SizedBox.shrink(),
+          ),
           home: CupertinoPageScaffold(
             child: SizedBox.expand(
               child: ModalSheetScrollUnder(
@@ -84,6 +89,102 @@ void main() {
       controller.jumpTo(0);
       await tester.pump();
       expect(find.byType(LiquidGlassScrollEdge), findsNothing);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+
+  testWidgets(
+    'an independent overlay scroller cannot replace the sheet edge progress',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(400, 700));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final sheetController = ScrollController();
+      final overlayController = ScrollController();
+      addTearDown(sheetController.dispose);
+      addTearDown(overlayController.dispose);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          builder: (context, child) => AppWindowContentScope(
+            horizontalInset: 0,
+            physicalWidth: 400,
+            child: child ?? const SizedBox.shrink(),
+          ),
+          home: CupertinoPageScaffold(
+            child: SizedBox.expand(
+              child: ModalSheetScrollUnder(
+                scrollController: sheetController,
+                headerHeight: 40,
+                headerGap: 6,
+                baseScrollPadding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                surfaceColor: const Color(0xFFF2F2F7),
+                header: const SizedBox(height: 40),
+                scrollBuilder: (context, padding) => Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ListView(
+                        controller: sheetController,
+                        primary: false,
+                        padding: padding,
+                        children: List.generate(
+                          20,
+                          (index) => SizedBox(
+                            height: 40,
+                            child: Text('Sheet row $index'),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 100,
+                      left: 16,
+                      width: 120,
+                      height: 160,
+                      child: ListView(
+                        controller: overlayController,
+                        primary: false,
+                        children: List.generate(
+                          20,
+                          (index) => SizedBox(
+                            height: 40,
+                            child: Text('Popover row $index'),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      sheetController.jumpTo(50);
+      await tester.pump();
+      final sheetEdgeBeforeOverlayScroll =
+          tester.widget<LiquidGlassScrollEdge>(
+        find.byType(LiquidGlassScrollEdge),
+      );
+      expect(sheetEdgeBeforeOverlayScroll.color.a, closeTo(0.78, 0.001));
+
+      // A popover's own scrolling should not replace the sheet controller's
+      // edge metrics even when its notification is depth zero.
+      overlayController.jumpTo(2);
+      await tester.pump();
+      final sheetEdgeAfterOverlayScroll = tester.widget<LiquidGlassScrollEdge>(
+        find.byType(LiquidGlassScrollEdge),
+      );
+      expect(
+        sheetEdgeAfterOverlayScroll.color.a,
+        closeTo(sheetEdgeBeforeOverlayScroll.color.a, 0.001),
+      );
+      expect(
+        sheetEdgeAfterOverlayScroll.blur,
+        closeTo(sheetEdgeBeforeOverlayScroll.blur, 0.001),
+      );
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
   );

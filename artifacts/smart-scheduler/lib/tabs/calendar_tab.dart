@@ -2933,8 +2933,20 @@ class CalendarTabState extends State<CalendarTab>
             // the status-bar/header edge.
             final double appHeaderLeadingInset =
                 AppHeaderScrollInsetScope.maybeOf(context);
+            // Day View's DOW row, week strip, and banner share the active
+            // AppShell title-collapse state. Do not infer this from the
+            // timeline or the calendar's separate Month↔Day animation.
+            final sharedTitleCollapseProgress =
+                (AppHeaderScrollInsetScope.titleTransitionOf(
+                          context,
+                        )?.collapseProgress ??
+                        0.0)
+                    .clamp(0.0, 1.0)
+                    .toDouble();
             final expandedTitleHeight =
-                _calendarExpandedTitleHeight(context);
+                MediaQuery.orientationOf(context) == Orientation.portrait
+                ? kAppHeaderTitleHeight * (1.0 - sharedTitleCollapseProgress)
+                : 0.0;
             final contentTopSpacing = AppHeaderScrollView.contentTopSpacingOf(
               context,
               topExtension: kContentAreaTopRaise,

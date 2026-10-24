@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show GlassButton, GlassMenuAlignment, GlassPopover;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/delete_confirmation_sheet.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
@@ -66,9 +67,25 @@ void main() {
       skeddoBottomBarGlassSettingsFor(Brightness.light).refractiveIndex,
     );
     expect(popover.settings!.glassColor.a, 0.70);
+    final lightCardTint = resolveThemeColor(kModalCard, pageContext);
     expect(
-      skeddoPopoverGlassSettingsFor(Brightness.dark).glassColor.a,
+      popover.settings!.glassColor.toARGB32() & 0x00FFFFFF,
+      lightCardTint.toARGB32() & 0x00FFFFFF,
+    );
+    expect(
+      skeddoPopoverGlassSettingsFor(
+        Brightness.dark,
+        const Color(0xFF2C2C2E),
+      ).glassColor.a,
       0.70,
+    );
+    expect(
+      skeddoPopoverGlassSettingsFor(
+        Brightness.dark,
+        const Color(0xFF2C2C2E),
+      ).glassColor.toARGB32() &
+          0x00FFFFFF,
+      0x002C2C2E,
     );
     expect(
       find.byWidgetPredicate(
@@ -87,9 +104,32 @@ void main() {
     expect(tester.getSize(discardButtonFinder).width, greaterThan(300));
     final discardButton = tester.widget<GlassButton>(discardButtonFinder);
     expect(discardButton.settings!.glassColor.a, closeTo(0.28, 0.001));
+    final lightButtonTint = resolveThemeColor(
+      kModalButtonBackground,
+      pageContext,
+    );
     expect(
-      skeddoPopoverButtonGlassSettingsFor(Brightness.dark).glassColor.a,
+      discardButton.settings!.glassColor.toARGB32() & 0x00FFFFFF,
+      lightButtonTint.toARGB32() & 0x00FFFFFF,
+    );
+    expect(
+      discardButton.settings!.glassColor.a * 2.5,
+      closeTo(kSkeddoPopoverGlassOpacity, 0.001),
+    );
+    expect(
+      skeddoPopoverButtonGlassSettingsFor(
+        Brightness.dark,
+        const Color(0xFF3A3A3C),
+      ).glassColor.a,
       closeTo(0.28, 0.001),
+    );
+    expect(
+      skeddoPopoverButtonGlassSettingsFor(
+        Brightness.dark,
+        const Color(0xFF3A3A3C),
+      ).glassColor.toARGB32() &
+          0x00FFFFFF,
+      0x003A3A3C,
     );
 
     await tester.tapAt(const Offset(700, 500));

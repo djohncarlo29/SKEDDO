@@ -349,7 +349,20 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder>
     _syncFromScrollController();
   }
 
+  bool _isFromSheetScrollController(ScrollMetrics metrics) {
+    final controller = widget.scrollController;
+    if (controller == null) return true;
+    return controller.positions.any(
+      (position) => identical(position, metrics),
+    );
+  }
+
   bool _onScrollNotification(ScrollNotification notification) {
+    // A popover can host its own depth-zero scrollable in the same route.
+    // When a controller is supplied, that controller is the authoritative
+    // sheet scroller; unrelated overlay notifications must not reset or
+    // replace the sheet's live edge progress.
+    if (!_isFromSheetScrollController(notification.metrics)) return false;
     // The fixed header contains its own horizontal title scroller. Its
     // notifications also arrive at depth zero, but must never drive the
     // vertical sheet's scroll-edge progress.
@@ -360,6 +373,7 @@ class _ModalSheetScrollUnderState extends State<ModalSheetScrollUnder>
   }
 
   bool _onMetricsNotification(ScrollMetricsNotification notification) {
+    if (!_isFromSheetScrollController(notification.metrics)) return false;
     if (notification.depth == 0 && notification.metrics.axis == Axis.vertical) {
       _syncScrollMetrics(notification.metrics);
     }

@@ -537,6 +537,7 @@ class DiscardChangesPopoverAnchorState
               ),
               settings: skeddoPopoverButtonGlassSettingsFor(
                 CupertinoTheme.brightnessOf(context),
+                resolveThemeColor(kModalButtonBackground, context),
               ),
               style: GlassButtonStyle.prominent,
               interactionScale: 1.06,
@@ -594,6 +595,7 @@ class DiscardChangesPopoverAnchorState
       ),
       settings: skeddoPopoverGlassSettingsFor(
         CupertinoTheme.brightnessOf(context),
+        resolveThemeColor(kModalCard, context),
       ),
       quality: GlassQuality.premium,
       barrierDismissible: true,
