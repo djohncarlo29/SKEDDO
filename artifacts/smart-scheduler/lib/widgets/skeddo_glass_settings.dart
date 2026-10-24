@@ -7,12 +7,10 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
 /// Shared optical settings for the package-rendered floating tab bar and
 /// standalone modal toolbar GlassIconButtons.
 ///
-/// These use flutter_liquid_glass_widgets' bottom-bar optical settings with a
-/// 10-percentage-point increase to the glass tint opacity. Keeping them shared
-/// prevents standalone package buttons from falling back to weaker general
-/// GlassTheme defaults.
-const double kSkeddoBottomBarOpacityIncrease = 0.10;
-const double kSkeddoDarkBottomBarOpacity = 0.25;
+/// These retain flutter_liquid_glass_widgets' bottom-bar optics while using
+/// SKEDDO's explicit, mode-specific tint colors and opacities.
+const double kSkeddoLightBottomBarOpacity = 0.20;
+const double kSkeddoDarkBottomBarOpacity = 0.30;
 const double kSkeddoTintedActionGlassOpacity = 0.24;
 
 const LiquidGlassSettings _packageBottomBarGlassDefaults = LiquidGlassSettings(
@@ -29,8 +27,11 @@ const LiquidGlassSettings _packageBottomBarGlassDefaults = LiquidGlassSettings(
 
 final LiquidGlassSettings kSkeddoBottomBarGlassSettings =
     _packageBottomBarGlassDefaults.copyWith(
-      glassColor: _increaseGlassOpacity(
-        _packageBottomBarGlassDefaults.glassColor,
+      glassColor: const Color.fromRGBO(
+        0xFF,
+        0xFF,
+        0xFF,
+        kSkeddoLightBottomBarOpacity,
       ),
     );
 
@@ -51,10 +52,6 @@ final LiquidGlassSettings kSkeddoDarkBottomBarGlassSettings =
 /// Light Mode. Dark Mode continues to use the package's transparent default.
 const LiquidGlassSettings kSkeddoLightLiftedTabIndicatorSettings =
     LiquidGlassSettings(glassColor: Color.fromRGBO(0, 0, 0, 0.04));
-
-Color _increaseGlassOpacity(Color color) => color.withValues(
-  alpha: (color.a + kSkeddoBottomBarOpacityIncrease).clamp(0.0, 1.0),
-);
 
 LiquidGlassSettings skeddoBottomBarGlassSettingsFor(Brightness brightness) =>
     brightness == Brightness.dark

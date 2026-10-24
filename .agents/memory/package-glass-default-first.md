@@ -16,16 +16,16 @@ by a consistent correction path when its default optics do not fit SKEDDO.
 new package widgets. After the user flags a mismatch, reuse the shared settings
 source and preserve the package's rendering path.
 
-For SKEDDO's shared glass opacity adjustment, Light Mode uses a white tint and
-Dark Mode uses `#2C2C2E` at 25% opacity; increasing a white tint in
-Dark Mode washes out the surface. Modal save checkmarks use category/accent tint
-on the glass (`glassColor`) while keeping the checkmark glyph opaque white.
+For SKEDDO's shared glass renderer, Light Mode uses a white tint at 20% opacity
+and Dark Mode uses `#2C2C2E` at 30% opacity. Modal save checkmarks use
+category/accent tint on the glass (`glassColor`) while keeping the checkmark
+glyph opaque white.
 
-**Why:** The user wants the shared opacity increase to add body in Light Mode but
-make Dark Mode more opaque-looking rather than lighter, with `#2C2C2E` as the
-tint at 25% opacity. Tinted toolbar actions should resemble iOS tinted glass
-without sacrificing refraction or white-glyph contrast.
+**Why:** The user wants a restrained white surface in Light Mode and a more
+opaque-looking charcoal surface in Dark Mode, without washing out the glass.
+Tinted toolbar actions should resemble iOS tinted glass without sacrificing
+refraction or white-glyph contrast.
 
-**How to apply:** When revisiting SKEDDO's shared package-glass settings or modal
-save actions, preserve the mode-specific tint direction and keep action tint on
-the material, not on the glyph.
+**How to apply:** Preserve the mode-specific colors and opacity values when
+revisiting the shared package-glass settings. Keep modal action tint on the
+material, not on the glyph.

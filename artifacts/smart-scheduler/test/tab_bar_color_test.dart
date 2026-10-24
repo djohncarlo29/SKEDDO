@@ -114,7 +114,11 @@ void main() {
     expect(tabBar.settings, kSkeddoBottomBarGlassSettings);
     expect(
       tabBar.settings!.glassColor.a,
-      closeTo(const Color(0x3DFFFFFF).a + 0.10, 0.001),
+      closeTo(kSkeddoLightBottomBarOpacity, 0.001),
+    );
+    expect(
+      tabBar.settings!.glassColor.toARGB32() & 0x00FFFFFF,
+      0x00FFFFFF,
     );
     expect(
       tabBar.indicatorColor!.value,
