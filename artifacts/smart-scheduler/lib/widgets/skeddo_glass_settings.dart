@@ -14,6 +14,7 @@ const double kSkeddoDarkBottomBarOpacity = 0.30;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 
 const LiquidGlassSettings _packageBottomBarGlassDefaults = LiquidGlassSettings(
+  blendMode: BlendMode.screen,
   thickness: 30,
   blur: 3,
   chromaticAberration: 0.3,
@@ -43,6 +44,7 @@ final LiquidGlassSettings kSkeddoDarkBottomBarGlassSettings =
         0x2E,
         kSkeddoDarkBottomBarOpacity,
       ),
+      blendMode: BlendMode.overlay,
       lightAngle: GlassThemeVariant.dark.settings!.lightAngle,
       lightIntensity: GlassThemeVariant.dark.settings!.lightIntensity,
       ambientStrength: GlassThemeVariant.dark.settings!.ambientStrength,

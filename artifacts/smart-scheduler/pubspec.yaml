@@ -55,6 +55,10 @@ dependency_overrides:
   # implementations. iOS/macOS use flutter_onnxruntime instead.
   tflite_flutter:
     path: packages/tflite_flutter
+  # Local renderer extension: keeps the requested blend mode on the glass
+  # surface while leaving its child content (icons and labels) unaffected.
+  flutter_liquid_glass_widgets:
+    path: packages/flutter_liquid_glass_widgets
 
 flutter:
   uses-material-design: true

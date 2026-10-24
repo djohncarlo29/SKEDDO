@@ -9,6 +9,28 @@ import 'package:smart_scheduler/widgets/floating_tab_pill.dart';
 import 'package:smart_scheduler/widgets/skeddo_glass_settings.dart';
 
 void main() {
+  test('shared glass uses Screen in Light Mode and Overlay in Dark Mode', () {
+    final lightSettings = skeddoBottomBarGlassSettingsFor(Brightness.light);
+    final darkSettings = skeddoBottomBarGlassSettingsFor(Brightness.dark);
+
+    expect(lightSettings.blendMode, BlendMode.screen);
+    expect(darkSettings.blendMode, BlendMode.overlay);
+    expect(
+      skeddoTintedActionGlassSettingsFor(
+        Brightness.light,
+        const Color(0xFFDB5500),
+      ).blendMode,
+      BlendMode.screen,
+    );
+    expect(
+      skeddoTintedActionGlassSettingsFor(
+        Brightness.dark,
+        const Color(0xFFDB5500),
+      ).blendMode,
+      BlendMode.overlay,
+    );
+  });
+
   testWidgets('inactive tab tint uses the specified light and dark colors', (
     tester,
   ) async {
