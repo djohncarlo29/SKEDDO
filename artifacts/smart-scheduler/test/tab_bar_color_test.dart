@@ -1,8 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassExtraButtonPlacement, GlassTabBar;
+    show GlassExtraButtonPlacement, GlassTabBar, GlassThemeVariant;
 import 'package:smart_scheduler/app_theme.dart';
+import 'package:smart_scheduler/widgets/fixed_size_icon.dart';
 import 'package:smart_scheduler/widgets/floating_tab_pill.dart';
 
 void main() {
@@ -84,7 +85,12 @@ void main() {
     expect(tabBar.horizontalPadding, 20.0);
     expect(tabBar.verticalPadding, 0.0);
     expect(tabBar.iconSize, 20.0);
-    expect(tabBar.labelFontSize, 10.0);
+    expect(tabBar.tabs.map((tab) => (tab.icon! as FixedSFIcon).fontSize), [
+      20.0,
+      20.0,
+      20.0,
+    ]);
+    expect(tabBar.labelFontSize, 9.0);
     expect(tabBar.magnification, 1.0);
     expect(tabBar.settings, isNull);
     expect(tabBar.indicatorSettings, isNull);
@@ -98,7 +104,9 @@ void main() {
     expect(createEventCalls, 1);
   });
 
-  testWidgets('dark tab selection uses a stronger resting tint', (tester) async {
+  testWidgets('dark tab uses the package default GlassTheme variant', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       CupertinoApp(
         theme: const CupertinoThemeData(brightness: Brightness.dark),
@@ -123,15 +131,30 @@ void main() {
       kFloatingTabBarDarkIndicatorColor.value,
     );
     expect(
-      tabBar.settings!.glassColor.value,
-      kFloatingTabBarDarkGlassTint.value,
+      tabBar.settings!.glassColor,
+      GlassThemeVariant.dark.settings!.glassColor,
     );
-    expect(tabBar.settings!.lightIntensity, 0.08);
-    expect(tabBar.settings!.ambientStrength, 0.03);
-    expect(tabBar.indicatorSettings!.lightIntensity, 0.12);
-    expect(tabBar.indicatorSettings!.ambientStrength, 0.0);
+    expect(
+      tabBar.settings!.lightIntensity,
+      GlassThemeVariant.dark.settings!.lightIntensity,
+    );
+    expect(
+      tabBar.settings!.ambientStrength,
+      GlassThemeVariant.dark.settings!.ambientStrength,
+    );
+    expect(tabBar.indicatorSettings, isNull);
     expect(tabBar.iconSize, 20.0);
-    expect(tabBar.labelFontSize, 10.0);
+    expect(tabBar.tabs.map((tab) => (tab.icon! as FixedSFIcon).fontSize), [
+      20.0,
+      20.0,
+      20.0,
+    ]);
+    expect(tabBar.extraButton!.icon as FixedSFIcon, isNotNull);
+    expect(
+      (tabBar.extraButton!.icon as FixedSFIcon).fontSize,
+      24.0,
+    );
+    expect(tabBar.labelFontSize, 9.0);
     expect(tabBar.magnification, 1.0);
   });
 }

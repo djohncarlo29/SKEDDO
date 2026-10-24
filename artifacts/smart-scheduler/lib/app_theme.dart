@@ -48,10 +48,6 @@ const kFloatingTabBarSurfaceColor = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFFAFAFC),
   darkColor: Color(0xFF1C1C1E),
 );
-// Dark tab-bar glass tint: use the native charcoal surface instead of the
-// package's bright bottom-bar preset. This value is passed directly to the
-// bar's settings because that preset takes precedence over GlassTheme.
-const Color kFloatingTabBarDarkGlassTint = Color.fromRGBO(28, 28, 30, 0.88);
 // The resting selection lens is a neutral translucent surface, while its icon
 // and label continue to use the selected accent color.
 const Color kFloatingTabBarLightIndicatorColor =

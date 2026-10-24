@@ -8,6 +8,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassTab,
         GlassTabBar,
         GlassTabBarExtraButton,
+        GlassThemeVariant,
         LiquidGlassSettings;
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart';
@@ -31,24 +32,21 @@ const LiquidGlassShape kLiquidGlassPreviewGlassShape =
   clipQuality: LiquidGlassClipQuality.exact,
 );
 
-const LiquidGlassSettings _floatingTabBarDarkSettings = LiquidGlassSettings(
+// Mirrors the package's private bottom-bar preset, allowing its public
+// GlassThemeVariant.dark settings to be applied without adding a charcoal veil.
+const LiquidGlassSettings _floatingTabBarBaseSettings = LiquidGlassSettings(
   thickness: 30,
   blur: 3,
-  chromaticAberration: 0.04,
-  lightIntensity: 0.08,
+  chromaticAberration: 0.3,
+  lightIntensity: 0.6,
   refractiveIndex: 1.59,
   saturation: 0.7,
-  ambientStrength: 0.03,
+  ambientStrength: 1,
   lightAngle: 0.75 * math.pi,
-  glassColor: kFloatingTabBarDarkGlassTint,
+  glassColor: Color(0x3DFFFFFF),
 );
-
-const LiquidGlassSettings _floatingTabBarDarkIndicatorSettings =
-    LiquidGlassSettings(
-      chromaticAberration: 0,
-      lightIntensity: 0.12,
-      ambientStrength: 0,
-    );
+final LiquidGlassSettings _floatingTabBarDarkSettings =
+    GlassThemeVariant.dark.settings!.applyTo(_floatingTabBarBaseSettings);
 
 /// The AppShell's platform-neutral floating tab control.
 ///
@@ -97,15 +95,15 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
     final tabBar = GlassTabBar.bottom(
       tabs: const [
         GlassTab(
-          icon: FixedSFIcon(SFIcons.sf_text_document),
+          icon: FixedSFIcon(SFIcons.sf_text_document, fontSize: 20),
           label: 'Notes',
         ),
         GlassTab(
-          icon: FixedSFIcon(SFIcons.sf_calendar),
+          icon: FixedSFIcon(SFIcons.sf_calendar, fontSize: 20),
           label: 'Calendar',
         ),
         GlassTab(
-          icon: FixedSFIcon(SFIcons.sf_list_bullet),
+          icon: FixedSFIcon(SFIcons.sf_list_bullet, fontSize: 20),
           label: 'Events',
         ),
       ],
@@ -122,11 +120,9 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       barHeight: kFloatingTabBarHeight,
       verticalPadding: 0,
       iconSize: 20,
-      labelFontSize: 10,
+      labelFontSize: 9,
       magnification: 1,
       settings: isDark ? _floatingTabBarDarkSettings : null,
-      indicatorSettings:
-          isDark ? _floatingTabBarDarkIndicatorSettings : null,
       indicatorColor: isDark
           ? kFloatingTabBarDarkIndicatorColor
           : kFloatingTabBarLightIndicatorColor,
