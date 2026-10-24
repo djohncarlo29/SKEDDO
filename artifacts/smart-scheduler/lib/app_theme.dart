@@ -41,8 +41,8 @@ const double kClassicNativeTabBarHeight = 49.0;
 const double kClassicNativeTabBarMinimumContentGap = 16.0;
 const double kFloatingTabBarTouchTargetHeight = 44.0;
 const kTabBarInactiveColor = CupertinoDynamicColor.withBrightness(
-  color: Color(0xFF737373),
-  darkColor: Color(0xFF8E8E93),
+  color: Color.fromRGBO(0, 0, 0, 0.95),
+  darkColor: Color.fromRGBO(253, 253, 253, 0.95),
 );
 const kFloatingTabBarSurfaceColor = CupertinoDynamicColor.withBrightness(
   color: Color(0xFFFAFAFC),

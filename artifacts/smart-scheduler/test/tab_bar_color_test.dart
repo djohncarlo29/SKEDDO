@@ -12,8 +12,8 @@ void main() {
     tester,
   ) async {
     for (final entry in [
-      (Brightness.light, const Color(0xFF737373)),
-      (Brightness.dark, const Color(0xFF8E8E93)),
+      (Brightness.light, const Color.fromRGBO(0, 0, 0, 0.95)),
+      (Brightness.dark, const Color.fromRGBO(253, 253, 253, 0.95)),
     ]) {
       Color? resolvedColor;
       await tester.pumpWidget(
@@ -31,6 +31,7 @@ void main() {
         ),
       );
       expect(resolvedColor!.value, entry.$2.value);
+      expect(resolvedColor!.opacity, closeTo(0.95, 0.01));
     }
   });
 
