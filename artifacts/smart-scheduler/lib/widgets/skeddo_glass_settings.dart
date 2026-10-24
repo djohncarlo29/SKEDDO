@@ -9,8 +9,8 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
 ///
 /// These retain flutter_liquid_glass_widgets' bottom-bar optics while using
 /// SKEDDO's explicit, mode-specific tint colors and opacities.
-const double kSkeddoLightBottomBarOpacity = 0.30;
-const double kSkeddoDarkBottomBarOpacity = 0.40;
+const double kSkeddoLightBottomBarOpacity = 0.40;
+const double kSkeddoDarkBottomBarOpacity = 0.50;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;

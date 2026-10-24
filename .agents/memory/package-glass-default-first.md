@@ -16,8 +16,8 @@ by a consistent correction path when its default optics do not fit SKEDDO.
 new package widgets. After the user flags a mismatch, reuse the shared settings
 source and preserve the package's rendering path.
 
-For SKEDDO's shared glass renderer, Light Mode uses a white tint at 30% opacity
-and Dark Mode uses `#3E3E40` at 40% opacity. Modal save checkmarks use
+For SKEDDO's shared glass renderer, Light Mode uses a white tint at 40% opacity
+and Dark Mode uses `#3E3E40` at 50% opacity. Modal save checkmarks use
 category/accent tint on the glass (`glassColor`) while keeping the checkmark
 glyph opaque white.
 

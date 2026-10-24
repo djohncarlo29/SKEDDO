@@ -112,6 +112,7 @@ void main() {
     expect(tabBar.iconLabelSpacing, 1.5);
     expect(tabBar.magnification, 1.0);
     expect(tabBar.settings, kSkeddoBottomBarGlassSettings);
+    expect(kSkeddoLightBottomBarOpacity, 0.40);
     expect(
       tabBar.settings!.glassColor.a,
       closeTo(kSkeddoLightBottomBarOpacity, 0.001),
@@ -161,6 +162,7 @@ void main() {
 
     final tabBar = tester.widget<GlassTabBar>(find.byType(GlassTabBar));
     expect(tabBar.settings, kSkeddoDarkBottomBarGlassSettings);
+    expect(kSkeddoDarkBottomBarOpacity, 0.50);
     expect(
       tabBar.indicatorColor!.value,
       kFloatingTabBarDarkIndicatorColor.value,
