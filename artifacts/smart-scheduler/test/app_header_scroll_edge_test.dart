@@ -388,6 +388,93 @@ void main() {
   );
 
   testWidgets(
+    'large Calendar title fades from shared state when a preview body is still at top',
+    (tester) async {
+      final activeController = ScrollController();
+      final previewController = ScrollController();
+      final titleTransition = AppHeaderTitleTransition();
+      const previewTitleKey = ValueKey('preview-large-calendar-title');
+      addTearDown(() {
+        activeController.dispose();
+        previewController.dispose();
+        titleTransition.dispose();
+      });
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: AppHeaderScrollInsetScope(
+            leadingInset: kAppHeaderToolbarHeight,
+            titleCollapseExtent: kAppHeaderTitleHeight,
+            titleTransition: titleTransition,
+            child: SizedBox(
+              height: 400,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: AppHeaderScrollView(
+                      controller: activeController,
+                      physics: const NeverScrollableScrollPhysics(),
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: AppHeaderScrollInset(
+                            child: SizedBox(height: kAppHeaderTitleHeight),
+                          ),
+                        ),
+                        const SliverToBoxAdapter(child: SizedBox(height: 1600)),
+                      ],
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: CustomScrollView(
+                      controller: previewController,
+                      primary: false,
+                      physics: const NeverScrollableScrollPhysics(),
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: AppHeaderScrollTitle(
+                            controller: previewController,
+                            child: const SizedBox(
+                              key: previewTitleKey,
+                              height: kAppHeaderTitleHeight,
+                            ),
+                          ),
+                        ),
+                        const SliverToBoxAdapter(child: SizedBox(height: 1600)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final activeHeader =
+          AppHeaderScrollView.headerPositionFor(activeController);
+      expect(activeHeader, isNotNull);
+      titleTransition.bindTo(activeHeader!);
+      final titleOpacityFinder = find.ancestor(
+        of: find.byKey(previewTitleKey),
+        matching: find.byType(Opacity),
+      );
+      expect(titleOpacityFinder, findsOneWidget);
+      expect(tester.widget<Opacity>(titleOpacityFinder).opacity, 1.0);
+
+      activeHeader.jumpTo(kAppHeaderTitleHeight);
+      await tester.pump();
+      expect(titleTransition.collapseProgress, 1.0);
+      expect(previewController.offset, 0.0);
+      expect(tester.widget<Opacity>(titleOpacityFinder).opacity, 0.0);
+
+      activeHeader.jumpTo(0);
+      await tester.pump();
+      expect(tester.widget<Opacity>(titleOpacityFinder).opacity, 1.0);
+    },
+  );
+
+  testWidgets(
     'drag release keeps the title and compact-header content on one scroll position',
     (tester) async {
       const viewportKey = ValueKey('large-title-scroll-viewport');

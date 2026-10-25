@@ -19,6 +19,12 @@ Calendar's adjacent Year and Month preview panels also have independent outer he
 
 **How to apply:** Mirror normalized title-collapse progress only into inactive preview panels. Stop mirroring when a panel becomes active, and never let an inactive preview bind or overwrite the app-wide transition source.
 
+Large Calendar title visibility must also follow the shared transition. Do not derive its fade only from the nearest scrollable: in a nested preview that can be a body still at offset zero while the shared header is compact. Keep local position metrics for overscroll correction, not for deciding whether the large title is visible.
+
+**Why:** The compact Calendar header was correct, but preview large titles remained visible beneath the glass edge because their local scroll context could still report the top position.
+
+**How to apply:** Use shared title-collapse progress for Calendar large-title fade in Year, Month, and Day; the shared transition notifies each title as its source panel changes state.
+
 Calendar Day View deliberately exposes no header-owning scroll position. When the active Calendar destination has no position, preserve the shared collapse progress instead of binding null as an expanded state. The DOW mask and Day Banner use that shared title slot directly. The selected week row belongs to a separate MonthView scroll hierarchy, so apply the same shared-title offset to the selected row block itself; do not translate the entire month panel or the DOW mask moves twice. Keep the timeline an independent scroll source.
 
 **Why:** The shared-title regression test showed that DOW and banner geometry changed with compact/expanded state while the week strip stayed at its old position. The MonthView's nested header does not continuously follow the shell-owned transition, so the row needs an explicit offset.

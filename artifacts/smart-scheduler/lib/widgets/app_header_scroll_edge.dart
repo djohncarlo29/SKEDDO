@@ -445,7 +445,8 @@ class AppHeaderScrollTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scrollController = controller;
-    if (scrollController == null) return child;
+    final sharedTitleTransition =
+        AppHeaderScrollInsetScope.titleTransitionOf(context);
 
     // Resolve the Scrollable that actually contains this title. Some calendar
     // modes intentionally share one controller with an embedded list, so the
@@ -453,30 +454,43 @@ class AppHeaderScrollTitle extends StatelessWidget {
     // exactly one of them.
     final owningPosition = Scrollable.maybeOf(context)?.position;
     final positionListenable = owningPosition ?? scrollController;
+    final animationSources = <Listenable>[
+      if (positionListenable != null) positionListenable,
+      if (sharedTitleTransition != null) sharedTitleTransition,
+    ];
+    if (animationSources.isEmpty) return child;
+    final animation = animationSources.length == 1
+        ? animationSources.single
+        : Listenable.merge(animationSources);
     return AnimatedBuilder(
-      animation: positionListenable,
+      animation: animation,
       builder: (context, _) {
-        final positions = scrollController.positions;
+        final positions = scrollController?.positions ?? const <ScrollPosition>[];
         final position =
             owningPosition ?? (positions.length == 1 ? positions.single : null);
-        if (position == null) return child;
-        if (!position.hasContentDimensions) return child;
-        final positionOffset = AppHeaderScrollBehavior.contentOffset(position);
-        final collapseProgress = AppHeaderScrollBehavior.titleCollapseProgress(
-          positionOffset,
-        );
+        final collapseProgress = sharedTitleTransition?.collapseProgress ??
+            (position != null && position.hasContentDimensions
+                ? AppHeaderScrollBehavior.titleCollapseProgress(
+                    AppHeaderScrollBehavior.contentOffset(position),
+                  )
+                : null);
+        if (collapseProgress == null) return child;
         final fadeProgress =
             AppHeaderScrollBehavior.packageLargeTitleFadeProgress(
               collapseProgress,
             );
-        final correction = AppHeaderScrollBehavior.leadingOverscrollCorrection(
-          position,
-        );
+        final correction = position != null && position.hasContentDimensions
+            ? AppHeaderScrollBehavior.leadingOverscrollCorrection(position)
+            : 0.0;
         final title = AppHeaderLargeTitleHandoff(
           progress: fadeProgress,
           child: child,
         );
-        if (correction == 0.0) return title;
+        if (position == null ||
+            !position.hasContentDimensions ||
+            correction == 0.0) {
+          return title;
+        }
         return Transform.translate(
           offset: Offset(0.0, correction),
           child: title,
