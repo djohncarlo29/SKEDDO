@@ -61,6 +61,12 @@ void main() {
       expect(find.text('Skeddo App Only'), findsOneWidget);
       expect(
         find.text(
+          'This setting will apply in Skeddo only. Other apps will use the system setting.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
           'When selected, Skeddo will use the setting from '
           '${defaultTargetPlatform == TargetPlatform.iOS ? 'Display & Brightness' : 'Display'}.',
         ),

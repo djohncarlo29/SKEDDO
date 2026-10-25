@@ -1885,22 +1885,17 @@ class _ThemeSettingsSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _SubScreenSettingsGroup(
-                  title: 'Mirror System Setting',
-                  rows: [
-                    _OptionRow(
-                      title: systemTitle,
-                      selected: selectedOption == 'System',
-                      accentColor: accentColor,
-                      onTap: () => onSelect('System'),
-                    ),
-                  ],
-              footer:
-                  'When selected, Skeddo will use the setting from ${_systemThemeSettingsDestination()}.',
+                MirrorSystemSettingSection(
+                  systemSettingRow: _OptionRow(
+                    title: systemTitle,
+                    selected: selectedOption == 'System',
+                    accentColor: accentColor,
+                    onTap: () => onSelect('System'),
+                  ),
+                  settingsScreenName: _systemThemeSettingsDestination(),
                 ),
                 const SizedBox(height: 20),
-                _SubScreenSettingsGroup(
-                  title: 'Skeddo App Only',
+                SkeddoAppOnlySettingsSection(
                   rows: [
                     for (final option in const ['Light', 'Dark'])
                       _OptionRow(
@@ -1910,8 +1905,6 @@ class _ThemeSettingsSection extends StatelessWidget {
                         onTap: () => onSelect(option),
                       ),
                   ],
-                  footer:
-                      'This setting will apply in Skeddo only. Other apps will use the system setting.',
                 ),
               ],
             ),
@@ -1938,12 +1931,19 @@ String _systemTextSizeSettingsDestination() {
   };
 }
 
-class _SubScreenSettingsGroup extends StatelessWidget {
+const String _mirrorSystemSettingSectionTitle = 'Mirror System Setting';
+const String _skeddoAppOnlySectionTitle = 'Skeddo App Only';
+const String _skeddoAppOnlySectionFooter =
+    'This setting will apply in Skeddo only. Other apps will use the system setting.';
+
+/// Shared card, heading, and context-footer styling for Settings subsections.
+class SettingsPanelSection extends StatelessWidget {
   final String title;
   final List<Widget> rows;
   final String? footer;
 
-  const _SubScreenSettingsGroup({
+  const SettingsPanelSection({
+    super.key,
     required this.title,
     required this.rows,
     this.footer,
@@ -1984,6 +1984,47 @@ class _SubScreenSettingsGroup extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Standard "Skeddo App Only" section and its explanatory footer.
+class SkeddoAppOnlySettingsSection extends StatelessWidget {
+  final List<Widget> rows;
+
+  const SkeddoAppOnlySettingsSection({super.key, required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    return SettingsPanelSection(
+      title: _skeddoAppOnlySectionTitle,
+      rows: rows,
+      footer: _skeddoAppOnlySectionFooter,
+    );
+  }
+}
+
+/// Shared styling for a system-backed option in any Settings sub-screen.
+///
+/// Use this for each "Mirror System Setting" section so its heading, card,
+/// row spacing, and source-screen footer remain consistent across settings.
+class MirrorSystemSettingSection extends StatelessWidget {
+  final Widget systemSettingRow;
+  final String settingsScreenName;
+
+  const MirrorSystemSettingSection({
+    super.key,
+    required this.systemSettingRow,
+    required this.settingsScreenName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SettingsPanelSection(
+      title: _mirrorSystemSettingSectionTitle,
+      rows: [systemSettingRow],
+      footer:
+          'When selected, Skeddo will use the setting from $settingsScreenName.',
     );
   }
 }
@@ -2039,22 +2080,17 @@ class _TextSizeSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _SubScreenSettingsGroup(
-                  title: 'Mirror System Setting',
-                  rows: [
-                    _OptionRow(
-                      title: 'System Setting',
-                      selected: usesSystem,
-                      accentColor: accentColor,
-                      onTap: selectSystem,
-                    ),
-                  ],
-                  footer:
-                      'When selected, Skeddo will use the setting from ${_systemTextSizeSettingsDestination()}.',
+                MirrorSystemSettingSection(
+                  systemSettingRow: _OptionRow(
+                    title: 'System Setting',
+                    selected: usesSystem,
+                    accentColor: accentColor,
+                    onTap: selectSystem,
+                  ),
+                  settingsScreenName: _systemTextSizeSettingsDestination(),
                 ),
                 const SizedBox(height: 20),
-                _SubScreenSettingsGroup(
-                  title: 'Skeddo App Only',
+                SkeddoAppOnlySettingsSection(
                   rows: [
                     _TextSizeSliderRow(
                       index: customIndex,
@@ -2064,8 +2100,6 @@ class _TextSizeSection extends StatelessWidget {
                       onChangeEnd: selectCustom,
                     ),
                   ],
-                  footer:
-                      'This setting will apply in Skeddo only. Other apps will use the system setting.',
                 ),
               ],
             ),
