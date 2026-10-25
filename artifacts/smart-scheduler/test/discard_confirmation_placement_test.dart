@@ -118,11 +118,15 @@ void main() {
                     kDiscardConfirmationButtonEdgeGap,
                     kDiscardConfirmationSheetTopInset,
                     kDiscardConfirmationButtonEdgeGap,
-                    kDiscardConfirmationButtonBottomInset,
+                    kDiscardConfirmationButtonEdgeGap,
                   ),
         ),
       ),
       findsOneWidget,
+    );
+    expect(
+      find.ancestor(of: discardButtonFinder, matching: find.byType(ShaderMask)),
+      findsNothing,
     );
     final discardButton = tester.widget<GlassButton>(discardButtonFinder);
     expect(

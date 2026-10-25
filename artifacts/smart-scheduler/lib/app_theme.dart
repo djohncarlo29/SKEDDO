@@ -716,7 +716,6 @@ const double kModalConfirmationHorizontalInset = 24.0;
 const double kDiscardConfirmationTopLeftWidthFraction = 2 / 3;
 const double kDiscardConfirmationTopLeftEdgeGap = 16.0;
 const double kDiscardConfirmationButtonEdgeGap = 16.0;
-const double kDiscardConfirmationButtonBottomInset = 32.0;
 const double kDiscardConfirmationMessageHorizontalInset = 8.0;
 const double kDiscardConfirmationMessageButtonGap = 16.0;
 const double kDiscardConfirmationSheetTopInset = 16.0;

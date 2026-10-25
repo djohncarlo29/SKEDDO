@@ -500,12 +500,13 @@ class DiscardChangesPopoverAnchorState
 
     return ActionPanelScrollView(
       maxHeight: MediaQuery.sizeOf(context).height,
+      fadeEdges: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
           kDiscardConfirmationButtonEdgeGap,
           kDiscardConfirmationSheetTopInset,
           kDiscardConfirmationButtonEdgeGap,
-          kDiscardConfirmationButtonBottomInset,
+          kDiscardConfirmationButtonEdgeGap,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
