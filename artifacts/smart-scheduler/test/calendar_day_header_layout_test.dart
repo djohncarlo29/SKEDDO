@@ -286,7 +286,6 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       final calendarKey = GlobalKey<CalendarTabState>();
-      var reportedView = CalendarView.month;
       await tester.pumpWidget(
         CupertinoApp(
           builder: (context, child) => AppWindowContentBoundary(
@@ -295,7 +294,7 @@ void main() {
           home: CupertinoPageScaffold(
             child: CalendarTab(
               key: calendarKey,
-              onViewChanged: (view, _, _, _, _, _) => reportedView = view,
+              onViewChanged: (_, _, _, _, _, _) {},
             ),
           ),
         ),
@@ -329,17 +328,10 @@ void main() {
       }
 
       final monthRect = tester.getRect(surfaceFinder);
-      calendar.navigateUp();
+      await calendar.advanceCurrentHeader();
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 180));
       final collapsingRect = tester.getRect(surfaceFinder);
-      final tailTransform = tester.widget<Transform>(
-        find.ancestor(of: surfaceFinder, matching: find.byType(Transform)).first,
-      );
-      debugPrint(
-        'tail surface movement: view=$reportedView '
-        'start=${monthRect.top} mid=${collapsingRect.top} '
-        'offset=${tailTransform.transform.getTranslation().y}',
-      );
       expect(
         collapsingRect.top,
         greaterThan(monthRect.top),
@@ -348,6 +340,7 @@ void main() {
 
       await tester.pumpAndSettle();
       calendar.navigateDown();
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 270));
       final returningRect = tester.getRect(surfaceFinder);
       expect(
