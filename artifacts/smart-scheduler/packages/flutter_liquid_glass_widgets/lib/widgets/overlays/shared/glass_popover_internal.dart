@@ -493,9 +493,13 @@ class _GlassPopoverState extends State<GlassPopover>
       final double safeRight = widget.screenPadding.right + insets.right;
 
       final double targetX =
-          position.dx + (1 + _morphAlignment.x) * _triggerSize!.width / 2;
+          position.dx +
+          (1 + _morphAlignment.x) * _triggerSize!.width / 2 +
+          widget.popoverOffset.dx;
       final double targetY =
-          position.dy + (1 + _morphAlignment.y) * _triggerSize!.height / 2;
+          position.dy +
+          (1 + _morphAlignment.y) * _triggerSize!.height / 2 +
+          widget.popoverOffset.dy;
       final double popoverLeft =
           targetX - (1 + _morphAlignment.x) * widget.popoverWidth / 2;
       final double popoverTop =
@@ -704,11 +708,13 @@ class _GlassPopoverState extends State<GlassPopover>
                                 tw / 2.0 +
                                 state.currentDx -
                                 currentWidth / 2.0 +
+                                (widget.popoverOffset.dx * clampedValue) +
                                 (_horizontalOffset * clampedValue),
                             top: _triggerGlobalPosition.dy +
                                 th / 2.0 +
                                 state.currentDy -
                                 currentHeight / 2.0 +
+                                (widget.popoverOffset.dy * clampedValue) +
                                 (_verticalOffset * clampedValue),
                             child: IgnorePointer(
                               ignoring: clampedValue < 0.8,

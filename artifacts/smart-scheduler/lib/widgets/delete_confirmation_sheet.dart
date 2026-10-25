@@ -579,6 +579,9 @@ class DiscardChangesPopoverAnchorState
       contentBuilder: _buildPopoverContent,
       popoverWidth:
           screenSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction,
+      // Keep the app-specific offset here so regular/future GlassPopovers
+      // remain exactly trigger-aligned by default.
+      popoverOffset: const Offset(-4, -4),
       popoverBorderRadius: isPresentedOverModalSheet
           ? kModalConfirmationSheetCornerRadius
           : kConfirmationSheetCornerRadius,

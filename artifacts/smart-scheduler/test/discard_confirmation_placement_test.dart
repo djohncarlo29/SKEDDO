@@ -18,6 +18,14 @@ import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 import 'package:smart_scheduler/widgets/skeddo_glass_settings.dart';
 
 void main() {
+  test('GlassPopover keeps its default trigger alignment', () {
+    final popover = GlassPopover(
+      trigger: const SizedBox.shrink(),
+      contentBuilder: (_, __) => const SizedBox.shrink(),
+    );
+    expect(popover.popoverOffset, Offset.zero);
+  });
+
   testWidgets('discard confirmation always uses the top-left placement', (
     tester,
   ) async {
@@ -73,6 +81,7 @@ void main() {
     final popover = tester.widget<GlassPopover>(popoverFinder);
     expect(popover.alignment, GlassMenuAlignment.topLeft);
     expect(popover.popoverWidth, 400);
+    expect(popover.popoverOffset, const Offset(-4, -4));
     expect(popover.screenPadding, const EdgeInsets.all(12));
     expect(kSkeddoPopoverGlassOpacity, 0.90);
     final glassContainers = find.byType(GlassContainer);
@@ -83,11 +92,12 @@ void main() {
     expect(
       glassContainerRects.any(
         (rect) =>
-            (rect.left - triggerOrigin.dx).abs() < 1.0 &&
+            (rect.left - (triggerOrigin.dx - 4)).abs() < 1.0 &&
+            (rect.top - (triggerOrigin.dy - 4)).abs() < 1.0 &&
             (rect.width - popover.popoverWidth).abs() < 1.0,
       ),
       isTrue,
-      reason: 'The landscape popover should open at the trigger, not inset.',
+      reason: 'The landscape popover should open 4px above and left of the X.',
     );
     expect(popover.barrierDismissible, isTrue);
     expect(
@@ -241,6 +251,73 @@ void main() {
     expect(acceptedConfirmationFinished, isFalse);
     await tester.pumpAndSettle();
     expect(await acceptedConfirmation, isTrue);
+  });
+
+  testWidgets('discard confirmation offset also applies in portrait', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(600, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    late BuildContext pageContext;
+    final anchorKey = GlobalKey<DiscardChangesPopoverAnchorState>();
+    await tester.pumpWidget(
+      CupertinoApp(
+        builder: (context, child) => AppWindowContentScope(
+          horizontalInset: 0,
+          physicalWidth: 600,
+          child: child ?? const SizedBox.shrink(),
+        ),
+        home: Builder(
+          builder: (context) {
+            pageContext = context;
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 24, top: 72),
+                child: DiscardChangesPopoverAnchor(
+                  key: anchorKey,
+                  child: const SizedBox(width: 44, height: 44),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    final triggerOrigin = tester.getTopLeft(find.byType(GlassPopover));
+    final confirmation = showDiscardChangesConfirmationSheet(
+      pageContext,
+      anchorKey: anchorKey,
+      entityLabel: 'event',
+      isNew: true,
+    );
+    await tester.pumpAndSettle();
+
+    final popover = tester.widget<GlassPopover>(find.byType(GlassPopover));
+    expect(popover.popoverOffset, const Offset(-4, -4));
+    final glassContainers = find.byType(GlassContainer);
+    final glassContainerRects = List<Rect>.generate(
+      glassContainers.evaluate().length,
+      (index) => tester.getRect(glassContainers.at(index)),
+    );
+    expect(
+      glassContainerRects.any(
+        (rect) =>
+            (rect.left - (triggerOrigin.dx - 4)).abs() < 1.0 &&
+            (rect.top - (triggerOrigin.dy - 4)).abs() < 1.0 &&
+            (rect.width - popover.popoverWidth).abs() < 1.0,
+      ),
+      isTrue,
+      reason: 'The portrait popover should open 4px above and left of its X.',
+    );
+
+    await tester.tapAt(const Offset(500, 700));
+    await tester.pumpAndSettle();
+    expect(await confirmation, isNull);
   });
 
   testWidgets(

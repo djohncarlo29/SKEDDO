@@ -98,6 +98,7 @@ class GlassPopover extends StatefulWidget {
     required this.contentBuilder,
     this.popoverWidth = 280,
     this.popoverHeight,
+    this.popoverOffset = Offset.zero,
     this.popoverBorderRadius = 24.0,
     this.alignment,
     this.autoAdjustToScreen = true,
@@ -175,6 +176,12 @@ class GlassPopover extends StatefulWidget {
   /// If provided, the popover will have a fixed height — the content is
   /// responsible for its own scrolling.
   final double? popoverHeight;
+
+  /// Additional displacement of the expanded popover relative to its trigger.
+  ///
+  /// The offset is applied progressively during the morph. Defaults to
+  /// [Offset.zero], preserving the normal trigger-aligned behavior.
+  final Offset popoverOffset;
 
   /// Border radius of the expanded popover.
   ///
