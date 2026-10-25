@@ -152,9 +152,17 @@ void main() {
     expect(discardButton.useOwnLayer, isTrue);
     expect(discardButton.quality, GlassQuality.premium);
     expect(discardButton.style, GlassButtonStyle.filled);
-    expect(discardButton.settings!.thickness, 75);
-    expect(discardButton.settings!.lightIntensity, closeTo(0.9, 0.001));
-    expect(discardButton.settings!.effectiveShadow, isNotEmpty);
+    expect(discardButton.settings!.thickness, 0);
+    expect(discardButton.settings!.blur, 0);
+    expect(discardButton.settings!.chromaticAberration, 0);
+    expect(discardButton.settings!.lightIntensity, 0);
+    expect(discardButton.settings!.ambientStrength, 0);
+    expect(discardButton.settings!.ambientRim, 0);
+    expect(discardButton.settings!.fresnelStrength, 0);
+    expect(discardButton.settings!.refractiveIndex, 1);
+    expect(discardButton.settings!.glowIntensity, 0);
+    expect(discardButton.settings!.shadowElevation, 0);
+    expect(discardButton.settings!.effectiveShadow, isEmpty);
     final lightButtonTint = resolveThemeColor(
       kModalButtonBackground,
       pageContext,
@@ -177,6 +185,13 @@ void main() {
       ).glassColor.toARGB32() &
           0x00FFFFFF,
       0x003A3A3C,
+    );
+    expect(
+      skeddoPopoverButtonGlassSettingsFor(
+        Brightness.dark,
+        const Color(0xFF3A3A3C),
+      ).effectiveShadow,
+      isEmpty,
     );
 
     await tester.tapAt(const Offset(700, 500));

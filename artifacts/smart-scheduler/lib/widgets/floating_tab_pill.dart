@@ -185,7 +185,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       labelFontSize: 9,
       iconLabelSpacing: 1.5,
       magnification: 1,
-      settings: skeddoBottomBarGlassSettingsFor(
+      settings: skeddoTabBarGlassSettingsFor(
         isDark ? Brightness.dark : Brightness.light,
       ),
       indicatorSettings: isDark

@@ -67,6 +67,11 @@ LiquidGlassSettings skeddoBottomBarGlassSettingsFor(Brightness brightness) =>
     ? kSkeddoDarkBottomBarGlassSettings
     : kSkeddoBottomBarGlassSettings;
 
+/// Keeps the floating tab-bar shell clear while leaving its selected glass
+/// indicator on the package's separate blur settings.
+LiquidGlassSettings skeddoTabBarGlassSettingsFor(Brightness brightness) =>
+    skeddoBottomBarGlassSettingsFor(brightness).copyWith(blur: 1);
+
 /// Discard popovers use an opaque card tint while retaining the package's
 /// existing optical settings and edge lighting.
 LiquidGlassSettings skeddoPopoverGlassSettingsFor(
@@ -79,8 +84,9 @@ LiquidGlassSettings skeddoPopoverGlassSettingsFor(
   );
 }
 
-/// Gives the discard action its own opaque modal-button tint and keeps the
-/// prominent glass geometry and lighting without its built-in 90% tint cap.
+/// Gives the discard action its own opaque modal-button tint without adding
+/// optical edge treatments or a button shadow. The containing popover keeps its
+/// independent glass lighting and shadow.
 LiquidGlassSettings skeddoPopoverButtonGlassSettingsFor(
   Brightness brightness,
   Color buttonTint,
@@ -88,8 +94,18 @@ LiquidGlassSettings skeddoPopoverButtonGlassSettingsFor(
   final popover = skeddoBottomBarGlassSettingsFor(brightness);
   return popover.copyWith(
     glassColor: buttonTint.withValues(alpha: kSkeddoPopoverGlassOpacity),
-    thickness: (popover.effectiveThickness * 2.5).clamp(30.0, 100.0),
-    lightIntensity: (popover.effectiveLightIntensity * 1.5).clamp(0.3, 1.0),
+    thickness: 0,
+    blur: 0,
+    chromaticAberration: 0,
+    lightIntensity: 0,
+    ambientStrength: 0,
+    ambientRim: 0,
+    fresnelStrength: 0,
+    refractiveIndex: 1,
+    saturation: 1,
+    glowIntensity: 0,
+    shadowElevation: 0,
+    shadow: const [],
   );
 }
 
