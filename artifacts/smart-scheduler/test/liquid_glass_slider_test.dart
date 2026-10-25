@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassContainer, GlassTabBar;
+    show GlassContainer, GlassTabBar, LiquidGlassSettings;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/app_settings.dart';
@@ -70,6 +70,35 @@ void main() {
       skeddoSharedGlassOpacityForPosition(0.875, Brightness.dark),
       closeTo(0.75, 0.000001),
     );
+  });
+
+  test('active checkmark optics stay fixed regardless of slider position', () {
+    final originalOpacity = appLiquidGlassOpacityNotifier.value;
+    addTearDown(() {
+      appLiquidGlassOpacityNotifier.value = originalOpacity;
+    });
+
+    for (final brightness in [Brightness.light, Brightness.dark]) {
+      LiquidGlassSettings? expectedLighting;
+      LiquidGlassSettings? expectedRefraction;
+
+      for (final position in [0.0, 0.25, 0.5, 0.75, 1.0]) {
+        appLiquidGlassOpacityNotifier.value =
+            liquidGlassOpacityForSliderPosition(position);
+        final lighting = skeddoActiveCheckmarkGlassSettingsFor(brightness);
+        final refraction = skeddoActiveCheckmarkRefractionSettingsFor(
+          brightness,
+        );
+
+        expectedLighting ??= lighting;
+        expectedRefraction ??= refraction;
+        expect(lighting, expectedLighting);
+        expect(refraction, expectedRefraction);
+      }
+
+      expect(expectedLighting!.blur, 1);
+      expect(expectedRefraction!.blur, 1);
+    }
   });
 
   test('popover card and button follow their independent opacity curve', () {

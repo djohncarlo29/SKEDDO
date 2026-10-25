@@ -20,6 +20,7 @@ const double kSkeddoPopoverGlassOpacity = 0.90;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
+const double _kActiveCheckmarkGlassSliderReference = 0.5;
 
 const LiquidGlassSettings _packageBottomBarGlassDefaults = LiquidGlassSettings(
   thickness: 30,
@@ -254,28 +255,38 @@ LiquidGlassSettings skeddoTintedActionGlassSettingsFor(
 /// chromatic glass. On a bright background, that operation can shift a blue
 /// accent toward cyan. Active checkmarks therefore use a clear glass layer
 /// over an opaque accent base. This top layer keeps the shared Fresnel rim and
-/// lighting, but does not displace the base color.
+/// lighting, but does not displace the base color. It stays at the 50% slider
+/// reference so active checkmarks are unaffected by slider changes.
 LiquidGlassSettings skeddoActiveCheckmarkGlassSettingsFor(
   Brightness brightness,
-) => skeddoBottomBarGlassSettingsFor(brightness).copyWith(
-  glassColor: const Color(0x00FFFFFF),
-  saturation: 1,
-  refractiveIndex: 1,
-  chromaticAberration: 0,
-  shadowElevation: 0,
-);
+) =>
+    skeddoBottomBarGlassSettingsFor(
+      brightness,
+      sliderPosition: _kActiveCheckmarkGlassSliderReference,
+    ).copyWith(
+      glassColor: const Color(0x00FFFFFF),
+      saturation: 1,
+      refractiveIndex: 1,
+      chromaticAberration: 0,
+      shadowElevation: 0,
+    );
 
 /// Refraction is rendered separately so its sampled edge colors are blended
-/// over the solid category fill rather than replacing it.
+/// over the solid category fill rather than replacing it. Its slider reference
+/// matches the active checkmark's fixed lighting layer.
 LiquidGlassSettings skeddoActiveCheckmarkRefractionSettingsFor(
   Brightness brightness,
-) => skeddoBottomBarGlassSettingsFor(brightness).copyWith(
-  glassColor: const Color(0x00FFFFFF),
-  saturation: 1,
-  chromaticAberration: 0,
-  fresnelStrength: 0,
-  ambientRim: 0,
-  lightIntensity: 0,
-  ambientStrength: 0,
-  shadowElevation: 0,
-);
+) =>
+    skeddoBottomBarGlassSettingsFor(
+      brightness,
+      sliderPosition: _kActiveCheckmarkGlassSliderReference,
+    ).copyWith(
+      glassColor: const Color(0x00FFFFFF),
+      saturation: 1,
+      chromaticAberration: 0,
+      fresnelStrength: 0,
+      ambientRim: 0,
+      lightIntensity: 0,
+      ambientStrength: 0,
+      shadowElevation: 0,
+    );
