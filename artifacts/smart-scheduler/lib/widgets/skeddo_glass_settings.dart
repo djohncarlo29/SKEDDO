@@ -54,7 +54,13 @@ final LiquidGlassSettings kSkeddoDarkBottomBarGlassSettings =
 /// A reduced, deliberately subtle tint for the lifted selected-tab lens in
 /// Light Mode. Dark Mode continues to use the package's transparent default.
 const LiquidGlassSettings kSkeddoLightLiftedTabIndicatorSettings =
-    LiquidGlassSettings(glassColor: Color.fromRGBO(0, 0, 0, 0.04));
+    LiquidGlassSettings(
+      glassColor: Color.fromRGBO(0, 0, 0, 0.04),
+      // The package only paints this indicator shadow when the elevation is
+      // explicitly different from its default. Keep it close to the native
+      // baseline so the lifted lens gains depth without a heavy halo.
+      shadowElevation: 1.2,
+    );
 
 LiquidGlassSettings skeddoBottomBarGlassSettingsFor(Brightness brightness) =>
     brightness == Brightness.dark
