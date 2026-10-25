@@ -272,7 +272,9 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
 /// The live Flutter navigation bar uses `GlassTabBar.bottom`; this sample is
 /// intentionally separate from that control but reuses its shared glass settings.
 class FloatingTabBarGlassPreview extends StatefulWidget {
-  const FloatingTabBarGlassPreview({super.key});
+  final double sliderPosition;
+
+  const FloatingTabBarGlassPreview({super.key, required this.sliderPosition});
 
   @override
   State<FloatingTabBarGlassPreview> createState() =>
@@ -422,7 +424,10 @@ class _FloatingTabBarGlassPreviewState
                               context,
                             );
                             final sharedSettings =
-                                skeddoBottomBarGlassSettingsFor(brightness);
+                                skeddoBottomBarGlassSettingsFor(
+                                  brightness,
+                                  sliderPosition: widget.sliderPosition,
+                                );
                             final iconColor = resolveThemeColor(
                               kSecondaryLabel,
                               context,

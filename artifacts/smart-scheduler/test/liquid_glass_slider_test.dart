@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassTabBar;
+    show GlassContainer, GlassTabBar;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/app_settings.dart';
@@ -98,5 +98,45 @@ void main() {
     expect(tabBar.settings!.blur, 0.5);
     expect(skeddoBottomBarGlassSettingsFor(Brightness.light).blur, 0.5);
     expect(tabBar.innerBlur, 2);
+  });
+
+  testWidgets('settings glass preview updates on every slider change', (
+    tester,
+  ) async {
+    final originalOpacity = appLiquidGlassOpacityNotifier.value;
+    addTearDown(() {
+      appLiquidGlassOpacityNotifier.value = originalOpacity;
+    });
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        theme: const CupertinoThemeData(brightness: Brightness.light),
+        home: SizedBox(
+          height: 300,
+          child: ValueListenableBuilder<double>(
+            valueListenable: appLiquidGlassOpacityNotifier,
+            builder: (context, value, _) => FloatingTabBarGlassPreview(
+              sliderPosition: liquidGlassSliderPositionForOpacity(value),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
+      0.25,
+    );
+    await tester.pump();
+    var previewGlass = tester.widget<GlassContainer>(
+      find.byType(GlassContainer),
+    );
+    expect(previewGlass.settings!.blur, closeTo(0.05, 0.000001));
+
+    appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
+      0.75,
+    );
+    await tester.pump();
+    previewGlass = tester.widget<GlassContainer>(find.byType(GlassContainer));
+    expect(previewGlass.settings!.blur, 1);
   });
 }

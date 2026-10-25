@@ -279,15 +279,9 @@ class _SettingsPanelState extends State<SettingsPanel>
   }
 
   void _bindHeaderPositionFromContext(BuildContext context) {
-    final position = Scrollable.maybeOf(
-      context,
-      axis: Axis.vertical,
-    )?.position;
+    final position = Scrollable.maybeOf(context, axis: Axis.vertical)?.position;
     if (position != null) {
-      _headerTitleTransition.bindTo(
-        position,
-        preserveCollapseProgress: true,
-      );
+      _headerTitleTransition.bindTo(position, preserveCollapseProgress: true);
     }
   }
 
@@ -327,10 +321,7 @@ class _SettingsPanelState extends State<SettingsPanel>
                   ? _mainScrollController.position
                   : null))
         : null;
-    _headerTitleTransition.bindTo(
-      position,
-      preserveCollapseProgress: true,
-    );
+    _headerTitleTransition.bindTo(position, preserveCollapseProgress: true);
   }
 
   // Listener added to _navCtrl when a push starts; fires the hard-snap of the
@@ -695,38 +686,13 @@ class _SettingsPanelState extends State<SettingsPanel>
           child: NotificationListener<ScrollNotification>(
             onNotification: _onHeaderScrollNotification,
             child: ClipRect(
-            child: ColoredBox(
-              color: backgroundColor,
-              child: SizedBox.expand(
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // ── Main body — slides right (parallax) during sub-screen push ──
-                    Positioned.fill(
-                      top: headerHeight,
-                      child: AppHeaderScrollInsetScope(
-                        titleTransition: _headerTitleTransition,
-                        leadingInset: headerHeight,
-                        titleCollapseExtent:
-                            MediaQuery.orientationOf(context) ==
-                                Orientation.portrait
-                            ? kAppHeaderTitleCollapseDistance
-                            : 0.0,
-                        child: showLandscapeSplit
-                            ? AppHeaderScrollClip(child: splitBody)
-                            : AppWindowPhysicalWidth(
-                                child: SlideTransition(
-                                  position: _mainParallax,
-                                  child: AppWindowContentPadding(
-                                    child: mainSettingsContent,
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ),
-
-                    // ── Sub-screen body — slides in from right; no header ───────
-                    if (!showLandscapeSplit && _activeRoute != null)
+              child: ColoredBox(
+                color: backgroundColor,
+                child: SizedBox.expand(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // ── Main body — slides right (parallax) during sub-screen push ──
                       Positioned.fill(
                         top: headerHeight,
                         child: AppHeaderScrollInsetScope(
@@ -737,81 +703,106 @@ class _SettingsPanelState extends State<SettingsPanel>
                                   Orientation.portrait
                               ? kAppHeaderTitleCollapseDistance
                               : 0.0,
-                          child: AppWindowPhysicalWidth(
-                            child: SlideTransition(
-                              position: _subSlide,
-                              child: _buildSubScreen(
-                                route: _activeRoute!,
-                                bottomInset: bottomInset,
-                                accentColor: accentColor,
-                                applyAppWindowContentPadding: true,
+                          child: showLandscapeSplit
+                              ? AppHeaderScrollClip(child: splitBody)
+                              : AppWindowPhysicalWidth(
+                                  child: SlideTransition(
+                                    position: _mainParallax,
+                                    child: AppWindowContentPadding(
+                                      child: mainSettingsContent,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+
+                      // ── Sub-screen body — slides in from right; no header ───────
+                      if (!showLandscapeSplit && _activeRoute != null)
+                        Positioned.fill(
+                          top: headerHeight,
+                          child: AppHeaderScrollInsetScope(
+                            titleTransition: _headerTitleTransition,
+                            leadingInset: headerHeight,
+                            titleCollapseExtent:
+                                MediaQuery.orientationOf(context) ==
+                                    Orientation.portrait
+                                ? kAppHeaderTitleCollapseDistance
+                                : 0.0,
+                            child: AppWindowPhysicalWidth(
+                              child: SlideTransition(
+                                position: _subSlide,
+                                child: _buildSubScreen(
+                                  route: _activeRoute!,
+                                  bottomInset: bottomInset,
+                                  accentColor: accentColor,
+                                  applyAppWindowContentPadding: true,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
 
-                    // ── Unified snapping header — never slides ──────────────────
-                    // Title snaps from "Settings" → sub-screen name at the 50 %
-                    // midpoint of _navCtrl, matching the overlay icon snap timing.
-                    // Must be Positioned so StackFit.expand doesn't force it to
-                    // fill the entire stack (which would cover all content below).
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: showLandscapeSplit
-                          ? AnimatedBuilder(
-                              animation: Listenable.merge([
-                                _paneTransitionController,
-                                _splitDetailController,
-                              ]),
-                              builder: (context, _) {
-                                final progress = Curves.easeInOutCubic
-                                    .transform(_splitDetailController.value);
-                                return _SettingsTwoPaneHeader(
-                                  geometry: geometry,
-                                  topInset: topInset,
-                                  contentHeight: headerContentHeight,
-                                  paneProgress: _paneTransitionProgress,
-                                  activeTitle: splitRoute.title,
-                                  previousTitle: _previousRoute?.title,
-                                  transitionProgress: progress,
-                                  dividerColor: separatorColor,
-                                  onBack: _closeSplitPane,
-                                );
-                              },
-                            )
-                          : AnimatedBuilder(
-                              animation: Listenable.merge([
-                                _navCtrl,
-                                _headerTitleTransition,
-                              ]),
-                              builder: (context, _) {
-                                final isSubScreen =
-                                    _activeRoute != null &&
-                                    _navCtrl.value >= 0.5;
-                                return _SettingsHeader(
-                                  topInset: topInset,
-                                  contentHeight: headerContentHeight,
-                                  isLandscape: isLandscape,
-                                  scrollOffset:
-                                      _headerTitleTransition.contentOffset,
-                                  collapseProgress:
-                                      _headerTitleTransition.collapseProgress,
-                                  title: isSubScreen
-                                      ? _activeRoute!.title
-                                      : 'Settings',
-                                );
-                              },
-                            ),
-                    ),
-                  ],
+                      // ── Unified snapping header — never slides ──────────────────
+                      // Title snaps from "Settings" → sub-screen name at the 50 %
+                      // midpoint of _navCtrl, matching the overlay icon snap timing.
+                      // Must be Positioned so StackFit.expand doesn't force it to
+                      // fill the entire stack (which would cover all content below).
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: showLandscapeSplit
+                            ? AnimatedBuilder(
+                                animation: Listenable.merge([
+                                  _paneTransitionController,
+                                  _splitDetailController,
+                                ]),
+                                builder: (context, _) {
+                                  final progress = Curves.easeInOutCubic
+                                      .transform(_splitDetailController.value);
+                                  return _SettingsTwoPaneHeader(
+                                    geometry: geometry,
+                                    topInset: topInset,
+                                    contentHeight: headerContentHeight,
+                                    paneProgress: _paneTransitionProgress,
+                                    activeTitle: splitRoute.title,
+                                    previousTitle: _previousRoute?.title,
+                                    transitionProgress: progress,
+                                    dividerColor: separatorColor,
+                                    onBack: _closeSplitPane,
+                                  );
+                                },
+                              )
+                            : AnimatedBuilder(
+                                animation: Listenable.merge([
+                                  _navCtrl,
+                                  _headerTitleTransition,
+                                ]),
+                                builder: (context, _) {
+                                  final isSubScreen =
+                                      _activeRoute != null &&
+                                      _navCtrl.value >= 0.5;
+                                  return _SettingsHeader(
+                                    topInset: topInset,
+                                    contentHeight: headerContentHeight,
+                                    isLandscape: isLandscape,
+                                    scrollOffset:
+                                        _headerTitleTransition.contentOffset,
+                                    collapseProgress:
+                                        _headerTitleTransition.collapseProgress,
+                                    title: isSubScreen
+                                        ? _activeRoute!.title
+                                        : 'Settings',
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
         );
       },
     );
@@ -1232,10 +1223,7 @@ class _DefaultCategorySectionState extends State<_DefaultCategorySection> {
     final pinnedCategories = await LocalStorage.instance.loadContentStringList(
       'events_pinned_categories',
     );
-    final raw = [
-      ...?userCategories,
-      ...?pinnedCategories,
-    ];
+    final raw = [...?userCategories, ...?pinnedCategories];
 
     void addRecord(Object? value) {
       if (value is! Map) return;
@@ -2175,8 +2163,11 @@ class _LiquidGlassSection extends StatelessWidget {
                       Center(
                         child: ValueListenableBuilder<double>(
                           valueListenable: appLiquidGlassOpacityNotifier,
-                          builder: (context, _, _) =>
-                              const FloatingTabBarGlassPreview(),
+                          builder: (context, value, _) =>
+                              FloatingTabBarGlassPreview(
+                                sliderPosition:
+                                    liquidGlassSliderPositionForOpacity(value),
+                              ),
                         ),
                       ),
                     ],
@@ -2202,8 +2193,9 @@ class _LiquidGlassSection extends StatelessWidget {
                 child: ValueListenableBuilder<double>(
                   valueListenable: appLiquidGlassOpacityNotifier,
                   builder: (context, value, _) {
-                    final normalized =
-                        liquidGlassSliderPositionForOpacity(value);
+                    final normalized = liquidGlassSliderPositionForOpacity(
+                      value,
+                    );
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: _LiquidGlassTestIcons(

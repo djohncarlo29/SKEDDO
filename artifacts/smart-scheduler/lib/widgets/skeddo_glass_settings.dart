@@ -64,15 +64,19 @@ const LiquidGlassSettings kSkeddoLightLiftedTabIndicatorSettings =
       shadowElevation: 1.2,
     );
 
-LiquidGlassSettings skeddoBottomBarGlassSettingsFor(Brightness brightness) =>
+LiquidGlassSettings skeddoBottomBarGlassSettingsFor(
+  Brightness brightness, {
+  double? sliderPosition,
+}) =>
     (brightness == Brightness.dark
             ? kSkeddoDarkBottomBarGlassSettings
             : kSkeddoBottomBarGlassSettings)
         .copyWith(
           blur: skeddoSharedGlassBlurForPosition(
-            liquidGlassSliderPositionForOpacity(
-              appLiquidGlassOpacityNotifier.value,
-            ),
+            sliderPosition ??
+                liquidGlassSliderPositionForOpacity(
+                  appLiquidGlassOpacityNotifier.value,
+                ),
           ),
         );
 
