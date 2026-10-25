@@ -664,6 +664,7 @@ class AppHeaderScrollView extends StatelessWidget {
     this.hitTestBehavior = HitTestBehavior.opaque,
     this.clipBehavior = Clip.none,
     this.topExtension = 0.0,
+    this.mirrorSharedHeaderCollapse = false,
   }) : _scrollViewKey = key,
        super(key: null);
 
@@ -687,6 +688,9 @@ class AppHeaderScrollView extends StatelessWidget {
   final HitTestBehavior hitTestBehavior;
   final Clip clipBehavior;
   final double topExtension;
+  /// Keeps an inactive preview panel's outer header at the active shell
+  /// title's collapse progress. Its body scroll offset remains independent.
+  final bool mirrorSharedHeaderCollapse;
 
   static final Map<ScrollController, List<ScrollPosition>>
       _outerPositionsByContentController = {};
@@ -803,6 +807,8 @@ class AppHeaderScrollView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sharedTitleTransition =
+        AppHeaderScrollInsetScope.titleTransitionOf(context);
     final leadingInset =
         scrollDirection == Axis.vertical && !reverse && !shrinkWrap
         ? AppHeaderScrollInsetScope.maybeOf(context)
@@ -929,15 +935,13 @@ class AppHeaderScrollView extends StatelessWidget {
           leadingInset: leadingInset,
           titleCollapseExtent: titleCollapseExtent,
           titleInset: titleInset,
+          sharedTitleTransition: sharedTitleTransition,
+          mirrorSharedHeaderCollapse: mirrorSharedHeaderCollapse,
           initialHeaderOffset:
-              (AppHeaderScrollInsetScope.titleTransitionOf(context)
-                      ?.collapseProgress ??
-                  0.0) *
+              (sharedTitleTransition?.collapseProgress ?? 0.0) *
               titleCollapseExtent,
           initialSearchOffset:
-              (AppHeaderScrollInsetScope.titleTransitionOf(context)
-                      ?.searchBarCollapseProgress ??
-                  0.0) *
+              (sharedTitleTransition?.searchBarCollapseProgress ?? 0.0) *
               titleInset.searchBarExtent,
         ),
       );
@@ -980,6 +984,8 @@ class _AppHeaderNestedScrollView extends StatefulWidget {
     required this.leadingInset,
     required this.titleCollapseExtent,
     required this.titleInset,
+    required this.sharedTitleTransition,
+    required this.mirrorSharedHeaderCollapse,
     required this.initialHeaderOffset,
     required this.initialSearchOffset,
   });
@@ -991,6 +997,8 @@ class _AppHeaderNestedScrollView extends StatefulWidget {
   final double leadingInset;
   final double titleCollapseExtent;
   final AppHeaderScrollInset titleInset;
+  final AppHeaderTitleTransition? sharedTitleTransition;
+  final bool mirrorSharedHeaderCollapse;
   final double initialHeaderOffset;
   final double initialSearchOffset;
 
@@ -1036,9 +1044,16 @@ class _AppHeaderNestedScrollViewState
       },
     );
     widget.titleInset.collapseAnimation?.addListener(_handleTitleAnimation);
+    if (widget.mirrorSharedHeaderCollapse) {
+      widget.sharedTitleTransition?.addListener(
+        _handleSharedTitleTransitionChange,
+      );
+    }
     _outerController.addListener(_syncRegisteredPosition);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _syncRegisteredPosition();
+      if (!mounted) return;
+      _syncRegisteredPosition();
+      _handleSharedTitleTransitionChange();
     });
   }
 
@@ -1065,13 +1080,48 @@ class _AppHeaderNestedScrollViewState
         _handleTitleAnimation,
       );
     }
+    if (oldWidget.mirrorSharedHeaderCollapse !=
+            widget.mirrorSharedHeaderCollapse ||
+        oldWidget.sharedTitleTransition != widget.sharedTitleTransition) {
+      oldWidget.sharedTitleTransition?.removeListener(
+        _handleSharedTitleTransitionChange,
+      );
+      if (widget.mirrorSharedHeaderCollapse) {
+        widget.sharedTitleTransition?.addListener(
+          _handleSharedTitleTransitionChange,
+        );
+      }
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _syncRegisteredPosition();
+      if (!mounted) return;
+      _syncRegisteredPosition();
+      _handleSharedTitleTransitionChange();
     });
   }
 
   void _handleTitleAnimation() {
     if (mounted) setState(() {});
+  }
+
+  void _handleSharedTitleTransitionChange() {
+    if (!widget.mirrorSharedHeaderCollapse ||
+        !_outerController.hasClients ||
+        widget.titleCollapseExtent <= 0.0 ||
+        !widget.titleCollapseExtent.isFinite) {
+      return;
+    }
+    final transition = widget.sharedTitleTransition;
+    if (transition == null) return;
+    final position = _outerController.position;
+    if (!position.hasContentDimensions) return;
+    final progress = transition.collapseProgress;
+    if (!progress.isFinite) return;
+    final targetOffset = (progress.clamp(0.0, 1.0) *
+            widget.titleCollapseExtent)
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    if ((position.pixels - targetOffset).abs() <= 0.5) return;
+    _outerController.jumpTo(targetOffset);
   }
 
   void _syncRegisteredPosition() {
@@ -1157,6 +1207,11 @@ class _AppHeaderNestedScrollViewState
     widget.titleInset.collapseAnimation?.removeListener(
       _handleTitleAnimation,
     );
+    if (widget.mirrorSharedHeaderCollapse) {
+      widget.sharedTitleTransition?.removeListener(
+        _handleSharedTitleTransitionChange,
+      );
+    }
     AppHeaderScrollView._unregisterOuterPosition(
       widget.contentController,
       _registeredPosition,

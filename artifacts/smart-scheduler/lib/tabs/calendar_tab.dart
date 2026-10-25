@@ -3964,6 +3964,7 @@ class _YearView extends StatelessWidget {
               key: scrollViewportKey,
               topExtension: kContentAreaTopRaise,
               controller: controller,
+              mirrorSharedHeaderCollapse: !titleIsActive,
               physics: const AlwaysScrollableScrollPhysics(
                 parent: BouncingScrollPhysics(),
               ),
@@ -6308,6 +6309,7 @@ class _MonthView extends StatelessWidget {
               key: scrollViewportKey,
               topExtension: kContentAreaTopRaise,
               controller: scrollController,
+              mirrorSharedHeaderCollapse: !scrollTitleIsActive,
               physics: collapseProgress < _kMonthDayTransitionThreshold
                   ? const AlwaysScrollableScrollPhysics(
                       parent: BouncingScrollPhysics(),

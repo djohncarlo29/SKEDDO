@@ -298,6 +298,96 @@ void main() {
   );
 
   testWidgets(
+    'Calendar preview inherits shared header collapse before and after appearing',
+    (tester) async {
+      final activeController = ScrollController();
+      final previewController = ScrollController();
+      final titleTransition = AppHeaderTitleTransition();
+      final showPreview = ValueNotifier(false);
+      addTearDown(() {
+        activeController.dispose();
+        previewController.dispose();
+        titleTransition.dispose();
+        showPreview.dispose();
+      });
+
+      Widget buildScrollView(
+        ScrollController controller, {
+        bool mirrorSharedHeaderCollapse = false,
+      }) {
+        return AppHeaderScrollView(
+          controller: controller,
+          mirrorSharedHeaderCollapse: mirrorSharedHeaderCollapse,
+          physics: const NeverScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: AppHeaderScrollInset(
+                child: SizedBox(height: kAppHeaderTitleHeight),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 1600)),
+          ],
+        );
+      }
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: AppHeaderScrollInsetScope(
+            leadingInset: kAppHeaderToolbarHeight,
+            titleCollapseExtent: kAppHeaderTitleHeight,
+            titleTransition: titleTransition,
+            child: SizedBox(
+              height: 400,
+              child: ValueListenableBuilder<bool>(
+                valueListenable: showPreview,
+                builder: (context, includePreview, _) => Stack(
+                  children: [
+                    Positioned.fill(child: buildScrollView(activeController)),
+                    if (includePreview)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: buildScrollView(
+                            previewController,
+                            mirrorSharedHeaderCollapse: true,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final activeHeader =
+          AppHeaderScrollView.headerPositionFor(activeController);
+      expect(activeHeader, isNotNull);
+      titleTransition.bindTo(activeHeader!);
+      final collapsedOffset = kAppHeaderTitleHeight * 0.6;
+      activeHeader.jumpTo(collapsedOffset);
+      await tester.pump();
+      expect(titleTransition.collapseProgress, closeTo(0.6, 0.02));
+
+      // A preview first created after the active panel has collapsed must
+      // start from that shared state, rather than flashing expanded.
+      showPreview.value = true;
+      await tester.pump();
+      await tester.pumpAndSettle();
+      final previewHeader =
+          AppHeaderScrollView.headerPositionFor(previewController);
+      expect(previewHeader, isNotNull);
+      expect(previewHeader!.pixels, closeTo(collapsedOffset, 0.75));
+
+      // Existing adjacent panels must keep following the active panel too.
+      activeHeader.jumpTo(0);
+      await tester.pump();
+      expect(previewHeader.pixels, closeTo(0, 0.75));
+    },
+  );
+
+  testWidgets(
     'drag release keeps the title and compact-header content on one scroll position',
     (tester) async {
       const viewportKey = ValueKey('large-title-scroll-viewport');

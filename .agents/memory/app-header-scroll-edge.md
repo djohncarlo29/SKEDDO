@@ -13,6 +13,12 @@ One app-wide header-collapse state is authoritative across tabs, Detailed Catego
 
 **How to apply:** Preserve the active state on destination handoff and seed newly created header geometry before Calendar morph endpoints are measured. Do not reapply alignment to the same position. Keep header collapse driven by the outer position and glass-edge travel informed by the coordinated body as well. Short pages should have only the real header collapse travel, not fabricated body scroll extent. Calendar Day timelines remain independent scroll sources, but their fixed chrome must inherit the remaining shared title height rather than always reserving the expanded slot. Preserve search restoration and existing edge bounds. Nested inner-position jumps use body coordinates and can collapse the outer header even at body offset zero; body-only restoration must preserve the actual outer position.
 
+Calendar's adjacent Year and Month preview panels also have independent outer header positions. Inactive previews must inherit the active panel's collapse progress at creation and mirror it live; keep their body scroll offset synchronization separate. Day timeline panels do not own this shared header.
+
+**Why:** A preview can remain mounted after the active header changes, leaving its outer position stale even when its body scroll offset is synchronized. A newly created preview must not briefly default to expanded.
+
+**How to apply:** Mirror normalized title-collapse progress only into inactive preview panels. Stop mirroring when a panel becomes active, and never let an inactive preview bind or overwrite the app-wide transition source.
+
 Calendar Day View deliberately exposes no header-owning scroll position. When the active Calendar destination has no position, preserve the shared collapse progress instead of binding null as an expanded state. The DOW mask and Day Banner use that shared title slot directly. The selected week row belongs to a separate MonthView scroll hierarchy, so apply the same shared-title offset to the selected row block itself; do not translate the entire month panel or the DOW mask moves twice. Keep the timeline an independent scroll source.
 
 **Why:** The shared-title regression test showed that DOW and banner geometry changed with compact/expanded state while the week strip stayed at its old position. The MonthView's nested header does not continuously follow the shell-owned transition, so the row needs an explicit offset.
