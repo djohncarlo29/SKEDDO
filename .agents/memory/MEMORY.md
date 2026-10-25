@@ -139,6 +139,7 @@
 - [Smart Category semantic threshold](smart-category-semantic-threshold.md) — shared date/time text makes low cosine floors admit unrelated scheduled events; keep semantic matching conservative and normalize plural rules.
 - [Native iOS tab bar bridge](native-ios-tab-bar-bridge.md) — keep UIKit tab chrome across iOS versions; UIKit selects classic or floating styling and Flutter content clearance follows.
 - [Calendar morph transition notes](calendar-morph-transition-index.md) — use the grouped index for hierarchy, panel handoff, clipping, swipe, and content-bound notes.
+- [Expanded Day header backdrop](calendar-day-header-expanded-state.md) — when Day View keeps the Month panel mounted, cover stale grid rows above the shared-state DOW without covering the selected week strip.
 - [Picker and live rotation geometry](picker-rotation-index.md) — use the focused geometry notes for landscape picker sizing and live window-metric transitions.
 - [Smart Category count cache invalidation](smart-category-count-cache-invalidation.md) — matcher embeddings can change results asynchronously without changing the event list, so derived counts need matcher revisions.
 - [Live slider persistence](live-slider-persistence.md) — persist on gesture completion even when live preview state already equals the snapped value.

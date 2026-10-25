@@ -2976,6 +2976,10 @@ class CalendarTabState extends State<CalendarTab>
                 colT > 0.01 &&
                 (widget.daySubMode != DayViewSubMode.list ||
                     _dayChromeModeTransitionActive);
+            final dayDowTop =
+                expandedTitleHeight -
+                kContentAreaTopRaise +
+                contentTopSpacing;
 
             // Adjacent year / month / day for the three-panel rendering
             final prevYear = _dispYear - 1;
@@ -3607,6 +3611,30 @@ class CalendarTabState extends State<CalendarTab>
                         ),
                       ),
                     if (colT >= 0.99) buildDayViewUnderlay(),
+                    // The month panel remains mounted underneath the Day
+                    // View so its selected week can become the pinned strip.
+                    // Earlier month rows can otherwise bleed into the
+                    // expanded-title space above the DOW row. Cover that
+                    // reserved header area, with a height derived from the
+                    // same shared title state as the DOW and Day Banner.
+                    if (showDayHeaderChrome &&
+                        MediaQuery.orientationOf(context) == Orientation.portrait)
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height:
+                            dayDowTop +
+                            _kCalendarHeaderToDowGap +
+                            _kDayLabelHeight,
+                        child: Transform.translate(
+                          offset: Offset(0, monthPanelSlideY),
+                          child: ColoredBox(
+                            key: const Key('calendar-day-header-backplate'),
+                            color: resolveThemeColor(kBackgroundColor, context),
+                          ),
+                        ),
+                      ),
                     // ── Day-view header chrome ──────────────────────────────
                     // The DOW row, week strip, and day banner share one
                     // vertical offset during List-mode changes. Keep the
@@ -3624,9 +3652,7 @@ class CalendarTabState extends State<CalendarTab>
                         // its first-level toolbar. Align the pinned DOW cover
                         // after that title, where the Month View's DOW row
                         // naturally sits, instead of over the week strip.
-                        top: expandedTitleHeight -
-                            kContentAreaTopRaise +
-                            contentTopSpacing,
+                        top: dayDowTop,
                         left: 0,
                         right: 0,
                         height: _kCalendarHeaderToDowGap + _kDayLabelHeight,
