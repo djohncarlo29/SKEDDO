@@ -32,7 +32,6 @@ class ModalToolbarGlassButton extends StatefulWidget {
     this.tapDelay = Duration.zero,
     this.peakScale = 1.15,
     this.semanticLabel,
-    this.listenToLiquidGlassSlider = false,
   });
 
   final IconData icon;
@@ -49,7 +48,6 @@ class ModalToolbarGlassButton extends StatefulWidget {
   final Duration tapDelay;
   final double peakScale;
   final String? semanticLabel;
-  final bool listenToLiquidGlassSlider;
 
   @override
   State<ModalToolbarGlassButton> createState() =>
@@ -79,13 +77,10 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    if (!widget.listenToLiquidGlassSlider) return _buildButton(context);
-    return ValueListenableBuilder<double>(
-      valueListenable: appLiquidGlassOpacityNotifier,
-      builder: (context, _, _) => _buildButton(context),
-    );
-  }
+  Widget build(BuildContext context) => ValueListenableBuilder<double>(
+    valueListenable: appLiquidGlassOpacityNotifier,
+    builder: (context, _, _) => _buildButton(context),
+  );
 
   Widget _buildButton(BuildContext context) {
     final resolvedSurface = resolveThemeColor(widget.surfaceColor, context);

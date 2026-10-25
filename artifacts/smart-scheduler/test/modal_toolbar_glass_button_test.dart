@@ -165,7 +165,6 @@ void main() {
             icon: CupertinoIcons.line_horizontal_3,
             iconColor: CupertinoColors.activeBlue,
             surfaceColor: kCardColor,
-            listenToLiquidGlassSlider: true,
             onTap: () {},
           ),
         ),

@@ -196,16 +196,21 @@ LiquidGlassSettings skeddoTabBarGlassSettingsFor(Brightness brightness) =>
 /// existing optical settings and edge lighting.
 LiquidGlassSettings skeddoPopoverGlassSettingsFor(
   Brightness brightness,
-  Color cardTint,
+  Color cardTint, {
+  double? sliderPosition,
+}
 ) {
-  final sliderPosition = liquidGlassSliderPositionForOpacity(
-    appLiquidGlassOpacityNotifier.value,
+  final position =
+      sliderPosition ??
+      liquidGlassSliderPositionForOpacity(appLiquidGlassOpacityNotifier.value);
+  final shared = skeddoBottomBarGlassSettingsFor(
+    brightness,
+    sliderPosition: position,
   );
-  final shared = skeddoBottomBarGlassSettingsFor(brightness);
   return shared.copyWith(
-    blur: skeddoPopoverBlurForPosition(sliderPosition),
+    blur: skeddoPopoverBlurForPosition(position),
     glassColor: cardTint.withValues(
-      alpha: skeddoPopoverOpacityForPosition(sliderPosition),
+      alpha: skeddoPopoverOpacityForPosition(position),
     ),
   );
 }
@@ -215,15 +220,20 @@ LiquidGlassSettings skeddoPopoverGlassSettingsFor(
 /// independent glass lighting and shadow.
 LiquidGlassSettings skeddoPopoverButtonGlassSettingsFor(
   Brightness brightness,
-  Color buttonTint,
+  Color buttonTint, {
+  double? sliderPosition,
+}
 ) {
-  final sliderPosition = liquidGlassSliderPositionForOpacity(
-    appLiquidGlassOpacityNotifier.value,
+  final position =
+      sliderPosition ??
+      liquidGlassSliderPositionForOpacity(appLiquidGlassOpacityNotifier.value);
+  final popover = skeddoBottomBarGlassSettingsFor(
+    brightness,
+    sliderPosition: position,
   );
-  final popover = skeddoBottomBarGlassSettingsFor(brightness);
   return popover.copyWith(
     glassColor: buttonTint.withValues(
-      alpha: skeddoPopoverOpacityForPosition(sliderPosition),
+      alpha: skeddoPopoverOpacityForPosition(position),
     ),
     thickness: 0,
     blur: 0,

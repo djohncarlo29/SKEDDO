@@ -29,3 +29,15 @@ contrast.
 **How to apply:** Preserve the separate Light/Dark tint colors and keep
 GlassPopover settings independent of the shared renderer curves. Keep modal
 action tint on the material, not on the glyph.
+
+All glass surfaces that follow the Liquid Glass slider should rebuild while the
+slider is dragged, including shared toolbars and the discard popover. Active
+category/accent checkmarks are the exception: their glass optics stay fixed at
+the 50% slider reference.
+
+**Why:** The user expects slider-driven glass to respond immediately, but
+explicitly kept active checkmarks independent from the slider curves.
+
+**How to apply:** Keep the slider notifier connected to shared surfaces,
+toolbars, and popover settings; anchor active-checkmark optics to the fixed
+reference even though their widget may rebuild.

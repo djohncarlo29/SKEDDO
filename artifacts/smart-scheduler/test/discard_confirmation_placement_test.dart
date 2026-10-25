@@ -235,6 +235,21 @@ void main() {
       isEmpty,
     );
 
+    appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
+      0.75,
+    );
+    await tester.pump();
+    final livePopover = tester.widget<GlassPopover>(popoverFinder);
+    expect(livePopover.settings!.blur, 7.5);
+    expect(livePopover.settings!.glassColor.a, closeTo(0.925, 0.001));
+    final liveDiscardButton = tester.widget<GlassButton>(discardButtonFinder);
+    expect(liveDiscardButton.settings!.glassColor.a, closeTo(0.925, 0.001));
+    expect(liveDiscardButton.settings!.blur, 0);
+
+    appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
+      0.5,
+    );
+    await tester.pump();
     await tester.tapAt(const Offset(700, 500));
     await tester.pumpAndSettle();
     expect(await confirmation, isNull);

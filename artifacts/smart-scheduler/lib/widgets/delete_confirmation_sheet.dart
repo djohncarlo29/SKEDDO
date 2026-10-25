@@ -13,6 +13,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         LiquidGlassSettings,
         LiquidRoundedSuperellipse;
 
+import '../app_settings.dart';
 import '../app_theme.dart';
 import '../services/event_store.dart';
 import 'action_panel.dart';
@@ -504,6 +505,7 @@ class DiscardChangesPopoverAnchorState
   Widget _buildPopoverContent(
     BuildContext context,
     VoidCallback closePopover,
+    double sliderPosition,
   ) {
     if (_confirmationCompleter == null) return const SizedBox.shrink();
     final primary = resolveThemeColor(kPrimaryLabel, context);
@@ -552,6 +554,7 @@ class DiscardChangesPopoverAnchorState
                 settings: skeddoPopoverButtonGlassSettingsFor(
                   CupertinoTheme.brightnessOf(context),
                   resolveThemeColor(kModalButtonBackground, context),
+                  sliderPosition: sliderPosition,
                 ),
                 onPressed: () => _acceptDiscard(closePopover),
               ),
@@ -563,43 +566,53 @@ class DiscardChangesPopoverAnchorState
   }
 
   @override
-  Widget build(BuildContext context) {
-    final viewportSize = MediaQuery.sizeOf(context);
-    final screenSize =
-        device_screen_size.getDeviceScreenSize(context) ?? viewportSize;
-    final isPresentedOverModalSheet =
-        RoundedCupertinoSheetRoute.hasParentSheet(context);
+  Widget build(BuildContext context) => ValueListenableBuilder<double>(
+    valueListenable: appLiquidGlassOpacityNotifier,
+    builder: (context, opacity, _) {
+      final sliderPosition = liquidGlassSliderPositionForOpacity(opacity);
+      final viewportSize = MediaQuery.sizeOf(context);
+      final screenSize =
+          device_screen_size.getDeviceScreenSize(context) ?? viewportSize;
+      final isPresentedOverModalSheet =
+          RoundedCupertinoSheetRoute.hasParentSheet(context);
 
-    return GlassPopover(
-      key: _popoverKey,
-      triggerBuilder: (_, togglePopover) {
-        _togglePopover = togglePopover;
-        return KeyedSubtree(key: _triggerKey, child: widget.child);
-      },
-      contentBuilder: _buildPopoverContent,
-      popoverWidth:
-          screenSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction,
-      // Keep the app-specific offset here so regular/future GlassPopovers
-      // remain exactly trigger-aligned by default.
-      popoverOffset: const Offset(-4, -4),
-      popoverBorderRadius: isPresentedOverModalSheet
-          ? kModalConfirmationSheetCornerRadius
-          : kConfirmationSheetCornerRadius,
-      alignment: GlassMenuAlignment.topLeft,
-      // GlassPopover adds the platform view insets itself when clamping. Do
-      // not add AppWindowContentScope's landscape inset again here, or the
-      // popover is pushed inward from its actual trigger.
-      screenPadding: const EdgeInsets.all(12),
-      settings: skeddoPopoverGlassSettingsFor(
-        CupertinoTheme.brightnessOf(context),
-        resolveThemeColor(kModalCard, context),
-      ),
-      quality: GlassQuality.premium,
-      barrierDismissible: true,
-      onClose: _onPopoverClosing,
-      onOpen: _onPopoverOpened,
-    );
-  }
+      return GlassPopover(
+        key: _popoverKey,
+        triggerBuilder: (_, togglePopover) {
+          _togglePopover = togglePopover;
+          return KeyedSubtree(key: _triggerKey, child: widget.child);
+        },
+        contentBuilder: (popoverContext, closePopover) =>
+            _buildPopoverContent(
+              popoverContext,
+              closePopover,
+              sliderPosition,
+            ),
+        popoverWidth:
+            screenSize.shortestSide * kDiscardConfirmationTopLeftWidthFraction,
+        // Keep the app-specific offset here so regular/future GlassPopovers
+        // remain exactly trigger-aligned by default.
+        popoverOffset: const Offset(-4, -4),
+        popoverBorderRadius: isPresentedOverModalSheet
+            ? kModalConfirmationSheetCornerRadius
+            : kConfirmationSheetCornerRadius,
+        alignment: GlassMenuAlignment.topLeft,
+        // GlassPopover adds the platform view insets itself when clamping. Do
+        // not add AppWindowContentScope's landscape inset again here, or the
+        // popover is pushed inward from its actual trigger.
+        screenPadding: const EdgeInsets.all(12),
+        settings: skeddoPopoverGlassSettingsFor(
+          CupertinoTheme.brightnessOf(context),
+          resolveThemeColor(kModalCard, context),
+          sliderPosition: sliderPosition,
+        ),
+        quality: GlassQuality.premium,
+        barrierDismissible: true,
+        onClose: _onPopoverClosing,
+        onOpen: _onPopoverOpened,
+      );
+    },
+  );
 }
 
 /// Renders the button's glass in the root overlay, outside the GlassPopover's

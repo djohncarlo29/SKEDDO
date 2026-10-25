@@ -4047,7 +4047,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                 icon: CupertinoIcons.line_horizontal_3,
                                 iconColor: accent,
                                 surfaceColor: kCardColor,
-                                listenToLiquidGlassSlider: true,
                                 size: 40,
                                 iconSize: 20,
                                 peakScale: 0.95,
