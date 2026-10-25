@@ -276,6 +276,92 @@ void main() {
   });
 
   testWidgets(
+    'Month View trailing surface fills and follows the week strip in every mode',
+    (tester) async {
+      const screenSize = Size(402, 874);
+      SharedPreferences.setMockInitialValues({'calendar_view_mode': 'compact'});
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = screenSize;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final calendarKey = GlobalKey<CalendarTabState>();
+      var reportedView = CalendarView.month;
+      await tester.pumpWidget(
+        CupertinoApp(
+          builder: (context, child) => AppWindowContentBoundary(
+            child: child ?? const SizedBox.shrink(),
+          ),
+          home: CupertinoPageScaffold(
+            child: CalendarTab(
+              key: calendarKey,
+              onViewChanged: (view, _, _, _, _, _) => reportedView = view,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final calendar = calendarKey.currentState!;
+      final now = DateTime.now();
+      final surfaceFinder = find.byKey(
+        ValueKey('calendar-month-trailing-surface-${now.year}-${now.month}'),
+      );
+
+      for (final mode in CalendarViewMode.values) {
+        calendar.setViewMode(mode, persist: false);
+        await tester.pumpAndSettle();
+
+        expect(surfaceFinder, findsOneWidget, reason: 'Month mode: $mode');
+        final surface = tester.widget<ColoredBox>(surfaceFinder);
+        expect(
+          surface.color,
+          CupertinoDynamicColor.resolve(
+            kBackgroundColor,
+            tester.element(surfaceFinder),
+          ),
+        );
+        expect(
+          tester.getRect(surfaceFinder).height,
+          greaterThan(200),
+          reason: 'The trailing surface should fill the space below the grid.',
+        );
+      }
+
+      final monthRect = tester.getRect(surfaceFinder);
+      calendar.navigateUp();
+      await tester.pump(const Duration(milliseconds: 180));
+      final collapsingRect = tester.getRect(surfaceFinder);
+      final tailTransform = tester.widget<Transform>(
+        find.ancestor(of: surfaceFinder, matching: find.byType(Transform)).first,
+      );
+      debugPrint(
+        'tail surface movement: view=$reportedView '
+        'start=${monthRect.top} mid=${collapsingRect.top} '
+        'offset=${tailTransform.transform.getTranslation().y}',
+      );
+      expect(
+        collapsingRect.top,
+        greaterThan(monthRect.top),
+        reason: 'The trailing surface should move down with the week strips.',
+      );
+
+      await tester.pumpAndSettle();
+      calendar.navigateDown();
+      await tester.pump(const Duration(milliseconds: 270));
+      final returningRect = tester.getRect(surfaceFinder);
+      expect(
+        returningRect.top,
+        lessThan(collapsingRect.top),
+        reason: 'The trailing surface should move up as Month View returns.',
+      );
+      await tester.pumpAndSettle();
+      expect(tester.getRect(surfaceFinder).top, closeTo(monthRect.top, 1));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'portrait Day View places DOW, week strip, banner, and timeline in order',
     (tester) async {
       const screenSize = Size(402, 874);

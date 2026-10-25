@@ -6092,11 +6092,39 @@ class _MonthView extends StatelessWidget {
         // week, it travels down by the same viewport-scaled offset and returns
         // from there when the Month↔Day transition reverses.
         final monthListStripOffsetY = constraints.maxHeight * collapseProgress;
+        final movingWeekRowHeight = lerpDouble(
+          rowHeight,
+          _dayViewWeekStripHeight(context),
+          collapseProgress,
+        )!;
+        final trailingMonthSurfaceTop =
+            _kCalendarHeaderToDowGap +
+            _kDayLabelHeight +
+            totalRows * movingWeekRowHeight;
 
         final document = ClipRect(
           child: Stack(
             clipBehavior: Clip.none,
             children: [
+              // Keep the viewport tail opaque like the week rows. This
+              // trailing surface behaves like the next strip below the month:
+              // it moves down with the rows below the selected week, including
+              // when the selected week is the final row and no lower row exists.
+              Positioned(
+                left: 0,
+                right: 0,
+                top: trailingMonthSurfaceTop,
+                bottom: 0,
+                child: Transform.translate(
+                  offset: Offset(0, monthListStripOffsetY),
+                  child: ColoredBox(
+                    key: ValueKey(
+                      'calendar-month-trailing-surface-$year-$month',
+                    ),
+                    color: resolveThemeColor(kBackgroundColor, context),
+                  ),
+                ),
+              ),
               // ── Scrollable body ───────────────────────────────────
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
