@@ -1,0 +1,78 @@
+name: flutter_liquid_glass_widgets
+description: "Flutter UI kit inspired by Apple’s iOS 26 Liquid Glass design language. A complete glass widget library featuring shader-powered blur, physics-based jelly animations, and dynamic lighting effects. Works out of the box across Android, iOS, web, desktop, and all Flutter-supported platforms."
+version: 0.0.1
+
+homepage: https://github.com/sujit70777/flutter_liquid_glass_widgets
+repository: https://github.com/sujit70777/flutter_liquid_glass_widgets
+issue_tracker: https://github.com/sujit70777/flutter_liquid_glass_widgets/issues
+
+topics:
+  - liquid-glass
+  - widgets
+  - glassmorphism
+  - flutter
+  - apple
+
+screenshots:
+  - description: "Explore tab — component categories and platform showcases"
+    path: screenshots/01_explore.jpg
+  - description: "Full widget catalog, organised by category"
+    path: screenshots/02_widgets.jpg
+  - description: "GlassButton, GlassIconButton and GlassSegmentedControl"
+    path: screenshots/03_interactive.jpg
+  - description: "GlassDialog — alerts and confirmations"
+    path: screenshots/04_glass_dialog.jpg
+  - description: "GlassSheet — draggable glass bottom sheet"
+    path: screenshots/05_glass_sheet.jpg
+  - description: "GlassMenu and GlassPopover — premium liquid glass morphing"
+    path: screenshots/06_glass_menu_popover.jpg
+  - description: "GlassCommandPalette — press Cmd+K/Ctrl+K to open anywhere"
+    path: screenshots/07_command_palette.jpg
+  - description: "Widget catalog in light mode — automatic theming"
+    path: screenshots/08_widgets_light.jpg
+
+# Platform support declaration for pub.dev
+platforms:
+  android:
+  ios:
+  linux:
+  macos:
+  web:
+  windows:
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.41.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  equatable: ^2.0.8
+  flutter_shaders: ^0.1.3
+  logging: ^1.3.0
+  meta: ">=1.17.0 <2.0.0"
+  # Only imported by lib/glass_a11y_lens_bridge.dart (not the main
+  # liquid_glass_widgets.dart barrel) — apps that don't import that file
+  # never touch GlassContrastRule, but this still resolves for every
+  # consumer at `pub get` time since Dart has no true optional/peer
+  # dependencies.
+  flutter_a11y_lens: ^0.0.1
+  # Backs GlassQualityPersistence.auto() / SharedPreferencesQualityStore.
+  # Exported from the main liquid_glass_widgets.dart barrel (unlike
+  # flutter_a11y_lens above) since qualityPersistence is a wrap() parameter,
+  # not an opt-in entry-point import — so it can't be made truly optional.
+  shared_preferences: ^2.3.0
+dev_dependencies:
+  alchemist: ^0.14.0
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  mocktail: ^1.0.5
+
+flutter:
+  shaders:
+    - shaders/lightweight_glass.frag
+    - shaders/interactive_indicator.frag
+    - shaders/liquid_glass_geometry_blended.frag
+    - shaders/liquid_glass_final_render.frag
+    - shaders/progressive_blur.frag

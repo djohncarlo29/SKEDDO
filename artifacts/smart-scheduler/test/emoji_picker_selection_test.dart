@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:smart_scheduler/widgets/emoji_picker_sheet.dart';
-import 'package:smart_scheduler/widgets/fixed_size_icon.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
@@ -45,7 +44,7 @@ void main() {
     expect(
       find.byWidgetPredicate(
         (widget) =>
-            widget is FixedSFIcon && widget.icon == SFIcons.sf_hand_wave,
+            widget is Icon && widget.icon == SFIcons.sf_hand_wave,
       ),
       findsOneWidget,
     );
@@ -89,9 +88,52 @@ void main() {
       expect(
         find.byWidgetPredicate(
           (widget) =>
-              widget is FixedSFIcon && widget.icon == SFIcons.sf_hand_wave_fill,
+              widget is Icon && widget.icon == SFIcons.sf_hand_wave_fill,
         ),
         findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'selecting hand-wave keeps the category strip and separator in place',
+    (tester) async {
+      final navigatorKey = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        CupertinoApp(
+          navigatorKey: navigatorKey,
+          theme: const CupertinoThemeData(brightness: Brightness.light),
+          builder: (context, child) =>
+              AppWindowContentBoundary(child: child ?? const SizedBox.shrink()),
+          home: const SizedBox.shrink(),
+        ),
+      );
+      navigatorKey.currentState!.push<void>(
+        RoundedCupertinoSheetRoute<void>(
+          builder: (_) =>
+              EmojiPickerSheet(selectedEmoji: '🐶', onEmojiSelected: (_) {}),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      const separatorKey = ValueKey('emoji-picker-category-separator');
+      const handWaveTabKey = ValueKey('emoji-category-icon-1');
+      const animalTabKey = ValueKey('emoji-category-icon-2');
+      final separator = find.byKey(separatorKey);
+      final animalTab = find.byKey(animalTabKey);
+      expect(separator, findsOneWidget);
+      expect(animalTab, findsOneWidget);
+      final separatorY = tester.getCenter(separator).dy;
+      final categoryRowY = tester.getCenter(animalTab).dy;
+
+      await tester.tap(find.byKey(handWaveTabKey));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(SFIcons.sf_hand_wave), findsOneWidget);
+      expect(tester.getCenter(separator).dy, closeTo(separatorY, 0.1));
+      expect(
+        tester.getCenter(find.byKey(handWaveTabKey)).dy,
+        closeTo(categoryRowY, 0.1),
       );
     },
   );

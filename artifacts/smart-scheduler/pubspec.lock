@@ -369,10 +369,9 @@ packages:
   flutter_liquid_glass_widgets:
     dependency: "direct main"
     description:
-      name: flutter_liquid_glass_widgets
-      sha256: d0969a42b1262ac9ffa3b58cc0059a7748fc7038f4fc1296882f2efff9d2ceca
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/flutter_liquid_glass_widgets"
+      relative: true
+    source: path
     version: "0.0.1"
   flutter_onnxruntime:
     dependency: "direct main"

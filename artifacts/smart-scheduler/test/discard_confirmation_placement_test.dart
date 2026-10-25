@@ -7,7 +7,8 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassButtonStyle,
         GlassMenuAlignment,
         GlassPopover,
-        GlassQuality;
+        GlassQuality,
+        LiquidGlassLayer;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
@@ -72,6 +73,11 @@ void main() {
       skeddoBottomBarGlassSettingsFor(Brightness.light).refractiveIndex,
     );
     expect(popover.settings!.glassColor.a, kSkeddoPopoverGlassOpacity);
+    final morphLayerFinder = find.byType(LiquidGlassLayer);
+    expect(morphLayerFinder, findsOneWidget);
+    final morphLayer = tester.widget<LiquidGlassLayer>(morphLayerFinder);
+    expect(morphLayer.shadows, popover.settings!.effectiveShadow);
+    expect(morphLayer.shadows, isNotEmpty);
     final lightCardTint = resolveThemeColor(kModalCard, pageContext);
     expect(
       popover.settings!.glassColor.toARGB32() & 0x00FFFFFF,
@@ -148,6 +154,7 @@ void main() {
     expect(discardButton.style, GlassButtonStyle.filled);
     expect(discardButton.settings!.thickness, 75);
     expect(discardButton.settings!.lightIntensity, closeTo(0.9, 0.001));
+    expect(discardButton.settings!.effectiveShadow, isNotEmpty);
     final lightButtonTint = resolveThemeColor(
       kModalButtonBackground,
       pageContext,

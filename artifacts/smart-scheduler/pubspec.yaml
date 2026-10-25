@@ -55,6 +55,9 @@ dependency_overrides:
   # implementations. iOS/macOS use flutter_onnxruntime instead.
   tflite_flutter:
     path: packages/tflite_flutter
+  # Forward the built-in Light Mode shadow through GlassPopover's morph layer.
+  flutter_liquid_glass_widgets:
+    path: packages/flutter_liquid_glass_widgets
 
 flutter:
   uses-material-design: true

@@ -6,7 +6,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../app_theme.dart';
-import 'fixed_size_icon.dart';
 import 'modal_toolbar_glass_button.dart';
 import 'horizontal_edge_fade.dart';
 import 'header_title_scroller.dart';
@@ -909,11 +908,11 @@ Widget _buildCategoryTabIcon(
         colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
       );
     case 1:
-      return FixedSFIcon(
+      return Icon(
         brightness == Brightness.dark
             ? SFIcons.sf_hand_wave_fill
             : SFIcons.sf_hand_wave,
-        fontSize: size,
+        size: size,
         color: color,
       );
     case 2:
@@ -1836,6 +1835,9 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
                             // card surface so grid pixels can never show
                             // through it during scroll/rubberband motion.
                             Container(
+                              key: const ValueKey(
+                                'emoji-picker-category-separator',
+                              ),
                               height: 0.5,
                               color: opaqueSeparatorColor,
                             ),
