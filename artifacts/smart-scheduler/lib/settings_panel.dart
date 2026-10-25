@@ -1923,26 +1923,18 @@ class _ThemeSettingsSection extends StatelessWidget {
 }
 
 String _systemThemeSettingsDestination() {
-  if (kIsWeb) return 'your device’s appearance settings';
-
   return switch (defaultTargetPlatform) {
-    TargetPlatform.android =>
-      'Settings → Display → Dark theme (menu wording may vary by phone)',
-    TargetPlatform.iOS =>
-      'Settings → Display & Brightness → Appearance',
-    _ => 'your device’s appearance settings',
+    TargetPlatform.android => 'Display',
+    TargetPlatform.iOS => 'Display & Brightness',
+    _ => 'Display',
   };
 }
 
 String _systemTextSizeSettingsDestination() {
-  if (kIsWeb) return 'your device’s text-size settings';
-
   return switch (defaultTargetPlatform) {
-    TargetPlatform.android =>
-      'Settings → search for “Font size” (menu wording may vary by phone)',
-    TargetPlatform.iOS =>
-      'Settings → Display & Brightness → Text Size, or Accessibility → Display & Text Size → Larger Text',
-    _ => 'your device’s text-size settings',
+    TargetPlatform.android => 'Font Size',
+    TargetPlatform.iOS => 'Display & Text Size',
+    _ => 'Font Size',
   };
 }
 

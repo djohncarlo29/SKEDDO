@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/app_settings.dart';
 import 'package:smart_scheduler/settings_panel.dart';
@@ -59,7 +60,10 @@ void main() {
       expect(find.text('System Setting (Dark)'), findsOneWidget);
       expect(find.text('Skeddo App Only'), findsOneWidget);
       expect(
-        find.textContaining('When selected, Skeddo will use the setting from'),
+        find.text(
+          'When selected, Skeddo will use the setting from '
+          '${defaultTargetPlatform == TargetPlatform.iOS ? 'Display & Brightness' : 'Display'}.',
+        ),
         findsOneWidget,
       );
     },
