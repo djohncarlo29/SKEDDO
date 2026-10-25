@@ -107,6 +107,23 @@ void main() {
     );
     expect(discardButtonFinder, findsOneWidget);
     expect(tester.getSize(discardButtonFinder).width, greaterThan(300));
+    expect(
+      find.ancestor(
+        of: discardButtonFinder,
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Padding &&
+              widget.padding ==
+                  const EdgeInsets.fromLTRB(
+                    kDiscardConfirmationButtonEdgeGap,
+                    kDiscardConfirmationSheetTopInset,
+                    kDiscardConfirmationButtonEdgeGap,
+                    kDiscardConfirmationButtonBottomInset,
+                  ),
+        ),
+      ),
+      findsOneWidget,
+    );
     final discardButton = tester.widget<GlassButton>(discardButtonFinder);
     expect(
       discardButton.settings!.glassColor.a,

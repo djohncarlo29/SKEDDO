@@ -505,7 +505,7 @@ class DiscardChangesPopoverAnchorState
           kDiscardConfirmationButtonEdgeGap,
           kDiscardConfirmationSheetTopInset,
           kDiscardConfirmationButtonEdgeGap,
-          kDiscardConfirmationButtonEdgeGap,
+          kDiscardConfirmationButtonBottomInset,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
