@@ -70,6 +70,14 @@ final ValueNotifier<bool> appStartOfWeekUsesSystemNotifier =
 final ValueNotifier<String> appStartOfWeekNotifier =
     ValueNotifier<String>('Sunday');
 
+/// Standard trailing value for settings that can mirror the operating system.
+/// Keep "System" visible in the parent Settings list while the mirrored option
+/// is selected; show the app-only value otherwise.
+String mirrorSystemSettingTrailingValue({
+  required bool usesSystem,
+  required String appOnlyValue,
+}) => usesSystem ? 'System' : appOnlyValue;
+
 int firstDayOfWeekIndexForName(String name) {
   final index = kFirstDayOfWeekOptions.indexOf(name);
   return index < 0 ? 0 : index;

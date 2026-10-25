@@ -603,17 +603,20 @@ class _SettingsPanelState extends State<SettingsPanel>
           context,
         );
 
-        final themeLabel = switch (appBrightnessNotifier.value) {
-          Brightness.light => 'Light',
-          Brightness.dark => 'Dark',
-          _ => 'System',
-        };
-        final textSizeLabel = appTextSizeUsesSystemNotifier.value
-            ? 'System'
-            : 'Custom';
-        final startOfWeekLabel = appStartOfWeekUsesSystemNotifier.value
-            ? 'System'
-            : appStartOfWeekNotifier.value;
+        final themeLabel = mirrorSystemSettingTrailingValue(
+          usesSystem: appBrightnessNotifier.value == null,
+          appOnlyValue: appBrightnessNotifier.value == Brightness.dark
+              ? 'Dark'
+              : 'Light',
+        );
+        final textSizeLabel = mirrorSystemSettingTrailingValue(
+          usesSystem: appTextSizeUsesSystemNotifier.value,
+          appOnlyValue: 'Custom',
+        );
+        final startOfWeekLabel = mirrorSystemSettingTrailingValue(
+          usesSystem: appStartOfWeekUsesSystemNotifier.value,
+          appOnlyValue: appStartOfWeekNotifier.value,
+        );
         final defaultViewLabel = appDefaultViewNotifier.value;
         final fullMonthName = appFullMonthNameNotifier.value;
         final eventDurationLabel = appEventDurationNotifier.value;

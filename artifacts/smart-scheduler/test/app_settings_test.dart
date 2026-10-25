@@ -47,6 +47,23 @@ void main() {
     expect(appStartOfWeekNotifier.value, 'Wednesday');
   });
 
+  test('mirrored settings use a consistent System trailing value', () {
+    expect(
+      mirrorSystemSettingTrailingValue(
+        usesSystem: true,
+        appOnlyValue: 'Monday',
+      ),
+      'System',
+    );
+    expect(
+      mirrorSystemSettingTrailingValue(
+        usesSystem: false,
+        appOnlyValue: 'Monday',
+      ),
+      'Monday',
+    );
+  });
+
   test('legacy saved first weekday remains an app-only choice', () async {
     SharedPreferences.setMockInitialValues({
       'app_start_of_week': 'Saturday',
