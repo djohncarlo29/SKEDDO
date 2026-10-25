@@ -115,6 +115,7 @@ void main() {
       popover.settings!.refractiveIndex,
       skeddoBottomBarGlassSettingsFor(Brightness.light).refractiveIndex,
     );
+    expect(popover.settings!.blur, skeddoPopoverBlurForPosition(0.5));
     expect(popover.settings!.glassColor.a, kSkeddoPopoverGlassOpacity);
     final morphLayerFinder = find.byType(LiquidGlassLayer);
     expect(morphLayerFinder, findsOneWidget);
@@ -193,7 +194,7 @@ void main() {
     expect(discardButton.quality, GlassQuality.premium);
     expect(discardButton.style, GlassButtonStyle.filled);
     expect(discardButton.settings!.thickness, 0);
-    expect(discardButton.settings!.blur, 0);
+    expect(discardButton.settings!.blur, 5);
     expect(discardButton.settings!.chromaticAberration, 0);
     expect(discardButton.settings!.lightIntensity, 0);
     expect(discardButton.settings!.ambientStrength, 0);

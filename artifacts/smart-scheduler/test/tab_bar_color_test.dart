@@ -109,9 +109,9 @@ void main() {
       expect(tabBar.iconLabelSpacing, 1.5);
       expect(tabBar.magnification, 1.0);
       expect(tabBar.settings, skeddoTabBarGlassSettingsFor(Brightness.light));
-      expect(tabBar.settings!.blur, 5);
-      expect(skeddoBottomBarGlassSettingsFor(Brightness.light).blur, 5);
-      expect(tabBar.innerBlur, 5);
+      expect(tabBar.settings!.blur, 10);
+      expect(skeddoBottomBarGlassSettingsFor(Brightness.light).blur, 10);
+      expect(tabBar.innerBlur, 12);
       expect(kSkeddoLightBottomBarOpacity, 0.40);
       expect(tabBar.settings!.glassColor.a, closeTo(0.70, 0.001));
       expect(tabBar.settings!.glassColor.toARGB32() & 0x00FFFFFF, 0x00FFFFFF);
@@ -155,9 +155,9 @@ void main() {
 
     final tabBar = tester.widget<GlassTabBar>(find.byType(GlassTabBar));
     expect(tabBar.settings, skeddoTabBarGlassSettingsFor(Brightness.dark));
-    expect(tabBar.settings!.blur, 5);
-    expect(skeddoBottomBarGlassSettingsFor(Brightness.dark).blur, 5);
-    expect(tabBar.innerBlur, 5);
+    expect(tabBar.settings!.blur, 10);
+    expect(skeddoBottomBarGlassSettingsFor(Brightness.dark).blur, 10);
+    expect(tabBar.innerBlur, 12);
     expect(kSkeddoDarkBottomBarOpacity, 0.50);
     expect(
       tabBar.indicatorColor!.value,
@@ -174,7 +174,7 @@ void main() {
       GlassThemeVariant.dark.settings!.ambientStrength,
     );
     expect(tabBar.settings!.thickness, 30.0);
-    expect(tabBar.settings!.blur, 5.0);
+    expect(tabBar.settings!.blur, 10.0);
     expect(tabBar.settings!.chromaticAberration, 0.3);
     expect(tabBar.settings!.refractiveIndex, 1.59);
     expect(tabBar.settings!.saturation, 0.7);

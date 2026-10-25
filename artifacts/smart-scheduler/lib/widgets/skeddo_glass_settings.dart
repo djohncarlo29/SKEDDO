@@ -78,18 +78,18 @@ LiquidGlassSettings skeddoBottomBarGlassSettingsFor(
 
 const _kSharedGlassBlurAnchors = <(double, double)>[
   (0, 0.01),
-  (25, 0.05),
-  (50, 0.5),
-  (75, 1),
-  (100, 5),
+  (25, 0.5),
+  (50, 1),
+  (75, 3.5),
+  (100, 10),
 ];
 
 const _kActiveTabIndicatorBlurAnchors = <(double, double)>[
   (0, 0.5),
   (25, 1),
   (50, 2),
-  (75, 3),
-  (100, 5),
+  (75, 4.5),
+  (100, 12),
 ];
 
 const _kSharedGlassLightOpacityAnchors = <(double, double)>[
@@ -109,11 +109,19 @@ const _kSharedGlassDarkOpacityAnchors = <(double, double)>[
 ];
 
 const _kPopoverOpacityAnchors = <(double, double)>[
-  (0, 0.70),
-  (25, 0.80),
+  (0, 0.85),
+  (25, 0.875),
   (50, 0.90),
   (75, 0.925),
   (100, 0.95),
+];
+
+const _kPopoverBlurAnchors = <(double, double)>[
+  (0, 1),
+  (25, 2.5),
+  (50, 5),
+  (75, 7.5),
+  (100, 10),
 ];
 
 double _interpolateSliderAnchors(
@@ -158,6 +166,10 @@ double skeddoSharedGlassOpacityForPosition(
 double skeddoPopoverOpacityForPosition(double position) =>
     _interpolateSliderAnchors(position, _kPopoverOpacityAnchors);
 
+/// Independent blur curve used by the GlassPopover card and its discard button.
+double skeddoPopoverBlurForPosition(double position) =>
+    _interpolateSliderAnchors(position, _kPopoverBlurAnchors);
+
 LiquidGlassSettings _settingsForSharedGlassPosition(
   Brightness brightness,
   double position,
@@ -190,6 +202,7 @@ LiquidGlassSettings skeddoPopoverGlassSettingsFor(
   );
   final shared = skeddoBottomBarGlassSettingsFor(brightness);
   return shared.copyWith(
+    blur: skeddoPopoverBlurForPosition(sliderPosition),
     glassColor: cardTint.withValues(
       alpha: skeddoPopoverOpacityForPosition(sliderPosition),
     ),
@@ -212,7 +225,7 @@ LiquidGlassSettings skeddoPopoverButtonGlassSettingsFor(
       alpha: skeddoPopoverOpacityForPosition(sliderPosition),
     ),
     thickness: 0,
-    blur: 0,
+    blur: skeddoPopoverBlurForPosition(sliderPosition),
     chromaticAberration: 0,
     lightIntensity: 0,
     ambientStrength: 0,
