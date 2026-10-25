@@ -2468,6 +2468,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       trailingContentWidth: compact ? compactTrailingControlsWidth : null,
       centerWhenContentFits: compact,
       contentAlignment: compact ? Alignment.centerLeft : Alignment.bottomLeft,
+      // Expanded Calendar titles share a row with taller vertical chevrons;
+      // center-aligning the inner text lifts its baseline above other tabs.
+      contentCrossAxisAlignment: compact
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.end,
       leadingBuilder: compact
           ? (_) => compactArrow(
               direction: _ChevronDir.left,

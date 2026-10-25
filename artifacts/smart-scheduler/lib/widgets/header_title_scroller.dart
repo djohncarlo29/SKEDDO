@@ -114,6 +114,7 @@ class HeaderTitleScroller extends StatefulWidget {
   final bool fadeOnlyDuringHorizontalDrag;
   final bool centerWhenContentFits;
   final Alignment contentAlignment;
+  final CrossAxisAlignment contentCrossAxisAlignment;
   final VoidCallback? onTap;
 
   const HeaderTitleScroller({
@@ -136,6 +137,7 @@ class HeaderTitleScroller extends StatefulWidget {
     this.fadeOnlyDuringHorizontalDrag = false,
     this.centerWhenContentFits = false,
     this.contentAlignment = Alignment.bottomLeft,
+    this.contentCrossAxisAlignment = CrossAxisAlignment.center,
     this.onTap,
   });
 
@@ -517,7 +519,7 @@ class _HeaderTitleScrollerState extends State<HeaderTitleScroller> {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.center,
+                                          widget.contentCrossAxisAlignment,
                                       children: [
                                         if (centeredInset > 0)
                                           SizedBox(width: centeredInset),

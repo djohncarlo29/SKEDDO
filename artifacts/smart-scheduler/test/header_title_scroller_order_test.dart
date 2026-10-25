@@ -53,6 +53,39 @@ void main() {
   );
 
   testWidgets(
+    'bottom-aligns large title text beside taller calendar controls',
+    (tester) async {
+      const controlsKey = ValueKey('calendar-title-controls');
+
+      await tester.pumpWidget(
+        const CupertinoApp(
+          home: Center(
+            child: SizedBox(
+              width: 320,
+              height: 64,
+              child: HeaderTitleScroller(
+                title: 'March',
+                style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold),
+                fadeColor: CupertinoColors.white,
+                trailing: SizedBox(key: controlsKey, width: 24, height: 64),
+                trailingContentWidth: 24,
+                trailingGap: 0,
+                contentCrossAxisAlignment: CrossAxisAlignment.end,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getRect(find.text('March')).bottom,
+        closeTo(tester.getRect(find.byKey(controlsKey)).bottom, 0.5),
+      );
+    },
+  );
+
+  testWidgets(
     'calendar-style title keeps scrolling as its edge mask changes',
     (tester) async {
       Widget buildScroller({required bool fadeAfterUserScroll}) {
