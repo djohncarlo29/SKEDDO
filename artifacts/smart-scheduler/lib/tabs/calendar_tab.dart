@@ -2731,6 +2731,51 @@ class CalendarTabState extends State<CalendarTab>
     return timeline;
   }
 
+  Widget _buildPinnedDayWeekRow({
+    required DateTime selectedDate,
+    required double rowHeight,
+    required double contentInset,
+    required DayViewSubMode daySubMode,
+    required double circleSlideX,
+    required int settleCount,
+    required double blobDeltaX,
+    required int blobSnapCount,
+    Key? stripKey,
+  }) {
+    return KeyedSubtree(
+      key: stripKey,
+      child: _WeekRow(
+        year: selectedDate.year,
+        month: selectedDate.month,
+        row: _weekRowForDate(selectedDate),
+        today: _today,
+        selectedDate: selectedDate,
+        onDayTap: (date) {
+          setState(() {
+            _selected = date;
+            _dispMonth = date.month;
+            _dispYear = date.year;
+            _collapseRow = _weekRowForDate(date);
+          });
+          _notify();
+        },
+        rowHeight: rowHeight,
+        showOverflow: true,
+        circleSlideX: circleSlideX,
+        settleCount: settleCount,
+        blobDeltaX: blobDeltaX,
+        blobSnapCount: blobSnapCount,
+        pendingBloomDate: _pendingBloomDate,
+        suppressScaleAnimation: circleSlideX != 0.0 || blobDeltaX != 0.0,
+        daySubMode: daySubMode,
+        collapseProgress: 1.0,
+        contentInset: contentInset,
+        eventsByDay: const {},
+        viewMode: _viewMode,
+      ),
+    );
+  }
+
   // ── Full-screen search overlay (mirrors EventsTab._buildGridSearchOverlay) ──
   Widget _buildSearchOverlay() {
     final searchBarRow = Padding(
@@ -2976,6 +3021,10 @@ class CalendarTabState extends State<CalendarTab>
                 colT > 0.01 &&
                 (widget.daySubMode != DayViewSubMode.list ||
                     _dayChromeModeTransitionActive);
+            final showPinnedDayWeekStrip =
+                showDayHeaderChrome && dayHeaderSubMode != DayViewSubMode.list;
+            final handOffPinnedDayWeekStrip =
+                colT >= 0.99 && showPinnedDayWeekStrip;
             final dayDowTop =
                 expandedTitleHeight -
                 kContentAreaTopRaise +
@@ -3081,6 +3130,86 @@ class CalendarTabState extends State<CalendarTab>
             Widget buildDayViewUnderlay() => Positioned.fill(
               child: AppHeaderScrollStack(
                 children: [
+                  // Once Day View settles, the Month row is replaced by a
+                  // copy anchored to the shared Day-header coordinates. This
+                  // keeps the strip out of the Month scroll viewport and its
+                  // independent title/clip geometry.
+                  if (handOffPinnedDayWeekStrip)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top:
+                          dayDowTop +
+                          _kCalendarHeaderToDowGap +
+                          _kDayLabelHeight,
+                      height: dayWeekStripHeight,
+                      child: Transform.translate(
+                        offset: Offset(0, dayHeaderGroupSlideY),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Positioned(
+                              left: monthSlideX - sw,
+                              top: 0,
+                              bottom: 0,
+                              width: sw,
+                              child: _buildPinnedDayWeekRow(
+                                selectedDate: prevPanelSel,
+                                rowHeight: dayWeekStripHeight,
+                                contentInset: AppWindowContentScope.of(
+                                  context,
+                                ).horizontalInset,
+                                daySubMode: dayHeaderSubMode,
+                                circleSlideX: circleSlideX,
+                                settleCount: _settleCount,
+                                blobDeltaX: circleMode ? _blobDeltaX : 0.0,
+                                blobSnapCount: _blobSnapCount,
+                              ),
+                            ),
+                            Positioned(
+                              left: monthSlideX,
+                              top: 0,
+                              bottom: 0,
+                              width: sw,
+                              child: _buildPinnedDayWeekRow(
+                                selectedDate: _selected,
+                                rowHeight: dayWeekStripHeight,
+                                contentInset: AppWindowContentScope.of(
+                                  context,
+                                ).horizontalInset,
+                                daySubMode: dayHeaderSubMode,
+                                circleSlideX: circleSlideX,
+                                settleCount: _settleCount,
+                                blobDeltaX: circleMode ? _blobDeltaX : 0.0,
+                                blobSnapCount: _blobSnapCount,
+                                stripKey: const Key(
+                                  'day-view-pinned-week-strip',
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              left: monthSlideX + sw,
+                              top: 0,
+                              bottom: 0,
+                              width: sw,
+                              child: _buildPinnedDayWeekRow(
+                                selectedDate: nextPanelSel,
+                                rowHeight: dayWeekStripHeight,
+                                contentInset: AppWindowContentScope.of(
+                                  context,
+                                ).horizontalInset,
+                                daySubMode: dayHeaderSubMode,
+                                circleSlideX: circleSlideX,
+                                settleCount: _settleCount,
+                                blobDeltaX: circleMode ? _blobDeltaX : 0.0,
+                                blobSnapCount: _blobSnapCount,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
                   // ── Day banner (weekday + full date) ────────────────
                   if (showDayHeaderChrome)
                     Positioned(
@@ -3500,6 +3629,8 @@ class CalendarTabState extends State<CalendarTab>
                                   selectedDate: _selected,
                                   collapseProgress: colT,
                                   collapseWeekRow: _collapseRow,
+                                  hidePinnedDayRow:
+                                      handOffPinnedDayWeekStrip,
                                   rowHeight: rowHeight,
                                    viewMode: _viewMode,
                                   circleSlideX: circleSlideX,
@@ -5697,6 +5828,7 @@ class _MonthView extends StatelessWidget {
     this.monthListOrderRevision = 0,
     this.onMonthListOrderChanged,
     this.collapseScrollOffset = 0.0,
+    this.hidePinnedDayRow = false,
     this.morphWeekRowKeys,
     this.morphDayKeys,
     this.morphDowHeaderKey,
@@ -5749,6 +5881,7 @@ class _MonthView extends StatelessWidget {
   /// each _AnimatedWeekRow so the selected row lands in the Day week-strip
   /// slot even when the user previously scrolled in Details view-mode.
   final double collapseScrollOffset;
+  final bool hidePinnedDayRow;
 
   @override
   Widget build(BuildContext context) {
@@ -5967,7 +6100,8 @@ class _MonthView extends StatelessWidget {
                       clipBehavior: Clip.none,
                       children: [
                         for (int row = 0; row < totalRows; row++)
-                          _AnimatedWeekRow(
+                          if (!hidePinnedDayRow || row != collapseWeekRow)
+                            _AnimatedWeekRow(
                             year: year,
                             month: month,
                             row: row,

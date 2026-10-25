@@ -69,9 +69,20 @@ void main() {
       final dow = find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString() == '_DayViewDowMask',
       );
-      final selectedWeek = _selectedWeekRow(DateTime.now());
+      final selectedWeek = find.byKey(
+        const Key('day-view-pinned-week-strip'),
+      );
       final banners = find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString() == '_DayBanner',
+      );
+      expect(selectedWeek, findsOneWidget);
+      expect(
+        find.ancestor(
+          of: selectedWeek,
+          matching: find.byType(AppHeaderScrollClip),
+        ),
+        findsNothing,
+        reason: 'The settled strip must not remain inside the Month viewport clip.',
       );
       expect(
         tester.getRect(selectedWeek).top,
@@ -143,11 +154,22 @@ void main() {
       final dow = find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString() == '_DayViewDowMask',
       );
-      final selectedWeek = _selectedWeekRow(DateTime.now());
+      final selectedWeek = find.byKey(
+        const Key('day-view-pinned-week-strip'),
+      );
       final banners = find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString() == '_DayBanner',
       );
 
+      expect(selectedWeek, findsOneWidget);
+      expect(
+        find.ancestor(
+          of: selectedWeek,
+          matching: find.byType(AppHeaderScrollClip),
+        ),
+        findsNothing,
+        reason: 'The settled strip must not remain inside the Month viewport clip.',
+      );
       expect(
         tester.getRect(selectedWeek).top,
         closeTo(tester.getRect(dow).bottom, 0.5),
@@ -278,7 +300,9 @@ void main() {
       expect(timelines, findsNWidgets(3));
 
       final dowRect = tester.getRect(dowMask);
-      final selectedWeek = _selectedWeekRow(DateTime.now());
+      final selectedWeek = find.byKey(
+        const Key('day-view-pinned-week-strip'),
+      );
       final centerBannerRect = tester.getRect(banners.at(1));
       final centerTimelineRect = tester.getRect(timelines.at(1));
       expect(selectedWeek, findsOneWidget);

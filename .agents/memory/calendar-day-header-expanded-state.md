@@ -3,8 +3,8 @@ name: Day View week-strip positioning
 description: Align the selected Month row, DOW header, and Day Banner in expanded and compact Calendar Day View.
 ---
 
-In Calendar Tab Day View, the selected week row already follows the Month viewport's shared-header position. Keep it directly below the DOW mask and above the Day Banner; do not add another shared-header translation or paint a parent-level header backplate over the Month rows.
+In settled Calendar Day View, the selected week strip must use the shell's shared header coordinates, not remain in the Month grid's nested scroll viewport. Keep the Month-owned row for the collapse animation, then hand off to one Day-owned strip directly below the DOW mask and above the Day Banner.
 
-**Why:** A second compact-header translation moves the selected strip 41px above the DOW, and a parent backplate can hide the strip entirely in both header states.
+**Why:** The Month grid's nested title inset and viewport clip can leave its row at a stale vertical origin while the Day DOW and banner follow the shell's live expanded/compact state. Widget-box alignment alone did not prove that the date cells were painted.
 
-**How to apply:** Test by collapsing Calendar's own Month header before entering Day View, then verify selected-row top equals DOW bottom and Day Banner top equals selected-row bottom in both Single Day and Multi Day.
+**How to apply:** Preserve the in-grid row through Month↔Day animation; at the settled Day handoff, hide that copy and render the selected week in the Day header stack. Test both expanded and compact shell states and assert the rendered strip has no Month viewport clip ancestor.
