@@ -72,10 +72,11 @@ LiquidGlassSettings skeddoPopoverGlassSettingsFor(
   );
 }
 
-/// GlassButtonStyle.prominent multiplies its input tint alpha by 2.5.
-/// Dividing the requested opacity by that factor keeps this popover action at
-/// the same effective 85% as its card. Its hue comes from the original modal
-/// button surface rather than the shared renderer's neutral tint.
+/// Gives the discard action its own 85%-tinted surface, using the modal button
+/// color rather than the popover card color. GlassButtonStyle.prominent
+/// multiplies its input tint alpha by 2.5, so its input alpha is divided by that
+/// factor. The independent premium glass layer refracts the popover beneath it
+/// and retains its own rim instead of merging into the parent glass surface.
 LiquidGlassSettings skeddoPopoverButtonGlassSettingsFor(
   Brightness brightness,
   Color buttonTint,

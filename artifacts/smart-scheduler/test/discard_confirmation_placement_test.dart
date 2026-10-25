@@ -2,7 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
-    show GlassButton, GlassMenuAlignment, GlassPopover;
+    show
+        GlassButton,
+        GlassButtonStyle,
+        GlassMenuAlignment,
+        GlassPopover,
+        GlassQuality;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
@@ -107,6 +112,9 @@ void main() {
       discardButton.settings!.glassColor.a,
       closeTo(kSkeddoPopoverGlassOpacity / 2.5, 0.001),
     );
+    expect(discardButton.useOwnLayer, isTrue);
+    expect(discardButton.quality, GlassQuality.premium);
+    expect(discardButton.style, GlassButtonStyle.prominent);
     final lightButtonTint = resolveThemeColor(
       kModalButtonBackground,
       pageContext,

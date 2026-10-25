@@ -529,31 +529,36 @@ class DiscardChangesPopoverAnchorState
               ),
             ),
             const SizedBox(height: kDiscardConfirmationMessageButtonGap),
-            GlassButton.custom(
-              onTap: () => _acceptDiscard(closePopover),
-              height: 57,
-              shape: const LiquidRoundedSuperellipse(
-                borderRadius: kDiscardConfirmationButtonCornerRadius,
-              ),
-              settings: skeddoPopoverButtonGlassSettingsFor(
-                CupertinoTheme.brightnessOf(context),
-                resolveThemeColor(kModalButtonBackground, context),
-              ),
-              style: GlassButtonStyle.prominent,
-              interactionScale: 1.06,
-              label: 'Discard Changes',
-              child: Center(
-                child: Text(
-                  'Discard Changes',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    inherit: false,
-                    fontSize: 17,
-                    fontFamily: kSFProText,
-                    fontWeight: FontWeight.w500,
-                    color: CupertinoColors.destructiveRed,
-                    letterSpacing: kTracking17,
-                    height: kLineHeight,
+            LayoutBuilder(
+              builder: (context, constraints) => GlassButton.custom(
+                onTap: () => _acceptDiscard(closePopover),
+                width: constraints.maxWidth,
+                height: 57,
+                shape: const LiquidRoundedSuperellipse(
+                  borderRadius: kDiscardConfirmationButtonCornerRadius,
+                ),
+                settings: skeddoPopoverButtonGlassSettingsFor(
+                  CupertinoTheme.brightnessOf(context),
+                  resolveThemeColor(kModalButtonBackground, context),
+                ),
+                quality: GlassQuality.premium,
+                useOwnLayer: true,
+                style: GlassButtonStyle.prominent,
+                interactionScale: 1.06,
+                label: 'Discard Changes',
+                child: Center(
+                  child: Text(
+                    'Discard Changes',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      inherit: false,
+                      fontSize: 17,
+                      fontFamily: kSFProText,
+                      fontWeight: FontWeight.w500,
+                      color: CupertinoColors.destructiveRed,
+                      letterSpacing: kTracking17,
+                      height: kLineHeight,
+                    ),
                   ),
                 ),
               ),
