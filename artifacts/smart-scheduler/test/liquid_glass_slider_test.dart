@@ -72,24 +72,36 @@ void main() {
     );
   });
 
-  test('popover card and button retain fixed opacity outside shared curve', () {
+  test('popover card and button follow their independent opacity curve', () {
     final originalOpacity = appLiquidGlassOpacityNotifier.value;
     addTearDown(() {
       appLiquidGlassOpacityNotifier.value = originalOpacity;
     });
-    appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
-      0,
-    );
 
     const tint = Color(0xFF123456);
-    expect(
-      skeddoPopoverGlassSettingsFor(Brightness.light, tint).glassColor.a,
-      closeTo(0.90, 0.001),
-    );
-    expect(
-      skeddoPopoverButtonGlassSettingsFor(Brightness.dark, tint).glassColor.a,
-      closeTo(0.90, 0.001),
-    );
+    const positions = <double>[0, 0.25, 0.5, 0.75, 1];
+    const expectedOpacities = <double>[0.70, 0.80, 0.90, 0.925, 0.95];
+
+    for (var index = 0; index < positions.length; index++) {
+      appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
+        positions[index],
+      );
+      final expected = expectedOpacities[index];
+      expect(
+        skeddoPopoverOpacityForPosition(positions[index]),
+        closeTo(expected, 0.000001),
+      );
+      expect(
+        skeddoPopoverGlassSettingsFor(Brightness.light, tint).glassColor.a,
+        closeTo(expected, 0.001),
+      );
+      expect(
+        skeddoPopoverButtonGlassSettingsFor(Brightness.dark, tint).glassColor.a,
+        closeTo(expected, 0.001),
+      );
+    }
+
+    expect(skeddoPopoverOpacityForPosition(0.625), closeTo(0.9125, 0.000001));
   });
 
   test('Liquid Glass slider positions settle on whole percentages', () {

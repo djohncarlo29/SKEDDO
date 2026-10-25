@@ -11,6 +11,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassQuality,
         LiquidGlassLayer;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_scheduler/app_settings.dart';
 import 'package:smart_scheduler/app_theme.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 import 'package:smart_scheduler/widgets/delete_confirmation_sheet.dart';
@@ -29,6 +30,14 @@ void main() {
   testWidgets('discard confirmation always uses the top-left placement', (
     tester,
   ) async {
+    final originalGlassSliderValue = appLiquidGlassOpacityNotifier.value;
+    appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
+      0.5,
+    );
+    addTearDown(() {
+      appLiquidGlassOpacityNotifier.value = originalGlassSliderValue;
+    });
+
     tester.view.physicalSize = const Size(800, 600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -73,7 +82,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final message = find.text('Are you sure you want to discard this new event?');
+    final message = find.text(
+      'Are you sure you want to discard this new event?',
+    );
     expect(message, findsOneWidget);
     expect(find.byIcon(CupertinoIcons.xmark), findsOneWidget);
     final popoverFinder = find.byType(GlassPopover);
@@ -124,17 +135,16 @@ void main() {
     );
     expect(
       skeddoPopoverGlassSettingsFor(
-        Brightness.dark,
-        const Color(0xFF2C2C2E),
-      ).glassColor.toARGB32() &
+            Brightness.dark,
+            const Color(0xFF2C2C2E),
+          ).glassColor.toARGB32() &
           0x00FFFFFF,
       0x002C2C2E,
     );
     expect(
       find.byWidgetPredicate(
         (widget) =>
-            widget is ColoredBox &&
-            widget.color == const Color(0x44000000),
+            widget is ColoredBox && widget.color == const Color(0x44000000),
       ),
       findsNothing,
     );
@@ -145,8 +155,9 @@ void main() {
     );
     expect(discardButtonFinder, findsOneWidget);
     expect(tester.getSize(discardButtonFinder).width, greaterThan(300));
-    const buttonAnchorKey =
-        ValueKey('discard-confirmation-glass-button-anchor');
+    const buttonAnchorKey = ValueKey(
+      'discard-confirmation-glass-button-anchor',
+    );
     final buttonAnchorFinder = find.byKey(buttonAnchorKey);
     expect(buttonAnchorFinder, findsOneWidget);
     final buttonRect = tester.getRect(discardButtonFinder);
@@ -177,10 +188,7 @@ void main() {
       findsNothing,
     );
     final discardButton = tester.widget<GlassButton>(discardButtonFinder);
-    expect(
-      discardButton.settings!.glassColor.a,
-      kSkeddoPopoverGlassOpacity,
-    );
+    expect(discardButton.settings!.glassColor.a, kSkeddoPopoverGlassOpacity);
     expect(discardButton.useOwnLayer, isTrue);
     expect(discardButton.quality, GlassQuality.premium);
     expect(discardButton.style, GlassButtonStyle.filled);
@@ -212,9 +220,9 @@ void main() {
     );
     expect(
       skeddoPopoverButtonGlassSettingsFor(
-        Brightness.dark,
-        const Color(0xFF3A3A3C),
-      ).glassColor.toARGB32() &
+            Brightness.dark,
+            const Color(0xFF3A3A3C),
+          ).glassColor.toARGB32() &
           0x00FFFFFF,
       0x003A3A3C,
     );

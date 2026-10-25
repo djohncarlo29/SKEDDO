@@ -14,6 +14,8 @@ import '../app_settings.dart';
 /// the shared renderer opacity at the 50% slider mark.
 const double kSkeddoLightBottomBarOpacity = 0.40;
 const double kSkeddoDarkBottomBarOpacity = 0.50;
+
+/// GlassPopover card and button opacity at the 50% slider mark.
 const double kSkeddoPopoverGlassOpacity = 0.90;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
@@ -106,6 +108,14 @@ const _kSharedGlassDarkOpacityAnchors = <(double, double)>[
   (100, 0.80),
 ];
 
+const _kPopoverOpacityAnchors = <(double, double)>[
+  (0, 0.70),
+  (25, 0.80),
+  (50, 0.90),
+  (75, 0.925),
+  (100, 0.95),
+];
+
 double _interpolateSliderAnchors(
   double position,
   List<(double, double)> anchors,
@@ -144,6 +154,10 @@ double skeddoSharedGlassOpacityForPosition(
       : _kSharedGlassLightOpacityAnchors,
 );
 
+/// Independent opacity curve used by both GlassPopover surfaces.
+double skeddoPopoverOpacityForPosition(double position) =>
+    _interpolateSliderAnchors(position, _kPopoverOpacityAnchors);
+
 LiquidGlassSettings _settingsForSharedGlassPosition(
   Brightness brightness,
   double position,
@@ -171,9 +185,14 @@ LiquidGlassSettings skeddoPopoverGlassSettingsFor(
   Brightness brightness,
   Color cardTint,
 ) {
+  final sliderPosition = liquidGlassSliderPositionForOpacity(
+    appLiquidGlassOpacityNotifier.value,
+  );
   final shared = skeddoBottomBarGlassSettingsFor(brightness);
   return shared.copyWith(
-    glassColor: cardTint.withValues(alpha: kSkeddoPopoverGlassOpacity),
+    glassColor: cardTint.withValues(
+      alpha: skeddoPopoverOpacityForPosition(sliderPosition),
+    ),
   );
 }
 
@@ -184,9 +203,14 @@ LiquidGlassSettings skeddoPopoverButtonGlassSettingsFor(
   Brightness brightness,
   Color buttonTint,
 ) {
+  final sliderPosition = liquidGlassSliderPositionForOpacity(
+    appLiquidGlassOpacityNotifier.value,
+  );
   final popover = skeddoBottomBarGlassSettingsFor(brightness);
   return popover.copyWith(
-    glassColor: buttonTint.withValues(alpha: kSkeddoPopoverGlassOpacity),
+    glassColor: buttonTint.withValues(
+      alpha: skeddoPopoverOpacityForPosition(sliderPosition),
+    ),
     thickness: 0,
     blur: 0,
     chromaticAberration: 0,
