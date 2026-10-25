@@ -13,7 +13,9 @@ import 'services/local_storage.dart';
 //   appBrightnessNotifier    — null = follow system, light/dark = override.
 //   appTextSizeUsesSystemNotifier — true when text follows the phone OS.
 //   appTextSizeIndexNotifier — custom SKEDDO text-size position (0–6).
-//   appStartOfWeekNotifier   — 'Sunday' | 'Monday' | 'Saturday'.
+//   appStartOfWeekNotifier   — the effective first weekday, Sunday through
+//                              Saturday.
+//   appStartOfWeekUsesSystemNotifier — whether the weekday follows the OS.
 //   appDefaultViewNotifier   — 'Day' | 'Week' | 'Month' | 'Year'.
 //   appEventDurationNotifier — '15 minutes' | '30 minutes' | '1 hour' | '2 hours'.
 //   appDateLocaleNotifier    — monthFirst or dayFirst for ambiguous numeric dates.
@@ -47,6 +49,66 @@ final ValueNotifier<int> appTextSizeIndexNotifier = ValueNotifier<int>(3);
 final ValueNotifier<double> appSystemTextScaleNotifier = ValueNotifier<double>(
   1.0,
 );
+
+/// Calendar weekday names use a stable Sunday-first index: Sunday = 0,
+/// Saturday = 6. The effective app value is kept separately from the system
+/// value so a custom choice does not overwrite the mirrored OS setting.
+const List<String> kFirstDayOfWeekOptions = <String>[
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+];
+
+final ValueNotifier<String> appSystemFirstDayOfWeekNotifier =
+    ValueNotifier<String>('Sunday');
+final ValueNotifier<bool> appStartOfWeekUsesSystemNotifier =
+    ValueNotifier<bool>(true);
+final ValueNotifier<String> appStartOfWeekNotifier =
+    ValueNotifier<String>('Sunday');
+
+int firstDayOfWeekIndexForName(String name) {
+  final index = kFirstDayOfWeekOptions.indexOf(name);
+  return index < 0 ? 0 : index;
+}
+
+String firstDayOfWeekNameForIndex(int index) =>
+    kFirstDayOfWeekOptions[index.clamp(0, 6).toInt()];
+
+/// Returns the date's column in a calendar whose first column is [firstDay].
+/// DateTime.weekday is Monday-first; the app's persisted choices are Sunday-
+/// first, so convert both to the same 0–6 indexing before subtracting.
+int calendarWeekdayColumnForDate(
+  DateTime date, {
+  String? firstDay,
+}) {
+  final startIndex = firstDayOfWeekIndexForName(
+    firstDay ?? appStartOfWeekNotifier.value,
+  );
+  final sundayFirstDateIndex = date.weekday % 7;
+  return (sundayFirstDateIndex - startIndex + 7) % 7;
+}
+
+int calendarMonthStartOffset(
+  int year,
+  int month, {
+  String? firstDay,
+}) => calendarWeekdayColumnForDate(DateTime(year, month, 1), firstDay: firstDay);
+
+List<String> calendarWeekdayHeaderLetters({String? firstDay}) {
+  const sundayFirstLetters = <String>['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  final startIndex = firstDayOfWeekIndexForName(
+    firstDay ?? appStartOfWeekNotifier.value,
+  );
+  return List<String>.generate(
+    7,
+    (index) => sundayFirstLetters[(startIndex + index) % 7],
+    growable: false,
+  );
+}
 
 /// Compatibility stops used on web and on old native binaries that expose only
 /// the active scale. These are SKEDDO UI stops, never a native profile.
@@ -125,6 +187,34 @@ final ValueNotifier<TextScaler?> appCustomTextScalerNotifier =
     ValueNotifier<TextScaler?>(null);
 
 const _textScaleChannel = MethodChannel('com.smartscheduler/text_scale');
+const _systemCalendarChannel = MethodChannel(
+  'com.smartscheduler/system_calendar',
+);
+
+/// Refreshes the device's preferred first weekday. Native platforms read the
+/// OS calendar/locale preference; web and older native binaries keep the
+/// initialized locale-safe fallback.
+Future<void> refreshSystemFirstDayOfWeek() async {
+  try {
+    final index = await _systemCalendarChannel.invokeMethod<int>(
+      'getFirstDayOfWeekIndex',
+    );
+    if (index == null || index < 0 || index > 6) return;
+
+    final systemDay = firstDayOfWeekNameForIndex(index);
+    if (appSystemFirstDayOfWeekNotifier.value != systemDay) {
+      appSystemFirstDayOfWeekNotifier.value = systemDay;
+    }
+    if (appStartOfWeekUsesSystemNotifier.value &&
+        appStartOfWeekNotifier.value != systemDay) {
+      appStartOfWeekNotifier.value = systemDay;
+    }
+  } on MissingPluginException {
+    // The web preview and older native binaries do not expose this bridge.
+  } on PlatformException {
+    // Keep the last known value if the OS query is temporarily unavailable.
+  }
+}
 
 /// Diagnostic-only read of the complete native profile payload. This does not
 /// modify any text-size notifier or the ambient MediaQuery.
@@ -423,11 +513,6 @@ Future<void> refreshDeviceTextScaleProfileIfChanged() async {
 /// Persisted across settings sub-screen lifetimes via module-level storage.
 final ValueNotifier<int> appAccentNotifier = ValueNotifier<int>(5);
 
-/// Calendar — first day of the week shown in month/week views.
-final ValueNotifier<String> appStartOfWeekNotifier = ValueNotifier<String>(
-  'Sunday',
-);
-
 /// Calendar — which view to open when the Calendar tab is tapped.
 final ValueNotifier<String> appDefaultViewNotifier = ValueNotifier<String>(
   'Month',
@@ -511,6 +596,7 @@ const _kTextSizeModeKey = 'app_text_size_mode';
 const _kTextSizeIndexKey = 'app_text_size_index';
 const _kAccentIndexKey = 'app_accent_index';
 const _kStartOfWeekKey = 'app_start_of_week';
+const _kStartOfWeekModeKey = 'app_start_of_week_mode';
 const _kDefaultViewKey = 'app_default_view';
 const _kFullMonthNameKey = 'app_full_month_name';
 const _kEventDurationKey = 'app_event_duration';
@@ -526,6 +612,7 @@ const _kPersistedPinnedCategoriesKey = 'events_pinned_categories';
 Future<void> loadAppSettings() async {
   await LocalStorage.instance.initialize();
   final prefs = await SharedPreferences.getInstance();
+  await refreshSystemFirstDayOfWeek();
 
   // Theme
   final theme = prefs.getString(_kThemeKey);
@@ -570,9 +657,22 @@ Future<void> loadAppSettings() async {
   final accentIndex = prefs.getInt(_kAccentIndexKey);
   if (accentIndex != null) appAccentNotifier.value = accentIndex;
 
-  // Calendar settings
+  // New installations mirror the system's first weekday. Values saved by
+  // older versions are treated as explicit app-only choices during migration.
   final startOfWeek = prefs.getString(_kStartOfWeekKey);
-  if (startOfWeek != null) appStartOfWeekNotifier.value = startOfWeek;
+  final startOfWeekMode = prefs.getString(_kStartOfWeekModeKey);
+  final hasValidSavedDay =
+      startOfWeek != null && kFirstDayOfWeekOptions.contains(startOfWeek);
+  final useSystemStartOfWeek =
+      startOfWeekMode == 'system' ||
+      (startOfWeekMode == null && !hasValidSavedDay) ||
+      (startOfWeekMode == 'custom' && !hasValidSavedDay);
+  appStartOfWeekUsesSystemNotifier.value = useSystemStartOfWeek;
+  if (useSystemStartOfWeek) {
+    appStartOfWeekNotifier.value = appSystemFirstDayOfWeekNotifier.value;
+  } else if (hasValidSavedDay) {
+    appStartOfWeekNotifier.value = startOfWeek;
+  }
 
   final defaultView = prefs.getString(_kDefaultViewKey);
   if (defaultView != null) appDefaultViewNotifier.value = defaultView;
@@ -639,6 +739,9 @@ Future<void> loadAppSettings() async {
 Future<void> saveAppSetting(String routeTitle, String value) {
   final mode = appTextSizeUsesSystemNotifier.value ? 'system' : 'custom';
   final index = appTextSizeIndexNotifier.value;
+  final startOfWeekMode = appStartOfWeekUsesSystemNotifier.value
+      ? 'system'
+      : 'custom';
   final next = _settingsWriteQueue.then<void>((_) async {
     final prefs = await SharedPreferences.getInstance();
     switch (routeTitle) {
@@ -648,8 +751,9 @@ Future<void> saveAppSetting(String routeTitle, String value) {
         await prefs.setString(_kTextSizeKey, value);
         await prefs.setString(_kTextSizeModeKey, mode);
         await prefs.setInt(_kTextSizeIndexKey, index);
-      case 'Start of Week':
+      case 'First Day of Week':
         await prefs.setString(_kStartOfWeekKey, value);
+        await prefs.setString(_kStartOfWeekModeKey, startOfWeekMode);
       case 'Default View':
         await prefs.setString(_kDefaultViewKey, value);
       case 'Full Month Name':

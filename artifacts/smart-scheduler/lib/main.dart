@@ -655,6 +655,7 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
       // native bridge. Re-read it after returning from Settings so the
       // System thumb and captured scaler track the newly selected OS value.
       unawaited(initializeDeviceTextScaleProfile());
+      unawaited(refreshSystemFirstDayOfWeek());
     }
   }
 

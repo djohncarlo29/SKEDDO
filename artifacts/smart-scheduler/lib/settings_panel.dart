@@ -145,10 +145,10 @@ const _kRoutes = <String, _SettingsRoute>{
     defaultValue: 'Month',
   ),
   // Contextual — defaultValue matches the trailing shown in the main list.
-  'Start of Week': _SettingsRoute(
-    title: 'Start of Week',
-    options: ['Sunday', 'Monday', 'Saturday'],
-    defaultValue: 'Sunday',
+  'First Day of Week': _SettingsRoute(
+    title: 'First Day of Week',
+    options: kFirstDayOfWeekOptions,
+    defaultValue: 'System',
   ),
   // Contextual — defaultValue matches the trailing shown in the main list.
   'Default Event Duration': _SettingsRoute(
@@ -946,10 +946,10 @@ class _MainSettingsContent extends StatelessWidget {
               onTap: () => _tap('Default View'),
             ),
             _SettingsRow(
-              key: rowAnchorKeys['Start of Week'],
-              title: 'Start of Week',
+              key: rowAnchorKeys['First Day of Week'],
+              title: 'First Day of Week',
               trailing: _ValueTrailing(startOfWeekLabel),
-              onTap: () => _tap('Start of Week'),
+              onTap: () => _tap('First Day of Week'),
             ),
             _SettingsRow(
               key: rowAnchorKeys['Default Event Duration'],
@@ -1082,7 +1082,9 @@ class _SubScreenState extends State<_SubScreen> {
         _ => 'System',
       },
       'Text Size' => appTextSizeUsesSystemNotifier.value ? 'System' : 'Custom',
-      'Start of Week' => appStartOfWeekNotifier.value,
+      'First Day of Week' => appStartOfWeekUsesSystemNotifier.value
+          ? 'System'
+          : appStartOfWeekNotifier.value,
       'Default View' => appDefaultViewNotifier.value,
       'Default Event Duration' => appEventDurationNotifier.value,
       'Default Category' => appDefaultCategoryLabelNotifier.value,
@@ -1108,9 +1110,14 @@ class _SubScreenState extends State<_SubScreen> {
       case 'Text Size':
         appTextSizeUsesSystemNotifier.value = opt == 'System';
         saveAppSetting('Text Size', opt);
-      case 'Start of Week':
-        appStartOfWeekNotifier.value = opt;
-        saveAppSetting('Start of Week', opt);
+      case 'First Day of Week':
+        final useSystem = opt == 'System';
+        appStartOfWeekUsesSystemNotifier.value = useSystem;
+        final selectedDay = useSystem
+            ? appSystemFirstDayOfWeekNotifier.value
+            : opt;
+        appStartOfWeekNotifier.value = selectedDay;
+        saveAppSetting('First Day of Week', selectedDay);
       case 'Default View':
         appDefaultViewNotifier.value = opt;
         saveAppSetting('Default View', opt);
@@ -1157,6 +1164,12 @@ class _SubScreenState extends State<_SubScreen> {
           )
         else if (widget.route.isTextSize)
           _TextSizeSection(accentColor: widget.accentColor)
+        else if (widget.route.title == 'First Day of Week')
+          _FirstDayOfWeekSettingsSection(
+            selectedOption: _selected,
+            accentColor: widget.accentColor,
+            onSelect: _onSelect,
+          )
         else if (widget.route.isDefaultCategory)
           _DefaultCategorySection(accentColor: widget.accentColor)
         else
@@ -1915,11 +1928,72 @@ class _ThemeSettingsSection extends StatelessWidget {
   }
 }
 
+class _FirstDayOfWeekSettingsSection extends StatelessWidget {
+  final String selectedOption;
+  final Color accentColor;
+  final ValueChanged<String> onSelect;
+
+  const _FirstDayOfWeekSettingsSection({
+    required this.selectedOption,
+    required this.accentColor,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<String>(
+      valueListenable: appSystemFirstDayOfWeekNotifier,
+      builder: (context, systemDay, _) {
+        return SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                MirrorSystemSettingSection(
+                  systemSettingRow: _OptionRow(
+                    title: 'System Setting ($systemDay)',
+                    selected: selectedOption == 'System',
+                    accentColor: accentColor,
+                    onTap: () => onSelect('System'),
+                  ),
+                  settingsScreenName:
+                      _systemFirstDayOfWeekSettingsDestination(),
+                ),
+                const SizedBox(height: 20),
+                SkeddoAppOnlySettingsSection(
+                  rows: [
+                    for (final day in kFirstDayOfWeekOptions)
+                      _OptionRow(
+                        title: day,
+                        selected: selectedOption == day,
+                        accentColor: accentColor,
+                        onTap: () => onSelect(day),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 String _systemThemeSettingsDestination() {
   return switch (defaultTargetPlatform) {
     TargetPlatform.android => 'Display',
     TargetPlatform.iOS => 'Display & Brightness',
     _ => 'Display',
+  };
+}
+
+String _systemFirstDayOfWeekSettingsDestination() {
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.android => 'Regional preferences',
+    TargetPlatform.iOS => 'Language & Region',
+    _ => 'Language & Region',
   };
 }
 

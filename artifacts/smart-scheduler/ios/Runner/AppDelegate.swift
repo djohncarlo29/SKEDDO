@@ -15,6 +15,20 @@ import UniformTypeIdentifiers
     GeneratedPluginRegistrant.register(with: self)
     if let controller = window?.rootViewController as? FlutterViewController {
       configureEdgeToEdgeWindow(controller)
+      let systemCalendarChannel = FlutterMethodChannel(
+        name: "com.smartscheduler/system_calendar",
+        binaryMessenger: controller.binaryMessenger
+      )
+      systemCalendarChannel.setMethodCallHandler { call, result in
+        guard call.method == "getFirstDayOfWeekIndex" else {
+          result(FlutterMethodNotImplemented)
+          return
+        }
+        // Foundation's Gregorian Calendar uses 1=Sunday through 7=Saturday.
+        // Convert to the app's stable Sunday-first 0...6 index.
+        let firstWeekday = Calendar.current.firstWeekday
+        result((firstWeekday - 1 + 7) % 7)
+      }
       let windowGeometryChannel = FlutterMethodChannel(
         name: "com.smartscheduler/window_geometry",
         binaryMessenger: controller.binaryMessenger

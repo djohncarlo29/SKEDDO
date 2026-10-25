@@ -107,7 +107,7 @@ const _kShortMonthNames = [
   'Nov',
   'Dec',
 ];
-const _kDayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+List<String> get _kDayLetters => calendarWeekdayHeaderLetters();
 const _kYearViewDowFontSize = 8.5;
 
 // ── Layout constants ──────────────────────────────────────────────────────────
@@ -319,8 +319,9 @@ _YearGridGeometry _yearGridGeometry(
 // ── Date utilities ────────────────────────────────────────────────────────────
 int _daysInMonth(int year, int month) => DateTime(year, month + 1, 0).day;
 
-// 0 = Monday … 6 = Sunday
-int _firstWeekday(int year, int month) => DateTime(year, month, 1).weekday - 1;
+// Column offset from the user's selected first day of week.
+int _firstWeekday(int year, int month) =>
+    calendarMonthStartOffset(year, month);
 
 int _isoWeekNumber(DateTime date) {
   final thu = date.subtract(Duration(days: date.weekday - DateTime.thursday));
@@ -1550,10 +1551,10 @@ class CalendarTabState extends State<CalendarTab>
       target = isNext
           ? _selected.add(const Duration(days: 1))
           : _selected.subtract(const Duration(days: 1));
+      final selectedColumn = calendarWeekdayColumnForDate(_selected);
       final isCrossWeek = isNext
-          ? _selected.weekday ==
-                7 // Sun → Mon
-          : _selected.weekday == 1; // Mon → Sun
+          ? selectedColumn == 6
+          : selectedColumn == 0;
       final isCrossMonth = target.month != _selected.month;
       shouldBloom = isCrossWeek || isCrossMonth;
     }
@@ -2319,6 +2320,7 @@ class CalendarTabState extends State<CalendarTab>
   @override
   void initState() {
     super.initState();
+    appStartOfWeekNotifier.addListener(_onFirstDayOfWeekChanged);
     final now = DateTime.now();
     _today = now;
     _selected = now;
@@ -2408,6 +2410,10 @@ class CalendarTabState extends State<CalendarTab>
     _nowNotifier = ValueNotifier<DateTime>(DateTime.now());
     _scheduleClock();
     WidgetsBinding.instance.addPostFrameCallback((_) => _notify());
+  }
+
+  void _onFirstDayOfWeekChanged() {
+    if (mounted) setState(() {});
   }
 
   // Advances selection to [now] across all views when midnight rolls over.
@@ -2590,6 +2596,7 @@ class CalendarTabState extends State<CalendarTab>
 
   @override
   void dispose() {
+    appStartOfWeekNotifier.removeListener(_onFirstDayOfWeekChanged);
     CategoryRegistry.revision.removeListener(_onCategoryRegistryChanged);
     _clockTimer?.cancel();
     _searchDebounce?.cancel();
@@ -2663,6 +2670,7 @@ class CalendarTabState extends State<CalendarTab>
       suppressScaleAnimation,
       widget.daySubMode.index,
       _monthListOrderRevision,
+      firstDayOfWeekIndexForName(appStartOfWeekNotifier.value),
       identityHashCode(scrollController),
     ].join('|');
     final cached = _monthPreviewWidgetCache[cacheKey];
@@ -3085,16 +3093,15 @@ class CalendarTabState extends State<CalendarTab>
             // week-strip drags. For Day View content drags, the strip stays
             // fixed — only the selected-day circle slides (see circleSlideX).
             // Cross-week detection: when the next/prev day is in a different
-            // week row (Sun→Mon, Mon→Sun) or a different month, the strip must
+            // week row based on the selected first weekday, the strip must
             // slide instead of the circle, so the new week row comes into view.
             bool isCrossWeek = false;
             if (inDayView && !_weekStripDrag) {
               final bool goingNext = slideX < 0;
               final bool goingPrev = slideX > 0;
-              if (goingNext && _selected.weekday == 7)
-                isCrossWeek = true; // Sun → Mon
-              if (goingPrev && _selected.weekday == 1)
-                isCrossWeek = true; // Mon → Sun
+              final selectedColumn = calendarWeekdayColumnForDate(_selected);
+              if (goingNext && selectedColumn == 6) isCrossWeek = true;
+              if (goingPrev && selectedColumn == 0) isCrossWeek = true;
               if (slideX != 0) {
                 final DateTime target = goingNext
                     ? _selected.add(const Duration(days: 1))
@@ -4729,7 +4736,8 @@ class _MorphYearLayout {
 final Map<String, _MorphYearLayout> _morphYearLayoutCache = {};
 
 _MorphYearLayout _morphLayoutForYear(int year, int columnCount) {
-  final cacheKey = '$year:$columnCount';
+  final cacheKey =
+      '$year:$columnCount:${firstDayOfWeekIndexForName(appStartOfWeekNotifier.value)}';
   final cached = _morphYearLayoutCache.remove(cacheKey);
   if (cached != null) {
     _morphYearLayoutCache[cacheKey] = cached;
@@ -4753,7 +4761,8 @@ _MonthListData _monthListDataFor({
   required int orderRevision,
 }) {
   final cacheKey =
-      '${identityHashCode(sourceEvents)}|$year|$month|$orderRevision';
+      '${identityHashCode(sourceEvents)}|$year|$month|'
+      '${_firstWeekday(year, month)}|$orderRevision';
   final cached = _monthListDataCache.remove(cacheKey);
   if (cached != null &&
       identical(cached.sourceEvents, sourceEvents) &&
@@ -7029,13 +7038,16 @@ class _WeekRowState extends State<_WeekRow> {
         final primaryLabel = resolveThemeColor(kPrimaryLabel, context);
         final secondaryLabel = resolveThemeColor(kSecondaryLabel, context);
         final multiDayMarkerColor = resolveMultiDayMarkerColor(context);
-        // 8 equally-spaced columns: col 0 = week-num, col 1-7 = Mon-Sun.
+        // 8 equally-spaced columns: col 0 = week number, col 1-7 follow the
+        // selected first weekday.
         // A 7px right margin keeps the last day column from being too tight.
         final cellW = (totalW - 7) / 8;
         final circleTranslateX = isSliding
             ? -widget.circleSlideX * cellW / fullWidth
             : 0.0;
-        final curCX = (widget.selectedDate.weekday + 0.5) * cellW;
+        final selectedWeekdayColumn =
+            calendarWeekdayColumnForDate(widget.selectedDate);
+        final curCX = (selectedWeekdayColumn + 1.5) * cellW;
         bool selectedDateInRow = false;
         for (int c = 0; c < 7; c++) {
           final selectedRowDay = firstIdx + c - offset + 1;
@@ -7380,7 +7392,8 @@ class _WeekRowState extends State<_WeekRow> {
         //
         // At a full swipe (|circleSlideX| == totalW) the circle has moved
         // exactly one cellW — landing precisely on the adjacent column.
-        // Column centres: weekday 1 (Mon) → col 1 → (1 + 0.5) * cellW, etc.
+        // Column centres follow the selected first weekday after the week
+        // number column.
         //
         // Paint the moving selected circle above the stationary row content.
         // Without this foreground layer, the circle can travel into a later

@@ -18,9 +18,11 @@ import io.flutter.plugin.platform.PlatformPlugin
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.SelectionQuietPlatformPlugin
 import androidx.core.view.WindowCompat
+import androidx.core.text.util.LocalePreferences
 
 class MainActivity : FlutterActivity() {
     private val textScaleChannel = "com.smartscheduler/text_scale"
+    private val systemCalendarChannel = "com.smartscheduler/system_calendar"
     private val dropMetadataChannel = "com.smartscheduler/drop_metadata"
     private val selectionHapticsChannel = "com.smartscheduler/selection_haptics"
     private val windowGeometryChannel = "com.smartscheduler/window_geometry"
@@ -62,6 +64,33 @@ class MainActivity : FlutterActivity() {
                 } else {
                     result.notImplemented()
                 }
+            }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, systemCalendarChannel)
+            .setMethodCallHandler { call, result ->
+                if (call.method != "getFirstDayOfWeekIndex") {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                }
+
+                // AndroidX resolves the user's Regional Preferences override
+                // when available, then falls back to the active locale.
+                val firstDay = LocalePreferences.getFirstDayOfWeek()
+                    .lowercase(java.util.Locale.ROOT)
+                val index = when (firstDay) {
+                    "sun" -> 0
+                    "mon" -> 1
+                    "tue" -> 2
+                    "wed" -> 3
+                    "thu" -> 4
+                    "fri" -> 5
+                    "sat" -> 6
+                    else -> {
+                        val calendarDay =
+                            java.util.Calendar.getInstance().firstDayOfWeek
+                        calendarDay - java.util.Calendar.SUNDAY
+                    }
+                }
+                result.success(index)
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, windowAppearanceChannel)
             .setMethodCallHandler { call, result ->
