@@ -586,6 +586,8 @@ class _SettingsPanelState extends State<SettingsPanel>
         appTextSizeIndexNotifier,
         appSystemTextScaleNotifier,
         appStartOfWeekNotifier,
+        appStartOfWeekUsesSystemNotifier,
+        appSystemFirstDayOfWeekNotifier,
         appDefaultViewNotifier,
         appFullMonthNameNotifier,
         appEventDurationNotifier,
@@ -609,7 +611,9 @@ class _SettingsPanelState extends State<SettingsPanel>
         final textSizeLabel = appTextSizeUsesSystemNotifier.value
             ? 'System'
             : 'Custom';
-        final startOfWeekLabel = appStartOfWeekNotifier.value;
+        final startOfWeekLabel = appStartOfWeekUsesSystemNotifier.value
+            ? 'System'
+            : appStartOfWeekNotifier.value;
         final defaultViewLabel = appDefaultViewNotifier.value;
         final fullMonthName = appFullMonthNameNotifier.value;
         final eventDurationLabel = appEventDurationNotifier.value;
