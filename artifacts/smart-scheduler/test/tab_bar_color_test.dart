@@ -36,115 +36,104 @@ void main() {
     }
   });
 
-  testWidgets('Flutter tab bar matches native height and keeps action routing', (
-    tester,
-  ) async {
-    const eventsAccent = Color(0xFFDB5500);
-    var createEventCalls = 0;
-    await tester.pumpWidget(
-      CupertinoApp(
-        theme: const CupertinoThemeData(brightness: Brightness.light),
-        home: Stack(
-          children: [
-            Positioned.fill(
-              child: FloatingTabPill(
-                selectedIndex: 2,
-                eventsAccent: eventsAccent,
-                onTabSelected: (_) {},
-                onCreateEvent: () => createEventCalls++,
+  testWidgets(
+    'Flutter tab bar matches native height and keeps action routing',
+    (tester) async {
+      const eventsAccent = Color(0xFFDB5500);
+      var createEventCalls = 0;
+      await tester.pumpWidget(
+        CupertinoApp(
+          theme: const CupertinoThemeData(brightness: Brightness.light),
+          home: Stack(
+            children: [
+              Positioned.fill(
+                child: FloatingTabPill(
+                  selectedIndex: 2,
+                  eventsAccent: eventsAccent,
+                  onTabSelected: (_) {},
+                  onCreateEvent: () => createEventCalls++,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
+      );
 
-    final context = tester.element(find.byType(FloatingTabPill));
-    final tabBar = tester.widget<GlassTabBar>(find.byType(GlassTabBar));
-    final inactiveColor = CupertinoDynamicColor.resolve(
-      kTabBarInactiveColor,
-      context,
-    );
+      final context = tester.element(find.byType(FloatingTabPill));
+      final tabBar = tester.widget<GlassTabBar>(find.byType(GlassTabBar));
+      final inactiveColor = CupertinoDynamicColor.resolve(
+        kTabBarInactiveColor,
+        context,
+      );
 
-    expect(tabBar.tabs.map((tab) => tab.label), [
-      'Home',
-      'Calendar',
-      'Events',
-      'You',
-    ]);
-    expect((tabBar.tabs[0].icon as FixedSFIcon).icon, SFIcons.sf_house);
-    expect(
-      (tabBar.tabs[0].activeIcon as FixedSFIcon).icon,
-      SFIcons.sf_house_fill,
-    );
-    expect(
-      (tabBar.tabs[3].icon as FixedSFIcon).icon,
-      SFIcons.sf_person_crop_circle,
-    );
-    expect(
-      (tabBar.tabs[3].activeIcon as FixedSFIcon).icon,
-      SFIcons.sf_person_crop_circle_fill,
-    );
-    expect(tabBar.selectedIconColor!.value, eventsAccent.value);
-    expect(tabBar.selectedLabelColor!.value, eventsAccent.value);
-    expect(tabBar.unselectedIconColor!.value, inactiveColor.value);
-    expect(tabBar.unselectedLabelColor!.value, inactiveColor.value);
-    expect(tabBar.extraButton, isNotNull);
-    expect(tabBar.extraButton!.label, 'New Event');
-    expect(tabBar.extraButton!.iconColor!.value, eventsAccent.value);
-    expect(
-      tabBar.extraButton!.placement,
-      GlassExtraButtonPlacement.right,
-    );
-    expect(tabBar.extraButton!.size, 49.0);
-    expect(tabBar.barHeight, 49.0);
-    expect(tabBar.preferredSize.height, 49.0);
-    expect(tabBar.horizontalPadding, 20.0);
-    expect(tabBar.verticalPadding, 0.0);
-    expect(tabBar.iconSize, 20.0);
-    expect(tabBar.tabs.map((tab) => (tab.icon! as FixedSFIcon).fontSize), [
-      20.0,
-      20.0,
-      20.0,
-      20.0,
-    ]);
-    expect(tabBar.labelFontSize, 9.0);
-    expect(tabBar.iconLabelSpacing, 1.5);
-    expect(tabBar.magnification, 1.0);
-    expect(
-      tabBar.settings,
-      skeddoTabBarGlassSettingsFor(Brightness.light),
-    );
-    expect(tabBar.settings!.blur, 1);
-    expect(skeddoBottomBarGlassSettingsFor(Brightness.light).blur, 3);
-    expect(tabBar.innerBlur, 3);
-    expect(kSkeddoLightBottomBarOpacity, 0.40);
-    expect(
-      tabBar.settings!.glassColor.a,
-      closeTo(kSkeddoLightBottomBarOpacity, 0.001),
-    );
-    expect(
-      tabBar.settings!.glassColor.toARGB32() & 0x00FFFFFF,
-      0x00FFFFFF,
-    );
-    expect(
-      tabBar.indicatorColor!.value,
-      kFloatingTabBarLightIndicatorColor.value,
-    );
-    expect(
-      tabBar.indicatorSettings,
-      kSkeddoLightLiftedTabIndicatorSettings,
-    );
-    expect(
-      tabBar.indicatorSettings!.glassColor,
-      const Color.fromRGBO(0, 0, 0, 0.04),
-    );
-    expect(tabBar.indicatorSettings!.shadowElevation, 1.2);
+      expect(tabBar.tabs.map((tab) => tab.label), [
+        'Home',
+        'Calendar',
+        'Events',
+        'You',
+      ]);
+      expect((tabBar.tabs[0].icon as FixedSFIcon).icon, SFIcons.sf_house);
+      expect(
+        (tabBar.tabs[0].activeIcon as FixedSFIcon).icon,
+        SFIcons.sf_house_fill,
+      );
+      expect(
+        (tabBar.tabs[3].icon as FixedSFIcon).icon,
+        SFIcons.sf_person_crop_circle,
+      );
+      expect(
+        (tabBar.tabs[3].activeIcon as FixedSFIcon).icon,
+        SFIcons.sf_person_crop_circle_fill,
+      );
+      expect(tabBar.selectedIconColor!.value, eventsAccent.value);
+      expect(tabBar.selectedLabelColor!.value, eventsAccent.value);
+      expect(tabBar.unselectedIconColor!.value, inactiveColor.value);
+      expect(tabBar.unselectedLabelColor!.value, inactiveColor.value);
+      expect(tabBar.extraButton, isNotNull);
+      expect(tabBar.extraButton!.label, 'New Event');
+      expect(tabBar.extraButton!.iconColor!.value, eventsAccent.value);
+      expect(tabBar.extraButton!.placement, GlassExtraButtonPlacement.right);
+      expect(tabBar.extraButton!.size, 49.0);
+      expect(tabBar.barHeight, 49.0);
+      expect(tabBar.preferredSize.height, 49.0);
+      expect(tabBar.horizontalPadding, 20.0);
+      expect(tabBar.verticalPadding, 0.0);
+      expect(tabBar.iconSize, 20.0);
+      expect(tabBar.tabs.map((tab) => (tab.icon! as FixedSFIcon).fontSize), [
+        20.0,
+        20.0,
+        20.0,
+        20.0,
+      ]);
+      expect(tabBar.labelFontSize, 9.0);
+      expect(tabBar.iconLabelSpacing, 1.5);
+      expect(tabBar.magnification, 1.0);
+      expect(tabBar.settings, skeddoTabBarGlassSettingsFor(Brightness.light));
+      expect(tabBar.settings!.blur, 5);
+      expect(skeddoBottomBarGlassSettingsFor(Brightness.light).blur, 5);
+      expect(tabBar.innerBlur, 5);
+      expect(kSkeddoLightBottomBarOpacity, 0.40);
+      expect(
+        tabBar.settings!.glassColor.a,
+        closeTo(kSkeddoLightBottomBarOpacity, 0.001),
+      );
+      expect(tabBar.settings!.glassColor.toARGB32() & 0x00FFFFFF, 0x00FFFFFF);
+      expect(
+        tabBar.indicatorColor!.value,
+        kFloatingTabBarLightIndicatorColor.value,
+      );
+      expect(tabBar.indicatorSettings, kSkeddoLightLiftedTabIndicatorSettings);
+      expect(
+        tabBar.indicatorSettings!.glassColor,
+        const Color.fromRGBO(0, 0, 0, 0.04),
+      );
+      expect(tabBar.indicatorSettings!.shadowElevation, 1.2);
 
-    await tester.tap(find.bySemanticsLabel('New Event'));
-    await tester.pump();
-    expect(createEventCalls, 1);
-  });
+      await tester.tap(find.bySemanticsLabel('New Event'));
+      await tester.pump();
+      expect(createEventCalls, 1);
+    },
+  );
 
   testWidgets('dark tab keeps package optics with SKEDDO charcoal tint', (
     tester,
@@ -168,13 +157,10 @@ void main() {
     );
 
     final tabBar = tester.widget<GlassTabBar>(find.byType(GlassTabBar));
-    expect(
-      tabBar.settings,
-      skeddoTabBarGlassSettingsFor(Brightness.dark),
-    );
-    expect(tabBar.settings!.blur, 1);
-    expect(skeddoBottomBarGlassSettingsFor(Brightness.dark).blur, 3);
-    expect(tabBar.innerBlur, 3);
+    expect(tabBar.settings, skeddoTabBarGlassSettingsFor(Brightness.dark));
+    expect(tabBar.settings!.blur, 5);
+    expect(skeddoBottomBarGlassSettingsFor(Brightness.dark).blur, 5);
+    expect(tabBar.innerBlur, 5);
     expect(kSkeddoDarkBottomBarOpacity, 0.50);
     expect(
       tabBar.indicatorColor!.value,
@@ -184,10 +170,7 @@ void main() {
       tabBar.settings!.glassColor.a,
       closeTo(kSkeddoDarkBottomBarOpacity, 0.001),
     );
-    expect(
-      tabBar.settings!.glassColor.toARGB32() & 0x00FFFFFF,
-      0x003E3E40,
-    );
+    expect(tabBar.settings!.glassColor.toARGB32() & 0x00FFFFFF, 0x003E3E40);
     expect(
       tabBar.settings!.lightIntensity,
       GlassThemeVariant.dark.settings!.lightIntensity,
@@ -197,7 +180,7 @@ void main() {
       GlassThemeVariant.dark.settings!.ambientStrength,
     );
     expect(tabBar.settings!.thickness, 30.0);
-    expect(tabBar.settings!.blur, 1.0);
+    expect(tabBar.settings!.blur, 5.0);
     expect(tabBar.settings!.chromaticAberration, 0.3);
     expect(tabBar.settings!.refractiveIndex, 1.59);
     expect(tabBar.settings!.saturation, 0.7);

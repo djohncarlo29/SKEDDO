@@ -308,23 +308,23 @@ private struct NativeFluidSliderRow: View {
             .tint(model.configuration.accentColor)
             .accessibilityIdentifier("native-fluid-slider")
             .overlay {
-                GeometryReader { geometry in
-                    let divisions = max(model.configuration.divisions, 1)
-                    ForEach(0...divisions, id: \.self) { index in
-                        Capsule()
-                            .fill(model.configuration.tickColor)
-                            .frame(width: 2, height: 3)
-                            .position(
-                                x: 13
-                                    + (geometry.size.width - 26)
-                                    * CGFloat(index)
-                                    / CGFloat(divisions),
-                                y: geometry.size.height / 2 + 8
-                            )
+                if model.configuration.divisions > 0 {
+                    GeometryReader { geometry in
+                        let divisions = model.configuration.divisions
+                        ForEach(0...divisions, id: \.self) { index in
+                            Capsule()
+                                .fill(model.configuration.tickColor)
+                                .frame(width: 2, height: 3)
+                                .position(
+                                    x: 13
+                                        + (geometry.size.width - 26)
+                                        * CGFloat(index)
+                                        / CGFloat(divisions),
+                                    y: geometry.size.height / 2 + 8
+                                )
+                        }
                     }
                 }
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
             }
 
             edgeIcon(name: model.configuration.maximumIcon, isLeading: false)

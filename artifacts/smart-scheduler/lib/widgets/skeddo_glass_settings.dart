@@ -4,6 +4,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show GlassThemeVariant, LiquidGlassSettings;
 
+import '../app_settings.dart';
+
 /// Shared optical settings for the package-rendered floating tab bar and
 /// standalone modal toolbar GlassIconButtons.
 ///
@@ -63,14 +65,64 @@ const LiquidGlassSettings kSkeddoLightLiftedTabIndicatorSettings =
     );
 
 LiquidGlassSettings skeddoBottomBarGlassSettingsFor(Brightness brightness) =>
-    brightness == Brightness.dark
-    ? kSkeddoDarkBottomBarGlassSettings
-    : kSkeddoBottomBarGlassSettings;
+    (brightness == Brightness.dark
+            ? kSkeddoDarkBottomBarGlassSettings
+            : kSkeddoBottomBarGlassSettings)
+        .copyWith(
+          blur: skeddoSharedGlassBlurForPosition(
+            liquidGlassSliderPositionForOpacity(
+              appLiquidGlassOpacityNotifier.value,
+            ),
+          ),
+        );
 
-/// Reduces only the full floating tab-bar shell's backdrop blur; the resting
-/// selected pill retains its former blur through [GlassTabBar.innerBlur].
+const _kSharedGlassBlurAnchors = <(double, double)>[
+  (0, 0.01),
+  (25, 0.05),
+  (50, 0.5),
+  (75, 1),
+  (100, 5),
+];
+
+const _kActiveTabIndicatorBlurAnchors = <(double, double)>[
+  (0, 0.5),
+  (25, 1),
+  (50, 2),
+  (75, 3),
+  (100, 5),
+];
+
+double _interpolateGlassBlurAnchors(
+  double position,
+  List<(double, double)> anchors,
+) {
+  final percent = position.clamp(0.0, 1.0).toDouble() * 100;
+  for (var index = 0; index < anchors.length - 1; index++) {
+    final lower = anchors[index];
+    final upper = anchors[index + 1];
+    if (percent <= upper.$1) {
+      final progress = (percent - lower.$1) / (upper.$1 - lower.$1);
+      return lower.$2 + (upper.$2 - lower.$2) * progress;
+    }
+  }
+  return anchors.last.$2;
+}
+
+/// Backdrop blur for the shared Liquid Glass renderer, interpolated between
+/// the slider's explicitly specified percentage anchors.
+double skeddoSharedGlassBlurForPosition(double position) =>
+    _interpolateGlassBlurAnchors(position, _kSharedGlassBlurAnchors);
+
+/// Backdrop blur for the settled active-tab lens. It uses a separate slider
+/// curve from the surrounding tab-bar shell.
+double skeddoActiveTabIndicatorBlurForPosition(double position) =>
+    _interpolateGlassBlurAnchors(position, _kActiveTabIndicatorBlurAnchors);
+
+/// The floating tab-bar shell defines the blur value shared by SKEDDO's
+/// package-rendered glass surfaces. The settled active-tab lens remains
+/// independent through its own [GlassTabBar.innerBlur] slider curve.
 LiquidGlassSettings skeddoTabBarGlassSettingsFor(Brightness brightness) =>
-    skeddoBottomBarGlassSettingsFor(brightness).copyWith(blur: 1);
+    skeddoBottomBarGlassSettingsFor(brightness);
 
 /// Discard popovers use an opaque card tint while retaining the package's
 /// existing optical settings and edge lighting.
@@ -114,9 +166,9 @@ LiquidGlassSettings skeddoPopoverButtonGlassSettingsFor(
 LiquidGlassSettings skeddoTintedActionGlassSettingsFor(
   Brightness brightness,
   Color tint,
-) => skeddoBottomBarGlassSettingsFor(brightness).copyWith(
-  glassColor: tint.withValues(alpha: kSkeddoTintedActionGlassOpacity),
-);
+) => skeddoBottomBarGlassSettingsFor(
+  brightness,
+).copyWith(glassColor: tint.withValues(alpha: kSkeddoTintedActionGlassOpacity));
 
 /// Settings for the full-strength lighting/rim layer above an active fill.
 ///

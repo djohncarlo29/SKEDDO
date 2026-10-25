@@ -18,7 +18,8 @@ import 'services/local_storage.dart';
 //   appEventDurationNotifier — '15 minutes' | '30 minutes' | '1 hour' | '2 hours'.
 //   appDateLocaleNotifier    — monthFirst or dayFirst for ambiguous numeric dates.
 //   appLiquidGlassOpacityNotifier — 0.2..0.8 material opacity for Liquid Glass
-//     controls, including the floating tab bar and AppShell menu button.
+//     controls, including the floating tab bar and AppShell menu button. Its
+//     slider position is quantized to whole percentage points.
 // ══════════════════════════════════════════════════════════════════════════════
 
 /// Brightness override applied to CupertinoThemeData.
@@ -468,6 +469,31 @@ const double kLiquidGlassMaximumOpacity = 0.8;
 final ValueNotifier<double> appLiquidGlassOpacityNotifier =
     ValueNotifier<double>(kLiquidGlassMaximumOpacity);
 
+/// Converts the material opacity to the Liquid Glass slider's whole-percent
+/// position in the 0–1 range.
+double liquidGlassSliderPositionForOpacity(double opacity) {
+  final range = kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity;
+  final normalized = ((opacity - kLiquidGlassMinimumOpacity) / range).clamp(
+    0.0,
+    1.0,
+  );
+  return quantizeLiquidGlassSliderPosition(normalized.toDouble());
+}
+
+/// Keeps Liquid Glass slider values at whole percentage points without adding
+/// visible or tactile snap stops while the thumb is being dragged.
+double quantizeLiquidGlassSliderPosition(double position) {
+  return (position.clamp(0.0, 1.0) * 100).round() / 100.0;
+}
+
+/// Converts a slider position to the persisted 0.2–0.8 material opacity,
+/// settling to a whole percentage point.
+double liquidGlassOpacityForSliderPosition(double position) {
+  final normalized = quantizeLiquidGlassSliderPosition(position);
+  return kLiquidGlassMinimumOpacity +
+      normalized * (kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity);
+}
+
 // ── SharedPreferences keys ────────────────────────────────────────────────────
 const _kThemeKey = 'app_theme';
 const _kTextSizeKey = 'app_text_size';
@@ -593,14 +619,9 @@ Future<void> loadAppSettings() async {
 
   final liquidGlassOpacity = prefs.getDouble(_kLiquidGlassOpacityKey);
   if (liquidGlassOpacity != null) {
-    final range = kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity;
-    final normalized =
-        ((liquidGlassOpacity - kLiquidGlassMinimumOpacity) / range).clamp(
-          0.0,
-          1.0,
-        );
-    appLiquidGlassOpacityNotifier.value =
-        kLiquidGlassMinimumOpacity + normalized * range;
+    appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
+      liquidGlassSliderPositionForOpacity(liquidGlassOpacity),
+    );
   }
   AIServices.setDateLocalePreference(appDateLocaleNotifier.value);
 }

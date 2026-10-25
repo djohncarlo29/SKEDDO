@@ -457,7 +457,8 @@ class _GlassSliderState extends State<GlassSlider>
         final thumbPosition = widget.thumbRadius +
             (trackWidth * (isRtl ? 1.0 - normalizedValue : normalizedValue));
 
-        final step = (widget.max - widget.min) / (widget.divisions ?? 10);
+        // Continuous sliders still expose one-percent accessibility steps.
+        final step = (widget.max - widget.min) / (widget.divisions ?? 100);
         final increasedValue =
             (widget.value + step).clamp(widget.min, widget.max);
         final decreasedValue =

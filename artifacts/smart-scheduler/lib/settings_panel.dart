@@ -627,10 +627,8 @@ class _SettingsPanelState extends State<SettingsPanel>
             appDateLocaleNotifier.value == DateLocalePreference.dayFirst
             ? 'Day first (D/M/Y)'
             : 'Month first (M/D/Y)';
-        final liquidGlassRange =
-            kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity;
         final liquidGlassOpacityLabel =
-            '${((appLiquidGlassOpacityNotifier.value - kLiquidGlassMinimumOpacity) / liquidGlassRange * 100).round()}%';
+            '${(liquidGlassSliderPositionForOpacity(appLiquidGlassOpacityNotifier.value) * 100).round()}%';
 
         final geometry = AppWindowMasterDetailGeometry.of(context);
         final isLandscape = geometry.isLandscape;
@@ -2174,7 +2172,13 @@ class _LiquidGlassSection extends StatelessWidget {
                         assetName: backgroundAsset,
                         accentColor: accent,
                       ),
-                      const Center(child: FloatingTabBarGlassPreview()),
+                      Center(
+                        child: ValueListenableBuilder<double>(
+                          valueListenable: appLiquidGlassOpacityNotifier,
+                          builder: (context, _, _) =>
+                              const FloatingTabBarGlassPreview(),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -2199,10 +2203,7 @@ class _LiquidGlassSection extends StatelessWidget {
                   valueListenable: appLiquidGlassOpacityNotifier,
                   builder: (context, value, _) {
                     final normalized =
-                        ((value - kLiquidGlassMinimumOpacity) /
-                                (kLiquidGlassMaximumOpacity -
-                                    kLiquidGlassMinimumOpacity))
-                            .clamp(0.0, 1.0);
+                        liquidGlassSliderPositionForOpacity(value);
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: _LiquidGlassTestIcons(
@@ -2301,7 +2302,7 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
         minimumIcon: 'LiquidGlassLeft',
         maximumIcon: 'LiquidGlassRight',
         iconSize: 34,
-        divisions: 10,
+        divisions: 0,
         accentColor: widget.activeColor,
         tickColor: widget.inactiveColor,
         darkMode: widget.darkMode,
@@ -2316,11 +2317,12 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
           widget.onChanged(value);
         },
         onChangeEnd: (value) {
+          final settled = quantizeLiquidGlassSliderPosition(value);
           setState(() {
-            _dragValue = value;
+            _dragValue = settled;
             _isDragging = false;
           });
-          widget.onChangeEnd(value);
+          widget.onChangeEnd(settled);
         },
       );
     }
@@ -2346,9 +2348,6 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
                   activeIconGap: 4,
                   horizontalInset: 0,
                 ),
-                // Match the real Liquid Glass opacity slider's ten tick
-                // intervals while keeping this control visually independent.
-                divisions: 10,
                 activeColor: widget.activeColor,
                 inactiveColor: widget.inactiveColor,
                 thumbColor: const Color(0xFFFDFDFD),
@@ -2372,11 +2371,12 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
                   widget.onChanged(value);
                 },
                 onChangeEnd: (value) {
+                  final settled = quantizeLiquidGlassSliderPosition(value);
                   setState(() {
-                    _dragValue = value;
+                    _dragValue = settled;
                     _isDragging = false;
                   });
-                  widget.onChangeEnd(value);
+                  widget.onChangeEnd(settled);
                 },
               );
             },
@@ -2397,20 +2397,14 @@ const LiquidGlassSliderLayout _liquidGlassSliderLayout =
     LiquidGlassSliderLayout(horizontalInset: _kLiquidGlassSliderInset);
 
 void _setLiquidGlassOpacityLive(double raw) {
-  final normalized = raw.clamp(0.0, 1.0);
-  final liveValue =
-      kLiquidGlassMinimumOpacity +
-      normalized * (kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity);
+  final liveValue = liquidGlassOpacityForSliderPosition(raw);
   if (liveValue != appLiquidGlassOpacityNotifier.value) {
     appLiquidGlassOpacityNotifier.value = liveValue;
   }
 }
 
 void _setLiquidGlassOpacity(double raw) {
-  final normalized = (raw.clamp(0.0, 1.0) * 10).round() / 10;
-  final snapped =
-      kLiquidGlassMinimumOpacity +
-      normalized * (kLiquidGlassMaximumOpacity - kLiquidGlassMinimumOpacity);
+  final snapped = liquidGlassOpacityForSliderPosition(raw);
   if (snapped != appLiquidGlassOpacityNotifier.value) {
     appLiquidGlassOpacityNotifier.value = snapped;
   }

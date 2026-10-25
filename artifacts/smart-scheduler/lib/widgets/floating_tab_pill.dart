@@ -23,10 +23,8 @@ import 'skeddo_glass_settings.dart';
 const double kLiquidGlassPreviewHeight = 154.0;
 const RoundedRectangleBorder kLiquidGlassPreviewCardShape =
     RoundedRectangleBorder(
-  borderRadius: BorderRadius.all(
-    Radius.circular(kSquircleStadiumRadius),
-  ),
-);
+      borderRadius: BorderRadius.all(Radius.circular(kSquircleStadiumRadius)),
+    );
 
 /// Preserves smaller text settings while limiting the tab bar to one native
 /// accessibility-size stop above the platform's normal size.
@@ -44,8 +42,9 @@ TextScaler skeddoTabBarTextScalerFor(TextScaler source) {
         normalIndex = index;
       }
     }
-    final maximumIndex =
-        math.min(normalIndex + 1, nativeStops.length - 1).toInt();
+    final maximumIndex = math
+        .min(normalIndex + 1, nativeStops.length - 1)
+        .toInt();
     final stop = nativeStops[maximumIndex];
     maximum = stop.scaler ?? TextScaler.linear(stop.scale);
   } else {
@@ -60,8 +59,9 @@ TextScaler skeddoTabBarTextScalerFor(TextScaler source) {
         normalIndex = index;
       }
     }
-    final maximumIndex =
-        math.min(normalIndex + 1, fallbackStops.length - 1).toInt();
+    final maximumIndex = math
+        .min(normalIndex + 1, fallbackStops.length - 1)
+        .toInt();
     maximum = TextScaler.linear(fallbackStops[maximumIndex]);
   }
 
@@ -114,8 +114,10 @@ class FloatingTabPill extends StatefulWidget {
   final ValueChanged<int> onTabSelected;
   final VoidCallback onCreateEvent;
   final Color eventsAccent;
+
   /// Horizontal movement from the normal centered position, in logical pixels.
   final double horizontalOffset;
+
   /// False while AppShell supplies each frame of the shared DCV pane motion.
   final bool animateHorizontalOffset;
 
@@ -127,7 +129,12 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
   double? _portraitBarWidth;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: appLiquidGlassOpacityNotifier,
+    builder: (context, _) => _buildTabBar(context),
+  );
+
+  Widget _buildTabBar(BuildContext context) {
     final selectedIndex = widget.selectedIndex;
     final selectedColor = selectedIndex == 2
         ? CupertinoDynamicColor.resolve(widget.eventsAccent, context)
@@ -188,10 +195,12 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       settings: skeddoTabBarGlassSettingsFor(
         isDark ? Brightness.dark : Brightness.light,
       ),
-      indicatorSettings: isDark
-          ? null
-          : kSkeddoLightLiftedTabIndicatorSettings,
-      innerBlur: 3,
+      indicatorSettings: isDark ? null : kSkeddoLightLiftedTabIndicatorSettings,
+      innerBlur: skeddoActiveTabIndicatorBlurForPosition(
+        liquidGlassSliderPositionForOpacity(
+          appLiquidGlassOpacityNotifier.value,
+        ),
+      ),
       indicatorColor: isDark
           ? kFloatingTabBarDarkIndicatorColor
           : kFloatingTabBarLightIndicatorColor,
@@ -210,14 +219,16 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
           final isPortrait = screenSize.width <= screenSize.height;
           final availableBarWidth =
               constraints.maxWidth - (kFloatingTabBarHorizontalMargin * 2);
-          final portraitWidth = _portraitBarWidth ??
+          final portraitWidth =
+              _portraitBarWidth ??
               (math.min(screenSize.width, screenSize.height) -
                   (kFloatingTabBarHorizontalMargin * 2));
-          final barWidth = (isPortrait
-                  ? availableBarWidth
-                  : math.min(availableBarWidth, portraitWidth))
-              .clamp(0.0, double.infinity)
-              .toDouble();
+          final barWidth =
+              (isPortrait
+                      ? availableBarWidth
+                      : math.min(availableBarWidth, portraitWidth))
+                  .clamp(0.0, double.infinity)
+                  .toDouble();
           if (isPortrait) _portraitBarWidth = barWidth;
           final frameWidth = (barWidth + tabBar.horizontalPadding * 2)
               .clamp(0.0, constraints.maxWidth)
@@ -291,13 +302,10 @@ class _FloatingTabBarGlassPreviewState
       MediaQuery.textScalerOf(context),
     );
     final scaledIconSlot = textScaler.scale(_previewIconReferenceSize);
-    final standardBarWidth =
-        (width - (kFloatingTabBarHorizontalMargin * 2)).clamp(
-          150.0,
-          190.0,
-        );
-    final minBarWidth = (_previewItemPadding * 2) +
-        (3 * (scaledIconSlot + _previewIconGap));
+    final standardBarWidth = (width - (kFloatingTabBarHorizontalMargin * 2))
+        .clamp(150.0, 190.0);
+    final minBarWidth =
+        (_previewItemPadding * 2) + (3 * (scaledIconSlot + _previewIconGap));
     final barWidth = math.max(standardBarWidth, minBarWidth);
     final pillHeight = math.max(
       _standardPillHeight,
@@ -313,14 +321,8 @@ class _FloatingTabBarGlassPreviewState
               : kLiquidGlassPreviewHeight,
         );
         final pillSize = Size(barWidth, pillHeight);
-        final maxX = math.max(
-          0.0,
-          (previewSize.width - pillSize.width) / 2,
-        );
-        final maxY = math.max(
-          0.0,
-          (previewSize.height - pillSize.height) / 2,
-        );
+        final maxX = math.max(0.0, (previewSize.width - pillSize.width) / 2);
+        final maxY = math.max(0.0, (previewSize.height - pillSize.height) / 2);
         final boundedOffset = Offset(
           _offset.dx.clamp(-maxX, maxX),
           _offset.dy.clamp(-maxY, maxY),
@@ -350,7 +352,8 @@ class _FloatingTabBarGlassPreviewState
           if (_activePointer != event.pointer) return;
           if (!_pointerMoved) {
             final now = DateTime.now();
-            final isDoubleTap = _lastTapAt != null &&
+            final isDoubleTap =
+                _lastTapAt != null &&
                 now.difference(_lastTapAt!) <=
                     const Duration(milliseconds: 320) &&
                 _lastTapPosition != null &&
@@ -389,9 +392,9 @@ class _FloatingTabBarGlassPreviewState
             gestures: <Type, GestureRecognizerFactory>{
               EagerGestureRecognizer:
                   GestureRecognizerFactoryWithHandlers<EagerGestureRecognizer>(
-                EagerGestureRecognizer.new,
-                (_) {},
-              ),
+                    EagerGestureRecognizer.new,
+                    (_) {},
+                  ),
             },
             child: Listener(
               behavior: HitTestBehavior.opaque,
@@ -463,8 +466,8 @@ class _FloatingTabBarGlassPreviewState
                             );
                           },
                         ),
-                     ],
-                   ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -510,13 +513,12 @@ class _FloatingTabBarGlassPreviewState
 }
 
 Path _liquidGlassPreviewPath(Size size) {
-  return Path()
-    ..addRRect(
-      RRect.fromRectAndRadius(
-        Offset.zero & size,
-        const Radius.circular(kSquircleStadiumRadius),
-      ),
-    );
+  return Path()..addRRect(
+    RRect.fromRectAndRadius(
+      Offset.zero & size,
+      const Radius.circular(kSquircleStadiumRadius),
+    ),
+  );
 }
 
 class LiquidGlassPreviewClipper extends CustomClipper<Path> {
