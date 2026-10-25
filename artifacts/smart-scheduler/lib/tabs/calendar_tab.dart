@@ -3611,30 +3611,6 @@ class CalendarTabState extends State<CalendarTab>
                         ),
                       ),
                     if (colT >= 0.99) buildDayViewUnderlay(),
-                    // The month panel remains mounted underneath the Day
-                    // View so its selected week can become the pinned strip.
-                    // Earlier month rows can otherwise bleed into the
-                    // expanded-title space above the DOW row. Cover that
-                    // reserved header area, with a height derived from the
-                    // same shared title state as the DOW and Day Banner.
-                    if (showDayHeaderChrome &&
-                        MediaQuery.orientationOf(context) == Orientation.portrait)
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        height:
-                            dayDowTop +
-                            _kCalendarHeaderToDowGap +
-                            _kDayLabelHeight,
-                        child: Transform.translate(
-                          offset: Offset(0, monthPanelSlideY),
-                          child: ColoredBox(
-                            key: const Key('calendar-day-header-backplate'),
-                            color: resolveThemeColor(kBackgroundColor, context),
-                          ),
-                        ),
-                      ),
                     // ── Day-view header chrome ──────────────────────────────
                     // The DOW row, week strip, and day banner share one
                     // vertical offset during List-mode changes. Keep the
@@ -5849,14 +5825,6 @@ class _MonthView extends StatelessWidget {
         final floatingClearance = floatingTabBarContentBottomClearance(context);
         final isPortrait =
             MediaQuery.orientationOf(context) == Orientation.portrait;
-        final dayHeaderSharedOffset = isPortrait
-            ? _calendarExpandedTitleHeight(context) +
-                  AppHeaderScrollView.contentTopSpacingOf(
-                    context,
-                    topExtension: kContentAreaTopRaise,
-                  ) -
-                  kAppHeaderTitleHeight
-            : 0.0;
         final scrollTitleWidget = scrollTitle == null
             ? null
             : scrollableTitleBuilder?.call(
@@ -6015,9 +5983,6 @@ class _MonthView extends StatelessWidget {
                             collapseWeekRow: collapseWeekRow,
                             viewModeRowHeight: rowHeight,
                             screenHeight: constraints.maxHeight,
-                            sharedHeaderOffset: row <= collapseWeekRow
-                                ? dayHeaderSharedOffset
-                                : 0.0,
                     contentInset: monthContentInset,
                             scrollOffset: collapseScrollOffset,
                             eventsByDay: orderedEventsByDay,
@@ -6252,7 +6217,6 @@ class _AnimatedWeekRow extends StatelessWidget {
     required this.collapseWeekRow,
     required this.viewModeRowHeight,
     required this.screenHeight,
-    this.sharedHeaderOffset = 0.0,
     required this.onDayTap,
     this.onDayLongPress,
     this.circleSlideX = 0.0,
@@ -6277,7 +6241,6 @@ class _AnimatedWeekRow extends StatelessWidget {
   // The mode-switch target height (before collapse interpolation).
   final double viewModeRowHeight;
   final double screenHeight;
-  final double sharedHeaderOffset;
   final void Function(DateTime) onDayTap;
   final void Function(DateTime)? onDayLongPress;
   final double circleSlideX;
@@ -6328,8 +6291,7 @@ class _AnimatedWeekRow extends StatelessWidget {
       // compensation is zero and the Month position is unchanged.
       translateY =
           -(collapseWeekRow * currentRowHeight * collapseProgress) +
-          scrollOffset * collapseProgress +
-          sharedHeaderOffset * collapseProgress;
+          scrollOffset * collapseProgress;
     } else {
       // All rows BELOW the selected row move as one solid block downward.
       // Every row in the block gets the same large delta so they stay together

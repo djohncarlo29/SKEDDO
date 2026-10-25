@@ -73,9 +73,6 @@ void main() {
       final banners = find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString() == '_DayBanner',
       );
-      final headerBackplate = find.byKey(
-        const Key('calendar-day-header-backplate'),
-      );
       expect(
         tester.getRect(selectedWeek).top,
         closeTo(tester.getRect(dow).bottom, 0.5),
@@ -84,31 +81,26 @@ void main() {
         tester.getRect(banners.at(1)).top,
         closeTo(tester.getRect(selectedWeek).bottom, 0.5),
       );
-      expect(
-        tester.getRect(headerBackplate).bottom,
-        closeTo(tester.getRect(selectedWeek).top, 0.5),
-      );
       expect(tester.takeException(), isNull);
     },
   );
 
   testWidgets(
-    'Day header chrome tracks the shared header inside the AppShell inset',
+    'entering Day View preserves compact shared-header geometry',
     (tester) async {
       const screenSize = Size(402, 874);
       const appShellLeadingInset =
           24.0 + kAppHeaderToolbarHeight;
+      SharedPreferences.setMockInitialValues({'calendar_view_mode': 'list'});
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = screenSize;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      final sourceController = ScrollController();
       final transition = AppHeaderTitleTransition();
-      addTearDown(() {
-        transition.dispose();
-        sourceController.dispose();
-      });
+      final calendarKey = GlobalKey<CalendarTabState>();
+      var reportedView = CalendarView.month;
+      addTearDown(transition.dispose);
 
       await tester.pumpWidget(
         CupertinoApp(
@@ -123,31 +115,30 @@ void main() {
               ),
             ),
           ),
-          home: IndexedStack(
-            index: 1,
-            children: [
-              AppHeaderScrollView(
-                controller: sourceController,
-                slivers: const [
-                  SliverToBoxAdapter(child: AppHeaderScrollInset()),
-                  SliverToBoxAdapter(child: SizedBox(height: 200)),
-                ],
-              ),
-              CalendarTab(onViewChanged: (_, _, _, _, _, _) {}),
-            ],
+          home: CalendarTab(
+            key: calendarKey,
+            onViewChanged: (view, _, _, _, _, _) {
+              reportedView = view;
+              if (view == CalendarView.day) {
+                transition.bindTo(null, preserveCollapseProgress: true);
+              }
+            },
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      final source = AppHeaderScrollView.headerPositionFor(sourceController)!;
-      transition.bindTo(source);
-      final calendar = tester.state<CalendarTabState>(
-        find.byType(CalendarTab),
-      );
-      calendar.jumpToTodayDay();
-      transition.bindTo(null, preserveCollapseProgress: true);
+      final calendar = calendarKey.currentState!;
+      final monthHeaderPosition = calendar.headerScrollPosition!;
+      transition.bindTo(monthHeaderPosition);
+      monthHeaderPosition.jumpTo(kAppHeaderTitleCollapseDistance);
       await tester.pumpAndSettle();
+      expect(transition.collapseProgress, closeTo(1.0, 0.02));
+
+      await calendar.advanceCurrentHeader();
+      await tester.pumpAndSettle();
+      expect(reportedView, CalendarView.day);
+      expect(transition.collapseProgress, closeTo(1.0, 0.02));
 
       final dow = find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString() == '_DayViewDowMask',
@@ -156,122 +147,21 @@ void main() {
       final banners = find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString() == '_DayBanner',
       );
-      final headerBackplate = find.byKey(
-        const Key('calendar-day-header-backplate'),
+
+      expect(
+        tester.getRect(selectedWeek).top,
+        closeTo(tester.getRect(dow).bottom, 0.5),
+        reason: 'The compact selected week must begin immediately below DOW.',
       );
-
-      void expectHeaderPartsAligned(String state) {
-        final dowRect = tester.getRect(dow);
-        final weekRect = tester.getRect(selectedWeek);
-        final bannerRect = tester.getRect(banners.at(1));
-        final backplateRect = tester.getRect(headerBackplate);
-        expect(
-          backplateRect.bottom,
-          closeTo(weekRect.top, 0.5),
-          reason: '$state: grid rows must be covered up to the week strip.',
-        );
-        expect(
-          weekRect.top,
-          closeTo(dowRect.bottom, 0.5),
-          reason: '$state: selected week must begin immediately below DOW.',
-        );
-        expect(
-          bannerRect.top,
-          closeTo(weekRect.bottom, 0.5),
-          reason: '$state: Day Banner must begin immediately below week strip.',
-        );
-      }
-
-      expectHeaderPartsAligned('expanded');
-
-      transition.bindTo(source, preserveCollapseProgress: true);
-      source.jumpTo(kAppHeaderTitleCollapseDistance);
-      await tester.pumpAndSettle();
-      transition.bindTo(null, preserveCollapseProgress: true);
-      await tester.pumpAndSettle();
-      expectHeaderPartsAligned('compact');
+      expect(
+        tester.getRect(banners.at(1)).top,
+        closeTo(tester.getRect(selectedWeek).bottom, 0.5),
+        reason: 'The compact Day Banner must begin immediately below strip.',
+      );
 
       expect(tester.takeException(), isNull);
     },
   );
-
-  testWidgets('Day chrome uses the inherited remaining large-title extent', (
-    tester,
-  ) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(402, 874);
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final sourceController = ScrollController();
-    final transition = AppHeaderTitleTransition();
-    addTearDown(() {
-      transition.dispose();
-      sourceController.dispose();
-    });
-    await tester.pumpWidget(CupertinoApp(
-      builder: (context, child) => AppWindowContentBoundary(child: child!),
-      home: AppHeaderScrollInsetScope(
-        leadingInset: 0,
-        titleCollapseExtent: kAppHeaderTitleCollapseDistance,
-        titleTransition: transition,
-        child: IndexedStack(
-          index: 1,
-          children: [
-            AppHeaderScrollView(
-              controller: sourceController,
-              slivers: const [
-                SliverToBoxAdapter(child: AppHeaderScrollInset()),
-                SliverToBoxAdapter(child: SizedBox(height: 1)),
-              ],
-            ),
-            CalendarTab(onViewChanged: (_, __, ___, ____, _____, ______) {}),
-          ],
-        ),
-      ),
-    ));
-    await tester.pumpAndSettle();
-    final source = AppHeaderScrollView.headerPositionFor(sourceController)!;
-    transition.bindTo(source);
-    final calendar = tester.state<CalendarTabState>(find.byType(CalendarTab));
-    calendar.advanceCurrentHeader();
-    await tester.pumpAndSettle();
-    final dow = find.byWidgetPredicate(
-      (widget) => widget.runtimeType.toString() == '_DayViewDowMask',
-    );
-    expect(dow, findsOneWidget);
-    final expandedTop = tester.getTopLeft(dow).dy;
-    final selectedWeek = _selectedWeekRow(DateTime.now());
-    final banners = find.byWidgetPredicate(
-      (widget) => widget.runtimeType.toString() == '_DayBanner',
-    );
-    expect(selectedWeek, findsOneWidget);
-    expect(banners, findsNWidgets(3));
-    final expandedWeekTop = tester.getRect(selectedWeek).top;
-    final expandedBannerTop = tester.getRect(banners.at(1)).top;
-    source.jumpTo(kAppHeaderTitleCollapseDistance);
-    await tester.pumpAndSettle();
-    final expectedCompactDelta =
-        -kAppHeaderTitleCollapseDistance + kAppHeaderContentTopSpacing;
-    expect(
-      tester.getTopLeft(dow).dy,
-      closeTo(expandedTop + expectedCompactDelta, 0.5),
-    );
-    expect(
-      tester.getRect(selectedWeek).top,
-      closeTo(expandedWeekTop + expectedCompactDelta, 0.5),
-      reason: 'The selected week strip must follow the shared header state.',
-    );
-    expect(
-      tester.getRect(banners.at(1)).top,
-      closeTo(expandedBannerTop + expectedCompactDelta, 0.5),
-      reason: 'The Day Banner must follow the shared header state.',
-    );
-    source.jumpTo(0);
-    await tester.pumpAndSettle();
-    expect(tester.getTopLeft(dow).dy, closeTo(expandedTop, 0.5));
-    expect(tester.getRect(selectedWeek).top, closeTo(expandedWeekTop, 0.5));
-    expect(tester.getRect(banners.at(1)).top, closeTo(expandedBannerTop, 0.5));
-  });
 
   testWidgets('empty Month List re-centers below the grid as the title collapses', (
     tester,
@@ -409,7 +299,7 @@ void main() {
     },
   );
 
-  testWidgets('portrait Multi Day header uses the raised content edge', (
+  testWidgets('portrait Multi Day header follows compact title on entry', (
     tester,
   ) async {
     const screenSize = Size(402, 874);
@@ -417,12 +307,9 @@ void main() {
     tester.view.physicalSize = screenSize;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final sourceController = ScrollController();
     final transition = AppHeaderTitleTransition();
-    addTearDown(() {
-      transition.dispose();
-      sourceController.dispose();
-    });
+    final calendarKey = GlobalKey<CalendarTabState>();
+    addTearDown(transition.dispose);
 
     await tester.pumpWidget(
       CupertinoApp(
@@ -439,31 +326,32 @@ void main() {
           leadingInset: 0,
           titleCollapseExtent: kAppHeaderTitleCollapseDistance,
           titleTransition: transition,
-          child: IndexedStack(
-            index: 1,
-            children: [
-              AppHeaderScrollView(
-                controller: sourceController,
-                slivers: const [
-                  SliverToBoxAdapter(child: AppHeaderScrollInset()),
-                  SliverToBoxAdapter(child: SizedBox(height: 1)),
-                ],
-              ),
-              CupertinoPageScaffold(
-                child: CalendarTab(
-                  daySubMode: DayViewSubMode.multiDay,
-                  onViewChanged: (_, _, _, _, _, _) {},
-                ),
-              ),
-            ],
+          child: CupertinoPageScaffold(
+            child: CalendarTab(
+              key: calendarKey,
+              daySubMode: DayViewSubMode.multiDay,
+              onViewChanged: (view, _, _, _, _, _) {
+                if (view == CalendarView.day) {
+                  transition.bindTo(null, preserveCollapseProgress: true);
+                }
+              },
+            ),
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    tester.state<CalendarTabState>(find.byType(CalendarTab)).jumpToTodayDay();
+    final calendar = calendarKey.currentState!;
+    final monthHeaderPosition = calendar.headerScrollPosition!;
+    transition.bindTo(monthHeaderPosition);
+    monthHeaderPosition.jumpTo(kAppHeaderTitleCollapseDistance);
     await tester.pumpAndSettle();
+    expect(transition.collapseProgress, closeTo(1.0, 0.02));
+
+    calendar.jumpToTodayDay();
+    await tester.pumpAndSettle();
+    expect(transition.collapseProgress, closeTo(1.0, 0.02));
 
     final dowMask = find.byWidgetPredicate(
       (widget) => widget.runtimeType.toString() == '_DayViewDowMask',
@@ -478,40 +366,11 @@ void main() {
     expect(selectedWeek, findsOneWidget);
     final selectedWeekRect = tester.getRect(selectedWeek);
     final bannerRect = tester.getRect(centerBanner);
-    final source = AppHeaderScrollView.headerPositionFor(sourceController)!;
-    transition.bindTo(source);
-    expect(
-      dowRect.top,
-      closeTo(kAppHeaderTitleHeight - kContentAreaTopRaise, 0.5),
-    );
     expect(selectedWeekRect.top, closeTo(dowRect.bottom, 0.5));
     expect(
       selectedWeekRect.bottom,
       closeTo(tester.getRect(centerBanner).top, 0.5),
     );
-    source.jumpTo(kAppHeaderTitleCollapseDistance);
-    await tester.pumpAndSettle();
-    const expectedCompactDelta =
-        -kAppHeaderTitleCollapseDistance + kAppHeaderContentTopSpacing;
-    expect(
-      tester.getTopLeft(dowMask).dy,
-      closeTo(dowRect.top + expectedCompactDelta, 0.5),
-    );
-    expect(
-      tester.getRect(selectedWeek).top,
-      closeTo(selectedWeekRect.top + expectedCompactDelta, 0.5),
-      reason: 'The Multi Day week strip must follow the shared header state.',
-    );
-    expect(
-      tester.getRect(centerBanner).top,
-      closeTo(bannerRect.top + expectedCompactDelta, 0.5),
-      reason: 'The Multi Day banner must follow the shared header state.',
-    );
-    source.jumpTo(0);
-    await tester.pumpAndSettle();
-    expect(tester.getTopLeft(dowMask).dy, closeTo(dowRect.top, 0.5));
-    expect(tester.getRect(selectedWeek).top, closeTo(selectedWeekRect.top, 0.5));
-    expect(tester.getRect(centerBanner).top, closeTo(bannerRect.top, 0.5));
     expect(
       tester.getRect(centerBanner).top,
       greaterThan(dowRect.bottom),
