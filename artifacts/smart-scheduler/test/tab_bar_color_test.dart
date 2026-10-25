@@ -113,10 +113,7 @@ void main() {
       expect(skeddoBottomBarGlassSettingsFor(Brightness.light).blur, 5);
       expect(tabBar.innerBlur, 5);
       expect(kSkeddoLightBottomBarOpacity, 0.40);
-      expect(
-        tabBar.settings!.glassColor.a,
-        closeTo(kSkeddoLightBottomBarOpacity, 0.001),
-      );
+      expect(tabBar.settings!.glassColor.a, closeTo(0.70, 0.001));
       expect(tabBar.settings!.glassColor.toARGB32() & 0x00FFFFFF, 0x00FFFFFF);
       expect(
         tabBar.indicatorColor!.value,
@@ -166,10 +163,7 @@ void main() {
       tabBar.indicatorColor!.value,
       kFloatingTabBarDarkIndicatorColor.value,
     );
-    expect(
-      tabBar.settings!.glassColor.a,
-      closeTo(kSkeddoDarkBottomBarOpacity, 0.001),
-    );
+    expect(tabBar.settings!.glassColor.a, closeTo(0.80, 0.001));
     expect(tabBar.settings!.glassColor.toARGB32() & 0x00FFFFFF, 0x003E3E40);
     expect(
       tabBar.settings!.lightIntensity,

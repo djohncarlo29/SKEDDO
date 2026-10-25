@@ -10,7 +10,8 @@ import '../app_settings.dart';
 /// standalone modal toolbar GlassIconButtons.
 ///
 /// These retain flutter_liquid_glass_widgets' bottom-bar optics while using
-/// SKEDDO's explicit, mode-specific tint colors and opacities.
+/// SKEDDO's explicit tint colors and slider-driven opacity. The constants are
+/// the shared renderer opacity at the 50% slider mark.
 const double kSkeddoLightBottomBarOpacity = 0.40;
 const double kSkeddoDarkBottomBarOpacity = 0.50;
 const double kSkeddoPopoverGlassOpacity = 0.90;
@@ -67,18 +68,11 @@ const LiquidGlassSettings kSkeddoLightLiftedTabIndicatorSettings =
 LiquidGlassSettings skeddoBottomBarGlassSettingsFor(
   Brightness brightness, {
   double? sliderPosition,
-}) =>
-    (brightness == Brightness.dark
-            ? kSkeddoDarkBottomBarGlassSettings
-            : kSkeddoBottomBarGlassSettings)
-        .copyWith(
-          blur: skeddoSharedGlassBlurForPosition(
-            sliderPosition ??
-                liquidGlassSliderPositionForOpacity(
-                  appLiquidGlassOpacityNotifier.value,
-                ),
-          ),
-        );
+}) => _settingsForSharedGlassPosition(
+  brightness,
+  sliderPosition ??
+      liquidGlassSliderPositionForOpacity(appLiquidGlassOpacityNotifier.value),
+);
 
 const _kSharedGlassBlurAnchors = <(double, double)>[
   (0, 0.01),
@@ -96,7 +90,23 @@ const _kActiveTabIndicatorBlurAnchors = <(double, double)>[
   (100, 5),
 ];
 
-double _interpolateGlassBlurAnchors(
+const _kSharedGlassLightOpacityAnchors = <(double, double)>[
+  (0, 0.20),
+  (25, 0.30),
+  (50, 0.40),
+  (75, 0.50),
+  (100, 0.70),
+];
+
+const _kSharedGlassDarkOpacityAnchors = <(double, double)>[
+  (0, 0.30),
+  (25, 0.40),
+  (50, 0.50),
+  (75, 0.60),
+  (100, 0.80),
+];
+
+double _interpolateSliderAnchors(
   double position,
   List<(double, double)> anchors,
 ) {
@@ -115,12 +125,39 @@ double _interpolateGlassBlurAnchors(
 /// Backdrop blur for the shared Liquid Glass renderer, interpolated between
 /// the slider's explicitly specified percentage anchors.
 double skeddoSharedGlassBlurForPosition(double position) =>
-    _interpolateGlassBlurAnchors(position, _kSharedGlassBlurAnchors);
+    _interpolateSliderAnchors(position, _kSharedGlassBlurAnchors);
 
 /// Backdrop blur for the settled active-tab lens. It uses a separate slider
 /// curve from the surrounding tab-bar shell.
 double skeddoActiveTabIndicatorBlurForPosition(double position) =>
-    _interpolateGlassBlurAnchors(position, _kActiveTabIndicatorBlurAnchors);
+    _interpolateSliderAnchors(position, _kActiveTabIndicatorBlurAnchors);
+
+/// Slider-driven tint opacity for shared renderer surfaces. The GlassPopover
+/// intentionally uses its own fixed opacity.
+double skeddoSharedGlassOpacityForPosition(
+  double position,
+  Brightness brightness,
+) => _interpolateSliderAnchors(
+  position,
+  brightness == Brightness.dark
+      ? _kSharedGlassDarkOpacityAnchors
+      : _kSharedGlassLightOpacityAnchors,
+);
+
+LiquidGlassSettings _settingsForSharedGlassPosition(
+  Brightness brightness,
+  double position,
+) {
+  final base = brightness == Brightness.dark
+      ? kSkeddoDarkBottomBarGlassSettings
+      : kSkeddoBottomBarGlassSettings;
+  return base.copyWith(
+    blur: skeddoSharedGlassBlurForPosition(position),
+    glassColor: base.glassColor.withValues(
+      alpha: skeddoSharedGlassOpacityForPosition(position, brightness),
+    ),
+  );
+}
 
 /// The floating tab-bar shell defines the blur value shared by SKEDDO's
 /// package-rendered glass surfaces. The settled active-tab lens remains
