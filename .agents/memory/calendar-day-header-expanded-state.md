@@ -3,8 +3,8 @@ name: Day View week-strip positioning
 description: Align the selected Month row, DOW header, and Day Banner in expanded and compact Calendar Day View.
 ---
 
-In settled Calendar Day View, the selected week strip must use the shell's shared header coordinates, not remain in the Month grid's nested scroll viewport. Keep the Month-owned row for the collapse animation, then hand off to one Day-owned strip directly below the DOW mask and above the Day Banner.
+In settled Single/Multi Day View, the selected week strip must use the shell's shared header coordinates, not remain in the Month grid's nested scroll viewport. Keep Month panels through the Month↔Day animation so their rows share the collapse progress; once Day settles, remove the Month panel layer and leave one Day-owned DOW row and strip. On reverse, remount the Month layer as that same collapse progress starts.
 
-**Why:** The Month grid's nested title inset and viewport clip can leave its row at a stale vertical origin while the Day DOW and banner follow the shell's live expanded/compact state. Widget-box alignment alone did not prove that the date cells were painted.
+**Why:** The Month grid's nested title inset and viewport clip can leave its row at a stale vertical origin while the Day DOW and banner follow the shell's live expanded/compact state. Leaving the Month layer under settled Day also leaks neighboring week rows and duplicates the DOW line.
 
-**How to apply:** Preserve the in-grid row through Month↔Day animation; at the settled Day handoff, hide that copy and render the selected week in the Day header stack. Test both expanded and compact shell states and assert the rendered strip has no Month viewport clip ancestor.
+**How to apply:** Apply this only to Single/Multi Day, not List Day. Preserve Month rows during the transition, then remove the full Month panel at settled Day; render the selected week in the Day header stack. Test expanded and compact headers, one DOW, absence of Month panels at rest, and Month-panel return during reverse.

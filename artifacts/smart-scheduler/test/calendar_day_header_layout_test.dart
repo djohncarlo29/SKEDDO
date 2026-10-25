@@ -76,6 +76,12 @@ void main() {
         (widget) => widget.runtimeType.toString() == '_DayBanner',
       );
       expect(selectedWeek, findsOneWidget);
+      expect(dow, findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('calendar-month-panels')),
+        findsNothing,
+        reason: 'Settled Day View must not paint the Month rows behind its header.',
+      );
       expect(
         find.ancestor(
           of: selectedWeek,
@@ -93,6 +99,17 @@ void main() {
         closeTo(tester.getRect(selectedWeek).bottom, 0.5),
       );
       expect(tester.takeException(), isNull);
+
+      // On reverse, the Month grid returns under the same collapse progress
+      // that positions the selected strip and the rows above it.
+      final reverseToMonth = calendar.advanceCurrentHeader();
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(
+        find.byKey(const ValueKey('calendar-month-panels')),
+        findsOneWidget,
+      );
+      await tester.pumpAndSettle();
+      await reverseToMonth;
     },
   );
 
@@ -162,6 +179,12 @@ void main() {
       );
 
       expect(selectedWeek, findsOneWidget);
+      expect(dow, findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('calendar-month-panels')),
+        findsNothing,
+        reason: 'Settled Day View must not paint the Month rows behind its header.',
+      );
       expect(
         find.ancestor(
           of: selectedWeek,

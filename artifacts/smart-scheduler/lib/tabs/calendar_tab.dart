@@ -3391,15 +3391,23 @@ class CalendarTabState extends State<CalendarTab>
                 zoomT > 0.001 ||
                 _zoomTargetView == CalendarView.month ||
                 (_zoomMorphActive && _view == CalendarView.month);
-            // The MonthView continues to own the selected week row through
-            // Month↔Day transitions and in settled Day View. Keep that layer
-            // visible beneath the Day banner/timeline so the row remains the
-            // pinned week strip after the rest of the month has moved away.
+            // Month panels provide the moving week-row group during the
+            // Month↔Day animation. Once Day settles, the Day-owned header is
+            // the only painted owner; keeping Month panels visible lets their
+            // neighboring weeks and second DOW row leak behind it.
+            final dayViewSettled =
+                _view == CalendarView.day &&
+                dayHeaderSubMode != DayViewSubMode.list &&
+                _collapseTargetView == null &&
+                !_collapseCtrl.isAnimating &&
+                colT >= 0.99;
             final showMonthPanels =
                 !_zoomMorphActive &&
                 zoomT > 0.999 &&
                 (_view == CalendarView.month ||
-                    (_view == CalendarView.day && colT > 0.01));
+                    (_view == CalendarView.day &&
+                        colT > 0.01 &&
+                        !dayViewSettled));
             final showYearPanels =
                 !_zoomMorphActive &&
                 _view == CalendarView.year &&
@@ -3565,7 +3573,7 @@ class CalendarTabState extends State<CalendarTab>
                     // ── Month view — three horizontal panels ───────────────
                     // Keep the real destination mounted behind the painter so
                     // its measured geometry and final settled layout agree.
-                    if (mountMonthPanels)
+                    if (mountMonthPanels && !dayViewSettled)
                       Positioned.fill(
                         key: const ValueKey('calendar-month-panels'),
                         child: IgnorePointer(
@@ -6246,46 +6254,46 @@ class _MonthView extends StatelessWidget {
                 right: 0,
                 height: _kDayLabelHeight,
                 child: Transform.translate(
-                  offset: Offset(
-                    0,
-                    collapseScrollOffset * collapseProgress,
-                  ),
-                   child: ColoredBox(
-                     key: morphDowHeaderKey,
-                    color: resolveThemeColor(kBackgroundColor, context),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: monthContentInset,
-                      ),
-                      child: Row(
-                        children: [
-                          const Expanded(child: SizedBox.shrink()),
-                             ...List.generate(
-                             7,
-                             (i) => Expanded(
-                               child: Center(
-                                 key: morphDowLabelKeys != null &&
-                                         i < morphDowLabelKeys!.length
-                                     ? morphDowLabelKeys![i]
-                                     : null,
-                                child: Text(
-                                  _kDayLetters[i],
-                                  style: TextStyle(
-                                    fontFamily: kSFProText,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    color: secondaryC,
-                                    letterSpacing: -0.1,
+                    offset: Offset(
+                      0,
+                      collapseScrollOffset * collapseProgress,
+                    ),
+                    child: ColoredBox(
+                      key: morphDowHeaderKey,
+                      color: resolveThemeColor(kBackgroundColor, context),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: monthContentInset,
+                        ),
+                        child: Row(
+                          children: [
+                            const Expanded(child: SizedBox.shrink()),
+                            ...List.generate(
+                              7,
+                              (i) => Expanded(
+                                child: Center(
+                                  key: morphDowLabelKeys != null &&
+                                          i < morphDowLabelKeys!.length
+                                      ? morphDowLabelKeys![i]
+                                      : null,
+                                  child: Text(
+                                    _kDayLetters[i],
+                                    style: TextStyle(
+                                      fontFamily: kSFProText,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: secondaryC,
+                                      letterSpacing: -0.1,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 7),
-                        ],
+                            const SizedBox(width: 7),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
                 ),
               ),
             ],
