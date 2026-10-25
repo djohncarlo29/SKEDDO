@@ -87,7 +87,7 @@ void main() {
       expect(defaultViewCenter.dy < masterViewRect.bottom, isTrue);
       await tester.tap(find.text('Default View'));
       await tester.pump();
-      await tester.tap(find.text('Start of Week'));
+      await tester.tap(find.text('First Day of Week'));
       await tester.pumpAndSettle();
       expect(find.text('Saturday'), findsOneWidget);
 
