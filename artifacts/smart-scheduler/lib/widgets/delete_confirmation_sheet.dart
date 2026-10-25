@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
@@ -9,6 +10,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassMenuAlignment,
         GlassPopover,
         GlassQuality,
+        LiquidGlassSettings,
         LiquidRoundedSuperellipse;
 
 import '../app_theme.dart';
@@ -276,6 +278,8 @@ class DiscardChangesPopoverAnchorState
 
   late final VoidCallback _dismissCallback;
   final GlobalKey _triggerKey = GlobalKey();
+  final ValueNotifier<bool> _popoverOverlayVisible = ValueNotifier(false);
+  final ValueNotifier<bool> _popoverOverlayClosing = ValueNotifier(false);
   VoidCallback? _togglePopover;
   Key _popoverKey = UniqueKey();
   Timer? _closePollTimer;
@@ -298,6 +302,8 @@ class DiscardChangesPopoverAnchorState
   @override
   void dispose() {
     _closePollTimer?.cancel();
+    _popoverOverlayVisible.dispose();
+    _popoverOverlayClosing.dispose();
     if (identical(
       _activeDiscardChangesSheetDismiss,
       _dismissCallback,
@@ -323,6 +329,8 @@ class DiscardChangesPopoverAnchorState
     _entityLabel = entityLabel;
     _isNew = isNew;
     _pendingResult = null;
+    _popoverOverlayVisible.value = false;
+    _popoverOverlayClosing.value = false;
     _popoverIsOpen = false;
     _isClosing = false;
     _triggerOrigin = null;
@@ -365,6 +373,7 @@ class DiscardChangesPopoverAnchorState
 
   void _onPopoverClosing() {
     _popoverIsOpen = false;
+    _popoverOverlayClosing.value = true;
     if (!_isClosing) {
       _isClosing = true;
       _pendingResult = null;
@@ -374,6 +383,8 @@ class DiscardChangesPopoverAnchorState
   }
 
   void _onPopoverOpened() {
+    _popoverOverlayClosing.value = false;
+    _popoverOverlayVisible.value = true;
     final renderObject =
         _triggerKey.currentContext?.findRenderObject();
     if (renderObject is! RenderBox ||
@@ -470,6 +481,8 @@ class DiscardChangesPopoverAnchorState
     final result = _pendingResult;
     _confirmationCompleter = null;
     _pendingResult = null;
+    _popoverOverlayVisible.value = false;
+    _popoverOverlayClosing.value = false;
     _entityLabel = 'item';
     _isNew = false;
     _isClosing = false;
@@ -500,7 +513,6 @@ class DiscardChangesPopoverAnchorState
 
     return ActionPanelScrollView(
       maxHeight: MediaQuery.sizeOf(context).height,
-      fadeEdges: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
           kDiscardConfirmationButtonEdgeGap,
@@ -531,37 +543,17 @@ class DiscardChangesPopoverAnchorState
             ),
             const SizedBox(height: kDiscardConfirmationMessageButtonGap),
             LayoutBuilder(
-              builder: (context, constraints) => GlassButton.custom(
-                onTap: () => _acceptDiscard(closePopover),
+              builder: (context, constraints) =>
+                  _DiscardConfirmationGlassButton(
                 width: constraints.maxWidth,
                 height: 57,
-                shape: const LiquidRoundedSuperellipse(
-                  borderRadius: kDiscardConfirmationButtonCornerRadius,
-                ),
+                isVisible: _popoverOverlayVisible,
+                isClosing: _popoverOverlayClosing,
                 settings: skeddoPopoverButtonGlassSettingsFor(
                   CupertinoTheme.brightnessOf(context),
                   resolveThemeColor(kModalButtonBackground, context),
                 ),
-                quality: GlassQuality.premium,
-                useOwnLayer: true,
-                style: GlassButtonStyle.prominent,
-                interactionScale: 1.06,
-                label: 'Discard Changes',
-                child: Center(
-                  child: Text(
-                    'Discard Changes',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      inherit: false,
-                      fontSize: 17,
-                      fontFamily: kSFProText,
-                      fontWeight: FontWeight.w500,
-                      color: CupertinoColors.destructiveRed,
-                      letterSpacing: kTracking17,
-                      height: kLineHeight,
-                    ),
-                  ),
-                ),
+                onPressed: () => _acceptDiscard(closePopover),
               ),
             ),
           ],
@@ -607,6 +599,136 @@ class DiscardChangesPopoverAnchorState
       barrierDismissible: true,
       onClose: _onPopoverClosing,
       onOpen: _onPopoverOpened,
+    );
+  }
+}
+
+/// Renders the button's glass in the root overlay, outside the GlassPopover's
+/// clipped container, while a composited target keeps it exactly over its
+/// in-flow slot as the popover opens, scrolls, or closes.
+class _DiscardConfirmationGlassButton extends StatefulWidget {
+  const _DiscardConfirmationGlassButton({
+    required this.width,
+    required this.height,
+    required this.isVisible,
+    required this.isClosing,
+    required this.settings,
+    required this.onPressed,
+  });
+
+  final double width;
+  final double height;
+  final ValueListenable<bool> isVisible;
+  final ValueListenable<bool> isClosing;
+  final LiquidGlassSettings settings;
+  final VoidCallback onPressed;
+
+  @override
+  State<_DiscardConfirmationGlassButton> createState() =>
+      _DiscardConfirmationGlassButtonState();
+}
+
+class _DiscardConfirmationGlassButtonState
+    extends State<_DiscardConfirmationGlassButton> {
+  final OverlayPortalController _overlayController = OverlayPortalController();
+  final LayerLink _layerLink = LayerLink();
+  bool _portalIsVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.isVisible.addListener(_syncOverlay);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncOverlay());
+  }
+
+  @override
+  void didUpdateWidget(covariant _DiscardConfirmationGlassButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isVisible != widget.isVisible) {
+      oldWidget.isVisible.removeListener(_syncOverlay);
+      widget.isVisible.addListener(_syncOverlay);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _syncOverlay());
+    }
+  }
+
+  void _syncOverlay() {
+    if (!mounted || _portalIsVisible == widget.isVisible.value) return;
+    _portalIsVisible = widget.isVisible.value;
+    if (_portalIsVisible) {
+      _overlayController.show();
+    } else {
+      _overlayController.hide();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.isVisible.removeListener(_syncOverlay);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return OverlayPortal(
+      controller: _overlayController,
+      overlayLocation: OverlayChildLocation.rootOverlay,
+      overlayChildBuilder: (_) => Align(
+        alignment: Alignment.topLeft,
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          targetAnchor: Alignment.topLeft,
+          followerAnchor: Alignment.topLeft,
+          child: SizedBox(
+            width: widget.width,
+            height: widget.height,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: widget.isClosing,
+              child: GlassButton.custom(
+                onTap: widget.onPressed,
+                width: widget.width,
+                height: widget.height,
+                shape: const LiquidRoundedSuperellipse(
+                  borderRadius: kDiscardConfirmationButtonCornerRadius,
+                ),
+                settings: widget.settings,
+                quality: GlassQuality.premium,
+                useOwnLayer: true,
+                style: GlassButtonStyle.prominent,
+                interactionScale: 1.06,
+                label: 'Discard Changes',
+                child: Center(
+                  child: Text(
+                    'Discard Changes',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      inherit: false,
+                      fontSize: 17,
+                      fontFamily: kSFProText,
+                      fontWeight: FontWeight.w500,
+                      color: CupertinoColors.destructiveRed,
+                      letterSpacing: kTracking17,
+                      height: kLineHeight,
+                    ),
+                  ),
+                ),
+              ),
+              builder: (context, isClosing, button) => IgnorePointer(
+                ignoring: isClosing,
+                child: button,
+              ),
+            ),
+          ),
+        ),
+      ),
+      child: CompositedTransformTarget(
+        link: _layerLink,
+        child: SizedBox(
+          key: const ValueKey('discard-confirmation-glass-button-anchor'),
+          width: widget.width,
+          height: widget.height,
+        ),
+      ),
     );
   }
 }

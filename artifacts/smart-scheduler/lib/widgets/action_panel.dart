@@ -926,13 +926,11 @@ class ActionPanelScrollView extends StatefulWidget {
     required this.child,
     required this.maxHeight,
     this.fadeHeight = kPickerPanelFadeHeight,
-    this.fadeEdges = true,
   });
 
   final Widget child;
   final double maxHeight;
   final double fadeHeight;
-  final bool fadeEdges;
 
   @override
   State<ActionPanelScrollView> createState() => _ActionPanelScrollViewState();
@@ -1025,60 +1023,6 @@ class _ActionPanelScrollViewState extends State<ActionPanelScrollView> {
   @override
   Widget build(BuildContext context) {
     _scheduleSync();
-    final scrollView = SingleChildScrollView(
-      controller: _scrollCtrl,
-      physics: _physics,
-      child: widget.child,
-    );
-    final scrollContent = widget.fadeEdges
-        ? ShaderMask(
-            blendMode: BlendMode.dstIn,
-            shaderCallback: (bounds) {
-              const white = Color(0xFFFFFFFF);
-              const transparent = Color(0x00FFFFFF);
-              if (bounds.height == 0) {
-                return const LinearGradient(
-                  colors: [white, white],
-                ).createShader(bounds);
-              }
-              final topFrac = _showTopFade
-                  ? (widget.fadeHeight / bounds.height).clamp(0.0, 0.45)
-                  : 0.0;
-              final bottomFrac = _showBottomFade
-                  ? (widget.fadeHeight / bounds.height).clamp(0.0, 0.45)
-                  : 0.0;
-              final top0 = topFrac * 0.30;
-              final top1 = topFrac * 0.65;
-              final bottom0 = 1.0 - bottomFrac * 0.65;
-              final bottom1 = 1.0 - bottomFrac * 0.30;
-              return LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  _showTopFade ? transparent : white,
-                  _showTopFade ? const Color(0x06FFFFFF) : white,
-                  _showTopFade ? const Color(0x38FFFFFF) : white,
-                  white,
-                  white,
-                  _showBottomFade ? const Color(0x38FFFFFF) : white,
-                  _showBottomFade ? const Color(0x06FFFFFF) : white,
-                  _showBottomFade ? transparent : white,
-                ],
-                stops: [
-                  0.0,
-                  top0,
-                  top1,
-                  topFrac,
-                  1.0 - bottomFrac,
-                  bottom0,
-                  bottom1,
-                  1.0,
-                ],
-              ).createShader(bounds);
-            },
-            child: scrollView,
-          )
-        : scrollView;
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: widget.maxHeight),
@@ -1090,7 +1034,57 @@ class _ActionPanelScrollViewState extends State<ActionPanelScrollView> {
           // clipped by the scroll viewport.
           clipBehavior: Clip.none,
           children: [
-            scrollContent,
+            ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) {
+                const white = Color(0xFFFFFFFF);
+                const transparent = Color(0x00FFFFFF);
+                if (bounds.height == 0) {
+                  return const LinearGradient(
+                    colors: [white, white],
+                  ).createShader(bounds);
+                }
+                final topFrac = _showTopFade
+                    ? (widget.fadeHeight / bounds.height).clamp(0.0, 0.45)
+                    : 0.0;
+                final bottomFrac = _showBottomFade
+                    ? (widget.fadeHeight / bounds.height).clamp(0.0, 0.45)
+                    : 0.0;
+                final top0 = topFrac * 0.30;
+                final top1 = topFrac * 0.65;
+                final bottom0 = 1.0 - bottomFrac * 0.65;
+                final bottom1 = 1.0 - bottomFrac * 0.30;
+                return LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    _showTopFade ? transparent : white,
+                    _showTopFade ? const Color(0x06FFFFFF) : white,
+                    _showTopFade ? const Color(0x38FFFFFF) : white,
+                    white,
+                    white,
+                    _showBottomFade ? const Color(0x38FFFFFF) : white,
+                    _showBottomFade ? const Color(0x06FFFFFF) : white,
+                    _showBottomFade ? transparent : white,
+                  ],
+                  stops: [
+                    0.0,
+                    top0,
+                    top1,
+                    topFrac,
+                    1.0 - bottomFrac,
+                    bottom0,
+                    bottom1,
+                    1.0,
+                  ],
+                ).createShader(bounds);
+              },
+              child: SingleChildScrollView(
+                controller: _scrollCtrl,
+                physics: _physics,
+                child: widget.child,
+              ),
+            ),
             Positioned(
               right: 8,
               top: 16,

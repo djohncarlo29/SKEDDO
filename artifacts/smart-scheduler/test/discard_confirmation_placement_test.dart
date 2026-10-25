@@ -107,9 +107,19 @@ void main() {
     );
     expect(discardButtonFinder, findsOneWidget);
     expect(tester.getSize(discardButtonFinder).width, greaterThan(300));
+    const buttonAnchorKey =
+        ValueKey('discard-confirmation-glass-button-anchor');
+    final buttonAnchorFinder = find.byKey(buttonAnchorKey);
+    expect(buttonAnchorFinder, findsOneWidget);
+    final buttonRect = tester.getRect(discardButtonFinder);
+    final anchorRect = tester.getRect(buttonAnchorFinder);
+    expect(buttonRect.left, closeTo(anchorRect.left, 0.01));
+    expect(buttonRect.top, closeTo(anchorRect.top, 0.01));
+    expect(buttonRect.width, closeTo(anchorRect.width, 0.01));
+    expect(buttonRect.height, closeTo(anchorRect.height, 0.01));
     expect(
       find.ancestor(
-        of: discardButtonFinder,
+        of: buttonAnchorFinder,
         matching: find.byWidgetPredicate(
           (widget) =>
               widget is Padding &&
@@ -125,7 +135,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.ancestor(of: discardButtonFinder, matching: find.byType(ShaderMask)),
+      find.ancestor(of: discardButtonFinder, matching: find.byType(ClipPath)),
       findsNothing,
     );
     final discardButton = tester.widget<GlassButton>(discardButtonFinder);
