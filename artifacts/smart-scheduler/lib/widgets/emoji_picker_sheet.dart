@@ -917,18 +917,18 @@ Widget _buildCategoryTabIcon(
         color: color,
       );
     case 2:
-      return FixedSFIcon(
-        brightness == Brightness.dark ? SFIcons.sf_dog_fill : SFIcons.sf_dog,
-        fontSize: size,
-        color: color,
+      return Text(
+        '🐶',
+        key: const ValueKey('emoji-category-dog-face'),
+        style: TextStyle(fontSize: size, height: 1.0),
+        textScaler: TextScaler.noScaling,
       );
     case 3:
-      // SF Symbols has a filled Apple logo rather than a fruit-specific
-      // apple glyph; use its silhouette in both appearances.
-      return FixedSFIcon(
-        SFIcons.sf_apple_logo,
-        fontSize: size,
-        color: color,
+      return Text(
+        '🍎',
+        key: const ValueKey('emoji-category-apple-fruit'),
+        style: TextStyle(fontSize: size, height: 1.0),
+        textScaler: TextScaler.noScaling,
       );
     case 4:
       // Match the parent category icon picker: the ball is two-tone, with a

@@ -39,9 +39,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byWidgetPredicate(
-        (widget) => widget is FixedSFIcon && widget.icon == SFIcons.sf_dog,
-      ),
+      find.byKey(const ValueKey('emoji-category-dog-face')),
       findsOneWidget,
     );
     expect(
@@ -52,10 +50,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is FixedSFIcon && widget.icon == SFIcons.sf_apple_logo,
-      ),
+      find.byKey(const ValueKey('emoji-category-apple-fruit')),
       findsOneWidget,
     );
     expect(find.byIcon(CupertinoIcons.airplane), findsOneWidget);
@@ -63,38 +58,41 @@ void main() {
     expect(find.byIcon(CupertinoIcons.suit_heart_fill), findsOneWidget);
   });
 
-  testWidgets('uses the filled dog and hand-wave symbols in Dark Mode', (
-    tester,
-  ) async {
-    final navigatorKey = GlobalKey<NavigatorState>();
-    await tester.pumpWidget(
-      CupertinoApp(
-        navigatorKey: navigatorKey,
-        theme: const CupertinoThemeData(brightness: Brightness.dark),
-        builder: (context, child) =>
-            AppWindowContentBoundary(child: child ?? const SizedBox.shrink()),
-        home: const SizedBox.shrink(),
-      ),
-    );
-    navigatorKey.currentState!.push<void>(
-      RoundedCupertinoSheetRoute<void>(
-        builder: (_) => EmojiPickerSheet(onEmojiSelected: (_) {}),
-      ),
-    );
-    await tester.pumpAndSettle();
+  testWidgets(
+    'keeps animal and fruit emojis and fills hand-wave in Dark Mode',
+    (tester) async {
+      final navigatorKey = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        CupertinoApp(
+          navigatorKey: navigatorKey,
+          theme: const CupertinoThemeData(brightness: Brightness.dark),
+          builder: (context, child) =>
+              AppWindowContentBoundary(child: child ?? const SizedBox.shrink()),
+          home: const SizedBox.shrink(),
+        ),
+      );
+      navigatorKey.currentState!.push<void>(
+        RoundedCupertinoSheetRoute<void>(
+          builder: (_) => EmojiPickerSheet(onEmojiSelected: (_) {}),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(
-      find.byWidgetPredicate(
-        (widget) => widget is FixedSFIcon && widget.icon == SFIcons.sf_dog_fill,
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is FixedSFIcon && widget.icon == SFIcons.sf_hand_wave_fill,
-      ),
-      findsOneWidget,
-    );
-  });
+      expect(
+        find.byKey(const ValueKey('emoji-category-dog-face')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('emoji-category-apple-fruit')),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is FixedSFIcon && widget.icon == SFIcons.sf_hand_wave_fill,
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 }
