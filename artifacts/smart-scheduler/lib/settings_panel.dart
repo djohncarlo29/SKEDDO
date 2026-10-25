@@ -1149,6 +1149,12 @@ class _SubScreenState extends State<_SubScreen> {
           _AccentColorSection(accentNotifier: widget.accentNotifier)
         else if (widget.route.isLiquidGlass)
           const _LiquidGlassSection()
+        else if (widget.route.title == 'Theme')
+          _ThemeSettingsSection(
+            selectedOption: _selected,
+            accentColor: widget.accentColor,
+            onSelect: _onSelect,
+          )
         else if (widget.route.isTextSize)
           _TextSizeSection(accentColor: widget.accentColor)
         else if (widget.route.isDefaultCategory)
@@ -1854,6 +1860,112 @@ class _SubScreenSection extends StatelessWidget {
   }
 }
 
+class _ThemeSettingsSection extends StatelessWidget {
+  final String selectedOption;
+  final Color accentColor;
+  final ValueChanged<String> onSelect;
+
+  const _ThemeSettingsSection({
+    required this.selectedOption,
+    required this.accentColor,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final systemBrightness = MediaQuery.platformBrightnessOf(context);
+    final systemTitle =
+        'System Setting (${systemBrightness == Brightness.dark ? 'Dark' : 'Light'})';
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SubScreenSettingsGroup(
+              title: 'Mirror System Setting',
+              rows: [
+                _OptionRow(
+                  title: systemTitle,
+                  selected: selectedOption == 'System',
+                  accentColor: accentColor,
+                  onTap: () => onSelect('System'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _SubScreenSettingsGroup(
+              title: 'Skeddo App Only',
+              rows: [
+                for (final option in const ['Light', 'Dark'])
+                  _OptionRow(
+                    title: option,
+                    selected: selectedOption == option,
+                    accentColor: accentColor,
+                    onTap: () => onSelect(option),
+                  ),
+              ],
+              footer:
+                  'This setting will apply in Skeddo only. Other apps will use the system setting.',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SubScreenSettingsGroup extends StatelessWidget {
+  final String title;
+  final List<Widget> rows;
+  final String? footer;
+
+  const _SubScreenSettingsGroup({
+    required this.title,
+    required this.rows,
+    this.footer,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cardBg = resolveThemeColor(kCardColor, context);
+    final shadowColor = resolveThemeColor(kCardShadowColor, context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 16, bottom: 8),
+          child: Text(
+            title,
+            style: TextStyle(
+              fontFamily: kSFProText,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: resolveThemeColor(kSecondaryLabel, context),
+            ),
+          ),
+        ),
+        _SettingsCard(rows: rows, cardBg: cardBg, shadowColor: shadowColor),
+        if (footer != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
+            child: Text(
+              footer!,
+              style: TextStyle(
+                fontFamily: kSFProText,
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                color: resolveThemeColor(kSecondaryLabel, context),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 // ── Text-size mode and seven-position custom slider ────────────────────────────
 class _TextSizeSection extends StatelessWidget {
   final Color accentColor;
@@ -1862,9 +1974,6 @@ class _TextSizeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardBg = resolveThemeColor(kCardColor, context);
-    final shadowColor = resolveThemeColor(kCardShadowColor, context);
-
     return ListenableBuilder(
       listenable: Listenable.merge([
         appTextSizeUsesSystemNotifier,
@@ -1888,18 +1997,6 @@ class _TextSizeSection extends StatelessWidget {
           }
         }
 
-        void toggleSystem(bool value) {
-          if (value) {
-            selectSystem();
-          } else {
-            // Keep the thumb at the current System position. Turning the
-            // switch off changes only the active mode; it does not restore an
-            // older Custom position.
-            selectCustomTextScaleIndex(systemScaleIndex);
-            saveAppSetting('Text Size', 'Custom');
-          }
-        }
-
         void selectCustom(double value) {
           final index = value.round().clamp(0, 6);
           selectCustomTextScaleIndex(index);
@@ -1917,25 +2014,36 @@ class _TextSizeSection extends StatelessWidget {
         return SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _SettingsCard(
-              rows: [
-                _TextSizeSystemRow(
-                  title: 'System',
-                  value: usesSystem,
-                  accentColor: accentColor,
-                  onTap: () => toggleSystem(!usesSystem),
-                  onChanged: toggleSystem,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SubScreenSettingsGroup(
+                  title: 'Mirror System Setting',
+                  rows: [
+                    _OptionRow(
+                      title: 'System Setting',
+                      selected: usesSystem,
+                      accentColor: accentColor,
+                      onTap: selectSystem,
+                    ),
+                  ],
                 ),
-                _TextSizeSliderRow(
-                  index: customIndex,
-                  animateChanges: usesSystem,
-                  accentColor: accentColor,
-                  onChanged: previewCustom,
-                  onChangeEnd: selectCustom,
+                const SizedBox(height: 20),
+                _SubScreenSettingsGroup(
+                  title: 'Skeddo App Only',
+                  rows: [
+                    _TextSizeSliderRow(
+                      index: customIndex,
+                      animateChanges: usesSystem,
+                      accentColor: accentColor,
+                      onChanged: previewCustom,
+                      onChangeEnd: selectCustom,
+                    ),
+                  ],
+                  footer:
+                      'This setting will apply in Skeddo only. Other apps will use the system setting.',
                 ),
               ],
-              cardBg: cardBg,
-              shadowColor: shadowColor,
             ),
           ),
         );
@@ -2766,92 +2874,6 @@ class _SettingsToggleRowState extends State<_SettingsToggleRow> {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Option row (sub-screen) ───────────────────────────────────────────────────
-// Renders a tappable row with an SF checkmark on the right when selected.
-// Row label always stays kPrimaryLabel; only the checkmark takes accent color.
-class _TextSizeSystemRow extends StatefulWidget {
-  final String title;
-  final bool value;
-  final Color accentColor;
-  final VoidCallback onTap;
-  final ValueChanged<bool> onChanged;
-
-  const _TextSizeSystemRow({
-    required this.title,
-    required this.value,
-    required this.accentColor,
-    required this.onTap,
-    required this.onChanged,
-  });
-
-  @override
-  State<_TextSizeSystemRow> createState() => _TextSizeSystemRowState();
-}
-
-class _TextSizeSystemRowState extends State<_TextSizeSystemRow> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 80),
-        color: _pressed ? kActionPanelGroupBreak : const Color(0x00000000),
-        constraints: const BoxConstraints(minHeight: _kSettingsRowHeight),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: _kSettingsRowVerticalPadding,
-        ),
-        alignment: Alignment.centerLeft,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  widget.title,
-                  style: TextStyle(
-                    fontFamily: kSFProText,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w400,
-                    color: resolveThemeColor(kPrimaryLabel, context),
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(
-              width: 70 * 0.80,
-              height: 30,
-              child: OverflowBox(
-                maxWidth: 70,
-                maxHeight: 31,
-                alignment: Alignment.center,
-                child: Transform.scale(
-                  scale: 0.80,
-                  child: AppSwitch(
-                    value: widget.value,
-                    color: widget.accentColor,
-                    height: 31,
-                    onChanged: widget.onChanged,
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
