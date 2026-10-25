@@ -16,16 +16,16 @@ by a consistent correction path when its default optics do not fit SKEDDO.
 new package widgets. After the user flags a mismatch, reuse the shared settings
 source and preserve the package's rendering path.
 
-For SKEDDO's shared glass renderer, Light Mode uses a white tint at 40% opacity
-and Dark Mode uses `#3E3E40` at 50% opacity. Modal save checkmarks use
-category/accent tint on the glass (`glassColor`) while keeping the checkmark
-glyph opaque white.
+For SKEDDO's shared glass renderer, preserve the white Light Mode tint and
+`#3E3E40` Dark Mode tint. Its opacity and blur use slider curves; GlassPopover
+has independent curves. Modal save checkmarks keep category/accent tint on the
+glass while the checkmark glyph stays opaque white.
 
-**Why:** The user wants a restrained white surface in Light Mode and a more
-opaque-looking charcoal surface in Dark Mode, without washing out the glass.
-Tinted toolbar actions should resemble iOS tinted glass without sacrificing
-refraction or white-glyph contrast.
+**Why:** The user wants mode-specific shared surfaces, with independently tuned
+slider response for the renderer and GlassPopover. Tinted toolbar actions
+should resemble iOS tinted glass without sacrificing refraction or white-glyph
+contrast.
 
-**How to apply:** Preserve the mode-specific colors and opacity values when
-revisiting the shared package-glass settings. Keep modal action tint on the
-material, not on the glyph.
+**How to apply:** Preserve the separate Light/Dark tint colors and keep
+GlassPopover settings independent of the shared renderer curves. Keep modal
+action tint on the material, not on the glyph.

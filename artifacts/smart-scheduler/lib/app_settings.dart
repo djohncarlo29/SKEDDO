@@ -439,8 +439,9 @@ final ValueNotifier<String> appEventDurationNotifier = ValueNotifier<String>(
 /// Event creation and category recovery — category ID to use when no category
 /// is explicitly selected.  Uncategorized is the default for new installs.
 const String kDefaultCategoryFallbackId = 'sys-uncategorized';
-final ValueNotifier<String> appDefaultCategoryNotifier =
-    ValueNotifier<String>(kDefaultCategoryFallbackId);
+final ValueNotifier<String> appDefaultCategoryNotifier = ValueNotifier<String>(
+  kDefaultCategoryFallbackId,
+);
 
 /// Display name cached for the Settings main-list trailing.
 final ValueNotifier<String> appDefaultCategoryLabelNotifier =
@@ -464,10 +465,14 @@ const double kLiquidGlassMinimumOpacity = 0.2;
 /// Maximum material opacity used by the Liquid Glass control.
 const double kLiquidGlassMaximumOpacity = 0.8;
 
-/// Opacity of the floating Liquid Glass tab bar material.
-/// The setting is quantized to tenths by the Appearance subscreen.
+/// New installs begin at the midpoint of the Liquid Glass slider.
+const double kDefaultLiquidGlassSliderPosition = 0.5;
+
+/// Persisted Liquid Glass slider value in the legacy 0.2–0.8 range.
 final ValueNotifier<double> appLiquidGlassOpacityNotifier =
-    ValueNotifier<double>(kLiquidGlassMaximumOpacity);
+    ValueNotifier<double>(
+      liquidGlassOpacityForSliderPosition(kDefaultLiquidGlassSliderPosition),
+    );
 
 /// Converts the material opacity to the Liquid Glass slider's whole-percent
 /// position in the 0–1 range.
@@ -581,28 +586,26 @@ Future<void> loadAppSettings() async {
   }
   // Resolve the cached label before the first Settings build. Category records
   // are owned by EventsTab, but their lightweight persisted JSON is shared.
-  final savedUserCategories = await LocalStorage.instance
-      .loadContentStringList(_kPersistedUserCategoriesKey);
+  final savedUserCategories = await LocalStorage.instance.loadContentStringList(
+    _kPersistedUserCategoriesKey,
+  );
   final savedPinnedCategories = await LocalStorage.instance
       .loadContentStringList(_kPersistedPinnedCategoriesKey);
-  final savedCategories = [
-    ...?savedUserCategories,
-    ...?savedPinnedCategories,
-  ];
+  final savedCategories = [...?savedUserCategories, ...?savedPinnedCategories];
   for (final raw in savedCategories) {
-      try {
-        final decoded = jsonDecode(raw);
-        if (decoded is Map &&
-            decoded['id']?.toString() == appDefaultCategoryNotifier.value) {
-          final name = decoded['name']?.toString().trim();
-          if (name != null && name.isNotEmpty) {
-            appDefaultCategoryLabelNotifier.value = name;
-          }
-          break;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map &&
+          decoded['id']?.toString() == appDefaultCategoryNotifier.value) {
+        final name = decoded['name']?.toString().trim();
+        if (name != null && name.isNotEmpty) {
+          appDefaultCategoryLabelNotifier.value = name;
         }
-      } catch (_) {
-        // A malformed category record should not block other app settings.
+        break;
       }
+    } catch (_) {
+      // A malformed category record should not block other app settings.
+    }
   }
 
   final dateLocale = prefs.getString(_kDateLocaleKey);
@@ -649,7 +652,10 @@ Future<void> saveAppSetting(String routeTitle, String value) {
       case 'Default Event Duration':
         await prefs.setString(_kEventDurationKey, value);
       case 'Default Category':
-        await prefs.setString(_kDefaultCategoryKey, appDefaultCategoryNotifier.value);
+        await prefs.setString(
+          _kDefaultCategoryKey,
+          appDefaultCategoryNotifier.value,
+        );
       case 'Date Format':
         await prefs.setString(
           _kDateLocaleKey,
@@ -661,10 +667,7 @@ Future<void> saveAppSetting(String routeTitle, String value) {
           await prefs.setDouble(
             _kLiquidGlassOpacityKey,
             opacity
-                .clamp(
-                  kLiquidGlassMinimumOpacity,
-                  kLiquidGlassMaximumOpacity,
-                )
+                .clamp(kLiquidGlassMinimumOpacity, kLiquidGlassMaximumOpacity)
                 .toDouble(),
           );
         }

@@ -48,8 +48,8 @@ void main() {
 
   test('shared renderer opacity follows the slider in both themes', () {
     const positions = <double>[0, 0.25, 0.5, 0.75, 1];
-    const lightValues = <double>[0.20, 0.30, 0.40, 0.50, 0.70];
-    const darkValues = <double>[0.30, 0.40, 0.50, 0.60, 0.80];
+    const lightValues = <double>[0.20, 0.35, 0.50, 0.60, 0.70];
+    const darkValues = <double>[0.30, 0.45, 0.60, 0.70, 0.80];
 
     for (var index = 0; index < positions.length; index++) {
       expect(
@@ -64,11 +64,11 @@ void main() {
 
     expect(
       skeddoSharedGlassOpacityForPosition(0.125, Brightness.light),
-      closeTo(0.25, 0.000001),
+      closeTo(0.275, 0.000001),
     );
     expect(
       skeddoSharedGlassOpacityForPosition(0.875, Brightness.dark),
-      closeTo(0.70, 0.000001),
+      closeTo(0.75, 0.000001),
     );
   });
 
@@ -158,11 +158,11 @@ void main() {
 
     var tabBar = tester.widget<GlassTabBar>(find.byType(GlassTabBar));
     expect(tabBar.settings!.blur, 3.5);
-    expect(tabBar.settings!.glassColor.a, closeTo(0.50, 0.001));
+    expect(tabBar.settings!.glassColor.a, closeTo(0.60, 0.001));
     expect(skeddoBottomBarGlassSettingsFor(Brightness.light).blur, 3.5);
     expect(
       skeddoBottomBarGlassSettingsFor(Brightness.light).glassColor.a,
-      closeTo(0.50, 0.001),
+      closeTo(0.60, 0.001),
     );
     expect(tabBar.innerBlur, 4.5);
 
@@ -173,11 +173,11 @@ void main() {
 
     tabBar = tester.widget<GlassTabBar>(find.byType(GlassTabBar));
     expect(tabBar.settings!.blur, 1);
-    expect(tabBar.settings!.glassColor.a, closeTo(0.40, 0.001));
+    expect(tabBar.settings!.glassColor.a, closeTo(0.50, 0.001));
     expect(skeddoBottomBarGlassSettingsFor(Brightness.light).blur, 1);
     expect(
       skeddoBottomBarGlassSettingsFor(Brightness.light).glassColor.a,
-      closeTo(0.40, 0.001),
+      closeTo(0.50, 0.001),
     );
     expect(tabBar.innerBlur, 2);
   });
@@ -213,7 +213,7 @@ void main() {
       find.byType(GlassContainer),
     );
     expect(previewGlass.settings!.blur, closeTo(0.5, 0.000001));
-    expect(previewGlass.settings!.glassColor.a, closeTo(0.30, 0.001));
+    expect(previewGlass.settings!.glassColor.a, closeTo(0.35, 0.001));
 
     appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
       0.75,
@@ -221,6 +221,6 @@ void main() {
     await tester.pump();
     previewGlass = tester.widget<GlassContainer>(find.byType(GlassContainer));
     expect(previewGlass.settings!.blur, 3.5);
-    expect(previewGlass.settings!.glassColor.a, closeTo(0.50, 0.001));
+    expect(previewGlass.settings!.glassColor.a, closeTo(0.60, 0.001));
   });
 }

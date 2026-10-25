@@ -13,7 +13,9 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     SharedPreferences.resetStatic();
-    appLiquidGlassOpacityNotifier.value = kLiquidGlassMaximumOpacity;
+    appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
+      kDefaultLiquidGlassSliderPosition,
+    );
     await LocalStorage.instance.useDatabaseForTesting(
       AppDatabase(NativeDatabase.memory()),
     );
@@ -23,18 +25,28 @@ void main() {
     await LocalStorage.instance.resetDatabaseForTesting();
   });
 
-  test('Liquid Glass defaults to 80% when no value is stored', () async {
+  test('Liquid Glass defaults to 50% when no value is stored', () async {
     await loadAppSettings();
 
-    expect(appLiquidGlassOpacityNotifier.value, kLiquidGlassMaximumOpacity);
+    expect(
+      liquidGlassSliderPositionForOpacity(appLiquidGlassOpacityNotifier.value),
+      kDefaultLiquidGlassSliderPosition,
+    );
   });
 
-  test('Liquid Glass restores the exact saved value after reload', () async {
-    await saveAppSetting('Liquid Glass', '0.5');
+  test('Liquid Glass restores the changed slider value after reload', () async {
+    const changedPosition = 0.73;
+    final changedValue = liquidGlassOpacityForSliderPosition(changedPosition);
+    await saveAppSetting('Liquid Glass', changedValue.toString());
 
-    appLiquidGlassOpacityNotifier.value = kLiquidGlassMaximumOpacity;
+    appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
+      kDefaultLiquidGlassSliderPosition,
+    );
     await loadAppSettings();
 
-    expect(appLiquidGlassOpacityNotifier.value, 0.5);
+    expect(
+      liquidGlassSliderPositionForOpacity(appLiquidGlassOpacityNotifier.value),
+      changedPosition,
+    );
   });
 }

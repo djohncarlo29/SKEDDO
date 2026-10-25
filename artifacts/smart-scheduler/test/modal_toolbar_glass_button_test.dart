@@ -174,7 +174,7 @@ void main() {
 
     var button = tester.widget<GlassIconButton>(find.byType(GlassIconButton));
     expect(button.settings!.blur, closeTo(0.5, 0.000001));
-    expect(button.settings!.glassColor.a, closeTo(0.30, 0.001));
+    expect(button.settings!.glassColor.a, closeTo(0.35, 0.001));
 
     appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
       0.75,
@@ -183,7 +183,7 @@ void main() {
 
     button = tester.widget<GlassIconButton>(find.byType(GlassIconButton));
     expect(button.settings!.blur, 3.5);
-    expect(button.settings!.glassColor.a, closeTo(0.50, 0.001));
+    expect(button.settings!.glassColor.a, closeTo(0.60, 0.001));
   });
 
   testWidgets(

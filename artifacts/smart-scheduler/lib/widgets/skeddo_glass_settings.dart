@@ -12,8 +12,8 @@ import '../app_settings.dart';
 /// These retain flutter_liquid_glass_widgets' bottom-bar optics while using
 /// SKEDDO's explicit tint colors and slider-driven opacity. The constants are
 /// the shared renderer opacity at the 50% slider mark.
-const double kSkeddoLightBottomBarOpacity = 0.40;
-const double kSkeddoDarkBottomBarOpacity = 0.50;
+const double kSkeddoLightBottomBarOpacity = 0.50;
+const double kSkeddoDarkBottomBarOpacity = 0.60;
 
 /// GlassPopover card and button opacity at the 50% slider mark.
 const double kSkeddoPopoverGlassOpacity = 0.90;
@@ -94,17 +94,17 @@ const _kActiveTabIndicatorBlurAnchors = <(double, double)>[
 
 const _kSharedGlassLightOpacityAnchors = <(double, double)>[
   (0, 0.20),
-  (25, 0.30),
-  (50, 0.40),
-  (75, 0.50),
+  (25, 0.35),
+  (50, 0.50),
+  (75, 0.60),
   (100, 0.70),
 ];
 
 const _kSharedGlassDarkOpacityAnchors = <(double, double)>[
   (0, 0.30),
-  (25, 0.40),
-  (50, 0.50),
-  (75, 0.60),
+  (25, 0.45),
+  (50, 0.60),
+  (75, 0.70),
   (100, 0.80),
 ];
 
