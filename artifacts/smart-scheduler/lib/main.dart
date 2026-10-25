@@ -2482,8 +2482,18 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             )
           : null,
       trailingBuilder: (titleFontSize) {
+        final titlePainter = TextPainter(
+          text: TextSpan(
+            text: displayTitle,
+            style: titleStyle.copyWith(fontSize: titleFontSize),
+          ),
+          textDirection: Directionality.of(context),
+          textScaler: TextScaler.noScaling,
+          maxLines: 1,
+        )..layout();
         final verticalNavigation = _CalendarNavChevron(
           titleFontSize: titleFontSize,
+          titleLineHeight: titlePainter.height,
           // The preview panel should look like the same view once settled;
           // its pointer and semantic actions remain disabled until activation.
           canUp: canUp,
@@ -4188,6 +4198,7 @@ class _ChevronPainter extends CustomPainter {
 class _CalendarNavChevron extends StatelessWidget {
   const _CalendarNavChevron({
     required this.titleFontSize,
+    required this.titleLineHeight,
     required this.canUp,
     required this.canDown,
     this.compact = false,
@@ -4196,6 +4207,7 @@ class _CalendarNavChevron extends StatelessWidget {
   });
 
   final double titleFontSize;
+  final double titleLineHeight;
   final bool canUp, canDown;
   final bool compact;
   final VoidCallback? onUp;
@@ -4301,6 +4313,11 @@ class _CalendarNavChevron extends StatelessWidget {
     const double hitHalfHeight = 24.0;
     const double iconLeft = 8.0;
     final overflowY = hitHalfHeight - halfHeight;
+    // The title is bottom-aligned in the expanded row. Shift only the visible
+    // chevrons so their center remains aligned with the title; hit zones retain
+    // their authored 48px geometry.
+    final titleCenterOffset =
+        (hitHalfHeight * 2 - titleLineHeight) / 2;
 
     Widget half({
       required _ChevronDir direction,
@@ -4354,14 +4371,19 @@ class _CalendarNavChevron extends StatelessWidget {
             color: canUp ? resolveAccentColor(context) : disabledColor,
             onTap: onUp,
             top: 0,
-            iconTop: firstTop + overflowY,
+            iconTop: firstTop + overflowY + titleCenterOffset,
           ),
           half(
             direction: _ChevronDir.down,
             color: canDown ? resolveAccentColor(context) : disabledColor,
             onTap: onDown,
             top: hitHalfHeight,
-            iconTop: halfHeight + secondTop + overflowY - hitHalfHeight,
+            iconTop:
+                halfHeight +
+                secondTop +
+                overflowY -
+                hitHalfHeight +
+                titleCenterOffset,
           ),
         ],
       ),
