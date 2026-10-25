@@ -141,11 +141,13 @@ void main() {
     final discardButton = tester.widget<GlassButton>(discardButtonFinder);
     expect(
       discardButton.settings!.glassColor.a,
-      closeTo(kSkeddoPopoverGlassOpacity / 2.5, 0.001),
+      kSkeddoPopoverGlassOpacity,
     );
     expect(discardButton.useOwnLayer, isTrue);
     expect(discardButton.quality, GlassQuality.premium);
-    expect(discardButton.style, GlassButtonStyle.prominent);
+    expect(discardButton.style, GlassButtonStyle.filled);
+    expect(discardButton.settings!.thickness, 75);
+    expect(discardButton.settings!.lightIntensity, closeTo(0.9, 0.001));
     final lightButtonTint = resolveThemeColor(
       kModalButtonBackground,
       pageContext,
@@ -155,15 +157,11 @@ void main() {
       lightButtonTint.toARGB32() & 0x00FFFFFF,
     );
     expect(
-      discardButton.settings!.glassColor.a * 2.5,
-      closeTo(kSkeddoPopoverGlassOpacity, 0.001),
-    );
-    expect(
       skeddoPopoverButtonGlassSettingsFor(
         Brightness.dark,
         const Color(0xFF3A3A3C),
       ).glassColor.a,
-      closeTo(kSkeddoPopoverGlassOpacity / 2.5, 0.001),
+      kSkeddoPopoverGlassOpacity,
     );
     expect(
       skeddoPopoverButtonGlassSettingsFor(

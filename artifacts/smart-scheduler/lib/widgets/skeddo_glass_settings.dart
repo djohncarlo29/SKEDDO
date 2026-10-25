@@ -11,7 +11,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
 /// SKEDDO's explicit, mode-specific tint colors and opacities.
 const double kSkeddoLightBottomBarOpacity = 0.40;
 const double kSkeddoDarkBottomBarOpacity = 0.50;
-const double kSkeddoPopoverGlassOpacity = 0.85;
+const double kSkeddoPopoverGlassOpacity = 1.0;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
@@ -61,7 +61,8 @@ LiquidGlassSettings skeddoBottomBarGlassSettingsFor(Brightness brightness) =>
     ? kSkeddoDarkBottomBarGlassSettings
     : kSkeddoBottomBarGlassSettings;
 
-/// Popovers use the shared glass optics with the original modal card tint.
+/// Discard popovers use an opaque card tint while retaining the package's
+/// existing optical settings and edge lighting.
 LiquidGlassSettings skeddoPopoverGlassSettingsFor(
   Brightness brightness,
   Color cardTint,
@@ -72,20 +73,17 @@ LiquidGlassSettings skeddoPopoverGlassSettingsFor(
   );
 }
 
-/// Gives the discard action its own 85%-tinted surface, using the modal button
-/// color rather than the popover card color. GlassButtonStyle.prominent
-/// multiplies its input tint alpha by 2.5, so its input alpha is divided by that
-/// factor. The independent premium glass layer refracts the popover beneath it
-/// and retains its own rim instead of merging into the parent glass surface.
+/// Gives the discard action its own opaque modal-button tint and keeps the
+/// prominent glass geometry and lighting without its built-in 90% tint cap.
 LiquidGlassSettings skeddoPopoverButtonGlassSettingsFor(
   Brightness brightness,
   Color buttonTint,
 ) {
   final popover = skeddoBottomBarGlassSettingsFor(brightness);
   return popover.copyWith(
-    glassColor: buttonTint.withValues(
-      alpha: kSkeddoPopoverGlassOpacity / 2.5,
-    ),
+    glassColor: buttonTint.withValues(alpha: kSkeddoPopoverGlassOpacity),
+    thickness: (popover.effectiveThickness * 2.5).clamp(30.0, 100.0),
+    lightIntensity: (popover.effectiveLightIntensity * 1.5).clamp(0.3, 1.0),
   );
 }
 

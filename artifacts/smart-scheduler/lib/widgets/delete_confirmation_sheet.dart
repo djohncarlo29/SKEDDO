@@ -694,7 +694,7 @@ class _DiscardConfirmationGlassButtonState
                 settings: widget.settings,
                 quality: GlassQuality.premium,
                 useOwnLayer: true,
-                style: GlassButtonStyle.prominent,
+                style: GlassButtonStyle.filled,
                 interactionScale: 1.06,
                 label: 'Discard Changes',
                 child: Center(
