@@ -567,8 +567,6 @@ class DiscardChangesPopoverAnchorState
     final viewportSize = MediaQuery.sizeOf(context);
     final screenSize =
         device_screen_size.getDeviceScreenSize(context) ?? viewportSize;
-    final horizontalInset =
-        AppWindowContentScope.of(context).horizontalInset;
     final isPresentedOverModalSheet =
         RoundedCupertinoSheetRoute.hasParentSheet(context);
 
@@ -585,12 +583,10 @@ class DiscardChangesPopoverAnchorState
           ? kModalConfirmationSheetCornerRadius
           : kConfirmationSheetCornerRadius,
       alignment: GlassMenuAlignment.topLeft,
-      screenPadding: EdgeInsets.fromLTRB(
-        horizontalInset + 12,
-        12,
-        horizontalInset + 12,
-        12,
-      ),
+      // GlassPopover adds the platform view insets itself when clamping. Do
+      // not add AppWindowContentScope's landscape inset again here, or the
+      // popover is pushed inward from its actual trigger.
+      screenPadding: const EdgeInsets.all(12),
       settings: skeddoPopoverGlassSettingsFor(
         CupertinoTheme.brightnessOf(context),
         resolveThemeColor(kModalCard, context),

@@ -191,6 +191,7 @@ class _FloatingTabPillState extends State<FloatingTabPill> {
       indicatorSettings: isDark
           ? null
           : kSkeddoLightLiftedTabIndicatorSettings,
+      innerBlur: 3,
       indicatorColor: isDark
           ? kFloatingTabBarDarkIndicatorColor
           : kFloatingTabBarLightIndicatorColor,

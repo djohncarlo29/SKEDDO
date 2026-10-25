@@ -154,3 +154,4 @@
 - [Flutter browser touch verification](flutter-browser-touch-gestures.md) — use timed, incremental touch moves; a one-move swipe can falsely suggest a short page cannot collapse.
 - [GlassPopover dismissal lifecycle](glass-popover-dismissal-lifecycle.md) — onClose starts the morph; keep its host mounted through spring settle before removing the root overlay.
 - [Independent GlassPopover surfaces](glass-popover-nested-surfaces.md) — popover content inherits the morphing glass layer; nested controls that need their own tint, refraction, and rim must render in an own layer.
+- [GlassPopover landscape safe area](glass-popover-safe-area.md) — package clamping already adds FlutterView insets; don't add the app's landscape inset to screenPadding again.

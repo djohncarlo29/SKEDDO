@@ -5,6 +5,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show
         GlassButton,
         GlassButtonStyle,
+        GlassContainer,
         GlassMenuAlignment,
         GlassPopover,
         GlassQuality,
@@ -30,19 +31,23 @@ void main() {
     await tester.pumpWidget(
       CupertinoApp(
         builder: (context, child) => AppWindowContentScope(
-          horizontalInset: 0,
+          horizontalInset: 24,
           physicalWidth: 800,
           child: child ?? const SizedBox.shrink(),
         ),
         home: Builder(
           builder: (context) {
             pageContext = context;
-            return Center(
-              child: DiscardChangesPopoverAnchor(
-                key: anchorKey,
-                child: CupertinoButton(
-                  onPressed: () {},
-                  child: const Icon(CupertinoIcons.xmark),
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 24, top: 72),
+                child: DiscardChangesPopoverAnchor(
+                  key: anchorKey,
+                  child: CupertinoButton(
+                    onPressed: () {},
+                    child: const Icon(CupertinoIcons.xmark),
+                  ),
                 ),
               ),
             );
@@ -51,6 +56,7 @@ void main() {
       ),
     );
 
+    final triggerOrigin = tester.getTopLeft(find.byType(GlassPopover));
     final confirmation = showDiscardChangesConfirmationSheet(
       pageContext,
       anchorKey: anchorKey,
@@ -67,6 +73,22 @@ void main() {
     final popover = tester.widget<GlassPopover>(popoverFinder);
     expect(popover.alignment, GlassMenuAlignment.topLeft);
     expect(popover.popoverWidth, 400);
+    expect(popover.screenPadding, const EdgeInsets.all(12));
+    expect(kSkeddoPopoverGlassOpacity, 0.90);
+    final glassContainers = find.byType(GlassContainer);
+    final glassContainerRects = List<Rect>.generate(
+      glassContainers.evaluate().length,
+      (index) => tester.getRect(glassContainers.at(index)),
+    );
+    expect(
+      glassContainerRects.any(
+        (rect) =>
+            (rect.left - triggerOrigin.dx).abs() < 1.0 &&
+            (rect.width - popover.popoverWidth).abs() < 1.0,
+      ),
+      isTrue,
+      reason: 'The landscape popover should open at the trigger, not inset.',
+    );
     expect(popover.barrierDismissible, isTrue);
     expect(
       popover.settings!.refractiveIndex,

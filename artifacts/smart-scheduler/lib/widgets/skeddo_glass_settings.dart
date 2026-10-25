@@ -11,7 +11,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
 /// SKEDDO's explicit, mode-specific tint colors and opacities.
 const double kSkeddoLightBottomBarOpacity = 0.40;
 const double kSkeddoDarkBottomBarOpacity = 0.50;
-const double kSkeddoPopoverGlassOpacity = 1.0;
+const double kSkeddoPopoverGlassOpacity = 0.90;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
@@ -67,8 +67,8 @@ LiquidGlassSettings skeddoBottomBarGlassSettingsFor(Brightness brightness) =>
     ? kSkeddoDarkBottomBarGlassSettings
     : kSkeddoBottomBarGlassSettings;
 
-/// Keeps the floating tab-bar shell clear while leaving its selected glass
-/// indicator on the package's separate blur settings.
+/// Reduces only the full floating tab-bar shell's backdrop blur; the resting
+/// selected pill retains its former blur through [GlassTabBar.innerBlur].
 LiquidGlassSettings skeddoTabBarGlassSettingsFor(Brightness brightness) =>
     skeddoBottomBarGlassSettingsFor(brightness).copyWith(blur: 1);
 
