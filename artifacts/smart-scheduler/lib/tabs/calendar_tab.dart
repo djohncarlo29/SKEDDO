@@ -11393,7 +11393,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     'November',
     'December',
   ];
-  static const _kDayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  List<String> get _kDayLetters => calendarWeekdayHeaderLetters();
 
   Widget _buildDateRow(String label, DateTime dt, String target) {
     final dateOpen = _activePicker == target;
@@ -13312,15 +13312,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     'November',
     'December',
   ];
-  static const _kRepeatDayLabels = [
-    'M',
-    'T',
-    'W',
-    'T',
-    'F',
-    'S',
-    'S',
-  ];
+  List<String> get _kRepeatDayLabels => calendarWeekdayHeaderLetters();
 
   String _formatEndDate(DateTime d) =>
       '${_kRepeatMonthNames[d.month - 1]} ${d.day}, ${d.year}';
@@ -13361,7 +13353,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     required int month,
     required DateTime today,
   }) {
-    final startOffset = DateTime(year, month, 1).weekday - 1;
+    final startOffset = _firstWeekday(year, month);
     final daysInMonth = DateTime(year, month + 1, 0).day;
     final isSelectedMonth = _endDate.year == year && _endDate.month == month;
     final isCurrentMonth = today.year == year && today.month == month;
@@ -15001,7 +14993,7 @@ class _NewEventSheetState extends State<_NewEventSheet>
     required int month,
     required DateTime today,
   }) {
-    final startOffset = DateTime(year, month, 1).weekday - 1; // Mon-first
+    final startOffset = _firstWeekday(year, month);
     final daysInMonth = DateTime(year, month + 1, 0).day;
     final selected = _pickerDate;
     final isSelectedMonth = selected.year == year && selected.month == month;

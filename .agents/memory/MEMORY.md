@@ -135,7 +135,7 @@
 - [Smart Category lifecycle](smart-category-lifecycle.md) — Smart Categories own rules, not events or sections; use red lifecycle actions and explicit utility confirmations.
 - [Calendar month dot ordering](calendar-month-dot-order.md) — month-grid dots follow the first event in displayed list order, with all-day events first.
 - [Liquid Glass SF glyph normalization](liquid-glass-sf-glyph-normalization.md) — custom SF font glyphs need one shared slot and unconstrained rendering; per-glyph FittedBox sizing distorts optical comparisons.
-- [Date-picker weekday headers](date-picker-weekday-headers.md) — all calendar and modal date-picker weekday rows use single letters, `M T W T F S S`.
+- [Date-picker weekday headers](date-picker-weekday-headers.md) — calendar and month-grid pickers follow First Day of Week; wheel barrels stay unchanged.
 - [Smart Category semantic threshold](smart-category-semantic-threshold.md) — shared date/time text makes low cosine floors admit unrelated scheduled events; keep semantic matching conservative and normalize plural rules.
 - [Native iOS tab bar bridge](native-ios-tab-bar-bridge.md) — keep UIKit tab chrome across iOS versions; UIKit selects classic or floating styling and Flutter content clearance follows.
 - [Calendar morph transition notes](calendar-morph-transition-index.md) — use the grouped index for hierarchy, panel handoff, clipping, swipe, and content-bound notes.
