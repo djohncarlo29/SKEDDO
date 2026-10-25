@@ -597,6 +597,8 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    appSystemBrightnessNotifier.value =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
     _textScalePollTimer = Timer.periodic(
       const Duration(seconds: 1),
       (_) => unawaited(refreshDeviceTextScaleProfileIfChanged()),
@@ -631,6 +633,15 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
   }
 
   @override
+  void didChangePlatformBrightness() {
+    final systemBrightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    if (appSystemBrightnessNotifier.value != systemBrightness) {
+      appSystemBrightnessNotifier.value = systemBrightness;
+    }
+  }
+
+  @override
   void dispose() {
     _textScalePollTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
@@ -652,6 +663,7 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
     return ListenableBuilder(
       listenable: Listenable.merge([
         appBrightnessNotifier,
+        appSystemBrightnessNotifier,
         appTextSizeUsesSystemNotifier,
         appTextSizeIndexNotifier,
         appSystemTextScaleNotifier,
@@ -759,7 +771,9 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
               // Brightness override: propagate through MediaQuery so that
               // CupertinoDynamicColor.resolve() returns the correct variant
               // everywhere, including widgets that read platformBrightness
-              // rather than CupertinoTheme directly.
+              // rather than CupertinoTheme directly. This makes MediaQuery's
+              // platformBrightness the effective app theme below this point;
+              // OS-setting labels must use appSystemBrightnessNotifier instead.
               if (brightness != null) {
                 result = MediaQuery(
                   data: MediaQuery.of(

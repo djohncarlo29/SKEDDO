@@ -1873,47 +1873,77 @@ class _ThemeSettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final systemBrightness = MediaQuery.platformBrightnessOf(context);
-    final systemTitle =
-        'System Setting (${systemBrightness == Brightness.dark ? 'Dark' : 'Light'})';
+    return ValueListenableBuilder<Brightness>(
+      valueListenable: appSystemBrightnessNotifier,
+      builder: (context, systemBrightness, _) {
+        final systemTitle =
+            'System Setting (${systemBrightness == Brightness.dark ? 'Dark' : 'Light'})';
 
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _SubScreenSettingsGroup(
-              title: 'Mirror System Setting',
-              rows: [
-                _OptionRow(
-                  title: systemTitle,
-                  selected: selectedOption == 'System',
-                  accentColor: accentColor,
-                  onTap: () => onSelect('System'),
+        return SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SubScreenSettingsGroup(
+                  title: 'Mirror System Setting',
+                  rows: [
+                    _OptionRow(
+                      title: systemTitle,
+                      selected: selectedOption == 'System',
+                      accentColor: accentColor,
+                      onTap: () => onSelect('System'),
+                    ),
+                  ],
+              footer:
+                  'When selected, Skeddo will use the setting from ${_systemThemeSettingsDestination()}.',
+                ),
+                const SizedBox(height: 20),
+                _SubScreenSettingsGroup(
+                  title: 'Skeddo App Only',
+                  rows: [
+                    for (final option in const ['Light', 'Dark'])
+                      _OptionRow(
+                        title: option,
+                        selected: selectedOption == option,
+                        accentColor: accentColor,
+                        onTap: () => onSelect(option),
+                      ),
+                  ],
+                  footer:
+                      'This setting will apply in Skeddo only. Other apps will use the system setting.',
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            _SubScreenSettingsGroup(
-              title: 'Skeddo App Only',
-              rows: [
-                for (final option in const ['Light', 'Dark'])
-                  _OptionRow(
-                    title: option,
-                    selected: selectedOption == option,
-                    accentColor: accentColor,
-                    onTap: () => onSelect(option),
-                  ),
-              ],
-              footer:
-                  'This setting will apply in Skeddo only. Other apps will use the system setting.',
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
+}
+
+String _systemThemeSettingsDestination() {
+  if (kIsWeb) return 'your device’s appearance settings';
+
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.android =>
+      'Settings → Display → Dark theme (menu wording may vary by phone)',
+    TargetPlatform.iOS =>
+      'Settings → Display & Brightness → Appearance',
+    _ => 'your device’s appearance settings',
+  };
+}
+
+String _systemTextSizeSettingsDestination() {
+  if (kIsWeb) return 'your device’s text-size settings';
+
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.android =>
+      'Settings → search for “Font size” (menu wording may vary by phone)',
+    TargetPlatform.iOS =>
+      'Settings → Display & Brightness → Text Size, or Accessibility → Display & Text Size → Larger Text',
+    _ => 'your device’s text-size settings',
+  };
 }
 
 class _SubScreenSettingsGroup extends StatelessWidget {
@@ -2027,6 +2057,8 @@ class _TextSizeSection extends StatelessWidget {
                       onTap: selectSystem,
                     ),
                   ],
+                  footer:
+                      'When selected, Skeddo will use the setting from ${_systemTextSizeSettingsDestination()}.',
                 ),
                 const SizedBox(height: 20),
                 _SubScreenSettingsGroup(

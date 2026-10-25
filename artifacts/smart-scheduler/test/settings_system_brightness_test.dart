@@ -1,0 +1,67 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_scheduler/app_settings.dart';
+import 'package:smart_scheduler/settings_panel.dart';
+import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
+import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
+
+void main() {
+  testWidgets(
+    'Theme system label stays on OS brightness under an app-only override',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(402, 874);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final originalAppBrightness = appBrightnessNotifier.value;
+      final originalSystemBrightness = appSystemBrightnessNotifier.value;
+      appBrightnessNotifier.value = Brightness.light;
+      appSystemBrightnessNotifier.value = Brightness.dark;
+      addTearDown(() {
+        appBrightnessNotifier.value = originalAppBrightness;
+        appSystemBrightnessNotifier.value = originalSystemBrightness;
+      });
+
+      final backAction = ValueNotifier<VoidCallback?>(null);
+      final headerTitleTransition = AppHeaderTitleTransition();
+      addTearDown(backAction.dispose);
+      addTearDown(headerTitleTransition.dispose);
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: MediaQuery(
+            data: const MediaQueryData(
+              size: Size(402, 874),
+              platformBrightness: Brightness.light,
+            ),
+            child: AppWindowContentScope(
+              horizontalInset: 0,
+              physicalWidth: 402,
+              child: SettingsPanel(
+                topInset: 0,
+                bottomInset: 0,
+                isOpen: true,
+                isLandscapeTwoPane: false,
+                onClose: () {},
+                subScreenBackAction: backAction,
+                headerTitleTransition: headerTitleTransition,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Theme').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('System Setting (Dark)'), findsOneWidget);
+      expect(find.text('Skeddo App Only'), findsOneWidget);
+      expect(
+        find.textContaining('When selected, Skeddo will use the setting from'),
+        findsOneWidget,
+      );
+    },
+  );
+}

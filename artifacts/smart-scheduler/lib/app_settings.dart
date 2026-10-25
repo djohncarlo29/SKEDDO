@@ -27,6 +27,11 @@ import 'services/local_storage.dart';
 final ValueNotifier<Brightness?> appBrightnessNotifier =
     ValueNotifier<Brightness?>(null);
 
+/// The operating system brightness, independent of SKEDDO's optional theme
+/// override. The app root keeps this synchronized with PlatformDispatcher.
+final ValueNotifier<Brightness> appSystemBrightnessNotifier =
+    ValueNotifier<Brightness>(Brightness.light);
+
 /// Whether SKEDDO follows the phone's current OS text size.
 final ValueNotifier<bool> appTextSizeUsesSystemNotifier = ValueNotifier<bool>(
   true,
