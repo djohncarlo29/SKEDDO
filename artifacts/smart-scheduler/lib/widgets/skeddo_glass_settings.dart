@@ -166,7 +166,7 @@ double skeddoSharedGlassOpacityForPosition(
 double skeddoPopoverOpacityForPosition(double position) =>
     _interpolateSliderAnchors(position, _kPopoverOpacityAnchors);
 
-/// Independent blur curve used by the GlassPopover card and its discard button.
+/// Independent blur curve used by the GlassPopover card.
 double skeddoPopoverBlurForPosition(double position) =>
     _interpolateSliderAnchors(position, _kPopoverBlurAnchors);
 
@@ -225,7 +225,7 @@ LiquidGlassSettings skeddoPopoverButtonGlassSettingsFor(
       alpha: skeddoPopoverOpacityForPosition(sliderPosition),
     ),
     thickness: 0,
-    blur: skeddoPopoverBlurForPosition(sliderPosition),
+    blur: 0,
     chromaticAberration: 0,
     lightIntensity: 0,
     ambientStrength: 0,

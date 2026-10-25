@@ -110,7 +110,7 @@ void main() {
       );
       expect(
         skeddoPopoverButtonGlassSettingsFor(Brightness.dark, tint).blur,
-        expectedBlurs[index],
+        0,
       );
     }
 

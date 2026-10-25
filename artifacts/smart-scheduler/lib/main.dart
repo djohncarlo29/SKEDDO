@@ -984,10 +984,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       axis: Axis.vertical,
     )?.position;
     if (position != null) {
-      _headerTitleTransition.bindTo(
-        position,
-        preserveCollapseProgress: true,
-      );
+      _headerTitleTransition.bindTo(position, preserveCollapseProgress: true);
     }
   }
 
@@ -1089,11 +1086,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     // Calendar Day View intentionally has no header-owning scroll position:
     // its timeline scrolls independently. Keep the shell's last shared title
     // state instead of treating the missing position as an expanded header.
-    final preserveCalendarDayHeader =
-        _selectedIndex == 1 && position == null;
+    final preserveCalendarDayHeader = _selectedIndex == 1 && position == null;
     _headerTitleTransition.bindTo(
       position,
-      preserveCollapseProgress: preserveCollapseProgress ||
+      preserveCollapseProgress:
+          preserveCollapseProgress ||
           preserveCalendarDayHeader ||
           AppHeaderScrollView.isHeaderPosition(position),
     );
@@ -1123,10 +1120,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       return;
     }
 
-    _headerTitleTransition.bindTo(
-      null,
-      preserveCollapseProgress: true,
-    );
+    _headerTitleTransition.bindTo(null, preserveCollapseProgress: true);
 
     if (_canReplaceLandscapeDcvPage()) {
       // Finish any in-flight replacement before starting the next one. The
@@ -2046,8 +2040,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         (headerPosition != null
             ? _headerTitleTransition.searchBarCollapseProgress < 1.0
             : (scrollCtrl == null ||
-            !scrollCtrl.hasClients ||
-            scrollCtrl.offset < searchBarHostRowHeight(context)));
+                  !scrollCtrl.hasClients ||
+                  scrollCtrl.offset < searchBarHostRowHeight(context)));
 
     if (!visible) {
       // Search bar is off-screen. Collapse the header immediately, then let
@@ -2194,10 +2188,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     });
   }
 
-  Future<void> _sendNativeTabBarColors(
-    int activeArgb,
-    int inactiveArgb,
-  ) async {
+  Future<void> _sendNativeTabBarColors(int activeArgb, int inactiveArgb) async {
     try {
       await _nativeTabBarChannel.invokeMethod<void>('setTabBarColors', {
         'active': activeArgb,
@@ -3129,644 +3120,606 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                       child: NotificationListener<ScrollNotification>(
                         onNotification: _onHeaderScrollNotification,
                         child: Stack(
-                        children: [
-                          // Content — fills the full Stack area but gets an animated
-                          // top-padding equal to the current header height so the
-                          // scroll view's content starts below the header, exactly
-                          // as it did when the header was a Column sibling.
-                          AnimatedBuilder(
-                            animation: _searchModeAnim,
-                            builder: (context, child) {
-                              final t = _searchModeAnim.value.clamp(0.0, 1.0);
-                              final leadingInset =
-                                  topInset + headerToolbarHeight * (1 - t);
-                              return AppHeaderScrollInsetScope(
-                                leadingInset: leadingInset,
-                                titleTransition: _headerTitleTransition,
-                                titleCollapseExtent: isLandscape
-                                    ? 0.0
-                                    : kAppHeaderTitleCollapseDistance,
-                                child: Padding(
-                                  padding: EdgeInsets.only(
-                                    top: leadingInset,
-                                    bottom: dcvKeyboardBottomInset,
-                                  ),
-                                  child: child,
-                                ),
-                              );
-                            },
-                            child: _buildContent(
-                              landscapeMasterDetail:
-                                  landscapeDcvLayoutAvailable,
-                              landscapeMasterWidth: landscapeMasterWidth,
-                            ),
-                          ),
-
-                          // Header — last Stack child so it paints above the content.
-                          // While the search bar is focused the header collapses to
-                          // just the status-bar inset (icons row + title slide off
-                          // screen) and the border + shadow fade out so the surface
-                          // reads as continuous.
-                          Positioned(
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            child: AnimatedBuilder(
-                              // Both _searchModeAnim and _dcvSlideController are
-                              // AnimationControllers owned by AppShell.  EventsTab's
-                              // SlideTransitions also listen to _dcvSlideController —
-                              // same object, same tick, same paint call.  Flutter
-                              // guarantees zero lag between header and content on
-                              // Impeller/Skia, eliminating the 1-frame flicker.
-                              animation: Listenable.merge([
-                                _searchModeAnim,
-                                _dcvSlideProgress,
-                                _dcvCategoryTransitionProgress,
-                                _settingsController,
-                                _headerTitleTransition,
-                              ]),
-                              builder: (context, _) {
+                          children: [
+                            // Content — fills the full Stack area but gets an animated
+                            // top-padding equal to the current header height so the
+                            // scroll view's content starts below the header, exactly
+                            // as it did when the header was a Column sibling.
+                            AnimatedBuilder(
+                              animation: _searchModeAnim,
+                              builder: (context, child) {
                                 final t = _searchModeAnim.value.clamp(0.0, 1.0);
-                                final pageP = _dcvSlideController.value.clamp(
-                                  0.0,
-                                  1.0,
+                                final leadingInset =
+                                    topInset + headerToolbarHeight * (1 - t);
+                                return AppHeaderScrollInsetScope(
+                                  leadingInset: leadingInset,
+                                  titleTransition: _headerTitleTransition,
+                                  titleCollapseExtent: isLandscape
+                                      ? 0.0
+                                      : kAppHeaderTitleCollapseDistance,
+                                  child: Padding(
+                                    padding: EdgeInsets.only(
+                                      top: leadingInset,
+                                      bottom: dcvKeyboardBottomInset,
+                                    ),
+                                    child: child,
+                                  ),
                                 );
-                                final splitProgress = landscapeDcvSplit
-                                    ? _dcvSlideProgress.value
-                                    : 0.0;
-                                // Midpoint snap: header shows DCV state once the slide
-                                // passes 50 % in either direction.  Because pageP comes
-                                // from the same controller tick as the SlideTransition,
-                                // the snap and the content cross exactly the same frame.
-                                final isDCVVisual =
-                                    pageP >= _dcvColorSnapThreshold &&
-                                    _selectedIndex == 2 &&
-                                    !landscapeDcvSplit;
-                                // Header icons swap to the category's own colour while
-                                // its DCV is visible, snapping at the same 50 % pageP
-                                // threshold as the icons themselves (see comment above).
-                                final accent =
-                                    (isDCVVisual && _dcvColor != null)
-                                    ? _dcvColor!
-                                    : resolveAccentColor(context);
-                                final innerHeight =
-                                    headerToolbarHeight * (1 - t);
-                                final scrollOffset =
-                                    _headerTitleTransition.contentOffset;
-                                final collapseProgress =
-                                    _headerTitleTransition.collapseProgress;
-                                final titleCollapseProgress =
-                                    collapseProgress * (1 - t);
-                                final titleScrollOffset =
-                                    AppHeaderScrollBehavior.shellLargeTitleTravelOffset(
-                                      scrollOffset,
-                                    );
-                                final largeTitleFadeProgress =
-                                    AppHeaderScrollBehavior.packageLargeTitleFadeProgress(
-                                      collapseProgress,
-                                    );
-                                final compactTitleFadeProgress =
-                                    AppHeaderScrollBehavior.packageCompactTitleFadeProgress(
-                                      collapseProgress,
-                                    );
-                                final edgeProgress =
-                                    AppHeaderScrollBehavior.scrollEdgeProgress(
-                                      scrollOffset,
-                                    ) *
-                                    (1 - t);
-                                final calendarTitleInContent =
-                                    !isDCVVisual &&
-                                    _selectedIndex == 1 &&
-                                    _calendarTitleOwnedByScrollContent;
-                                // Search overlays begin at the shell's current
-                                // content inset. In portrait the normal header
-                                // surface is transparent, which lets scrolled
-                                // page content bleed through the status-bar band.
-                                // Switch directly to the opaque search surface
-                                // while search is active; interpolating from
-                                // transparent tints the moving page underneath
-                                // and creates a transient grey band.
-                                final headerColor = _searchFocused
-                                    ? backgroundColor
-                                    : headerSurfaceColor;
-                                final headerBaseHeight = topInset + innerHeight;
-                                final shellTitleHitTestHeight =
-                                    !isLandscape && !calendarTitleInContent
-                                    ? kAppHeaderTitleHeight * (1 - t)
-                                    : 0.0;
-                                final headerBackgroundColor = headerColor
-                                    .withValues(
-                                      alpha:
-                                          (1.0 - titleCollapseProgress) *
-                                          headerColor.a,
-                                    );
-                                final calendarShellTitle =
-                                    !isDCVVisual && _selectedIndex == 1;
-                                final largeHeaderTitle = _buildLargeHeaderTitle(
-                                  isDCVVisual: isDCVVisual,
-                                  headerColor: backgroundColor,
-                                  primaryLabel: primaryLabel,
-                                );
-                                // Calendar's fixed slot owns its complete
-                                // vertical geometry. Align that slot to the
-                                // toolbar boundary instead of nesting it in the
-                                // generic title padding, whose bottom inset is
-                                // outside the slot and shifts the row upward.
-                                final largeHeaderTitleLayout =
-                                    calendarShellTitle
-                                    ? Align(
-                                        alignment: Alignment.bottomLeft,
-                                        child: largeHeaderTitle,
-                                      )
-                                    : AppWindowContentPadding(
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 16,
-                                            right: 16,
-                                            bottom: kHeaderTitleBottomInset,
-                                          ),
-                                          child: Align(
-                                            alignment: Alignment.bottomLeft,
-                                            child: largeHeaderTitle,
-                                          ),
-                                        ),
+                              },
+                              child: _buildContent(
+                                landscapeMasterDetail:
+                                    landscapeDcvLayoutAvailable,
+                                landscapeMasterWidth: landscapeMasterWidth,
+                              ),
+                            ),
+
+                            // Header — last Stack child so it paints above the content.
+                            // While the search bar is focused the header collapses to
+                            // just the status-bar inset (icons row + title slide off
+                            // screen) and the border + shadow fade out so the surface
+                            // reads as continuous.
+                            Positioned(
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              child: AnimatedBuilder(
+                                // Both _searchModeAnim and _dcvSlideController are
+                                // AnimationControllers owned by AppShell.  EventsTab's
+                                // SlideTransitions also listen to _dcvSlideController —
+                                // same object, same tick, same paint call.  Flutter
+                                // guarantees zero lag between header and content on
+                                // Impeller/Skia, eliminating the 1-frame flicker.
+                                animation: Listenable.merge([
+                                  _searchModeAnim,
+                                  _dcvSlideProgress,
+                                  _dcvCategoryTransitionProgress,
+                                  _settingsController,
+                                  _headerTitleTransition,
+                                ]),
+                                builder: (context, _) {
+                                  final t = _searchModeAnim.value.clamp(
+                                    0.0,
+                                    1.0,
+                                  );
+                                  final pageP = _dcvSlideController.value.clamp(
+                                    0.0,
+                                    1.0,
+                                  );
+                                  final splitProgress = landscapeDcvSplit
+                                      ? _dcvSlideProgress.value
+                                      : 0.0;
+                                  // Midpoint snap: header shows DCV state once the slide
+                                  // passes 50 % in either direction.  Because pageP comes
+                                  // from the same controller tick as the SlideTransition,
+                                  // the snap and the content cross exactly the same frame.
+                                  final isDCVVisual =
+                                      pageP >= _dcvColorSnapThreshold &&
+                                      _selectedIndex == 2 &&
+                                      !landscapeDcvSplit;
+                                  // Header icons swap to the category's own colour while
+                                  // its DCV is visible, snapping at the same 50 % pageP
+                                  // threshold as the icons themselves (see comment above).
+                                  final accent =
+                                      (isDCVVisual && _dcvColor != null)
+                                      ? _dcvColor!
+                                      : resolveAccentColor(context);
+                                  final innerHeight =
+                                      headerToolbarHeight * (1 - t);
+                                  final scrollOffset =
+                                      _headerTitleTransition.contentOffset;
+                                  final collapseProgress =
+                                      _headerTitleTransition.collapseProgress;
+                                  final titleCollapseProgress =
+                                      collapseProgress * (1 - t);
+                                  final titleScrollOffset =
+                                      AppHeaderScrollBehavior.shellLargeTitleTravelOffset(
+                                        scrollOffset,
                                       );
-                                return SizedBox(
-                                  width: double.infinity,
-                                  height:
-                                      headerBaseHeight +
-                                      shellTitleHitTestHeight,
-                                  child: Stack(
-                                    clipBehavior: Clip.none,
-                                    children: [
-                                      // The large shell-owned title is painted
-                                      // below the toolbar. Keep its hit-test area
-                                      // inside this Stack while leaving the
-                                      // header surface at its original height.
-                                      Positioned(
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        height: headerBaseHeight,
-                                        child: DecoratedBox(
-                                          decoration: BoxDecoration(
-                                            color: headerBackgroundColor,
+                                  final largeTitleFadeProgress =
+                                      AppHeaderScrollBehavior.packageLargeTitleFadeProgress(
+                                        collapseProgress,
+                                      );
+                                  final compactTitleFadeProgress =
+                                      AppHeaderScrollBehavior.packageCompactTitleFadeProgress(
+                                        collapseProgress,
+                                      );
+                                  final edgeProgress =
+                                      AppHeaderScrollBehavior.scrollEdgeProgress(
+                                        scrollOffset,
+                                      ) *
+                                      (1 - t);
+                                  final calendarTitleInContent =
+                                      !isDCVVisual &&
+                                      _selectedIndex == 1 &&
+                                      _calendarTitleOwnedByScrollContent;
+                                  // Search overlays begin at the shell's current
+                                  // content inset. In portrait the normal header
+                                  // surface is transparent, which lets scrolled
+                                  // page content bleed through the status-bar band.
+                                  // Switch directly to the opaque search surface
+                                  // while search is active; interpolating from
+                                  // transparent tints the moving page underneath
+                                  // and creates a transient grey band.
+                                  final headerColor = _searchFocused
+                                      ? backgroundColor
+                                      : headerSurfaceColor;
+                                  final headerBaseHeight =
+                                      topInset + innerHeight;
+                                  final shellTitleHitTestHeight =
+                                      !isLandscape && !calendarTitleInContent
+                                      ? kAppHeaderTitleHeight * (1 - t)
+                                      : 0.0;
+                                  final headerBackgroundColor = headerColor
+                                      .withValues(
+                                        alpha:
+                                            (1.0 - titleCollapseProgress) *
+                                            headerColor.a,
+                                      );
+                                  final calendarShellTitle =
+                                      !isDCVVisual && _selectedIndex == 1;
+                                  final largeHeaderTitle =
+                                      _buildLargeHeaderTitle(
+                                        isDCVVisual: isDCVVisual,
+                                        headerColor: backgroundColor,
+                                        primaryLabel: primaryLabel,
+                                      );
+                                  // Calendar's fixed slot owns its complete
+                                  // vertical geometry. Align that slot to the
+                                  // toolbar boundary instead of nesting it in the
+                                  // generic title padding, whose bottom inset is
+                                  // outside the slot and shifts the row upward.
+                                  final largeHeaderTitleLayout =
+                                      calendarShellTitle
+                                      ? Align(
+                                          alignment: Alignment.bottomLeft,
+                                          child: largeHeaderTitle,
+                                        )
+                                      : AppWindowContentPadding(
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 16,
+                                              right: 16,
+                                              bottom: kHeaderTitleBottomInset,
+                                            ),
+                                            child: Align(
+                                              alignment: Alignment.bottomLeft,
+                                              child: largeHeaderTitle,
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                      if (!isLandscape &&
-                                          !calendarTitleInContent)
+                                        );
+                                  return SizedBox(
+                                    width: double.infinity,
+                                    height:
+                                        headerBaseHeight +
+                                        shellTitleHitTestHeight,
+                                    child: Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        // The large shell-owned title is painted
+                                        // below the toolbar. Keep its hit-test area
+                                        // inside this Stack while leaving the
+                                        // header surface at its original height.
                                         Positioned(
-                                          top: topInset,
+                                          top: 0,
                                           left: 0,
                                           right: 0,
-                                          height:
-                                              (headerToolbarHeight +
-                                                  kAppHeaderTitleHeight) *
-                                              (1 - t),
-                                          child: Transform.translate(
-                                            offset: Offset(
-                                              0,
-                                              -titleScrollOffset,
+                                          height: headerBaseHeight,
+                                          child: DecoratedBox(
+                                            decoration: BoxDecoration(
+                                              color: headerBackgroundColor,
                                             ),
-                                            child: FadeTransition(
-                                              opacity:
-                                                  _searchModeContentOpacity,
-                                              child: Container(
-                                                color: headerSurfaceColor
-                                                    .withValues(
-                                                      alpha:
-                                                          (1.0 -
-                                                              titleCollapseProgress) *
-                                                          headerSurfaceColor.a,
-                                                    ),
-                                                child: AppHeaderLargeTitleHandoff(
-                                                  progress:
-                                                      largeTitleFadeProgress,
-                                                  child: largeHeaderTitleLayout,
+                                          ),
+                                        ),
+                                        if (!isLandscape &&
+                                            !calendarTitleInContent)
+                                          Positioned(
+                                            top: topInset,
+                                            left: 0,
+                                            right: 0,
+                                            height:
+                                                (headerToolbarHeight +
+                                                    kAppHeaderTitleHeight) *
+                                                (1 - t),
+                                            child: Transform.translate(
+                                              offset: Offset(
+                                                0,
+                                                -titleScrollOffset,
+                                              ),
+                                              child: FadeTransition(
+                                                opacity:
+                                                    _searchModeContentOpacity,
+                                                child: Container(
+                                                  color: headerSurfaceColor
+                                                      .withValues(
+                                                        alpha:
+                                                            (1.0 -
+                                                                titleCollapseProgress) *
+                                                            headerSurfaceColor
+                                                                .a,
+                                                      ),
+                                                  child: AppHeaderLargeTitleHandoff(
+                                                    progress:
+                                                        largeTitleFadeProgress,
+                                                    child:
+                                                        largeHeaderTitleLayout,
+                                                  ),
                                                 ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      if (!isLandscape)
-                                        AppHeaderScrollEdge(
-                                          progress: edgeProgress,
-                                          surfaceColor: backgroundColor,
-                                          headerHeight: headerBaseHeight,
-                                          backgroundGradientHeight:
-                                              topInset +
-                                              headerToolbarHeight * (1 - t),
-                                        ),
-                                      AppWindowContentPadding(
-                                        child: LayoutBuilder(
-                                          builder: (context, constraints) {
-                                            final leftHeaderWidth =
-                                                landscapeDcvSplit
-                                                ? masterDetailGeometry
-                                                      .masterContentWidthAt(
-                                                        splitProgress,
-                                                      )
-                                                : constraints.maxWidth;
-                                            final headerDividerWidth =
-                                                landscapeDcvSplit
-                                                ? masterDetailGeometry
-                                                      .dividerWidthAt(
-                                                        splitProgress,
-                                                      )
-                                                : 0.0;
-                                            final rightHeaderViewportWidth =
-                                                landscapeDcvSplit
-                                                ? masterDetailGeometry
-                                                          .detailPaneWidthAt(
-                                                            splitProgress,
-                                                          ) +
-                                                      masterDetailGeometry
-                                                              .horizontalInset *
-                                                          (1.0 - splitProgress)
-                                                : 0.0;
-                                            final headerRowWidth =
-                                                landscapeDcvSplit
-                                                ? leftHeaderWidth +
-                                                      headerDividerWidth +
-                                                      rightHeaderViewportWidth
-                                                : constraints.maxWidth;
-                                            final headerRow = Row(
-                                              children: [
-                                                SizedBox(
-                                                  width: leftHeaderWidth,
-                                                  child: ClipRect(
-                                                    child: OverflowBox(
-                                                      alignment:
-                                                          Alignment.topLeft,
-                                                      minHeight: 0,
-                                                      maxHeight:
-                                                          topInset +
-                                                          headerToolbarHeight,
-                                                      child: SizedBox(
-                                                        height:
-                                                            topInset +
-                                                            headerToolbarHeight,
-                                                        child: Padding(
-                                                          padding:
-                                                              EdgeInsets.only(
-                                                                top: topInset,
-                                                              ),
-                                                          child: FadeTransition(
-                                                            opacity:
-                                                                _searchModeContentOpacity,
-                                                            child: Column(
-                                                              crossAxisAlignment:
-                                                                  CrossAxisAlignment
-                                                                      .start,
-                                                              children: [
-                                                                SizedBox(
-                                                                  height:
-                                                                      isLandscape
-                                                                      ? 52
-                                                                      : 44,
-                                                                  child: Stack(
-                                                                    fit: StackFit
-                                                                        .expand,
-                                                                    children: [
-                                                                      Padding(
-                                                                        padding: EdgeInsets.only(
-                                                                          left:
-                                                                              6,
-                                                                          right:
-                                                                              16,
-                                                                          bottom:
-                                                                              isLandscape
-                                                                              ? 0
-                                                                              : 6,
-                                                                        ),
-                                                                        child: Row(
-                                                                          crossAxisAlignment:
-                                                                              isLandscape
-                                                                              ? CrossAxisAlignment.center
-                                                                              : CrossAxisAlignment.end,
-                                                                          children: [
-                                                                            // Hamburger / X is lifted to the root Stack so it
-                                                                            // always paints above the scrim and settings panel.
-                                                                            // This SizedBox preserves the Row's layout exactly.
-                                                                            const SizedBox(
-                                                                              width: 36,
-                                                                              height: 38,
-                                                                            ),
-                                                                            // Shared slot for the mutually-exclusive secondary header
-                                                                            // actions. Add Category is painted as a shell overlay below
-                                                                            // so its transparent badge can punch through the header layer;
-                                                                            // this slot preserves the header's layout for the other actions.
-                                                                            SizedBox(
-                                                                              width: 36,
-                                                                              height: isLandscape
-                                                                                  ? 52
-                                                                                  : 38,
-                                                                              child: Stack(
-                                                                                clipBehavior: Clip.none,
-                                                                                children: [
-                                                                                  // ── Ellipsis (DCV) ─────────────────────────────────
-                                                                                  // Landscape uses a full-height centered slot; portrait
-                                                                                  // retains the previous bottom-aligned placement.
-                                                                                  Opacity(
-                                                                                    opacity: isDCVVisual
-                                                                                        ? 1.0
-                                                                                        : 0.0,
-                                                                                    child: IgnorePointer(
-                                                                                      ignoring: !isDCVVisual,
-                                                                                      child: AnimatedOpacity(
-                                                                                        opacity: _dcvMenuOpen
-                                                                                            ? 0.45
-                                                                                            : 1.0,
-                                                                                        duration: const Duration(
-                                                                                          milliseconds: 150,
-                                                                                        ),
-                                                                                        curve: Curves.easeInOut,
-                                                                                        child: Align(
-                                                                                          alignment: isLandscape
-                                                                                              ? Alignment.centerLeft
-                                                                                              : Alignment.bottomLeft,
-                                                                                          child: SizedBox(
-                                                                                            key: _ellipsisKey,
-                                                                                            child: AnimatedTapIcon(
-                                                                                              scaleEnabled: false,
-                                                                                              // Center the full tap target in the landscape
-                                                                                              // header; keep portrait placement unchanged.
-                                                                                              padding: EdgeInsets.fromLTRB(
-                                                                                                0,
-                                                                                                10,
-                                                                                                4,
-                                                                                                isLandscape
-                                                                                                    ? 10
-                                                                                                    : 0,
-                                                                                              ),
-                                                                                              onTap: _showDcvMenu,
-                                                                                              child: Transform.translate(
-                                                                                                offset: Offset(
-                                                                                                  11.5,
-                                                                                                  isLandscape
-                                                                                                      ? -0.5
-                                                                                                      : -3,
-                                                                                                ),
-                                                                                                child: SearchWeightedIcon(
-                                                                                                  CupertinoIcons.ellipsis_circle,
-                                                                                                  size: 21,
-                                                                                                  color: accent,
-                                                                                                  weight: 0.0,
-                                                                                                ),
-                                                                                              ),
-                                                                                            ),
-                                                                                          ),
-                                                                                        ),
-                                                                                      ),
-                                                                                    ),
-                                                                                  ),
-                                                                                  // ── Today shortcut (Calendar → Year) ───────────────
-                                                                                  // Shares the exact slot and alignment used by the
-                                                                                  // Month/Day view-mode icons. Year View has no view-mode
-                                                                                  // menu, so this snaps directly to today's Day View.
-                                                                                  Opacity(
-                                                                                    opacity:
-                                                                                        (!isDCVVisual &&
-                                                                                            _selectedIndex ==
-                                                                                                1 &&
-                                                                                            _calendarShowsYearTitle)
-                                                                                        ? 1.0
-                                                                                        : 0.0,
-                                                                                    child: IgnorePointer(
-                                                                                      ignoring:
-                                                                                          !(!isDCVVisual &&
-                                                                                              _selectedIndex ==
-                                                                                                  1 &&
-                                                                                              _calendarShowsYearTitle),
-                                                                                      child: Align(
-                                                                                        alignment: isLandscape
-                                                                                            ? Alignment.centerLeft
-                                                                                            : Alignment.bottomLeft,
-                                                                                        child: AnimatedTapIcon(
-                                                                                          scaleEnabled: false,
-                                                                                          padding: EdgeInsets.fromLTRB(
-                                                                                            8,
-                                                                                            10,
-                                                                                            4,
-                                                                                            isLandscape
-                                                                                                ? 10
-                                                                                                : 0,
-                                                                                          ),
-                                                                                          onTap: _enterTodayCalendarDay,
-                                                                                          child: _buildYearViewHeaderIcon(),
-                                                                                        ),
-                                                                                      ),
-                                                                                    ),
-                                                                                  ),
-                                                                                  // ── View-mode (Calendar → Month) ───────────────────
-                                                                                  // Visibility driven by _calendarShowsMonthTitle so
-                                                                                  // it syncs to the shared midpoint title handoff
-                                                                                  // during year↔month zoom, not the animation endpoint.
-                                                                                  // Landscape centers the icon in the header; portrait
-                                                                                  // keeps its established bottom alignment.
-                                                                                  // Left padding 12 shifts 2 px right of the ellipsis.
-                                                                                  Opacity(
-                                                                                    opacity:
-                                                                                        (!isDCVVisual &&
-                                                                                            _selectedIndex ==
-                                                                                                1 &&
-                                                                                            _calendarShowsMonthTitle)
-                                                                                        ? 1.0
-                                                                                        : 0.0,
-                                                                                    child: IgnorePointer(
-                                                                                      ignoring:
-                                                                                          !(!isDCVVisual &&
-                                                                                              _selectedIndex ==
-                                                                                                  1 &&
-                                                                                              _calendarShowsMonthTitle),
-                                                                                      child: AnimatedOpacity(
-                                                                                        opacity: _viewModeMenuOpen
-                                                                                            ? 0.45
-                                                                                            : 1.0,
-                                                                                        duration: const Duration(
-                                                                                          milliseconds: 150,
-                                                                                        ),
-                                                                                        curve: Curves.easeInOut,
-                                                                                        child: Align(
-                                                                                          alignment: isLandscape
-                                                                                              ? Alignment.centerLeft
-                                                                                              : Alignment.bottomLeft,
-                                                                                          child: SizedBox(
-                                                                                            key: _viewModeKey,
-                                                                                            child: AnimatedTapIcon(
-                                                                                              scaleEnabled: false,
-                                                                                              padding: EdgeInsets.fromLTRB(
-                                                                                                8,
-                                                                                                10,
-                                                                                                4,
-                                                                                                isLandscape
-                                                                                                    ? 10
-                                                                                                    : 0,
-                                                                                              ),
-                                                                                              onTap: _showViewModeMenu,
-                                                                                              child: _buildViewModeHeaderIcon(),
-                                                                                            ),
-                                                                                          ),
-                                                                                        ),
-                                                                                      ),
-                                                                                    ),
-                                                                                  ),
-                                                                                  // ── Day-view sub-mode (Calendar → Day) ─────────────
-                                                                                  // Visible only while the header shows a day title
-                                                                                  // (format "Jun 30" — contains a space).  Shares the
-                                                                                  // same slot and alignment as the Month view-mode icon
-                                                                                  // so exactly one is visible at a time.
-                                                                                  Opacity(
-                                                                                    opacity:
-                                                                                        (!isDCVVisual &&
-                                                                                            _selectedIndex ==
-                                                                                                1 &&
-                                                                                            _calendarShowsDayTitle)
-                                                                                        ? 1.0
-                                                                                        : 0.0,
-                                                                                    child: IgnorePointer(
-                                                                                      ignoring:
-                                                                                          !(!isDCVVisual &&
-                                                                                              _selectedIndex ==
-                                                                                                  1 &&
-                                                                                              _calendarShowsDayTitle),
-                                                                                      child: AnimatedOpacity(
-                                                                                        opacity: _dayViewModeMenuOpen
-                                                                                            ? 0.45
-                                                                                            : 1.0,
-                                                                                        duration: const Duration(
-                                                                                          milliseconds: 150,
-                                                                                        ),
-                                                                                        curve: Curves.easeInOut,
-                                                                                        child: Align(
-                                                                                          alignment: isLandscape
-                                                                                              ? Alignment.centerLeft
-                                                                                              : Alignment.bottomLeft,
-                                                                                          child: SizedBox(
-                                                                                            key: _dayViewModeKey,
-                                                                                            child: AnimatedTapIcon(
-                                                                                              scaleEnabled: false,
-                                                                                              padding: EdgeInsets.fromLTRB(
-                                                                                                8,
-                                                                                                10,
-                                                                                                4,
-                                                                                                isLandscape
-                                                                                                    ? 10
-                                                                                                    : 0,
-                                                                                              ),
-                                                                                              onTap: _showDayViewModeMenu,
-                                                                                              child: _buildDayViewModeHeaderIcon(),
-                                                                                            ),
-                                                                                          ),
-                                                                                        ),
-                                                                                      ),
-                                                                                    ),
-                                                                                  ),
-                                                                                ],
-                                                                              ),
-                                                                            ),
-                                                                            const Spacer(),
-                                                                            if (!landscapeDcvSplit)
-                                                                              _buildEventsHeaderActions(
-                                                                                context,
-                                                                                accent: accent,
-                                                                                isLandscape: isLandscape,
-                                                                                useDcvCategory:
-                                                                                    isDCVVisual &&
-                                                                                    _selectedIndex ==
-                                                                                        2,
-                                                                              ),
-                                                                          ],
-                                                                        ),
-                                                                      ),
-                                                                      Positioned.fill(
-                                                                        left:
-                                                                            84,
-                                                                        right:
-                                                                            84,
-                                                                        child: Center(
-                                                                          child: Transform.translate(
-                                                                            // Portrait action icons
-                                                                            // sit 3px below the
-                                                                            // center of the 44px
-                                                                            // toolbar slot.
-                                                                            offset: Offset(
-                                                                              0,
-                                                                              isLandscape
-                                                                                  ? 0
-                                                                                  : 3,
-                                                                            ),
-                                                                            child: AppHeaderCompactTitle(
-                                                                              progress: compactTitleFadeProgress,
-                                                                              isLandscape: isLandscape,
-                                                                              child:
-                                                                                  !isDCVVisual &&
-                                                                                      _selectedIndex ==
-                                                                                          1
-                                                                                  ? _buildCalendarTitleRow(
-                                                                                      compact: true,
-                                                                                      compactFadeColor: backgroundColor,
-                                                                                    )
-                                                                                  : _buildCompactHeaderTitle(
-                                                                                      isDCVVisual: isDCVVisual,
-                                                                                      headerColor: backgroundColor,
-                                                                                      primaryLabel: primaryLabel,
-                                                                                    ),
-                                                                            ),
-                                                                          ),
-                                                                        ),
-                                                                      ),
-                                                                    ],
-                                                                  ),
-                                                                ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                if (landscapeDcvSplit)
+                                        if (!isLandscape)
+                                          AppHeaderScrollEdge(
+                                            progress: edgeProgress,
+                                            surfaceColor: backgroundColor,
+                                            headerHeight: headerBaseHeight,
+                                            backgroundGradientHeight:
+                                                topInset +
+                                                headerToolbarHeight * (1 - t),
+                                          ),
+                                        AppWindowContentPadding(
+                                          child: LayoutBuilder(
+                                            builder: (context, constraints) {
+                                              final leftHeaderWidth =
+                                                  landscapeDcvSplit
+                                                  ? masterDetailGeometry
+                                                        .masterContentWidthAt(
+                                                          splitProgress,
+                                                        )
+                                                  : constraints.maxWidth;
+                                              final headerDividerWidth =
+                                                  landscapeDcvSplit
+                                                  ? masterDetailGeometry
+                                                        .dividerWidthAt(
+                                                          splitProgress,
+                                                        )
+                                                  : 0.0;
+                                              final rightHeaderViewportWidth =
+                                                  landscapeDcvSplit
+                                                  ? masterDetailGeometry
+                                                            .detailPaneWidthAt(
+                                                              splitProgress,
+                                                            ) +
+                                                        masterDetailGeometry
+                                                                .horizontalInset *
+                                                            (1.0 -
+                                                                splitProgress)
+                                                  : 0.0;
+                                              final headerRowWidth =
+                                                  landscapeDcvSplit
+                                                  ? leftHeaderWidth +
+                                                        headerDividerWidth +
+                                                        rightHeaderViewportWidth
+                                                  : constraints.maxWidth;
+                                              final headerRow = Row(
+                                                children: [
                                                   SizedBox(
-                                                    width: headerDividerWidth,
-                                                    height:
-                                                        topInset +
-                                                        headerContentHeight,
-                                                    child: ColoredBox(
-                                                      color: separatorColor,
-                                                    ),
-                                                  ),
-                                                if (landscapeDcvSplit)
-                                                  SizedBox(
-                                                    width:
-                                                        rightHeaderViewportWidth,
+                                                    width: leftHeaderWidth,
                                                     child: ClipRect(
-                                                      child: Align(
+                                                      child: OverflowBox(
                                                         alignment:
                                                             Alignment.topLeft,
+                                                        minHeight: 0,
+                                                        maxHeight:
+                                                            topInset +
+                                                            headerToolbarHeight,
                                                         child: SizedBox(
-                                                          width:
-                                                              rightHeaderViewportWidth,
+                                                          height:
+                                                              topInset +
+                                                              headerToolbarHeight,
                                                           child: Padding(
                                                             padding:
                                                                 EdgeInsets.only(
                                                                   top: topInset,
                                                                 ),
-                                                            child: AppWindowPaneContent(
-                                                              includeLeft:
-                                                                  false,
-                                                              child: _buildLandscapeDcvPaneHeader(
-                                                                accent:
-                                                                    _dcvColor ??
-                                                                    resolveAccentColor(
-                                                                      context,
+                                                            child: FadeTransition(
+                                                              opacity:
+                                                                  _searchModeContentOpacity,
+                                                              child: Column(
+                                                                crossAxisAlignment:
+                                                                    CrossAxisAlignment
+                                                                        .start,
+                                                                children: [
+                                                                  SizedBox(
+                                                                    height:
+                                                                        isLandscape
+                                                                        ? 52
+                                                                        : 44,
+                                                                    child: Stack(
+                                                                      fit: StackFit
+                                                                          .expand,
+                                                                      children: [
+                                                                        Padding(
+                                                                          padding: EdgeInsets.only(
+                                                                            left:
+                                                                                6,
+                                                                            right:
+                                                                                16,
+                                                                            bottom:
+                                                                                isLandscape
+                                                                                ? 0
+                                                                                : 6,
+                                                                          ),
+                                                                          child: Row(
+                                                                            crossAxisAlignment:
+                                                                                isLandscape
+                                                                                ? CrossAxisAlignment.center
+                                                                                : CrossAxisAlignment.end,
+                                                                            children: [
+                                                                              // Hamburger / X is lifted to the root Stack so it
+                                                                              // always paints above the scrim and settings panel.
+                                                                              // This SizedBox preserves the Row's layout exactly.
+                                                                              const SizedBox(
+                                                                                width: 36,
+                                                                                height: 38,
+                                                                              ),
+                                                                              // Shared slot for the mutually-exclusive secondary header
+                                                                              // actions. Add Category is painted as a shell overlay below
+                                                                              // so its transparent badge can punch through the header layer;
+                                                                              // this slot preserves the header's layout for the other actions.
+                                                                              SizedBox(
+                                                                                width: 36,
+                                                                                height: isLandscape
+                                                                                    ? 52
+                                                                                    : 38,
+                                                                                child: Stack(
+                                                                                  clipBehavior: Clip.none,
+                                                                                  children: [
+                                                                                    // ── Ellipsis (DCV) ─────────────────────────────────
+                                                                                    // Landscape uses a full-height centered slot; portrait
+                                                                                    // retains the previous bottom-aligned placement.
+                                                                                    Opacity(
+                                                                                      opacity: isDCVVisual
+                                                                                          ? 1.0
+                                                                                          : 0.0,
+                                                                                      child: IgnorePointer(
+                                                                                        ignoring: !isDCVVisual,
+                                                                                        child: AnimatedOpacity(
+                                                                                          opacity: _dcvMenuOpen
+                                                                                              ? 0.45
+                                                                                              : 1.0,
+                                                                                          duration: const Duration(
+                                                                                            milliseconds: 150,
+                                                                                          ),
+                                                                                          curve: Curves.easeInOut,
+                                                                                          child: Align(
+                                                                                            alignment: isLandscape
+                                                                                                ? Alignment.centerLeft
+                                                                                                : Alignment.bottomLeft,
+                                                                                            child: SizedBox(
+                                                                                              key: _ellipsisKey,
+                                                                                              child: AnimatedTapIcon(
+                                                                                                scaleEnabled: false,
+                                                                                                // Center the full tap target in the landscape
+                                                                                                // header; keep portrait placement unchanged.
+                                                                                                padding: EdgeInsets.fromLTRB(
+                                                                                                  0,
+                                                                                                  10,
+                                                                                                  4,
+                                                                                                  isLandscape
+                                                                                                      ? 10
+                                                                                                      : 0,
+                                                                                                ),
+                                                                                                onTap: _showDcvMenu,
+                                                                                                child: Transform.translate(
+                                                                                                  offset: Offset(
+                                                                                                    11.5,
+                                                                                                    isLandscape
+                                                                                                        ? -0.5
+                                                                                                        : -3,
+                                                                                                  ),
+                                                                                                  child: SearchWeightedIcon(
+                                                                                                    CupertinoIcons.ellipsis_circle,
+                                                                                                    size: 21,
+                                                                                                    color: accent,
+                                                                                                    weight: 0.0,
+                                                                                                  ),
+                                                                                                ),
+                                                                                              ),
+                                                                                            ),
+                                                                                          ),
+                                                                                        ),
+                                                                                      ),
+                                                                                    ),
+                                                                                    // ── Today shortcut (Calendar → Year) ───────────────
+                                                                                    // Shares the exact slot and alignment used by the
+                                                                                    // Month/Day view-mode icons. Year View has no view-mode
+                                                                                    // menu, so this snaps directly to today's Day View.
+                                                                                    Opacity(
+                                                                                      opacity:
+                                                                                          (!isDCVVisual &&
+                                                                                              _selectedIndex ==
+                                                                                                  1 &&
+                                                                                              _calendarShowsYearTitle)
+                                                                                          ? 1.0
+                                                                                          : 0.0,
+                                                                                      child: IgnorePointer(
+                                                                                        ignoring:
+                                                                                            !(!isDCVVisual &&
+                                                                                                _selectedIndex ==
+                                                                                                    1 &&
+                                                                                                _calendarShowsYearTitle),
+                                                                                        child: Align(
+                                                                                          alignment: isLandscape
+                                                                                              ? Alignment.centerLeft
+                                                                                              : Alignment.bottomLeft,
+                                                                                          child: AnimatedTapIcon(
+                                                                                            scaleEnabled: false,
+                                                                                            padding: EdgeInsets.fromLTRB(
+                                                                                              8,
+                                                                                              10,
+                                                                                              4,
+                                                                                              isLandscape
+                                                                                                  ? 10
+                                                                                                  : 0,
+                                                                                            ),
+                                                                                            onTap: _enterTodayCalendarDay,
+                                                                                            child: _buildYearViewHeaderIcon(),
+                                                                                          ),
+                                                                                        ),
+                                                                                      ),
+                                                                                    ),
+                                                                                    // ── View-mode (Calendar → Month) ───────────────────
+                                                                                    // Visibility driven by _calendarShowsMonthTitle so
+                                                                                    // it syncs to the shared midpoint title handoff
+                                                                                    // during year↔month zoom, not the animation endpoint.
+                                                                                    // Landscape centers the icon in the header; portrait
+                                                                                    // keeps its established bottom alignment.
+                                                                                    // Left padding 12 shifts 2 px right of the ellipsis.
+                                                                                    Opacity(
+                                                                                      opacity:
+                                                                                          (!isDCVVisual &&
+                                                                                              _selectedIndex ==
+                                                                                                  1 &&
+                                                                                              _calendarShowsMonthTitle)
+                                                                                          ? 1.0
+                                                                                          : 0.0,
+                                                                                      child: IgnorePointer(
+                                                                                        ignoring:
+                                                                                            !(!isDCVVisual &&
+                                                                                                _selectedIndex ==
+                                                                                                    1 &&
+                                                                                                _calendarShowsMonthTitle),
+                                                                                        child: AnimatedOpacity(
+                                                                                          opacity: _viewModeMenuOpen
+                                                                                              ? 0.45
+                                                                                              : 1.0,
+                                                                                          duration: const Duration(
+                                                                                            milliseconds: 150,
+                                                                                          ),
+                                                                                          curve: Curves.easeInOut,
+                                                                                          child: Align(
+                                                                                            alignment: isLandscape
+                                                                                                ? Alignment.centerLeft
+                                                                                                : Alignment.bottomLeft,
+                                                                                            child: SizedBox(
+                                                                                              key: _viewModeKey,
+                                                                                              child: AnimatedTapIcon(
+                                                                                                scaleEnabled: false,
+                                                                                                padding: EdgeInsets.fromLTRB(
+                                                                                                  8,
+                                                                                                  10,
+                                                                                                  4,
+                                                                                                  isLandscape
+                                                                                                      ? 10
+                                                                                                      : 0,
+                                                                                                ),
+                                                                                                onTap: _showViewModeMenu,
+                                                                                                child: _buildViewModeHeaderIcon(),
+                                                                                              ),
+                                                                                            ),
+                                                                                          ),
+                                                                                        ),
+                                                                                      ),
+                                                                                    ),
+                                                                                    // ── Day-view sub-mode (Calendar → Day) ─────────────
+                                                                                    // Visible only while the header shows a day title
+                                                                                    // (format "Jun 30" — contains a space).  Shares the
+                                                                                    // same slot and alignment as the Month view-mode icon
+                                                                                    // so exactly one is visible at a time.
+                                                                                    Opacity(
+                                                                                      opacity:
+                                                                                          (!isDCVVisual &&
+                                                                                              _selectedIndex ==
+                                                                                                  1 &&
+                                                                                              _calendarShowsDayTitle)
+                                                                                          ? 1.0
+                                                                                          : 0.0,
+                                                                                      child: IgnorePointer(
+                                                                                        ignoring:
+                                                                                            !(!isDCVVisual &&
+                                                                                                _selectedIndex ==
+                                                                                                    1 &&
+                                                                                                _calendarShowsDayTitle),
+                                                                                        child: AnimatedOpacity(
+                                                                                          opacity: _dayViewModeMenuOpen
+                                                                                              ? 0.45
+                                                                                              : 1.0,
+                                                                                          duration: const Duration(
+                                                                                            milliseconds: 150,
+                                                                                          ),
+                                                                                          curve: Curves.easeInOut,
+                                                                                          child: Align(
+                                                                                            alignment: isLandscape
+                                                                                                ? Alignment.centerLeft
+                                                                                                : Alignment.bottomLeft,
+                                                                                            child: SizedBox(
+                                                                                              key: _dayViewModeKey,
+                                                                                              child: AnimatedTapIcon(
+                                                                                                scaleEnabled: false,
+                                                                                                padding: EdgeInsets.fromLTRB(
+                                                                                                  8,
+                                                                                                  10,
+                                                                                                  4,
+                                                                                                  isLandscape
+                                                                                                      ? 10
+                                                                                                      : 0,
+                                                                                                ),
+                                                                                                onTap: _showDayViewModeMenu,
+                                                                                                child: _buildDayViewModeHeaderIcon(),
+                                                                                              ),
+                                                                                            ),
+                                                                                          ),
+                                                                                        ),
+                                                                                      ),
+                                                                                    ),
+                                                                                  ],
+                                                                                ),
+                                                                              ),
+                                                                              const Spacer(),
+                                                                              if (!landscapeDcvSplit)
+                                                                                _buildEventsHeaderActions(
+                                                                                  context,
+                                                                                  accent: accent,
+                                                                                  isLandscape: isLandscape,
+                                                                                  useDcvCategory:
+                                                                                      isDCVVisual &&
+                                                                                      _selectedIndex ==
+                                                                                          2,
+                                                                                ),
+                                                                            ],
+                                                                          ),
+                                                                        ),
+                                                                        Positioned.fill(
+                                                                          left:
+                                                                              84,
+                                                                          right:
+                                                                              84,
+                                                                          child: Center(
+                                                                            child: Transform.translate(
+                                                                              // Portrait action icons
+                                                                              // sit 3px below the
+                                                                              // center of the 44px
+                                                                              // toolbar slot.
+                                                                              offset: Offset(
+                                                                                0,
+                                                                                isLandscape
+                                                                                    ? 0
+                                                                                    : 3,
+                                                                              ),
+                                                                              child: AppHeaderCompactTitle(
+                                                                                progress: compactTitleFadeProgress,
+                                                                                isLandscape: isLandscape,
+                                                                                child:
+                                                                                    !isDCVVisual &&
+                                                                                        _selectedIndex ==
+                                                                                            1
+                                                                                    ? _buildCalendarTitleRow(
+                                                                                        compact: true,
+                                                                                        compactFadeColor: backgroundColor,
+                                                                                      )
+                                                                                    : _buildCompactHeaderTitle(
+                                                                                        isDCVVisual: isDCVVisual,
+                                                                                        headerColor: backgroundColor,
+                                                                                        primaryLabel: primaryLabel,
+                                                                                      ),
+                                                                              ),
+                                                                            ),
+                                                                          ),
+                                                                        ),
+                                                                      ],
                                                                     ),
-                                                                headerColor:
-                                                                    headerColor,
-                                                                primaryLabel:
-                                                                    primaryLabel,
+                                                                  ),
+                                                                ],
                                                               ),
                                                             ),
                                                           ),
@@ -3774,31 +3727,78 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                       ),
                                                     ),
                                                   ),
-                                              ],
-                                            );
-                                            return OverflowBox(
-                                              alignment: Alignment.topLeft,
-                                              minWidth: constraints.maxWidth,
-                                              maxWidth: headerRowWidth,
-                                              child: SizedBox(
-                                                width: headerRowWidth,
-                                                child: headerRow,
-                                              ),
-                                            );
-                                          },
+                                                  if (landscapeDcvSplit)
+                                                    SizedBox(
+                                                      width: headerDividerWidth,
+                                                      height:
+                                                          topInset +
+                                                          headerContentHeight,
+                                                      child: ColoredBox(
+                                                        color: separatorColor,
+                                                      ),
+                                                    ),
+                                                  if (landscapeDcvSplit)
+                                                    SizedBox(
+                                                      width:
+                                                          rightHeaderViewportWidth,
+                                                      child: ClipRect(
+                                                        child: Align(
+                                                          alignment:
+                                                              Alignment.topLeft,
+                                                          child: SizedBox(
+                                                            width:
+                                                                rightHeaderViewportWidth,
+                                                            child: Padding(
+                                                              padding:
+                                                                  EdgeInsets.only(
+                                                                    top:
+                                                                        topInset,
+                                                                  ),
+                                                              child: AppWindowPaneContent(
+                                                                includeLeft:
+                                                                    false,
+                                                                child: _buildLandscapeDcvPaneHeader(
+                                                                  accent:
+                                                                      _dcvColor ??
+                                                                      resolveAccentColor(
+                                                                        context,
+                                                                      ),
+                                                                  headerColor:
+                                                                      headerColor,
+                                                                  primaryLabel:
+                                                                      primaryLabel,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              );
+                                              return OverflowBox(
+                                                alignment: Alignment.topLeft,
+                                                minWidth: constraints.maxWidth,
+                                                maxWidth: headerRowWidth,
+                                                child: SizedBox(
+                                                  width: headerRowWidth,
+                                                  child: headerRow,
+                                                ),
+                                              );
+                                            },
+                                          ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
                 ],
               ),
 
@@ -3930,7 +3930,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                   ?.showNewEventSheet(
                                     context,
                                     initialCategoryId: _selectedIndex == 2
-                                        ? _eventsTabKey.currentState
+                                        ? _eventsTabKey
+                                              .currentState
                                               ?.activeStandardDcvCategoryId
                                         : null,
                                   ),
@@ -4046,6 +4047,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                 icon: CupertinoIcons.line_horizontal_3,
                                 iconColor: accent,
                                 surfaceColor: kCardColor,
+                                listenToLiquidGlassSlider: true,
                                 size: 40,
                                 iconSize: 20,
                                 peakScale: 0.95,
@@ -4316,8 +4318,7 @@ class _CalendarNavChevron extends StatelessWidget {
     // The title is bottom-aligned in the expanded row. Shift only the visible
     // chevrons so their center remains aligned with the title; hit zones retain
     // their authored 48px geometry.
-    final titleCenterOffset =
-        (hitHalfHeight * 2 - titleLineHeight) / 2;
+    final titleCenterOffset = (hitHalfHeight * 2 - titleLineHeight) / 2;
 
     Widget half({
       required _ChevronDir direction,

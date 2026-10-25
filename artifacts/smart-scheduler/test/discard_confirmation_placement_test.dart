@@ -194,7 +194,7 @@ void main() {
     expect(discardButton.quality, GlassQuality.premium);
     expect(discardButton.style, GlassButtonStyle.filled);
     expect(discardButton.settings!.thickness, 0);
-    expect(discardButton.settings!.blur, 5);
+    expect(discardButton.settings!.blur, 0);
     expect(discardButton.settings!.chromaticAberration, 0);
     expect(discardButton.settings!.lightIntensity, 0);
     expect(discardButton.settings!.ambientStrength, 0);

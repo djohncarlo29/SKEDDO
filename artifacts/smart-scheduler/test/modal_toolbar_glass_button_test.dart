@@ -9,6 +9,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassQuality;
 
 import 'package:smart_scheduler/app_theme.dart';
+import 'package:smart_scheduler/app_settings.dart';
 import 'package:smart_scheduler/widgets/modal_toolbar_glass_button.dart';
 import 'package:smart_scheduler/widgets/skeddo_glass_settings.dart';
 
@@ -145,6 +146,46 @@ void main() {
     }
   });
 
+  testWidgets('shared modal toolbar glass updates live with slider', (
+    tester,
+  ) async {
+    final originalSliderValue = appLiquidGlassOpacityNotifier.value;
+    addTearDown(() {
+      appLiquidGlassOpacityNotifier.value = originalSliderValue;
+    });
+
+    appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
+      0.25,
+    );
+    await tester.pumpWidget(
+      CupertinoApp(
+        theme: const CupertinoThemeData(brightness: Brightness.light),
+        home: Center(
+          child: ModalToolbarGlassButton(
+            icon: CupertinoIcons.line_horizontal_3,
+            iconColor: CupertinoColors.activeBlue,
+            surfaceColor: kCardColor,
+            listenToLiquidGlassSlider: true,
+            onTap: () {},
+          ),
+        ),
+      ),
+    );
+
+    var button = tester.widget<GlassIconButton>(find.byType(GlassIconButton));
+    expect(button.settings!.blur, closeTo(0.5, 0.000001));
+    expect(button.settings!.glassColor.a, closeTo(0.30, 0.001));
+
+    appLiquidGlassOpacityNotifier.value = liquidGlassOpacityForSliderPosition(
+      0.75,
+    );
+    await tester.pump();
+
+    button = tester.widget<GlassIconButton>(find.byType(GlassIconButton));
+    expect(button.settings!.blur, 3.5);
+    expect(button.settings!.glassColor.a, closeTo(0.50, 0.001));
+  });
+
   testWidgets(
     'inactive checkmarks retain active glass treatment and ignore taps',
     (tester) async {
@@ -186,10 +227,7 @@ void main() {
         expect(button.settings!.chromaticAberration, 0.3);
         expect(button.settings!.glassColor.a, closeTo(0.85, 0.001));
         expect(button.glowColor, const Color(0x00000000));
-        expect(
-          icon.color!.toARGB32(),
-          CupertinoColors.white.toARGB32(),
-        );
+        expect(icon.color!.toARGB32(), CupertinoColors.white.toARGB32());
 
         await tester.tap(find.byIcon(CupertinoIcons.checkmark));
         await tester.pump();

@@ -10,6 +10,7 @@ import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
         GlassQuality,
         LiquidOval;
 
+import '../app_settings.dart';
 import '../app_theme.dart';
 import 'skeddo_glass_settings.dart';
 
@@ -31,6 +32,7 @@ class ModalToolbarGlassButton extends StatefulWidget {
     this.tapDelay = Duration.zero,
     this.peakScale = 1.15,
     this.semanticLabel,
+    this.listenToLiquidGlassSlider = false,
   });
 
   final IconData icon;
@@ -47,6 +49,7 @@ class ModalToolbarGlassButton extends StatefulWidget {
   final Duration tapDelay;
   final double peakScale;
   final String? semanticLabel;
+  final bool listenToLiquidGlassSlider;
 
   @override
   State<ModalToolbarGlassButton> createState() =>
@@ -77,6 +80,14 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.listenToLiquidGlassSlider) return _buildButton(context);
+    return ValueListenableBuilder<double>(
+      valueListenable: appLiquidGlassOpacityNotifier,
+      builder: (context, _, _) => _buildButton(context),
+    );
+  }
+
+  Widget _buildButton(BuildContext context) {
     final resolvedSurface = resolveThemeColor(widget.surfaceColor, context);
     final disabledSurface = resolveThemeColor(kDisabledActionSurface, context);
     final checkmark =
@@ -215,9 +226,7 @@ class _ModalToolbarGlassButtonState extends State<ModalToolbarGlassButton> {
         quality: GlassQuality.premium,
         useOwnLayer: true,
         interactionScale: widget.peakScale,
-        glowColor: checkmark && !_canTap
-            ? const Color(0x00000000)
-            : null,
+        glowColor: checkmark && !_canTap ? const Color(0x00000000) : null,
         semanticLabel: widget.semanticLabel ?? fallbackLabel,
       );
     }
