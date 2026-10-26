@@ -17,6 +17,7 @@ import '../../utils/liquid_glass_shape.dart';
 import '../liquid_glass_motion_pill.dart';
 import '../liquid_glass_shadow.dart';
 import 'liquid_glass_slider_layout.dart';
+import 'liquid_glass_slider_track_painter.dart';
 
 export 'liquid_glass_slider_layout.dart';
 
@@ -695,7 +696,7 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
                     top: trackY,
                     child: CustomPaint(
                       size: Size(trackW, effTrackHeight),
-                      painter: _LiquidGlassSliderTrackPainter(
+                      painter: LiquidGlassSliderTrackPainter(
                         inactiveColor: widget.inactiveColor,
                         activeColor: widget.activeColor,
                         fillEndX: fillEndX,
@@ -772,93 +773,4 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
       ),
     );
   }
-}
-
-class _LiquidGlassSliderTrackPainter extends CustomPainter {
-  const _LiquidGlassSliderTrackPainter({
-    required this.inactiveColor,
-    required this.activeColor,
-    required this.fillEndX,
-    required this.trackWidth,
-    required this.trackHeight,
-    required this.tickStartX,
-    required this.tickEndX,
-    required this.divisions,
-  });
-
-  final Color inactiveColor;
-  final Color activeColor;
-  final double fillEndX;
-  final double trackWidth;
-  final double trackHeight;
-  final double tickStartX;
-  final double tickEndX;
-  final int divisions;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final tickHalfWidth = 1.0;
-    // Preserve the original tick-to-track proportion (10 px ticks over a
-    // 6 px line) as the line is made thinner.
-    final tickHalfHeight = trackHeight * (5 / 6);
-    final tickTop = trackHeight / 2 - tickHalfHeight;
-    final tickBottom = trackHeight / 2 + tickHalfHeight;
-    final tickCount = divisions > 0 ? divisions : 0;
-    final tickRange = math.max(0.0, tickEndX - tickStartX);
-
-    // The thumb-center travel range, not the raw line width, is the tick
-    // distribution range: the first/last ticks sit directly beneath the
-    // settled thumb centers.
-    final lineStartX = tickStartX.clamp(0.0, trackWidth).toDouble();
-    final lineEndX = tickEndX.clamp(lineStartX, trackWidth).toDouble();
-    final clampedFill = fillEndX.clamp(lineStartX, lineEndX).toDouble();
-
-    // Ticks live beneath the line visually, but the line and ticks belong to
-    // one filled path. Adding overlapping rectangles to one path and painting
-    // it once prevents their shared pixels from accumulating opacity.
-    final inactivePath = Path()
-      ..addRect(Rect.fromLTRB(lineStartX, 0, lineEndX, trackHeight));
-    final tickXs = <double>[];
-    for (var i = 0; i <= tickCount; i++) {
-      final x = tickCount == 0
-          ? tickStartX
-          : tickStartX + tickRange * i / tickCount;
-      tickXs.add(x);
-      inactivePath.addRect(
-        Rect.fromLTRB(x - tickHalfWidth, tickTop, x + tickHalfWidth, tickBottom),
-      );
-    }
-    canvas.drawPath(inactivePath, Paint()..color = inactiveColor);
-
-    // Both inactive and active line ends are deliberately square. The line
-    // and all passed ticks share one active path, so a tick turns blue as the
-    // thumb crosses it rather than being composited as a second element.
-    final activePath = Path();
-    if (clampedFill > lineStartX) {
-      activePath.addRect(
-        Rect.fromLTRB(lineStartX, 0, clampedFill, trackHeight),
-      );
-    }
-    for (final x in tickXs) {
-      if (x <= clampedFill) {
-        activePath.addRect(
-          Rect.fromLTRB(x - tickHalfWidth, tickTop, x + tickHalfWidth, tickBottom),
-        );
-      }
-    }
-    if (!activePath.getBounds().isEmpty) {
-      canvas.drawPath(activePath, Paint()..color = activeColor);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_LiquidGlassSliderTrackPainter oldDelegate) =>
-      oldDelegate.inactiveColor != inactiveColor ||
-      oldDelegate.activeColor != activeColor ||
-      oldDelegate.fillEndX != fillEndX ||
-      oldDelegate.trackWidth != trackWidth ||
-      oldDelegate.trackHeight != trackHeight ||
-      oldDelegate.tickStartX != tickStartX ||
-      oldDelegate.tickEndX != tickEndX ||
-      oldDelegate.divisions != divisions;
 }

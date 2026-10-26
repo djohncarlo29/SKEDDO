@@ -2630,7 +2630,8 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
 // 16 px inside the stadium row edge at either endpoint.
 const double _kLiquidGlassRowHorizontalPadding = 18.0;
 const double _kLiquidGlassSettledEdgeInset = 16.0;
-// The package's own track coordinates are also the endpoint tick centers.
+// Zero inset aligns the line's outer endpoints with the resting thumb's edges.
+// Discrete tick centers remain aligned with the thumb's travel positions.
 const double _kLiquidGlassSliderInset = 0.0;
 const LiquidGlassSliderLayout _liquidGlassSliderLayout =
     LiquidGlassSliderLayout(horizontalInset: _kLiquidGlassSliderInset);
