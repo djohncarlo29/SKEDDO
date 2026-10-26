@@ -163,10 +163,10 @@ class AppHeaderTitleTransition extends ChangeNotifier {
 
   /// Binds to the single active scroll position. Recreating the package
   /// controller on handoff makes it recalculate from that position immediately.
-/// When [preserveCollapseProgress] is true, the new destination is positioned
-/// at the same shared header state before it becomes the active source. Each
-/// page also keeps separate expanded and scrolled body offsets so an expanded
-/// handoff never paints a stale destination position for a frame.
+  /// When [preserveCollapseProgress] is true, the new destination is positioned
+  /// at the same shared header state before it becomes the active source. Each
+  /// page also keeps separate expanded and scrolled body offsets so an expanded
+  /// handoff never paints a stale destination position for a frame.
   void bindTo(
     ScrollPosition? position, {
     bool preserveCollapseProgress = false,
