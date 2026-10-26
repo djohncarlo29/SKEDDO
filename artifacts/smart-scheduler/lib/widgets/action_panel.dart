@@ -2432,29 +2432,21 @@ class _LiquidGlassActionPanelCard extends StatelessWidget {
     final shadow = isDark ? 0.0 : shadowOpacity * progress;
     final shape = LiquidGlassShape.squircle(
       cornerRadius: radius,
-      // Match the Floating Tab Bar's optical rim and edge-light response.
-      borderWidth: 0.45,
-      lightIntensity: 0.46,
-      lightDirection: 62,
-      borderType: const OpticalBorder(
-        borderSaturation: 1.0,
-        ambientIntensity: 0.18,
-        borderSolidity: 0.28,
-        lightSpread: 0.12,
-      ),
     );
     final style = LiquidGlassTabBar.defaultStyle.copyWith(
       shape: shape,
-      appearance: LiquidGlassTabBar.defaultStyle.appearance.copyWith(
-        // Use the resolved card surface, matching the tab bar, rather than a
-        // separate glass tint.  The 80% alpha is the tab bar's settled density.
-        color: resolveThemeColor(kCardColor, context).withValues(alpha: fill),
+      // Use the resolved card surface, matching the tab bar, rather than a
+      // separate glass tint.  The 80% alpha is the tab bar's settled density.
+      color: resolveThemeColor(kCardColor, context).withValues(alpha: fill),
+      specular: const LiquidGlassLight.specular(
+        thickness: 2.43,
+        sharpness: 0.5,
+        angle: 62,
+        spread: 0.12,
+        intensity: 0.46,
       ),
-      refraction: LiquidGlassTabBar.defaultStyle.refraction.copyWith(
-        // Keep the tab bar's refraction and only suppress visible colour
-        // fringing, as its own renderer does.
-        chromaticAberration: 0.0002,
-      ),
+      // 0.0002 in the 4.x chromaticAberration unit is 0.132 px in 5.x.
+      dispersion: 0.132,
     );
 
     return LiquidGlassShadow(

@@ -2902,20 +2902,8 @@ bool staticLiquidGlassSupported({bool? override}) {
 
 LiquidGlassShape _staticLiquidGlassShape({
   required double cornerRadius,
-  bool showOpticalBorder = true,
 }) {
-  return LiquidGlassShape.squircle(
-    cornerRadius: cornerRadius,
-    borderWidth: showOpticalBorder ? 0.5 : 0,
-    lightIntensity: showOpticalBorder ? 0.38 : 0,
-    lightDirection: 62,
-    borderType: const OpticalBorder(
-      borderSaturation: 1.0,
-      ambientIntensity: 0.18,
-      borderSolidity: 0.16,
-      lightSpread: 0.14,
-    ),
-  );
+  return LiquidGlassShape.squircle(cornerRadius: cornerRadius);
 }
 
 LiquidGlassStyle _staticLiquidGlassStyle({
@@ -2928,25 +2916,26 @@ LiquidGlassStyle _staticLiquidGlassStyle({
   // ensuring action-button appearance settings, including its shadow policy,
   // can never leak into non-interactive surfaces.
   return LiquidGlassStyle(
-    appearance: LiquidGlassAppearance(
-      color: glassColor,
-      blur: const LiquidGlassBlur(sigmaX: 2, sigmaY: 2),
-      // Static surfaces receive their app-owned BoxShadow outside the lens.
-      shadow: null,
-    ),
-    // Keep the historical rich renderer's geometry while removing the three
-    // requested optical effects: refraction, magnification, and chromatic
-    // aberration.
-    refraction: const LiquidGlassRefraction(
-      distortion: 0,
-      distortionWidth: 0,
-      magnification: 1,
-      chromaticAberration: 0,
-    ),
-    shape: _staticLiquidGlassShape(
-      cornerRadius: cornerRadius,
-      showOpticalBorder: showOpticalBorder,
-    ),
+    color: glassColor,
+    blur: 2,
+    // Static surfaces receive their app-owned BoxShadow outside the lens.
+    shadow: null,
+    // Keep refraction, magnification and dispersion disabled for these
+    // app-authored static surfaces.
+    refractionIndex: 1,
+    refractionWidth: 0,
+    magnification: 1,
+    dispersion: 0,
+    shape: _staticLiquidGlassShape(cornerRadius: cornerRadius),
+    specular: showOpticalBorder
+        ? const LiquidGlassLight.specular(
+            thickness: 2.7,
+            sharpness: 0.5,
+            angle: 62,
+            spread: 0.14,
+            intensity: 0.38,
+          )
+        : const LiquidGlassLight.specular(thickness: 0),
   );
 }
 

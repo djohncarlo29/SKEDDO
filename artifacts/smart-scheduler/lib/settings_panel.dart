@@ -2322,7 +2322,6 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                         height: _kSettingsRowHeight,
                         layout: _liquidGlassSliderLayout,
                         isContinuous: true,
-                        divisions: 6,
                         activeColor: widget.accentColor,
                         inactiveColor: inactiveColor,
                         thumbColor: const Color(0xFFFDFDFD),
@@ -2343,14 +2342,14 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                         },
                         onChanged: (raw) {
                           setState(() => _dragValue = raw);
-                          widget.onChanged(raw * 6);
+                          widget.onChanged((raw * 6).roundToDouble());
                         },
                         onChangeEnd: (raw) {
                           setState(() {
                             _dragValue = raw;
                             _isDragging = false;
                           });
-                          widget.onChangeEnd(raw * 6);
+                          widget.onChangeEnd((raw * 6).roundToDouble());
                         },
                       ),
               );
@@ -2584,7 +2583,6 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
                 layout: const LiquidGlassSliderLayout(
                   iconSize: 34,
                   iconGap: 8,
-                  activeIconGap: 4,
                   horizontalInset: 0,
                 ),
                 activeColor: widget.activeColor,
