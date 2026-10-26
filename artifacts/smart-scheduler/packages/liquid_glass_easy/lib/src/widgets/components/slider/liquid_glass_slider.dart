@@ -634,8 +634,12 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
     final trackW = _trackWidth + _rubber.abs() / 2;
     final trackY = centerY - effTrackHeight / 2;
 
-    // The progress line ends directly beneath the settled thumb centre.
-    final fillEndX = _thumbCX - trackX;
+    // Progress spans the full painted track, including the new outer edges.
+    // The thumb still travels centre-to-centre, so normalize that travel
+    // before mapping it onto the wider track.
+    final fillProgress =
+        ((_thumbCX - _minThumbCX) / _thumbRange).clamp(0.0, 1.0).toDouble();
+    final fillEndX = fillProgress * trackW;
 
     // Where a touch is allowed to START. The control's box is much
     // larger than the track — it reserves room for the lifted thumb, the

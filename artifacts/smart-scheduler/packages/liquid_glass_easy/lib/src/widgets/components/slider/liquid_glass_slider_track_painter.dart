@@ -90,7 +90,7 @@ class LiquidGlassSliderTrackPainter extends CustomPainter {
       );
     }
     for (final x in tickXs) {
-      if (x <= clampedFill) {
+      if (x - tickHalfWidth <= clampedFill) {
         activePath.addRect(
           Rect.fromLTRB(
             x - tickHalfWidth,
