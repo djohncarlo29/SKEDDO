@@ -35,6 +35,8 @@ sleep 1
 
 cd /home/runner/workspace/artifacts/smart-scheduler
 export PUB_CACHE="${PUB_CACHE:-/home/runner/workspace/.cache/pub-cache}"
+export TMPDIR="${TMPDIR:-/home/runner/workspace/.cache/flutter-tmp}"
+mkdir -p "$TMPDIR"
 FLUTTER_BIN="/home/runner/workspace/.cache/flutter-3.44.2/bin/flutter"
 if [ ! -x "$FLUTTER_BIN" ]; then
   echo "Flutter 3.44.2 SDK not found at $FLUTTER_BIN." >&2

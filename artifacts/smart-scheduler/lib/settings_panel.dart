@@ -2314,43 +2314,60 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                           widget.onChangeEnd(raw * 6);
                         },
                       )
-                    : LiquidGlassSlider(
-                        value: _dragValue ?? _indexAnimation.value / 6,
-                        minimumValue: 0,
-                        maximumValue: 1,
-                        width: sliderWidth,
-                        height: _kSettingsRowHeight,
-                        layout: _liquidGlassSliderLayout,
-                        isContinuous: true,
-                        activeColor: widget.accentColor,
-                        inactiveColor: inactiveColor,
-                        thumbColor: const Color(0xFFFDFDFD),
-                        minimumIcon: Icon(
-                          SFIcons.sf_textformat_size_smaller,
-                          size: 20,
-                          color: emptyStateGreyColor,
-                        ),
-                        maximumIcon: Icon(
-                          SFIcons.sf_textformat_size_larger,
-                          size: 20,
-                          color: emptyStateGreyColor,
-                        ),
-                        onChangeStart: (_) {
-                          if (!_isDragging) {
-                            setState(() => _isDragging = true);
-                          }
-                        },
-                        onChanged: (raw) {
-                          setState(() => _dragValue = raw);
-                          widget.onChanged((raw * 6).roundToDouble());
-                        },
-                        onChangeEnd: (raw) {
-                          setState(() {
-                            _dragValue = raw;
-                            _isDragging = false;
-                          });
-                          widget.onChangeEnd((raw * 6).roundToDouble());
-                        },
+                    : Stack(
+                        children: [
+                          LiquidGlassSlider(
+                            value: _dragValue ?? _indexAnimation.value / 6,
+                            minimumValue: 0,
+                            maximumValue: 1,
+                            width: sliderWidth,
+                            height: _kSettingsRowHeight,
+                            layout: _liquidGlassSliderLayout,
+                            isContinuous: true,
+                            activeColor: widget.accentColor,
+                            inactiveColor: inactiveColor,
+                            thumbColor: const Color(0xFFFDFDFD),
+                            minimumIcon: Icon(
+                              SFIcons.sf_textformat_size_smaller,
+                              size: 20,
+                              color: emptyStateGreyColor,
+                            ),
+                            maximumIcon: Icon(
+                              SFIcons.sf_textformat_size_larger,
+                              size: 20,
+                              color: emptyStateGreyColor,
+                            ),
+                            onChangeStart: (_) {
+                              if (!_isDragging) {
+                                setState(() => _isDragging = true);
+                              }
+                            },
+                            onChanged: (raw) {
+                              setState(() => _dragValue = raw);
+                              widget.onChanged((raw * 6).roundToDouble());
+                            },
+                            onChangeEnd: (raw) {
+                              setState(() {
+                                _dragValue = raw;
+                                _isDragging = false;
+                              });
+                              widget.onChangeEnd((raw * 6).roundToDouble());
+                            },
+                          ),
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: CustomPaint(
+                                painter: _TextSizeSliderTicksPainter(
+                                  value: _dragValue ??
+                                      _indexAnimation.value / 6,
+                                  color: inactiveColor,
+                                  sliderWidth: sliderWidth,
+                                  isDragging: _isDragging,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
               );
             },
@@ -2359,6 +2376,65 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
       ),
     );
   }
+}
+
+class _TextSizeSliderTicksPainter extends CustomPainter {
+  final double value;
+  final Color color;
+  final double sliderWidth;
+  final bool isDragging;
+
+  const _TextSizeSliderTicksPainter({
+    required this.value,
+    required this.color,
+    required this.sliderWidth,
+    required this.isDragging,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const tickWidth = 1.5;
+    const tickHeight = 4.0;
+    final layout = _liquidGlassSliderLayout;
+    final trackStart = layout.iconSize + layout.iconGap;
+    final trackEnd = sliderWidth - trackStart;
+    final minThumbCenter = trackStart + layout.thumbWidth / 2;
+    final maxThumbCenter = trackEnd - layout.thumbWidth / 2;
+    final thumbCenter =
+        minThumbCenter +
+        (maxThumbCenter - minThumbCenter) * value.clamp(0.0, 1.0);
+    final thumbWidth = isDragging
+        ? layout.liftedThumbWidth
+        : layout.thumbWidth;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    for (var step = 0; step <= 6; step++) {
+      final x = trackStart + (trackEnd - trackStart) * step / 6;
+      if ((x - thumbCenter).abs() <= thumbWidth / 2 + tickWidth / 2) {
+        continue;
+      }
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset(x, size.height / 2),
+            width: tickWidth,
+            height: tickHeight,
+          ),
+          const Radius.circular(tickWidth / 2),
+        ),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TextSizeSliderTicksPainter oldDelegate) =>
+      oldDelegate.value != value ||
+      oldDelegate.color != color ||
+      oldDelegate.sliderWidth != sliderWidth ||
+      oldDelegate.isDragging != isDragging;
 }
 
 // ── Liquid Glass opacity control ──────────────────────────────────────────────
