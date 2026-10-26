@@ -313,11 +313,19 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     ScrollPosition outerPosition,
     double sharedCollapseProgress,
   ) {
-    final bodyPosition =
-        AppHeaderScrollView._bodyPositionForOuterPosition(outerPosition);
-    if (bodyPosition == null || !bodyPosition.hasContentDimensions) return;
+    final bodyPosition = AppHeaderScrollView._bodyPositionForOuterPosition(
+      outerPosition,
+    );
+    final bodyController =
+        AppHeaderScrollView._contentControllerForOuterPosition(outerPosition);
+    if (bodyPosition == null ||
+        !bodyPosition.hasContentDimensions) {
+      return;
+    }
 
-    final shouldExpand = sharedCollapseProgress <= 0.001;
+    // The body remains on its expanded backup throughout header-only
+    // movement. Only a fully compact header selects the scrolled backup.
+    final shouldExpand = sharedCollapseProgress < 1.0 - 0.001;
     final bodyOffset = AppHeaderScrollView._bodyOffsetForHandoff(
       outerPosition,
       expanded: shouldExpand,
@@ -328,7 +336,18 @@ class AppHeaderTitleTransition extends ChangeNotifier {
         .clamp(bodyPosition.minScrollExtent, bodyPosition.maxScrollExtent)
         .toDouble();
     if ((bodyPosition.pixels - target).abs() > 0.5) {
-      bodyPosition.jumpTo(target);
+      if (bodyController != null) {
+        AppHeaderScrollView.jumpBodyTo(bodyController, target);
+      } else {
+        // Settings subscreens do not expose a content controller. Restore
+        // their inner position directly, then put the outer header back at
+        // the shared state if NestedScrollView coupled the two jumps.
+        final sharedOuterOffset = outerPosition.pixels;
+        bodyPosition.jumpTo(target);
+        if ((outerPosition.pixels - sharedOuterOffset).abs() > 0.5) {
+          outerPosition.jumpTo(sharedOuterOffset);
+        }
+      }
     }
     AppHeaderScrollView._rememberPositionBackup(outerPosition);
   }
@@ -812,12 +831,11 @@ class AppHeaderScrollView extends StatelessWidget {
     }
 
     final backup = _scrollBackups[controller] ??= _AppHeaderScrollBackup();
-    final headerOffset = AppHeaderScrollBehavior.contentOffset(outerPosition);
     final bodyOffset = AppHeaderScrollBehavior.contentOffset(bodyPosition);
-    if (headerOffset > 0.5 || bodyOffset > 0.5) {
+    if (bodyOffset > 0.5) {
       backup.scrolledBodyOffset = bodyOffset;
     } else {
-      backup.expandedBodyOffset = bodyOffset;
+      backup.expandedBodyOffset = 0.0;
     }
   }
 
@@ -826,7 +844,9 @@ class AppHeaderScrollView extends StatelessWidget {
     required bool expanded,
   }) {
     final controller = _contentControllerForOuterPosition(outerPosition);
-    if (controller == null) return null;
+    // A few pushed Settings screens intentionally have no page controller.
+    // They still inherit the shared header and start with a zero body backup.
+    if (controller == null) return 0.0;
     final backup = _scrollBackups[controller];
     if (expanded) return backup?.expandedBodyOffset ?? 0.0;
     return backup?.scrolledBodyOffset;

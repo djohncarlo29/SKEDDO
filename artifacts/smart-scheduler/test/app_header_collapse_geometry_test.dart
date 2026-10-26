@@ -404,6 +404,94 @@ void main() {
       expect(secondController.offset, 120);
     },
   );
+
+  testWidgets(
+    'partial header handoff keeps body expanded and preserves scrolled backup',
+    (tester) async {
+      tester.view.physicalSize = _viewportSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final firstController = ScrollController();
+      final secondController = ScrollController();
+      final transition = AppHeaderTitleTransition();
+      addTearDown(() {
+        transition.dispose();
+        firstController.dispose();
+        secondController.dispose();
+      });
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: SizedBox(
+            height: _viewportSize.height,
+            child: AppHeaderScrollInsetScope(
+              leadingInset: kAppHeaderToolbarHeight,
+              titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+              child: Padding(
+                padding: const EdgeInsets.only(top: kAppHeaderToolbarHeight),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildHeaderScrollView(
+                        controller: firstController,
+                        bodyHeight: 1200,
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildHeaderScrollView(
+                        controller: secondController,
+                        bodyHeight: 1200,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final firstPosition =
+          AppHeaderScrollView.headerPositionFor(firstController)!;
+      final secondPosition =
+          AppHeaderScrollView.headerPositionFor(secondController)!;
+
+      // Seed the inactive destination's independent compact-state backup.
+      secondPosition.jumpTo(kAppHeaderTitleCollapseDistance);
+      secondController.jumpTo(120);
+      await tester.pump();
+
+      transition.bindTo(firstPosition);
+      final partialOffset = kAppHeaderTitleCollapseDistance * 0.4;
+      firstPosition.jumpTo(partialOffset);
+      await tester.pump();
+      expect(transition.collapseProgress, closeTo(0.4, 0.001));
+
+      // Header movement is shared, but it is not body scrolling. The stale
+      // destination body must reset before its saved scrolled backup is used.
+      transition.bindTo(secondPosition, preserveCollapseProgress: true);
+      await tester.pump();
+      expect(secondPosition.pixels, closeTo(partialOffset, 1));
+      expect(secondController.offset, 0);
+
+      // Returning to the destination after the active header reaches compact
+      // must still restore its original scrolled backup.
+      secondPosition.jumpTo(kAppHeaderTitleCollapseDistance);
+      await tester.pump();
+      transition.bindTo(firstPosition, preserveCollapseProgress: true);
+      await tester.pump();
+      transition.bindTo(secondPosition, preserveCollapseProgress: true);
+      await tester.pump();
+      expect(
+        secondPosition.pixels,
+        closeTo(kAppHeaderTitleCollapseDistance, 1),
+      );
+      expect(secondController.offset, 120);
+    },
+  );
 }
 
 Widget _buildHeaderHarness({
