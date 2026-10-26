@@ -12,7 +12,9 @@ import '../../liquid_glass.dart'
 import '../../liquid_glass_style.dart';
 import '../../liquid_glass_view.dart';
 import '../../utils/liquid_glass_blur.dart' show LiquidGlassBlur;
+import '../../utils/liquid_glass_border_mode.dart' show OpticalBorder;
 import '../../utils/liquid_glass_eager_pan.dart';
+import '../../utils/liquid_glass_refraction_type.dart' show OpticalRefraction;
 import '../../utils/liquid_glass_spring.dart' show liquidGlassSpringStep;
 import '../../utils/liquid_glass_shape.dart';
 import '../liquid_glass_morph_pill.dart';
@@ -185,13 +187,12 @@ class LiquidGlassSwitch extends StatefulWidget {
     this.pixelRatio = 1.0,
   });
 
-  /// The tuned default thumb glass: a clear pill — refraction and rim
-  /// only, no tint. The glass shows what is behind it rather than
-  /// washing over it, so the solid body, not a milky fill, is what reads
-  /// as the thumb.
+  /// The tuned default thumb glass, kept aligned with
+  /// `liquid_glass_easy` 5.0.0 while expressed through this vendored
+  /// 4.0.0 package's style API.
   ///
-  /// The blur is deliberately near-zero: at thumb size the refraction
-  /// reads sharper over a photo without one.
+  /// It is a clear pill — refraction and rim only, no tint or blur — so the
+  /// solid body, not a milky fill, is what reads as the thumb.
   ///
   /// The contact shadow is tucked in (`inset: 3`), so the glass overhangs
   /// it — at thumb size a full-width halo reads as a glow rather than as
@@ -202,19 +203,22 @@ class LiquidGlassSwitch extends StatefulWidget {
   static const LiquidGlassStyle defaultStyle = LiquidGlassStyle(
     shape: LiquidGlassShape.continuousRoundedRectangle(
       lightDirection: 39,
-      // The rim's glint sits between gray and white rather than at pure
-      // white, which reads softer on pale backgrounds.
-      lightColor: Color(0xB2C8C8C8),
+      borderType: OpticalBorder(lightSpread: 0.9),
     ),
     appearance: LiquidGlassAppearance(
       color: Color(0x00FFFFFF),
-      blur: LiquidGlassBlur(sigmaX: 0.5, sigmaY: 0.5),
+      blur: LiquidGlassBlur(sigmaX: 0, sigmaY: 0),
       shadow: LiquidGlassShadow(inset: 3),
     ),
     refraction: LiquidGlassRefraction(
-      distortion: 0.12,
-      distortionWidth: 13,
-      chromaticAberration: 0.002,
+      refractionType: OpticalRefraction(
+        refraction: 1.03,
+        refractionWidth: 8,
+        depth: 1,
+      ),
+      // 5.0.0 expresses dispersion in logical pixels; the 4.0.0
+      // chromaticAberration dial uses the equivalent 1/660 scale.
+      chromaticAberration: 1.0 / 660.0,
     ),
   );
 
