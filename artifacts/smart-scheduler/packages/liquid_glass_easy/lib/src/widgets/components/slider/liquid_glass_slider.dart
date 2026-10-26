@@ -688,9 +688,9 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
                 clipBehavior: Clip.none,
                 children: [
                   // One coherent track geometry: the endpoint ticks are
-                  // unioned with the track before it is painted, so neither
-                  // endpoint extends past a tick and translucent pixels never
-                  // stack at their intersections.
+                  // unioned with the track before it is painted, so the
+                  // stepped markers span the full track without stacking
+                  // translucent pixels at their intersections.
                   Positioned(
                     left: trackX,
                     top: trackY,
@@ -702,8 +702,6 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
                         fillEndX: fillEndX,
                         trackWidth: trackW,
                         trackHeight: effTrackHeight,
-                        tickStartX: _minThumbCX - trackX,
-                        tickEndX: _maxThumbCX - trackX,
                         divisions: widget.divisions,
                       ),
                     ),

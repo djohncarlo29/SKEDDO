@@ -13,8 +13,6 @@ class LiquidGlassSliderTrackPainter extends CustomPainter {
     required this.fillEndX,
     required this.trackWidth,
     required this.trackHeight,
-    required this.tickStartX,
-    required this.tickEndX,
     required this.divisions,
   });
 
@@ -23,8 +21,6 @@ class LiquidGlassSliderTrackPainter extends CustomPainter {
   final double fillEndX;
   final double trackWidth;
   final double trackHeight;
-  final double tickStartX;
-  final double tickEndX;
   final int divisions;
 
   @override
@@ -35,7 +31,8 @@ class LiquidGlassSliderTrackPainter extends CustomPainter {
     final tickHalfHeight = trackHeight * (5 / 6);
     final tickTop = trackHeight / 2 - tickHalfHeight;
     final tickBottom = trackHeight / 2 + tickHalfHeight;
-    final tickRange = math.max(0.0, tickEndX - tickStartX);
+    final tickInset = math.min(tickHalfWidth, trackWidth / 2).toDouble();
+    final tickRange = math.max(0.0, trackWidth - tickInset * 2).toDouble();
 
     // The painted track reaches the resting thumb's outer edges. Its end
     // points are covered by the thumb when it settles at either extreme.
@@ -66,12 +63,12 @@ class LiquidGlassSliderTrackPainter extends CustomPainter {
       return;
     }
 
-    // Ticks stay centered beneath the thumb's travel positions; only the line
-    // itself extends from the thumb's left outer edge to its right outer edge.
+    // Discrete tick bars span the full painted track: their outer edges meet
+    // the line endpoints, with the remaining marks evenly distributed inside.
     final inactivePath = Path()..addRect(trackRect);
     final tickXs = <double>[];
     for (var i = 0; i <= divisions; i++) {
-      final x = tickStartX + tickRange * i / divisions;
+      final x = lineStartX + tickInset + tickRange * i / divisions;
       tickXs.add(x);
       inactivePath.addRect(
         Rect.fromLTRB(
@@ -116,7 +113,5 @@ class LiquidGlassSliderTrackPainter extends CustomPainter {
       oldDelegate.fillEndX != fillEndX ||
       oldDelegate.trackWidth != trackWidth ||
       oldDelegate.trackHeight != trackHeight ||
-      oldDelegate.tickStartX != tickStartX ||
-      oldDelegate.tickEndX != tickEndX ||
       oldDelegate.divisions != divisions;
 }

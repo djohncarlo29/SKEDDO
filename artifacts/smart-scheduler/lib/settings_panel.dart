@@ -2631,7 +2631,7 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
 const double _kLiquidGlassRowHorizontalPadding = 18.0;
 const double _kLiquidGlassSettledEdgeInset = 16.0;
 // Zero inset aligns the line's outer endpoints with the resting thumb's edges.
-// Discrete tick centers remain aligned with the thumb's travel positions.
+// Discrete tick bars span the full track, flush to those outer endpoints.
 const double _kLiquidGlassSliderInset = 0.0;
 const LiquidGlassSliderLayout _liquidGlassSliderLayout =
     LiquidGlassSliderLayout(horizontalInset: _kLiquidGlassSliderInset);

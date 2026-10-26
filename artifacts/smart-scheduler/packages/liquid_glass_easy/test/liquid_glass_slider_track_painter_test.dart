@@ -15,8 +15,6 @@ void main() {
       fillEndX: 0,
       trackWidth: 40,
       trackHeight: 6,
-      tickStartX: 10,
-      tickEndX: 30,
       divisions: 0,
     );
     final image = (await tester.runAsync(
@@ -49,27 +47,32 @@ void main() {
     raisedImage.dispose();
   });
 
-  testWidgets('stepped track reaches both thumb-edge endpoints',
-      (tester) async {
+  testWidgets('stepped tick bars reach both track edges at equal steps', (
+    tester,
+  ) async {
     const painter = LiquidGlassSliderTrackPainter(
       inactiveColor: Colors.black,
       activeColor: Colors.blue,
-      fillEndX: 20,
-      trackWidth: 40,
+      fillEndX: 0,
+      trackWidth: 42,
       trackHeight: 6,
-      tickStartX: 10,
-      tickEndX: 30,
-      divisions: 2,
+      divisions: 6,
     );
     final image = (await tester.runAsync(
-      () => _rasterize(painter, width: 40, height: 6),
+      () => _rasterize(
+        painter,
+        width: 43,
+        height: 10,
+        verticalOffset: 2,
+      ),
     ))!;
     final bytes = (await tester.runAsync(
       () => image.toByteData(format: ui.ImageByteFormat.rawRgba),
     ))!;
-    int alphaAt(int x, int y) => bytes.getUint8((y * 40 + x) * 4 + 3);
-    expect(alphaAt(0, 3), greaterThan(0));
-    expect(alphaAt(39, 3), greaterThan(0));
+    int alphaAt(int x, int y) => bytes.getUint8((y * 43 + x) * 4 + 3);
+    for (final x in [1, 8, 14, 21, 28, 34, 41]) {
+      expect(alphaAt(x, 0), greaterThan(0), reason: 'step at x=$x');
+    }
     image.dispose();
   });
 }

@@ -11,8 +11,8 @@ Slider row height must be `16px + settled thumb height + 16px`. Keep the larger 
 
 ## Track endpoints and continuous caps
 
-The painted track spans the resting thumb's outer left and right edges. Keep the stepped tick centers aligned with thumb travel; the opaque resting thumb covers the track at either endpoint. Sliders without divisions use a single capsule with rounded ends and no endpoint tick.
+The painted track spans the resting thumb's outer left and right edges. Discrete tick bars are evenly distributed across the full track, with their outer bounds flush to the line endpoints; the opaque resting thumb covers the track at either endpoint. Sliders without divisions use a single capsule with rounded ends and no endpoint tick.
 
-**Why:** The user requires endpoint lines to meet the thumb's outer bounds without peeking through at rest, and the continuous Liquid Glass setting slider must not have a stepped left end or hard right cap.
+**Why:** The user requires endpoint lines to meet the thumb's outer bounds without peeking through at rest, discrete tick bars to reach those same track edges, and the continuous Liquid Glass setting slider to have no endpoint tick or hard cap.
 
-**How to apply:** Change shared track painting rather than thumb travel or row bounds. Preserve the thumb-over-track layer order, keep discrete ticks centered, and round both outer caps only for sliders without divisions.
+**How to apply:** Change shared track painting rather than thumb travel or row bounds. Preserve the thumb-over-track layer order, distribute all discrete tick bars edge-to-edge, and round both outer caps only for sliders without divisions.
