@@ -3311,7 +3311,7 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
     // ── Image ──────────────────────────────────────────────────────────────
     if (widget.imageBytes != null) {
       return LayoutBuilder(
-        builder: (_, c) {
+        builder: (context, c) {
           double displayW, displayH;
           if (_imgNatSize != null && _imgNatSize!.width > 0) {
             final aspect = _imgNatSize!.width / _imgNatSize!.height;
@@ -3329,12 +3329,28 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
             displayH = c.maxHeight.isFinite ? c.maxHeight : c.maxWidth;
           }
           return ReleaseResetInteractiveViewer(
-            child: ClipPath(
-              clipper: _PreviewSquircleClipper(),
-              child: SizedBox(
-                width: displayW,
-                height: displayH,
-                child: Image.memory(widget.imageBytes!, fit: BoxFit.fill),
+            child: DecoratedBox(
+              position: DecorationPosition.foreground,
+              decoration: ShapeDecoration(
+                color: CupertinoColors.transparent,
+                shape: const BoundedSquircleStadiumBorder(
+                  side: BorderSide(color: kAttachmentBorder, width: 0.5),
+                ),
+                shadows: resolveThemeShadows(const [
+                  BoxShadow(
+                    color: kAttachmentShadow,
+                    blurRadius: 20,
+                    offset: Offset(0, 4),
+                  ),
+                ], context),
+              ),
+              child: ClipPath(
+                clipper: _PreviewSquircleClipper(),
+                child: SizedBox(
+                  width: displayW,
+                  height: displayH,
+                  child: Image.memory(widget.imageBytes!, fit: BoxFit.fill),
+                ),
               ),
             ),
           );
@@ -3434,6 +3450,7 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
     final safeTop = MediaQuery.paddingOf(context).top;
     final horizontalInset =
         AppWindowContentScope.of(context).horizontalInset;
+    final isImagePreview = widget.imageBytes != null;
 
     return AnimatedBuilder(
       animation: _ctrl,
@@ -3488,20 +3505,26 @@ class _AttachmentPreviewOverlayState extends State<_AttachmentPreviewOverlay>
                                   ),
                                   child: DecoratedBox(
                                     decoration: ShapeDecoration(
-                                      color: kCardColor,
-                                      shape: const BoundedSquircleStadiumBorder(
-                                        side: const BorderSide(
-                                          color: kAttachmentBorder,
-                                          width: 0.5,
-                                        ),
+                                      color: isImagePreview
+                                          ? CupertinoColors.transparent
+                                          : kCardColor,
+                                      shape: BoundedSquircleStadiumBorder(
+                                        side: isImagePreview
+                                            ? BorderSide.none
+                                            : const BorderSide(
+                                                color: kAttachmentBorder,
+                                                width: 0.5,
+                                              ),
                                       ),
-                                      shadows: resolveThemeShadows(const [
-                                        BoxShadow(
-                                          color: kAttachmentShadow,
-                                          blurRadius: 20,
-                                          offset: Offset(0, 4),
-                                        ),
-                                      ], context),
+                                      shadows: isImagePreview
+                                          ? const <BoxShadow>[]
+                                          : resolveThemeShadows(const [
+                                              BoxShadow(
+                                                color: kAttachmentShadow,
+                                                blurRadius: 20,
+                                                offset: Offset(0, 4),
+                                              ),
+                                            ], context),
                                     ),
                                     child: child!,
                                   ),
