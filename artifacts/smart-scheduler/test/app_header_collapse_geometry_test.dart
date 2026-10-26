@@ -320,6 +320,90 @@ void main() {
       expect(titleTransition.collapseProgress, 0);
     },
   );
+
+  testWidgets(
+    'expanded handoff resets body immediately but keeps its scrolled backup',
+    (tester) async {
+      tester.view.physicalSize = _viewportSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final firstController = ScrollController();
+      final secondController = ScrollController();
+      final transition = AppHeaderTitleTransition();
+      addTearDown(() {
+        transition.dispose();
+        firstController.dispose();
+        secondController.dispose();
+      });
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: SizedBox(
+            height: _viewportSize.height,
+            child: AppHeaderScrollInsetScope(
+              leadingInset: kAppHeaderToolbarHeight,
+              titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+              child: Padding(
+                padding: const EdgeInsets.only(top: kAppHeaderToolbarHeight),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildHeaderScrollView(
+                        controller: firstController,
+                        bodyHeight: 1200,
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildHeaderScrollView(
+                        controller: secondController,
+                        bodyHeight: 1200,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final firstPosition =
+          AppHeaderScrollView.headerPositionFor(firstController)!;
+      final secondPosition =
+          AppHeaderScrollView.headerPositionFor(secondController)!;
+      transition.bindTo(firstPosition);
+
+      secondPosition.jumpTo(kAppHeaderTitleCollapseDistance);
+      secondController.jumpTo(120);
+      await tester.pump();
+      expect(secondController.offset, 120);
+
+      // The currently active screen is expanded, so the destination must be
+      // laid out at zero before it can paint, while retaining 120 as its
+      // scrolled-state backup.
+      transition.bindTo(secondPosition, preserveCollapseProgress: true);
+      await tester.pump();
+      expect(secondPosition.pixels, 0);
+      expect(secondController.offset, 0);
+
+      transition.bindTo(firstPosition, preserveCollapseProgress: true);
+      await tester.pump();
+      firstPosition.jumpTo(kAppHeaderTitleCollapseDistance);
+      await tester.pump();
+
+      // A compact active header selects the destination's saved scrolled state.
+      transition.bindTo(secondPosition, preserveCollapseProgress: true);
+      await tester.pump();
+      expect(
+        secondPosition.pixels,
+        closeTo(kAppHeaderTitleCollapseDistance, 1),
+      );
+      expect(secondController.offset, 120);
+    },
+  );
 }
 
 Widget _buildHeaderHarness({

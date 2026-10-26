@@ -163,8 +163,10 @@ class AppHeaderTitleTransition extends ChangeNotifier {
 
   /// Binds to the single active scroll position. Recreating the package
   /// controller on handoff makes it recalculate from that position immediately.
-  /// When [preserveCollapseProgress] is true, the new destination is positioned
-  /// at the same shared header state before it becomes the active source.
+/// When [preserveCollapseProgress] is true, the new destination is positioned
+/// at the same shared header state before it becomes the active source. Each
+/// page also keeps separate expanded and scrolled body offsets so an expanded
+/// handoff never paints a stale destination position for a frame.
   void bindTo(
     ScrollPosition? position, {
     bool preserveCollapseProgress = false,
@@ -192,7 +194,10 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     final inheritedSearchProgress = preserveCollapseProgress
         ? searchBarCollapseProgress
         : _pendingHandoffSearchProgress;
-    if (_position != null) contentOffset;
+    if (_position != null) {
+      contentOffset;
+      AppHeaderScrollView._rememberPositionBackup(_position!);
+    }
     if (preserveCollapseProgress) {
       _pendingHandoffCollapseProgress = inheritedProgress;
       _pendingHandoffSearchProgress = inheritedSearchProgress;
@@ -211,6 +216,11 @@ class AppHeaderTitleTransition extends ChangeNotifier {
 
     _position = position;
     _syncNestedBodyPosition();
+    if (position != null && preserveCollapseProgress) {
+      // Keep the destination's former scrolled position as its non-expanded
+      // backup before aligning it with the active screen's header state.
+      AppHeaderScrollView._rememberPositionBackup(position);
+    }
     if (position == null && _pendingHandoffCollapseProgress == null) {
       _cachedContentOffset = 0.0;
       _cachedCollapseProgress = 0.0;
@@ -228,6 +238,9 @@ class AppHeaderTitleTransition extends ChangeNotifier {
       // existing shell reserves a fixed title slot, so use that exact geometry.
       _controller.reportMeasuredHeight(kAppHeaderTitleCollapseDistance);
       _applyPendingHandoff();
+      if (preserveCollapseProgress && inheritedProgress != null) {
+        _restoreBodyPositionForHandoff(position, inheritedProgress);
+      }
     } else if (_pendingHandoffCollapseProgress != null) {
       _cachedCollapseProgress = _pendingHandoffCollapseProgress!;
       _cachedContentOffset =
@@ -289,7 +302,35 @@ class AppHeaderTitleTransition extends ChangeNotifier {
       _applyPendingHandoff();
       _isBinding = false;
     }
+    final position = _position;
+    if (position != null) {
+      AppHeaderScrollView._rememberPositionBackup(position);
+    }
     _notifyIfChanged();
+  }
+
+  void _restoreBodyPositionForHandoff(
+    ScrollPosition outerPosition,
+    double sharedCollapseProgress,
+  ) {
+    final bodyPosition =
+        AppHeaderScrollView._bodyPositionForOuterPosition(outerPosition);
+    if (bodyPosition == null || !bodyPosition.hasContentDimensions) return;
+
+    final shouldExpand = sharedCollapseProgress <= 0.001;
+    final bodyOffset = AppHeaderScrollView._bodyOffsetForHandoff(
+      outerPosition,
+      expanded: shouldExpand,
+    );
+    if (bodyOffset == null) return;
+
+    final target = (bodyPosition.minScrollExtent + bodyOffset)
+        .clamp(bodyPosition.minScrollExtent, bodyPosition.maxScrollExtent)
+        .toDouble();
+    if ((bodyPosition.pixels - target).abs() > 0.5) {
+      bodyPosition.jumpTo(target);
+    }
+    AppHeaderScrollView._rememberPositionBackup(outerPosition);
   }
 
   void _applyPendingHandoff() {
@@ -652,6 +693,11 @@ class _AppHeaderScrollClipper extends CustomClipper<Rect> {
       leadingInset != oldClipper.leadingInset;
 }
 
+class _AppHeaderScrollBackup {
+  double? expandedBodyOffset;
+  double? scrolledBodyOffset;
+}
+
 /// A scroll viewport whose physical extent reaches behind the pinned
 /// first-level header, where [AppHeaderScrollEdge] applies its visual treatment.
 /// The scroll extent grows by the same amount as the viewport so initial layout
@@ -708,6 +754,8 @@ class AppHeaderScrollView extends StatelessWidget {
 
   static final Map<ScrollController, List<ScrollPosition>>
       _outerPositionsByContentController = {};
+  static final Expando<_AppHeaderScrollBackup> _scrollBackups =
+      Expando<_AppHeaderScrollBackup>('AppHeaderScrollView.backups');
   static final Map<ScrollPosition, ScrollPosition>
       _bodyPositionsByOuterPosition = {};
   static final Map<ScrollPosition, double> _searchExtentsByOuterPosition = {};
@@ -743,6 +791,50 @@ class AppHeaderScrollView extends StatelessWidget {
     }
     return null;
   }
+
+  static ScrollController? _contentControllerForOuterPosition(
+    ScrollPosition outerPosition,
+  ) {
+    for (final entry in _outerPositionsByContentController.entries) {
+      if (entry.value.contains(outerPosition)) return entry.key;
+    }
+    return null;
+  }
+
+  static void _rememberPositionBackup(ScrollPosition outerPosition) {
+    if (!outerPosition.hasContentDimensions) return;
+    final controller = _contentControllerForOuterPosition(outerPosition);
+    final bodyPosition = _bodyPositionsByOuterPosition[outerPosition];
+    if (controller == null ||
+        bodyPosition == null ||
+        !bodyPosition.hasContentDimensions) {
+      return;
+    }
+
+    final backup = _scrollBackups[controller] ??= _AppHeaderScrollBackup();
+    final headerOffset = AppHeaderScrollBehavior.contentOffset(outerPosition);
+    final bodyOffset = AppHeaderScrollBehavior.contentOffset(bodyPosition);
+    if (headerOffset > 0.5 || bodyOffset > 0.5) {
+      backup.scrolledBodyOffset = bodyOffset;
+    } else {
+      backup.expandedBodyOffset = bodyOffset;
+    }
+  }
+
+  static double? _bodyOffsetForHandoff(
+    ScrollPosition outerPosition, {
+    required bool expanded,
+  }) {
+    final controller = _contentControllerForOuterPosition(outerPosition);
+    if (controller == null) return null;
+    final backup = _scrollBackups[controller];
+    if (expanded) return backup?.expandedBodyOffset ?? 0.0;
+    return backup?.scrolledBodyOffset;
+  }
+
+  static ScrollPosition? _bodyPositionForOuterPosition(
+    ScrollPosition outerPosition,
+  ) => _bodyPositionsByOuterPosition[outerPosition];
 
   /// Returns the outer header position paired with an existing page controller.
   ///

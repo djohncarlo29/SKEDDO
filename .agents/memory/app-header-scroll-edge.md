@@ -13,6 +13,12 @@ One app-wide header-collapse state is authoritative across tabs, Detailed Catego
 
 **How to apply:** Preserve the active state on destination handoff and seed newly created header geometry before Calendar morph endpoints are measured. Do not reapply alignment to the same position. Keep header collapse driven by the outer position and glass-edge travel informed by the coordinated body as well. Short pages should have only the real header collapse travel, not fabricated body scroll extent. Calendar Day timelines remain independent scroll sources, but their fixed chrome must inherit the remaining shared title height rather than always reserving the expanded slot. Preserve search restoration and existing edge bounds. Nested inner-position jumps use body coordinates and can collapse the outer header even at body offset zero; body-only restoration must preserve the actual outer position.
 
+Each screen keeps separate expanded (zero body offset) and scrolled body backups. The active shared header state chooses which one a destination restores: expanded means reset its body before paint while retaining its scrolled backup; compact means restore its last scrolled body offset. Never show a destination's stale scrolled body for a frame before resetting it.
+
+**Why:** The user requires both scroll states to survive screen changes without a stale-position flash, while the shared header—not an inactive screen's saved position—remains authoritative.
+
+**How to apply:** Capture the outgoing screen's body position, capture any incoming stale nonzero body position before resetting it, then synchronously restore the destination body after aligning its outer header to the shared state. Keep the header offset itself shared rather than duplicating it per screen.
+
 Calendar's adjacent Year and Month preview panels also have independent outer header positions. Inactive previews must inherit the active panel's collapse progress at creation and mirror it live; keep their body scroll offset synchronization separate. Day timeline panels do not own this shared header.
 
 **Why:** A preview can remain mounted after the active header changes, leaving its outer position stale even when its body scroll offset is synchronized. A newly created preview must not briefly default to expanded.
