@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     as navigation_glass
     show GlassAppBar, GlassBarItem, GlassBarItemBackground;
@@ -8,14 +9,26 @@ import '../app_theme.dart';
 import 'app_shell_navigation_scope.dart';
 import 'skeddo_glass_settings.dart';
 
-const Object appShellPrimaryToolbarItemId = 'app-shell-primary-toolbar';
+const Object _appShellMenuToolbarItemId = 'app-shell-menu-toolbar';
+const Object _appShellCloseToolbarItemId = 'app-shell-close-toolbar';
+const Object _appShellBackToolbarItemId = 'app-shell-back-toolbar';
 
 enum AppShellToolbarGlyph { menu, close, back }
 
+extension AppShellToolbarGlyphIdentity on AppShellToolbarGlyph {
+  Object get glassItemId => switch (this) {
+    AppShellToolbarGlyph.menu => _appShellMenuToolbarItemId,
+    AppShellToolbarGlyph.close => _appShellCloseToolbarItemId,
+    AppShellToolbarGlyph.back => _appShellBackToolbarItemId,
+  };
+}
+
 /// A route-registered toolbar item using the app's slider-driven glass values.
 ///
-/// Each destination builds this same item with [appShellPrimaryToolbarItemId],
-/// allowing GlassNavigationShell to retain the button while its route changes.
+/// Destinations reuse an identity while the glyph is unchanged. A change
+/// between menu, close, and back uses a distinct package item identity so the
+/// package can run its materialize/blur choreography instead of swapping the
+/// glyph inside a permanently matched item.
 class AppShellPinnedToolbar extends StatelessWidget {
   const AppShellPinnedToolbar({
     super.key,
@@ -28,7 +41,7 @@ class AppShellPinnedToolbar extends StatelessWidget {
     this.buttonSize = 40,
     this.toolbarHeight = 60,
     this.actions = const <navigation_glass.GlassBarItem>[],
-    this.showPrimary = true,
+    this.hideWhen,
   });
 
   final AppShellToolbarGlyph glyph;
@@ -42,7 +55,9 @@ class AppShellPinnedToolbar extends StatelessWidget {
 
   /// Additional items join this shared cluster and turn its circle into a pill.
   final List<navigation_glass.GlassBarItem> actions;
-  final bool showPrimary;
+
+  /// Hides the whole registration, including outgoing routes, when true.
+  final ValueListenable<bool>? hideWhen;
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +67,7 @@ class AppShellPinnedToolbar extends StatelessWidget {
     ];
     final routeChanges = AppShellNavigationScope.routeChangesOf(context);
     if (routeChanges != null) listenables.add(routeChanges);
+    if (hideWhen != null) listenables.add(hideWhen!);
     return ListenableBuilder(
       listenable: Listenable.merge(listenables),
       builder: (context, _) => _buildToolbar(context),
@@ -59,35 +75,31 @@ class AppShellPinnedToolbar extends StatelessWidget {
   }
 
   Widget _buildToolbar(BuildContext context) {
+    if (hideWhen?.value ?? false) return const SizedBox.shrink();
+
     final color = this.color ?? resolveAccentColor(context);
     final visibility = opacity.clamp(0.0, 1.0).toDouble();
     final settings = skeddoPinnedNavigationGlassSettingsFor(
       MediaQuery.platformBrightnessOf(context),
       visibility: visibility,
     );
-    final item = showPrimary
-        ? navigation_glass.GlassBarItem.icon(
-            id: appShellPrimaryToolbarItemId,
-            label: semanticLabel,
-            enabled: visibility > 0.01,
-            background: navigation_glass.GlassBarItemBackground.shared,
-            icon: _AppShellToolbarGlyphContent(
-              state: glyph,
-              glyphColor: color,
-              opacity: visibility,
-            ),
-            onTap: onTap,
-          )
-        : null;
+    final item = navigation_glass.GlassBarItem.icon(
+      id: glyph.glassItemId,
+      label: semanticLabel,
+      enabled: visibility > 0.01,
+      background: navigation_glass.GlassBarItemBackground.shared,
+      icon: _AppShellToolbarGlyphContent(
+        state: glyph,
+        glyphColor: color,
+        opacity: visibility,
+      ),
+      onTap: onTap,
+    );
 
     return navigation_glass.GlassAppBar.pinned(
       title: const SizedBox.shrink(),
-      leading: item == null
-          ? const <navigation_glass.GlassBarItem>[]
-          : <navigation_glass.GlassBarItem>[item],
-      actions: showPrimary
-          ? actions
-          : const <navigation_glass.GlassBarItem>[],
+      leading: <navigation_glass.GlassBarItem>[item],
+      actions: actions,
       backButton: false,
       buttonSize: buttonSize,
       toolbarHeight: toolbarHeight,
@@ -98,10 +110,8 @@ class AppShellPinnedToolbar extends StatelessWidget {
   }
 }
 
-/// Keeps the package's matched item as one persistent button while changing
-/// its glyph immediately at the destination. The fixed Icon fields provide a
-/// stable content identity to GlassNavigationShell; the route-specific glyph
-/// is painted by this widget rather than cross-fading a second toolbar item.
+/// Keeps the glyph widget type stable for Flutter while GlassNavigationShell
+/// treats each navigation glyph state as a distinct package item.
 class _AppShellToolbarGlyphContent extends Icon {
   const _AppShellToolbarGlyphContent({
     required this.state,

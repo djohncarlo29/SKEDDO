@@ -87,7 +87,7 @@
 - [Attachment import flow](attachment-import-flow.md) — remove only the pre-import confirmation overlay; keep the Importing sheet and its Cancel behavior unchanged.
 - [Attachment card corner stability](attachment-card-corner-stability.md) — animate rows inside one fixed-radius card; avoid AnimatedSize and radius switching.
 - [AppShell floating overlays](app-shell-floating-overlays.md) — Positioned shell controls must be direct Stack children; nesting one in Column causes a blank Flutter web shell.
-- [App-shell toolbar states](app-shell-menu-button-no-press-tint.md) — app uses hamburger/actions, Settings uses X/no actions, sub-screens and DCV use the back chevron.
+- [App-shell toolbar states](app-shell-menu-button-no-press-tint.md) — distinct glyph IDs enable package blur morphs; search synchronously removes current and outgoing toolbar hit targets.
 - [Split-pane content sizing](split-pane-content-sizing.md) — responsive layouts in a bounded pane must use pane-local width while retaining portrait spacing constants.
 - [Shell backdrop filter bounds](shell-backdrop-filter-bounds.md) — permanent Android glass overlays need explicit finite clipping and clamped blur sampling or they can veil the whole app.
 - [Liquid Glass optical input field](liquid-glass-optical-input.md) — expand the shader source field in both axes while keeping the registered pill mask and full-strength refraction unchanged.

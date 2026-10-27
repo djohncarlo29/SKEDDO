@@ -12,6 +12,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     show
         GlassBarItem,
         GlassBarItemBackground,
+        GlassEffectTransition,
         GlassNavigationShell,
         LiquidGlassWidgets;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1858,6 +1859,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   // True while the search bar in the currently-visible tab is focused.
   bool _searchFocused = false;
+  // Hides current and outgoing pinned registrations as soon as search takes
+  // over, so an outgoing route cannot leave invisible toolbar hit targets.
+  final ValueNotifier<bool> _searchToolbarHidden = ValueNotifier(false);
   // True if the current search session was entered via the off-screen path
   // (header search icon tapped while bar is scrolled out of view).  Used to
   // decide whether to snap or animate the header back on exit.
@@ -1997,6 +2001,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _dcvSlideController.dispose();
     _dcvToolbarAccent.dispose();
     _searchModeController.dispose();
+    _searchToolbarHidden.dispose();
     _calendarStripSlide.dispose();
     _appShellNavigationObserver.dispose();
     _appShellRouteRevision.dispose();
@@ -2081,6 +2086,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   void _setSearchFocused(bool focused) {
     if (_searchFocused == focused) return;
+    _searchToolbarHidden.value = focused;
     if (focused) {
       // The tab settles its own scroll position before reporting focus. Sync
       // the shell title from that settled parent so a stale overscroll value
@@ -2128,6 +2134,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     // instantly and the calendar's own search overlay slides in from above.
     if (_selectedIndex == 1) {
       _searchEnteredOffScreen = true;
+      _searchToolbarHidden.value = true;
       _searchModeController.value = 1.0;
       setState(() => _searchFocused = true);
       _syncToolbarDestination();
@@ -2157,6 +2164,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       // Search bar is off-screen. Collapse the header immediately, then let
       // the tab animate its own off-screen transition and focus the keyboard.
       _searchEnteredOffScreen = true;
+      _searchToolbarHidden.value = true;
       _searchModeController.value = 1.0; // collapse header instantly
       setState(() => _searchFocused = true); // AppShell state
       _syncToolbarDestination();
@@ -2201,6 +2209,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     NativeTextInput.unfocusAll();
     FocusManager.instance.primaryFocus?.unfocus();
     sbResetSearchMode();
+    _searchToolbarHidden.value = false;
 
     setState(() {
       _selectedIndex = index;
@@ -2809,38 +2818,41 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       name: 'app-shell-toolbar-$key',
       opaque: true,
       onSystemBack: _handleToolbarRouteSystemBack,
-      toolbarBuilder: (routeContext) => AnimatedBuilder(
-        animation: Listenable.merge([
-          appAccentNotifier,
-          _dcvToolbarAccent,
-        ]),
-        builder: (context, _) {
-          final accent =
-              isDcv && _dcvToolbarAccent.value != null
-                  ? _dcvToolbarAccent.value!
-                  : resolveAccentColor(routeContext);
-          return AppShellPinnedToolbar(
-            glyph: isDcv
-                ? AppShellToolbarGlyph.back
-                : AppShellToolbarGlyph.menu,
-            semanticLabel: isDcv ? 'Back' : 'Open settings',
-            horizontalInset:
-                AppWindowContentScope.of(routeContext).horizontalInset + 16.0,
-            color: accent,
-            showPrimary: !isSearch,
-            actions: isSearch
-                ? const <navigation_glass.GlassBarItem>[]
-                : _buildPinnedHeaderActions(
+      toolbarBuilder: isSearch
+          ? (_) => const SizedBox.shrink()
+          : (routeContext) => AnimatedBuilder(
+              animation: Listenable.merge([
+                appAccentNotifier,
+                _dcvToolbarAccent,
+              ]),
+              builder: (context, _) {
+                final accent =
+                    isDcv && _dcvToolbarAccent.value != null
+                        ? _dcvToolbarAccent.value!
+                        : resolveAccentColor(routeContext);
+                return AppShellPinnedToolbar(
+                  glyph: isDcv
+                      ? AppShellToolbarGlyph.back
+                      : AppShellToolbarGlyph.menu,
+                  semanticLabel: isDcv ? 'Back' : 'Open settings',
+                  horizontalInset:
+                      AppWindowContentScope.of(
+                        routeContext,
+                      ).horizontalInset +
+                      16.0,
+                  color: accent,
+                  hideWhen: _searchToolbarHidden,
+                  actions: _buildPinnedHeaderActions(
                     routeContext,
                     accent: accent,
                     opacity: 1.0,
                     tabIndex: tabIndex,
                     useDcvCategory: isDcv,
                   ),
-            onTap: _handlePrimaryToolbarTap,
-          );
-        },
-      ),
+                  onTap: _handlePrimaryToolbarTap,
+                );
+              },
+            ),
     );
   }
 
@@ -3310,6 +3322,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             navigatorKey: _appShellNavigatorKey,
             routeRevision: _appShellRouteRevision,
             child: navigation_glass.GlassNavigationShell(
+              effectTransition:
+                  navigation_glass.GlassEffectTransition.materialize,
               child: Stack(
             children: [
               Stack(
