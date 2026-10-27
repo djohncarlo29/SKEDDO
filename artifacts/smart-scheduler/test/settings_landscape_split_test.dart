@@ -14,7 +14,10 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       final backAction = ValueNotifier<VoidCallback?>(null);
+      final inlineBackVisible = ValueNotifier(false);
       final headerTitleTransition = AppHeaderTitleTransition();
+      addTearDown(backAction.dispose);
+      addTearDown(inlineBackVisible.dispose);
       addTearDown(headerTitleTransition.dispose);
 
       Widget buildApp({required bool isOpen}) {
@@ -38,6 +41,7 @@ void main() {
                   isLandscapeTwoPane: true,
                   onClose: () {},
                   subScreenBackAction: backAction,
+                  inlineSubScreenBackVisible: inlineBackVisible,
                   headerTitleTransition: headerTitleTransition,
                 ),
               ),
@@ -52,6 +56,8 @@ void main() {
 
       await tester.tap(find.text('Theme'));
       await tester.pump();
+      expect(inlineBackVisible.value, isTrue);
+      expect(backAction.value, isNotNull);
       final masterTransition = tester
           .widgetList<AppWindowMasterDetailTransition>(
             find.byType(AppWindowMasterDetailTransition),
@@ -91,14 +97,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Saturday'), findsOneWidget);
 
-      final detailBackButton = find.ancestor(
-        of: find.byIcon(CupertinoIcons.back),
-        matching: find.byType(CupertinoButton),
-      );
-      final onBack = tester.widget<CupertinoButton>(detailBackButton).onPressed;
+      final onBack = backAction.value;
+      expect(inlineBackVisible.value, isTrue);
       expect(onBack, isNotNull);
       onBack!();
       await tester.pumpAndSettle();
+      expect(inlineBackVisible.value, isFalse);
       expect(find.byType(AppWindowMasterDetailTransition), findsNothing);
       expect(find.text('Saturday'), findsNothing);
       final fullWidthMaster = tester.getRect(

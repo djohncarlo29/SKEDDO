@@ -500,6 +500,8 @@ class _SettingsPanelState extends State<SettingsPanel>
     }
 
     _restoreHeaderScrollOffset();
+    widget.subScreenBackAction.value = null;
+    widget.inlineSubScreenBackVisible.value = false;
     final navigator = Navigator.of(context, rootNavigator: true);
     final routeFuture = navigator.push<void>(
       CupertinoPageRoute<void>(

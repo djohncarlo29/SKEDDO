@@ -1168,6 +1168,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }
 
   void _exitDCV() {
+    if (!_isDCV || _dcvSlideController.status == AnimationStatus.reverse) {
+      return;
+    }
     // If a category replacement is underway, settle it before the shared
     // pane animation starts so no detail-page motion can finish after it.
     _dcvCategoryTransitionController.value = 1.0;
@@ -1273,6 +1276,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   void _closeSettings() {
     if (!_settingsOpen) return;
     _settingsBackAction.value = null;
+    _settingsInlineBackVisible.value = false;
     final navigator = Navigator.of(context, rootNavigator: true);
     if (navigator.canPop()) navigator.pop();
   }
@@ -1287,7 +1291,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       if (navigator.canPop()) navigator.pop();
       return;
     }
-    if (_isDCV && _dcvToolbarVisible) {
+    if (_isDCV && _dcvSlideController.status == AnimationStatus.reverse) {
+      return;
+    }
+    if (_toolbarDestinationKey() == 'events-dcv') {
       _exitDCV();
       return;
     }
@@ -1298,6 +1305,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     if (!_settingsOpen || !mounted) return;
     setState(() => _settingsOpen = false);
     _settingsBackAction.value = null;
+    _settingsInlineBackVisible.value = false;
     _restoreHeaderScrollOffset();
     _syncToolbarDestination();
   }
@@ -2008,6 +2016,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   void _handleBackGesture() {
     // ── 0. Settings panel ─────────────────────────────────────────────────
     if (_settingsOpen) {
+      if (_settingsInlineBackVisible.value) {
+        _settingsBackAction.value?.call();
+        return;
+      }
       Navigator.of(context, rootNavigator: true).maybePop();
       return;
     }

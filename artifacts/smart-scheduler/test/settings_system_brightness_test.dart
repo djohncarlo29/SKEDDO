@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/app_settings.dart';
 import 'package:smart_scheduler/settings_panel.dart';
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
+import 'package:smart_scheduler/widgets/app_shell_toolbar.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
 
 void main() {
@@ -75,6 +76,14 @@ void main() {
         ),
         findsOneWidget,
       );
+
+      final backToolbar = tester.widget<AppShellPinnedToolbar>(
+        find.byType(AppShellPinnedToolbar),
+      );
+      expect(backToolbar.glyph, AppShellToolbarGlyph.back);
+      backToolbar.onTap();
+      await tester.pumpAndSettle();
+      expect(find.text('Theme'), findsOneWidget);
     },
   );
 }
