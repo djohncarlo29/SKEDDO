@@ -228,6 +228,9 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
     with _RoundedSheetRouteTransitionMixin<T> {
   RoundedCupertinoSheetRoute({
     super.settings,
+    // Give autofocus fields in this route a focused scope. This does not
+    // autofocus every sheet; individual fields still control that behavior.
+    super.requestFocus = true,
     required this.builder,
     this.enableDrag = true,
     this.isNestedSheet = false,

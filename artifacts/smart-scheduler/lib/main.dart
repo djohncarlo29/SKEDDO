@@ -36,6 +36,7 @@ import 'widgets/dcv_keyboard_layout.dart';
 import 'widgets/fixed_size_icon.dart';
 import 'widgets/floating_tab_pill.dart';
 import 'widgets/header_title_scroller.dart';
+import 'widgets/interactive_tap_focus_dismissal.dart';
 import 'widgets/live_rotation_geometry.dart';
 import 'widgets/app_shell_toolbar.dart';
 import 'widgets/app_shell_navigation_scope.dart';
@@ -823,6 +824,9 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
               // This must stay outside AppWindowContentBoundary so its
               // windowSize remains the physical live window during rotation.
               result = LiveRotationGeometry(child: result);
+              // This sits above the root Navigator so taps in AppShell screens
+              // and root-level sheets both dismiss stale text focus.
+              result = InteractiveTapFocusDismissal(child: result);
               return result;
             },
             home: const AppShell(),

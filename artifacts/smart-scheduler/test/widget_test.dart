@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
+import 'package:smart_scheduler/widgets/interactive_tap_focus_dismissal.dart';
 import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
 void main() {
@@ -40,6 +41,105 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Sheet content'), findsNothing);
+  });
+
+  testWidgets('editable taps keep focus and other taps dismiss it', (
+    tester,
+  ) async {
+    final focusNode = FocusNode();
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        builder: (context, child) => InteractiveTapFocusDismissal(
+          child: child ?? const SizedBox.shrink(),
+        ),
+        home: CupertinoPageScaffold(
+          child: Column(
+            children: [
+              CupertinoTextField(focusNode: focusNode),
+              CupertinoButton(onPressed: () {}, child: const Text('Action')),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    focusNode.requestFocus();
+    await tester.pump();
+    expect(focusNode.hasFocus, isTrue);
+
+    await tester.tap(find.text('Action'));
+    await tester.pump();
+    expect(focusNode.hasFocus, isFalse);
+
+    focusNode.requestFocus();
+    await tester.pump();
+    await tester.tap(find.byType(CupertinoTextField));
+    await tester.pump();
+    expect(focusNode.hasFocus, isTrue);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    focusNode.dispose();
+  });
+
+  testWidgets('autofocus fields still focus in root modal sheets', (
+    tester,
+  ) async {
+    final navigatorKey = GlobalKey<NavigatorState>();
+    final focusNode = FocusNode();
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        navigatorKey: navigatorKey,
+        builder: (context, child) => InteractiveTapFocusDismissal(
+          child: child ?? const SizedBox.shrink(),
+        ),
+        home: CupertinoPageScaffold(
+          child: Center(
+            child: CupertinoButton(
+              onPressed: () {
+                showRoundedCupertinoSheet<void>(
+                  context: navigatorKey.currentContext!,
+                  pageBuilder: (_) => CupertinoPageScaffold(
+                    child: Column(
+                      children: [
+                        Center(
+                          child: CupertinoTextField(
+                            focusNode: focusNode,
+                            autofocus: true,
+                          ),
+                        ),
+                        CupertinoButton(
+                          onPressed: () {},
+                          child: const Text('Sheet action'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              child: const Text('Open focused sheet'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open focused sheet'));
+    await tester.pumpAndSettle();
+    debugDumpFocusTree();
+    // ignore: avoid_print
+    print(
+      'modal requestFocus=${(ModalRoute.of(tester.element(find.byType(CupertinoTextField)))!).requestFocus}, node=${focusNode.hasFocus}',
+    );
+    expect(focusNode.hasFocus, isTrue);
+
+    await tester.tap(find.text('Sheet action'));
+    await tester.pump();
+    expect(focusNode.hasFocus, isFalse);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    focusNode.dispose();
   });
 
   testWidgets('keeps an unsaved modal draft through orientation changes', (
