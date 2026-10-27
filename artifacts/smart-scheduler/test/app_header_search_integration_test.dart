@@ -9,161 +9,213 @@ import 'package:smart_scheduler/widgets/modal_toolbar_glass_button.dart';
 import 'package:smart_scheduler/widgets/search_bar_widget.dart';
 
 void main() {
-  testWidgets('real tabs inherit the package title and search collapse stages', (
-    tester,
-  ) async {
-    SharedPreferences.setMockInitialValues({});
-    tester.view.physicalSize = const Size(402, 874);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const SKEDDOApp());
-    await tester.pumpAndSettle();
-    final notesFinder = find.byType(NotesTab);
-    final notes = tester.state<NotesTabState>(notesFinder);
-    final context = tester.element(notesFinder);
-    final transition = AppHeaderScrollInsetScope.titleTransitionOf(context)!;
-    final searchExtent = searchBarHostRowHeight(context);
-    final outer = AppHeaderScrollView.headerPositionFor(notes.scrollController)!;
-    final firstNoteCard = find.byWidgetPredicate(
-      (widget) => widget.runtimeType.toString() == '_NoteInputCard',
-    );
-    final expandedCardTop = AppHeaderScrollInsetScope.maybeOf(context) +
-        kAppHeaderTitleHeight +
-        searchExtent;
-    expect(tester.getTopLeft(firstNoteCard).dy, closeTo(expandedCardTop, 0.5));
-    expect(outer.maxScrollExtent, kAppHeaderTitleHeight + searchExtent);
-    expect(transition.position, same(outer));
-    outer.jumpTo(kAppHeaderTitleHeight);
-    await tester.pumpAndSettle();
-    expect(transition.collapseProgress, 1);
-    expect(transition.searchBarCollapseProgress, 0);
-    expect(
-      tester.getTopLeft(firstNoteCard).dy,
-      closeTo(expandedCardTop - kAppHeaderTitleHeight, 0.5),
-    );
-    outer.jumpTo(outer.maxScrollExtent);
-    await tester.pumpAndSettle();
-    expect(transition.searchBarCollapseProgress, 1);
-
-    for (final tab in ['Events', 'Calendar', 'Home']) {
-      await tester.tapAt(tester.getCenter(find.text(tab).last));
+  testWidgets(
+    'real tabs inherit the package title and search collapse stages',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = const Size(402, 874);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(const SKEDDOApp());
       await tester.pumpAndSettle();
-      expect(transition.collapseProgress, 1, reason: tab);
-      expect(transition.searchBarCollapseProgress, 1, reason: tab);
-    }
-    expect(outer.pixels, kAppHeaderTitleHeight + searchExtent);
-    expect(
-      tester.getTopLeft(firstNoteCard).dy,
-      closeTo(
-        AppHeaderScrollInsetScope.maybeOf(tester.element(notesFinder)) + 16,
-        0.5,
-      ),
-    );
-
-    // Opening and cancelling search must not reopen its collapsed parent bar.
-    final headerSearch = tester
-        .widgetList<AnimatedTapIcon>(find.byType(AnimatedTapIcon))
-        .firstWhere((widget) =>
-            widget.padding == const EdgeInsets.fromLTRB(18, 10, 4, 0));
-    headerSearch.onTap!();
-    await tester.pumpAndSettle();
-    final cancel = tester
-        .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))
-        .firstWhere((widget) => widget.searchFocused);
-    expect(find.byType(ModalToolbarGlassButton), findsWidgets);
-    cancel.onTap();
-    await tester.pumpAndSettle();
-    await tester.pump(const Duration(milliseconds: 500));
-    await tester.pumpAndSettle();
-    expect(transition.collapseProgress, 1);
-    expect(transition.searchBarCollapseProgress, 1);
-    final restoredOuter =
-        AppHeaderScrollView.headerPositionFor(notes.scrollController)!;
-    expect(restoredOuter.pixels, kAppHeaderTitleHeight + searchExtent);
-    for (var cycle = 0; cycle < 3; cycle++) {
-      restoredOuter.jumpTo(0);
-      await tester.pumpAndSettle();
-      expect(tester.getTopLeft(firstNoteCard).dy, closeTo(expandedCardTop, 0.5));
-      restoredOuter.jumpTo(restoredOuter.maxScrollExtent);
-      await tester.pumpAndSettle();
+      final notesFinder = find.byType(NotesTab);
+      final notes = tester.state<NotesTabState>(notesFinder);
+      final context = tester.element(notesFinder);
+      final transition = AppHeaderScrollInsetScope.titleTransitionOf(context)!;
+      final searchExtent = searchBarHostRowHeight(context);
+      final outer = AppHeaderScrollView.headerPositionFor(
+        notes.scrollController,
+      )!;
+      final firstNoteCard = find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == '_NoteInputCard',
+      );
+      final expandedCardTop =
+          AppHeaderScrollInsetScope.maybeOf(context) +
+          kAppHeaderTitleHeight +
+          searchExtent;
       expect(
         tester.getTopLeft(firstNoteCard).dy,
-        closeTo(AppHeaderScrollInsetScope.maybeOf(context) + 16, 0.5),
+        closeTo(expandedCardTop, 0.5),
       );
-    }
+      expect(outer.maxScrollExtent, kAppHeaderTitleHeight + searchExtent);
+      expect(transition.position, same(outer));
+      outer.jumpTo(kAppHeaderTitleHeight);
+      await tester.pumpAndSettle();
+      expect(transition.collapseProgress, 1);
+      expect(transition.searchBarCollapseProgress, 0);
+      expect(
+        tester.getTopLeft(firstNoteCard).dy,
+        closeTo(expandedCardTop - kAppHeaderTitleHeight, 0.5),
+      );
+      outer.jumpTo(outer.maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(transition.searchBarCollapseProgress, 1);
 
-    // Settings keeps its authored expanded inset AND gains the same compact
-    // clearance as Notes; its baseline must not replace that clearance.
-    await tester.tapAt(const Offset(36, 30));
-    await tester.pumpAndSettle();
-    final account = find.text('Account').hitTestable();
-    expect(account, findsOneWidget);
-    final settingsInset = AppHeaderScrollInsetScope.maybeOf(tester.element(account));
-    expect(
-      tester.getTopLeft(account).dy,
-      closeTo(settingsInset + kAppHeaderContentTopSpacing, 0.5),
-    );
-    expect(
-      tester.getTopLeft(account).dy,
-      closeTo(tester.getTopLeft(firstNoteCard).dy, 0.5),
-    );
-    transition.position!.jumpTo(0);
-    await tester.pumpAndSettle();
-    expect(
-      tester.getTopLeft(account).dy,
-      closeTo(settingsInset + kAppHeaderTitleHeight, 0.5),
-    );
-    await tester.tap(find.text('Theme').hitTestable().first);
-    await tester.pumpAndSettle();
-    final firstOption = find.byWidgetPredicate(
-      (widget) => widget.runtimeType.toString() == '_OptionRow',
-    ).hitTestable().first;
-    expect(
-      tester.getTopLeft(firstOption).dy,
-      closeTo(settingsInset + kAppHeaderTitleHeight, 0.5),
-    );
-    await tester.timedDragFrom(
-      const Offset(200, 450),
-      const Offset(0, -200),
-      const Duration(milliseconds: 300),
-    );
-    await tester.pumpAndSettle();
-    expect(transition.position!.pixels, kAppHeaderTitleCollapseDistance);
-    expect(
-      tester.getTopLeft(firstOption).dy,
-      closeTo(settingsInset + kAppHeaderContentTopSpacing, 0.5),
-    );
-    transition.position!.jumpTo(0);
-    await tester.pumpAndSettle();
-    expect(
-      tester.getTopLeft(firstOption).dy,
-      closeTo(settingsInset + kAppHeaderTitleHeight, 0.5),
-    );
+      for (final tab in ['Events', 'Calendar', 'Home']) {
+        await tester.tapAt(tester.getCenter(find.text(tab).last));
+        await tester.pumpAndSettle();
+        expect(transition.collapseProgress, 1, reason: tab);
+        expect(transition.searchBarCollapseProgress, 1, reason: tab);
+      }
+      expect(outer.pixels, kAppHeaderTitleHeight + searchExtent);
+      expect(
+        tester.getTopLeft(firstNoteCard).dy,
+        closeTo(
+          AppHeaderScrollInsetScope.maybeOf(tester.element(notesFinder)) + 16,
+          0.5,
+        ),
+      );
 
-    await tester.tapAt(const Offset(36, 30));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Date Format'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Date Format').hitTestable());
-    await tester.pumpAndSettle();
-    transition.position!.jumpTo(0);
-    await tester.pumpAndSettle();
-    expect(
-      tester.getTopLeft(firstOption).dy,
-      closeTo(settingsInset + kAppHeaderTitleHeight, 0.5),
-    );
-    await tester.timedDragFrom(
-      const Offset(200, 450),
-      const Offset(0, -200),
-      const Duration(milliseconds: 300),
-    );
-    await tester.pumpAndSettle();
-    expect(transition.position!.pixels, kAppHeaderTitleCollapseDistance);
-    expect(
-      tester.getTopLeft(firstOption).dy,
-      closeTo(settingsInset + kAppHeaderContentTopSpacing, 0.5),
-    );
-    expect(tester.takeException(), isNull);
-  });
+      // Opening and cancelling search must not reopen its collapsed parent bar.
+      await tester.tapAt(const Offset(323, 30));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<Transform>(
+              find.byKey(const ValueKey('app-shell-search-toolbar-offset')),
+            )
+            .transform
+            .getTranslation()
+            .y,
+        lessThan(0),
+      );
+      expect(
+        tester
+            .widget<Transform>(
+              find.byKey(const ValueKey('app-shell-search-header-offset')),
+            )
+            .transform
+            .getTranslation()
+            .y,
+        lessThan(0),
+      );
+      final cancel = tester
+          .widgetList<SearchCancelButton>(find.byType(SearchCancelButton))
+          .firstWhere((widget) => widget.searchFocused);
+      expect(find.byType(ModalToolbarGlassButton), findsWidgets);
+      cancel.onTap();
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<Transform>(
+              find.byKey(const ValueKey('app-shell-search-toolbar-offset')),
+            )
+            .transform
+            .getTranslation()
+            .y,
+        closeTo(0, 0.01),
+      );
+      expect(
+        tester
+            .widget<Transform>(
+              find.byKey(const ValueKey('app-shell-search-header-offset')),
+            )
+            .transform
+            .getTranslation()
+            .y,
+        closeTo(0, 0.01),
+      );
+      expect(transition.collapseProgress, 1);
+      expect(transition.searchBarCollapseProgress, 1);
+      final restoredOuter = AppHeaderScrollView.headerPositionFor(
+        notes.scrollController,
+      )!;
+      expect(restoredOuter.pixels, kAppHeaderTitleHeight + searchExtent);
+      for (var cycle = 0; cycle < 3; cycle++) {
+        restoredOuter.jumpTo(0);
+        await tester.pumpAndSettle();
+        expect(
+          tester.getTopLeft(firstNoteCard).dy,
+          closeTo(expandedCardTop, 0.5),
+        );
+        restoredOuter.jumpTo(restoredOuter.maxScrollExtent);
+        await tester.pumpAndSettle();
+        expect(
+          tester.getTopLeft(firstNoteCard).dy,
+          closeTo(AppHeaderScrollInsetScope.maybeOf(context) + 16, 0.5),
+        );
+      }
+
+      // Settings keeps its authored expanded inset AND gains the same compact
+      // clearance as Notes; its baseline must not replace that clearance.
+      await tester.tapAt(const Offset(36, 30));
+      await tester.pumpAndSettle();
+      final account = find.text('Account').hitTestable();
+      expect(account, findsOneWidget);
+      final settingsInset = AppHeaderScrollInsetScope.maybeOf(
+        tester.element(account),
+      );
+      expect(
+        tester.getTopLeft(account).dy,
+        closeTo(settingsInset + kAppHeaderContentTopSpacing, 0.5),
+      );
+      expect(
+        tester.getTopLeft(account).dy,
+        closeTo(tester.getTopLeft(firstNoteCard).dy, 0.5),
+      );
+      transition.position!.jumpTo(0);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(account).dy,
+        closeTo(settingsInset + kAppHeaderTitleHeight, 0.5),
+      );
+      await tester.tap(find.text('Theme').hitTestable().first);
+      await tester.pumpAndSettle();
+      final firstOption = find
+          .byWidgetPredicate(
+            (widget) => widget.runtimeType.toString() == '_OptionRow',
+          )
+          .hitTestable()
+          .first;
+      expect(
+        tester.getTopLeft(firstOption).dy,
+        closeTo(settingsInset + kAppHeaderTitleHeight, 0.5),
+      );
+      await tester.timedDragFrom(
+        const Offset(200, 450),
+        const Offset(0, -200),
+        const Duration(milliseconds: 300),
+      );
+      await tester.pumpAndSettle();
+      expect(transition.position!.pixels, kAppHeaderTitleCollapseDistance);
+      expect(
+        tester.getTopLeft(firstOption).dy,
+        closeTo(settingsInset + kAppHeaderContentTopSpacing, 0.5),
+      );
+      transition.position!.jumpTo(0);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(firstOption).dy,
+        closeTo(settingsInset + kAppHeaderTitleHeight, 0.5),
+      );
+
+      await tester.tapAt(const Offset(36, 30));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Date Format'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Date Format').hitTestable());
+      await tester.pumpAndSettle();
+      transition.position!.jumpTo(0);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(firstOption).dy,
+        closeTo(settingsInset + kAppHeaderTitleHeight, 0.5),
+      );
+      await tester.timedDragFrom(
+        const Offset(200, 450),
+        const Offset(0, -200),
+        const Duration(milliseconds: 300),
+      );
+      await tester.pumpAndSettle();
+      expect(transition.position!.pixels, kAppHeaderTitleCollapseDistance);
+      expect(
+        tester.getTopLeft(firstOption).dy,
+        closeTo(settingsInset + kAppHeaderContentTopSpacing, 0.5),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

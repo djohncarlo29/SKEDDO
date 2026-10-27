@@ -1865,9 +1865,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   // True while the search bar in the currently-visible tab is focused.
   bool _searchFocused = false;
-  // Hides current and outgoing pinned registrations as soon as search takes
-  // over, so an outgoing route cannot leave invisible toolbar hit targets.
+  // Removes the pinned registration only after it has moved above the
+  // viewport. This keeps the surface visible during the search handoff.
   final ValueNotifier<bool> _searchToolbarHidden = ValueNotifier(false);
+  final ValueNotifier<bool> _searchToolbarInteractionsEnabled =
+      ValueNotifier(true);
+  late final AnimationController _searchToolbarSlideController;
+  late final CurvedAnimation _searchToolbarSlideProgress;
   // True if the current search session was entered via the off-screen path
   // (header search icon tapped while bar is scrolled out of view).  Used to
   // decide whether to snap or animate the header back on exit.
@@ -1954,6 +1958,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       begin: 1.0,
       end: 0.0,
     ).animate(_searchModeAnim);
+    _searchToolbarSlideController = AnimationController(
+      vsync: this,
+      duration: _kSearchModeDuration,
+    )..addStatusListener(_onSearchToolbarSlideStatus);
+    _searchToolbarSlideProgress = CurvedAnimation(
+      parent: _searchToolbarSlideController,
+      curve: _kSearchModeCurve,
+    );
     _dcvSlideController = AnimationController(
       vsync: this,
       duration: kDcvPaneTransitionDuration,
@@ -2007,7 +2019,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _dcvSlideController.dispose();
     _dcvToolbarAccent.dispose();
     _searchModeController.dispose();
+    _searchToolbarSlideController.removeStatusListener(
+      _onSearchToolbarSlideStatus,
+    );
+    _searchToolbarSlideProgress.dispose();
+    _searchToolbarSlideController.dispose();
     _searchToolbarHidden.dispose();
+    _searchToolbarInteractionsEnabled.dispose();
     _calendarStripSlide.dispose();
     _appShellNavigationObserver.dispose();
     _appShellRouteRevision.dispose();
@@ -2090,9 +2108,22 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
   }
 
+  void _onSearchToolbarSlideStatus(AnimationStatus status) {
+    if (!mounted) return;
+    if (status == AnimationStatus.completed && _searchFocused) {
+      if (!_searchToolbarHidden.value) {
+        _searchToolbarHidden.value = true;
+        _syncToolbarDestination();
+      }
+    } else if (status == AnimationStatus.dismissed && !_searchFocused) {
+      _searchToolbarInteractionsEnabled.value = true;
+    }
+  }
+
   void _setSearchFocused(bool focused) {
     if (_searchFocused == focused) return;
-    _searchToolbarHidden.value = focused;
+    _searchToolbarHidden.value = false;
+    _searchToolbarInteractionsEnabled.value = false;
     if (focused) {
       // The tab settles its own scroll position before reporting focus. Sync
       // the shell title from that settled parent so a stale overscroll value
@@ -2103,8 +2134,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     setState(() => _searchFocused = focused);
     _syncToolbarDestination();
     if (focused) {
+      _searchToolbarSlideController.forward();
       _searchModeController.forward();
     } else {
+      _searchToolbarSlideController.reverse();
       if (_searchEnteredOffScreen) {
         // Off-screen entry: snap header back to full size instantly so the
         // user never sees it growing — the tab's scroll position was already
@@ -2140,10 +2173,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     // instantly and the calendar's own search overlay slides in from above.
     if (_selectedIndex == 1) {
       _searchEnteredOffScreen = true;
-      _searchToolbarHidden.value = true;
+      _searchToolbarHidden.value = false;
+      _searchToolbarInteractionsEnabled.value = false;
       _searchModeController.value = 1.0;
       setState(() => _searchFocused = true);
       _syncToolbarDestination();
+      _searchToolbarSlideController.forward();
       _calendarTabKey.currentState?.activateSearchMode();
       return;
     }
@@ -2170,10 +2205,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       // Search bar is off-screen. Collapse the header immediately, then let
       // the tab animate its own off-screen transition and focus the keyboard.
       _searchEnteredOffScreen = true;
-      _searchToolbarHidden.value = true;
+      _searchToolbarHidden.value = false;
+      _searchToolbarInteractionsEnabled.value = false;
       _searchModeController.value = 1.0; // collapse header instantly
       setState(() => _searchFocused = true); // AppShell state
       _syncToolbarDestination();
+      _searchToolbarSlideController.forward();
       if (_selectedIndex == 0) {
         _notesTabKey.currentState?.activateSearchMode();
       } else {
@@ -2216,6 +2253,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     FocusManager.instance.primaryFocus?.unfocus();
     sbResetSearchMode();
     _searchToolbarHidden.value = false;
+    _searchToolbarInteractionsEnabled.value = true;
+    _searchToolbarSlideController.value = 0.0;
 
     setState(() {
       _selectedIndex = index;
@@ -2753,6 +2792,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     BuildContext context, {
     required Color accent,
     required double opacity,
+    required bool interactionsEnabled,
     required int tabIndex,
     required bool useDcvCategory,
   }) {
@@ -2773,7 +2813,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         navigation_glass.GlassBarItem.icon(
           id: 'app-shell-search-action',
           label: 'Search',
-          enabled: visible > 0.01,
+          enabled: interactionsEnabled && visible > 0.01,
           background: navigation_glass.GlassBarItemBackground.shared,
           icon: icon('assets/icons/search.svg'),
           onTap: _activateTabSearch,
@@ -2784,7 +2824,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       navigation_glass.GlassBarItem.icon(
         id: 'app-shell-create-event-action',
         label: 'Create event',
-        enabled: visible > 0.01,
+        enabled: interactionsEnabled && visible > 0.01,
         background: navigation_glass.GlassBarItemBackground.shared,
         icon: icon('assets/icons/plus.svg'),
         onTap: () => _calendarTabKey.currentState?.showNewEventSheet(
@@ -2807,7 +2847,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   String _toolbarDestinationKey() {
     return appShellToolbarConfigurationKey(
-      searchFocused: _searchFocused,
+      searchFocused: _searchToolbarHidden.value,
       selectedTabIndex: _selectedIndex,
       dcvToolbarVisible: _dcvToolbarVisible,
       landscapeDcvSplit: _isLandscapeDcvSplit(),
@@ -2829,6 +2869,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               animation: Listenable.merge([
                 appAccentNotifier,
                 _dcvToolbarAccent,
+                _searchToolbarInteractionsEnabled,
               ]),
               builder: (context, _) {
                 final accent =
@@ -2847,10 +2888,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                       16.0,
                   color: accent,
                   hideWhen: _searchToolbarHidden,
+                  interactionsEnabled: _searchToolbarInteractionsEnabled,
                   actions: _buildPinnedHeaderActions(
                     routeContext,
                     accent: accent,
                     opacity: 1.0,
+                    interactionsEnabled:
+                        _searchToolbarInteractionsEnabled.value,
                     tabIndex: tabIndex,
                     useDcvCategory: isDcv,
                   ),
@@ -3333,6 +3377,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final headerToolbarHeight = isLandscape
         ? headerContentHeight
         : kAppHeaderToolbarHeight;
+    final searchChromeTravel =
+        topInset +
+        headerToolbarHeight +
+        (isLandscape ? 0.0 : kAppHeaderTitleHeight) +
+        8.0;
     final keyboardBottomInset = MediaQuery.of(context).viewInsets.bottom;
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
     final headerSurfaceColor = isLandscape
@@ -3371,10 +3420,34 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           child: AppShellNavigationScope(
             navigatorKey: _appShellNavigatorKey,
             routeRevision: _appShellRouteRevision,
-            child: navigation_glass.GlassNavigationShell(
-              effectTransition:
-                  navigation_glass.GlassEffectTransition.materialize,
-              child: Stack(
+            child: AnimatedBuilder(
+              animation: _searchToolbarSlideProgress,
+              builder: (context, child) {
+                final offset =
+                    searchChromeTravel * _searchToolbarSlideProgress.value;
+                return Transform.translate(
+                  key: const ValueKey<String>(
+                    'app-shell-search-toolbar-offset',
+                  ),
+                  offset: Offset(0, -offset),
+                  child: child,
+                );
+              },
+              child: navigation_glass.GlassNavigationShell(
+                effectTransition:
+                    navigation_glass.GlassEffectTransition.materialize,
+                child: AnimatedBuilder(
+                  animation: _searchToolbarSlideProgress,
+                  builder: (context, child) {
+                    final offset =
+                        searchChromeTravel *
+                        _searchToolbarSlideProgress.value;
+                    return Transform.translate(
+                      offset: Offset(0, offset),
+                      child: child,
+                    );
+                  },
+                  child: Stack(
             children: [
               Stack(
                 fit: StackFit.expand,
@@ -3444,6 +3517,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                 // Impeller/Skia, eliminating the 1-frame flicker.
                                 animation: Listenable.merge([
                                   _searchModeAnim,
+                                  _searchToolbarSlideProgress,
                                   _dcvSlideProgress,
                                   _dcvCategoryTransitionProgress,
                                   _headerTitleTransition,
@@ -3453,6 +3527,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                     0.0,
                                     1.0,
                                   );
+                                  final searchHeaderExitOffset =
+                                      searchChromeTravel *
+                                      _searchToolbarSlideProgress.value;
                                   final pageP = _dcvSlideController.value.clamp(
                                     0.0,
                                     1.0,
@@ -3589,13 +3666,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                             left: 0,
                                             right: 0,
                                             height:
-                                                (headerToolbarHeight +
-                                                    kAppHeaderTitleHeight) *
-                                                (1 - t),
+                                                headerToolbarHeight +
+                                                kAppHeaderTitleHeight,
                                             child: Transform.translate(
                                               offset: Offset(
                                                 0,
-                                                -titleScrollOffset,
+                                                -titleScrollOffset -
+                                                    searchHeaderExitOffset,
                                               ),
                                               child: FadeTransition(
                                                 opacity:
@@ -3683,10 +3760,18 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                 EdgeInsets.only(
                                                                   top: topInset,
                                                                 ),
-                                                            child: FadeTransition(
-                                                              opacity:
-                                                                  _searchModeContentOpacity,
-                                                              child: Column(
+                                                            child: Transform.translate(
+                                                              key: const ValueKey<String>(
+                                                                'app-shell-search-header-offset',
+                                                              ),
+                                                              offset: Offset(
+                                                                0,
+                                                                -searchHeaderExitOffset,
+                                                              ),
+                                                              child: FadeTransition(
+                                                                opacity:
+                                                                    _searchModeContentOpacity,
+                                                                child: Column(
                                                                 crossAxisAlignment:
                                                                     CrossAxisAlignment
                                                                         .start,
@@ -3982,6 +4067,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                                                     ),
                                                                   ),
                                                                 ],
+                                                                ),
                                                               ),
                                                             ),
                                                           ),
@@ -4198,8 +4284,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               ),
             ],
           ),
+                ), // child offset
+              ),
             ), // GlassNavigationShell
-        ),
+          ),
         ), // AppShellNavigationScope
       ),
     ); // PopScope

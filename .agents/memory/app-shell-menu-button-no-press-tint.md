@@ -20,19 +20,19 @@ for action items that genuinely persist across screens. Set the shell's
 `effectTransition` to `GlassEffectTransition.materialize`; do not custom-tween
 the hamburger strokes into the X or chevron.
 
-Search mode must remove the toolbar registration, not just make it transparent
-or pass empty item lists. Also gate the outgoing toolbar route synchronously
-when search begins: its route remains mounted during replacement, and its
-invisible hit targets can block the search cancel control.
+The in-route pinned-bar placeholder must not intercept the empty center of the
+header while the shell owns the real hit targets. In search mode, disable all
+toolbar actions, slide the pinned toolbar and ordinary header content above the
+viewport, then remove the registration after the slide. Restore the registration
+before sliding it back down, and re-enable actions only after it settles.
 
-**Why:** The user means the package's physical toolbar morph, not a custom glyph
-animation. A matched item ID explicitly suppresses the package's appearance
-transition, while a hidden-but-mounted search toolbar still intercepts taps.
-Tab, search, Settings, and Detailed Category View are distinct toolbar
-destinations even when the main screen content remains mounted.
+**Why:** The transparent, full-width in-route app bar can intercept taps on
+controls underneath it even when the pinned shell draws the visible buttons
+separately. The search bar also needs a real unobstructed header after the
+toolbar and normal header have moved out of view.
 
-**How to apply:** Keep transparent splash/highlight settings scoped to this
-control. Use the shared settings-based Liquid Glass appearance; retain the
-40px circle at safeTop + 10px and horizontalInset + 16px. In search mode,
-unregister both the current and outgoing toolbar before the cancel control
-needs input.
+**How to apply:** Keep the toolbar's registration and button identities stable
+through the exit motion, while ensuring the body remains stationary. The
+hoisted shell owns toolbar taps; the in-route copy is only a placeholder while
+pinning is active. Keep transparent splash/highlight settings scoped to this
+control and preserve its existing placement and shared glass appearance.

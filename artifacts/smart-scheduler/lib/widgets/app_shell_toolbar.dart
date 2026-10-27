@@ -2,7 +2,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     as navigation_glass
-    show GlassAppBar, GlassBarItem, GlassBarItemBackground;
+    show
+        GlassAppBar,
+        GlassBarItem,
+        GlassBarItemBackground,
+        GlassNavigationShell;
 
 import '../app_settings.dart';
 import '../app_theme.dart';
@@ -59,6 +63,7 @@ class AppShellPinnedToolbar extends StatelessWidget {
     this.toolbarHeight = 60,
     this.actions = const <navigation_glass.GlassBarItem>[],
     this.hideWhen,
+    this.interactionsEnabled,
   });
 
   final AppShellToolbarGlyph glyph;
@@ -75,6 +80,7 @@ class AppShellPinnedToolbar extends StatelessWidget {
 
   /// Hides the whole registration, including outgoing routes, when true.
   final ValueListenable<bool>? hideWhen;
+  final ValueListenable<bool>? interactionsEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -85,6 +91,7 @@ class AppShellPinnedToolbar extends StatelessWidget {
     final routeChanges = AppShellNavigationScope.routeChangesOf(context);
     if (routeChanges != null) listenables.add(routeChanges);
     if (hideWhen != null) listenables.add(hideWhen!);
+    if (interactionsEnabled != null) listenables.add(interactionsEnabled!);
     return ListenableBuilder(
       listenable: Listenable.merge(listenables),
       builder: (context, _) => _buildToolbar(context),
@@ -96,6 +103,7 @@ class AppShellPinnedToolbar extends StatelessWidget {
 
     final color = this.color ?? resolveAccentColor(context);
     final visibility = opacity.clamp(0.0, 1.0).toDouble();
+    final canInteract = interactionsEnabled?.value ?? true;
     final settings = skeddoPinnedNavigationGlassSettingsFor(
       MediaQuery.platformBrightnessOf(context),
       visibility: visibility,
@@ -103,7 +111,7 @@ class AppShellPinnedToolbar extends StatelessWidget {
     final item = navigation_glass.GlassBarItem.icon(
       id: glyph.glassItemId,
       label: semanticLabel,
-      enabled: visibility > 0.01,
+      enabled: canInteract && visibility > 0.01,
       background: navigation_glass.GlassBarItemBackground.shared,
       icon: _AppShellToolbarGlyphContent(
         state: glyph,
@@ -113,7 +121,7 @@ class AppShellPinnedToolbar extends StatelessWidget {
       onTap: onTap,
     );
 
-    return navigation_glass.GlassAppBar.pinned(
+    final toolbar = navigation_glass.GlassAppBar.pinned(
       title: const SizedBox.shrink(),
       leading: <navigation_glass.GlassBarItem>[item],
       actions: actions,
@@ -124,6 +132,14 @@ class AppShellPinnedToolbar extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: horizontalInset),
       buttonSettings: settings,
     );
+    // With pinning active, the shell paints and owns the real button hit
+    // targets in its separate overlay. The in-route GlassAppBar still spans
+    // the whole toolbar row; its transparent surface must not intercept taps
+    // on controls placed in the empty space between those buttons.
+    return navigation_glass.GlassNavigationShell.maybeOf(context)?.isActive ??
+            false
+        ? IgnorePointer(child: toolbar)
+        : toolbar;
   }
 }
 

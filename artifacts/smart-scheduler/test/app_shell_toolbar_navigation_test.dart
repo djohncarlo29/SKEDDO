@@ -271,6 +271,13 @@ void main() {
 
       await tester.tapAt(const Offset(200, 300));
       expect(bodyTaps, 1);
+      await tester.tapAt(const Offset(200, 30));
+      expect(
+        bodyTaps,
+        2,
+        reason:
+            'Empty space between pinned toolbar clusters must pass taps through.',
+      );
 
       toolbarNavigatorKey.currentState!.pushReplacement<void, void>(
         appShellToolbarStateRoute(
@@ -306,7 +313,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(shellKey.currentState!.resolveState(), isNull);
       await tester.tapAt(const Offset(200, 300));
-      expect(bodyTaps, 2);
+      expect(bodyTaps, 3);
 
       toolbarHidden.value = false;
       toolbarNavigatorKey.currentState!.pushReplacement<void, void>(
