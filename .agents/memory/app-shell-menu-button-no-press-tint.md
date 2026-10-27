@@ -9,8 +9,13 @@ their normal actions; Settings uses X with no search/create actions, and
 portrait Settings sub-screens use a back chevron with no search/create actions.
 Detailed Category View changes the hamburger to a back chevron.
 
-**Why:** The user clarified the toolbar states for the main app, Settings, and
-its sub-screens, and wants the existing control's glass strength unchanged.
+Toolbar changes must use `GlassNavigationShell` route registrations with stable
+item IDs. Morph the Liquid Glass group when its item set or destination changes;
+do not tween the hamburger strokes into the X or chevron.
+
+**Why:** The user means the package's physical toolbar morph, not a custom glyph
+animation. Tab, search, Settings, and Detailed Category View are distinct
+toolbar destinations even when the main screen content remains mounted.
 
 **How to apply:** Keep transparent splash/highlight settings scoped to this
 control. Use the shared settings-based Liquid Glass appearance; retain the

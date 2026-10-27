@@ -5,6 +5,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
 
 import '../app_settings.dart';
 import '../app_theme.dart';
+import 'rounded_cupertino_sheet.dart';
 import 'skeddo_glass_settings.dart';
 
 const Object appShellPrimaryToolbarItemId = 'app-shell-primary-toolbar';
@@ -27,6 +28,7 @@ class AppShellPinnedToolbar extends StatelessWidget {
     this.buttonSize = 40,
     this.toolbarHeight = 60,
     this.actions = const <navigation_glass.GlassBarItem>[],
+    this.showPrimary = true,
   });
 
   final AppShellToolbarGlyph glyph;
@@ -40,6 +42,7 @@ class AppShellPinnedToolbar extends StatelessWidget {
 
   /// Additional items join this shared cluster and turn its circle into a pill.
   final List<navigation_glass.GlassBarItem> actions;
+  final bool showPrimary;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -57,28 +60,35 @@ class AppShellPinnedToolbar extends StatelessWidget {
       MediaQuery.platformBrightnessOf(context),
       visibility: visibility,
     );
-    final item = navigation_glass.GlassBarItem.icon(
-      id: appShellPrimaryToolbarItemId,
-      label: semanticLabel,
-      enabled: visibility > 0.01,
-      background: navigation_glass.GlassBarItemBackground.shared,
-      icon: Opacity(
-        opacity: visibility,
-        child: _AppShellMenuGlyph(state: glyph, color: color),
-      ),
-      onTap: onTap,
-    );
+    final item = showPrimary
+        ? navigation_glass.GlassBarItem.icon(
+            id: appShellPrimaryToolbarItemId,
+            label: semanticLabel,
+            enabled: visibility > 0.01,
+            background: navigation_glass.GlassBarItemBackground.shared,
+            icon: Opacity(
+              opacity: visibility,
+              child: _AppShellMenuGlyph(state: glyph, color: color),
+            ),
+            onTap: onTap,
+          )
+        : null;
 
-    return navigation_glass.GlassAppBar.pinned(
-      title: const SizedBox.shrink(),
-      leading: <navigation_glass.GlassBarItem>[item],
-      actions: actions,
-      backButton: false,
-      buttonSize: buttonSize,
-      toolbarHeight: toolbarHeight,
-      centerTitle: false,
-      padding: EdgeInsets.symmetric(horizontal: horizontalInset),
-      buttonSettings: settings,
+    return preserveRoundedCupertinoSheetToolbarSize(
+      context,
+      navigation_glass.GlassAppBar.pinned(
+        title: const SizedBox.shrink(),
+        leading: item == null
+            ? const <navigation_glass.GlassBarItem>[]
+            : <navigation_glass.GlassBarItem>[item],
+        actions: showPrimary ? actions : const <navigation_glass.GlassBarItem>[],
+        backButton: false,
+        buttonSize: buttonSize,
+        toolbarHeight: toolbarHeight,
+        centerTitle: false,
+        padding: EdgeInsets.symmetric(horizontal: horizontalInset),
+        buttonSettings: settings,
+      ),
     );
   }
 }
@@ -89,28 +99,25 @@ class _AppShellMenuGlyph extends StatelessWidget {
   final AppShellToolbarGlyph state;
   final Color color;
 
-  Widget _buildGlyph(double progress) {
-    final double topY;
-    final double topAngle;
-    final double bottomY;
-    final double bottomAngle;
-    final double strokeWidth;
-
-    if (progress >= 0) {
-      final t = progress.clamp(0.0, 1.0).toDouble();
-      topY = -4.5 + 4.5 * t;
-      topAngle = 0.7853981633974483 * t;
-      bottomY = 4.5 - 4.5 * t;
-      bottomAngle = -0.7853981633974483 * t;
-      strokeWidth = 22;
-    } else {
-      final t = (-progress).clamp(0.0, 1.0).toDouble();
-      topY = -4.5 + 0.64 * t;
-      topAngle = -0.6981317007977318 * t;
-      bottomY = 4.5 - 0.64 * t;
-      bottomAngle = 0.6981317007977318 * t;
-      strokeWidth = 22 - 10 * t;
-    }
+  @override
+  Widget build(BuildContext context) {
+    final (topY, topAngle, bottomY, bottomAngle, strokeWidth) = switch (state) {
+      AppShellToolbarGlyph.menu => (-4.5, 0.0, 4.5, 0.0, 22.0),
+      AppShellToolbarGlyph.close => (
+        0.0,
+        0.7853981633974483,
+        0.0,
+        -0.7853981633974483,
+        22.0,
+      ),
+      AppShellToolbarGlyph.back => (
+        -3.86,
+        -0.6981317007977318,
+        3.86,
+        0.6981317007977318,
+        12.0,
+      ),
+    };
 
     return SizedBox(
       width: 26,
@@ -136,21 +143,6 @@ class _AppShellMenuGlyph extends StatelessWidget {
       ),
     );
   }
-
-  @override
-  Widget build(BuildContext context) {
-    final target = switch (state) {
-      AppShellToolbarGlyph.menu => 0.0,
-      AppShellToolbarGlyph.close => 1.0,
-      AppShellToolbarGlyph.back => -1.0,
-    };
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(end: target),
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeInOutCubic,
-      builder: (context, progress, _) => _buildGlyph(progress),
-    );
-  }
 }
 
 class _MenuStroke extends StatelessWidget {
@@ -167,5 +159,39 @@ class _MenuStroke extends StatelessWidget {
       color: color,
       shape: const BoundedSquircleStadiumBorder(radius: kSquircleStadiumRadius),
     ),
+  );
+}
+
+Route<void> appShellToolbarStateRoute({
+  required String name,
+  required WidgetBuilder toolbarBuilder,
+  required VoidCallback onSystemBack,
+}) {
+  return PageRouteBuilder<void>(
+    settings: RouteSettings(name: name),
+    opaque: false,
+    barrierDismissible: false,
+    transitionDuration: const Duration(milliseconds: 360),
+    reverseTransitionDuration: const Duration(milliseconds: 360),
+    pageBuilder: (context, _, _) => PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) onSystemBack();
+      },
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const IgnorePointer(child: SizedBox.expand()),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: toolbarBuilder(context),
+          ),
+        ],
+      ),
+    ),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+        child,
   );
 }

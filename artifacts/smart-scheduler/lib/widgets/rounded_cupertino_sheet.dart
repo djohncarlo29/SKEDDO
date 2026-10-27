@@ -128,6 +128,38 @@ final Animatable<double> _kScaleTween = Tween<double>(
   end: 1.0 - _kSheetScaleFactor,
 );
 
+/// Cancels only the enclosing rounded sheet's receding-page scale for pinned
+/// toolbar chrome. The page still moves and dims normally; its toolbar keeps
+/// the settled button and capsule dimensions while a nested sheet is open.
+Widget preserveRoundedCupertinoSheetToolbarSize(
+  BuildContext context,
+  Widget child,
+) {
+  final route = ModalRoute.of(context);
+  if (route is! RoundedCupertinoSheetRoute) return child;
+  final secondary = route.secondaryAnimation;
+  if (secondary == null) return child;
+
+  return AnimatedBuilder(
+    animation: secondary,
+    child: child,
+    builder: (context, child) {
+      final curve = secondary.status == AnimationStatus.reverse
+          ? Curves.easeInToLinear
+          : Curves.linearToEaseOut;
+      final progress = curve.transform(
+        secondary.value.clamp(0.0, 1.0).toDouble(),
+      );
+      final pageScale = 1.0 - _kSheetScaleFactor * progress;
+      return Transform.scale(
+        scale: 1.0 / pageScale,
+        alignment: Alignment.topCenter,
+        child: child,
+      );
+    },
+  );
+}
+
 /// Shows an iOS-style sheet identical to [showCupertinoSheet], except its
 /// corners use [kModalSheetCornerRadius] (from app_theme.dart) instead of the
 /// framework's hardcoded 12px.

@@ -884,6 +884,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   final _calendarStripSlide = ValueNotifier<double>(0.0);
 
   int _selectedIndex = 0;
+  String? _activeToolbarRouteKey;
+  bool _baseToolbarFallbackVisible = true;
   final AppHeaderTitleTransition _headerTitleTransition =
       AppHeaderTitleTransition();
   static const _nativeTabBarChannel = MethodChannel(
@@ -903,6 +905,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // kAccentColor already (see resolveCategorySwatch's default), so this is a
   // visual no-op for them — no separate "has been edited" check needed.
   Color? _dcvColor;
+  final ValueNotifier<Color?> _dcvToolbarAccent = ValueNotifier<Color?>(null);
+  bool _dcvToolbarVisible = false;
 
   // Drives the DCV slide: 0.0 = grid fully visible, 1.0 = DCV fully visible.
   // Owned here in AppShell so the header AnimatedBuilder and EventsTab both
@@ -924,6 +928,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   /// Kept for the landscape split Settings layout, where detail content stays
   /// in the same route rather than pushing a portrait sub-screen route.
   final ValueNotifier<VoidCallback?> _settingsBackAction = ValueNotifier(null);
+  final ValueNotifier<bool> _settingsInlineBackVisible = ValueNotifier(false);
 
   // True when _dcvCategory is set AND we are on the Events tab.
   // Only used for LOGICAL decisions (e.g. whether _exitDCV has been called).
@@ -1125,11 +1130,16 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   void _enterDCV(String label, Color color) {
     if (_dcvCategory == label) {
-      if (_dcvColor != color) setState(() => _dcvColor = color);
+      if (_dcvColor != color) {
+        setState(() => _dcvColor = color);
+        _dcvToolbarAccent.value = color;
+      }
       return;
     }
 
     _headerTitleTransition.bindTo(null, preserveCollapseProgress: true);
+    _dcvToolbarVisible = true;
+    _dcvToolbarAccent.value = color;
 
     if (_canReplaceLandscapeDcvPage()) {
       // Finish any in-flight replacement before starting the next one. The
@@ -1142,6 +1152,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _dcvColor = color;
       });
       _dcvCategoryTransitionController.forward(from: 0.0);
+      _syncToolbarDestination();
       return;
     }
 
@@ -1153,6 +1164,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       _dcvColor = color;
     });
     _dcvSlideController.forward(from: 0.0);
+    _syncToolbarDestination();
   }
 
   void _exitDCV() {
@@ -1161,6 +1173,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _dcvCategoryTransitionController.value = 1.0;
     // Reverse the slide first; clear _dcvCategory only after the animation
     // completes so the DCV content stays mounted and visible while sliding out.
+    _dcvToolbarVisible = false;
+    _dcvToolbarAccent.value = null;
+    _syncToolbarDestination();
     _dcvSlideController
         .reverse()
         .then((_) => _finishDcvExit())
@@ -1169,6 +1184,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   void _finishDcvExit() {
     if (!mounted || (_dcvCategory == null && _dcvColor == null)) return;
+    _dcvToolbarVisible = false;
+    _dcvToolbarAccent.value = null;
     setState(() {
       _dcvCategory = null;
       _dcvColor = null;
@@ -1205,19 +1222,30 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               isLandscapeTwoPane: isLandscapeTwoPane,
               onClose: _closeSettings,
               subScreenBackAction: _settingsBackAction,
+              inlineSubScreenBackVisible: _settingsInlineBackVisible,
               headerTitleTransition: _headerTitleTransition,
             ),
             Positioned(
               top: 0,
               left: 0,
               right: 0,
-              child: AppShellPinnedToolbar(
-                glyph: AppShellToolbarGlyph.close,
-                semanticLabel: 'Close settings',
-                horizontalInset:
-                    AppWindowContentScope.of(routeContext).horizontalInset +
-                    16.0,
-                onTap: _closeSettings,
+              child: AnimatedBuilder(
+                animation: _settingsInlineBackVisible,
+                builder: (context, _) {
+                  final showBack = _settingsInlineBackVisible.value;
+                  return AppShellPinnedToolbar(
+                    glyph: showBack
+                        ? AppShellToolbarGlyph.back
+                        : AppShellToolbarGlyph.close,
+                    semanticLabel: showBack
+                        ? 'Back to Settings'
+                        : 'Close settings',
+                    horizontalInset:
+                        AppWindowContentScope.of(routeContext).horizontalInset +
+                        16.0,
+                    onTap: _handlePrimaryToolbarTap,
+                  );
+                },
               ),
             ),
           ],
@@ -1245,7 +1273,25 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   void _closeSettings() {
     if (!_settingsOpen) return;
     _settingsBackAction.value = null;
-    Navigator.of(context, rootNavigator: true).maybePop();
+    final navigator = Navigator.of(context, rootNavigator: true);
+    if (navigator.canPop()) navigator.pop();
+  }
+
+  void _handlePrimaryToolbarTap() {
+    if (_settingsOpen) {
+      if (_settingsInlineBackVisible.value) {
+        _settingsBackAction.value?.call();
+        return;
+      }
+      final navigator = Navigator.of(context, rootNavigator: true);
+      if (navigator.canPop()) navigator.pop();
+      return;
+    }
+    if (_isDCV && _dcvToolbarVisible) {
+      _exitDCV();
+      return;
+    }
+    _openSettings();
   }
 
   void _onSettingsRoutePopped() {
@@ -1253,6 +1299,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     setState(() => _settingsOpen = false);
     _settingsBackAction.value = null;
     _restoreHeaderScrollOffset();
+    _syncToolbarDestination();
   }
 
   // ── DCV ellipsis context menu ────────────────────────────────────────────
@@ -1922,9 +1969,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _dcvCategoryTransitionController.dispose();
     _dcvSlideProgress.dispose();
     _dcvSlideController.dispose();
+    _dcvToolbarAccent.dispose();
     _searchModeController.dispose();
     _calendarStripSlide.dispose();
     _settingsBackAction.dispose();
+    _settingsInlineBackVisible.dispose();
     _headerTitleTransition.dispose();
     super.dispose();
   }
@@ -2008,6 +2057,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       _syncHeaderScrollOffsetToParent();
     }
     setState(() => _searchFocused = focused);
+    _syncToolbarDestination();
     if (focused) {
       _searchModeController.forward();
     } else {
@@ -2048,6 +2098,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       _searchEnteredOffScreen = true;
       _searchModeController.value = 1.0;
       setState(() => _searchFocused = true);
+      _syncToolbarDestination();
       _calendarTabKey.currentState?.activateSearchMode();
       return;
     }
@@ -2076,6 +2127,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       _searchEnteredOffScreen = true;
       _searchModeController.value = 1.0; // collapse header instantly
       setState(() => _searchFocused = true); // AppShell state
+      _syncToolbarDestination();
       if (_selectedIndex == 0) {
         _notesTabKey.currentState?.activateSearchMode();
       } else {
@@ -2138,6 +2190,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         ),
       );
     }
+    _syncToolbarDestination();
   }
 
   Future<void> _handleNativeTabBarCall(MethodCall call) async {
@@ -2653,6 +2706,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     BuildContext context, {
     required Color accent,
     required double opacity,
+    required int tabIndex,
     required bool useDcvCategory,
   }) {
     final visible = opacity.clamp(0.0, 1.0).toDouble();
@@ -2667,7 +2721,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     );
 
     final actions = <navigation_glass.GlassBarItem>[];
-    if (_selectedIndex != 3) {
+    if (tabIndex != 3) {
       actions.add(
         navigation_glass.GlassBarItem.icon(
           id: 'app-shell-search-action',
@@ -2695,6 +2749,101 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       ),
     );
     return actions;
+  }
+
+  bool _isLandscapeDcvSplit() {
+    final geometry = AppWindowMasterDetailGeometry.of(context);
+    return geometry.isLandscape &&
+        geometry.detailPaneWidth >=
+            kAppWindowMasterDetailMinimumDetailWidth;
+  }
+
+  String _toolbarDestinationKey() {
+    if (_searchFocused) return 'search';
+    if (_selectedIndex == 2 &&
+        _dcvToolbarVisible &&
+        !_isLandscapeDcvSplit()) {
+      return 'events-dcv';
+    }
+    return _selectedIndex == 0 ? 'home' : 'tab-$_selectedIndex';
+  }
+
+  void _syncToolbarDestination() {
+    if (!mounted || _settingsOpen) return;
+
+    final key = _toolbarDestinationKey();
+    if (key == _activeToolbarRouteKey) return;
+
+    final navigator = Navigator.of(context, rootNavigator: true);
+
+    if (key == 'home') {
+      _activeToolbarRouteKey = null;
+      if (!_baseToolbarFallbackVisible) {
+        setState(() => _baseToolbarFallbackVisible = true);
+      }
+      if (navigator.canPop()) navigator.pop();
+      return;
+    }
+
+    final tabIndex = _selectedIndex;
+    final isSearch = key == 'search';
+    final isDcv = key == 'events-dcv';
+    final route = appShellToolbarStateRoute(
+      name: 'app-shell-toolbar-$key',
+      onSystemBack: _handleToolbarRouteSystemBack,
+      toolbarBuilder: (routeContext) => AnimatedBuilder(
+        animation: Listenable.merge([
+          appAccentNotifier,
+          _dcvToolbarAccent,
+        ]),
+        builder: (context, _) {
+          final accent =
+              isDcv && _dcvToolbarAccent.value != null
+                  ? _dcvToolbarAccent.value!
+                  : resolveAccentColor(routeContext);
+          return AppShellPinnedToolbar(
+            glyph: isDcv
+                ? AppShellToolbarGlyph.back
+                : AppShellToolbarGlyph.menu,
+            semanticLabel: isDcv ? 'Back' : 'Open settings',
+            horizontalInset:
+                AppWindowContentScope.of(routeContext).horizontalInset + 16.0,
+            color: accent,
+            showPrimary: !isSearch,
+            actions: isSearch
+                ? const <navigation_glass.GlassBarItem>[]
+                : _buildPinnedHeaderActions(
+                    routeContext,
+                    accent: accent,
+                    opacity: 1.0,
+                    tabIndex: tabIndex,
+                    useDcvCategory: isDcv,
+                  ),
+            onTap: _handlePrimaryToolbarTap,
+          );
+        },
+      ),
+    );
+
+    final replacingToolbarRoute = _activeToolbarRouteKey != null;
+    _activeToolbarRouteKey = key;
+    if (_baseToolbarFallbackVisible) {
+      setState(() => _baseToolbarFallbackVisible = false);
+    }
+    if (replacingToolbarRoute) {
+      unawaited(navigator.pushReplacement<void, void>(route));
+    } else {
+      unawaited(navigator.push<void>(route));
+    }
+  }
+
+  void _handleToolbarRouteSystemBack() {
+    if (_hasBackInterceptable) {
+      _handleBackGesture();
+      return;
+    }
+    // The chrome-only route must not consume Android's normal app-exit back.
+    SystemNavigator.pop();
   }
 
   Widget _buildLandscapeDcvPaneHeader({
@@ -3933,72 +4082,39 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 },
               ),
 
-              // The shell owns the pinned button and morphs this stable item
-              // into each destination's version during real Navigator routes.
-              AnimatedBuilder(
-                animation: Listenable.merge([
-                  _dcvSlideController,
-                  _searchModeAnim,
-                  _settingsBackAction,
-                ]),
-                builder: (context, _) {
-                  final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
-                  final isSettingsSubScreen =
-                      _settingsOpen && _settingsBackAction.value != null;
-                  final isDCVVisual =
-                      !_settingsOpen &&
-                      pageP >= 0.5 &&
-                      _selectedIndex == 2 &&
-                      !landscapeDcvSplit;
-                  final accent = (isDCVVisual && _dcvColor != null)
-                      ? _dcvColor!
-                      : resolveAccentColor(context);
-                  final fadeOpacity = (1.0 - _searchModeAnim.value).clamp(
-                    0.0,
-                    1.0,
-                  );
-                  return Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: IgnorePointer(
-                      ignoring: fadeOpacity < 0.01,
-                      child: AppShellPinnedToolbar(
-                        glyph: isSettingsSubScreen || isDCVVisual
-                            ? AppShellToolbarGlyph.back
-                            : _settingsOpen
-                            ? AppShellToolbarGlyph.close
-                            : AppShellToolbarGlyph.menu,
-                        semanticLabel: isSettingsSubScreen || isDCVVisual
-                            ? 'Back'
-                            : _settingsOpen
-                            ? 'Close settings'
-                            : 'Open settings',
-                        horizontalInset:
-                            AppWindowContentScope.of(context).horizontalInset +
-                            16.0,
-                        opacity: fadeOpacity,
-                        color: accent,
-                        actions: _settingsOpen
-                            ? const <navigation_glass.GlassBarItem>[]
-                            : _buildPinnedHeaderActions(
-                                context,
-                                accent: accent,
-                                opacity: fadeOpacity,
-                                useDcvCategory:
-                                    isDCVVisual && _selectedIndex == 2,
-                              ),
-                        onTap: isSettingsSubScreen
-                            ? _settingsBackAction.value!
-                            : _settingsOpen
-                            ? _closeSettings
-                            : isDCVVisual
-                            ? _exitDCV
-                            : _openSettings,
+              // This is the app's base route (Home). Other destinations
+              // register their own toolbar route so the shell, not the glyph,
+              // morphs between each screen's item groups.
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: IgnorePointer(
+                  ignoring: !_baseToolbarFallbackVisible,
+                  child: Opacity(
+                    // Keep the base route registered for return morphs, but
+                    // suppress its in-route fallback while a destination route
+                    // owns the toolbar. The shell still renders this route's
+                    // GlassBarItems during transitions.
+                    opacity: _baseToolbarFallbackVisible ? 1.0 : 0.0,
+                    child: AppShellPinnedToolbar(
+                      glyph: AppShellToolbarGlyph.menu,
+                      semanticLabel: 'Open settings',
+                      horizontalInset:
+                          AppWindowContentScope.of(context).horizontalInset +
+                          16.0,
+                      color: resolveAccentColor(context),
+                      actions: _buildPinnedHeaderActions(
+                        context,
+                        accent: resolveAccentColor(context),
+                        opacity: 1.0,
+                        tabIndex: 0,
+                        useDcvCategory: false,
                       ),
+                      onTap: _handlePrimaryToolbarTap,
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ],
           ),

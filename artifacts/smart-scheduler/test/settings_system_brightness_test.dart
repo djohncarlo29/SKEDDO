@@ -25,8 +25,10 @@ void main() {
       });
 
       final backAction = ValueNotifier<VoidCallback?>(null);
+      final inlineBackVisible = ValueNotifier(false);
       final headerTitleTransition = AppHeaderTitleTransition();
       addTearDown(backAction.dispose);
+      addTearDown(inlineBackVisible.dispose);
       addTearDown(headerTitleTransition.dispose);
 
       await tester.pumpWidget(
@@ -46,6 +48,7 @@ void main() {
                 isLandscapeTwoPane: false,
                 onClose: () {},
                 subScreenBackAction: backAction,
+                inlineSubScreenBackVisible: inlineBackVisible,
                 headerTitleTransition: headerTitleTransition,
               ),
             ),

@@ -191,9 +191,9 @@ class SettingsPanel extends StatefulWidget {
   final VoidCallback onClose;
 
   /// Set to the pop callback when a sub-screen is active, null otherwise.
-  /// AppShell listens to this so the shared overlay button morphs into a
-  /// back-chevron and calls _pop() — exactly matching the DCV back mechanic.
+  /// AppShell uses it to dispatch the shared leading toolbar action.
   final ValueNotifier<VoidCallback?> subScreenBackAction;
+  final ValueNotifier<bool> inlineSubScreenBackVisible;
   final AppHeaderTitleTransition headerTitleTransition;
 
   const SettingsPanel({
@@ -204,6 +204,7 @@ class SettingsPanel extends StatefulWidget {
     required this.isLandscapeTwoPane,
     required this.onClose,
     required this.subScreenBackAction,
+    required this.inlineSubScreenBackVisible,
     required this.headerTitleTransition,
   });
 
@@ -341,6 +342,7 @@ class _SettingsPanelState extends State<SettingsPanel>
       _paneTransitionController.value = 0.0;
       _splitDetailController.value = 0.0;
       widget.subScreenBackAction.value = null;
+      widget.inlineSubScreenBackVisible.value = false;
       _restoreHeaderScrollOffset();
     }
 
@@ -352,6 +354,7 @@ class _SettingsPanelState extends State<SettingsPanel>
       _isSplitActive = false;
       _paneTransitionController.value = 0.0;
       widget.subScreenBackAction.value = null;
+      widget.inlineSubScreenBackVisible.value = false;
     }
 
     if (widget.isOpen &&
@@ -361,18 +364,25 @@ class _SettingsPanelState extends State<SettingsPanel>
         _paneTransitionController.value = 1.0;
         _splitDetailController.value = 1.0;
         _navCtrl.value = 0.0;
-        widget.subScreenBackAction.value = null;
+        widget.subScreenBackAction.value = _closeSplitPane;
+        widget.inlineSubScreenBackVisible.value = true;
       } else if (!widget.isLandscapeTwoPane && _isSplitActive) {
         _isSplitActive = false;
         _paneTransitionController.value = 0.0;
         if (_activeRoute != null) {
           _navCtrl.value = 1.0;
           widget.subScreenBackAction.value = _pop;
+          widget.inlineSubScreenBackVisible.value = true;
+        } else {
+          widget.subScreenBackAction.value = null;
+          widget.inlineSubScreenBackVisible.value = false;
         }
       } else if (widget.isLandscapeTwoPane) {
         widget.subScreenBackAction.value = null;
+        widget.inlineSubScreenBackVisible.value = false;
       } else if (_activeRoute != null && _navCtrl.value >= 0.5) {
         widget.subScreenBackAction.value = _pop;
+        widget.inlineSubScreenBackVisible.value = true;
       }
     }
   }
@@ -476,7 +486,6 @@ class _SettingsPanelState extends State<SettingsPanel>
           _isSplitActive = true;
         });
         _splitDetailController.value = 1.0;
-        widget.subScreenBackAction.value = null;
         _paneTransitionController.forward(from: 0.0);
       } else {
         setState(() {
@@ -485,7 +494,8 @@ class _SettingsPanelState extends State<SettingsPanel>
         });
         _splitDetailController.forward(from: 0.0);
       }
-      widget.subScreenBackAction.value = null;
+      widget.subScreenBackAction.value = _closeSplitPane;
+      widget.inlineSubScreenBackVisible.value = true;
       return;
     }
 
@@ -501,21 +511,24 @@ class _SettingsPanelState extends State<SettingsPanel>
         ),
       ),
     );
-    widget.subScreenBackAction.value = () {
-      navigator.maybePop();
-    };
+    widget.inlineSubScreenBackVisible.value = false;
     routeFuture.then((_) {
       if (!mounted) return;
       widget.subScreenBackAction.value = null;
+      widget.inlineSubScreenBackVisible.value = false;
       _restoreHeaderScrollOffset();
     });
   }
 
   Future<void> _closeSplitPane() async {
-    if (!_isSplitActive) return;
-    widget.subScreenBackAction.value = null;
+    if (!_isSplitActive ||
+        _paneTransitionController.status == AnimationStatus.reverse) {
+      return;
+    }
     await _paneTransitionController.reverse();
     if (!mounted) return;
+    widget.subScreenBackAction.value = null;
+    widget.inlineSubScreenBackVisible.value = false;
     // Keep the shared transition mounted through its final frame so its
     // selected-row correction can finish on the same progress tick as the
     // pane and header. Remove the split presentation immediately afterward.
@@ -531,16 +544,17 @@ class _SettingsPanelState extends State<SettingsPanel>
   }
 
   void _pop() {
+    if (_navCtrl.status == AnimationStatus.reverse) return;
     // Remove any pending snap listener (pop before reaching 50 %).
     if (_snapListener != null) {
       _navCtrl.removeListener(_snapListener!);
       _snapListener = null;
     }
-    // Immediately clear the back action so the overlay icon snaps back.
-    widget.subScreenBackAction.value = null;
     _navCtrl.reverse().then((_) {
       if (mounted) {
         setState(() => _activeRoute = null);
+        widget.subScreenBackAction.value = null;
+        widget.inlineSubScreenBackVisible.value = false;
         _restoreHeaderScrollOffset();
       }
     });
@@ -929,10 +943,8 @@ class _SettingsSubScreenRoute extends StatelessWidget {
                         horizontalInset:
                             AppWindowContentScope.of(context).horizontalInset +
                             16.0,
-                        onTap: () => Navigator.of(
-                          context,
-                          rootNavigator: true,
-                        ).maybePop(),
+                        onTap: () =>
+                            Navigator.of(context, rootNavigator: true).pop(),
                       ),
                     ),
                   ],
