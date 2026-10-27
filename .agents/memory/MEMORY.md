@@ -90,7 +90,7 @@
 - [Attachment import flow](attachment-import-flow.md) — remove only the pre-import confirmation overlay; keep the Importing sheet and its Cancel behavior unchanged.
 - [Attachment card corner stability](attachment-card-corner-stability.md) — let AnimatedList animate attachment rows inside one fixed-radius outer card; avoid AnimatedSize and empty-state stadium switching.
 - [AppShell floating overlays](app-shell-floating-overlays.md) — Positioned shell controls must be direct Stack children; nesting one in Column causes a blank Flutter web shell.
-- [App-shell hamburger/X appearance](app-shell-menu-button-no-press-tint.md) — no tap flash; align with the Notes preview close control and follow the shared Liquid Glass setting.
+- [App-shell toolbar states](app-shell-menu-button-no-press-tint.md) — app uses hamburger/actions, Settings uses X/no actions, sub-screens and DCV use the back chevron.
 - [Floating bar clearance math](floating-bar-clearance-math.md) — keep the Android landscape pill at 16px while preserving system gesture clearance for scroll content.
 - [Split-pane content sizing](split-pane-content-sizing.md) — responsive layouts in a bounded pane must use pane-local width while retaining portrait spacing constants.
 - [Shell backdrop filter bounds](shell-backdrop-filter-bounds.md) — permanent Android glass overlays need explicit finite clipping and clamped blur sampling or they can veil the whole app.

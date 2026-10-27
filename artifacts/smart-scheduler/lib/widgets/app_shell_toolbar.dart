@@ -97,14 +97,14 @@ class _AppShellMenuGlyph extends StatelessWidget {
     final double strokeWidth;
 
     if (progress >= 0) {
-      final t = progress.clamp(0.0, 1.0);
+      final t = progress.clamp(0.0, 1.0).toDouble();
       topY = -4.5 + 4.5 * t;
       topAngle = 0.7853981633974483 * t;
       bottomY = 4.5 - 4.5 * t;
       bottomAngle = -0.7853981633974483 * t;
       strokeWidth = 22;
     } else {
-      final t = (-progress).clamp(0.0, 1.0);
+      final t = (-progress).clamp(0.0, 1.0).toDouble();
       topY = -4.5 + 0.64 * t;
       topAngle = -0.6981317007977318 * t;
       bottomY = 4.5 - 0.64 * t;

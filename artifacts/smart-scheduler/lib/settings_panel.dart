@@ -490,8 +490,8 @@ class _SettingsPanelState extends State<SettingsPanel>
     }
 
     _restoreHeaderScrollOffset();
-    Navigator.of(context, rootNavigator: true)
-        .push<void>(
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final routeFuture = navigator.push<void>(
       CupertinoPageRoute<void>(
         settings: RouteSettings(name: 'settings-${route.title}'),
         builder: (routeContext) => _SettingsSubScreenRoute(
@@ -500,10 +500,15 @@ class _SettingsPanelState extends State<SettingsPanel>
           headerTitleTransition: _headerTitleTransition,
         ),
       ),
-    )
-        .then((_) {
-          if (mounted) _restoreHeaderScrollOffset();
-        });
+    );
+    widget.subScreenBackAction.value = () {
+      navigator.maybePop();
+    };
+    routeFuture.then((_) {
+      if (!mounted) return;
+      widget.subScreenBackAction.value = null;
+      _restoreHeaderScrollOffset();
+    });
   }
 
   Future<void> _closeSplitPane() async {

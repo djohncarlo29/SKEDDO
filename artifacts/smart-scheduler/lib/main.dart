@@ -3939,11 +3939,17 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 animation: Listenable.merge([
                   _dcvSlideController,
                   _searchModeAnim,
+                  _settingsBackAction,
                 ]),
                 builder: (context, _) {
                   final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
+                  final isSettingsSubScreen =
+                      _settingsOpen && _settingsBackAction.value != null;
                   final isDCVVisual =
-                      pageP >= 0.5 && _selectedIndex == 2 && !landscapeDcvSplit;
+                      !_settingsOpen &&
+                      pageP >= 0.5 &&
+                      _selectedIndex == 2 &&
+                      !landscapeDcvSplit;
                   final accent = (isDCVVisual && _dcvColor != null)
                       ? _dcvColor!
                       : resolveAccentColor(context);
@@ -3958,23 +3964,37 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                     child: IgnorePointer(
                       ignoring: fadeOpacity < 0.01,
                       child: AppShellPinnedToolbar(
-                        glyph: isDCVVisual
+                        glyph: isSettingsSubScreen || isDCVVisual
                             ? AppShellToolbarGlyph.back
+                            : _settingsOpen
+                            ? AppShellToolbarGlyph.close
                             : AppShellToolbarGlyph.menu,
-                        semanticLabel: isDCVVisual ? 'Back' : 'Open settings',
+                        semanticLabel: isSettingsSubScreen || isDCVVisual
+                            ? 'Back'
+                            : _settingsOpen
+                            ? 'Close settings'
+                            : 'Open settings',
                         horizontalInset:
                             AppWindowContentScope.of(context).horizontalInset +
                             16.0,
                         opacity: fadeOpacity,
                         color: accent,
-                        actions: _buildPinnedHeaderActions(
-                          context,
-                          accent: accent,
-                          opacity: fadeOpacity,
-                          useDcvCategory:
-                              isDCVVisual && _selectedIndex == 2,
-                        ),
-                        onTap: isDCVVisual ? _exitDCV : _openSettings,
+                        actions: _settingsOpen
+                            ? const <navigation_glass.GlassBarItem>[]
+                            : _buildPinnedHeaderActions(
+                                context,
+                                accent: accent,
+                                opacity: fadeOpacity,
+                                useDcvCategory:
+                                    isDCVVisual && _selectedIndex == 2,
+                              ),
+                        onTap: isSettingsSubScreen
+                            ? _settingsBackAction.value!
+                            : _settingsOpen
+                            ? _closeSettings
+                            : isDCVVisual
+                            ? _exitDCV
+                            : _openSettings,
                       ),
                     ),
                   );
