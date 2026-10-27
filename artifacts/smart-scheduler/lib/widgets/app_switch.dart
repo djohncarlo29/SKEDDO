@@ -4,11 +4,13 @@ import 'package:cupertino_native/cupertino_native.dart';
 import 'package:liquid_glass_easy/liquid_glass_easy.dart'
     show LiquidGlassSwitch;
 
+import '../app_theme.dart';
+
 /// The app-wide switch.
 ///
 /// All switch controls go through this wrapper so their interaction sizing,
-/// disabled treatment, and native iOS color stay consistent while the
-/// untouched package switch is used elsewhere.
+/// disabled treatment, and accent/category track colors stay consistent. The
+/// Liquid Glass switch keeps its package-default geometry and glass style.
 class AppSwitch extends StatelessWidget {
   const AppSwitch({
     super.key,
@@ -28,6 +30,7 @@ class AppSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeColor = color ?? CupertinoTheme.of(context).primaryColor;
+    final inactiveColor = resolveThemeColor(kTertiaryLabel, context);
     final useNativeAppleSwitch =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
@@ -49,6 +52,8 @@ class AppSwitch extends StatelessWidget {
                 : LiquidGlassSwitch(
                     value: value,
                     onChanged: onChanged,
+                    activeColor: activeColor,
+                    inactiveColor: inactiveColor,
                   ),
           ),
         ),
