@@ -2,7 +2,7 @@ name: smart_scheduler
 description: "SKEDDO"
 publish_to: 'none'
 
-version: 1.0.0+62
+version: 1.0.0+63
 
 environment:
   # Flutter 3.44.2 provides Dart 3.12.2 required by a package dependency.
