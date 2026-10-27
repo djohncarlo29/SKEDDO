@@ -312,9 +312,9 @@ private struct NativeFluidSliderRow: View {
                     GeometryReader { geometry in
                         let divisions = model.configuration.divisions
                         ForEach(0...divisions, id: \.self) { index in
-                            Capsule()
+                            Circle()
                                 .fill(model.configuration.tickColor)
-                                .frame(width: 2, height: 3)
+                                .frame(width: 3, height: 3)
                                 .position(
                                     x: 13
                                         + (geometry.size.width - 26)

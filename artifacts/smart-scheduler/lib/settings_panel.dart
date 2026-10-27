@@ -2317,6 +2317,18 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                       )
                     : Stack(
                         children: [
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: CustomPaint(
+                                painter: _TextSizeSliderTicksPainter(
+                                  color: inactiveColor,
+                                  sliderWidth: sliderWidth,
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Paint the marks first so the resting thumb covers
+                          // the selected mark instead of drawing it on top.
                           glass_slider.LiquidGlassSlider(
                             value: _dragValue ?? _indexAnimation.value / 6,
                             minimumValue: 0,
@@ -2356,16 +2368,6 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                               widget.onChangeEnd(settled * 6);
                             },
                           ),
-                          Positioned.fill(
-                            child: IgnorePointer(
-                              child: CustomPaint(
-                                painter: _TextSizeSliderTicksPainter(
-                                  color: inactiveColor,
-                                  sliderWidth: sliderWidth,
-                                ),
-                              ),
-                            ),
-                          ),
                         ],
                       ),
               );
@@ -2388,8 +2390,7 @@ class _TextSizeSliderTicksPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const tickWidth = 2.0;
-    const tickHeight = 3.0;
+    const tickDiameter = 3.0;
     final layout = _liquidGlassSliderLayout;
     final trackStart = layout.iconSize + layout.iconGap;
     final trackEnd = sliderWidth - trackStart;
@@ -2404,15 +2405,9 @@ class _TextSizeSliderTicksPainter extends CustomPainter {
       // endpoints. This leaves both extreme steps inset by half a thumb.
       final x =
           firstThumbCenter + (lastThumbCenter - firstThumbCenter) * step / 6;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(
-            center: Offset(x, size.height / 2 + 8),
-            width: tickWidth,
-            height: tickHeight,
-          ),
-          const Radius.circular(tickWidth / 2),
-        ),
+      canvas.drawCircle(
+        Offset(x, size.height / 2 + 8),
+        tickDiameter / 2,
         paint,
       );
     }
