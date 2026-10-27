@@ -47,8 +47,8 @@ formerly produced at 57%, while preserving the 0% and 100% endpoints. Apply
 that coordinate remap to every slider-driven opacity and blur curve, including
 the independent active-tab and popover curves. Its midpoint marker matches
 Text Size ticks: 3×3 circle, tertiary-label color, 8px below the track center,
-and below the thumb. It is a release-only detent: 49% and 51% settle to 50%,
-but dragging remains continuous.
+and below the thumb. It is a release-only detent: 48% through 52% settle to
+50%, but dragging remains continuous.
 
 **Why:** The user wants the prior 57% effect response centered at the slider's
 50% position, with the midpoint marker helping users settle there without

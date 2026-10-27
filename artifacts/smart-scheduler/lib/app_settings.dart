@@ -592,11 +592,11 @@ double quantizeLiquidGlassSliderPosition(double position) {
 /// Settles to whole percentages, with a small release-only detent at 50%.
 ///
 /// The continuous drag path stays unchanged. Values that would otherwise
-/// settle at 49% or 51% are pulled onto the midpoint step.
+/// settle from 48% through 52% are pulled onto the midpoint step.
 double settleLiquidGlassSliderPosition(double position) {
   final quantized = quantizeLiquidGlassSliderPosition(position);
   final percent = (quantized * 100).round();
-  return (percent - 50).abs() <= 1 ? 0.5 : quantized;
+  return (percent - 50).abs() <= 2 ? 0.5 : quantized;
 }
 
 /// Converts a slider position to the persisted 0.2–0.8 material opacity,

@@ -189,8 +189,10 @@ void main() {
     expect(liquidGlassSliderPositionForOpacity(0.656), 0.76);
     expect(settleLiquidGlassSliderPosition(0.49), 0.5);
     expect(settleLiquidGlassSliderPosition(0.51), 0.5);
-    expect(settleLiquidGlassSliderPosition(0.48), 0.48);
-    expect(settleLiquidGlassSliderPosition(0.52), 0.52);
+    expect(settleLiquidGlassSliderPosition(0.48), 0.5);
+    expect(settleLiquidGlassSliderPosition(0.52), 0.5);
+    expect(settleLiquidGlassSliderPosition(0.47), 0.47);
+    expect(settleLiquidGlassSliderPosition(0.53), 0.53);
   });
 
   testWidgets('the midpoint marker matches Text Size tick styling', (
