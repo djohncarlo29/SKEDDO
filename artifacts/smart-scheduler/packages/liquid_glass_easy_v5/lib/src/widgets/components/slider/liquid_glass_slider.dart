@@ -132,6 +132,15 @@ class LiquidGlassSlider extends StatefulWidget {
   final Widget? minimumIcon;
   final Widget? maximumIcon;
 
+  /// Optional point marker painted on the track, underneath the thumb.
+  ///
+  /// The value is in [minimumValue]..[maximumValue]. It does not quantize
+  /// dragging or change the slider's continuous behavior.
+  final double? stepMarkerValue;
+
+  /// Color for [stepMarkerValue]. Defaults to [activeColor].
+  final Color? stepMarkerColor;
+
   /// Glass look of the expanded thumb, its contact shadow included;
   /// `null` keeps [defaultStyle]. To change one facet and keep the rest,
   /// compose from it:
@@ -192,6 +201,8 @@ class LiquidGlassSlider extends StatefulWidget {
     this.motion = const LiquidGlassLensMotionSpec(),
     this.minimumIcon,
     this.maximumIcon,
+    this.stepMarkerValue,
+    this.stepMarkerColor,
     this.style,
     this.pixelRatio = 1.0,
   });
@@ -595,6 +606,13 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
   @override
   Widget build(BuildContext context) {
     final centerY = _viewHeight / 2;
+    final markerSpan = widget.maximumValue - widget.minimumValue;
+    final double? markerProgress =
+        widget.stepMarkerValue == null || markerSpan <= 0
+        ? null
+        : ((widget.stepMarkerValue! - widget.minimumValue) / markerSpan)
+              .clamp(0.0, 1.0)
+              .toDouble();
 
     // Track frame under the rubber band: it slides after the thumb, gains half the offset in
     // width, and loses a third of it in height.
@@ -718,6 +736,25 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
                       ),
                     ),
                   ),
+                  if (markerProgress != null)
+                    Positioned(
+                      left:
+                          restingTrackX +
+                          restingTrackW * markerProgress -
+                          1.5,
+                      top: centerY - 1.5,
+                      child: Container(
+                        key: const ValueKey(
+                          'liquid-glass-slider-step-marker',
+                        ),
+                        width: 3,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: widget.stepMarkerColor ?? widget.activeColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
                   if (widget.minimumIcon != null)
                     Positioned(
                       left: _minimumIconLeft,

@@ -13,6 +13,8 @@ class NativeFluidSliderRow extends StatefulWidget {
   final String maximumIcon;
   final double iconSize;
   final int divisions;
+  final double? stepMarkerValue;
+  final Color? stepMarkerColor;
   final Color accentColor;
   final Color tickColor;
   final bool darkMode;
@@ -30,6 +32,8 @@ class NativeFluidSliderRow extends StatefulWidget {
     required this.maximumIcon,
     required this.iconSize,
     required this.divisions,
+    this.stepMarkerValue,
+    this.stepMarkerColor,
     required this.accentColor,
     required this.tickColor,
     required this.darkMode,
@@ -52,18 +56,29 @@ class _NativeFluidSliderRowState extends State<NativeFluidSliderRow> {
   String _eventChannelName(int viewId) =>
       'com.smartscheduler/native_fluid_slider_events/$viewId';
 
-  Map<String, Object> _configuration() => {
-    'value': widget.value,
-    'minimumValue': widget.minimumValue,
-    'maximumValue': widget.maximumValue,
-    'minimumIcon': widget.minimumIcon,
-    'maximumIcon': widget.maximumIcon,
-    'iconSize': widget.iconSize,
-    'divisions': widget.divisions,
-    'accentColor': widget.accentColor.toARGB32(),
-    'tickColor': widget.tickColor.toARGB32(),
-    'darkMode': widget.darkMode,
-  };
+  Map<String, Object> _configuration() {
+    final configuration = <String, Object>{
+      'value': widget.value,
+      'minimumValue': widget.minimumValue,
+      'maximumValue': widget.maximumValue,
+      'minimumIcon': widget.minimumIcon,
+      'maximumIcon': widget.maximumIcon,
+      'iconSize': widget.iconSize,
+      'divisions': widget.divisions,
+      'accentColor': widget.accentColor.toARGB32(),
+      'tickColor': widget.tickColor.toARGB32(),
+      'darkMode': widget.darkMode,
+    };
+    final stepMarkerValue = widget.stepMarkerValue;
+    if (stepMarkerValue != null) {
+      configuration['stepMarkerValue'] = stepMarkerValue;
+    }
+    final stepMarkerColor = widget.stepMarkerColor;
+    if (stepMarkerColor != null) {
+      configuration['stepMarkerColor'] = stepMarkerColor.toARGB32();
+    }
+    return configuration;
+  }
 
   void _onPlatformViewCreated(int viewId) {
     final methodChannel = MethodChannel(_methodChannelName(viewId));
@@ -102,6 +117,8 @@ class _NativeFluidSliderRowState extends State<NativeFluidSliderRow> {
         oldWidget.maximumIcon != widget.maximumIcon ||
         oldWidget.iconSize != widget.iconSize ||
         oldWidget.divisions != widget.divisions ||
+        oldWidget.stepMarkerValue != widget.stepMarkerValue ||
+        oldWidget.stepMarkerColor != widget.stepMarkerColor ||
         oldWidget.accentColor != widget.accentColor ||
         oldWidget.tickColor != widget.tickColor ||
         oldWidget.darkMode != widget.darkMode) {

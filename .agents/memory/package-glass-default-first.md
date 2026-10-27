@@ -41,3 +41,18 @@ explicitly kept active checkmarks independent from the slider curves.
 **How to apply:** Keep the slider notifier connected to shared surfaces,
 toolbars, and popover settings; anchor active-checkmark optics to the fixed
 reference even though their widget may rebuild.
+
+For the Liquid Glass settings slider, map the new 50% position to the effects
+formerly produced at 57%, while preserving the 0% and 100% endpoints. Apply
+that coordinate remap to every slider-driven opacity and blur curve, including
+the independent active-tab and popover curves. The midpoint track marker is a
+release-only detent: 49% and 51% settle to 50%, but dragging remains continuous.
+
+**Why:** The user wants the prior 57% effect response centered at the slider's
+50% position, with the midpoint marker helping users settle there without
+introducing a drag-time stop.
+
+**How to apply:** Keep the effect-coordinate remap centralized for all glass
+curves; keep the stored slider coordinate unchanged and apply midpoint snapping
+only at gesture completion. Render the marker below the thumb on Flutter and
+native iOS.

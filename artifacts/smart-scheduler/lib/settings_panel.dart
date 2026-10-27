@@ -2590,6 +2590,10 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
 
   @override
   Widget build(BuildContext context) {
+    final currentPosition = _dragValue ?? widget.value;
+    final stepMarkerColor = currentPosition <= kDefaultLiquidGlassSliderPosition
+        ? widget.activeColor
+        : widget.inactiveColor;
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
       return NativeFluidSliderRow(
         value: _dragValue ?? widget.value,
@@ -2601,6 +2605,8 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
         divisions: 0,
         accentColor: widget.activeColor,
         tickColor: widget.inactiveColor,
+        stepMarkerValue: kDefaultLiquidGlassSliderPosition,
+        stepMarkerColor: stepMarkerColor,
         darkMode: widget.darkMode,
         height: _kSettingsRowHeight,
         onChangeStart: (_) {
@@ -2613,7 +2619,7 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
           widget.onChanged(value);
         },
         onChangeEnd: (value) {
-          final settled = quantizeLiquidGlassSliderPosition(value);
+          final settled = settleLiquidGlassSliderPosition(value);
           setState(() {
             _dragValue = settled;
             _isDragging = false;
@@ -2646,6 +2652,8 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
                 activeColor: widget.activeColor,
                 inactiveColor: widget.inactiveColor,
                 thumbColor: const Color(0xFFFDFDFD),
+                stepMarkerValue: kDefaultLiquidGlassSliderPosition,
+                stepMarkerColor: stepMarkerColor,
                 minimumIcon: SvgPicture.string(
                   _withThemeColors(sources[0]),
                   width: 34,
@@ -2666,7 +2674,7 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
                   widget.onChanged(value);
                 },
                 onChangeEnd: (value) {
-                  final settled = quantizeLiquidGlassSliderPosition(value);
+                  final settled = settleLiquidGlassSliderPosition(value);
                   setState(() {
                     _dragValue = settled;
                     _isDragging = false;
@@ -2702,7 +2710,9 @@ void _setLiquidGlassOpacityLive(double raw) {
 }
 
 void _setLiquidGlassOpacity(double raw) {
-  final snapped = liquidGlassOpacityForSliderPosition(raw);
+  final snapped = liquidGlassOpacityForSliderPosition(
+    settleLiquidGlassSliderPosition(raw),
+  );
   if (snapped != appLiquidGlassOpacityNotifier.value) {
     appLiquidGlassOpacityNotifier.value = snapped;
   }

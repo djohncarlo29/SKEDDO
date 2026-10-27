@@ -11,16 +11,17 @@ import '../app_settings.dart';
 ///
 /// These retain flutter_liquid_glass_widgets' bottom-bar optics while using
 /// SKEDDO's explicit tint colors and slider-driven opacity. The constants are
-/// the shared renderer opacity at the 50% slider mark.
-const double kSkeddoLightBottomBarOpacity = 0.50;
-const double kSkeddoDarkBottomBarOpacity = 0.60;
+/// the shared renderer opacity at the remapped 50% slider mark.
+const double kSkeddoLightBottomBarOpacity = 0.528;
+const double kSkeddoDarkBottomBarOpacity = 0.628;
 
-/// GlassPopover card and button opacity at the 50% slider mark.
-const double kSkeddoPopoverGlassOpacity = 0.90;
+/// GlassPopover card and button opacity at the remapped 50% slider mark.
+const double kSkeddoPopoverGlassOpacity = 0.907;
 const double kSkeddoTintedActionGlassOpacity = 0.85;
 const double kSkeddoActiveCheckmarkFillOpacity = 0.85;
 const double kSkeddoActiveCheckmarkRefractionOverlayOpacity = 0.30;
 const double _kActiveCheckmarkGlassSliderReference = 0.5;
+const double _kOldSliderPositionForNewMidpoint = 0.57;
 
 const LiquidGlassSettings _packageBottomBarGlassDefaults = LiquidGlassSettings(
   thickness: 30,
@@ -141,15 +142,33 @@ double _interpolateSliderAnchors(
   return anchors.last.$2;
 }
 
+/// Remaps the slider coordinate so 50% preserves the effects formerly produced
+/// at 57%, while 0% and 100% keep their original endpoint effects.
+double skeddoLiquidGlassEffectPositionForSliderPosition(double position) {
+  final normalized = position.clamp(0.0, 1.0).toDouble();
+  if (normalized <= 0.5) {
+    return normalized * (_kOldSliderPositionForNewMidpoint / 0.5);
+  }
+  return _kOldSliderPositionForNewMidpoint +
+      (normalized - 0.5) *
+          ((1 - _kOldSliderPositionForNewMidpoint) / 0.5);
+}
+
 /// Backdrop blur for the shared Liquid Glass renderer, interpolated between
 /// the slider's explicitly specified percentage anchors.
 double skeddoSharedGlassBlurForPosition(double position) =>
-    _interpolateSliderAnchors(position, _kSharedGlassBlurAnchors);
+    _interpolateSliderAnchors(
+      skeddoLiquidGlassEffectPositionForSliderPosition(position),
+      _kSharedGlassBlurAnchors,
+    );
 
 /// Backdrop blur for the settled active-tab lens. It uses a separate slider
 /// curve from the surrounding tab-bar shell.
 double skeddoActiveTabIndicatorBlurForPosition(double position) =>
-    _interpolateSliderAnchors(position, _kActiveTabIndicatorBlurAnchors);
+    _interpolateSliderAnchors(
+      skeddoLiquidGlassEffectPositionForSliderPosition(position),
+      _kActiveTabIndicatorBlurAnchors,
+    );
 
 /// Slider-driven tint opacity for shared renderer surfaces. The GlassPopover
 /// intentionally uses its own fixed opacity.
@@ -157,7 +176,7 @@ double skeddoSharedGlassOpacityForPosition(
   double position,
   Brightness brightness,
 ) => _interpolateSliderAnchors(
-  position,
+  skeddoLiquidGlassEffectPositionForSliderPosition(position),
   brightness == Brightness.dark
       ? _kSharedGlassDarkOpacityAnchors
       : _kSharedGlassLightOpacityAnchors,
@@ -165,11 +184,17 @@ double skeddoSharedGlassOpacityForPosition(
 
 /// Independent opacity curve used by both GlassPopover surfaces.
 double skeddoPopoverOpacityForPosition(double position) =>
-    _interpolateSliderAnchors(position, _kPopoverOpacityAnchors);
+    _interpolateSliderAnchors(
+      skeddoLiquidGlassEffectPositionForSliderPosition(position),
+      _kPopoverOpacityAnchors,
+    );
 
 /// Independent blur curve used by the GlassPopover card.
 double skeddoPopoverBlurForPosition(double position) =>
-    _interpolateSliderAnchors(position, _kPopoverBlurAnchors);
+    _interpolateSliderAnchors(
+      skeddoLiquidGlassEffectPositionForSliderPosition(position),
+      _kPopoverBlurAnchors,
+    );
 
 LiquidGlassSettings _settingsForSharedGlassPosition(
   Brightness brightness,

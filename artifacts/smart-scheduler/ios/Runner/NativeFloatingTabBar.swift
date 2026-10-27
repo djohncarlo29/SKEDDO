@@ -208,6 +208,8 @@ private struct NativeFluidSliderConfiguration {
     let maximumIcon: String
     let iconSize: CGFloat
     let divisions: Int
+    var stepMarkerValue: Double?
+    var stepMarkerColor: Color?
     var accentColor: Color
     var tickColor: Color
     var darkMode: Bool
@@ -322,6 +324,29 @@ private struct NativeFluidSliderRow: View {
                                         / CGFloat(divisions),
                                     y: geometry.size.height / 2 + 8
                                 )
+                        }
+                    }
+                }
+                if let markerValue = model.configuration.stepMarkerValue {
+                    GeometryReader { geometry in
+                        let position = min(max(markerValue, 0), 1)
+                        let trackWidth = max(1, geometry.size.width - 26)
+                        let markerDistance =
+                            abs(progress - position) * trackWidth
+                        if markerDistance > 14 {
+                            Circle()
+                                .fill(
+                                    model.configuration.stepMarkerColor
+                                        ?? (progress < position
+                                            ? model.configuration.accentColor
+                                            : model.configuration.tickColor)
+                                )
+                                .frame(width: 3, height: 3)
+                                .position(
+                                    x: 13 + trackWidth * position,
+                                    y: geometry.size.height / 2
+                                )
+                                .allowsHitTesting(false)
                         }
                     }
                 }
@@ -483,6 +508,8 @@ private final class NativeFluidSliderPlatformView: NSObject,
         let normalizedMaximum = max(maximumValue, minimumValue + 0.0001)
         let requestedValue =
             (values["value"] as? NSNumber)?.doubleValue ?? oldValue ?? minimumValue
+        let stepMarkerColorNumber =
+            values["stepMarkerColor"] as? NSNumber
 
         return NativeFluidSliderConfiguration(
             value: min(max(requestedValue, minimumValue), normalizedMaximum),
@@ -494,6 +521,9 @@ private final class NativeFluidSliderPlatformView: NSObject,
                 (values["iconSize"] as? NSNumber)?.doubleValue ?? 20
             ),
             divisions: (values["divisions"] as? NSNumber)?.intValue ?? 0,
+            stepMarkerValue: (values["stepMarkerValue"] as? NSNumber)?
+                .doubleValue,
+            stepMarkerColor: stepMarkerColorNumber.map { Self.color(from: $0) },
             accentColor: color(from: values["accentColor"] as? NSNumber),
             tickColor: color(from: values["tickColor"] as? NSNumber),
             darkMode: values["darkMode"] as? Bool ?? false
