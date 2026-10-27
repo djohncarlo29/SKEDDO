@@ -760,9 +760,7 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
               // descendant can call resolveAccentColor(context).
               Widget result = AppAccentColor(
                 accent: accentSwatch,
-                child: navigation_glass.GlassNavigationShell(
-                  child: child ?? const SizedBox.shrink(),
-                ),
+                child: child ?? const SizedBox.shrink(),
               );
               // Icons are visual controls, not text. Keep every Flutter icon
               // at its authored size even when the app's text scaler changes.
@@ -3311,7 +3309,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
           child: AppShellNavigationScope(
             navigatorKey: _appShellNavigatorKey,
             routeRevision: _appShellRouteRevision,
-            child: Stack(
+            child: navigation_glass.GlassNavigationShell(
+              child: Stack(
             children: [
               Stack(
                 fit: StackFit.expand,
@@ -4114,10 +4113,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 },
               ),
 
-              // Keep tab bodies mounted, while the sibling Navigator owns
-              // toolbar destinations plus Settings and modal routes. They
-              // share one route stack so GlassNavigationShell can coordinate
-              // every handoff without rebuilding the indexed tab content.
+              // Keep tab bodies mounted while the sibling Navigator owns the
+              // toolbar destinations and Settings routes. Global modal routes
+              // use the root Navigator so they cover and dim this whole shell.
               Positioned.fill(
                 child: Navigator(
                   key: _appShellNavigatorKey,
@@ -4136,6 +4134,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               ),
             ],
           ),
+            ), // GlassNavigationShell
         ),
         ), // AppShellNavigationScope
       ),

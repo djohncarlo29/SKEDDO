@@ -20,6 +20,7 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart' as glass_slider;
 import 'widgets/native_fluid_slider_row.dart';
 import 'widgets/app_window_content_boundary.dart';
 import 'widgets/app_header_scroll_edge.dart';
+import 'widgets/app_shell_navigation_scope.dart';
 import 'widgets/app_shell_toolbar.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -502,7 +503,7 @@ class _SettingsPanelState extends State<SettingsPanel>
     _restoreHeaderScrollOffset();
     widget.subScreenBackAction.value = null;
     widget.inlineSubScreenBackVisible.value = false;
-    final navigator = Navigator.of(context);
+    final navigator = AppShellNavigationScope.navigatorOf(context);
     final routeFuture = navigator.push<void>(
       CupertinoPageRoute<void>(
         settings: RouteSettings(name: 'settings-${route.title}'),
@@ -945,7 +946,9 @@ class _SettingsSubScreenRoute extends StatelessWidget {
                         horizontalInset:
                             AppWindowContentScope.of(context).horizontalInset +
                             16.0,
-                        onTap: () => Navigator.of(context).maybePop(),
+                        onTap: () =>
+                            AppShellNavigationScope.navigatorOf(context)
+                                .maybePop(),
                       ),
                     ),
                   ],

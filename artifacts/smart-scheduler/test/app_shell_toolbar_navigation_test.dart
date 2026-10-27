@@ -19,10 +19,12 @@ void main() {
       });
 
       final shellKey = GlobalKey<navigation_glass.GlassNavigationShellState>();
+      final rootNavigatorKey = GlobalKey<NavigatorState>();
       final toolbarNavigatorKey = GlobalKey<NavigatorState>();
       final routeRevision = ValueNotifier<int>(0);
       addTearDown(routeRevision.dispose);
       final routeObserver = _RouteNameObserver();
+      final rootRouteObserver = _RouteNameObserver();
       var settingsTaps = 0;
       var createTaps = 0;
       var bodyTaps = 0;
@@ -71,19 +73,20 @@ void main() {
 
       await tester.pumpWidget(
         CupertinoApp(
+          navigatorKey: rootNavigatorKey,
+          navigatorObservers: [rootRouteObserver],
           builder: (context, child) => AppWindowContentScope(
             horizontalInset: 0,
             physicalWidth: 402,
-            child: navigation_glass.GlassNavigationShell(
-              key: shellKey,
-              child: child!,
-            ),
+            child: child!,
           ),
           home: CupertinoPageScaffold(
             child: AppShellNavigationScope(
               navigatorKey: toolbarNavigatorKey,
               routeRevision: routeRevision,
-              child: Stack(
+              child: navigation_glass.GlassNavigationShell(
+                key: shellKey,
+                child: Stack(
                 children: [
                   Positioned.fill(
                     child: GestureDetector(
@@ -128,6 +131,7 @@ void main() {
                     ),
                   ),
                 ],
+                ),
               ),
             ),
           ),
@@ -273,16 +277,69 @@ void main() {
       await tester.pumpAndSettle();
 
       final routeRevisionBeforeSheet = routeRevision.value;
+      final toolbarRectBeforeSheet = tester.getRect(
+        find.bySemanticsLabel('Open settings'),
+      );
+      final trailingRectBeforeSheet = tester.getRect(
+        find.bySemanticsLabel('Create event'),
+      );
       await tester.tap(find.byKey(const ValueKey('open-nested-sheet')));
       await tester.pumpAndSettle();
-      expect(toolbarNavigatorKey.currentState!.canPop(), isTrue);
-      expect(shellKey.currentState!.resolveState(), isNull);
+      expect(rootNavigatorKey.currentState!.canPop(), isTrue);
+      expect(routeObserver.currentName, 'toolbar-home-return-after-search');
+      expect(
+        rootRouteObserver.currentRoute,
+        isA<RoundedCupertinoSheetRoute<void>>(),
+      );
+      expect(routeRevision.value, routeRevisionBeforeSheet);
+      // The shell sits inside the AppShell route, so the root modal covers and
+      // dims the pinned chrome together with the page without handing it back.
+      expect(shellKey.currentState!.resolveState(), isNotNull);
+      expect(
+        find.ancestor(
+          of: find.byKey(const ValueKey('open-nested-sheet')),
+          matching: find.byKey(
+            const ValueKey('rounded-sheet-app-shell-dim-overlay'),
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.ancestor(
+          of: find.bySemanticsLabel('Open settings'),
+          matching: find.byKey(
+            const ValueKey('rounded-sheet-app-shell-dim-overlay'),
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.ancestor(
+          of: find.bySemanticsLabel('Create event'),
+          matching: find.byKey(
+            const ValueKey('rounded-sheet-app-shell-dim-overlay'),
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester.getRect(find.bySemanticsLabel('Open settings')).size,
+        toolbarRectBeforeSheet.size,
+      );
+      expect(
+        tester.getRect(find.bySemanticsLabel('Create event')).size,
+        trailingRectBeforeSheet.size,
+      );
+      await tester.tapAt(toolbarRectBeforeSheet.center);
+      expect(settingsTaps, 4);
+      await tester.tapAt(trailingRectBeforeSheet.center);
+      expect(createTaps, 1);
       await tester.tap(find.byKey(const ValueKey('dismiss-nested-sheet')));
       await tester.pumpAndSettle();
       expect(find.text('Dismiss sheet'), findsNothing);
       expect(routeObserver.currentName, 'toolbar-home-return-after-search');
       expect(routeObserver.currentRoute!.isCurrent, isTrue);
-      expect(routeRevision.value, greaterThan(routeRevisionBeforeSheet));
+      expect(routeRevision.value, routeRevisionBeforeSheet);
       expect(find.bySemanticsLabel('Open settings'), findsOneWidget);
       expect(find.bySemanticsLabel('Create event'), findsOneWidget);
       expect(
@@ -312,5 +369,14 @@ class _RouteNameObserver extends NavigatorObserver {
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     currentName = previousRoute?.settings.name;
     currentRoute = previousRoute;
+  }
+
+  @override
+  void didReplace({
+    Route<dynamic>? newRoute,
+    Route<dynamic>? oldRoute,
+  }) {
+    currentName = newRoute?.settings.name;
+    currentRoute = newRoute;
   }
 }

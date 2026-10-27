@@ -1,16 +1,14 @@
 ---
 name: Toolbar state-route hit testing
-description: Keep pinned toolbar ownership, route transitions, and modal handoffs on one coherent navigation stack.
+description: Separate app-shell screen navigation from root modal presentation so pinned chrome stays under the sheet.
 ---
 
-`GlassNavigationShell` orders pinned toolbar registrations from route coverage and current ownership. Keep toolbar destinations and every app-level route that covers or presents over them—Settings, subscreens, dialogs, and modal sheets—on the same Navigator. Splitting toolbar registrations from real screen and sheet routes can leave stale actions, invisible hit targets, or chrome above a sheet.
+Keep toolbar destinations and Settings/subscreens in the AppShell-owned Navigator. Keep global modal sheets and dialogs on the root Navigator so they cover the entire AppShell route, including Settings and the pinned toolbar.
 
-The indexed tab bodies may stay mounted beside that Navigator. Toolbar-state routes can be opaque to provide real transition progress while their transparent, pointer-ignoring page lets the body continue receiving taps.
+Place `GlassNavigationShell` inside the AppShell page around the tab body and its toolbar Navigator, not outside the root Navigator in `CupertinoApp.builder`. The root route's delegated modal transition then dims the body and pinned chrome together, and the root sheet is above both. Do not apply an inverse scale to the toolbar for these root-level sheets; the shell remains at its settled geometry.
 
-After a modal route is popped, refresh the covered toolbar registration only after that route's exit has completed. Refreshing at presentation or pop start can re-register the bar during the transition and make it overlap the sheet.
+Keep stable `GlassBarItem` IDs and icon-content identity when destinations reuse an item with a different glyph. Refresh local toolbar route state after its own screen route finishes popping; root modal dismissal does not change the local toolbar route stack.
 
-Keep the primary `GlassBarItem` ID and icon-content identity stable across destinations when only its glyph changes.
+**Why:** The package renders pinned chrome above the Navigator it encloses and ranks registrations using route coverage within that Navigator. A sheet pushed only into the AppShell Navigator cannot cover sibling tab bodies, and the root AppShell route cannot dim a shell hosted outside its subtree.
 
-**Why:** The package ranks routes using the Navigator's transition coverage. Separate stacks do not provide one reliable ordering, while early handoff refreshes can race the modal's exit animation.
-
-**How to apply:** Use the same Navigator for app toolbar state, Settings routes, and modal presentation/dismissal. Verify body taps pass through toolbar-state routes and that the registered toolbar returns after a sheet fully closes.
+**How to apply:** Use the nested AppShell Navigator for tab/Settings route changes and the root Navigator for app-wide presentations. Test that both body and toolbar share the root route's dim filter, the sheet blocks underlying taps, and toolbar bounds remain unchanged while it is open.

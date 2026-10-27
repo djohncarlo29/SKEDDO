@@ -22,6 +22,9 @@ class AppShellNavigationScope extends InheritedWidget {
         Navigator.of(context, rootNavigator: true);
   }
 
+  static NavigatorState rootNavigatorOf(BuildContext context) =>
+      Navigator.of(context, rootNavigator: true);
+
   static ValueListenable<int>? routeChangesOf(BuildContext context) =>
       context
           .getInheritedWidgetOfExactType<AppShellNavigationScope>()
@@ -67,7 +70,7 @@ Future<T?> showAppCupertinoDialog<T>({
   required WidgetBuilder builder,
   bool barrierDismissible = false,
 }) {
-  return AppShellNavigationScope.navigatorOf(context).push<T>(
+  return AppShellNavigationScope.rootNavigatorOf(context).push<T>(
     CupertinoDialogRoute<T>(
       context: context,
       builder: builder,

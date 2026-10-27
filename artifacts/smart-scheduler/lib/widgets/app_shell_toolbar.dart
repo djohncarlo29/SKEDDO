@@ -5,7 +5,6 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
 
 import '../app_settings.dart';
 import '../app_theme.dart';
-import 'rounded_cupertino_sheet.dart';
 import 'app_shell_navigation_scope.dart';
 import 'skeddo_glass_settings.dart';
 
@@ -81,23 +80,20 @@ class AppShellPinnedToolbar extends StatelessWidget {
           )
         : null;
 
-    return preserveRoundedCupertinoSheetToolbarSize(
-      context,
-      navigation_glass.GlassAppBar.pinned(
-        title: const SizedBox.shrink(),
-        leading: item == null
-            ? const <navigation_glass.GlassBarItem>[]
-            : <navigation_glass.GlassBarItem>[item],
-        actions: showPrimary
-            ? actions
-            : const <navigation_glass.GlassBarItem>[],
-        backButton: false,
-        buttonSize: buttonSize,
-        toolbarHeight: toolbarHeight,
-        centerTitle: false,
-        padding: EdgeInsets.symmetric(horizontal: horizontalInset),
-        buttonSettings: settings,
-      ),
+    return navigation_glass.GlassAppBar.pinned(
+      title: const SizedBox.shrink(),
+      leading: item == null
+          ? const <navigation_glass.GlassBarItem>[]
+          : <navigation_glass.GlassBarItem>[item],
+      actions: showPrimary
+          ? actions
+          : const <navigation_glass.GlassBarItem>[],
+      backButton: false,
+      buttonSize: buttonSize,
+      toolbarHeight: toolbarHeight,
+      centerTitle: false,
+      padding: EdgeInsets.symmetric(horizontal: horizontalInset),
+      buttonSettings: settings,
     );
   }
 }
