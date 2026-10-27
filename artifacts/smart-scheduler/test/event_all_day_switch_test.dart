@@ -5,6 +5,7 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart'
 import 'package:liquid_glass_easy/src/widgets/lens/liquid_glass_lens.dart'
     show LiquidGlassLens;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smart_scheduler/app_theme.dart' show AdaptiveLabelPillRow;
 import 'package:smart_scheduler/services/event_model.dart';
 import 'package:smart_scheduler/tabs/calendar_tab.dart';
 import 'package:smart_scheduler/widgets/app_header_scroll_edge.dart';
@@ -27,6 +28,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    expect(tester.testTextInput.isVisible, isFalse);
 
     final allDayRow = find
         .ancestor(of: find.text('All-day'), matching: find.byType(Row))
@@ -36,6 +38,20 @@ void main() {
       matching: find.byType(LiquidGlassSwitch),
     );
     expect(allDaySwitch, findsOneWidget);
+    final startsRow = find
+        .ancestor(
+          of: find.text('Starts'),
+          matching: find.byType(AdaptiveLabelPillRow),
+        )
+        .first;
+    final endsRow = find
+        .ancestor(
+          of: find.text('Ends'),
+          matching: find.byType(AdaptiveLabelPillRow),
+        )
+        .first;
+    int pillCount(Finder row) =>
+        tester.widget<AdaptiveLabelPillRow>(row).pills.length;
     final travelTimeTransition = find
         .ancestor(
           of: find.text('Travel Time'),
@@ -54,12 +70,20 @@ void main() {
       return tester.widget<Positioned>(thumbPosition).width!;
     }
 
+    double glassThumbHeight() {
+      final thumbPosition = find
+          .ancestor(of: switchLens.first, matching: find.byType(Positioned))
+          .first;
+      return tester.widget<Positioned>(thumbPosition).height!;
+    }
+
     expect(
       tester.widget<SizeTransition>(travelTimeTransition).sizeFactor.value,
       closeTo(1, 0.001),
     );
 
-    expect(find.text('9:00 AM'), findsOneWidget);
+    expect(pillCount(startsRow), 2);
+    expect(pillCount(endsRow), 2);
 
     // Tapping the switch and the row label are separate supported targets.
     await tester.tap(allDaySwitch);
@@ -69,8 +93,10 @@ void main() {
       tester.widget<SizeTransition>(travelTimeTransition).sizeFactor.value,
       closeTo(0, 0.001),
     );
-    expect(find.text('9:00 AM'), findsNothing);
+    expect(pillCount(startsRow), 1);
+    expect(pillCount(endsRow), 1);
     expect(glassThumbWidth(), closeTo(37, 0.1));
+    expect(glassThumbHeight(), closeTo(24, 0.1));
 
     await tester.tap(find.text('All-day'));
     await tester.pumpAndSettle();
@@ -79,8 +105,10 @@ void main() {
       tester.widget<SizeTransition>(travelTimeTransition).sizeFactor.value,
       closeTo(1, 0.001),
     );
-    expect(find.text('9:00 AM'), findsOneWidget);
+    expect(pillCount(startsRow), 2);
+    expect(pillCount(endsRow), 2);
     expect(glassThumbWidth(), closeTo(37, 0.1));
+    expect(glassThumbHeight(), closeTo(24, 0.1));
   });
 
   testWidgets('new event sheet All-day switch settles with initial focus', (

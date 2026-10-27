@@ -11358,37 +11358,55 @@ class _NewEventSheetState extends State<_NewEventSheet>
     bool value,
     ValueChanged<bool> onChanged,
   ) =>
-      GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => onChanged(!value),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            children: [
-              Text(label, style: _kLabelStyle),
-              const Spacer(),
-              // height: 30 matches pill height so switch rows == date rows
-              SizedBox(
-                width: 70 * 0.80,
-                height: 30,
-                child: OverflowBox(
-                  maxWidth: 70,
-                  maxHeight: 31,
-                  alignment: Alignment.center,
-                  child: Transform.scale(
-                    scale: 0.80,
-                    child: AppSwitch(
-                      value: value,
-                      onChanged: onChanged,
-                      color: _resolvedCategoryColor,
-                      height: 31,
-                    ),
+      Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => onChanged(!value),
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  left: 16,
+                  top: 10,
+                  bottom: 10,
+                ),
+                child: SizedBox(
+                  height: 30,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(label, style: _kLabelStyle),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.only(
+              right: 16,
+              top: 10,
+              bottom: 10,
+            ),
+            // height: 30 matches pill height so switch rows == date rows
+            child: SizedBox(
+              width: 70 * 0.80,
+              height: 30,
+              child: OverflowBox(
+                maxWidth: 70,
+                maxHeight: 31,
+                alignment: Alignment.center,
+                child: Transform.scale(
+                  scale: 0.80,
+                  child: AppSwitch(
+                    value: value,
+                    onChanged: onChanged,
+                    color: _resolvedCategoryColor,
+                    height: 31,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       );
 
   // ── Date/time row (Starts / Ends) — date pill opens inline picker ─────────

@@ -26,7 +26,7 @@
 - [Grid reorder drag offset accumulation](grid-reorder-drag-offset-bug.md) — drag start must index from _gridCombinedOrder, not section-local lists; only _gridCombinedOrder is updated per drag frame.
 - [Pin-category scroll-jump compensation anchor](pin-scroll-jump-compensation.md) — save offset before collapse; use base+totalGrowth for frame compensation.
 - [Action-panel SF Symbols](action-panel-sf-symbols.md) — use variable-weight SF Symbols in action panels; avoid blurred Cupertino glyph faux-weight rendering.
-- [Full-row switch interaction](app-switch-row.md) — use full-row hit targets with idempotent desired-state callbacks, keeping dependent UI aligned with LiquidGlassSwitch.
+- [Full-row switch interaction](app-switch-row.md) — use idempotent desired-state callbacks; keep a parent tap target off raw LiquidGlassSwitch gestures.
 - [Framework7 header icons](framework7-header-icons.md) — use local Framework7 glyph geometry when Iconify returns placeholders.
 - [Smart category circle numbers](smart-category-circle-numbers.md) — the 0.5px downward number adjustment applies only to the four Events smart-category circle icons, not larger previews.
 - [Smart Category rule persistence](smart-category-rule-persistence.md) — keep the matching rule separate from the category subtitle and persist it through category JSON.
