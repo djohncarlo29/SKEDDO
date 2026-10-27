@@ -1,10 +1,10 @@
 ---
-name: Liquid Glass slider version split
-description: Preserve the original bouncing thumb-edge icon motion without downgrading the main liquid_glass_easy controls.
+name: Liquid Glass slider v5 edge motion
+description: Preserve the original bouncing thumb-edge icon motion while keeping the slider and other controls on liquid_glass_easy 5.0.0.
 ---
 
-Keep the main app on hosted `liquid_glass_easy` 5.0.0 for switches and other controls. Flutter sliders use the slider-only `liquid_glass_easy_slider` companion built from the retained local v4 implementation. That implementation reports the live thumb center and rendered pill size, so the edge icons can follow the actual rubberbanded thumb and maintain the active gap.
+Keep the slider and all other controls on `liquid_glass_easy` 5.0.0. The app's local 5.0.0 package copy adds live visual-size reporting to the motion pill and moves edge icons from the actual thumb center and rendered envelope, preserving the active gap through rubberband overrun.
 
-**Why:** The hosted 5.0.0 slider does not expose the rendered-size/center callbacks needed for the original effect, and a value-only wrapper cannot reproduce its end bounce. The user also requires untouched hosted 5.0.0 switch defaults.
+**Why:** The user specifically requires the slider to remain 5.0.0 and wants the original iOS-style edge-icon push and bounce restored; an older slider implementation or value-only wrapper is not acceptable.
 
-**How to apply:** Keep app slider imports on the companion's narrow slider barrel; keep switches on hosted `liquid_glass_easy`. Migrate only after a hosted API provides live thumb geometry and regression tests verify both ends, rubberband motion, gap, and release.
+**How to apply:** Keep the package version at 5.0.0 and preserve upstream behavior for unrelated controls. When rebasing the local patch, retain tests for both edges, rubberband motion, the maintained gap, and icon return after release.

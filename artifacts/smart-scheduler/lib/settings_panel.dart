@@ -16,7 +16,7 @@ import 'widgets/accent_tinted_image.dart';
 import 'widgets/fixed_size_icon.dart';
 import 'widgets/floating_tab_pill.dart';
 import 'widgets/header_title_scroller.dart';
-import 'widgets/legacy_liquid_glass_slider.dart' as legacy_slider;
+import 'package:liquid_glass_easy/liquid_glass_easy.dart' as glass_slider;
 import 'widgets/native_fluid_slider_row.dart';
 import 'widgets/app_window_content_boundary.dart';
 import 'widgets/app_header_scroll_edge.dart';
@@ -2316,7 +2316,7 @@ class _TextSizeSliderRowState extends State<_TextSizeSliderRow>
                       )
                     : Stack(
                         children: [
-                          legacy_slider.LiquidGlassSlider(
+                          glass_slider.LiquidGlassSlider(
                             value: _dragValue ?? _indexAnimation.value / 6,
                             minimumValue: 0,
                             maximumValue: 1,
@@ -2650,13 +2650,13 @@ class _LiquidGlassTestIconsState extends State<_LiquidGlassTestIcons> {
         return Center(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              return legacy_slider.LiquidGlassSlider(
+              return glass_slider.LiquidGlassSlider(
                 value: _dragValue ?? widget.value,
                 minimumValue: 0,
                 maximumValue: 1,
                 width: constraints.maxWidth,
                 height: _kSettingsRowHeight,
-                layout: const legacy_slider.LiquidGlassSliderLayout(
+                layout: const glass_slider.LiquidGlassSliderLayout(
                   iconSize: 34,
                   iconGap: 8,
                   horizontalInset: 0,
@@ -2707,8 +2707,8 @@ const double _kLiquidGlassSettledEdgeInset = 16.0;
 // Zero inset aligns the line's outer endpoints with the resting thumb's edges.
 // Discrete tick bars span the full track, flush to those outer endpoints.
 const double _kLiquidGlassSliderInset = 0.0;
-const legacy_slider.LiquidGlassSliderLayout _liquidGlassSliderLayout =
-    legacy_slider.LiquidGlassSliderLayout(
+const glass_slider.LiquidGlassSliderLayout _liquidGlassSliderLayout =
+    glass_slider.LiquidGlassSliderLayout(
       horizontalInset: _kLiquidGlassSliderInset,
     );
 
