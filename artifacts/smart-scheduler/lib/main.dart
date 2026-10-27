@@ -903,6 +903,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   String? _activeToolbarRouteKey = 'home';
   final GlobalKey<NavigatorState> _appShellNavigatorKey =
       GlobalKey<NavigatorState>();
+  final Set<Route<void>> _toolbarStateRoutes = <Route<void>>{};
+  Route<void>? _currentToolbarStateRoute;
   final ValueNotifier<int> _appShellRouteRevision = ValueNotifier<int>(0);
   late final AppShellNavigationObserver _appShellNavigationObserver =
       AppShellNavigationObserver(_appShellRouteRevision);
@@ -2804,21 +2806,20 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }
 
   String _toolbarDestinationKey() {
-    if (_searchFocused) return 'search';
-    if (_selectedIndex == 2 &&
-        _dcvToolbarVisible &&
-        !_isLandscapeDcvSplit()) {
-      return 'events-dcv';
-    }
-    return _selectedIndex == 0 ? 'home' : 'tab-$_selectedIndex';
+    return appShellToolbarConfigurationKey(
+      searchFocused: _searchFocused,
+      selectedTabIndex: _selectedIndex,
+      dcvToolbarVisible: _dcvToolbarVisible,
+      landscapeDcvSplit: _isLandscapeDcvSplit(),
+    );
   }
 
   Route<void> _toolbarStateRouteForKey(String key) {
-    final tabIndex = key == 'home' ? 0 : _selectedIndex;
+    final tabIndex = key == 'tab-3' ? 3 : 0;
     final isSearch = key == 'search';
     final isDcv = key == 'events-dcv';
 
-    return appShellToolbarStateRoute(
+    final route = appShellToolbarStateRoute(
       name: 'app-shell-toolbar-$key',
       opaque: true,
       onSystemBack: _handleToolbarRouteSystemBack,
@@ -2858,6 +2859,9 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
               },
             ),
     );
+    _toolbarStateRoutes.add(route);
+    _currentToolbarStateRoute = route;
+    return route;
   }
 
   void _syncToolbarDestination() {
@@ -2874,10 +2878,52 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       return;
     }
 
+    final route = _toolbarStateRouteForKey(key);
     _activeToolbarRouteKey = key;
-    unawaited(
-      navigator.pushReplacement<void, void>(_toolbarStateRouteForKey(key)),
-    );
+    unawaited(navigator.push<void>(route));
+
+    // Let GlassNavigationShell see both registered routes for the full
+    // materialize transition. pushReplacement marks the outgoing route
+    // inactive before the shell can use it as the morph source.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          !navigator.mounted ||
+          !identical(_currentToolbarStateRoute, route)) {
+        return;
+      }
+      final animation = (route as TransitionRoute<void>).animation;
+      if (animation == null ||
+          animation.status == AnimationStatus.completed) {
+        _pruneToolbarStateRoutes(navigator, route);
+        return;
+      }
+
+      void onStatusChanged(AnimationStatus status) {
+        if (status != AnimationStatus.completed) return;
+        animation.removeStatusListener(onStatusChanged);
+        _pruneToolbarStateRoutes(navigator, route);
+      }
+
+      animation.addStatusListener(onStatusChanged);
+    });
+  }
+
+  void _pruneToolbarStateRoutes(
+    NavigatorState navigator,
+    Route<void> currentRoute,
+  ) {
+    if (!mounted ||
+        !navigator.mounted ||
+        !identical(_currentToolbarStateRoute, currentRoute)) {
+      return;
+    }
+    for (final route in _toolbarStateRoutes.toList()) {
+      if (identical(route, currentRoute)) continue;
+      if (route.isActive && identical(route.navigator, navigator)) {
+        navigator.removeRoute(route);
+      }
+      _toolbarStateRoutes.remove(route);
+    }
   }
 
   void _handleToolbarRouteSystemBack() {

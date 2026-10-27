@@ -9,6 +9,8 @@ Place `GlassNavigationShell` inside the AppShell page around the tab body and it
 
 Keep stable `GlassBarItem` IDs and icon-content identity when destinations reuse an item with a different glyph. Refresh local toolbar route state after its own screen route finishes popping; root modal dismissal does not change the local toolbar route stack.
 
-**Why:** The package renders pinned chrome above the Navigator it encloses and ranks registrations using route coverage within that Navigator. A sheet pushed only into the AppShell Navigator cannot cover sibling tab bodies, and the root AppShell route cannot dim a shell hosted outside its subtree.
+Key toolbar routes by their visible glyph/action configuration, not by the destination screen. Tabs with the same toolbar should keep the same route. When the configuration changes, push the incoming toolbar route so both registrations participate in the package morph; prune the previous toolbar-only routes once the incoming transition settles.
 
-**How to apply:** Use the nested AppShell Navigator for tab/Settings route changes and the root Navigator for app-wide presentations. Test that both body and toolbar share the root route's dim filter, the sheet blocks underlying taps, and toolbar bounds remain unchanged while it is open.
+**Why:** The package renders pinned chrome above the Navigator it encloses and ranks registrations using route coverage within that Navigator. `pushReplacement` can deactivate the outgoing registration before it is available as the morph source; replacing routes for content-only tab changes also needlessly restarts chrome. A sheet pushed only into the AppShell Navigator cannot cover sibling tab bodies, and the root AppShell route cannot dim a shell hosted outside its subtree.
+
+**How to apply:** Use the nested AppShell Navigator for tab/Settings route changes and the root Navigator for app-wide presentations. Test that unchanged configurations stay settled, changed configurations morph without an empty frame, and both body and toolbar share the root route's dim filter.

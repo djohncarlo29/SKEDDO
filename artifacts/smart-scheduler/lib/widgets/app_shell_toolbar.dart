@@ -23,6 +23,23 @@ extension AppShellToolbarGlyphIdentity on AppShellToolbarGlyph {
   };
 }
 
+/// Keys toolbar routes by the visible configuration, not the active screen.
+///
+/// Tabs that show the same glyphs and actions share a route so their pinned
+/// glass remains settled instead of being replaced for a content-only change.
+String appShellToolbarConfigurationKey({
+  required bool searchFocused,
+  required int selectedTabIndex,
+  required bool dcvToolbarVisible,
+  required bool landscapeDcvSplit,
+}) {
+  if (searchFocused) return 'search';
+  if (selectedTabIndex == 2 && dcvToolbarVisible && !landscapeDcvSplit) {
+    return 'events-dcv';
+  }
+  return selectedTabIndex == 3 ? 'tab-3' : 'home';
+}
+
 /// A route-registered toolbar item using the app's slider-driven glass values.
 ///
 /// Destinations reuse an identity while the glyph is unchanged. A change
