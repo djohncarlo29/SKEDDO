@@ -47,6 +47,60 @@ void main() {
     );
   });
 
+  testWidgets('track endpoints stay fixed when the thumb lifts at either end', (
+    tester,
+  ) async {
+    for (final isMinimum in [true, false]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: LiquidGlassSlider(
+                key: ValueKey('endpoint-slider-$isMinimum'),
+                value: isMinimum ? 0.0 : 1.0,
+                width: 301,
+                layout: const LiquidGlassSliderLayout(
+                  iconSize: 34,
+                  iconGap: 8,
+                  horizontalInset: 0,
+                ),
+                inactiveColor: const Color(0xFF123456),
+                activeColor: const Color(0xFF654321),
+                onChanged: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final trackFinder = find.byKey(
+        const ValueKey('liquid-glass-slider-track'),
+      );
+      final restingTrack = tester.getRect(trackFinder);
+      final sliderRect = tester.getRect(
+        find.byKey(ValueKey('endpoint-slider-$isMinimum')),
+      );
+      final thumbCenterX = isMinimum ? 60.5 : 240.5;
+      final gesture = await tester.startGesture(
+        Offset(sliderRect.left + thumbCenterX, sliderRect.center.dy),
+      );
+      await tester.pump();
+      for (var frame = 0; frame < 32; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      final liftedTrack = tester.getRect(trackFinder);
+      expect(liftedTrack.left, closeTo(restingTrack.left, 0.1));
+      expect(liftedTrack.right, closeTo(restingTrack.right, 0.1));
+
+      await gesture.up();
+      await tester.pump();
+      for (var frame = 0; frame < 50; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+    }
+  });
+
   testWidgets('edge icons follow the lifted thumb through end bounce', (
     tester,
   ) async {

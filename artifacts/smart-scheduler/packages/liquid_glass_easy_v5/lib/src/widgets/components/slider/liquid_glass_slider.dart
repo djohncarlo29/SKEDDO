@@ -621,33 +621,15 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
     final restingTrackX = _trackMinX + trackShift;
     final restingTrackW = _trackWidth + _rubber.abs() / 2;
     final restingTrackEnd = restingTrackX + restingTrackW;
-    // At either extreme, the track's rounded end cap sits on the resting
-    // thumb's outer edge. When the thumb lifts wider, that cap would fall
-    // inside the glass and refract as a vertical seam. Extend only the
-    // covered end of the track to the live lifted-thumb edge; the resting
-    // geometry and visible line endpoints remain unchanged.
-    final activeThumbHalfWidth =
-        _glassVisible ? _visualThumbWidth / 2 : _contractedW / 2;
-    final activeThumbLeft = _thumbCX - activeThumbHalfWidth;
-    final activeThumbRight = _thumbCX + activeThumbHalfWidth;
-    final extendsTrackLeft =
-        _glassVisible && activeThumbLeft < restingTrackX;
-    final extendsTrackRight =
-        _glassVisible && activeThumbRight > restingTrackEnd;
-    const double edgeBleed = 0.5;
-    final trackX = extendsTrackLeft
-        ? activeThumbLeft - edgeBleed
-        : restingTrackX;
-    final trackEnd = extendsTrackRight
-        ? activeThumbRight + edgeBleed
-        : restingTrackEnd;
+    // Keep the end caps anchored to the resting track frame. Rubberbanding
+    // still shifts and stretches that frame slightly, but a lifted glass
+    // thumb must not pull either endpoint out toward its outer edge.
+    final trackX = restingTrackX;
+    final trackEnd = restingTrackEnd;
     final trackW = trackEnd - trackX;
     final trackY = centerY - effTrackHeight / 2;
     final trackRadius = effTrackHeight / 2;
-    final trackBorderRadius = BorderRadius.horizontal(
-      left: extendsTrackLeft ? Radius.zero : Radius.circular(trackRadius),
-      right: extendsTrackRight ? Radius.zero : Radius.circular(trackRadius),
-    );
+    final trackBorderRadius = BorderRadius.circular(trackRadius);
 
     // The fill: ends exactly under the thumb's centre, easing to
     // exactly empty / exactly full inside the 10 px end zones.
@@ -655,12 +637,7 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
     final kMax = ((_maxThumbCX - _thumbCX) / _fillEndRamp).clamp(0.0, 1.0);
     final fillW =
         math.max(0.0, _thumbCX - trackX) * kMin * kMax + trackW * (1 - kMax);
-    final fillBorderRadius = BorderRadius.horizontal(
-      left: extendsTrackLeft ? Radius.zero : Radius.circular(trackRadius),
-      right: extendsTrackRight && fillW >= trackW - 0.01
-          ? Radius.zero
-          : Radius.circular(trackRadius),
-    );
+    final fillBorderRadius = BorderRadius.circular(trackRadius);
 
     // Where a touch is allowed to START. The control's box is much
     // larger than the track — it reserves room for the lifted thumb, the
@@ -715,6 +692,7 @@ class _LiquidGlassSliderState extends State<LiquidGlassSlider>
                     left: trackX,
                     top: trackY,
                     child: Container(
+                      key: const ValueKey('liquid-glass-slider-track'),
                       width: trackW,
                       height: effTrackHeight,
                       decoration: BoxDecoration(
