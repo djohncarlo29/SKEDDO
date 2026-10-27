@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show GlassThemeVariant, LiquidGlassSettings;
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    as navigation_glass;
 
 import '../app_settings.dart';
 
@@ -208,6 +210,50 @@ LiquidGlassSettings _settingsForSharedGlassPosition(
     glassColor: base.glassColor.withValues(
       alpha: skeddoSharedGlassOpacityForPosition(position, brightness),
     ),
+  );
+}
+
+/// Bridges the slider-driven shared optical values into the separate
+/// navigation package's settings type without using that package's defaults.
+navigation_glass.LiquidGlassSettings
+skeddoPinnedNavigationGlassSettingsFor(
+  Brightness brightness, {
+  double? sliderPosition,
+  double visibility = 1,
+}) {
+  final shared = skeddoBottomBarGlassSettingsFor(
+    brightness,
+    sliderPosition: sliderPosition,
+  );
+  final specularSharpness =
+      switch (shared.specularSharpness.name) {
+        'soft' => navigation_glass.GlassSpecularSharpness.soft,
+        'sharp' => navigation_glass.GlassSpecularSharpness.sharp,
+        _ => navigation_glass.GlassSpecularSharpness.medium,
+      };
+
+  return navigation_glass.LiquidGlassSettings(
+    visibility: visibility.clamp(0.0, 1.0).toDouble(),
+    glassColor: shared.glassColor,
+    thickness: shared.thickness,
+    blur: shared.blur,
+    chromaticAberration: shared.chromaticAberration,
+    lightAngle: shared.lightAngle,
+    lightIntensity: shared.lightIntensity,
+    ambientStrength: shared.ambientStrength,
+    ambientRim: shared.ambientRim,
+    fresnelStrength: shared.fresnelStrength,
+    refractiveIndex: shared.refractiveIndex,
+    saturation: shared.saturation,
+    glowIntensity: shared.glowIntensity,
+    specularSharpness: specularSharpness,
+    standardOpacityMultiplier: shared.standardOpacityMultiplier,
+    shadowElevation: shared.shadowElevation,
+    shadow: shared.shadow,
+    whitenStrength: shared.whitenStrength,
+    whitenGated: shared.whitenGated,
+    backerColor: shared.backerColor,
+    platformViewFallbackColor: shared.platformViewFallbackColor,
   );
 }
 

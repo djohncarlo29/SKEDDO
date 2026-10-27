@@ -7,6 +7,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_sficon/flutter_sficon.dart';
 import 'package:flutter_liquid_glass_widgets/liquid_glass_widgets.dart'
     show LiquidGlassWidgets;
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    as navigation_glass
+    show GlassNavigationShell;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -29,7 +32,7 @@ import 'widgets/fixed_size_icon.dart';
 import 'widgets/floating_tab_pill.dart';
 import 'widgets/header_title_scroller.dart';
 import 'widgets/live_rotation_geometry.dart';
-import 'widgets/modal_toolbar_glass_button.dart';
+import 'widgets/app_shell_toolbar.dart';
 import 'widgets/native_text_input.dart';
 import 'widgets/search_bar_widget.dart';
 import 'widgets/view_mode_icons.dart';
@@ -737,7 +740,9 @@ class _SKEDDOAppState extends State<SKEDDOApp> with WidgetsBindingObserver {
               // descendant can call resolveAccentColor(context).
               Widget result = AppAccentColor(
                 accent: accentSwatch,
-                child: child ?? const SizedBox.shrink(),
+                child: navigation_glass.GlassNavigationShell(
+                  child: child ?? const SizedBox.shrink(),
+                ),
               );
               // Icons are visual controls, not text. Keep every Flutter icon
               // at its authored size even when the app's text scaler changes.
@@ -905,31 +910,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   late final AnimationController _dcvCategoryTransitionController;
   late final CurvedAnimation _dcvCategoryTransitionProgress;
 
-  // ── Settings panel slide animation ──────────────────────────────────────
-  // One controller governs everything: panel slide, scrim fade, and the
-  // hamburger→X icon morph.
-  //   0.0 = panel fully off-screen to the left (Offset(-1, 0))
-  //   1.0 = panel at Offset(0, 0), fully covering the app
-  late final AnimationController _settingsController;
-  late final Animation<Offset> _settingsPanelOffset;
-
-  // Tracks the *intended* open state independently from the controller value.
-  // Using controller.value > 0 as the `open` prop keeps it true all the way
-  // to the last frame when closing, so the TweenAnimationBuilder inside
-  // _MorphingMenuIcon never fires the reverse animation — the icon snaps
-  // instead of morphing back.  This bool flips immediately on open/close so
-  // the morph starts in sync with the panel slide in both directions.
+  // Settings is a Navigator destination so the route-aware glass toolbar can
+  // morph the existing shell item instead of drawing a separate button.
   bool _settingsOpen = false;
 
-  /// Non-null while a settings sub-screen is pushed.  Holds the _pop callback
-  /// so the shared overlay button can act as a back-chevron (same mechanic as
-  /// the DCV back button) without any GlobalKey or tight coupling.
+  /// Kept for the landscape split Settings layout, where detail content stays
+  /// in the same route rather than pushing a portrait sub-screen route.
   final ValueNotifier<VoidCallback?> _settingsBackAction = ValueNotifier(null);
-
-  // Gesture drag tracking — used to map finger position directly to the
-  // controller value so the panel follows the user's finger in real time.
-  double _settingsDragStartX = 0.0;
-  double _settingsDragStartValue = 1.0;
 
   // True when _dcvCategory is set AND we are on the Events tab.
   // Only used for LOGICAL decisions (e.g. whether _exitDCV has been called).
@@ -1004,7 +991,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   }
 
   bool _onHeaderScrollNotification(ScrollNotification notification) {
-    if (_settingsOpen || _settingsController.value > 0.01) {
+    if (_settingsOpen) {
       return false;
     }
     if (_searchModeController.value > 0.01) {
@@ -1025,7 +1012,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   bool _onHeaderScrollMetricsNotification(
     ScrollMetricsNotification notification,
   ) {
-    if (_settingsOpen || _settingsController.value > 0.01) {
+    if (_settingsOpen) {
       return false;
     }
     if (_searchModeController.value > 0.01) {
@@ -1184,48 +1171,89 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   // ── Settings panel open / close ──────────────────────────────────────────
   void _openSettings() {
+    if (_settingsOpen) return;
     setState(() => _settingsOpen = true);
-    _settingsController.forward();
-  }
-
-  void _closeSettings() {
-    setState(() => _settingsOpen = false);
-    _settingsBackAction.value = null; // clear any active sub-screen
-    _settingsController.reverse().then((_) {
-      if (!mounted || _settingsOpen) return;
-      _restoreHeaderScrollOffset();
+    final geometry = AppWindowMasterDetailGeometry.of(context);
+    final isLandscapeTwoPane =
+        geometry.isLandscape &&
+        geometry.detailPaneWidth >= kAppWindowMasterDetailMinimumDetailWidth;
+    final topInset = MediaQuery.paddingOf(context).top;
+    final bottomInset = systemSafeAreaBottomInset(context);
+    Navigator.of(context, rootNavigator: true).push<void>(
+      PageRouteBuilder<void>(
+        settings: const RouteSettings(name: 'settings-panel'),
+        opaque: false,
+        barrierDismissible: true,
+        barrierLabel: 'Dismiss settings',
+        barrierColor: const Color.fromRGBO(0, 0, 0, 0.4),
+        transitionDuration: const Duration(milliseconds: 320),
+        reverseTransitionDuration: const Duration(milliseconds: 320),
+        pageBuilder: (routeContext, animation, secondaryAnimation) =>
+            PopScope<void>(
+              onPopInvokedWithResult: (didPop, result) {
+                if (didPop) _onSettingsRoutePopped();
+              },
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  SettingsPanel(
+                    topInset: topInset,
+                    bottomInset: bottomInset,
+                    isOpen: true,
+                    isLandscapeTwoPane: isLandscapeTwoPane,
+                    onClose: _closeSettings,
+                    subScreenBackAction: _settingsBackAction,
+                    headerTitleTransition: _headerTitleTransition,
+                  ),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: AppShellPinnedToolbar(
+                      glyph: AppShellToolbarGlyph.close,
+                      semanticLabel: 'Close settings',
+                      horizontalInset:
+                          AppWindowContentScope.of(routeContext).horizontalInset +
+                          16.0,
+                      color: resolveAccentColor(routeContext),
+                      onTap: _closeSettings,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeInOut,
+            reverseCurve: Curves.easeInOut,
+          );
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(-1.0, 0.0),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          );
+        },
+      ),
+    ).then((_) {
+      if (mounted && _settingsOpen) _onSettingsRoutePopped();
     });
   }
 
-  // ── Settings gesture handlers ────────────────────────────────────────────
-  // The panel follows the user's finger in real time.  On release, if the
-  // velocity or position passes the dismiss threshold the panel exits; otherwise
-  // it snaps back to fully open.
-  void _onSettingsDragStart(DragStartDetails details) {
-    _settingsDragStartX = details.globalPosition.dx;
-    _settingsDragStartValue = _settingsController.value;
-    _settingsController.stop();
+  void _closeSettings() {
+    if (!_settingsOpen) return;
+    setState(() => _settingsOpen = false);
+    _settingsBackAction.value = null; // clear any active sub-screen
+    Navigator.of(context, rootNavigator: true).maybePop();
   }
 
-  void _onSettingsDragUpdate(DragUpdateDetails details) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final delta = details.globalPosition.dx - _settingsDragStartX;
-    // Dragging right (positive delta) closes the panel (decreases value).
-    final newValue = (_settingsDragStartValue - delta / screenWidth).clamp(
-      0.0,
-      1.0,
-    );
-    _settingsController.value = newValue;
-  }
-
-  void _onSettingsDragEnd(DragEndDetails details) {
-    final velocity = details.primaryVelocity ?? 0.0;
-    // Dismiss: fast rightward fling OR position past 40% of the way closed.
-    if (velocity > 300 || _settingsController.value < 0.6) {
-      _closeSettings();
-    } else {
-      _settingsController.forward();
-    }
+  void _onSettingsRoutePopped() {
+    if (!_settingsOpen || !mounted) return;
+    setState(() => _settingsOpen = false);
+    _settingsBackAction.value = null;
+    _restoreHeaderScrollOffset();
   }
 
   // ── DCV ellipsis context menu ────────────────────────────────────────────
@@ -1863,14 +1891,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _dcvCategoryTransitionController.addStatusListener(
       _onDcvCategoryTransitionStatus,
     );
-    _settingsController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 320),
-    );
-    _settingsPanelOffset =
-        Tween<Offset>(begin: const Offset(-1.0, 0.0), end: Offset.zero).animate(
-          CurvedAnimation(parent: _settingsController, curve: Curves.easeInOut),
-        );
     _scheduleMidnightRefresh();
     SharedPreferences.getInstance().then((prefs) {
       if (!mounted) return;
@@ -1904,7 +1924,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _dcvSlideProgress.dispose();
     _dcvSlideController.dispose();
     _searchModeController.dispose();
-    _settingsController.dispose();
     _calendarStripSlide.dispose();
     _headerTitleTransition.dispose();
     super.dispose();
@@ -1924,7 +1943,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   //   5. Keyboard focused               → dismiss keyboard
   //   6. Nothing to dismiss             → allow natural pop (exits app on Android)
   bool get _hasBackInterceptable =>
-      _settingsController.value > 0 ||
+      _settingsOpen ||
       _dcvMenuOpen ||
       _viewModeMenuOpen ||
       _dayViewModeMenuOpen ||
@@ -1939,15 +1958,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   void _handleBackGesture() {
     // ── 0. Settings panel ─────────────────────────────────────────────────
-    if (_settingsController.value > 0) {
-      // If a sub-screen is active, OS back navigates to the main Settings
-      // screen first.  A second OS back press (when no sub-screen) then
-      // closes the panel entirely.
-      if (_settingsBackAction.value != null) {
-        _settingsBackAction.value!();
-      } else {
-        _closeSettings();
-      }
+    if (_settingsOpen) {
+      Navigator.of(context, rootNavigator: true).maybePop();
       return;
     }
     // ── 1. Action panels — dismiss the topmost open one ──────────────────
@@ -3062,9 +3074,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     // exactly as wide as the phone in portrait.
     final landscapeMasterWidth = masterDetailGeometry.masterPaneWidth;
     final landscapeDetailUsableWidth = masterDetailGeometry.detailPaneWidth;
-    final landscapeSettingsTwoPane =
-        isLandscape &&
-        landscapeDetailUsableWidth >= kAppWindowMasterDetailMinimumDetailWidth;
     final landscapeDcvLayoutAvailable =
         isLandscape &&
         landscapeDetailUsableWidth >= kAppWindowMasterDetailMinimumDetailWidth;
@@ -3081,7 +3090,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         ? headerContentHeight
         : kAppHeaderToolbarHeight;
     final keyboardBottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final bottomInset = systemSafeAreaBottomInset(context);
     final backgroundColor = resolveThemeColor(kBackgroundColor, context);
     final headerSurfaceColor = isLandscape
         ? backgroundColor
@@ -3188,7 +3196,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                                   _searchModeAnim,
                                   _dcvSlideProgress,
                                   _dcvCategoryTransitionProgress,
-                                  _settingsController,
                                   _headerTitleTransition,
                                 ]),
                                 builder: (context, _) {
@@ -3956,86 +3963,17 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 },
               ),
 
-              // Settings scrim — fades in with the settings panel and sits
-              // above the floating tab bar, matching the original shell
-              // behavior.  The explicit state/animation guard is important:
-              // a stale non-zero controller value must never leave this
-              // full-screen hit-test layer over the closed app.
-              AnimatedBuilder(
-                animation: _settingsController,
-                builder: (context, _) {
-                  final v = _settingsController.value;
-                  final scrimActive =
-                      _settingsOpen || _settingsController.isAnimating;
-                  if (!scrimActive || v <= 0.0) {
-                    return const SizedBox.shrink();
-                  }
-                  return GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _closeSettings,
-                    child: ColoredBox(
-                      color: Color.fromRGBO(0, 0, 0, 0.4 * v),
-                      child: const SizedBox.expand(),
-                    ),
-                  );
-                },
-              ),
-
-              // Settings panel — slides in from the left edge.
-              //
-              // Keep the panel mounted only while it is opening, open, or
-              // closing.  SettingsPanel is intentionally a full-screen
-              // ColoredBox inside a SlideTransition.  Leaving that full-screen
-              // layer mounted at Offset(-1, 0) is harmless on iOS/Web, but
-              // Android can retain the transformed composited layer and paint
-              // a grey veil over the app; it can also keep winning hit tests
-              // even though the panel is visually off-screen.  Offstage
-              // removes both paint and hit testing once the close animation
-              // has settled while preserving the panel's state.
-              AnimatedBuilder(
-                animation: _settingsController,
-                builder: (context, _) {
-                  final panelActive =
-                      _settingsOpen || _settingsController.isAnimating;
-                  return Offstage(
-                    offstage: !panelActive,
-                    child: SlideTransition(
-                      position: _settingsPanelOffset,
-                      child: SettingsPanel(
-                        topInset: topInset,
-                        bottomInset: bottomInset,
-                        isOpen: _settingsOpen,
-                        isLandscapeTwoPane: landscapeSettingsTwoPane,
-                        onClose: _closeSettings,
-                        subScreenBackAction: _settingsBackAction,
-                        headerTitleTransition: _headerTitleTransition,
-                      ),
-                    ),
-                  );
-                },
-              ),
-
-              // Hamburger → X overlay — always the topmost child so it paints
-              // above the scrim and the settings panel.  Mirrors the exact
-              // position, padding, and behaviour of the header slot it replaced.
-              // Fades out in search mode (same as the rest of the header) and
-              // becomes non-hittable when invisible so search-bar taps pass through.
+              // The shell owns the pinned button and morphs this stable item
+              // into each destination's version during real Navigator routes.
               AnimatedBuilder(
                 animation: Listenable.merge([
-                  _settingsController,
                   _dcvSlideController,
                   _searchModeAnim,
-                  _settingsBackAction,
                 ]),
                 builder: (context, _) {
                   final pageP = _dcvSlideController.value.clamp(0.0, 1.0);
                   final isDCVVisual =
                       pageP >= 0.5 && _selectedIndex == 2 && !landscapeDcvSplit;
-                  // Sub-screen is active when a back action is registered AND
-                  // the settings panel is at least partially open.
-                  final backAction = _settingsBackAction.value;
-                  final isSubScreen =
-                      backAction != null && _settingsController.value > 0;
                   final accent = (isDCVVisual && _dcvColor != null)
                       ? _dcvColor!
                       : resolveAccentColor(context);
@@ -4044,72 +3982,22 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                     1.0,
                   );
                   return Positioned(
-                    left:
-                        AppWindowContentScope.of(context).horizontalInset +
-                        16.0, // Match the Notes attachment-preview close button.
-                    top: topInset + 10.0,
+                    top: 0,
+                    left: 0,
+                    right: 0,
                     child: IgnorePointer(
                       ignoring: fadeOpacity < 0.01,
-                      child: Opacity(
+                      child: AppShellPinnedToolbar(
+                        glyph: isDCVVisual
+                            ? AppShellToolbarGlyph.back
+                            : AppShellToolbarGlyph.menu,
+                        semanticLabel: isDCVVisual ? 'Back' : 'Open settings',
+                        horizontalInset:
+                            AppWindowContentScope.of(context).horizontalInset +
+                            16.0,
                         opacity: fadeOpacity,
-                        child: SizedBox(
-                          width: 40,
-                          height: 40,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              ModalToolbarGlassButton(
-                                icon: CupertinoIcons.line_horizontal_3,
-                                iconColor: accent,
-                                surfaceColor: kCardColor,
-                                size: 40,
-                                iconSize: 20,
-                                peakScale: 0.95,
-                                semanticLabel: isDCVVisual || isSubScreen
-                                    ? 'Back'
-                                    : _settingsOpen
-                                    ? 'Close settings'
-                                    : 'Open settings',
-                                onTap: isDCVVisual
-                                    ? _exitDCV
-                                    : isSubScreen
-                                    ? backAction
-                                    : _settingsController.value > 0
-                                    ? _closeSettings
-                                    : _openSettings,
-                                // Keep the animated glyph in its existing
-                                // overlay so its morph, alignment, and color
-                                // remain unchanged while GlassIconButton owns
-                                // the shared glass surface and hit target.
-                                child: const SizedBox.expand(),
-                              ),
-                              IgnorePointer(
-                                child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    0,
-                                    10,
-                                    10,
-                                    0,
-                                  ),
-                                  child: Transform.translate(
-                                    // The icon is 26px tall and starts at 10px
-                                    // below the button's top edge; lift it 3px
-                                    // to align its center with the 40px button.
-                                    offset: const Offset(0, -3),
-                                    child: _MorphingMenuIcon(
-                                      // Show hamburger/X only when settings is open
-                                      // but NOT in a sub-screen (sub-screen uses the
-                                      // same back-chevron as DCV).
-                                      open: _settingsOpen && !isSubScreen,
-                                      isDCV: isDCVVisual || isSubScreen,
-                                      color: accent,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        color: accent,
+                        onTap: isDCVVisual ? _exitDCV : _openSettings,
                       ),
                     ),
                   );

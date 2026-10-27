@@ -20,6 +20,7 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart' as glass_slider;
 import 'widgets/native_fluid_slider_row.dart';
 import 'widgets/app_window_content_boundary.dart';
 import 'widgets/app_header_scroll_edge.dart';
+import 'widgets/app_shell_toolbar.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SettingsPanel — full-screen slide-in settings surface with sub-screen nav.
@@ -497,29 +498,18 @@ class _SettingsPanelState extends State<SettingsPanel>
       return;
     }
 
-    // Clean up any leftover snap listener from a previous push.
-    if (_snapListener != null) {
-      _navCtrl.removeListener(_snapListener!);
-      _snapListener = null;
-    }
-    setState(() {
-      _activeRoute = route;
-    });
     _restoreHeaderScrollOffset();
-    _navCtrl.forward(from: 0.0);
-
-    // Hard-snap to "<" at the 50 % midpoint of the sub-screen slide, identical
-    // to how DCV snaps the hamburger at pageP >= 0.5 of _dcvSlideController.
-    void listener() {
-      if (_navCtrl.value >= 0.5) {
-        widget.subScreenBackAction.value = _pop;
-        _navCtrl.removeListener(listener);
-        _snapListener = null;
-      }
-    }
-
-    _snapListener = listener;
-    _navCtrl.addListener(listener);
+    Navigator.of(context, rootNavigator: true).push<void>(
+      CupertinoPageRoute<void>(
+        settings: RouteSettings(name: 'settings-${route.title}'),
+        builder: (routeContext) => _SettingsSubScreenRoute(
+          route: route,
+          bottomInset: widget.bottomInset,
+          headerTitleTransition: _headerTitleTransition,
+          onPopped: _restoreHeaderScrollOffset,
+        ),
+      ),
+    );
   }
 
   Future<void> _closeSplitPane() async {
@@ -812,6 +802,154 @@ class _SettingsPanelState extends State<SettingsPanel>
           ),
         );
       },
+    );
+  }
+}
+
+class _SettingsSubScreenRoute extends StatelessWidget {
+  const _SettingsSubScreenRoute({
+    required this.route,
+    required this.bottomInset,
+    required this.headerTitleTransition,
+    required this.onPopped,
+  });
+
+  final _SettingsRoute route;
+  final double bottomInset;
+  final AppHeaderTitleTransition headerTitleTransition;
+  final VoidCallback onPopped;
+
+  bool _bindHeaderPosition(ScrollNotification notification) {
+    final metrics = notification.metrics;
+    if (metrics.axis != Axis.vertical ||
+        notification.depth != 0 ||
+        metrics.viewportDimension <
+            max(240, MediaQuery.sizeOf(notification.context!).height * 0.35)) {
+      return false;
+    }
+    final notificationContext = notification.context;
+    if (notificationContext != null) {
+      final position = Scrollable.maybeOf(
+        notificationContext,
+        axis: Axis.vertical,
+      )?.position;
+      if (position != null) {
+        headerTitleTransition.bindTo(position, preserveCollapseProgress: true);
+      }
+    }
+    return false;
+  }
+
+  bool _bindHeaderMetrics(ScrollMetricsNotification notification) {
+    if (notification.metrics.axis != Axis.vertical ||
+        notification.depth != 0 ||
+        notification.metrics.viewportDimension <
+            max(240, MediaQuery.sizeOf(notification.context).height * 0.35)) {
+      return false;
+    }
+    final position = Scrollable.maybeOf(
+      notification.context,
+      axis: Axis.vertical,
+    )?.position;
+    if (position != null) {
+      headerTitleTransition.bindTo(position, preserveCollapseProgress: true);
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final geometry = AppWindowMasterDetailGeometry.of(context);
+    final isLandscape = geometry.isLandscape;
+    final topInset = MediaQuery.paddingOf(context).top;
+    final headerContentHeight = isLandscape ? 52.0 : 101.0;
+    final toolbarHeight = isLandscape
+        ? headerContentHeight
+        : kAppHeaderToolbarHeight;
+    final headerHeight = topInset + toolbarHeight;
+    final backgroundColor = resolveThemeColor(kBackgroundColor, context);
+
+    return PopScope<void>(
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) onPopped();
+      },
+      child: ListenableBuilder(
+        listenable: appAccentNotifier,
+        builder: (context, _) {
+          final accentColor = CupertinoDynamicColor.resolve(
+            _kAccentSwatches[appAccentNotifier.value].color,
+            context,
+          );
+          return NotificationListener<ScrollMetricsNotification>(
+            onNotification: _bindHeaderMetrics,
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _bindHeaderPosition,
+              child: ColoredBox(
+                color: backgroundColor,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Positioned.fill(
+                      top: headerHeight,
+                      child: AppHeaderScrollInsetScope(
+                        titleTransition: headerTitleTransition,
+                        leadingInset: headerHeight,
+                        titleCollapseExtent: isLandscape
+                            ? 0.0
+                            : kAppHeaderTitleCollapseDistance,
+                        child: AppWindowPhysicalWidth(
+                          child: _SubScreen(
+                            bottomInset: bottomInset,
+                            route: route,
+                            accentColor: accentColor,
+                            accentNotifier: appAccentNotifier,
+                            applyAppWindowContentPadding: true,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: AnimatedBuilder(
+                        animation: headerTitleTransition,
+                        builder: (context, _) => _SettingsHeader(
+                          topInset: topInset,
+                          contentHeight: headerContentHeight,
+                          isLandscape: isLandscape,
+                          scrollOffset:
+                              headerTitleTransition.contentOffset,
+                          collapseProgress:
+                              headerTitleTransition.collapseProgress,
+                          title: route.title,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: AppShellPinnedToolbar(
+                        glyph: AppShellToolbarGlyph.back,
+                        semanticLabel: 'Back from ${route.title}',
+                        horizontalInset:
+                            AppWindowContentScope.of(context).horizontalInset +
+                            16.0,
+                        color: resolveAccentColor(context),
+                        onTap: () => Navigator.of(
+                          context,
+                          rootNavigator: true,
+                        ).maybePop(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
