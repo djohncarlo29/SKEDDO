@@ -1622,7 +1622,7 @@ class _EmojiPickerSheetState extends State<EmojiPickerSheet> {
     );
   }
 
-  void _close() => Navigator.of(context, rootNavigator: true).pop();
+  void _close() => Navigator.of(context).pop();
 
   @override
   Widget build(BuildContext context) {

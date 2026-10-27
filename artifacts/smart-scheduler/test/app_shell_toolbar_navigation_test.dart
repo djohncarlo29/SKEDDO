@@ -4,7 +4,9 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
     as navigation_glass
     show GlassBarItem, GlassNavigationShell, GlassNavigationShellState;
 import 'package:smart_scheduler/widgets/app_shell_toolbar.dart';
+import 'package:smart_scheduler/widgets/app_shell_navigation_scope.dart';
 import 'package:smart_scheduler/widgets/app_window_content_boundary.dart';
+import 'package:smart_scheduler/widgets/rounded_cupertino_sheet.dart';
 
 void main() {
   testWidgets(
@@ -18,7 +20,9 @@ void main() {
 
       final shellKey = GlobalKey<navigation_glass.GlassNavigationShellState>();
       final toolbarNavigatorKey = GlobalKey<NavigatorState>();
-      final rootNavigatorKey = GlobalKey<NavigatorState>();
+      final routeRevision = ValueNotifier<int>(0);
+      addTearDown(routeRevision.dispose);
+      final routeObserver = _RouteNameObserver();
       var settingsTaps = 0;
       var createTaps = 0;
       var bodyTaps = 0;
@@ -38,6 +42,7 @@ void main() {
         required AppShellToolbarGlyph glyph,
         required String label,
         required VoidCallback onLeadingTap,
+        bool showPrimary = true,
         List<navigation_glass.GlassBarItem> actions =
             const <navigation_glass.GlassBarItem>[],
       }) => AppShellPinnedToolbar(
@@ -45,6 +50,7 @@ void main() {
         semanticLabel: label,
         horizontalInset: 16,
         actions: actions,
+        showPrimary: showPrimary,
         onTap: onLeadingTap,
       );
 
@@ -65,7 +71,6 @@ void main() {
 
       await tester.pumpWidget(
         CupertinoApp(
-          navigatorKey: rootNavigatorKey,
           builder: (context, child) => AppWindowContentScope(
             horizontalInset: 0,
             physicalWidth: 402,
@@ -75,22 +80,55 @@ void main() {
             ),
           ),
           home: CupertinoPageScaffold(
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: GestureDetector(
-                    onTap: () => bodyTaps++,
-                    child: const ColoredBox(color: Color(0xFFFFFFFF)),
+            child: AppShellNavigationScope(
+              navigatorKey: toolbarNavigatorKey,
+              routeRevision: routeRevision,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: GestureDetector(
+                      onTap: () => bodyTaps++,
+                      child: const ColoredBox(color: Color(0xFFFFFFFF)),
+                    ),
                   ),
-                ),
-                Positioned.fill(
-                  child: Navigator(
-                    key: toolbarNavigatorKey,
-                    initialRoute: 'app-shell-toolbar-home',
-                    onGenerateRoute: (_) => homeToolbarRoute(),
+                  Positioned(
+                    top: 90,
+                    left: 20,
+                    child: Builder(
+                      builder: (bodyContext) => CupertinoButton(
+                        key: const ValueKey('open-nested-sheet'),
+                        onPressed: () {
+                          showRoundedCupertinoSheet<void>(
+                            context: bodyContext,
+                            pageBuilder: (sheetContext) => CupertinoPageScaffold(
+                              child: Center(
+                                child: CupertinoButton(
+                                  key: const ValueKey('dismiss-nested-sheet'),
+                                  onPressed: () =>
+                                      Navigator.of(sheetContext).pop(),
+                                  child: const Text('Dismiss sheet'),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Text('Open sheet'),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                  Positioned.fill(
+                    child: Navigator(
+                      key: toolbarNavigatorKey,
+                      observers: [
+                        routeObserver,
+                        AppShellNavigationObserver(routeRevision),
+                      ],
+                      initialRoute: 'app-shell-toolbar-home',
+                      onGenerateRoute: (_) => homeToolbarRoute(),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -147,6 +185,30 @@ void main() {
       await tester.tapAt(const Offset(36, 30));
       expect(settingsTaps, 3);
 
+      toolbarNavigatorKey.currentState!.push<void>(
+        appShellToolbarStateRoute(
+          name: 'toolbar-settings-subscreen',
+          opaque: true,
+          onSystemBack: () {},
+          toolbarBuilder: (_) => toolbar(
+            glyph: AppShellToolbarGlyph.back,
+            label: 'Back from Theme',
+            onLeadingTap: () {
+              settingsTaps++;
+              toolbarNavigatorKey.currentState!.pop();
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final subScreenState = shellKey.currentState!.resolveState()!;
+      expect(subScreenState.to.actions, isEmpty);
+      expect(subScreenState.flowProgress, 1);
+      await tester.tapAt(const Offset(36, 30));
+      await tester.pumpAndSettle();
+      expect(settingsTaps, 4);
+      expect(find.bySemanticsLabel('Close settings'), findsOneWidget);
+
       await tester.tapAt(const Offset(200, 300));
       expect(bodyTaps, 1);
 
@@ -167,26 +229,88 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      expect(
+        shellKey.currentState!.resolveState()!.to.actions,
+        hasLength(2),
+      );
 
-      rootNavigatorKey.currentState!.push<void>(
+      toolbarNavigatorKey.currentState!.pushReplacement<void, void>(
         appShellToolbarStateRoute(
-          name: 'root-settings',
+          name: 'toolbar-search',
+          opaque: true,
           onSystemBack: () {},
           toolbarBuilder: (_) => toolbar(
-            glyph: AppShellToolbarGlyph.close,
-            label: 'Close settings',
+            glyph: AppShellToolbarGlyph.menu,
+            label: 'Search',
+            onLeadingTap: () {},
+            showPrimary: false,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final searchState = shellKey.currentState!.resolveState()!;
+      expect(searchState.to.leading, isEmpty);
+      expect(searchState.to.actions, isEmpty);
+      await tester.tapAt(const Offset(200, 300));
+      expect(bodyTaps, 2);
+
+      toolbarNavigatorKey.currentState!.pushReplacement<void, void>(
+        appShellToolbarStateRoute(
+          name: 'toolbar-home-return-after-search',
+          opaque: true,
+          onSystemBack: () {},
+          toolbarBuilder: (_) => toolbar(
+            glyph: AppShellToolbarGlyph.menu,
+            label: 'Open settings',
             onLeadingTap: () => settingsTaps++,
+            actions: [
+              action('search', 'Search', () {}),
+              action('create', 'Create event', () => createTaps++),
+            ],
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      final rootSettingsState = shellKey.currentState!.resolveState();
-      if (rootSettingsState != null) {
-        expect(rootSettingsState.to.actions, isEmpty);
-      }
-      await tester.tapAt(const Offset(36, 30));
-      expect(settingsTaps, 4);
+      final routeRevisionBeforeSheet = routeRevision.value;
+      await tester.tap(find.byKey(const ValueKey('open-nested-sheet')));
+      await tester.pumpAndSettle();
+      expect(toolbarNavigatorKey.currentState!.canPop(), isTrue);
+      expect(shellKey.currentState!.resolveState(), isNull);
+      await tester.tap(find.byKey(const ValueKey('dismiss-nested-sheet')));
+      await tester.pumpAndSettle();
+      expect(find.text('Dismiss sheet'), findsNothing);
+      expect(routeObserver.currentName, 'toolbar-home-return-after-search');
+      expect(routeObserver.currentRoute!.isCurrent, isTrue);
+      expect(routeRevision.value, greaterThan(routeRevisionBeforeSheet));
+      expect(find.bySemanticsLabel('Open settings'), findsOneWidget);
+      expect(find.bySemanticsLabel('Create event'), findsOneWidget);
+      expect(
+        shellKey.currentState!.isHoisting(
+          routeObserver.currentRoute! as ModalRoute<dynamic>,
+        ),
+        isTrue,
+      );
+      final returnedState = shellKey.currentState!.resolveState()!;
+      expect(returnedState.settled, isTrue);
+      expect(returnedState.to.actions, hasLength(2));
     },
   );
+}
+
+class _RouteNameObserver extends NavigatorObserver {
+  String? currentName;
+  Route<dynamic>? currentRoute;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    currentName = route.settings.name;
+    currentRoute = route;
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    currentName = previousRoute?.settings.name;
+    currentRoute = previousRoute;
+  }
 }

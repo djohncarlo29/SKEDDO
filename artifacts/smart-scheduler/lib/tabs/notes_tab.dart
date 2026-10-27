@@ -27,6 +27,7 @@ import '../widgets/app_header_scroll_edge.dart';
 import '../widgets/release_reset_interactive_viewer.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/app_window_content_boundary.dart';
+import '../widgets/app_shell_navigation_scope.dart';
 import '../widgets/vertical_edge_fade.dart';
 import '../widgets/edge_fade_metrics.dart';
 import '../ai/search/search_service.dart';
@@ -1242,7 +1243,7 @@ class _NoteInputCardState extends State<_NoteInputCard>
 
     if (result == SttRequestResult.denied) {
       _micBusy = false;
-      await showCupertinoDialog<void>(
+      await showAppCupertinoDialog<void>(
         context: context,
         builder: (ctx) => CupertinoAlertDialog(
           title: const Text('Microphone Access Denied'),
@@ -2018,7 +2019,7 @@ class _ExtractionResultSheetState extends State<_ExtractionResultSheet> {
   Future<void> _addAndRemove(int index) async {
     final e = _remaining[index];
     if (e.needsReview) {
-      final shouldAdd = await showCupertinoDialog<bool>(
+      final shouldAdd = await showAppCupertinoDialog<bool>(
         context: context,
         builder: (dialogContext) => CupertinoAlertDialog(
           title: const Text('Review Suggested Event'),

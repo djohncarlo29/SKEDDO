@@ -6,6 +6,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
 import '../app_settings.dart';
 import '../app_theme.dart';
 import 'rounded_cupertino_sheet.dart';
+import 'app_shell_navigation_scope.dart';
 import 'skeddo_glass_settings.dart';
 
 const Object appShellPrimaryToolbarItemId = 'app-shell-primary-toolbar';
@@ -45,13 +46,18 @@ class AppShellPinnedToolbar extends StatelessWidget {
   final bool showPrimary;
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: Listenable.merge([
+  Widget build(BuildContext context) {
+    final listenables = <Listenable>[
       appAccentNotifier,
       appLiquidGlassOpacityNotifier,
-    ]),
-    builder: (context, _) => _buildToolbar(context),
-  );
+    ];
+    final routeChanges = AppShellNavigationScope.routeChangesOf(context);
+    if (routeChanges != null) listenables.add(routeChanges);
+    return ListenableBuilder(
+      listenable: Listenable.merge(listenables),
+      builder: (context, _) => _buildToolbar(context),
+    );
+  }
 
   Widget _buildToolbar(BuildContext context) {
     final color = this.color ?? resolveAccentColor(context);

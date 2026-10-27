@@ -12,6 +12,7 @@ import '../app_theme.dart'
         kRoundedSheetSafeAreaGap,
         resolveThemeColor,
         systemSafeAreaBottomInset;
+import 'app_shell_navigation_scope.dart';
 import 'app_window_content_boundary.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -174,7 +175,7 @@ Future<T?> showRoundedCupertinoSheet<T>({
   required WidgetBuilder pageBuilder,
   bool enableDrag = true,
 }) {
-  return Navigator.of(context, rootNavigator: true).push<T>(
+  return AppShellNavigationScope.navigatorOf(context).push<T>(
     RoundedCupertinoSheetRoute<T>(
       builder: pageBuilder,
       enableDrag: enableDrag,
@@ -193,12 +194,17 @@ Future<T?> showSafeCupertinoModalPopup<T>({
   required WidgetBuilder builder,
   bool fullScreen = false,
 }) {
-  return showCupertinoModalPopup<T>(
-    context: context,
-    builder: (popupContext) => _SafePopupRouteSurface(
-      safeBottom: systemSafeAreaBottomInset(popupContext),
-      fullScreen: fullScreen,
-      child: builder(popupContext),
+  return AppShellNavigationScope.navigatorOf(context).push<T>(
+    CupertinoModalPopupRoute<T>(
+      builder: (popupContext) => _SafePopupRouteSurface(
+        safeBottom: systemSafeAreaBottomInset(popupContext),
+        fullScreen: fullScreen,
+        child: builder(popupContext),
+      ),
+      barrierColor: CupertinoDynamicColor.resolve(
+        kCupertinoModalBarrierColor,
+        context,
+      ),
     ),
   );
 }
@@ -209,11 +215,13 @@ Future<T?> showSafeCupertinoDialog<T>({
   required BuildContext context,
   required WidgetBuilder builder,
 }) {
-  return showCupertinoDialog<T>(
-    context: context,
-    builder: (dialogContext) => _SafePopupRouteSurface(
-      safeBottom: systemSafeAreaBottomInset(dialogContext),
-      child: builder(dialogContext),
+  return AppShellNavigationScope.navigatorOf(context).push<T>(
+    CupertinoDialogRoute<T>(
+      context: context,
+      builder: (dialogContext) => _SafePopupRouteSurface(
+        safeBottom: systemSafeAreaBottomInset(dialogContext),
+        child: builder(dialogContext),
+      ),
     ),
   );
 }
@@ -497,7 +505,7 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
   /// Pops the entire [RoundedCupertinoSheetRoute], if one exists in the stack.
   static void popSheet(BuildContext context) {
     if (hasParentSheet(context)) {
-      Navigator.of(context, rootNavigator: true).pop();
+      Navigator.of(context).pop();
     }
   }
 
@@ -979,14 +987,11 @@ class _RoundedDownGestureController<T> {
       );
     } else {
       if (isCurrent) {
-        final NavigatorState rootNavigator = Navigator.of(
-          navigator.context,
-          rootNavigator: true,
-        );
+        final NavigatorState appNavigator = Navigator.of(navigator.context);
         // Use maybePop so a descendant PopScope can hold the sheet open long
         // enough to ask about unsaved changes. A direct pop bypasses that
         // route-level veto and makes a downward sheet drag destructive.
-        rootNavigator.maybePop();
+        appNavigator.maybePop();
       }
 
       // If maybePop was vetoed by an unsaved-change PopScope, the route is

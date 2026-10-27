@@ -13,6 +13,7 @@ import 'selection_handle_haptics.dart';
 import 'fixed_size_icon.dart';
 import 'horizontal_edge_fade.dart';
 import 'modal_toolbar_glass_button.dart';
+import 'app_shell_navigation_scope.dart';
 
 // ── Shared constants ──────────────────────────────────────────────────────────
 // kSbCornerRadius is the shared 24 px card/section radius. The search bar's
@@ -299,7 +300,7 @@ class AppSearchBarState extends State<AppSearchBar>
 
     if (result == SttRequestResult.denied) {
       _micBusy = false;
-      await showCupertinoDialog<void>(
+      await showAppCupertinoDialog<void>(
         context: context,
         builder: (ctx) => CupertinoAlertDialog(
           title: const Text('Microphone Access Denied'),

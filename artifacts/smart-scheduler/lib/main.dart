@@ -37,6 +37,7 @@ import 'widgets/floating_tab_pill.dart';
 import 'widgets/header_title_scroller.dart';
 import 'widgets/live_rotation_geometry.dart';
 import 'widgets/app_shell_toolbar.dart';
+import 'widgets/app_shell_navigation_scope.dart';
 import 'widgets/native_text_input.dart';
 import 'widgets/search_bar_widget.dart';
 import 'widgets/view_mode_icons.dart';
@@ -897,8 +898,11 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   int _selectedIndex = 0;
   String? _activeToolbarRouteKey = 'home';
-  final GlobalKey<NavigatorState> _toolbarStateNavigatorKey =
+  final GlobalKey<NavigatorState> _appShellNavigatorKey =
       GlobalKey<NavigatorState>();
+  final ValueNotifier<int> _appShellRouteRevision = ValueNotifier<int>(0);
+  late final AppShellNavigationObserver _appShellNavigationObserver =
+      AppShellNavigationObserver(_appShellRouteRevision);
   final AppHeaderTitleTransition _headerTitleTransition =
       AppHeaderTitleTransition();
   static const _nativeTabBarChannel = MethodChannel(
@@ -1219,10 +1223,12 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         geometry.detailPaneWidth >= kAppWindowMasterDetailMinimumDetailWidth;
     final topInset = MediaQuery.paddingOf(context).top;
     final bottomInset = systemSafeAreaBottomInset(context);
-    Navigator.of(context, rootNavigator: true).push<void>(
+    final navigator = _appShellNavigatorKey.currentState;
+    if (navigator == null) return;
+    navigator.push<void>(
       PageRouteBuilder<void>(
         settings: const RouteSettings(name: 'settings-panel'),
-        opaque: false,
+        opaque: true,
         barrierDismissible: true,
         barrierLabel: 'Dismiss settings',
         barrierColor: const Color.fromRGBO(0, 0, 0, 0.4),
@@ -1290,7 +1296,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     if (!_settingsOpen) return;
     _settingsBackAction.value = null;
     _settingsInlineBackVisible.value = false;
-    final navigator = Navigator.of(context, rootNavigator: true);
+    final navigator = _appShellNavigatorKey.currentState;
+    if (navigator == null) return;
     if (navigator.canPop()) navigator.pop();
   }
 
@@ -1300,8 +1307,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _settingsBackAction.value?.call();
         return;
       }
-      final navigator = Navigator.of(context, rootNavigator: true);
-      if (navigator.canPop()) navigator.pop();
+      final navigator = _appShellNavigatorKey.currentState;
+      if (navigator?.canPop() == true) navigator!.pop();
       return;
     }
     if (_isDCV && _dcvSlideController.status == AnimationStatus.reverse) {
@@ -1993,6 +2000,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _dcvToolbarAccent.dispose();
     _searchModeController.dispose();
     _calendarStripSlide.dispose();
+    _appShellNavigationObserver.dispose();
+    _appShellRouteRevision.dispose();
     _settingsBackAction.dispose();
     _settingsInlineBackVisible.dispose();
     _headerTitleTransition.dispose();
@@ -2033,7 +2042,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
         _settingsBackAction.value?.call();
         return;
       }
-      Navigator.of(context, rootNavigator: true).maybePop();
+      _appShellNavigatorKey.currentState?.maybePop();
       return;
     }
     // ── 1. Action panels — dismiss the topmost open one ──────────────────
@@ -2843,7 +2852,7 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final key = _toolbarDestinationKey();
     if (key == _activeToolbarRouteKey) return;
 
-    final navigator = _toolbarStateNavigatorKey.currentState;
+    final navigator = _appShellNavigatorKey.currentState;
     if (navigator == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _syncToolbarDestination();
@@ -3299,7 +3308,10 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
       child: TapRegionSurface(
         child: ColoredBox(
           color: backgroundColor,
-          child: Stack(
+          child: AppShellNavigationScope(
+            navigatorKey: _appShellNavigatorKey,
+            routeRevision: _appShellRouteRevision,
+            child: Stack(
             children: [
               Stack(
                 fit: StackFit.expand,
@@ -4102,13 +4114,14 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
                 },
               ),
 
-              // Keep the tab content in this AppShell route, and put only
-              // toolbar destination routes in a sibling Navigator. Opaque
-              // routes there drive GlassNavigationShell's real transition
-              // clock without covering or rebuilding the indexed tab body.
+              // Keep tab bodies mounted, while the sibling Navigator owns
+              // toolbar destinations plus Settings and modal routes. They
+              // share one route stack so GlassNavigationShell can coordinate
+              // every handoff without rebuilding the indexed tab content.
               Positioned.fill(
                 child: Navigator(
-                  key: _toolbarStateNavigatorKey,
+                  key: _appShellNavigatorKey,
+                  observers: [_appShellNavigationObserver],
                   initialRoute: 'app-shell-toolbar-home',
                   onGenerateRoute: (settings) {
                     const prefix = 'app-shell-toolbar-';
@@ -4124,7 +4137,8 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
             ],
           ),
         ),
-      ), // TapRegionSurface
+        ), // AppShellNavigationScope
+      ),
     ); // PopScope
   }
 }

@@ -44,7 +44,7 @@
 - [Package glass default-first rule](package-glass-default-first.md) — slider-driven glass updates live; active checkmarks keep fixed optics.
 - [Subscreen checkmark layout](subscreen-checkmark-layout.md) — selectable rows share an OS-scaled checkmark slot with fixed 16px label and edge gaps.
 - [Flutter APK Gradle stability](flutter-apk-gradle-stability.md) — keep DEFAULT_JVM_OPTS in gradlew; daemon=false ignores org.gradle.jvmargs.
-- [Toolbar state-route hit testing](toolbar-state-route-hit-testing.md) — transparent toolbar registration routes need a pass-through modal barrier or they block every tap on the underlying screen.
+- [Toolbar state-route hit testing](toolbar-state-route-hit-testing.md) — keep toolbar, Settings, and modal routes on one Navigator; restore registration after modal exit completes.
 - [Shorebird patch and release workflow](shorebird-workflow.md) — use `--platforms`; preserve JDK, preflight, SDK, temp-storage, native-baseline, and release checks.
 - [Dart 3.9 collection nesting](dart39-collection-nesting.md) — if→for→if collection elements crash Dart 3.9 parser; fold outer if into for-loop condition instead.
 - [liquid_glass_widgets Android crash](liquid-glass-android-crash.md) — liquid_glass shaders crash Android; use the pure-Flutter switch there.

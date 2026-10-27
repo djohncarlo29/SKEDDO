@@ -1,12 +1,16 @@
 ---
 name: Toolbar state-route hit testing
-description: Give pinned toolbar routes real morph timing without covering the app body or disabling changed controls.
+description: Keep pinned toolbar ownership, route transitions, and modal handoffs on one coherent navigation stack.
 ---
 
-Keep toolbar-only transition routes in a sibling nested `Navigator` above the indexed app body. Use opaque routes there so `GlassNavigationShell` receives real secondary-animation progress, while the route page itself stays transparent and ignores pointer input. A synthetic non-opaque route in the root navigator can leave progress at zero, keeping the outgoing toolbar controls visible or disabling the incoming ones.
+`GlassNavigationShell` orders pinned toolbar registrations from route coverage and current ownership. Keep toolbar destinations and every app-level route that covers or presents over them—Settings, subscreens, dialogs, and modal sheets—on the same Navigator. Splitting toolbar registrations from real screen and sheet routes can leave stale actions, invisible hit targets, or chrome above a sheet.
 
-Keep the primary `GlassBarItem` ID and icon-content identity stable across destinations when only its glyph changes. Render the current glyph inside a stable `Icon` wrapper so the package morphs the glass group rather than crossfading a different toolbar item.
+The indexed tab bodies may stay mounted beside that Navigator. Toolbar-state routes can be opaque to provide real transition progress while their transparent, pointer-ignoring page lets the body continue receiving taps.
 
-**Why:** The navigation package derives morph progress from route coverage and matches persistent items by identity/content. A transparent root route can remain at zero progress, leaving outgoing controls on top and non-interactive. Separately, a non-opaque route's modal barrier can consume taps even if its page widget ignores pointers.
+After a modal route is popped, refresh the covered toolbar registration only after that route's exit has completed. Refreshing at presentation or pop start can re-register the bar during the transition and make it overlap the sheet.
 
-**How to apply:** Put only toolbar-state routes in the sibling navigator, keep the main tab subtree alive underneath, and test physical taps on both the changing leading item and the pass-through app body.
+Keep the primary `GlassBarItem` ID and icon-content identity stable across destinations when only its glyph changes.
+
+**Why:** The package ranks routes using the Navigator's transition coverage. Separate stacks do not provide one reliable ordering, while early handoff refreshes can race the modal's exit animation.
+
+**How to apply:** Use the same Navigator for app toolbar state, Settings routes, and modal presentation/dismissal. Verify body taps pass through toolbar-state routes and that the registered toolbar returns after a sheet fully closes.

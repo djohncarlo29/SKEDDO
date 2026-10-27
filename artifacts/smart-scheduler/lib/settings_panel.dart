@@ -20,6 +20,7 @@ import 'package:liquid_glass_easy/liquid_glass_easy.dart' as glass_slider;
 import 'widgets/native_fluid_slider_row.dart';
 import 'widgets/app_window_content_boundary.dart';
 import 'widgets/app_header_scroll_edge.dart';
+import 'widgets/app_shell_toolbar.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SettingsPanel — full-screen settings content with route-based sub-screen nav.
@@ -501,7 +502,7 @@ class _SettingsPanelState extends State<SettingsPanel>
     _restoreHeaderScrollOffset();
     widget.subScreenBackAction.value = null;
     widget.inlineSubScreenBackVisible.value = false;
-    final navigator = Navigator.of(context, rootNavigator: true);
+    final navigator = Navigator.of(context);
     final routeFuture = navigator.push<void>(
       CupertinoPageRoute<void>(
         settings: RouteSettings(name: 'settings-${route.title}'),
@@ -932,6 +933,19 @@ class _SettingsSubScreenRoute extends StatelessWidget {
                               headerTitleTransition.collapseProgress,
                           title: route.title,
                         ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: AppShellPinnedToolbar(
+                        glyph: AppShellToolbarGlyph.back,
+                        semanticLabel: 'Back from ${route.title}',
+                        horizontalInset:
+                            AppWindowContentScope.of(context).horizontalInset +
+                            16.0,
+                        onTap: () => Navigator.of(context).maybePop(),
                       ),
                     ),
                   ],
