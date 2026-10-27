@@ -572,7 +572,7 @@ class _AppWindowMasterDetailTransitionState
     final status = widget.progress.status;
     if (status == AnimationStatus.forward ||
         status == AnimationStatus.reverse) {
-      _beginFocusPaneTransition(status);
+      _scheduleFocusPaneTransitionCapture();
     } else {
       _scheduleFocusAnchorSync();
     }
@@ -589,7 +589,7 @@ class _AppWindowMasterDetailTransitionState
       final status = widget.progress.status;
       if (status == AnimationStatus.forward ||
           status == AnimationStatus.reverse) {
-        _beginFocusPaneTransition(status);
+        _scheduleFocusPaneTransitionCapture();
       } else {
         _scheduleFocusAnchorSync();
       }
@@ -600,6 +600,23 @@ class _AppWindowMasterDetailTransitionState
       _clearFocusCorrectionSegment();
       _scheduleFocusAnchorSync();
     }
+  }
+
+  void _scheduleFocusPaneTransitionCapture() {
+    final progress = widget.progress;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !identical(widget.progress, progress)) return;
+      final status = progress.status;
+      if (status == AnimationStatus.forward ||
+          status == AnimationStatus.reverse) {
+        // GlobalKey anchors can still point at deactivated descendants while
+        // this transition wrapper is mounting or being reparented. Capture
+        // them only after the new subtree has completed layout.
+        _beginFocusPaneTransition(status);
+      } else {
+        _scheduleFocusAnchorSync();
+      }
+    });
   }
 
   void _onProgressStatus(AnimationStatus status) {

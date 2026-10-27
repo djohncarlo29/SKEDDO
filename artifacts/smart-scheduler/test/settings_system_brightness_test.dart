@@ -34,24 +34,25 @@ void main() {
 
       await tester.pumpWidget(
         CupertinoApp(
+          builder: (context, child) => AppWindowContentScope(
+            horizontalInset: 0,
+            physicalWidth: 402,
+            child: child!,
+          ),
           home: MediaQuery(
             data: const MediaQueryData(
               size: Size(402, 874),
               platformBrightness: Brightness.light,
             ),
-            child: AppWindowContentScope(
-              horizontalInset: 0,
-              physicalWidth: 402,
-              child: SettingsPanel(
-                topInset: 0,
-                bottomInset: 0,
-                isOpen: true,
-                isLandscapeTwoPane: false,
-                onClose: () {},
-                subScreenBackAction: backAction,
-                inlineSubScreenBackVisible: inlineBackVisible,
-                headerTitleTransition: headerTitleTransition,
-              ),
+            child: SettingsPanel(
+              topInset: 0,
+              bottomInset: 0,
+              isOpen: true,
+              isLandscapeTwoPane: false,
+              onClose: () {},
+              subScreenBackAction: backAction,
+              inlineSubScreenBackVisible: inlineBackVisible,
+              headerTitleTransition: headerTitleTransition,
             ),
           ),
         ),

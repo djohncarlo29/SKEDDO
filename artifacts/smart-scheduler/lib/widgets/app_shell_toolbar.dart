@@ -81,7 +81,9 @@ class AppShellPinnedToolbar extends StatelessWidget {
         leading: item == null
             ? const <navigation_glass.GlassBarItem>[]
             : <navigation_glass.GlassBarItem>[item],
-        actions: showPrimary ? actions : const <navigation_glass.GlassBarItem>[],
+        actions: showPrimary
+            ? actions
+            : const <navigation_glass.GlassBarItem>[],
         backButton: false,
         buttonSize: buttonSize,
         toolbarHeight: toolbarHeight,
@@ -167,31 +169,52 @@ Route<void> appShellToolbarStateRoute({
   required WidgetBuilder toolbarBuilder,
   required VoidCallback onSystemBack,
 }) {
-  return PageRouteBuilder<void>(
-    settings: RouteSettings(name: name),
-    opaque: false,
-    barrierDismissible: false,
-    transitionDuration: const Duration(milliseconds: 360),
-    reverseTransitionDuration: const Duration(milliseconds: 360),
-    pageBuilder: (context, _, _) => PopScope<Object?>(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) onSystemBack();
-      },
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          const IgnorePointer(child: SizedBox.expand()),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: toolbarBuilder(context),
-          ),
-        ],
-      ),
-    ),
-    transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-        child,
+  return _AppShellToolbarStateRoute(
+    name: name,
+    toolbarBuilder: toolbarBuilder,
+    onSystemBack: onSystemBack,
   );
+}
+
+/// A transparent, non-modal route used only to register a toolbar destination.
+///
+/// ModalRoute's default transparent barrier still absorbs pointer events.
+/// This route must let the underlying screen remain interactive everywhere
+/// outside the pinned toolbar itself.
+class _AppShellToolbarStateRoute extends PageRouteBuilder<void> {
+  _AppShellToolbarStateRoute({
+    required String name,
+    required WidgetBuilder toolbarBuilder,
+    required VoidCallback onSystemBack,
+  }) : super(
+         settings: RouteSettings(name: name),
+         opaque: false,
+         barrierDismissible: false,
+         transitionDuration: const Duration(milliseconds: 360),
+         reverseTransitionDuration: const Duration(milliseconds: 360),
+         pageBuilder: (context, _, _) => PopScope<Object?>(
+           canPop: false,
+           onPopInvokedWithResult: (didPop, _) {
+             if (!didPop) onSystemBack();
+           },
+           child: Stack(
+             fit: StackFit.expand,
+             children: [
+               const IgnorePointer(child: SizedBox.expand()),
+               Positioned(
+                 top: 0,
+                 left: 0,
+                 right: 0,
+                 child: toolbarBuilder(context),
+               ),
+             ],
+           ),
+         ),
+         transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+             child,
+       );
+
+  @override
+  Widget buildModalBarrier() =>
+      const IgnorePointer(ignoring: true, child: SizedBox.expand());
 }

@@ -556,17 +556,10 @@ Future<void> main() async {
   } catch (_) {
     // Defaults are already initialized in app_settings.dart.
   }
-  // Wire the AI pipeline into EventStore before any events are created.
-  // Initialise the AI stack (loads HNSW index + ONNX model on native).
-  // On native first-launch this copies the 23 MB model file to documents;
-  // subsequent launches are instant.
-  // Guard against any uncaught exception from AI initialisation so a model
-  // loading failure never prevents the app from starting.
-  try {
-    await AIServices.init().timeout(const Duration(seconds: 8));
-  } catch (_) {
-    // App continues without AI embeddings; keyword matching still works.
-  }
+  // Start AI initialization without holding the first frame. On Android's
+  // first launch this copies the model asset; on every platform the persisted
+  // index/model work can continue while the app becomes interactive.
+  final aiInitialization = AIServices.init();
   EventPipeline.instance.init();
   // Load persisted events so the initial build has the correct state.
   try {
@@ -576,14 +569,33 @@ Future<void> main() async {
   } catch (_) {
     // The store remains empty and will be populated by later user actions.
   }
-  // Re-embed any stale events in the background (does not block the UI).
-  // Events already at the current embedding version are registered into the
-  // HybridMatcher from their stored HNSW vectors without a model call.
-  EventPipeline.instance.scheduleBackgroundReembed(
-    EventStore.instance.events.value,
-  );
   runApp(
     navigation_glass.LiquidGlassWidgets.wrap(child: const SKEDDOApp()),
+  );
+
+  // Event creation remains safe while the model loads: embedEvent returns
+  // false until initialization completes, leaving those events eligible for
+  // this background pass instead of persisting placeholder vectors.
+  unawaited(
+    aiInitialization
+        .then<void>((_) {
+          EventPipeline.instance.scheduleBackgroundReembed(
+            EventStore.instance.events.value,
+          );
+        })
+        .catchError((Object error, StackTrace stack) {
+          debugPrint('[Startup] AI initialization failed: $error');
+        }),
+  );
+  unawaited(
+    aiInitialization
+        .timeout(const Duration(seconds: 8))
+        .then<void>((_) {})
+        .catchError((Object error, StackTrace stack) {
+          debugPrint(
+            '[Startup] AI initialization is taking longer than usual: $error',
+          );
+        }),
   );
 }
 

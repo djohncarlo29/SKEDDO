@@ -88,10 +88,7 @@ Widget? _withSheetDimOverlay(
   );
 }
 
-Widget? _withAppShellDimOverlay(
-  Widget? child,
-  Animation<double> dimProgress,
-) {
+Widget? _withAppShellDimOverlay(Widget? child, Animation<double> dimProgress) {
   if (child == null) return null;
   return AnimatedBuilder(
     animation: dimProgress,
@@ -128,6 +125,8 @@ final Animatable<double> _kScaleTween = Tween<double>(
   end: 1.0 - _kSheetScaleFactor,
 );
 
+final ValueNotifier<int> _activeRoundedSheetRoutes = ValueNotifier<int>(0);
+
 /// Cancels only the enclosing rounded sheet's receding-page scale for pinned
 /// toolbar chrome. The page still moves and dims normally; its toolbar keeps
 /// the settled button and capsule dimensions while a nested sheet is open.
@@ -136,25 +135,32 @@ Widget preserveRoundedCupertinoSheetToolbarSize(
   Widget child,
 ) {
   final route = ModalRoute.of(context);
-  if (route is! RoundedCupertinoSheetRoute) return child;
-  final secondary = route.secondaryAnimation;
+  final secondary = route?.secondaryAnimation;
   if (secondary == null) return child;
 
-  return AnimatedBuilder(
-    animation: secondary,
+  return ValueListenableBuilder<int>(
+    valueListenable: _activeRoundedSheetRoutes,
     child: child,
-    builder: (context, child) {
-      final curve = secondary.status == AnimationStatus.reverse
-          ? Curves.easeInToLinear
-          : Curves.linearToEaseOut;
-      final progress = curve.transform(
-        secondary.value.clamp(0.0, 1.0).toDouble(),
-      );
-      final pageScale = 1.0 - _kSheetScaleFactor * progress;
-      return Transform.scale(
-        scale: 1.0 / pageScale,
-        alignment: Alignment.topCenter,
+    builder: (context, activeSheets, child) {
+      if (activeSheets == 0) return child!;
+      return AnimatedBuilder(
+        animation: secondary,
         child: child,
+        builder: (context, child) {
+          final curve = secondary.status == AnimationStatus.reverse
+              ? Curves.easeInToLinear
+              : Curves.linearToEaseOut;
+          final progress = curve.transform(
+            secondary.value.clamp(0.0, 1.0).toDouble(),
+          );
+          final pageScale = 1.0 - _kSheetScaleFactor * progress;
+          return Transform.scale(
+            key: const ValueKey('rounded-sheet-toolbar-size-preserver'),
+            scale: 1.0 / pageScale,
+            alignment: Alignment.topCenter,
+            child: child,
+          );
+        },
       );
     },
   );
@@ -275,6 +281,57 @@ class RoundedCupertinoSheetRoute<T> extends PageRoute<T>
   final bool isNestedSheet;
 
   Future<void>? _restoreToOpenFuture;
+  bool _sheetPresenceRegistered = false;
+  bool _sheetPresenceListenerAttached = false;
+
+  @override
+  TickerFuture didPush() {
+    _registerSheetPresence();
+    return super.didPush();
+  }
+
+  @override
+  void didAdd() {
+    _registerSheetPresence();
+    super.didAdd();
+  }
+
+  void _registerSheetPresence() {
+    if (!_sheetPresenceRegistered) {
+      _sheetPresenceRegistered = true;
+      _activeRoundedSheetRoutes.value++;
+    }
+    final routeAnimation = animation;
+    if (routeAnimation != null && !_sheetPresenceListenerAttached) {
+      _sheetPresenceListenerAttached = true;
+      routeAnimation.addStatusListener(_handleSheetPresenceStatus);
+    }
+  }
+
+  void _handleSheetPresenceStatus(AnimationStatus status) {
+    if (status == AnimationStatus.dismissed && !isCurrent) {
+      _unregisterSheetPresence();
+    }
+  }
+
+  void _unregisterSheetPresence() {
+    final routeAnimation = animation;
+    if (_sheetPresenceListenerAttached && routeAnimation != null) {
+      routeAnimation.removeStatusListener(_handleSheetPresenceStatus);
+    }
+    _sheetPresenceListenerAttached = false;
+    if (_sheetPresenceRegistered) {
+      _sheetPresenceRegistered = false;
+      final active = _activeRoundedSheetRoutes.value;
+      if (active > 0) _activeRoundedSheetRoutes.value = active - 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    _unregisterSheetPresence();
+    super.dispose();
+  }
 
   @override
   DelegatedTransitionBuilder? get delegatedTransition =>

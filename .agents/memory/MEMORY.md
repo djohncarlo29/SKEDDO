@@ -1,43 +1,38 @@
-- [Independent Multi-Day circles](multiday-faded-circle-compositing.md) — render today and adjacent markers as separate fixed-size circles using the selected circle’s full-opacity styling; never union them during drag.
-- [Transparent icon overlay compositing](transparent-icon-overlay-compositing.md) — BlendMode.clear holes must stay on the AppShell canvas; move icon opacity/scale into the painter instead of wrapping it in layers.
+- [Independent Multi-Day circles](multiday-faded-circle-compositing.md) — render adjacent markers independently with the selected circle's full-opacity style.
+- [Transparent icon overlay compositing](transparent-icon-overlay-compositing.md) — keep BlendMode.clear holes on the AppShell canvas; apply opacity/scale in the painter.
 - [AnimatedBuilder child caching](animated-builder-child-caching.md) — never pass setState-driven widgets as AnimatedBuilder.child; move them inline into the builder callback instead.
 - [Native STT channels](native-stt-channels.md) — speech_to_text replaced by native MethodChannel+EventChannel; iOS uses SFSpeechRecognizer, Android uses SpeechRecognizer.
 - [Android selection-handle haptics](android-selection-handle-haptics.md) — suppress only selection-click feedback during handle presses; keep tap selection and unrelated haptics intact.
-- [Events Tab keyboard dismissal root cause](events-tab-keyboard-root-cause.md) — keyboard dismissed by off-screen DCV CustomScrollView winning gesture arena; fix is SizedBox.expand when label.isEmpty.
-- [Overlay scroll view primary controller reset](overlay-scroll-primary.md) — any CustomScrollView added as a Stack overlay inside CupertinoTabScaffold must set primary:false or it adopts the tab's scroll controller and resets the offset to 0.
-- [Calendar Day View dual-axis swipe isolation](calendar-swipe-isolation.md) — week-strip drags and timeline drags must use separate slideX variables; header sync via ValueNotifier + onStripSlide callback.
-- [Multi-Day current-time indicator](calendar-multiday-current-time-indicator.md) — cap the line at today’s active column boundary and keep that endpoint aligned as columns move.
-- [Multi-Day separator reverse morph](calendar-multiday-reverse-separator.md) — keep the timeline mounted until its left divider reverses with the Day Banner; then hand off to Single Day.
-- [ScrollController remount resync](calendar-scrollctrl-remount-resync.md) — a key-forced Scrollable remount resets to the controller's stale original initialScrollOffset, not the last jumpTo() value; recreate before remounting.
-- [Smart Scheduler theme constants](smart-scheduler-theme-constants.md) — sheet-stack background and search-bar clear icon each have their own dedicated constant; don't reuse kBackgroundColor for the former.
+- [Events Tab keyboard dismissal root cause](events-tab-keyboard-root-cause.md) — offscreen DCV scroll views stole taps; use SizedBox.expand when label.isEmpty.
+- [Overlay scroll view primary controller reset](overlay-scroll-primary.md) — overlay CustomScrollViews need primary:false or they adopt the tab controller and reset its offset.
+- [Calendar runtime behavior](calendar-runtime-index.md) — focused notes for swipes, list parity, timing, scroll restoration, and landscape layout.
+- [Smart Scheduler theme constants](smart-scheduler-theme-constants.md) — sheet-stack background and search clear icon have dedicated constants.
 - [App-header scroll-edge behavior](app-header-scroll-edge.md) — share the active header state across tabs, DCV and Settings; do not restore a destination's stale state.
-- [App-wide landscape content boundary](app-wide-landscape-content-boundary.md) — keep inset handling symmetric and wrapper ancestry stable so routes preserve state across orientation changes.
-- [Landscape master-detail transition](landscape-events-master-detail.md) — softly anchor the active source during pane reflow; after detail closes, the current master viewport—not history—owns orientation restoration.
+- [App-wide landscape content boundary](app-wide-landscape-content-boundary.md) — keep insets and wrapper ancestry stable; capture keyed scroll anchors after layout, not during mount.
+- [Landscape master-detail transition](landscape-events-master-detail.md) — anchor pane reflow to the active source; current master viewport owns restoration.
 - [Dark-mode surface coverage](dark-mode-surface-coverage.md) — shared glass, attachment previews, import overlays, and action menus must resolve surfaces at build time.
 - [Custom-radius Cupertino sheet transition](rounded-cupertino-sheet.md) — showCupertinoSheet hardcodes a 12px radius with no public override; copy the private implementation to change it.
-- [Cupertino sheet gesture lifecycle](cupertino-sheet-gesture-lifecycle.md) — match Flutter's route recognizer and navigator user-gesture lifecycle; do not pre-filter pointer hits with a render-tree Listener.
+- [Cupertino sheet gesture lifecycle](cupertino-sheet-gesture-lifecycle.md) — match Flutter's route recognizer; don't prefilter hits with a render-tree Listener.
 - [Overlay dismissal confirmation ownership](overlay-dismissal-confirmation-ownership.md) — an OverlayEntry confirmation must consume Back and guard the parent PopScope to prevent stacked copies.
 - [Vetoed sheet drag restoration](vetoed-sheet-drag-restoration.md) — after maybePop is blocked by unsaved edits, animate the route controller back to fully open before showing confirmation.
 - [Modal sheet drag scope](modal-sheet-header-drag-scope.md) — allow native-style down-drag across sheets while excluding editable controls from the route recognizer.
-- [Live-synced adjacent swipe panels](calendar-adjacent-panel-live-sync.md) — prev/next preview panels need a scroll listener on the current panel's controller, not just an offset read at panel-creation time.
-- [Context menu overlay covers animation](context-menu-overlay-covers-animation.md) — the 420ms closing overlay paints over the real row; defer all action callbacks via _hide(then:) so they fire after overlay removal.
-- [TweenAnimationBuilder key type mismatch](tween-animation-builder-key-type-mismatch.md) — switching between TweenAnimationBuilder and any Animated* widget at the same key tears down the element; keep flag set for full animation duration.
-- [Drag-reorder long-press disambiguation](drag-reorder-long-press-disambiguation.md) — use onLongPressStart+MoveUpdate+End/Cancel with a 150ms grace timer to separate "hold still→menu" from "hold+move→reorder".
+- [Context menu overlay covers animation](context-menu-overlay-covers-animation.md) — defer row callbacks with _hide(then:) until the closing overlay is removed.
+- [TweenAnimationBuilder key type mismatch](tween-animation-builder-key-type-mismatch.md) — keep Animated* widget types stable at a key for the full transition.
+- [Drag-reorder long-press disambiguation](drag-reorder-long-press-disambiguation.md) — use a 150ms hold/move grace period to separate menu from reorder.
 - [Pinned grid lift geometry](pinned-grid-lift-geometry.md) — capture the tile’s actual width/height at lift; target-slot width changes wait until release and settling.
-- [Stack AnimatedPositioned drag-reorder](stack-animated-positioned-drag-reorder.md) — dragging tile uses Duration.zero in AnimatedPositioned; siblings use normal duration and animate as the data list is mutated live.
-- [Flutter drag element teardown](flutter-drag-element-teardown.md) — changing child widget structure on drag-start tears down GestureDetector state; keep tree structurally identical, mutate properties only.
+- [Stack AnimatedPositioned drag-reorder](stack-animated-positioned-drag-reorder.md) — dragging tiles use zero-duration positioning; siblings animate with list changes.
+- [Flutter drag element teardown](flutter-drag-element-teardown.md) — keep drag widget structure stable so GestureDetector state survives.
 - [Grid reorder drag offset accumulation](grid-reorder-drag-offset-bug.md) — drag start must index from _gridCombinedOrder, not section-local lists; only _gridCombinedOrder is updated per drag frame.
-- [Pin-category scroll-jump compensation anchor](pin-scroll-jump-compensation.md) — save scroll offset BEFORE phase-1 collapse; use base+totalGrowth (not currentOffset+delta) in per-frame compensation.
+- [Pin-category scroll-jump compensation anchor](pin-scroll-jump-compensation.md) — save offset before collapse; use base+totalGrowth for frame compensation.
 - [Action-panel SF Symbols](action-panel-sf-symbols.md) — use variable-weight SF Symbols in action panels; avoid blurred Cupertino glyph faux-weight rendering.
 - [Full-row switch interaction](app-switch-row.md) — use AppSwitchRow around any future LiquidGlassSwitch row so the whole available row toggles consistently.
-- [Framework7 header icons](framework7-header-icons.md) — Iconify’s Framework7 endpoint can fail with placeholder SVGs; use canonical repository geometry in local custom painters for reliable header rendering.
+- [Framework7 header icons](framework7-header-icons.md) — use local Framework7 glyph geometry when Iconify returns placeholders.
 - [Smart category circle numbers](smart-category-circle-numbers.md) — the 0.5px downward number adjustment applies only to the four Events smart-category circle icons, not larger previews.
 - [Smart Category rule persistence](smart-category-rule-persistence.md) — keep the matching rule separate from the category subtitle and persist it through category JSON.
 - [Location field fade-through](location-field-fade-through.md) — Starting Location and Destination swap the 30px map-pin circle and clear button with overlapping cross-dissolve.
-- [Calendar list icon weights](calendar-list-icon-weights.md) — Month List and Day View List use SF Symbol weight 500; Day List is isolated from Multi-Day painter clipping.
-- [Category Groups Architecture](category-groups-architecture.md) — _FlatItem pipeline, _listTopOrder token format, group lifecycle helpers, _NewGroupSheet constraints, and persistence/migration notes.
-- [Drag-reorder + dwell-to-group architecture](drag-reorder-dwell-architecture.md) — live reorder always runs; dwell uses _dwellStartPhysicalY to survive reorder swaps; group member drag via _handleGroupMemberDrag/_handleSoloDragIntoGroup.
-- [_FlatItem ValueKey ghost-freeze bug](flat-item-value-key.md) — never use ValueKey(_FlatItem) in a Stack; kind is part of hashCode so solo↔member transitions create new keys, disposing GestureDetector state mid-drag.
+- [Category Groups Architecture](category-groups-architecture.md) — group ordering, lifecycle, constraints, persistence, and migration notes.
+- [Drag-reorder + dwell-to-group architecture](drag-reorder-dwell-architecture.md) — live reorder precedes dwell grouping; physical Y survives swaps and supports member drags.
+- [_FlatItem ValueKey ghost-freeze bug](flat-item-value-key.md) — avoid ValueKey(_FlatItem) in drag stacks; kind changes dispose GestureDetector state.
 - [Flutter web icon tree-shaking](flutter-web-icon-tree-shaking.md) — preview builds must disable icon tree-shaking because persisted category icons use runtime IconData.
 - [Bounded squircle geometry](bounded-squircle-geometry.md) — constrain shared-radius paths to each card’s actual rect; Flutter’s individual clamp leaves seams on short cards.
 - [Split Cupertino picker chevrons](split-chevron-clipping.md) — clip upper/lower halves separately; translate the lower source by -half + offset to move only the lower chevron.
@@ -48,18 +43,19 @@
 - [Release-reset image zoom](release-reset-image-zoom.md) — attachment zoom is transient; the shared viewer animates to identity after release without competing fling.
 - [Package glass default-first rule](package-glass-default-first.md) — slider-driven glass updates live; active checkmarks keep fixed optics.
 - [Subscreen checkmark layout](subscreen-checkmark-layout.md) — selectable rows share an OS-scaled checkmark slot with fixed 16px label and edge gaps.
-- [Flutter APK Gradle stability](flutter-apk-gradle-stability.md) — SIGBUS fix requires DEFAULT_JVM_OPTS in gradlew (not just gradle.properties); daemon=false runs in wrapper JVM which ignores org.gradle.jvmargs.
+- [Flutter APK Gradle stability](flutter-apk-gradle-stability.md) — keep DEFAULT_JVM_OPTS in gradlew; daemon=false ignores org.gradle.jvmargs.
+- [Toolbar state-route hit testing](toolbar-state-route-hit-testing.md) — transparent toolbar registration routes need a pass-through modal barrier or they block every tap on the underlying screen.
 - [Shorebird patch and release workflow](shorebird-workflow.md) — use `--platforms`; preserve JDK, preflight, SDK, temp-storage, native-baseline, and release checks.
 - [Dart 3.9 collection nesting](dart39-collection-nesting.md) — if→for→if collection elements crash Dart 3.9 parser; fold outer if into for-loop condition instead.
-- [liquid_glass_widgets Android crash](liquid-glass-android-crash.md) — liquid_glass shaders are SkSL-incompatible; app crashes on Android when any GlassSwitch is rendered. Use _SlidingSwitch (pure Flutter) on non-iOS.
-- [Android performance visual fidelity](android-performance-visual-fidelity.md) — preserve designed glass effects; require physical-device confirmation before claiming renderer-dependent Android blur is verified.
+- [liquid_glass_widgets Android crash](liquid-glass-android-crash.md) — liquid_glass shaders crash Android; use the pure-Flutter switch there.
+- [Android performance visual fidelity](android-performance-visual-fidelity.md) — claim Android blur only after physical-device verification.
 - [Android Freeform/Recents window band](android-recents-preview-theme.md) — distinguish system caption and Recents layers before changing inset behavior; preserve floating-window controls.
 - [Replit temporary storage limits](replit-home-quota.md) — keep caches and Flutter temp files on the workspace partition, not quota-limited home or the 4GB /tmp tmpfs.
 - [Liquid Glass package boundary](liquid-glass-platform-compatibility.md) — keep 5.0.0 switch geometry and optics; active/inactive track colors follow app accent/category and tertiary-label colors.
 - [Liquid Glass slider v5 edge motion](liquid-glass-slider-version-split.md) — keep slider 5.0.0; add live thumb-envelope callbacks for edge-icon push and bounce.
 - [Text Size slider step alignment](text-size-slider-step-alignment.md) — align seven markers with settled thumb centers; allow continuous dragging and snap on release.
 - [Glass navigation package compatibility](liquid-glass-widgets-compatibility.md) — the title package's transitive dependency requires Dart 3.12.2; keep SDK pins aligned.
-- [flutter_onnxruntime Android crash](onnxruntime-android-crash.md) — ONNX session.run() causes an unrecoverable JNI SIGSEGV on Android; also covers the earlier UnsatisfiedLinkError fix and plugin registration patch.
+- [flutter_onnxruntime Android crash](onnxruntime-android-crash.md) — ONNX session.run causes JNI SIGSEGV; keep the registered TFLite path.
 - [TFLite Android embedding](tflite-android-embedding.md) — all-MiniLM-L6-v2 TFLite model tensor layout, source URL, and KGP 2.1 Gradle fix (kotlin.jvm.target.validation.mode=WARNING).
 - [Event creation save architecture](event-creation-save-architecture.md) — all ScheduledEvent fields, picker constraints, recurrence storage rule, alert timing logic, and normalisation decisions.
 - [Recurrence ordinal wheel styling](recurrence-ordinal-wheel-styling.md) — keep ordinal/day wheels close at -0.15/+0.15, with the shared 8dp inset and full-width bar.
@@ -69,8 +65,9 @@
 - [Default category setting](default-category-setting.md) — persist the selected category by ID and reset it before deleting that category.
 - [Group deletion confirmation](group-deletion-confirmation.md) — removing a group is immediate; deleting its categories requires a second confirmation.
 - [EventStore date-parse concatenation bug](event-store-date-parse-bug.md) — parse date-only in create(); appending normTime breaks _tryMonthDay regex → absoluteDate null → Unscheduled.
-- [AnimatedPositioned per-frame lag](animated-positioned-per-frame-lag.md) — never animate position on a per-frame drag variable; use Positioned+AnimatedContainer to separate finger-tracking (no anim) from width grow/shrink (animated).
+- [AnimatedPositioned per-frame lag](animated-positioned-per-frame-lag.md) — separate finger tracking from animated size changes.
 - [HNSW vector index Dart](hnsw-dart-notes.md) — brute-force path < 500 entries; SplayTreeMap from dart:collection causes "not defined" errors in test runner; use sorted List<_Candidate> instead.
+- [AI cold-start embeddings](ai-cold-start-embeddings.md) — never persist placeholder vectors before model initialization; retry event embedding after AI becomes ready.
 - [Categories accordion outer clip](categories-accordion-outer-clip.md) — keep the outer unpinned CATEGORIES surface on one fixed bounded squircle; only rows and height should animate.
 - [Events search overlay rendering](events-search-overlay-rendering.md) — search overlays must render the shared result widgets; DCV scopes ranking only, never visibility.
 - [DCV offscreen search keyboard viewport](dcv-search-keyboard-viewport.md) — reserve keyboard height around results, remove inner viewInsets, and restore tab-bar clearance after dismissal.
@@ -79,33 +76,32 @@
 - [Horizontal fade control gaps](horizontal-fade-control-gaps.md) — calculate the 16px visual gap from the actual control, accounting for existing layout spacing and overlaid icon width.
 - [Temporal composition API compatibility](temporal-composition-api.md) — shared event temporal composition must use the canonical model copy API and keep date/time precision enums distinct.
 - [Search fuzzy equal-length guard](search-fuzzy-equal-length.md) — equal-length typo comparisons must not select the target token as both sides of prefix logic.
-- [Cupertino selection styling across Shorebird versions](cupertino-selection-style-shorebird.md) — use DefaultSelectionStyle plus CupertinoTheme; Shorebird's CupertinoTextField has no selectionColor parameter.
+- [Cupertino selection styling across Shorebird versions](cupertino-selection-style-shorebird.md) — use DefaultSelectionStyle with CupertinoTheme; CupertinoTextField lacks selectionColor.
 - [Targeted style patch context](targeted-style-patch-context.md) — repeated font-size edits need unique surrounding labels plus a diff check to prevent adjacent UI styles changing.
 - [Variable category row heights](variable-category-row-heights.md) — category slots and drag geometry must use each item’s measured height, not the tallest row globally.
 - [Flutter web preview builds](flutter-web-preview-build.md) — restart the managed preview for dependency resolution and compilation; a running server can still serve a stale bundle.
 - [Search cancel and checkmark glass edges](search-cancel-glass-reparenting.md) — preserve search reveal; checkmarks use a 50%-white inner contour over LiquidGlass, thinnest at upper-right/lower-left.
 - [Editable DCV section keyboard reveal](editable-dcv-section-keyboard.md) — focused section headers near the viewport bottom need post-inset ensureVisible, including after wrapped text grows.
-- [DCV section membership reconciliation](dcv-section-membership-reconciliation.md) — reconcile newly visible events into the first section before permuting headers, or stale parent membership moves them with the new first header.
+- [DCV section membership reconciliation](dcv-section-membership-reconciliation.md) — reconcile new events before permuting headers to avoid stale membership.
 - [Flexible label-value wrapping](flexible-label-value-wrapping.md) — normal rows alternate value wrap, label wrap, value wrap, then label wrap while preserving the gap.
 - [Attachment import flow](attachment-import-flow.md) — remove only the pre-import confirmation overlay; keep the Importing sheet and its Cancel behavior unchanged.
-- [Attachment card corner stability](attachment-card-corner-stability.md) — let AnimatedList animate attachment rows inside one fixed-radius outer card; avoid AnimatedSize and empty-state stadium switching.
+- [Attachment card corner stability](attachment-card-corner-stability.md) — animate rows inside one fixed-radius card; avoid AnimatedSize and radius switching.
 - [AppShell floating overlays](app-shell-floating-overlays.md) — Positioned shell controls must be direct Stack children; nesting one in Column causes a blank Flutter web shell.
 - [App-shell toolbar states](app-shell-menu-button-no-press-tint.md) — app uses hamburger/actions, Settings uses X/no actions, sub-screens and DCV use the back chevron.
-- [Floating bar clearance math](floating-bar-clearance-math.md) — keep the Android landscape pill at 16px while preserving system gesture clearance for scroll content.
 - [Split-pane content sizing](split-pane-content-sizing.md) — responsive layouts in a bounded pane must use pane-local width while retaining portrait spacing constants.
 - [Shell backdrop filter bounds](shell-backdrop-filter-bounds.md) — permanent Android glass overlays need explicit finite clipping and clamped blur sampling or they can veil the whole app.
 - [Liquid Glass optical input field](liquid-glass-optical-input.md) — expand the shader source field in both axes while keeping the registered pill mask and full-strength refraction unchanged.
 - [Liquid Glass environmental shadows](liquid-glass-environment-shadow.md) — composite Light Mode shadows as parent layers beneath glass; do not attach them to the translucent material appearance.
 - [Liquid Glass color cache invalidation](liquid-glass-color-cache.md) — remount one-shot glass captures when a dynamic surface color changes or optical rims can retain the old tint.
-- [Android model asset stripping](android-model-asset-stripping.md) — Flutter/AGP can repopulate model assets after dependency-based tasks; strip platform-excluded assets in the final asset task action and clean before auditing.
+- [Android model asset stripping](android-model-asset-stripping.md) — strip excluded model assets in the final task; Flutter/AGP can repopulate them.
 - [OOXML attribute case handling](ooxml-attribute-case.md) — Office relationship and worksheet attributes need case-insensitive local-name matching.
-- [Offline OCR phase boundary](offline-ocr-phase-boundary.md) — native OCR bridges can be implemented offline, but final completion still requires device/sample validation and honest engine-confidence semantics.
+- [Offline OCR phase boundary](offline-ocr-phase-boundary.md) — finish OCR only after device/sample checks and honest confidence semantics.
 - [Offline file analysis route](offline-file-analysis-route.md) — Notes attachments use local extraction/OCR and deterministic analysis only; Gemini is not a fallback for this flow.
 - [Platform text scaling profile](platform-text-scaling-profile.md) — source text-size positions from the OS profile and preserve nonlinear curves through System↔Custom transitions.
-- [Flutter System scaler diagnostics](flutter-system-scaler-diagnostics.md) — native-profile tests do not measure Flutter's ambient nonlinear scaler; capture both paths with identical metrics on-device.
+- [Flutter System scaler diagnostics](flutter-system-scaler-diagnostics.md) — compare native profile and Flutter nonlinear scaling on-device.
 - [Shared modal safe-area handling](shared-modal-safe-area.md) — persistent bottom system insets are applied once at shared sheet boundaries; Floating Tab Bar's design offset remains separate.
 - [Modal scroll-edge clipping and dimming](modal-scroll-edge-extent-clipping.md) — preserve compositing and rounded clipping; zero-range short pulls include positive overscroll without layout changes.
-- [SliverFillRemaining intrinsic boundaries](sliver-fill-remaining-layoutbuilder.md) — non-scroll-body remaining slivers probe intrinsic sizes; bound responsive LayoutBuilder descendants without losing viewport fill.
+- [SliverFillRemaining intrinsic boundaries](sliver-fill-remaining-layoutbuilder.md) — bound responsive LayoutBuilder descendants inside non-scroll-body remaining slivers.
 - [Sheet scroll indicator anchoring](sheet-scroll-indicator-anchoring.md) — overlay-sheet scroll pills must anchor to the sheet surface, outside the padded content viewport.
 - [Rounded sheet content bounds](rounded-sheet-content-bounds.md) — keep shared sheet route content full-height; route translation and clipping define the visible 92%, not a child height constraint.
 - [Liquid Glass switch/tab timing](liquid-glass-switch-tab-timing.md) — switch lift/landing uses the active tab pill's spring family and settle gate.
@@ -117,13 +113,11 @@
 - [Pinned Flutter Dart tool path](flutter-dart-tool-path.md) — standalone Dart CLI commands use the SDK cache path beside the Flutter executable.
 - [Dart2JS thread-limit retry](dart2js-thread-limit.md) — a DartWorker thread-creation failure during Flutter web compilation is transient; retry before debugging source.
 - [Dart formatter drift](dart-formatter-drift.md) — the workspace’s hand-formatted Dart can receive broad unrelated churn from the installed formatter; avoid formatting whole legacy files casually.
-- [Intrinsic placeholder rendering](intrinsic-placeholder-rendering.md) — placeholders must be clipped intrinsic-width content with edge fades, never ellipsis, and must track one-line rubberband offsets.
+- [Intrinsic placeholder rendering](intrinsic-placeholder-rendering.md) — use clipped intrinsic-width placeholders with edge fades, not ellipsis.
 - [Flutter preview build directory](flutter-preview-build-directory.md) — native clean/build can remove build/web; restart the managed preview before debugging a resulting 404 or blank page.
 - [Family emoji skin-tone support](family-emoji-skin-tone-support.md) — gendered family ZWJ glyphs have no standardized skin-tone variants; per-person modifiers can decompose on Android.
 - [Screen-captured emoji transparency](emoji-sprite-transparency.md) — validate screenshot-derived sprites on a contrasting background; aggressive flood-fill can erase dark hair and body pixels.
 - [Emoji category selection repaint](emoji-category-selection-repaint.md) — paint selection alpha in the emoji TextStyle; Opacity layers can retain stale variation-selector glyphs.
-- [Calendar List DCV parity](calendar-list-dcv-parity.md) — Month List should embed the Events DCV implementation, including its exact-time reorder boundaries.
-- [Timeline rubberband synchronization](calendar-timeline-rubberband.md) — publish only in-range offsets to shared day-timeline scroll state; clamped sync jumps cancel active bounce.
 - [Utility DCV visual parity](utility-dcv-visual-parity.md) — Archived and Recently Deleted content must use shared DCV section, event, and category primitives with normal Dynamic Type fallbacks.
 - [Utility color provenance](utility-color-provenance.md) — utility child dots and category circles use saved original category swatches, not slate/red utility accents.
 - [Event utility provenance](event-provenance.md) — persist archive/delete origins; never guess legacy provenance from current category membership.
@@ -134,26 +128,21 @@
 - [DCV section persistence](dcv-section-persistence.md) — keep live section state authoritative and serialize preference snapshots to prevent stale overwrites.
 - [Category preview ball gradient](category-preview-ball-gradient.md) — Card 1 soccerball artwork follows the circle’s per-swatch additive highlight, with reduced lift for bright swatches.
 - [Smart Category lifecycle](smart-category-lifecycle.md) — Smart Categories own rules, not events or sections; use red lifecycle actions and explicit utility confirmations.
-- [Calendar month dot ordering](calendar-month-dot-order.md) — month-grid dots follow the first event in displayed list order, with all-day events first.
-- [Liquid Glass SF glyph normalization](liquid-glass-sf-glyph-normalization.md) — custom SF font glyphs need one shared slot and unconstrained rendering; per-glyph FittedBox sizing distorts optical comparisons.
+- [Liquid Glass SF glyph normalization](liquid-glass-sf-glyph-normalization.md) — render custom SF glyphs in one unconstrained shared slot.
 - [Date-picker weekday headers](date-picker-weekday-headers.md) — calendar and month-grid pickers follow First Day of Week; wheel barrels stay unchanged.
-- [Smart Category semantic threshold](smart-category-semantic-threshold.md) — shared date/time text makes low cosine floors admit unrelated scheduled events; keep semantic matching conservative and normalize plural rules.
+- [Smart Category semantic threshold](smart-category-semantic-threshold.md) — keep semantic matching conservative; shared date/time text weakens low cosine floors.
 - [Native iOS tab bar bridge](native-ios-tab-bar-bridge.md) — keep UIKit tab chrome across iOS versions; UIKit selects classic or floating styling and Flutter content clearance follows.
 - [Calendar morph transition notes](calendar-morph-transition-index.md) — use the grouped index for hierarchy, panel handoff, clipping, swipe, and content-bound notes.
-- [Day View week-strip positioning](calendar-day-header-expanded-state.md) — keep Month panels only through transition; settled Single/Multi Day has one DOW/strip, with reverse remount on shared progress.
 - [Picker and live rotation geometry](picker-rotation-index.md) — use the focused geometry notes for landscape picker sizing and live window-metric transitions.
-- [Smart Category count cache invalidation](smart-category-count-cache-invalidation.md) — matcher embeddings can change results asynchronously without changing the event list, so derived counts need matcher revisions.
+- [Smart Category count cache invalidation](smart-category-count-cache-invalidation.md) — matcher revisions must invalidate derived counts even when events are unchanged.
 - [Live slider persistence](live-slider-persistence.md) — persist on gesture completion even when live preview state already equals the snapped value.
-- [Calendar landscape safe-area insets](calendar-landscape-header-inset.md) — inset Year, Month, and Day content inside full-width panels; preserve bleed lines through Month↔Day transitions.
-- [Landscape current-time positioning](calendar-landscape-time-indicator-position.md) — center the Day timeline within usable height above the tab bar; preserve the portrait starting offset.
 - [Modal card shadow overflow](modal-card-shadow-overflow.md) — let modal card shadows overflow the scroll viewport and sheet wrapper; keep the rounded route clip as the outer sheet boundary.
-- [Pinned Flutter dependency resolution](flutter-pub-lock-sdk-resolution.md) — the managed preview resolves transitive package versions against its pinned Dart SDK and may update pubspec.lock on restart.
+- [Pinned Flutter dependency resolution](flutter-pub-lock-sdk-resolution.md) — managed preview restarts resolve packages against its pinned Dart SDK.
 - [Nested modal header alignment](nested-modal-header-alignment.md) — nested titles and controls stay at the same screen coordinates as their parent sheet.
-- [Landscape pill contour sampling](landscape-pill-contour-sampling.md) — offset on local normals so flat edges stay 1px; preserve slider alpha and denser landscape sampling.
 - [Impeller screen-space glass geometry](impeller-screen-space-glass-geometry.md) — shader resolution must use the full FlutterView size, not narrowed landscape content MediaQuery dimensions.
 - [Search-mode parent restoration](search-mode-parent-restoration.md) — closing search returns to the same settled parent screen, never a rubberbanded or partially swiped state.
-- [Top-level modal sheet behavior](top-level-modal-sheet-behavior.md) — top-level sheets leave AppShell stationary; only nested sheets scale and stack the parent sheet, with enough top clearance for its glass control.
+- [Top-level modal sheet behavior](top-level-modal-sheet-behavior.md) — top-level sheets keep AppShell stationary; only nested sheets scale the parent.
 - [Flutter browser touch verification](flutter-browser-touch-gestures.md) — use timed, incremental touch moves; a one-move swipe can falsely suggest a short page cannot collapse.
 - [GlassPopover dismissal lifecycle](glass-popover-dismissal-lifecycle.md) — onClose starts the morph; keep its host mounted through spring settle before removing the root overlay.
-- [Independent GlassPopover surfaces](glass-popover-nested-surfaces.md) — popover content inherits the morphing glass layer; nested controls that need their own tint, refraction, and rim must render in an own layer.
+- [Independent GlassPopover surfaces](glass-popover-nested-surfaces.md) — nested controls needing their own optics must render in their own glass layer.
 - [GlassPopover placement boundaries](glass-popover-safe-area.md) — avoid doubled insets; the 4px upper-left morph offset applies only to discard confirmation.

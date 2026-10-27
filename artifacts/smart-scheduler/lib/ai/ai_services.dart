@@ -54,7 +54,7 @@ class AIServices {
   // One representative sentence per level (0=None … 3=High).
   // Embedded once after the model loads; cosine similarity selects the winner.
   static const _kPriorityAnchorTexts = [
-    'casual personal note flexible optional no deadline no urgency',       // 0 None
+    'casual personal note flexible optional no deadline no urgency', // 0 None
     'minor errand routine task low importance not urgent can be deferred', // 1 Low
     'regular work meeting scheduled appointment important should not miss', // 2 Medium
     'critical deadline urgent must complete immediately high stakes essential', // 3 High
@@ -109,7 +109,9 @@ class AIServices {
           _embedding = tflite;
         } catch (e, st) {
           // ignore: avoid_print
-          print('[AIServices] TFLite init failed — falling back to keyword matching: $e\n$st');
+          print(
+            '[AIServices] TFLite init failed — falling back to keyword matching: $e\n$st',
+          );
           _embedding = _nullEmbedding;
         }
       } else {
@@ -119,7 +121,9 @@ class AIServices {
           _embedding = onnx;
         } catch (e, st) {
           // ignore: avoid_print
-          print('[AIServices] ONNX init failed — falling back to keyword matching: $e\n$st');
+          print(
+            '[AIServices] ONNX init failed — falling back to keyword matching: $e\n$st',
+          );
           _embedding = _nullEmbedding;
         }
       }
@@ -190,6 +194,7 @@ class AIServices {
       parser.localePreference = preference;
     }
   }
+
   static void setEmbedding(EmbeddingService s) => _embedding = s;
   static void setMatcher(SmartCategoryMatcher m) {
     // HybridMatcher is wired internally; this exists for test injection only.
@@ -238,7 +243,11 @@ class AIServices {
   /// a transient failure (model not yet ready, I/O error) forces a retry on
   /// the next startup rather than permanently marking the event as current.
   static Future<bool> embedEvent(String eventId, String text) async {
-    if (text.trim().isEmpty) return false;
+    // The no-op embedding service is installed until init() has loaded the
+    // persisted index and selected the platform model. Do not save its zero
+    // vectors as valid event embeddings while startup initialization is still
+    // running; the post-init background pass will process those events.
+    if (!_initialized || text.trim().isEmpty) return false;
     try {
       final vec = await _embedding.embed(text);
       await _hnswIndex.upsert(eventId, vec);
