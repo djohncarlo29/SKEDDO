@@ -492,6 +492,109 @@ void main() {
       expect(secondController.offset, 120);
     },
   );
+
+  testWidgets(
+    'inactive destinations stay prepared as the shared header changes',
+    (tester) async {
+      tester.view.physicalSize = _viewportSize;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final firstController = ScrollController();
+      final secondController = ScrollController();
+      final transition = AppHeaderTitleTransition();
+      addTearDown(() {
+        transition.dispose();
+        firstController.dispose();
+        secondController.dispose();
+      });
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: SizedBox(
+            height: _viewportSize.height,
+            child: AppHeaderScrollInsetScope(
+              leadingInset: kAppHeaderToolbarHeight,
+              titleCollapseExtent: kAppHeaderTitleCollapseDistance,
+              child: Padding(
+                padding: const EdgeInsets.only(top: kAppHeaderToolbarHeight),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildHeaderScrollView(
+                        controller: firstController,
+                        bodyHeight: 1200,
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildHeaderScrollView(
+                        controller: secondController,
+                        bodyHeight: 1200,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final firstPosition =
+          AppHeaderScrollView.headerPositionFor(firstController)!;
+      final secondPosition =
+          AppHeaderScrollView.headerPositionFor(secondController)!;
+
+      // Seed the second screen's own compact body backup, then make the first
+      // screen authoritative while both destinations remain mounted.
+      secondPosition.jumpTo(kAppHeaderTitleCollapseDistance);
+      secondController.jumpTo(120);
+      await tester.pump();
+      transition.bindTo(secondPosition);
+      transition.bindTo(firstPosition, preserveCollapseProgress: true);
+      await tester.pump();
+      expect(secondPosition.pixels, closeTo(kAppHeaderTitleCollapseDistance, 1));
+      expect(secondController.offset, 120);
+
+      // Moving the active header to partial and expanded states must prepare
+      // the hidden destination immediately, not after it is revealed.
+      final partialOffset = kAppHeaderTitleCollapseDistance * 0.4;
+      firstPosition.jumpTo(partialOffset);
+      expect(
+        secondPosition.pixels,
+        closeTo(kAppHeaderTitleCollapseDistance, 1),
+      );
+      expect(secondController.offset, 0);
+
+      // On selection, the destination outer header is aligned synchronously
+      // before the next frame can paint it.
+      transition.bindTo(secondPosition, preserveCollapseProgress: true);
+      expect(secondPosition.pixels, closeTo(partialOffset, 1));
+      expect(secondController.offset, 0);
+      await tester.pump();
+
+      // Return to the first destination while it remains the shared source.
+      transition.bindTo(firstPosition, preserveCollapseProgress: true);
+
+      firstPosition.jumpTo(0);
+      expect(secondPosition.pixels, closeTo(partialOffset, 1));
+      expect(secondController.offset, 0);
+      await tester.pump();
+
+      // Expanding the header never erases the destination's separate compact
+      // backup. It is applied only after the destination's outer header is
+      // aligned, immediately before the screen is revealed.
+      firstPosition.jumpTo(kAppHeaderTitleCollapseDistance);
+      expect(secondController.offset, 0);
+      expect(secondPosition.pixels, closeTo(partialOffset, 1));
+
+      transition.bindTo(secondPosition, preserveCollapseProgress: true);
+      expect(secondPosition.pixels, closeTo(kAppHeaderTitleCollapseDistance, 1));
+      expect(secondController.offset, 120);
+    },
+  );
 }
 
 Widget _buildHeaderHarness({

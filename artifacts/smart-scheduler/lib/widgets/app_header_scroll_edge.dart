@@ -121,7 +121,9 @@ class AppHeaderTitleTransition extends ChangeNotifier {
   double? _pendingHandoffSearchProgress;
   double _lastNotifiedContentOffset = 0.0;
   double _lastNotifiedCollapseProgress = 0.0;
+  double? _lastPreparedCollapseProgress;
   bool _isBinding = false;
+  bool _isSuspended = false;
   bool _notificationScheduled = false;
   bool _disposed = false;
 
@@ -171,6 +173,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     ScrollPosition? position, {
     bool preserveCollapseProgress = false,
   }) {
+    _isSuspended = false;
     if (identical(position, _position)) {
       _syncNestedBodyPosition();
       if (_pendingHandoffCollapseProgress == null &&
@@ -185,6 +188,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
       _applyPendingHandoff();
       _isBinding = false;
       _notifyIfChanged();
+      _prepareInactiveDestinations(force: true);
       return;
     }
 
@@ -254,6 +258,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     _lastNotifiedCollapseProgress = collapseProgress;
     _cachedSearchCollapseProgress = searchBarCollapseProgress;
     _isBinding = false;
+    _prepareInactiveDestinations(force: true);
     _publishChange();
   }
 
@@ -261,6 +266,7 @@ class AppHeaderTitleTransition extends ChangeNotifier {
   /// without changing the current visual state.
   void suspend() {
     final position = _position;
+    _isSuspended = true;
     if (position == null) return;
     contentOffset;
     _cachedCollapseProgress = collapseProgress;
@@ -289,6 +295,12 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     final searchExtent =
         AppHeaderScrollView._searchExtentsByOuterPosition[_position] ?? 0.0;
     if (searchExtent > 0) _controller.reportSearchBarHeight(searchExtent);
+    if (_pendingHandoffCollapseProgress != null) {
+      _isBinding = true;
+      _applyPendingHandoff();
+      _isBinding = false;
+    }
+    _prepareInactiveDestinations(force: true);
     _notifyIfChanged();
   }
 
@@ -306,7 +318,39 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     if (position != null) {
       AppHeaderScrollView._rememberPositionBackup(position);
     }
+    _prepareInactiveDestinations();
     _notifyIfChanged();
+  }
+
+  /// Keep every mounted destination's body ready for the active screen's
+  /// latest header state. Do not move inactive outer header positions here:
+  /// their local layouts already respond to the shared title, and their outer
+  /// position is aligned by bindTo() before the destination is revealed.
+  void _prepareInactiveDestinations({bool force = false}) {
+    if (_disposed || _isSuspended) return;
+
+    final progress = collapseProgress.clamp(0.0, 1.0).toDouble();
+    if (!force &&
+        _lastPreparedCollapseProgress != null &&
+        (progress - _lastPreparedCollapseProgress!).abs() < 0.0005) {
+      return;
+    }
+    _lastPreparedCollapseProgress = progress;
+
+    for (final destination
+        in AppHeaderScrollView._bodyPositionsByOuterPosition.keys.toList()) {
+      if (identical(destination, _position) ||
+          !destination.hasContentDimensions) {
+        continue;
+      }
+      AppHeaderScrollView._rememberPositionBackup(destination);
+      // A compact destination's body backup is retained separately and applied
+      // after bindTo() first aligns its outer header. Jumping the body while
+      // that inactive outer position is still expanded can couple the two and
+      // corrupt the saved compact offset.
+      if (progress >= 1.0 - 0.001) continue;
+      _restoreBodyPositionForHandoff(destination, progress);
+    }
   }
 
   void _restoreBodyPositionForHandoff(
@@ -316,8 +360,6 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     final bodyPosition = AppHeaderScrollView._bodyPositionForOuterPosition(
       outerPosition,
     );
-    final bodyController =
-        AppHeaderScrollView._contentControllerForOuterPosition(outerPosition);
     if (bodyPosition == null ||
         !bodyPosition.hasContentDimensions) {
       return;
@@ -332,22 +374,35 @@ class AppHeaderTitleTransition extends ChangeNotifier {
     );
     if (bodyOffset == null) return;
 
-    final target = (bodyPosition.minScrollExtent + bodyOffset)
-        .clamp(bodyPosition.minScrollExtent, bodyPosition.maxScrollExtent)
-        .toDouble();
-    if ((bodyPosition.pixels - target).abs() > 0.5) {
-      if (bodyController != null) {
-        AppHeaderScrollView.jumpBodyTo(bodyController, target);
-      } else {
-        // Settings subscreens do not expose a content controller. Restore
-        // their inner position directly, then put the outer header back at
-        // the shared state if NestedScrollView coupled the two jumps.
-        final sharedOuterOffset = outerPosition.pixels;
-        bodyPosition.jumpTo(target);
-        if ((outerPosition.pixels - sharedOuterOffset).abs() > 0.5) {
-          outerPosition.jumpTo(sharedOuterOffset);
-        }
+    final bodyController =
+        AppHeaderScrollView._contentControllerForOuterPosition(outerPosition);
+    final bodyPositions = bodyController?.positions.toList() ??
+        <ScrollPosition>[bodyPosition];
+    for (final destinationBody in bodyPositions) {
+      final destinationOuter =
+          AppHeaderScrollView._outerPositionForBody(destinationBody);
+      if (destinationOuter == null || !destinationBody.hasContentDimensions) {
+        continue;
       }
+      final destinationTarget =
+          (destinationBody.minScrollExtent + bodyOffset)
+              .clamp(
+                destinationBody.minScrollExtent,
+                destinationBody.maxScrollExtent,
+              )
+              .toDouble();
+      if ((destinationBody.pixels - destinationTarget).abs() <= 0.5) {
+        continue;
+      }
+      // NestedScrollView can couple an inner jump with its outer header.
+      // Preserve each paired outer position while syncing bodies that share a
+      // content controller.
+      final sharedOuterOffset = destinationOuter.pixels;
+      destinationBody.jumpTo(destinationTarget);
+      if ((destinationOuter.pixels - sharedOuterOffset).abs() > 0.5) {
+        destinationOuter.jumpTo(sharedOuterOffset);
+      }
+      AppHeaderScrollView._rememberPositionBackup(destinationOuter);
     }
     AppHeaderScrollView._rememberPositionBackup(outerPosition);
   }
@@ -849,7 +904,7 @@ class AppHeaderScrollView extends StatelessWidget {
     if (controller == null) return 0.0;
     final backup = _scrollBackups[controller];
     if (expanded) return backup?.expandedBodyOffset ?? 0.0;
-    return backup?.scrolledBodyOffset;
+    return backup?.scrolledBodyOffset ?? backup?.expandedBodyOffset ?? 0.0;
   }
 
   static ScrollPosition? _bodyPositionForOuterPosition(

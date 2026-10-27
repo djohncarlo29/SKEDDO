@@ -50,7 +50,7 @@ echo "→ Using Flutter: $("$FLUTTER_BIN" --version | sed -n '1p')"
 # The WASM renderer requires COOP/COEP headers (for SharedArrayBuffer) which
 # block the app from being embedded in the Replit preview iframe.
 "$FLUTTER_BIN" pub get 2>&1
-"$FLUTTER_BIN" build web --no-tree-shake-icons 2>&1
+"$FLUTTER_BIN" build web --no-tree-shake-icons --no-wasm-dry-run 2>&1
 bash /home/runner/workspace/scripts/strip-platform-model-assets.sh web \
   /home/runner/workspace/artifacts/smart-scheduler/build/web
 
